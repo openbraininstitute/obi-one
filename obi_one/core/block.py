@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from pydantic import PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.param import MultiValueScanParam
 from obi_one.core.parametric_multi_values import ParametericMultiValue
 
@@ -18,18 +19,7 @@ class Block(OBIBaseModel, extra="forbid"):
     Tuples should be used when list-like parameter is needed.
     """
 
-    title: ClassVar[str | None] = None  # Optional: subclasses can override
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs) -> None:
-        """Initialize subclass."""
-        super().__init_subclass__(**kwargs)
-
-        # Use the subclass-provided title, or fall back to the class name
-        cls.model_config.update({"title": cls.title or cls.__name__})
-
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
-
     _ref = None
     _block_name = None
 
@@ -67,10 +57,31 @@ class Block(OBIBaseModel, extra="forbid"):
         self._multiple_value_parameters = []
 
         for key, value in self.__dict__.items():
+            if isinstance(value, ComplexVariableHolder):
+                self._multiple_value_parameters.extend(
+                    value.multiple_value_parameters(
+                        base_location_list=[category_name, block_key, key]
+                        if block_key
+                        else [category_name, key]
+                    )
+                )
+                continue
+
             if isinstance(value, ParametericMultiValue):
                 multi_values = list(value)
 
             elif isinstance(value, list):
+                # list[ComplexVariableHolder] special case
+                if len(value) > 0 and isinstance(value[0], ComplexVariableHolder):
+                    for i, complex_variable_holder in enumerate(value):
+                        self._multiple_value_parameters.extend(
+                            complex_variable_holder.multiple_value_parameters(  # ty:ignore[unresolved-attribute]
+                                base_location_list=[category_name, block_key, key, i]
+                                if block_key
+                                else [category_name, key, i]
+                            )
+                        )
+                    continue
                 multi_values = value
 
             else:

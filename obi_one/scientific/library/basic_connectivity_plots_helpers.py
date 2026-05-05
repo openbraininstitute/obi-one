@@ -1,9 +1,10 @@
-"""Basic functions to compute network stats and for plotting
-Last modified 08.2025
+"""Basic functions to compute network stats and for plotting.
+
+Requires: pip install obi-one[connectivity]
+
 Author: Daniela Egas Santander.
 """
 
-import contextlib
 import logging
 from operator import itemgetter
 
@@ -11,7 +12,6 @@ import matplotlib.patches as mpatches
 
 # Matplotlib imports
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import pandas as pd
 from conntility import ConnectivityMatrix
@@ -21,9 +21,23 @@ from matplotlib.patches import Ellipse, FancyArrow
 from matplotlib.ticker import FuncFormatter
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-with contextlib.suppress(ImportError):  # Try to import connalysis
+# Connectivity dependencies (optional) - check for networkx
+try:
+    import networkx as nx
+except ImportError as e:  # pragma: no cover
+    msg = "Connectivity plotting requires networkx. Install with: pip install obi-one[connectivity]"
+    raise ImportError(msg) from e
+
+# Connectivity dependencies (optional) - check for connalysis
+try:
     from connalysis.network.classic import connection_probability_within, density
     from connalysis.network.topology import node_degree, rc_submatrix
+except ImportError as e:  # pragma: no cover
+    msg = (
+        "Connectivity plotting requires connectome-analysis (connalysis). "
+        "Install with: pip install obi-one[connectivity]"
+    )
+    raise ImportError(msg) from e
 
 L = logging.getLogger(__name__)
 
@@ -36,7 +50,7 @@ def connection_probability_pathway(
     """Compute the connection probability of the matrix for a given grouping of the nodes."""
 
     def count_connections(mat: np.ndarray, *args) -> int:  # noqa: ARG001
-        return mat.nnz
+        return mat.nnz  # ty:ignore[unresolved-attribute]
 
     def count_nodes(mat: np.ndarray, *args) -> tuple[int, ...]:  # noqa: ARG001
         return mat.shape
@@ -119,25 +133,13 @@ def compute_global_connectivity(
     """Compute connection probabilities for the full network of with max_dist,
     and similarly for the control.
     """
-    if "rc_submatrix" not in globals():
-        msg = "Import of 'rc_submatrix' failed. You probably need to install connalysis locally."
-        raise ValueError(msg)
     if cols is None:
         cols = ["x", "y"]
     if connection_type == "full":  # Compute on the entire network
-        if "density" not in globals():
-            msg = "Import of 'density' failed. You probably need to install connalysis locally."
-            raise ValueError(msg)
         return np.array(
             [density(m), density(m_er), density(rc_submatrix(m)), density(rc_submatrix(m_er))]
         )
     if connection_type == "within":
-        if "connection_probability_within" not in globals():
-            msg = (
-                "Import of 'connection_probability_within' failed. You probably need to install"
-                " connalysis locally."
-            )
-            raise ValueError(msg)
         return np.array(
             [
                 connection_probability_within(
@@ -198,7 +200,7 @@ def make_pie_plot(  # noqa: PLR0914
         colors = [cmap(i) for i in range(len(category_counts))[::-1]]
 
     # Create the pie chart without percentages inside
-    wedges, _ = ax.pie(category_counts, startangle=140, colors=colors, textprops={"fontsize": 8})
+    wedges, _ = ax.pie(category_counts, startangle=140, colors=colors, textprops={"fontsize": 8})  # ty:ignore[invalid-assignment]
 
     # Add annotations outside the pie chart to avoid overlapping
     for i, wedge in enumerate(wedges):
@@ -308,7 +310,7 @@ def plot_global_connection_probability(
     ax1.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
     ax2.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0), useMathText=False)
     ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.1e}"))
-    return ax1, bars1, labels
+    return ax1, bars1, labels  # ty:ignore[invalid-return-type]
 
 
 def plot_rc_connection(ax: plt.Axes, arrowsize: int = 20, node_size: int = 100) -> plt.Axes:
@@ -391,12 +393,12 @@ def imshow_wrapper(
             {
                 "clim": [
                     0.0,
-                    np.percentile(img.to_numpy().ravel()[~np.isnan(img.to_numpy().ravel())], perc),
+                    np.percentile(img.to_numpy().ravel()[~np.isnan(img.to_numpy().ravel())], perc),  # ty:ignore[unresolved-attribute]
                 ]
             }
         )
     plot = ax.imshow(img, **kwargs)
-    return ax, plot
+    return ax, plot  # ty:ignore[invalid-return-type]
 
 
 def plot_connection_probability_pathway(
@@ -407,7 +409,7 @@ def plot_connection_probability_pathway(
     perc: float = 97.5,
     **kwargs,
 ) -> tuple[plt.Axes, plt.Axes]:
-    ax, plot = imshow_wrapper(ax, connection_prob, cutoff=cutoff, perc=perc, cmap=cmap, **kwargs)
+    ax, plot = imshow_wrapper(ax, connection_prob, cutoff=cutoff, perc=perc, cmap=cmap, **kwargs)  # ty:ignore[invalid-argument-type]
     ax.set_yticks(range(len(connection_prob)), labels=connection_prob.index)
     ax.set_xticks(range(len(connection_prob)), labels=connection_prob.index)
     return ax, plot
@@ -492,7 +494,11 @@ def plot_connection_probability_pathway_stats(
             plotme = conn_probs[connection_type][grouping_prop]
             axs[i, j], plot = plot_connection_probability_pathway(axs[i, j], plotme, cmap="viridis")
             cbar = plt.colorbar(
-                plot, ax=axs[i, j], orientation="vertical", shrink=0.85, label="Probability"
+                plot,  # ty:ignore[invalid-argument-type]
+                ax=axs[i, j],
+                orientation="vertical",
+                shrink=0.85,
+                label="Probability",
             )
             cbar.ax.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0))
             axs[i, j].set_xlabel("Post-synaptic cell")
@@ -535,10 +541,6 @@ def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
     color_strength: tuple | None = None,
     cmap_adj: plt.Colormap | None = None,
 ) -> plt.Figure:
-    if "node_degree" not in globals():
-        msg = "Import of 'node_degree' failed. You probably need to install connalysis locally."
-        raise ValueError(msg)
-
     if color_indeg is None:
         color_indeg = plt.get_cmap("Set2")(0)
     if color_outdeg is None:
@@ -568,7 +570,7 @@ def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
     cbar_height = 0.03  # Height of colorbar axis
     cbar_pad = 0.125  # Padding below the main axis (fraction of figure height)
     cbar_y = bbox.y0 - cbar_pad - cbar_height
-    cax = fig.add_axes([bbox.x0, cbar_y, bbox.width, cbar_height])
+    cax = fig.add_axes([bbox.x0, cbar_y, bbox.width, cbar_height])  # ty:ignore[no-matching-overload]
     cbar = plt.colorbar(plot, cax=cax, orientation="horizontal", label="Synapse count")
     cbar.ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
@@ -615,7 +617,7 @@ def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
     bbox = axs[2].get_position()
     legend_height = 0.03  # Matching more or less the cbar options
     legend_y = bbox.y0 - cbar_pad - cbar_height
-    legend_ax = fig.add_axes([bbox.x0, legend_y, bbox.width, legend_height])
+    legend_ax = fig.add_axes([bbox.x0, legend_y, bbox.width, legend_height])  # ty:ignore[no-matching-overload]
     handles, labels = axs[2].get_legend_handles_labels()
     legend_ax.legend(handles, labels, loc="center", frameon=False, ncol=2)
     legend_ax.axis("off")
@@ -764,10 +766,6 @@ def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
     coord_names: list[str] | None = None,
     axis_fontsize: int | None = None,
 ) -> plt.Axes:
-    if "node_degree" not in globals():
-        msg = "Import of 'node_degree' failed. You probably need to install connalysis locally."
-        raise ValueError(msg)
-
     if coord_names is None:
         coord_names = ["x", "y"]
     ax.set_title(title, fontsize=title_fontsize)
@@ -811,13 +809,15 @@ def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
     # Color nodes and edges (possibly by property type)
     if color_nodes_by_prop:
         node_colors = [
-            color_map_nodes.get(key) for key in conn.vertices[color_property_nodes].to_numpy()
+            color_map_nodes.get(key)  # ty:ignore[unresolved-attribute]
+            for key in conn.vertices[color_property_nodes].to_numpy()
         ]
     else:
         node_colors = node_color
     if color_edges_by_prop:
         defining_colors = [
-            color_map_edges.get(key) for key in conn.vertices[color_property_edges].to_numpy()
+            color_map_edges.get(key)  # ty:ignore[unresolved-attribute]
+            for key in conn.vertices[color_property_edges].to_numpy()
         ]
         if color_edges_by == "pre":
             edge_colors = [defining_colors[u] for u, v in g.edges()]
@@ -913,19 +913,19 @@ def make_MC_fig_template(  # noqa: PLR0914
     # ax1: left part, connectivity values
     col_width = (row1_width - hspace_row1) * ax1_ratio
 
-    ax1 = fig.add_axes([row1_left, row1_bottom, row1_left + col_width, row1_height])
+    ax1 = fig.add_axes([row1_left, row1_bottom, row1_left + col_width, row1_height])  # ty:ignore[no-matching-overload]
 
     # ax2: right part, cartoons
     n_right = 3  # number of cartoons
     right_start = row1_left + col_width + hspace_row1
     col_width = (row1_right - right_start - 2 * cartoon_gaps) / n_right
-    ax2_1 = fig.add_axes([right_start, row1_bottom, col_width, row1_height])
+    ax2_1 = fig.add_axes([right_start, row1_bottom, col_width, row1_height])  # ty:ignore[no-matching-overload]
     ax2_2 = fig.add_axes(
         [right_start + col_width + cartoon_gaps, row1_bottom, col_width, row1_height]
-    )
+    )  # ty:ignore[no-matching-overload]
     ax2_3 = fig.add_axes(
         [right_start + 2 * (col_width + cartoon_gaps), row1_bottom, col_width, row1_height]
-    )
+    )  # ty:ignore[no-matching-overload]
     ax2 = (ax2_1, ax2_2, ax2_3)
 
     # Second row
@@ -937,8 +937,8 @@ def make_MC_fig_template(  # noqa: PLR0914
     row2_width = row2_right - row2_left
     col2_width = (row2_width - hspace_row2) / 2
 
-    ax3 = fig.add_axes([row2_left, row2_bottom, col2_width, row2_height])
-    ax4 = fig.add_axes([row2_left + col2_width + hspace_row2, row2_bottom, col2_width, row2_height])
+    ax3 = fig.add_axes([row2_left, row2_bottom, col2_width, row2_height])  # ty:ignore[no-matching-overload]
+    ax4 = fig.add_axes([row2_left + col2_width + hspace_row2, row2_bottom, col2_width, row2_height])  # ty:ignore[no-matching-overload]
 
     # Third row
     row3_bottom = gs[2, 0].get_position(fig).y0
@@ -949,11 +949,11 @@ def make_MC_fig_template(  # noqa: PLR0914
     row3_width = row3_right - row3_left
     col3_width = (row3_width - 2 * hspace_row3) / 3
 
-    ax5 = fig.add_axes([row3_left, row3_bottom, col3_width, row3_height])
-    ax6 = fig.add_axes([row3_left + col3_width + hspace_row3, row3_bottom, col3_width, row3_height])
+    ax5 = fig.add_axes([row3_left, row3_bottom, col3_width, row3_height])  # ty:ignore[no-matching-overload]
+    ax6 = fig.add_axes([row3_left + col3_width + hspace_row3, row3_bottom, col3_width, row3_height])  # ty:ignore[no-matching-overload]
     ax7 = fig.add_axes(
         [row3_left + 2 * (col3_width + hspace_row3), row3_bottom, col3_width / 2, row3_height]
-    )
+    )  # ty:ignore[no-matching-overload]
     ax8 = fig.add_axes(
         [
             row3_left + 2 * (col3_width + hspace_row3) + col3_width / 2,
@@ -961,21 +961,125 @@ def make_MC_fig_template(  # noqa: PLR0914
             col3_width / 2,
             row3_height,
         ]
+    )  # ty:ignore[no-matching-overload]
+
+    return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)  # ty:ignore[invalid-return-type]
+
+
+def plot_network_legends(  # noqa: PLR0913
+    fig: plt.Figure,
+    ax_edge: plt.Axes,
+    ax_node_size: plt.Axes,
+    ax_exc: plt.Axes,
+    ax_inh: plt.Axes,
+    cmap: plt.Colormap,
+    *,
+    largest_radius: float = 0.1,
+    y_position: float = 0.75,
+    fontsize: int = 12,
+    exc_label: str = "Excitatory neuron",
+    inh_label: str = "Inhibitory neuron",
+    node_size_label: str = "Node size represents in+out degree",
+    edge_label: str = "Edge thickness represents number of synapses",
+) -> None:
+    """Plot network legends for nodes and edges.
+
+    Args:
+        fig: Matplotlib figure
+        ax_edge: Axis for edge width legend
+        ax_node_size: Axis for node size legend
+        ax_exc: Axis for excitatory neuron legend
+        ax_inh: Axis for inhibitory neuron legend
+        cmap: Colormap for node colors
+        largest_radius: Radius for the largest circle
+        y_position: Vertical position for circles
+        fontsize: Font size for labels
+        exc_label: Label text for excitatory neurons
+        inh_label: Label text for inhibitory neurons
+        node_size_label: Label text for node size legend
+        edge_label: Label text for edge width legend
+    """
+    color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
+
+    # Excitatory neuron legend
+    plot_growing_circles(
+        fig,
+        ax_exc,
+        radii=[largest_radius],
+        y1=y_position,
+        color=color_map["EXC"][:-1],  # ty:ignore[invalid-argument-type]
+    )
+    ax_exc.text(
+        0.5,
+        0.1,
+        exc_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color=color_map["EXC"][:-1],
+    )
+    ax_exc.set_axis_off()
+
+    # Inhibitory neuron legend
+    plot_growing_circles(
+        fig,
+        ax_inh,
+        radii=[largest_radius],
+        y1=y_position,
+        color=color_map["INH"][:-1],  # ty:ignore[invalid-argument-type]
+    )
+    ax_inh.text(
+        0.5,
+        0.1,
+        inh_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color=color_map["INH"][:-1],
+    )
+    ax_inh.set_axis_off()
+
+    # Node size legend
+    plot_growing_circles(
+        fig,
+        ax_node_size,
+        radii=[largest_radius / 6, largest_radius / 3, largest_radius / 2],
+        y1=y_position,
+    )
+    ax_node_size.text(
+        0.5,
+        0.1,
+        node_size_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color="black",
     )
 
-    return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)
+    # Edge width legend
+    plot_growing_arrows(
+        ax_edge,
+        widths=np.linspace(1, 12, 3),  # ty:ignore[invalid-argument-type]
+        head_widths=[0.1, 0.2, 0.3],
+        y1=y_position,
+        color="black",
+        length=0.2,
+        gap=0.05,
+    )
+    ax_edge.text(
+        0.5,
+        0.1,
+        edge_label,
+        va="center",
+        ha="center",
+        fontsize=fontsize,
+        color="black",
+    )
 
 
 def plot_smallMC(  # noqa: PLR0914
     conn: ConnectivityMatrix, cmap: plt.Colormap, full_width: int, textsize: int = 14
 ) -> plt.Figure:
-    if "density" not in globals() or "rc_submatrix" not in globals():
-        msg = (
-            "Import of 'density' or 'rc_submatrix' failed. You probably need to install connalysis"
-            " locally."
-        )
-        raise ValueError(msg)
-
     # Generate template for plot
     fig, axs = make_MC_fig_template(
         figsize=(full_width, full_width),
@@ -1003,18 +1107,28 @@ def plot_smallMC(  # noqa: PLR0914
     ax1.set_axis_off()
 
     # Plot cartoons
-    plot_rc(ax2[0], arrowsize=20, node_size=100)
-    ax2[0].set_title("Reciprocal connection", fontsize=textsize, y=1)
+    plot_rc(ax2[0], arrowsize=20, node_size=100)  # ty:ignore[not-subscriptable]
+    ax2[0].set_title("Reciprocal connection", fontsize=textsize, y=1)  # ty:ignore[not-subscriptable]
 
     plot_in_out_deg(
-        ax2[1], direction="in", node_size=10, head_width=0.3, head_length=0.3, buffer=0.6
+        ax2[1],  # ty:ignore[not-subscriptable]
+        direction="in",
+        node_size=10,
+        head_width=0.3,
+        head_length=0.3,
+        buffer=0.6,
     )
-    ax2[1].set_title("In-degree", fontsize=textsize, y=1)
+    ax2[1].set_title("In-degree", fontsize=textsize, y=1)  # ty:ignore[not-subscriptable]
 
     plot_in_out_deg(
-        ax2[2], direction="out", node_size=10, head_width=0.3, head_length=0.3, buffer=0.6
+        ax2[2],  # ty:ignore[not-subscriptable]
+        direction="out",
+        node_size=10,
+        head_width=0.3,
+        head_length=0.3,
+        buffer=0.6,
     )
-    ax2[2].set_title("Out-degree", fontsize=textsize, y=1)
+    ax2[2].set_title("Out-degree", fontsize=textsize, y=1)  # ty:ignore[not-subscriptable]
 
     # Network plots
     # Color nodes by synapse class
@@ -1067,102 +1181,69 @@ def plot_smallMC(  # noqa: PLR0914
         title_fontsize=textsize,
     )
 
-    # Node legends
-    largest_radius = 0.1
-    y_nodes = 0.75
-    # INH
-    color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-    plot_growing_circles(fig, ax7, radii=[largest_radius], y1=y_nodes, color=color_map["EXC"][:-1])
-    ax7.text(
-        0.5,
-        0.1,
-        "Excitatory neuron",
-        va="center",
-        ha="center",
+    # Add network legends
+    plot_network_legends(
+        fig=fig,
+        ax_edge=ax5,
+        ax_node_size=ax6,
+        ax_exc=ax7,
+        ax_inh=ax8,
+        cmap=cmap,
+        largest_radius=0.1,
+        y_position=0.75,
         fontsize=12,
-        color=color_map["EXC"][:-1],
-    )
-    ax7.set_axis_off()
-    # EXC
-    plot_growing_circles(fig, ax8, radii=[largest_radius], y1=y_nodes, color=color_map["INH"][:-1])
-    ax8.text(
-        0.5,
-        0.1,
-        "Inhibitory neuron",
-        va="center",
-        ha="center",
-        fontsize=12,
-        color=color_map["INH"][:-1],
-    )
-    ax8.set_axis_off()
-    # Node size
-    plot_growing_circles(
-        fig, ax6, radii=[largest_radius / 6, largest_radius / 3, largest_radius / 2], y1=0.75
-    )
-    ax6.text(
-        0.5,
-        0.1,
-        "Node size represents in+out degree",
-        va="center",
-        ha="center",
-        fontsize=14,
-        color="black",
     )
 
-    # Edge width legend
-    plot_growing_arrows(
-        ax5,
-        widths=np.linspace(1, 12, 3),
-        head_widths=[0.1, 0.2, 0.3],
-        y1=0.75,
-        color="black",
-        length=0.2,
-        gap=0.05,
-    )
-    ax5.text(
-        0.5,
-        0.1,
-        "Edge thickness represents number of synapses",
-        va="center",
-        ha="center",
-        fontsize=12,
-        color="black",
-    )
     return fig
 
 
 def plot_node_table(  # noqa: PLR0914
     conn: ConnectivityMatrix,
     figsize: tuple[float, float],
-    colors_cmap: str,  # name of discrete colormap from matplotlib
+    colors_cmap: str | None = None,  # name of discrete colormap from matplotlib
     colors_file: str | None = None,  # path to rgba colors file
     h_scale: float = 2.5,
     v_scale: float = 2.5,
+    *,
+    skip_color_column: bool = False,
+    add_syn_class_column: bool = False,
 ) -> plt.Figure:
     """Plot a table of node properties with color coding."""
     # Get data frame of properties
-    df = conn.vertices[["node_ids", "layer", "mtype"]]
-    df = df.copy().rename(columns={"node_ids": "Neuron ID", "layer": "Layer", "mtype": "M-type"})
-    df.insert(0, " ", [""] * len(df))  # Add empty column for circles
+    col_sel = ["node_ids", "layer", "mtype"]
+    if add_syn_class_column:
+        col_sel += ["synapse_class"]
+    col_lbl_map = {
+        "node_ids": "Neuron ID",
+        "layer": "Layer",
+        "mtype": "M-type",
+        "synapse_class": "Syn-class",
+    }
+    df = conn.vertices[col_sel]
+    df = df.copy().rename(columns={col: col_lbl_map[col] for col in col_sel})
+    if not skip_color_column:
+        df.insert(0, " ", [""] * len(df))  # Add empty column for circles
 
-    # Get colors
-    if colors_cmap != "custom":  # From color map
-        colors = plt.get_cmap(colors_cmap)
-        n = conn.matrix.shape[0]
-        if not (hasattr(colors, "colors") and n <= colors.N):
-            msg = (
-                "The rendering color map must contain at least as many colors as there are neurons."
-            )
-            raise ValueError(msg)
-        colors = [colors(i) for i in range(colors.N)]
-    else:  # Load colors from file
-        colors_df = pd.read_csv(colors_file, header=None)
-        colors = [tuple(row) for row in colors_df.to_numpy()]
-        if not len(colors) >= len(df):
-            msg = (
-                "The rendering color map must contain at least as many colors as there are neurons."
-            )
-            raise ValueError(msg)
+        # Get colors
+        if colors_cmap != "custom":  # From color map
+            colors = plt.get_cmap(colors_cmap)
+            n = conn.matrix.shape[0]
+            if not (hasattr(colors, "colors") and n <= colors.N):
+                msg = (
+                    "The rendering color map must contain at least as many colors "
+                    "as there are neurons."
+                )
+                raise ValueError(msg)
+            colors = [colors(i) for i in range(colors.N)]
+        else:  # Load colors from file
+            colors_df = pd.read_csv(colors_file, header=None)  # ty:ignore[no-matching-overload]
+            colors = [tuple(row) for row in colors_df.to_numpy()]
+            if not len(colors) >= len(df):
+                msg = (
+                    "The rendering color map must contain at least as many colors "
+                    "as there are neurons."
+                )
+                raise ValueError(msg)
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.axis("off")
@@ -1176,16 +1257,17 @@ def plot_node_table(  # noqa: PLR0914
     fig.canvas.draw()  # Draw table
 
     # Add color coding from the rendered image
-    for i in range(len(df)):
-        cell = table[i + 1, 0]  # +1 for header row
-        cell.get_text().set_text("")  # Remove text
-        bbox = cell.get_window_extent(fig.canvas.get_renderer())
-        inv = ax.transData.inverted()
-        x0, y0 = inv.transform((bbox.x0, bbox.y0))
-        x1, y1 = inv.transform((bbox.x1, bbox.y1))
-        xc, yc = (x0 + x1) / 2, (y0 + y1) / 2
-        radius = (y1 - y0) * 0.35
-        circle = mpatches.Circle((xc, yc), radius, color=colors[i], zorder=10, clip_on=False)
-        ax.add_patch(circle)
+    if not skip_color_column:
+        for i in range(len(df)):
+            cell = table[i + 1, 0]  # +1 for header row
+            cell.get_text().set_text("")  # Remove text
+            bbox = cell.get_window_extent(fig.canvas.get_renderer())  # ty:ignore[unresolved-attribute]
+            inv = ax.transData.inverted()
+            x0, y0 = inv.transform((bbox.x0, bbox.y0))
+            x1, y1 = inv.transform((bbox.x1, bbox.y1))
+            xc, yc = (x0 + x1) / 2, (y0 + y1) / 2
+            radius = (y1 - y0) * 0.35
+            circle = mpatches.Circle((xc, yc), radius, color=colors[i], zorder=10, clip_on=False)
+            ax.add_patch(circle)
 
     return fig

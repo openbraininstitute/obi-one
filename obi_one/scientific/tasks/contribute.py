@@ -5,10 +5,11 @@ from enum import StrEnum, auto
 from typing import Annotated, ClassVar
 
 import entitysdk
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 
@@ -53,8 +54,7 @@ class Reference(BaseModel):
     type: str = Field(..., description="Reference type (e.g. DOI, PubMed)")
     identifier: str = Field(..., description="Unique reference identifier")
 
-    class Config:
-        json_schema_extra: ClassVar[dict[str, str]] = {"title": "Reference"}
+    model_config = ConfigDict(json_schema_extra={"title": "Reference"})
 
 
 class Publication(Block):
@@ -66,8 +66,7 @@ class Publication(Block):
     publication_year: int | None = Field(default=None)
     abstract: str | None = Field(default="")
 
-    class Config:
-        json_schema_extra: ClassVar[dict[str, str]] = {"title": "Publication"}
+    model_config = ConfigDict(json_schema_extra={"title": "Publication"})
 
 
 class MTypeClassification(Block):
@@ -146,18 +145,17 @@ class ContributeMorphologyScanConfig(ScanConfig):
     name: ClassVar[str] = "Contribute a Morphology"
     description: ClassVar[str] = "ScanConfig to contribute a morphology to the OBI."
 
-    class Config:
-        json_schema_extra: ClassVar[dict[str, list[BlockGroup]]] = {
-            "block_block_group_order": [
-                BlockGroup.SETUP_BLOCK_GROUP,
-                BlockGroup.ASSET_BLOCK_GROUP,
-                BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
-                BlockGroup.STRAIN_BLOCK_GROUP,
-                BlockGroup.LOCATION_GROUP,
-                BlockGroup.PROTOCOL_GROUP,
-                BlockGroup.LICENSE_GROUP,
-            ]
-        }
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.ASSET_BLOCK_GROUP,
+            BlockGroup.CONTRIBUTOR_BLOCK_GROUP,
+            BlockGroup.STRAIN_BLOCK_GROUP,
+            BlockGroup.LOCATION_GROUP,
+            BlockGroup.PROTOCOL_GROUP,
+            BlockGroup.LICENSE_GROUP,
+        ]
+    }
 
     assets: Assets = Field(default_factory=Assets, title="Assets", description="Morphology files.")
 
@@ -181,7 +179,7 @@ class ContributeMorphologyScanConfig(ScanConfig):
         default_factory=License,
         title="Subject",
         description="The subject from which the morphology was derived.",
-    )
+    )  # ty:ignore[invalid-assignment]
 
     license: License = Field(
         default_factory=License,
@@ -210,7 +208,11 @@ class ContributeMorphologyTask(Task):
     config: ContributeMorphologySingleConfig
 
     def execute(
-        self, *, db_client: entitysdk.client.Client = None, entity_cache: bool = False
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,
+        execution_activity_id: str | None = None,
     ) -> None:
         pass
 
@@ -236,5 +238,11 @@ class ContributeSubjectSingleConfig(ContributeMorphologyScanConfig, SingleConfig
 class ContributeSubjectTask(Task):
     config: ContributeSubjectSingleConfig
 
-    def execute(self, *, db_client: entitysdk.client.Client = None) -> None:
+    def execute(
+        self,
+        *,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,
+        execution_activity_id: str | None = None,
+    ) -> None:
         pass

@@ -6,6 +6,7 @@ from http import HTTPStatus
 from typing import Any
 
 import httpx
+from entitysdk.exception import EntitySDKError
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -17,12 +18,20 @@ from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
     circuit_properties,
+    circuit_visualization,
+    config_validation,
+    convert_morphology_to_registered_mesh,
     count_scan_coordinates,
     ephys_metrics,
+    ion_channel_properties,
+    mesh_validation,
     morphology_metrics,
+    morphology_metrics_calculation,
     morphology_validation,
     multi_values,
     scan_config,
+    task,
+    validate_electrophysiology_protocol_nwb,
 )
 from app.endpoints.scan_config import activate_scan_config_endpoints
 from app.errors import ApiError, ApiErrorCode
@@ -48,7 +57,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
-        http_client.close()
+        http_client.close()  # noqa: ASYNC212
         L.info("Stopping application")
 
 
@@ -85,6 +94,24 @@ async def validation_exception_handler(
     )
 
 
+async def entity_sdk_error_handler(request: Request, exc: EntitySDKError) -> None:
+    """Handle database client errors globally.
+
+    Allows using the sdk anywhere in the service without having to handle EntitySDKError that are
+    emitted explicitly if not needed.
+    """
+    L.exception(
+        "EntitySDKError in %s %s",
+        request.method,
+        request.url,
+    )
+    raise ApiError(
+        message=str(exc),
+        error_code=ApiErrorCode.DATABASE_CLIENT_ERROR,
+        http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+    ) from exc
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION or "0.0.0",
@@ -93,12 +120,15 @@ app = FastAPI(
     exception_handlers={
         ApiError: api_error_handler,
         RequestValidationError: validation_exception_handler,
-    },
+        EntitySDKError: entity_sdk_error_handler,
+    },  # ty:ignore[invalid-argument-type]
     root_path=settings.ROOT_PATH,
+    strict_content_type=False,
 )
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -134,12 +164,20 @@ async def version() -> dict:
     }
 
 
+app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
 app.include_router(circuit_properties.router)
+app.include_router(config_validation.router)
+app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(ephys_metrics.router)
+app.include_router(ion_channel_properties.router)
+app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
 app.include_router(morphology_validation.router)
+app.include_router(morphology_metrics_calculation.router)
 app.include_router(multi_values.router)
+app.include_router(validate_electrophysiology_protocol_nwb.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
+app.include_router(task.router)

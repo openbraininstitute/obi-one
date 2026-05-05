@@ -8,12 +8,14 @@ from pydantic import Field, field_validator, model_validator
 from obi_one.scientific.blocks.neuron_sets.property import PropertyNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
 
-with contextlib.suppress(ImportError):  # Try to import connalysis
+# Don't fail at import time if connalysis is not installed. It will only fail at runtime if used.
+simplex_submat = None
+with contextlib.suppress(ImportError):  # Connalysis (optional)
     from obi_one.scientific.library.simplex_extractors import simplex_submat
 
 
@@ -24,36 +26,36 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
     """
 
     central_neuron_id: int | list[int] = Field(
-        name="Central neuron id",
+        title="Central neuron id",
         description="Node id (index) that will be source or target of the simplices extracted",
     )
     dim: int | list[int] = Field(
-        name="Dimension",
+        title="Dimension",
         description="Dimension of the simplices to be extracted",
     )
     central_neuron_simplex_position: (
         Literal["source", "target"] | list[Literal["source", "target"]]
     ) = Field(
         "source",
-        name="Central neuron simplex position",
+        title="Central neuron simplex position",
         description="Position of the central neuron/node in the simplex, it can be either"
         " 'source' or 'target'",
     )
     subsample: bool | list[bool] = Field(
         default=True,
-        name="subsample",
+        title="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
     n_count_max: int | list[int] | None = Field(
         default=False,
-        name="Max node count",
+        title="Max node count",
         description="Maximum number of nodes to be subsampled",
     )
     subsample_method: (
         Literal["node_participation", "random"] | list[Literal["node_participation", "random"]]
     ) = Field(
         "node_participation",
-        name="Method to subsample nodes from the extracted simplices",
+        title="Method to subsample nodes from the extracted simplices",
         description="""
         **Method to subsample nodes**:
         - `random`: randomly selects nodes from all nodes in the simplices
@@ -65,13 +67,13 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         | list[Literal["directed", "reciprocal", "undirected"]]
     ) = Field(
         "directed",
-        name="Simplex type",
+        title="Simplex type",
         description="Type of simplex to consider. See more at \
             https://openbraininstitute.github.io/connectome-analysis/network_topology/#src.connalysis.network.topology.simplex_counts",
     )
     seed: int | list[int] | None = Field(
         None,
-        name="seed",
+        title="seed",
         description="Seed used for random subsampling method",
     )
 
@@ -92,10 +94,10 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in globals():
+        if simplex_submat is None:  # pragma: no cover
             msg = (
-                "Import of 'simplex_submat' failed. You probably need to install connalysis"
-                " locally."
+                "Import of 'simplex_submat' failed. You probably need connectome-analysis "
+                "(connalysis). Install with: pip install obi-one[connectivity]"
             )
             raise ValueError(msg)
 
@@ -118,13 +120,13 @@ class SimplexMembershipBasedNeuronSet(PropertyNeuronSet):
         selection = simplex_submat(
             conn.matrix,
             index,
-            self.dim,
-            v_position=self.central_neuron_simplex_position,
-            subsample=self.subsample,
-            n_count_max=self.n_count_max,
-            subsample_method=self.subsample_method,
-            simplex_type=self.simplex_type,
-            seed=self.seed,
+            self.dim,  # ty:ignore[invalid-argument-type]
+            v_position=self.central_neuron_simplex_position,  # ty:ignore[invalid-argument-type]
+            subsample=self.subsample,  # ty:ignore[invalid-argument-type]
+            n_count_max=self.n_count_max,  # ty:ignore[invalid-argument-type]
+            subsample_method=self.subsample_method,  # ty:ignore[invalid-argument-type]
+            simplex_type=self.simplex_type,  # ty:ignore[invalid-argument-type]
+            seed=self.seed,  # ty:ignore[invalid-argument-type]
         )
 
         # Get node_ids (i.e., get correct index) and build expression dict
@@ -140,29 +142,29 @@ class SimplexNeuronSet(PropertyNeuronSet):
     """
 
     central_neuron_id: int | list[int] = Field(
-        name="Central neuron id",
+        title="Central neuron id",
         description="Node id (index) that will be source or target of the simplices extracted",
     )
     dim: int | list[int] = Field(
-        name="Dimension",
+        title="Dimension",
         description="Dimension of the simplices to be extracted",
     )
     central_neuron_simplex_position: (
         Literal["source", "target"] | list[Literal["source", "target"]]
     ) = Field(
         "source",
-        name="Central neuron simplex position",
+        title="Central neuron simplex position",
         description="Position of the central neuron/node in the simplex, it can be either"
         " 'source' or 'target'",
     )
     subsample: bool = Field(
         default=False,
-        name="subsample",
+        title="subsample",
         description="Whether to subsample the set of nodes in the simplex lists or not",
     )
     n_count_max: int | list[int] | None = Field(
         None,
-        name="Max node count",
+        title="Max node count",
         description="Maximum number of nodes to be subsampled",
     )
     simplex_type: (
@@ -170,13 +172,13 @@ class SimplexNeuronSet(PropertyNeuronSet):
         | list[Literal["directed", "reciprocal", "undirected"]]
     ) = Field(
         "directed",
-        name="Simplex type",
+        title="Simplex type",
         description="Type of simplex to consider. See more at \
             https://openbraininstitute.github.io/connectome-analysis/network_topology/#src.connalysis.network.topology.simplex_counts",
     )
     seed: int | list[int] | None = Field(
         None,
-        name="seed",
+        title="seed",
         description="Seed used for random subsampling method",
     )
 
@@ -197,10 +199,10 @@ class SimplexNeuronSet(PropertyNeuronSet):
         return self
 
     def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        if "simplex_submat" not in globals():
+        if simplex_submat is None:  # pragma: no cover
             msg = (
-                "Import of 'simplex_submat' failed. You probably need to install connalysis"
-                " locally."
+                "Import of 'simplex_submat' failed. You probably need connectome-analysis "
+                "(connalysis). Install with: pip install obi-one[connectivity]"
             )
             raise ValueError(msg)
 
@@ -223,13 +225,13 @@ class SimplexNeuronSet(PropertyNeuronSet):
         selection = simplex_submat(
             conn.matrix,
             index,
-            self.dim,
-            v_position=self.central_neuron_simplex_position,
+            self.dim,  # ty:ignore[invalid-argument-type]
+            v_position=self.central_neuron_simplex_position,  # ty:ignore[invalid-argument-type]
             subsample=self.subsample,
-            n_count_max=self.n_count_max,
+            n_count_max=self.n_count_max,  # ty:ignore[invalid-argument-type]
             subsample_method="sample_simplices",
-            simplex_type=self.simplex_type,
-            seed=self.seed,
+            simplex_type=self.simplex_type,  # ty:ignore[invalid-argument-type]
+            seed=self.seed,  # ty:ignore[invalid-argument-type]
         )
 
         # Get node_ids (i.e., get correct index) and build expression dict

@@ -18,10 +18,10 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     """Clustered random locations."""
 
     n_clusters: int | list[int] = Field(
-        name="Number of clusters", description="Number of location clusters to generate"
+        title="Number of clusters", description="Number of location clusters to generate"
     )
     cluster_max_distance: float | list[float] = Field(
-        name="Cluster maximum distance",
+        title="Cluster maximum distance",
         description="Maximum distance in um of generated locations from the center of their \
             cluster",
     )
@@ -29,17 +29,17 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)
+        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,
+            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
             n_per_center=n_per_cluster,
             srcs_per_center=1,
             center_path_distances_mean=0.0,
             center_path_distances_sd=1e20,
-            max_dist_from_center=self.cluster_max_distance,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -64,17 +64,17 @@ class ClusteredGroupedMorphologyLocations(
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)
+        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,
+            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
             n_per_center=n_per_cluster,
-            srcs_per_center=self.n_groups,
+            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=0.0,
             center_path_distances_sd=1e20,
-            max_dist_from_center=self.cluster_max_distance,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -89,35 +89,35 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     """
 
     path_dist_mean: float | list[float] = Field(
-        name="Path distance mean",
+        title="Path distance mean",
         description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
     )
     path_dist_sd: float | list[float] = Field(
-        name="Path distance mean",
+        title="Path distance mean",
         description="SD of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
     )
     n_groups_per_cluster: int | list[int] = Field(
         default=1,
-        name="Number of groups per cluster",
+        title="Number of groups per cluster",
         description="Number of conceptual groups per location cluster to generate",
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)
+        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,
+            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
             n_per_center=n_per_cluster,
-            srcs_per_center=self.n_groups_per_cluster,
-            center_path_distances_mean=self.path_dist_mean,
-            center_path_distances_sd=self.path_dist_sd,
-            max_dist_from_center=self.cluster_max_distance,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            srcs_per_center=self.n_groups_per_cluster,  # ty:ignore[invalid-argument-type]
+            center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
+            center_path_distances_sd=self.path_dist_sd,  # ty:ignore[invalid-argument-type]
+            max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         )
         return locs
 

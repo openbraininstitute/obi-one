@@ -6,6 +6,7 @@ from collections import OrderedDict
 from importlib.metadata import version
 from itertools import product
 from pathlib import Path
+from typing import Any
 
 import entitysdk
 from pydantic import PrivateAttr, ValidationError
@@ -15,6 +16,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
@@ -27,7 +29,7 @@ class ScanGenerationTask(Task, abc.ABC):
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     obi_one_version: str | None = None
-    _multiple_value_parameters: list = None
+    _multiple_value_parameters: list = None  # ty:ignore[invalid-assignment]
     _coordinate_parameters: list = PrivateAttr(default=[])
     _single_configs: list[SingleConfigMixin] = PrivateAttr(default=[])
 
@@ -57,7 +59,7 @@ class ScanGenerationTask(Task, abc.ABC):
         for attr_name, attr_value in self.form.__dict__.items():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
-                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+                isinstance(dict_val, Block) for dict_val in attr_value.values()
             ):
                 category_name = attr_name
                 category_blocks_dict = attr_value
@@ -107,6 +109,27 @@ class ScanGenerationTask(Task, abc.ABC):
         msg = "coordinate_parameters() must be implemented by a subclass of Scan."
         raise NotImplementedError(msg)
 
+    def set_nested_single_coordinate_scan_param_value(
+        self, single_coord_config_subelement: Any, location_list: list, value: Any
+    ) -> Any:
+        if location_list == []:
+            return value
+
+        if isinstance(single_coord_config_subelement, (list, dict, tuple)):
+            single_coord_config_subelement[location_list[0]] = (
+                self.set_nested_single_coordinate_scan_param_value(
+                    single_coord_config_subelement[location_list[0]], location_list[1:], value
+                )
+            )
+            return single_coord_config_subelement
+
+        single_coord_config_subelement.__dict__[location_list[0]] = (
+            self.set_nested_single_coordinate_scan_param_value(
+                single_coord_config_subelement.__dict__[location_list[0]], location_list[1:], value
+            )
+        )
+        return single_coord_config_subelement
+
     def create_single_configs(self) -> list[SingleConfigMixin]:
         """Coordinate instance.
 
@@ -134,29 +157,17 @@ class ScanGenerationTask(Task, abc.ABC):
             # Change the value of the multi parameter from a list to the single value of the
             # coordinate
             for scan_param in single_coordinate_scan_params.scan_params:
-                level_0_val = single_coord_config.__dict__[scan_param.location_list[0]]
-
-                # If the first level is a Block
-                if isinstance(level_0_val, Block):
-                    level_0_val.__dict__[scan_param.location_list[1]] = scan_param.value
-
-                # If the first level is a category dictionary
-                if isinstance(level_0_val, dict):
-                    level_1_val = level_0_val[scan_param.location_list[1]]
-                    if isinstance(level_1_val, Block):
-                        level_1_val.__dict__[scan_param.location_list[2]] = scan_param.value
-                    else:
-                        msg = f"Non Block parameter {level_1_val} found in Form dictionary: \
-                            {level_0_val}"
-                        raise TypeError(msg)
+                single_coord_config = self.set_nested_single_coordinate_scan_param_value(
+                    single_coord_config, scan_param.location_list, scan_param.value
+                )
 
             try:
                 # Cast the form to its single_config_class_name type
                 single_coord_config = single_coord_config.cast_to_single_coord()
 
                 # Set the variables of the coordinate instance related to the scan
-                single_coord_config.idx = idx
-                single_coord_config.single_coordinate_scan_params = single_coordinate_scan_params
+                single_coord_config.idx = idx  # ty:ignore[invalid-assignment]
+                single_coord_config.single_coordinate_scan_params = single_coordinate_scan_params  # ty:ignore[invalid-assignment]
 
                 # Append the coordinate instance to self._coordinate_instances
                 single_configs.append(single_coord_config)
@@ -174,8 +185,7 @@ class ScanGenerationTask(Task, abc.ABC):
             inheriting from OBIBaseModel for future deserialization
         """
         # Important to use model_dump_json() instead of model_dump()
-        # so OBIBaseModel's custom encoder is used to seri
-        # PosixPaths as strings
+        # (so Path objects are serialized as strings)
         model_dump = self.model_dump_json()
 
         # Now load it back into an ordered dict to do some additional modifications
@@ -207,12 +217,12 @@ class ScanGenerationTask(Task, abc.ABC):
 
     def execute(
         self,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
-        self.serialize(self.output_root / "obi_one_scan.json")
+        self.serialize(self.output_root / _SCAN_CONFIG_FILENAME)
 
         # Create the campaign entity
         campaign = None
@@ -234,19 +244,20 @@ class ScanGenerationTask(Task, abc.ABC):
 
             # Serialize the coordinate instance
             single_coord_config.serialize(
-                single_coord_config.coordinate_output_root / "obi_one_coordinate.json"
+                single_coord_config.coordinate_output_root / _COORDINATE_CONFIG_FILENAME
             )
 
             # Create the single coordinate entity
             if db_client and hasattr(single_coord_config, "create_single_entity_with_config"):
                 single_coord_config.create_single_entity_with_config(
-                    campaign=campaign, db_client=db_client
+                    campaign=campaign,  # ty:ignore[invalid-argument-type]
+                    db_client=db_client,
                 )
 
         # Create the campaign generation entity
         if db_client and hasattr(self.form, "create_campaign_generation_entity"):
             single_entities = [sc.single_entity for sc in self._single_configs]
-            self.form.create_campaign_generation_entity(single_entities, db_client=db_client)
+            self.form.create_campaign_generation_entity(single_entities, db_client=db_client)  # ty:ignore[invalid-argument-type]
 
 
 class GridScanGenerationTask(ScanGenerationTask):
@@ -260,8 +271,12 @@ class GridScanGenerationTask(ScanGenerationTask):
         if len(multi_value_parameters):
             for multi_value in multi_value_parameters:
                 single_values = [
-                    SingleValueScanParam(location_list=multi_value.location_list, value=value)
-                    for value in multi_value.values
+                    SingleValueScanParam(
+                        location_list=multi_value.location_list,
+                        value=value,
+                        index_in_scan_dimension=index,
+                    )
+                    for index, value in enumerate(multi_value.values)
                 ]
 
                 single_values_by_multi_value.append(single_values)
@@ -269,13 +284,13 @@ class GridScanGenerationTask(ScanGenerationTask):
             self._coordinate_parameters = []
             for scan_params in product(*single_values_by_multi_value):
                 self._coordinate_parameters.append(
-                    SingleCoordinateScanParams(scan_params=scan_params)
+                    SingleCoordinateScanParams(scan_params=scan_params)  # ty:ignore[invalid-argument-type]
                 )
 
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
                 )
             ]
 
@@ -290,7 +305,7 @@ class GridScanGenerationTask(ScanGenerationTask):
 class CoupledScanGenerationTask(ScanGenerationTask):
     """Description."""
 
-    def coordinate_parameters(self, *, display: bool = False) -> list:
+    def coordinate_parameters(self, *, display: bool = False) -> list[SingleCoordinateScanParams]:
         """Description."""
         previous_len = -1
 
@@ -313,6 +328,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
                     SingleValueScanParam(
                         location_list=multi_value.location_list,
                         value=multi_value.values[coord_i],
+                        index_in_scan_dimension=coord_i,
                     )
                     for multi_value in multi_value_parameters
                 ]
@@ -323,7 +339,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
                 )
             ]
 

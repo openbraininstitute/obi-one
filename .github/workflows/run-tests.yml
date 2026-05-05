@@ -1,14 +1,17 @@
 name: Run tests
 
 on:
-    pull_request:
-    push:
-      branches:
-        - main
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,21 +24,40 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::985539765147:role/gh_codeartifact_read_all
+          aws-region: us-east-1
+      - name: Get CodeArtifact token
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+            --domain openbraininstitute \
+            --query authorizationToken \
+            --output text)
+          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
+          echo "UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
+          echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
+          echo "CODEARTIFACT_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
       - name: Check requirements
         run: make check-deps
-      - name: Install requirements
-        run: make install
+      - name: Install mandatory and optional requirements
+        run: make install-all
       - name: Run linters
         run: make lint
       - name: Run tests
         run: make test-docker
       - name: Run pip-audit
         run: make pip-audit
-      - name: Upload pip-audit output
-        uses: actions/upload-artifact@v4
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          name: pip-audit-output.json
-          path: pip-audit-output.json
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: openbraininstitute/obi-one
+          fail_ci_if_error: false
+          files: .coverage/coverage.xml
+          flags: pytest
+          verbose: true
       - name: Cleanup
         if: ${{ always() }}
         run: |

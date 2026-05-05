@@ -57,6 +57,20 @@ SimulationNeuronSetUnion = Annotated[
 ]
 
 
+CircuitExtractionNeuronSetUnion = Annotated[
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | PredefinedNeuronSet
+    # | CombinedNeuronSet  # To be added later
+    # | PropertyNeuronSet  # To be added later
+    # | VolumetricCountNeuronSet  # To be added later
+    # | VolumetricRadiusNeuronSet  # To be added later
+    | IDNeuronSet,
+    Discriminator("type"),
+]
+
+
 MEModelWithSynapsesNeuronSetUnion = Annotated[
     nbS1VPMInputs | nbS1POmInputs,
     Discriminator("type"),
@@ -76,3 +90,20 @@ def resolve_neuron_set_ref_to_node_set(
         return default_node_set
 
     return neuron_set_reference.block.block_name
+
+
+def resolve_neuron_set_ref_to_neuron_set(
+    neuron_set_reference: NeuronSetReference | None,
+    default_neuron_set_reference: NeuronSetReference | None,
+) -> NeuronSetUnion | None:
+    if neuron_set_reference is None:
+        if default_neuron_set_reference is None:
+            msg = (
+                "NeuronSetReference is None and no default_neuron_set provided. "
+                "Cannot resolve to a NeuronSet."
+            )
+            raise ValueError(msg)
+
+        return default_neuron_set_reference.block  # ty:ignore[invalid-return-type]
+
+    return neuron_set_reference.block  # ty:ignore[invalid-return-type]

@@ -9,40 +9,40 @@ from pydantic import Field
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 
 class PairMotifNeuronSet(NeuronSet):
     """Neuron set selection based on pair motifs of neurons."""
 
     neuron1_filter: dict | list[dict] = Field(
-        default={}, name="Neuron1 filter", description="Filter for first neuron in a pair"
+        default={}, title="Neuron1 filter", description="Filter for first neuron in a pair"
     )
     neuron2_filter: dict | list[dict] = Field(
-        default={}, name="Neuron2 filter", description="Filter for second neuron in a pair"
+        default={}, title="Neuron2 filter", description="Filter for second neuron in a pair"
     )
 
     conn_ff_filter: dict | list[dict] = Field(
         default={},
-        name="Feedforward connection filter",
+        title="Feedforward connection filter",
         description="Filter for feedforward connections from the first to the second neuron"
         " in a pair",
     )
     conn_fb_filter: dict | list[dict] = Field(
         default={},
-        name="Feedback connection filter",
+        title="Feedback connection filter",
         description="Filter for feedback connections from the second to the first neuron in a pair",
     )
 
     pair_selection: dict | list[dict] = Field(
         default={},
-        name="Selection of pairs",
+        title="Selection of pairs",
         description="Selection of pairs among all potential pairs",
     )
 
     node_set_list_op: Literal["union", "intersect"] = Field(
         default="union",
-        name="Node set list operation",
+        title="Node set list operation",
         description="Operation how to combine lists of node sets; can be 'union' or 'intersect'.",
     )
 
@@ -63,7 +63,9 @@ class PairMotifNeuronSet(NeuronSet):
         etab_filt["iloc_fb_"] = -1
         etab_filt = etab_filt.set_index(["row", "col"])
 
-        rev_idx = etab_filt.index.swaplevel("row", "col").to_numpy()  # Reverse index
+        rev_idx = etab_filt.index.swaplevel(  # ty:ignore[unresolved-attribute]
+            "row", "col"
+        ).to_numpy()  # Reverse index
         etab_filt[["nsyn_fb_", "iloc_fb_"]] = etab.reindex(rev_idx, fill_value=-1).to_numpy()
         etab_filt.loc[etab_filt["nsyn_fb_"] < 0, "nsyn_fb_"] = 0
 
@@ -73,9 +75,9 @@ class PairMotifNeuronSet(NeuronSet):
     @staticmethod
     def _merge_ff_fb(ff_sel: dict, fb_sel: dict) -> dict:
         sel = {}
-        for _sel, _lbl in zip([ff_sel, fb_sel], ["_ff_", "_fb_"], strict=False):
-            if _sel is not None:
-                sel |= {f"{_k}{_lbl}": _v for _k, _v in _sel.items()}
+        for sel_, lbl in zip([ff_sel, fb_sel], ["_ff_", "_fb_"], strict=False):
+            if sel_ is not None:
+                sel |= {f"{k}{lbl}": v for k, v in sel_.items()}
         return sel
 
     @staticmethod
@@ -83,17 +85,17 @@ class PairMotifNeuronSet(NeuronSet):
         conn_mat: ConnectivityMatrix, selection: dict, side: str | None = None
     ) -> ConnectivityMatrix:
         def _check_ops(ops: list) -> None:
-            for _op in ops:
-                if _op not in {"le", "lt", "ge", "gt", "eq", "isin"}:
+            for op_ in ops:
+                if op_ not in {"le", "lt", "ge", "gt", "eq", "isin"}:
                     msg = (
-                        f"ERROR: Operator '{_op}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
+                        f"ERROR: Operator '{op_}' unknown (must be one of 'le', 'lt', 'ge', 'gt')!"
                     )
                     raise ValueError(msg)
 
         conn_mat_filt = conn_mat
-        for _prop, _val in selection.items():
+        for prop, val_ in selection.items():
             op = "eq"  # Default: Filter by equality (i.e., single value is provided)
-            val = _val
+            val = val_
             if isinstance(val, list):  # List: Select all values from list
                 op = "isin"
             elif isinstance(val, dict):  # Dict: Combinations of operator/value pairs
@@ -103,15 +105,15 @@ class PairMotifNeuronSet(NeuronSet):
                 op = [op]
                 val = [val]
             _check_ops(op)
-            for _o, _v in zip(op, val, strict=False):
+            for o, v_ in zip(op, val, strict=False):
                 if (
-                    _prop in conn_mat_filt.vertex_properties
-                    and conn_mat_filt.vertices.dtypes[_prop] == "category"
+                    prop in conn_mat_filt.vertex_properties
+                    and conn_mat_filt.vertices.dtypes[prop] == "category"
                 ):
-                    v = str(_v)
+                    v = str(v_)
                 else:
-                    v = _v
-                conn_mat_filt = getattr(conn_mat_filt.filter(_prop, side), _o)(
+                    v = v_
+                conn_mat_filt = getattr(conn_mat_filt.filter(prop, side), o)(  # ty:ignore[invalid-argument-type]
                     v
                 )  # Call filter operator
         return conn_mat_filt
@@ -168,17 +170,17 @@ class PairMotifNeuronSet(NeuronSet):
             node_ids = nodes.ids(node_sets)
         elif isinstance(node_sets, list):  # Combine node sets
             node_ids = None
-            for _nset in node_sets:
+            for nset in node_sets:
                 if node_ids is None:
-                    node_ids = nodes.ids(_nset)
+                    node_ids = nodes.ids(nset)
                 elif node_set_list_op == "union":
-                    node_ids = np.union1d(node_ids, nodes.ids(_nset))
+                    node_ids = np.union1d(node_ids, nodes.ids(nset))
                 elif node_set_list_op == "intersect":
-                    node_ids = np.intersect1d(node_ids, nodes.ids(_nset))
+                    node_ids = np.intersect1d(node_ids, nodes.ids(nset))
                 else:
                     msg = f"Node set list operation '{node_set_list_op}' unknown!"
                     raise ValueError(msg)
-        return node_ids
+        return node_ids  # ty:ignore[invalid-return-type]
 
     @staticmethod
     def _prepare_node_set_filter(
@@ -266,8 +268,8 @@ class PairMotifNeuronSet(NeuronSet):
         # Prepare node set filtering
         nrn1_filter, nrn2_filter = PairMotifNeuronSet._prepare_node_set_filter(
             conn_mat,
-            self.neuron1_filter,
-            self.neuron2_filter,
+            self.neuron1_filter,  # ty:ignore[invalid-argument-type]
+            self.neuron2_filter,  # ty:ignore[invalid-argument-type]
             self.node_set_list_op,
             circuit,
             population,
@@ -275,14 +277,18 @@ class PairMotifNeuronSet(NeuronSet):
 
         # Get table with all potential pairs
         pair_tab = PairMotifNeuronSet._select_pairs(
-            conn_mat, nrn1_filter, nrn2_filter, self.conn_ff_filter, self.conn_fb_filter
+            conn_mat,
+            nrn1_filter,
+            nrn2_filter,
+            self.conn_ff_filter,  # ty:ignore[invalid-argument-type]
+            self.conn_fb_filter,  # ty:ignore[invalid-argument-type]
         )
 
         # Subsample/select among these pairs
         if len(self.pair_selection) > 0:
-            pair_sel_count = self.pair_selection["count"]
-            pair_sel_method = self.pair_selection.get("method", "first")
-            pair_sel_seed = self.pair_selection.get("seed", 0)
+            pair_sel_count = self.pair_selection["count"]  # ty:ignore[invalid-argument-type]
+            pair_sel_method = self.pair_selection.get("method", "first")  # ty:ignore[unresolved-attribute]
+            pair_sel_seed = self.pair_selection.get("seed", 0)  # ty:ignore[unresolved-attribute]
             pair_tab = PairMotifNeuronSet._subsample_pairs(
                 pair_tab, pair_sel_count, pair_sel_method, pair_sel_seed
             )

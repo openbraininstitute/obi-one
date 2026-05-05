@@ -39,21 +39,32 @@ WORKDIR /code
 ARG ENVIRONMENT
 ARG TARGETPLATFORM
 
+# Step 1: install all dependencies (excluding the project itself) into the venv
 RUN \
     --mount=type=cache,target=/root/.cache/uv,id=uv-cache-${TARGETPLATFORM} \
+    --mount=type=secret,id=CODEARTIFACT_TOKEN \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
-    uv sync --locked --no-install-project --extra connectivity
+    UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws \
+    UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$(cat /run/secrets/CODEARTIFACT_TOKEN) \
+    uv sync --locked --no-install-project --extra connectivity --extra service --extra meshing
 
+# Step 2: install the project itself as a proper non-editable package (with metadata)
+# SETUPTOOLS_SCM_PRETEND_VERSION ensures metadata is generated correctly in CI
+# where the .git history may be shallow or incomplete
 RUN \
     --mount=type=cache,target=/root/.cache/uv,id=uv-cache-${TARGETPLATFORM} \
+    --mount=type=secret,id=CODEARTIFACT_TOKEN \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
     --mount=type=bind,source=obi_one,target=obi_one \
     --mount=type=bind,source=.git,target=.git \
-    uv sync --locked --no-editable --no-cache --extra connectivity
+    SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0 \
+    UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws \
+    UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$(cat /run/secrets/CODEARTIFACT_TOKEN) \
+    uv sync --locked --no-editable --no-cache --extra connectivity --extra service --extra meshing
 
 # run stage
 FROM python:$PYTHON_BASE

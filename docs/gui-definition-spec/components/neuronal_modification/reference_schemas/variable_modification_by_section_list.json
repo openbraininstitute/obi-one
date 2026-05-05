@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "description": "Reference schema for the ion_channel_variable_modification_by_section_list UI element.",
+  "ui_element": "ion_channel_variable_modification_by_section_list",
+  "title": "Ion channel variable manipulations by section type",
+  "description_ui": "Ion channel RANGE variable modification by section list.",
+  "property_group": "Circuit",
+  "property": "MechanismVariablesByIonChannel",
+  "data_model": {
+    "type": "object",
+    "description": "BySectionListModification",
+    "properties": {
+      "ion_channel_id": {
+        "type": ["string", "null"],
+        "format": "uuid",
+        "description": "Ion channel entity ID, when applicable."
+      },
+      "variable_name": {
+        "type": "string",
+        "description": "RANGE variable selected by the user."
+      },
+      "section_list_modifications": {
+        "type": "object",
+        "description": "Mapping of section list to replacement value.",
+        "additionalProperties": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          ]
+        },
+        "examples": [
+          {
+            "somatic": 0.002,
+            "apical": 0.03,
+            "basal": 0.03,
+            "axonal": 0.06
+          }
+        ]
+      }
+    },
+    "required": ["ion_channel_id", "variable_name", "section_list_modifications"]
+  },
+  "sonata_output": {
+    "section_list_example": [
+      {
+        "name": "modify_gSK_E2bar_SK_E2_somatic",
+        "node_set": "single",
+        "type": "section_list",
+        "section_configure": "somatic.gSK_E2bar_SK_E2 = 0.002"
+      },
+      {
+        "name": "modify_gSK_E2bar_SK_E2_apical",
+        "node_set": "single",
+        "type": "section_list",
+        "section_configure": "apical.gSK_E2bar_SK_E2 = 0.03"
+      }
+    ],
+    "all_sections_example": [
+      {
+        "name": "modify_gSK_E2bar_SK_E2_all",
+        "node_set": "single",
+        "type": "configure_all_sections",
+        "section_configure": "%s.gSK_E2bar_SK_E2 = 0.01"
+      }
+    ]
+  }
+}

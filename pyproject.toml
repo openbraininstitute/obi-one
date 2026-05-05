@@ -26,69 +26,90 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 dynamic = ["version"]
 
+# CORE + SCIENTIFIC - dependencies always installed
 dependencies = [
-    # PYDANTIC
-    "pydantic>=2.10.6",
-    "pydantic-settings>=2.8.1",
-    "pydantic-core",
-    # CIRCUIT EXTRACTION
-    "brainbuilder>=0.20.2",
-    # MORPHOLOGY CONTAINERIZATION
-    "bluepysnap>=3.0.2",
-    # FAST API SERVICE
-    "fastapi",
-    "uvicorn",
-    "starlette",
-    "python-multipart",  # Added python-multipart
-    # JUPYTER
-    "jupyter",
-    "notebook",
-    "jupyterlab>=4.4.8",
-    "ipykernel",
-    # DATABASE
-    "sqlalchemy",
-    # BLUEETL
-    "blueetl",
-    # NEUROM
-    "aiofiles",
-    "neurom",
-    "morph-tool",
     # ENTITYSDK
-    "entitysdk>=0.10.4",
-    "obi-auth>=0.3.0",
-    "networkx>=3.4.2",
-    "pyjwt>=2.10.1",
-    "cachetools>=5.5.2",
-    "httpx>=0.28.1",
-    "bluepyefe>=2.3.51",
-    # CONNECTOME-UTILITIES
-    "connectome-utilities>=0.4.11",
+    # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
+    # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
+    # Add an upper bound version only if automatic upgrades must be prevented.
+    "entitysdk>=0.13.3",
+    "pydantic>=2.10.6",
+    # -- SCIENTIFIC
+    "aiofiles",
+    "bluecellulab>=2.6.87",
+    "blueetl",
+    "bluepyefe>=2.3.53",
+    "bluepysnap>=3.0.2",
+    "brainbuilder>=0.20.2",
+    "caveclient>=7.11.0",
+    "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
-    "bluecellulab>=2.6.75",
-    # OBI NOTEBOOK
-    "obi_notebook",
     "morph_spines",
-    # CAVEclient
-    "caveclient>=7.11.0"
+    "morph-tool",
+    "neurom",
+    "libsonata>=0.1.33",
+    "obi-auth>=1.0.0",
+    "psutil>=6.1.0",
+    "pylmesh",
+    "python-multipart>=0.0.26",
+    "obp-accounting-sdk>=0.6.0",
+    "numpy",
 ]
 
 [project.optional-dependencies]
+# New group for the private dependency
+meshing = [
+    "neuromorphomesh",
+]
+
+# CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
+    "networkx>=3.4.2",
+]
+
+# NOTEBOOKS - optional, needed to run the notebooks locally
+notebooks = [
+    "ipykernel",
+    "jupyter",
+    "jupyterlab>=4.4.8",
+    "notebook",
+    "obi_notebook",
+]
+
+# SERVICE - optional, needed to run obi-one as a service
+service = [
+    "cachetools>=5.5.2",
+    "fastapi",
+    "httpx>=0.28.1",
+    "obp-accounting-sdk>=0.6.0",
+    "pydantic-core",
+    "pydantic-settings>=2.8.1",
+    "pyjwt>=2.10.1",
+    "python-multipart",
+    "starlette",
+    "uvicorn",
+]
+
+# ALL - convenience alias to install all optional dependencies
+all = [
+    "obi-one[connectivity,notebooks,service,meshing]",
 ]
 
 [dependency-groups]
-audit = [
-    "pip-audit>=2.9.0",
-]
 dev = [
     "coverage[toml]",
-    "pyright",
+    "jsonschema>=4.25.1",
     "pytest",
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
-    "ruff<=0.12.7",
+    "ruff",
+    "ty>=0.0.33",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.1",
 ]
 
 [build-system]
@@ -111,10 +132,16 @@ include = ["obi_one*"]
 local_scheme = "no-local-version"
 
 [tool.uv]
-required-version = ">=0.8.0"
+required-version = ">=0.9.22"
+
+[[tool.uv.index]]
+name = "obi-codeartifact"
+url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/"
+explicit = true
 
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+neuromorphomesh = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100
@@ -164,6 +191,7 @@ builtins-ignorelist = ["license"]
     "ERA001", # Found commented-out code
     "PLC2701", # Private name import from external module
     "PLR2004", # magic value (constant) used in comparison (i.e. expected == 3)
+    "PLR6301", # Method could be a function (class-based test organization)
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
@@ -196,6 +224,9 @@ testpaths = [
     "tests",
     "examples",
 ]
+filterwarnings = [
+    "error::pydantic.warnings.PydanticDeprecationWarning",
+]
 
 [tool.coverage.run]
 branch = true
@@ -204,6 +235,7 @@ source_pkgs = [
     "app",
     "obi_one",
 ]
+data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]
 show_missing = true
@@ -212,3 +244,9 @@ fail_under = 30
 omit = [
     "__main__.py",
 ]
+
+[tool.coverage.xml]
+output = ".coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = ".coverage/html_report"

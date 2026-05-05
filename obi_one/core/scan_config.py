@@ -1,14 +1,29 @@
+import logging
 import types
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import ClassVar, get_args, get_origin
 
 import entitysdk
+from entitysdk.client import Client
+from entitysdk.models import Entity, TaskConfig
+from entitysdk.types import (
+    ActivityStatus,
+    TaskActivityType,
+    TaskConfigType,
+)
 from pydantic import model_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import SchemaKey
+from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME
 from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
+from obi_one.utils import db_sdk
+
+L = logging.getLogger(__name__)
 
 
 def get_all_annotations(cls: type) -> dict[str, type]:
@@ -30,17 +45,84 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     description: ClassVar[str] = """Add a description to the class' description variable"""
     single_coord_class_name: ClassVar[str] = ""
 
-    _block_mapping: dict = None
+    _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 
-    _campaign: None = None
+    _campaign: Entity = None  # ty:ignore[invalid-assignment]
+    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
 
     @property
     def campaign(
         self,
-    ) -> (
-        entitysdk.models.SimulationCampaign | None
-    ):  # Would be better to be "Entity | None" but Entity not currently exposed by entitysdk
+    ) -> entitysdk.models.Entity | None:  # ty:ignore[possibly-missing-submodule]
         return self._campaign
+
+    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: PLR6301, ARG002
+        return []
+
+    @property
+    def campaign_name(self) -> None:
+        msg = "You must define a campaign_name property for your ScanConfig subclass."
+        raise NotImplementedError(msg)
+
+    @property
+    def campaign_description(self) -> None:
+        msg = "You must define a campaign_description property for your ScanConfig subclass."
+        raise NotImplementedError(msg)
+
+    @property
+    def campaign_task_config_type(self) -> None:
+        return self._campaign_task_config_type  # ty:ignore[invalid-return-type]
+
+    @property
+    def campaign_generation_task_activity_type(self) -> None:
+        return self._campaign_generation_task_activity_type  # ty:ignore[invalid-return-type]
+
+    def create_campaign_entity_with_config(
+        self,
+        output_root: Path,
+        multiple_value_parameters_dictionary: dict | None = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> TaskConfig:
+        if self.campaign_task_config_type is None:
+            msg = "campaign_task_config_type must be defined to create generic campaign TaskConfig."
+            raise NotImplementedError(msg)
+
+        self._campaign, _ = db_sdk.register_task_config_with_asset(
+            client=db_client,
+            name=self.campaign_name,
+            description=self.campaign_description,
+            task_config_type=self.campaign_task_config_type,
+            multiple_value_parameters_dictionary={
+                "scan_parameters": multiple_value_parameters_dictionary
+            },
+            input_entities=self.input_entities(db_client=db_client),
+            task_config_file_path=output_root / _SCAN_CONFIG_FILENAME,
+        )
+
+        return self._campaign
+
+    def create_campaign_generation_entity(
+        self, generated: list[TaskConfig], db_client: Client
+    ) -> None:
+        if self.campaign_generation_task_activity_type is None:
+            msg = (
+                "campaign_generation_task_activity_type must be defined to create "
+                "generic campaign generation TaskActivity."
+            )
+            raise NotImplementedError(msg)
+
+        time_now = datetime.now(UTC)
+
+        db_sdk.create_generic_activity(
+            client=db_client,
+            activity_type=self.campaign_generation_task_activity_type,
+            used=[self._campaign],
+            generated=generated,
+            activity_status=ActivityStatus.done,
+            start_time=time_now,
+            end_time=time_now,
+        )
 
     @classmethod
     def empty_config(cls) -> "ScanConfig":
@@ -77,9 +159,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     field_info = self.__pydantic_fields__[attr_name]
                     if (
                         field_info.json_schema_extra
-                        and "reference_type" in field_info.json_schema_extra
+                        and SchemaKey.REFERENCE_TYPE in field_info.json_schema_extra
                     ):
-                        reference_type = field_info.json_schema_extra["reference_type"]
+                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPE]
                     else:
                         msg = (
                             f"Attribute '{attr_name}' does not have a 'reference_type'"
@@ -117,7 +199,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                         # Otherwise initialize a new dictionary for this block class in the mapping
                         self._block_mapping[block_class.__name__] = {
                             "block_dict_name": attr_name,
-                            "reference_type": reference_type,
+                            SchemaKey.REFERENCE_TYPE: reference_type,
                         }
 
         return self._block_mapping
@@ -131,9 +213,20 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                 block_reference = block_attr_value
 
                 if block_reference.block_dict_name and block_reference.block_name:
-                    block_reference.block = self.__dict__[block_reference.block_dict_name][
-                        block_reference.block_name
-                    ]
+                    try:
+                        block_reference.block = self.__dict__[block_reference.block_dict_name][
+                            block_reference.block_name
+                        ]
+                    except KeyError:
+                        msg = (
+                            f"Block '{block_reference.block_name}' not found in "
+                            f"'{block_reference.block_dict_name}'. `block_dict_name` must "
+                            f"correspond to the name of the root level dictionary which contains "
+                            f"the block you are referencing, or should be an empty string to "
+                            f"reference a root level block."
+                        )
+                        raise KeyError(msg) from None
+
                 elif not block_reference.block_dict_name and block_reference.block_name:
                     # If the block_dict_name is empty, we assume the block_name
                     # is a direct reference to a Block instance
@@ -148,7 +241,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         for attr_value in self.__dict__.values():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
-                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+                isinstance(dict_val, Block) for dict_val in attr_value.values()
             ):
                 category_blocks_dict = attr_value
 
@@ -177,9 +270,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__]["reference_type"]
+        reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPE]
 
-        if name in self.__dict__.get(block_dict_name):
+        if name in self.__dict__.get(block_dict_name):  # ty:ignore[unsupported-operator]
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 

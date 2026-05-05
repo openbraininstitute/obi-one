@@ -18,17 +18,26 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks import ion_channel_equations as equations_module
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
 try:
-    from ion_channel_builder.create_model.main import extract_all_equations
-    from ion_channel_builder.io.write_output import write_vgate_output
-    from ion_channel_builder.run_model.run_model import run_ion_channel_model
+    from ion_channel_builder.create_model.main import (  # ty:ignore[unresolved-import]
+        extract_all_equations,
+    )
+    from ion_channel_builder.io.write_output import (  # ty:ignore[unresolved-import]
+        get_range_params_with_units,
+        write_vgate_output,
+    )
+    from ion_channel_builder.run_model.run_model import (  # ty:ignore[unresolved-import]
+        run_ion_channel_model,
+    )
 except ImportError:
 
     def extract_all_equations(
@@ -40,6 +49,9 @@ except ImportError:
         stim_timings_corrections: dict,
         output_folder: Path,
     ) -> None:
+        pass
+
+    def get_range_params_with_units(eq_names: dict[str, str]) -> list[dict[str, str | None]]:  # ty:ignore[empty-body]
         pass
 
     def write_vgate_output(
@@ -82,14 +94,13 @@ class IonChannelFittingScanConfig(ScanConfig):
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
-    class Config:
-        json_schema_extra: ClassVar[dict] = {
-            "block_block_group_order": [
-                BlockGroup.SETUP,
-                BlockGroup.EQUATIONS,
-                BlockGroup.GATEEXPONENTS,
-            ]
-        }
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP,
+            BlockGroup.EQUATIONS,
+            BlockGroup.GATEEXPONENTS,
+        ]
+    }
 
     class Initialize(Block):
         recordings: IonChannelRecordingFromID = Field(
@@ -135,60 +146,66 @@ class IonChannelFittingScanConfig(ScanConfig):
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
-        group=BlockGroup.SETUP,
-        group_order=1,
+        json_schema_extra={SchemaKey.GROUP: BlockGroup.SETUP, SchemaKey.GROUP_ORDER: 1},
     )
 
     info: Info = Field(
         title="Info",
         description="Information about the ion channel modeling campaign.",
-        group=BlockGroup.SETUP,
-        group_order=0,
+        json_schema_extra={SchemaKey.GROUP: BlockGroup.SETUP, SchemaKey.GROUP_ORDER: 0},
     )
 
     minf_eq: equations_module.MInfUnion = Field(
         title=r"m_{\infty} equation",
-        reference_type=equations_module.MInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=0,
         description=(
             r"Steady state activation parameter \( m_{\infty} \) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
+        json_schema_extra={
+            SchemaKey.REFERENCE_TYPE: equations_module.MInfReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 0,
+        },
     )
     mtau_eq: equations_module.MTauUnion = Field(
         title=r"\tau_m equation",
-        reference_type=equations_module.MTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=1,
         description=(
             r"Activation time constant \(\tau_m\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
+        json_schema_extra={
+            SchemaKey.REFERENCE_TYPE: equations_module.MTauReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 1,
+        },
     )
     hinf_eq: equations_module.HInfUnion = Field(
         title=r"h_{\infty} equation",
-        reference_type=equations_module.HInfReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=2,
         description=(
             r"Steady state inactivation parameter \(h_{\infty}\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
+        json_schema_extra={
+            SchemaKey.REFERENCE_TYPE: equations_module.HInfReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 2,
+        },
     )
     htau_eq: equations_module.HTauUnion = Field(
         title=r"\tau_h equation",
-        reference_type=equations_module.HTauReference.__name__,
-        group=BlockGroup.EQUATIONS,
-        group_order=3,
         description=(
             r"Inactivation time constant \(\tau_h\) equation. "
             r"This equation will be used for solving the differential equation: "
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
+        json_schema_extra={
+            SchemaKey.REFERENCE_TYPE: equations_module.HTauReference.__name__,
+            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.GROUP_ORDER: 3,
+        },
     )
 
     gate_exponents: GateExponents = Field(
@@ -197,16 +214,15 @@ class IonChannelFittingScanConfig(ScanConfig):
             "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
             r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
         ),
-        group=BlockGroup.GATEEXPONENTS,
-        group_order=0,
+        json_schema_extra={SchemaKey.GROUP: BlockGroup.GATEEXPONENTS, SchemaKey.GROUP_ORDER: 0},
     )
 
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,
-    ) -> entitysdk.models.IonChannelModelingCampaign:
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> entitysdk.models.IonChannelModelingCampaign:  # ty:ignore[possibly-missing-submodule]
         """Initializes the ion channel modeling campaign in the database."""
         L.info("1. Initializing ion channel modeling campaign in the database...")
         if multiple_value_parameters_dictionary is None:
@@ -214,10 +230,10 @@ class IonChannelFittingScanConfig(ScanConfig):
 
         L.info("-- Register IonChannelModelingCampaign Entity")
         self._campaign = db_client.register_entity(
-            entitysdk.models.IonChannelModelingCampaign(
+            entitysdk.models.IonChannelModelingCampaign(  # ty:ignore[possibly-missing-submodule]
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
-                input_recording_ids=[self.initialize.recordings.id_str],
+                input_recordings=[self.initialize.recordings.entity(db_client=db_client)],
                 scan_parameters=multiple_value_parameters_dictionary,
             )
         )
@@ -225,25 +241,25 @@ class IonChannelFittingScanConfig(ScanConfig):
         L.info("-- Upload campaign_generation_config")
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
-            entity_type=entitysdk.models.IonChannelModelingCampaign,
-            file_path=output_root / "obi_one_scan.json",
-            file_content_type="application/json",
-            asset_label="campaign_generation_config",
+            entity_type=entitysdk.models.IonChannelModelingCampaign,  # ty:ignore[possibly-missing-submodule]
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
+            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
+            asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
         )
 
         return self._campaign
 
     def create_campaign_generation_entity(
         self,
-        ion_channel_modelings: list[entitysdk.models.IonChannelModelingConfig],
+        ion_channel_modelings: list[entitysdk.models.IonChannelModelingConfig],  # ty:ignore[possibly-missing-submodule]
         db_client: entitysdk.client.Client,
-    ) -> None:
+    ) -> None:  # ty:ignore[invalid-method-override]
         """Register the activity generating the ion channel modeling tasks in the database."""
         L.info("3. Saving completed ion channel modeling campaign generation")
 
         L.info("-- Register IonChannelModelingGeneration Entity")
         db_client.register_entity(
-            entitysdk.models.IonChannelModelingConfigGeneration(
+            entitysdk.models.IonChannelModelingConfigGeneration(  # ty:ignore[possibly-missing-submodule]
                 start_time=datetime.now(UTC),
                 used=[self._campaign],
                 generated=ion_channel_modelings,
@@ -254,17 +270,11 @@ class IonChannelFittingScanConfig(ScanConfig):
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
-    _single_entity: entitysdk.models.IonChannelModelingConfig
-
-    @property
-    def single_entity(self) -> entitysdk.models.IonChannelModelingConfig:
-        return self._single_entity
-
     def create_single_entity_with_config(
         self,
-        campaign: entitysdk.models.IonChannelModelingCampaign,
+        campaign: entitysdk.models.IonChannelModelingCampaign,  # ty:ignore[possibly-missing-submodule]
         db_client: entitysdk.client.Client,
-    ) -> entitysdk.models.IonChannelModelingConfig:
+    ) -> entitysdk.models.IonChannelModelingConfig:  # ty:ignore[possibly-missing-submodule]
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving ion channel modeling config {self.idx} to database...")
 
@@ -290,31 +300,35 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
 
         L.info("-- Register IonChannelModeling Entity")
         self._single_entity = db_client.register_entity(
-            entitysdk.models.IonChannelModelingConfig(
+            entitysdk.models.IonChannelModelingConfig(  # ty:ignore[possibly-missing-submodule]
                 name=f"IonChannelModelingConfig {self.idx}",
                 description=f"IonChannelModelingConfig {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representaiton(),
-                # Convert single recording to list for future compatibility
-                input_recording_ids=[r.id_str for r in recordings],
+                scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
                 ion_channel_modeling_campaign_id=campaign.id,
             )
         )
 
         L.info("-- Upload ion_channel_modeling_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,
-            entity_type=entitysdk.models.IonChannelModelingConfig,
-            file_path=Path(self.coordinate_output_root, "obi_one_coordinate.json"),
-            file_content_type="application/json",
-            asset_label="ion_channel_modeling_generation_config",
+            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_type=entitysdk.models.IonChannelModelingConfig,  # ty:ignore[possibly-missing-submodule]
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
+            asset_label="ion_channel_modeling_generation_config",  # ty:ignore[invalid-argument-type]
         )
 
 
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
 
+    @property
+    def conductance_name(self) -> str:
+        """Get the conductance name for the generated ion channel model."""
+        return f"g{self.config.initialize.ion_channel_name}bar"
+
     def download_input(
-        self, db_client: entitysdk.client.Client = None
+        self,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> tuple[list[Path], list[float]]:
         """Download all the recordings, and return their traces and ljp values."""
         trace_paths = []
@@ -329,7 +343,7 @@ class IonChannelFittingTask(Task):
                     dest_dir=self.config.coordinate_output_root, db_client=db_client
                 )
             )
-            trace_ljps.append(recording.entity(db_client=db_client).ljp)
+            trace_ljps.append(recording.entity(db_client=db_client).ljp)  # ty:ignore[unresolved-attribute]
 
         return trace_paths, trace_ljps
 
@@ -338,9 +352,9 @@ class IonChannelFittingTask(Task):
         client: entitysdk.client.Client, id_: str | uuid.UUID, json_path: str | Path
     ) -> None:
         client.upload_file(
-            entity_id=id_,
+            entity_id=id_,  # ty:ignore[invalid-argument-type]
             entity_type=models.IonChannelModel,
-            file_path=json_path,
+            file_path=json_path,  # ty:ignore[invalid-argument-type]
             file_content_type=ContentType.application_json,
             asset_label=AssetLabel.ion_channel_model_figure_summary_json,
         )
@@ -350,9 +364,9 @@ class IonChannelFittingTask(Task):
         client: entitysdk.client.Client, id_: str | uuid.UUID, path_to_register: str | Path
     ) -> None:
         client.upload_file(
-            entity_id=id_,
+            entity_id=id_,  # ty:ignore[invalid-argument-type]
             entity_type=models.IonChannelModel,
-            file_path=path_to_register,
+            file_path=path_to_register,  # ty:ignore[invalid-argument-type]
             file_content_type=ContentType.image_png,
             asset_label=AssetLabel.ion_channel_model_thumbnail,
         )
@@ -370,9 +384,9 @@ class IonChannelFittingTask(Task):
     ) -> None:
         for path in paths_to_register:
             client.upload_file(
-                entity_id=id_,
+                entity_id=id_,  # ty:ignore[invalid-argument-type]
                 entity_type=models.IonChannelModel,
-                file_path=path,
+                file_path=path,  # ty:ignore[invalid-argument-type]
                 file_content_type=ContentType.application_pdf,
                 asset_label=AssetLabel.ion_channel_model_figure,
             )
@@ -381,12 +395,13 @@ class IonChannelFittingTask(Task):
         self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
     ) -> None:
         # get the paths of the pdf figures
+        figure_types = ["traces", "stimuli", "steady state", "time constant"]
         paths_to_register = [
             value
             for key1, d in figure_filepaths.items()
             if key1 != "thumbnail"
             for key, value in d.items()
-            if key != "order"
+            if key in figure_types
         ]
         figure_summary_dict = self.cleanup_dict(figure_filepaths)
         json_path = self.config.coordinate_output_root / "figure_summary.json"
@@ -401,23 +416,23 @@ class IonChannelFittingTask(Task):
             self.register_json(db_client, model_id, json_path)
 
     def save(
-        self, mod_filepath: Path, figure_filepaths: dict[Path], db_client: entitysdk.client.Client
+        self,
+        mod_filepath: Path,
+        figure_filepaths: dict[Path],  # ty:ignore[invalid-type-arguments]
+        db_client: entitysdk.client.Client,
+        range_vars: list[dict[str, str | None]],
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
-        useion = entitysdk.models.UseIon(
+        useion = entitysdk.models.UseIon(  # ty:ignore[possibly-missing-submodule]
             ion_name="k",  # TODO: fix this
             read=["ek"],
             write=["ik"],
             valence=1,  # putting 1 for K for now. TODO: fix this
             main_ion=True,
         )
-        neuron_block = entitysdk.models.NeuronBlock(
+        neuron_block = entitysdk.models.NeuronBlock(  # ty:ignore[possibly-missing-submodule]
             **{"global": [{"celsius": "degree C"}]},
-            range=[
-                {"gbar": "S/cm2"},
-                {"g": "S/cm2"},
-                {"ik": "mA/cm2"},
-            ],
+            range=range_vars,
             useion=[useion],
             nonspecific=[],
         )
@@ -426,37 +441,39 @@ class IonChannelFittingTask(Task):
         recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
 
         # Extract subject and brain_region from recording metadata
-        subject = recording_entity.subject
-        brain_region = recording_entity.brain_region
+        subject = recording_entity.subject  # ty:ignore[unresolved-attribute]
+        brain_region = recording_entity.brain_region  # ty:ignore[unresolved-attribute]
 
         model = db_client.register_entity(
-            entitysdk.models.IonChannelModel(
+            entitysdk.models.IonChannelModel(  # ty:ignore[possibly-missing-submodule]
                 name=self.config.info.campaign_name,
                 nmodl_suffix=self.config.initialize.ion_channel_name,
                 description=(
                     f"Ion channel model: {self.config.initialize.ion_channel_name}.mod "
                     f"made using recording: {recording_entity.name} "
-                    f"for (temperature: {recording_entity.temperature}), "
+                    f"for (temperature: {recording_entity.temperature}), "  # ty:ignore[unresolved-attribute]
                     f"brain region: {brain_region.name}, "
                     f"and subject: {subject.name}."
                 ),
                 contributions=None,  # TODO: fix this
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=recording_entity.temperature,
+                temperature_celsius=recording_entity.temperature,  # ty:ignore[unresolved-attribute]
                 is_stochastic=False,
                 neuron_block=neuron_block,
                 brain_region=brain_region,
                 subject=subject,
+                conductance_name=self.conductance_name,
+                max_permeability_name=None,
             )
         )
 
         _ = db_client.upload_file(
             entity_id=model.id,
-            entity_type=entitysdk.models.IonChannelModel,
+            entity_type=entitysdk.models.IonChannelModel,  # ty:ignore[possibly-missing-submodule]
             file_path=mod_filepath,
             file_content_type=ContentType.application_mod,
-            asset_label="neuron_mechanisms",
+            asset_label="neuron_mechanisms",  # ty:ignore[invalid-argument-type]
         )
 
         self.register_plots_and_json(db_client, figure_filepaths, model.id)
@@ -466,8 +483,9 @@ class IonChannelFittingTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
+        execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
         try:
@@ -477,10 +495,10 @@ class IonChannelFittingTask(Task):
 
             # prepare data to feed
             eq_names = {
-                "minf": self.config.minf_eq.__class__.equation_key,
+                "minf": self.config.minf_eq.__class__.equation_key,  # ty:ignore[unresolved-attribute]
                 "mtau": self.config.mtau_eq.__class__.equation_key,
-                "hinf": self.config.hinf_eq.__class__.equation_key,
-                "htau": self.config.htau_eq.__class__.equation_key,
+                "hinf": self.config.hinf_eq.__class__.equation_key,  # ty:ignore[unresolved-attribute]
+                "htau": self.config.htau_eq.__class__.equation_key,  # ty:ignore[unresolved-attribute]
             }
             voltage_exclusion = {
                 "activation": {
@@ -524,7 +542,7 @@ class IonChannelFittingTask(Task):
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
                 ljps=trace_ljps,
-                eq_names=eq_names,
+                eq_names=eq_names,  # ty:ignore[invalid-argument-type]
                 voltage_exclusion=voltage_exclusion,
                 stim_timings=stim_timings,
                 stim_timings_corrections=stim_timings_corrections,
@@ -538,12 +556,12 @@ class IonChannelFittingTask(Task):
 
             write_vgate_output(
                 eq_names=eq_names,
-                eq_popt=eq_popt,
+                eq_popt=eq_popt,  # ty:ignore[invalid-argument-type]
                 suffix=self.config.initialize.ion_channel_name,
                 ion="k",
                 m_power=self.config.gate_exponents.m_power,
                 h_power=self.config.gate_exponents.h_power,
-                output_name=output_name,
+                output_name=output_name,  # ty:ignore[invalid-argument-type]
             )
 
             # compile output mod file
@@ -560,25 +578,41 @@ class IonChannelFittingTask(Task):
             # Get recording entity to access temperature
             recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
 
+            mech_suffix = self.config.initialize.ion_channel_name
             # run ion_channel_builder mod file runner to produce plots
             figure_paths_dict = run_ion_channel_model(
-                mech_suffix=self.config.initialize.ion_channel_name,
+                mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
-                mech_current="ik",
-                temperature=recording_entity.temperature,
-                mech_conductance_name=f"g{self.config.initialize.ion_channel_name}bar",
+                mech_current="ik",  # ty:ignore[invalid-argument-type]
+                temperature=recording_entity.temperature,  # ty:ignore[unresolved-attribute]
+                mech_conductance_name=self.conductance_name,
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
             )
 
+            # those are hardcoded in ion-channel-builder.io.templates.mod_template.jinja2
+            range_vars = [
+                {f"g{mech_suffix}bar": "S/cm2"},
+                {f"g{mech_suffix}": "S/cm2"},
+                {"ik": "mA/cm2"},
+                {"mInf": None},
+                {"mTau": "ms"},
+                {"hInf": None},
+                {"hTau": "ms"},
+            ]
+            range_vars += get_range_params_with_units(eq_names)
+
             # register the mod file and figures to the platform
             model_id = self.save(
-                mod_filepath=output_name, figure_filepaths=figure_paths_dict, db_client=db_client
+                mod_filepath=output_name,
+                figure_filepaths=figure_paths_dict,  # ty:ignore[invalid-argument-type]
+                db_client=db_client,
+                range_vars=range_vars,  # ty:ignore[invalid-argument-type]
             )
 
         except Exception as e:
             error_message = f"Ion channel modeling failed: {e}"
             raise Exception(error_message) from e  # noqa: TRY002
         else:
-            return model_id
+            return model_id  # ty:ignore[invalid-return-type]

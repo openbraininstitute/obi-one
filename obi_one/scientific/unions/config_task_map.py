@@ -1,3 +1,5 @@
+from entitysdk.types import AssetLabel
+
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
@@ -14,6 +16,8 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeMorphologyTask,
 )
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
+from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
@@ -22,13 +26,24 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulation_task import (
+from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
+)
+from obi_one.scientific.tasks.ion_channel_model_simulation_execution import (
+    IonChannelModelSimulationExecutionSingleConfig,
+    IonChannelModelSimulationExecutionTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
@@ -50,10 +65,13 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
-from obi_one.scientific.unions.aliases import Simulation
+from obi_one.scientific.tasks.skeletonization import (
+    SkeletonizationSingleConfig,
+    SkeletonizationTask,
+)
+from obi_one.types import TaskType
 
 _config_tasks_map = {
-    Simulation: GenerateSimulationTask,
     CircuitSimulationSingleConfig: GenerateSimulationTask,
     CircuitExtractionSingleConfig: CircuitExtractionTask,
     MEModelSimulationSingleConfig: GenerateSimulationTask,
@@ -68,8 +86,42 @@ _config_tasks_map = {
     MorphologyMetricsSingleConfig: MorphologyMetricsTask,
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
+    SkeletonizationSingleConfig: SkeletonizationTask,
+    EMSynapseMappingSingleConfig: EMSynapseMappingTask,
+    IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
+}
+_task_type_task_map = {
+    TaskType.circuit_extraction: CircuitExtractionTask,
+    TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationExecutionTask,
+    TaskType.morphology_skeletonization: SkeletonizationTask,
+    TaskType.em_synapse_mapping: EMSynapseMappingTask,
+}
+_task_type_single_config_map = {
+    TaskType.circuit_extraction: CircuitExtractionSingleConfig,
+    TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationExecutionSingleConfig,
+    TaskType.morphology_skeletonization: SkeletonizationSingleConfig,
+    TaskType.em_synapse_mapping: EMSynapseMappingSingleConfig,
+}
+_task_type_config_asset_label_map = {
+    TaskType.circuit_extraction: AssetLabel.task_config,
+    TaskType.morphology_skeletonization: AssetLabel.task_config,
+    TaskType.circuit_simulation: None,
+    TaskType.ion_channel_model_simulation_execution: None,
+    TaskType.em_synapse_mapping: AssetLabel.task_config,
 }
 
 
 def get_configs_task_type(config: object) -> type:
-    return _config_tasks_map[config.__class__]
+    return _config_tasks_map[config.__class__]  # ty:ignore[invalid-argument-type]
+
+
+def get_task_type(task_type: TaskType) -> type:
+    return _task_type_task_map[task_type]
+
+
+def get_task_type_single_config(task_type: TaskType) -> type:
+    return _task_type_single_config_map[task_type]
+
+
+def get_task_type_config_asset_label(task_type: TaskType) -> AssetLabel | None:
+    return _task_type_config_asset_label_map[task_type]

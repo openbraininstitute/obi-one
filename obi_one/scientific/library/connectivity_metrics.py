@@ -1,4 +1,3 @@
-import os
 import tempfile
 from pathlib import Path
 from typing import Annotated
@@ -10,6 +9,7 @@ from connectome_manipulator.connectome_comparison import connectivity
 from entitysdk.client import Client
 from entitysdk.models import Asset
 from entitysdk.models.circuit import Circuit
+from entitysdk.types import FetchFileStrategy
 from httpx import HTTPStatusError
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
@@ -70,7 +70,7 @@ class ConnectivityMetricsOutput(BaseModel):
 
 
 class TemporaryPartialCircuit:
-    """Access mounted circuit if possible. Otherwise, download partial circuit to temporary folder.
+    """Access partial circuit through symlinks or download circuit to temporary folder.
 
     To avoid unnecessary data download, only the following circuit components are included:
     Circuit config, node sets, selected edges, src/tgt nodes of selected edges
@@ -82,20 +82,21 @@ class TemporaryPartialCircuit:
         self._circuit_id = circuit_id
         self._edge_population = edge_population
 
-    def _download_file(self, rel_path: str) -> Path:
+    def _fetch_file(self, rel_path: str) -> Path:
         temp_file_path = Path(self.temp_dir.name) / rel_path
-        self._db_client.download_file(
-            entity_id=self._circuit_id,
+        self._db_client.fetch_file(
+            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
             entity_type=Circuit,
             asset_id=self.asset.id,
             output_path=temp_file_path,
-            asset_path=rel_path,
+            asset_path=rel_path,  # ty:ignore[invalid-argument-type]
+            strategy=FetchFileStrategy.link_or_download,
         )
         return temp_file_path
 
     def _get_sonata_asset(self) -> Asset:
         circuit = self._db_client.get_entity(
-            entity_id=self._circuit_id,
+            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
             entity_type=Circuit,
         )
         sonata_assets = [
@@ -125,51 +126,34 @@ class TemporaryPartialCircuit:
 
     def __enter__(self) -> Path:
         """Enter."""
-        self.temp_dir = None
         self.asset = self._get_sonata_asset()
 
-        # Try circuit mount
-        config_fn = "circuit_config.json"
-        mount_base_dir = os.environ.get("MOUNT_BASE_DIR")
-        if mount_base_dir is not None:
-            if self.asset.full_path.startswith("public/"):
-                storage_type = "aws_s3_internal"
-            else:
-                storage_type = "aws_s3_open"
-            # TODO: storage_type could be replaced by self.asset.storage_type once available
-            #       in entitysdk
-            circuit_config_file = (
-                Path(mount_base_dir) / storage_type / self.asset.full_path / config_fn
-            )
-            if circuit_config_file.is_file():
-                return circuit_config_file
-
-        # Otherwise, download circuit in temp directory
+        # Fetch circuit files in temp directory
         self.temp_dir = tempfile.TemporaryDirectory()
         try:
-            # Download circuit config
-            circuit_config_file = self._download_file(config_fn)
+            # Fetch circuit config
+            circuit_config_file = self._fetch_file("circuit_config.json")
             circuit = obi.Circuit(name=str(self._circuit_id), path=str(circuit_config_file))
             c = circuit.sonata_circuit
 
-            # Download node sets file
+            # Fetch node sets file
             rel_path = Path(c.config["node_sets_file"]).relative_to(
                 Path(self.temp_dir.name).resolve()
             )
-            self._download_file(rel_path)
+            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
 
-            # Download edge population
+            # Fetch edge population
             edges_path = self._get_edges_path(c)
             rel_path = Path(edges_path).relative_to(Path(self.temp_dir.name).resolve())
-            self._download_file(rel_path)
+            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
 
-            # Download src/tgt node populations
+            # Fetch src/tgt node populations
             src_nodes = c.edges[self._edge_population].source.name
             tgt_nodes = c.edges[self._edge_population].target.name
             for npop in np.unique([src_nodes, tgt_nodes]):
                 nodes_path = self._get_nodes_path(c, npop)
                 rel_path = Path(nodes_path).relative_to(Path(self.temp_dir.name).resolve())
-                self._download_file(rel_path)
+                self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
         except HTTPStatusError:
             self.temp_dir.__exit__(None, None, None)
             raise

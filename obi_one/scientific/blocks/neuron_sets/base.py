@@ -11,19 +11,14 @@ import numpy as np
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
 
-L = logging.getLogger("obi-one")
-_NBS1_VPM_NODE_POP = "VPM"
-_NBS1_POM_NODE_POP = "POm"
-_RCA1_CA3_NODE_POP = "CA3_projections"
-
-_ALL_NODE_SET = "All"
-_EXCITATORY_NODE_SET = "Excitatory"
-_INHIBITORY_NODE_SET = "Inhibitory"
+L = logging.getLogger(__name__)
 
 _MAX_PERCENT = 100.0
 
@@ -47,11 +42,19 @@ class AbstractNeuronSet(Block, abc.ABC):
         default=100.0,
         title="Sample (Percentage)",
         description="Percentage of neurons to sample between 0 and 100%",
-        units="%",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
+        },
     )
 
     sample_seed: int | list[int] = Field(
-        default=1, title="Sample Seed", description="Seed for random sampling."
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
     @abc.abstractmethod
@@ -67,13 +70,18 @@ class AbstractNeuronSet(Block, abc.ABC):
                 return
             msg = "Must specify a node population name!"
             raise ValueError(msg)
-        if population not in Circuit.get_node_population_names(circuit.sonata_circuit):
-            msg = f"Node population '{population}' not found in circuit '{circuit}'!"
+        if population not in (
+            populations := Circuit.get_node_population_names(circuit.sonata_circuit)
+        ):
+            msg = (
+                f"Node population '{population}' not found in circuit '{circuit.name}'. "
+                f"Available node populations: {', '.join(populations)}"
+            )
             raise ValueError(msg)
 
     def add_node_set_definition_to_sonata_circuit(
         self, circuit: Circuit, sonata_circuit: snap.Circuit
-    ) -> None:
+    ) -> dict:
         nset_def = self.get_node_set_definition(
             circuit, circuit.default_population_name, force_resolve_ids=True
         )
@@ -82,11 +90,13 @@ class AbstractNeuronSet(Block, abc.ABC):
             sonata_circuit, {self.block_name: nset_def}, overwrite_if_exists=False
         )
 
+        return nset_def
+
     def get_population(self, population: str | None = None) -> str:
         return self._population(population)
 
     def _population(self, population: str | None = None) -> str:  # noqa: PLR6301
-        return population
+        return population  # ty:ignore[invalid-return-type]
 
     def _resolve_ids(self, circuit: Circuit, population: str | None = None) -> list[int]:
         """Returns the full list of neuron IDs (w/o subsampling)."""
@@ -111,10 +121,10 @@ class AbstractNeuronSet(Block, abc.ABC):
         population = self._population(population)
         self.check_population(circuit, population)
         ids = np.array(self._resolve_ids(circuit, population))
-        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:
+        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:  # ty:ignore[unsupported-operator]
             rng = np.random.default_rng(self.sample_seed)
 
-            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)
+            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)  # ty:ignore[unsupported-operator]
 
             ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
 
@@ -149,6 +159,9 @@ class AbstractNeuronSet(Block, abc.ABC):
         """Returns the population type (i.e. biophysical / virtual)."""
         return circuit.sonata_circuit.nodes[self._population(population)].type
 
+    def is_biophysical(self, circuit: Circuit, population: str | None = None) -> bool:
+        return self.population_type(circuit, population) == "biophysical"
+
     @staticmethod
     def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> str:
         if file_name is None:
@@ -165,7 +178,7 @@ class AbstractNeuronSet(Block, abc.ABC):
                 msg = "File name must be non-empty and of type .json!"
                 raise ValueError(msg)
         output_file = Path(output_path) / file_name
-        return output_file
+        return output_file  # ty:ignore[invalid-return-type]
 
     def to_node_set_file(
         self,
@@ -207,7 +220,7 @@ class AbstractNeuronSet(Block, abc.ABC):
             msg = "Node set already exists in circuit, nothing to be done!"
             raise ValueError(msg)
 
-        if not Path.exists(output_file) or overwrite_if_exists:
+        if not Path.exists(output_file) or overwrite_if_exists:  # ty:ignore[invalid-argument-type]
             # Create new node sets file, overwrite if existing
             if init_empty:
                 # Initialize empty
@@ -220,7 +233,7 @@ class AbstractNeuronSet(Block, abc.ABC):
                     raise ValueError(msg)
             node_sets.update({node_set_name: expression})
 
-        elif Path.exists(output_file) and append_if_exists:
+        elif Path.exists(output_file) and append_if_exists:  # ty:ignore[invalid-argument-type]
             # Append to existing node sets file
             with Path(output_file).open("r", encoding="utf-8") as f:
                 node_sets = json.load(f)
@@ -262,7 +275,7 @@ class NeuronSet(AbstractNeuronSet):
                 self.node_population,
                 population,
             )
-        population = self.node_population or population
+        population = self.node_population or population  # ty:ignore[invalid-assignment]
         if population is None:
             msg = "Must specify name of a node population to resolve the NeuronSet!"
             raise ValueError(msg)

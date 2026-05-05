@@ -24,6 +24,7 @@ from obi_one.scientific.unions.unions_compartment_sets import (
     CompartmentSetReference,
     resolve_compartment_set_ref_to_name,
 )
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
@@ -32,7 +33,6 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
 )
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
 # But for now this keeps it below the other Block references in get_populationthe GUI
@@ -140,7 +140,9 @@ class TargetedStimulus(Stimulus, ABC):
     def _validate_targeting(self) -> Self:
         if self.compartment_set is not None:
             if self.neuron_set is not None or self.locations is not None:
-                raise ValueError("If 'compartment_set' is set, do not set 'neuron_set' or 'locations'.")
+                raise ValueError(
+                    "If 'compartment_set' is set, do not set 'neuron_set' or 'locations'."
+                )
 
         return self
 
@@ -163,7 +165,9 @@ class TargetedStimulus(Stimulus, ABC):
         extra_fields = extra_fields or {}
 
         # Resolve the timestamps block (using default if self.timestamps is None)
-        ts_block = resolve_timestamps_ref_to_timestamps_block(self.timestamps, self._default_timestamps)
+        ts_block = resolve_timestamps_ref_to_timestamps_block(
+            self.timestamps, self._default_timestamps
+        )
         ts = list(ts_block.timestamps())
 
         def _pick(value, i: int) -> Any:
@@ -299,7 +303,6 @@ class SpikeStimulus(Stimulus):
             )
             pop.create_dataset("node_ids", data=spike_df_sorted["gid"].values, dtype=np.uint64)
             ts.attrs["units"] = "ms"
-
 
 
 class ConstantCurrentClampStimulus(TargetedStimulus):

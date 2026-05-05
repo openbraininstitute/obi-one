@@ -1,0 +1,65 @@
+{
+  "type": "object",
+  "description": "Reference schema for the ion_channel_variable_modification_by_neuron UI element.",
+  "ui_element": "ion_channel_variable_modification_by_neuron",
+  "title": "Ion channel variable manipulations by neuron",
+  "description_ui": "Ion channel variable modification (RANGE or GLOBAL) by neuron.",
+  "property_group": "Circuit",
+  "property": "MechanismVariablesByIonChannel",
+  "data_model": {
+    "type": "object",
+    "description": "ByNeuronModification",
+    "properties": {
+      "ion_channel_id": {
+        "type": ["string", "null"],
+        "format": "uuid",
+        "description": "Ion channel entity ID, when applicable."
+      },
+      "channel_name": {
+        "type": ["string", "null"],
+        "minLength": 1,
+        "description": "Channel suffix used as key in conditions.mechanisms for GLOBAL updates."
+      },
+      "variable_name": {
+        "type": "string",
+        "description": "Variable selected by the user."
+      },
+      "variable_type": {
+        "type": "string",
+        "enum": ["RANGE", "GLOBAL"],
+        "default": "GLOBAL",
+        "description": "Variable type."
+      },
+      "new_value": {
+        "oneOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        ],
+        "description": "Replacement value."
+      }
+    },
+    "required": ["ion_channel_id", "channel_name", "variable_name", "variable_type", "new_value"]
+  },
+  "sonata_output": {
+    "global_example": {
+      "StochKv3": {
+        "vmin_StochKv3": -80.0
+      }
+    },
+    "range_example": [
+      {
+        "name": "modify_gSK_E2bar_SK_E2_all",
+        "node_set": "single",
+        "type": "configure_all_sections",
+        "section_configure": "%s.gSK_E2bar_SK_E2 = 0.002"
+      }
+    ]
+  }
+}

@@ -11,20 +11,30 @@ from app.logger import L
 from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
-from obi_one.scientific.unions.aliases import SimulationsForm
+from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
+from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
 
@@ -51,10 +61,14 @@ def create_endpoint_for_scan_config(
     @router.post(endpoint_name_with_slash, summary=model.name, description=model.description)
     def endpoint(
         db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-        form: model,
+        form: model,  # ty:ignore[invalid-type-form]
     ) -> str:
         L.info("generate_grid_scan")
         L.info(db_client)
+
+        if model is SchemaExampleScanConfig:
+            error_msg = "SchemaExampleScanConfig endpoint is non-functional."
+            raise HTTPException(status_code=500, detail=error_msg)
 
         campaign = None
         try:
@@ -63,7 +77,7 @@ def create_endpoint_for_scan_config(
                     form=form,
                     # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
                     #        / "grid_scan", => ERA001 Found commented-out code
-                    output_root=tdir,
+                    output_root=tdir,  # ty:ignore[invalid-argument-type]
                     coordinate_directory_option="ZERO_INDEX",
                 )
                 grid_scan.execute(db_client=db_client)
@@ -98,11 +112,15 @@ def activate_scan_config_endpoints() -> None:
         (CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
-        (SimulationsForm, "generate", "save", True),
         (MorphologyMetricsScanConfig, "run", "", True),
         (ContributeMorphologyScanConfig, "generate", "", True),
         (ContributeSubjectScanConfig, "generate", "", True),
+        (IonChannelModelSimulationScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
+        (CircuitExtractionScanConfig, "generate", "", False),
+        (SkeletonizationScanConfig, "generate", "", False),
+        (SchemaExampleScanConfig, "generate", "", False),
+        (EMSynapseMappingScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,
@@ -111,4 +129,4 @@ def activate_scan_config_endpoints() -> None:
             execute_single_config_task=execute_single_config_task,
         )
 
-    return router
+    return router  # ty:ignore[invalid-return-type]

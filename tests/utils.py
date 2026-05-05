@@ -4,7 +4,7 @@ from pathlib import Path
 from httpx import Headers
 from starlette.testclient import TestClient
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent / "test_data"
 EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
 CIRCUIT_DIR = EXAMPLES_DIR / "data" / "tiny_circuits"
 MATRIX_DIR = EXAMPLES_DIR / "data" / "connectivity_matrices"
@@ -55,3 +55,17 @@ class ClientProxy:
 
         method = getattr(self._client, name)
         return decorator(method) if name in self._methods else method
+
+
+def assert_response(response, expected_status_code=200, context=None):
+    assert response.status_code == expected_status_code, (
+        f"Request {response.request.method} {response.request.url}: "
+        f"expected={expected_status_code}, actual={response.status_code}, "
+        f"content={response.content}, context={context}"
+    )
+
+
+def assert_request(client_method, *, expected_status_code=200, context=None, **kwargs):
+    response = client_method(**kwargs)
+    assert_response(response, expected_status_code=expected_status_code, context=context)
+    return response

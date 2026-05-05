@@ -8,7 +8,7 @@ from pydantic import Field, NonNegativeFloat, NonNegativeInt
 from obi_one.scientific.blocks.neuron_sets.property import PropertyNeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
-L = logging.getLogger("obi-one")
+L = logging.getLogger(__name__)
 
 
 with contextlib.suppress(ImportError):  # Try to import connalysis
@@ -19,25 +19,25 @@ class VolumetricCountNeuronSet(PropertyNeuronSet):
     """Volumetric neuron set selection based on a given neuron count."""
 
     ox: float | list[float] = Field(
-        name="Offset: x",
+        title="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
     oy: float | list[float] = Field(
-        name="Offset: y",
+        title="Offset: y",
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
     oz: float | list[float] = Field(
-        name="Offset: z",
+        title="Offset: z",
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
     n: NonNegativeInt | list[NonNegativeInt] = Field(
-        name="Number of neurons", description="Number of neurons to find"
+        title="Number of neurons", description="Number of neurons to find"
     )
     columns_xyz: tuple[str, str, str] | list[tuple[str, str, str]] = Field(
-        name="x/y/z column names",
+        title="x/y/z column names",
         description="Names of the three neuron (node) properties used for volumetric tests",
         default=("x", "y", "z"),
     )
@@ -69,25 +69,25 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
     """Volumetric neuron set selection based on a radius."""
 
     ox: float | list[float] = Field(
-        name="Offset: x",
+        title="Offset: x",
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
     oy: float | list[float] = Field(
-        name="Offset: y",
+        title="Offset: y",
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
     oz: float | list[float] = Field(
-        name="Offset: z",
+        title="Offset: z",
         description="Offset of the center of the volume, relative to the centroid of the node \
             population",
     )
     radius: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        name="Radius", description="Radius in um of volumetric sample"
+        title="Radius", description="Radius in um of volumetric sample"
     )
     columns_xyz: tuple[str, str, str] | list[tuple[str, str, str]] = Field(
-        name="x/y/z column names",
+        title="x/y/z column names",
         description="Names of the three neuron (node) properties used for volumetric tests",
         default=("x", "y", "z"),
     )
@@ -107,7 +107,7 @@ class VolumetricRadiusNeuronSet(PropertyNeuronSet):
         tgt_center = df[cols_xyz].mean() + o_df
 
         d = np.linalg.norm(df[cols_xyz] - tgt_center, axis=1)
-        idxx = np.nonzero(self.radius > d)[0]
+        idxx = np.nonzero(self.radius > d)[0]  # ty:ignore[invalid-argument-type]
         df = df.iloc[idxx]
 
         expression = {"population": population, "node_id": list(df["node_ids"].astype(int))}

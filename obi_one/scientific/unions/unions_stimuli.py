@@ -3,85 +3,93 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.stimuli.electric_field import (
+    SpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
+)
+from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
+    OrnsteinUhlenbeckConductanceSomaticStimulus,
+    OrnsteinUhlenbeckCurrentSomaticStimulus,
+    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
+    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike import (
+    FullySynchronousSpikeStimulus,
+    PoissonSpikeStimulus,
+    SinusoidalPoissonSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import (
+    ConstantCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampSomaticStimulus,
+    LinearCurrentClampSomaticStimulus,
+    MultiLevelSEClampSomaticStimulus,
+    MultiPulseCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeConstantCurrentClampSomaticStimulus,
+    RelativeLinearCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SEClampSomaticStimulus,
+    SinusoidalCurrentClampSomaticStimulus,
+    SubthresholdCurrentClampSomaticStimulus,
+)
 from obi_one.scientific.blocks.stimulus import (
     # Deprecated somatic aliases (backward compatibility)
     ConstantCurrentClampSomaticStimulus,
-    # New unified stimulus classes
-    ConstantCurrentClampStimulus,
-    FullySynchronousSpikeStimulus,
-    HyperpolarizingCurrentClampSomaticStimulus,
-    HyperpolarizingCurrentClampStimulus,
-    LinearCurrentClampSomaticStimulus,
-    LinearCurrentClampStimulus,
-    MultiPulseCurrentClampSomaticStimulus,
-    MultiPulseCurrentClampStimulus,
-    NormallyDistributedCurrentClampSomaticStimulus,
-    NormallyDistributedCurrentClampStimulus,
-    PoissonSpikeStimulus,
-    RelativeConstantCurrentClampSomaticStimulus,
-    RelativeConstantCurrentClampStimulus,
-    RelativeLinearCurrentClampSomaticStimulus,
-    RelativeLinearCurrentClampStimulus,
-    RelativeNormallyDistributedCurrentClampSomaticStimulus,
-    RelativeNormallyDistributedCurrentClampStimulus,
-    SinusoidalCurrentClampSomaticStimulus,
-    SinusoidalCurrentClampStimulus,
-    SinusoidalPoissonSpikeStimulus,
-    SubthresholdCurrentClampSomaticStimulus,
-    SubthresholdCurrentClampStimulus,
 )
 
-# Full stimulus union, including spike stimuli and deprecated somatic aliases
-StimulusUnion = Annotated[
-    ConstantCurrentClampStimulus
-    | HyperpolarizingCurrentClampStimulus
-    | LinearCurrentClampStimulus
-    | MultiPulseCurrentClampStimulus
-    | NormallyDistributedCurrentClampStimulus
-    | RelativeNormallyDistributedCurrentClampStimulus
-    | RelativeConstantCurrentClampStimulus
-    | RelativeLinearCurrentClampStimulus
-    | SinusoidalCurrentClampStimulus
-    | SubthresholdCurrentClampStimulus
-    | PoissonSpikeStimulus
+_ABSOLUTE_INJECTION_STIMULI = (
+    ConstantCurrentClampSomaticStimulus
+    | HyperpolarizingCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | NormallyDistributedCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | OrnsteinUhlenbeckCurrentSomaticStimulus
+    | OrnsteinUhlenbeckConductanceSomaticStimulus
+)
+
+_RELATIVE_INJECTION_STIMULI = (
+    RelativeNormallyDistributedCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
+    | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
+    | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
+)
+
+_INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
+
+_SPIKE_STIMULI = (
+    PoissonSpikeStimulus
     | FullySynchronousSpikeStimulus
     | SinusoidalPoissonSpikeStimulus
-    # --- deprecated somatic names for backward compat ---
-    | ConstantCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus,
+    | InterSpikeIntervalDistributionSpikeStimulus
+)
+
+_FIELD_STIMULI = (
+    SpatiallyUniformElectricFieldStimulus | TemporallyCosineSpatiallyUniformElectricFieldStimulus
+)
+
+StimulusUnion = Annotated[
+    _INJECTION_STIMULI | _SPIKE_STIMULI,
+    Discriminator("type"),
+]
+
+CircuitStimulusUnion = Annotated[
+    _INJECTION_STIMULI | _SPIKE_STIMULI | _FIELD_STIMULI,
     Discriminator("type"),
 ]
 
 MEModelStimulusUnion = Annotated[
-    ConstantCurrentClampStimulus
-    | HyperpolarizingCurrentClampStimulus
-    | LinearCurrentClampStimulus
-    | MultiPulseCurrentClampStimulus
-    | NormallyDistributedCurrentClampStimulus
-    | RelativeNormallyDistributedCurrentClampStimulus
-    | RelativeConstantCurrentClampStimulus
-    | RelativeLinearCurrentClampStimulus
-    | SinusoidalCurrentClampStimulus
-    | SubthresholdCurrentClampStimulus
-    # --- deprecated somatic names for backward compat ---
-    | ConstantCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus,
+    _INJECTION_STIMULI,
+    Discriminator("type"),
+]
+
+IonChannelModelStimulusUnion = Annotated[
+    SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
 

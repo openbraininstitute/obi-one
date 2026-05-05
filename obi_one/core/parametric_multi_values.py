@@ -28,14 +28,14 @@ class ParametericMultiValue(OBIBaseModel):
 
     @model_validator(mode="after")
     def valid_range(self) -> Self:
-        if self.start >= self.end:
+        if self.start >= self.end:  # ty:ignore[unresolved-attribute]
             error = "start must be < end"
             raise ValueError(error)
         return self
 
     def __len__(self) -> int:
         """Length operator."""
-        return len(self._values)
+        return len(self.values)  # ty:ignore[unresolved-attribute]
 
     @classmethod
     def check_n_less_equal_max(cls, n: int, max_n: int) -> None:
@@ -44,16 +44,16 @@ class ParametericMultiValue(OBIBaseModel):
             exception_name = "custom_n_greater_than_max"
             raise PydanticCustomError(
                 exception_name,
-                f"Number of values {n} exceeds maximum allowed {max_n}.",
+                f"Number of values {n} exceeds maximum allowed {max_n}.",  # ty:ignore[invalid-argument-type]
             )
 
     def check_expected_values_length(self, expected_length: int) -> None:
         """Check if the number of expected values is equal to the actual number of values."""
-        if len(self._values) != expected_length:
+        if len(self._values) != expected_length:  # ty:ignore[unresolved-attribute]
             exception_name = "custom_expected_length_mismatch"
             raise PydanticCustomError(
                 exception_name,
-                f"Expected {expected_length} values, but got {len(self._values)} values.",
+                f"Expected {expected_length} values, but got {len(self._values)} values.",  # ty:ignore[invalid-argument-type, unresolved-attribute]
             )
 
 
@@ -63,7 +63,6 @@ class IntRange(ParametericMultiValue):
     end: int
     _values: list[int] | None = None
 
-    # @model_validator(mode="after")
     @property
     def values(self) -> list[int]:
         if self._values is None:
@@ -89,29 +88,29 @@ class IntRange(ParametericMultiValue):
         """Greater than or equal to operator."""
         if v is None:
             return True
-        return all(_v >= v for _v in self.values)
+        return all(v_ >= v for v_ in self.values)
 
     def __gt__(self, v: int | None) -> bool:
         """Greater than operator."""
         if v is None:
             return True
-        return all(_v > v for _v in self.values)
+        return all(v_ > v for v_ in self.values)
 
     def __le__(self, v: int | None) -> bool:
         """Less than or equal to operator."""
         if v is None:
             return True
-        return all(_v <= v for _v in self.values)
+        return all(v_ <= v for v_ in self.values)
 
     def __lt__(self, v: int | None) -> bool:
         """Less than operator."""
         if v is None:
             return True
-        return all(_v < v for _v in self.values)
+        return all(v_ < v for v_ in self.values)
 
-    def __iter__(self) -> int:
+    def __iter__(self) -> int:  # ty:ignore[invalid-method-override]
         """Iterator."""
-        return self.values.__iter__()
+        return self.values.__iter__()  # ty:ignore[invalid-return-type]
 
 
 class FloatRange(ParametericMultiValue):
@@ -130,7 +129,7 @@ class FloatRange(ParametericMultiValue):
             n = floor_range_over_step + 1
             ParametericMultiValue.check_n_less_equal_max(n, MAX_N_COORDINATES)
 
-            self._values = np.linspace(
+            self._values = np.linspace(  # ty:ignore[invalid-assignment]
                 self.start, self.start + floor_range_over_step * self.step, n
             )
 
@@ -141,7 +140,7 @@ class FloatRange(ParametericMultiValue):
             q = Decimal(1).scaleb(
                 -decimals
             )  # Shift decimal point of 1 to the left by 'decimals' places
-            self._values = [float(Decimal(str(v)).quantize(q)) for v in self._values]
+            self._values = [float(Decimal(str(v)).quantize(q)) for v in self._values]  # ty:ignore[not-iterable]
 
         return self._values
 
@@ -149,29 +148,29 @@ class FloatRange(ParametericMultiValue):
         """Greater than or equal to operator."""
         if v is None:
             return True
-        return all(_v >= v for _v in self.values)
+        return all(v_ >= v for v_ in self.values)
 
     def __gt__(self, v: float | None) -> bool:
         """Greater than operator."""
         if v is None:
             return True
-        return all(_v > v for _v in self.values)
+        return all(v_ > v for v_ in self.values)
 
     def __le__(self, v: float | None) -> bool:
         """Less than or equal to operator."""
         if v is None:
             return True
-        return all(_v <= v for _v in self.values)
+        return all(v_ <= v for v_ in self.values)
 
     def __lt__(self, v: float | None) -> bool:
         """Less than operator."""
         if v is None:
             return True
-        return all(_v < v for _v in self.values)
+        return all(v_ < v for v_ in self.values)
 
-    def __iter__(self) -> float:
+    def __iter__(self) -> float:  # ty:ignore[invalid-method-override]
         """Iterator."""
-        return self.values.__iter__()
+        return self.values.__iter__()  # ty:ignore[invalid-return-type]
 
 
 class PositiveIntRange(IntRange):
@@ -201,10 +200,10 @@ def check_annotation_arguments_and_create_kwargs(ge: type, gt: type, le: type, l
     """Check that only one of ge/gt and le/lt are provided and create Field kwargs."""
     field_kwargs = {}
 
-    if ge and gt:
+    if ge is not None and gt is not None:
         msg = "Only one of ge or gt can be provided."
         raise OBIONEError(msg)
-    if le and lt:
+    if le is not None and lt is not None:
         msg = "Only one of le or lt can be provided."
         raise OBIONEError(msg)
 
@@ -227,12 +226,12 @@ def float_union(
     le: float | None = None,
     lt: float | None = None,
 ) -> float | list[float] | FloatRange:
-    field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)
+    field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)  # ty:ignore[invalid-argument-type]
 
     return (
         Annotated[float, Field(**field_kwargs)]
         | list[Annotated[float, Field(**field_kwargs)]]
-        | Annotated[FloatRange, Field(**field_kwargs)]
+        | Annotated[FloatRange, Field(**field_kwargs)]  # ty:ignore[invalid-return-type]
     )
 
 
@@ -243,12 +242,12 @@ def non_negative_float_union(
     le: NonNegativeFloat | None = None,
     lt: NonNegativeFloat | None = None,
 ) -> NonNegativeFloat | list[NonNegativeFloat] | NonNegativeFloatRange:
-    field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)
+    field_kwargs = check_annotation_arguments_and_create_kwargs(ge, gt, le, lt)  # ty:ignore[invalid-argument-type]
 
     return (
         Annotated[NonNegativeFloat, Field(**field_kwargs)]
         | list[Annotated[NonNegativeFloat, Field(**field_kwargs)]]
-        | Annotated[NonNegativeFloatRange, Field(**field_kwargs)]
+        | Annotated[NonNegativeFloatRange, Field(**field_kwargs)]  # ty:ignore[invalid-return-type]
     )
 
 

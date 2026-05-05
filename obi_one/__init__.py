@@ -1,6 +1,10 @@
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.deserialize import (
+    deserialize_obi_object_from_json_data,
+    deserialize_obi_object_from_json_file,
+)
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.path import NamedPath
@@ -11,16 +15,14 @@ from obi_one.core.run_tasks import (
     run_tasks_for_generated_scan,
 )
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.serialization import (
-    deserialize_obi_object_from_json_data,
-    deserialize_obi_object_from_json_file,
-)
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.core.tuple import NamedTuple
 
 __all__ = [
     "AfferentSynapsesBlock",
+    "AllDistributionsReference",
+    "AllDistributionsUnion",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
@@ -35,6 +37,7 @@ __all__ = [
     "CircuitFromID",
     "CircuitSimulationScanConfig",
     "CircuitSimulationSingleConfig",
+    "CircuitStimulusUnion",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -45,9 +48,11 @@ __all__ = [
     "CombinedNeuronSet",
     "CompartmentLocation",
     "CompartmentSet",
+    "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
+    "ConstantCurrentClampSomaticStimulus",
     "ConstantCurrentClampStimulus",
     "ContributeMorphologyScanConfig",
     "ContributeMorphologySingleConfig",
@@ -55,52 +60,72 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "DelayedInterNeuronSetSynapticManipulation",
+    "DisconnectSynapticManipulation",
+    "EMCellMeshFromID",
+    "EMSynapseMappingScanConfig",
+    "EMSynapseMappingSingleConfig",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
+    "ExponentialDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
+    "FloatConstantDistribution",
     "FloatRange",
+    "FloatUniformDistribution",
     "FolderCompressionScanConfig",
     "FolderCompressionSingleConfig",
     "FolderCompressionTask",
     "FullySynchronousSpikeStimulus",
+    "GammaDistribution",
     "GenerateSimulationTask",
+    "GlobalVariableInterNeuronSetSynapticManipulation",
     "GridScan",
     "GridScanGenerationTask",
+    "HyperpolarizingCurrentClampSomaticStimulus",
     "HyperpolarizingCurrentClampStimulus",
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "IntConstantDistribution",
     "IntRange",
+    "IntUniformDistribution",
+    "InterNeuronSetSynapticManipulation",
+    "InterSpikeIntervalDistributionSpikeStimulus",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
-    "LinearCurrentClampStimulus",
+    "IonChannelModelSimulationScanConfig",
+    "IonChannelModelSimulationSingleConfig",
+    "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
     "MEModelCircuit",
     "MEModelFromID",
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
+    "MEModelStimulusUnion",
     "MEModelWithSynapsesCircuitFromID",
     "MEModelWithSynapsesCircuitSimulationScanConfig",
     "MEModelWithSynapsesCircuitSimulationSingleConfig",
+    "ModSpecificVariableInterNeuronSetSynapticManipulation",
     "MorphologyContainerizationScanConfig",
     "MorphologyContainerizationSingleConfig",
     "MorphologyContainerizationTask",
     "MorphologyDecontainerizationScanConfig",
     "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
+    "MorphologyLocationsReference",
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
     "MorphologyLocationsTask",
-    "MorphologyLocationsReference",
     "MorphologyMetricsOutput",
     "MorphologyMetricsScanConfig",
     "MorphologyMetricsSingleConfig",
     "MorphologyMetricsTask",
+    "MultiPulseCurrentClampSomaticStimulus",
     "MultiPulseCurrentClampStimulus",
     "NamedPath",
     "NamedTuple",
@@ -110,9 +135,12 @@ __all__ = [
     "NeuronSetUnion",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NormallyDistributedCurrentClampSomaticStimulus",
     "NormallyDistributedCurrentClampStimulus",
     "OBIBaseModel",
     "OBIONEError",
+    "OrnsteinUhlenbeckConductanceSomaticStimulus",
+    "OrnsteinUhlenbeckCurrentSomaticStimulus",
     "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
@@ -132,11 +160,12 @@ __all__ = [
     "RecordingReference",
     "RecordingUnion",
     "RegularTimestamps",
-    "RelativeConstantCurrentClampStimulus",
-    "RelativeLinearCurrentClampStimulus",
-    "RelativeNormallyDistributedCurrentClampStimulus",
+    "RelativeConstantCurrentClampSomaticStimulus",
+    "RelativeLinearCurrentClampSomaticStimulus",
+    "RelativeNormallyDistributedCurrentClampSomaticStimulus",
+    "RelativeOrnsteinUhlenbeckConductanceSomaticStimulus",
+    "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
-    "ScanConfig",
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
@@ -146,24 +175,29 @@ __all__ = [
     "SimulationNeuronSetUnion",
     "SimulationsForm",
     "SingleConfigMixin",
-    "SingleConfigMixin",
     "SingleTimestamp",
+    "SinusoidalCurrentClampSomaticStimulus",
     "SinusoidalCurrentClampStimulus",
     "SinusoidalPoissonSpikeStimulus",
+    "SkeletonizationScanConfig",
+    "SkeletonizationSingleConfig",
     "SomaVoltageRecording",
+    "SpatiallyUniformElectricFieldStimulus",
     "StimulusReference",
     "StimulusUnion",
+    "SubthresholdCurrentClampSomaticStimulus",
     "SubthresholdCurrentClampStimulus",
     "SynapseSetUnion",
     "SynapticMgManipulation",
     "Task",
     "TasksUnion",
+    "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowSomaVoltageRecording",
-    "Timestamps",
     "TimestampsReference",
     "TimestampsUnion",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
+    "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
@@ -207,6 +241,16 @@ from obi_one.scientific.blocks.afferent_synapses import (
     RandomlySelectedNumberOfSynapses,
 )
 from obi_one.scientific.blocks.compartment_sets import CompartmentLocation, CompartmentSet
+from obi_one.scientific.blocks.distributions.constant import (
+    FloatConstantDistribution,
+    IntConstantDistribution,
+)
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.uniform import (
+    FloatUniformDistribution,
+    IntUniformDistribution,
+)
 from obi_one.scientific.blocks.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
@@ -250,22 +294,53 @@ from obi_one.scientific.blocks.recording import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
-from obi_one.scientific.blocks.stimulus import (
-    ConstantCurrentClampStimulus,
-    FullySynchronousSpikeStimulus,
-    HyperpolarizingCurrentClampStimulus,
-    LinearCurrentClampStimulus,
-    MultiPulseCurrentClampStimulus,
-    NormallyDistributedCurrentClampStimulus,
-    PoissonSpikeStimulus,
-    RelativeConstantCurrentClampStimulus,
-    RelativeLinearCurrentClampStimulus,
-    RelativeNormallyDistributedCurrentClampStimulus,
-    SinusoidalCurrentClampStimulus,
-    SinusoidalPoissonSpikeStimulus,
-    SubthresholdCurrentClampStimulus,
+from obi_one.scientific.blocks.stimuli.electric_field import (
+    SpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
 )
-from obi_one.scientific.blocks.timestamps import RegularTimestamps, SingleTimestamp, Timestamps
+from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
+    OrnsteinUhlenbeckConductanceSomaticStimulus,
+    OrnsteinUhlenbeckCurrentSomaticStimulus,
+    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
+    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike import (
+    FullySynchronousSpikeStimulus,
+    PoissonSpikeStimulus,
+    SinusoidalPoissonSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import (
+    ConstantCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampSomaticStimulus,
+    LinearCurrentClampSomaticStimulus,
+    MultiPulseCurrentClampSomaticStimulus,
+    NormallyDistributedCurrentClampSomaticStimulus,
+    RelativeConstantCurrentClampSomaticStimulus,
+    RelativeLinearCurrentClampSomaticStimulus,
+    RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SinusoidalCurrentClampSomaticStimulus,
+    SubthresholdCurrentClampSomaticStimulus,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.base import (
+    DelayedInterNeuronSetSynapticManipulation,
+    GlobalVariableInterNeuronSetSynapticManipulation,
+    InterNeuronSetSynapticManipulation,
+    ModSpecificVariableInterNeuronSetSynapticManipulation,
+    WeightChangeDelayedInterNeuronSetSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ConnectSynapticManipulation,
+    DisconnectSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.cell_morphology_from_id import (
     CellMorphologyFromID,
 )
@@ -273,6 +348,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
+from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -304,6 +380,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
 )
+from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    EMSynapseMappingScanConfig,
+    EMSynapseMappingSingleConfig,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
@@ -314,15 +394,23 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulation_configs import (
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationScanConfig,
+    IonChannelModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulation_task import (
+from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
@@ -350,16 +438,19 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
+from obi_one.scientific.tasks.skeletonization import (
+    SkeletonizationScanConfig,
+    SkeletonizationSingleConfig,
+)
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
-from obi_one.scientific.unions.unions_manipulations import (
-    ScaleAcetylcholineUSESynapticManipulation,
-    SynapticMgManipulation,
-)
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,
@@ -367,32 +458,23 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
-from obi_one.scientific.unions.unions_stimuli import StimulusReference, StimulusUnion
+from obi_one.scientific.unions.unions_stimuli import (
+    CircuitStimulusUnion,
+    MEModelStimulusUnion,
+    StimulusReference,
+    StimulusUnion,
+)
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
-LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"
-PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"
+LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # noqa: RUF067
+PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # noqa: RUF067
 
 
-class GridScan(GridScanGenerationTask):
+class GridScan(GridScanGenerationTask):  # noqa: RUF067
     pass
 
 
-class CoupledScan(CoupledScanGenerationTask):
+class CoupledScan(CoupledScanGenerationTask):  # noqa: RUF067
     pass
-
-
-ConstantCurrentClampSomaticStimulus = ConstantCurrentClampStimulus
-RelativeConstantCurrentClampSomaticStimulus = RelativeConstantCurrentClampStimulus
-LinearCurrentClampSomaticStimulus = LinearCurrentClampStimulus
-RelativeLinearCurrentClampSomaticStimulus = RelativeLinearCurrentClampStimulus
-NormallyDistributedCurrentClampSomaticStimulus = NormallyDistributedCurrentClampStimulus
-RelativeNormallyDistributedCurrentClampSomaticStimulus = (
-    RelativeNormallyDistributedCurrentClampStimulus
-)
-MultiPulseCurrentClampSomaticStimulus = MultiPulseCurrentClampStimulus
-SinusoidalCurrentClampSomaticStimulus = SinusoidalCurrentClampStimulus
-SubthresholdCurrentClampSomaticStimulus = SubthresholdCurrentClampStimulus
-HyperpolarizingCurrentClampSomaticStimulus = HyperpolarizingCurrentClampStimulus

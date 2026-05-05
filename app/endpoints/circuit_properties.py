@@ -3,6 +3,7 @@ from typing import Annotated
 
 import entitysdk.client
 import entitysdk.exception
+from entitysdk.models.circuit import Circuit
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -15,8 +16,15 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.library.entity_property_types import CircuitPropertyType
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    CircuitUsability,
+)
+from obi_one.scientific.library.memodel_circuit import (
+    try_get_mechanism_variables,
+)
 
+INPUT_RESISTANCE_DYNAMIC_PARAM = "input_resistance"
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
 
@@ -120,22 +128,68 @@ def mapped_circuit_properties_endpoint(
     circuit_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
+    mapped_circuit_properties: dict = {}
+
+    # Try fetching circuit metrics (nodesets). This succeeds for Circuit entities
+    # but fails for MEModel entities which are not stored as Circuit in the DB.
     try:
         circuit_metrics = get_circuit_metrics(
             circuit_id=circuit_id,
             db_client=db_client,
-            level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
+            level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.basic},
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-        mapped_circuit_properties = {}
-        mapped_circuit_properties[CircuitPropertyType.NODE_SET] = circuit_metrics.names_of_nodesets
+        mapped_circuit_properties[CircuitMappedProperties.NODE_SET] = (
+            circuit_metrics.names_of_nodesets
+        )
+    except (entitysdk.exception.EntitySDKError, ValueError):
+        # Expected for MEModel entities or entities without proper circuit configuration
+        # Continue to try mechanism variables
+        pass
 
-    except entitysdk.exception.EntitySDKError as err:
+    # Try fetching mechanism variables (succeeds for MEModel entities).
+    mechanism_variables_response = try_get_mechanism_variables(
+        db_client=db_client,
+        entity_id=circuit_id,
+    )
+    if mechanism_variables_response is not None:
+        mapped_circuit_properties[CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL] = (
+            mechanism_variables_response
+        )
+
+    if not mapped_circuit_properties:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
                 "code": ApiErrorCode.INTERNAL_ERROR,
-                "detail": f"Internal error retrieving the circuit {circuit_id}.",
+                "detail": f"No properties found for entity {circuit_id}.",
             },
-        ) from err
+        )
+
+    # Add usability (only for Circuit entities)
+    if CircuitMappedProperties.NODE_SET in mapped_circuit_properties:
+        try:
+            circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)  # ty:ignore[invalid-argument-type]
+            simulation_options_usability = {
+                CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
+                == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: any(
+                    INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names  # ty:ignore[unresolved-attribute, unsupported-operator]
+                    for population in circuit_metrics.biophysical_node_populations
+                ),
+            }
+            mapped_circuit_properties["usability"] = simulation_options_usability
+        except entitysdk.exception.EntitySDKError:
+            # If we can't get the circuit entity, set default usability
+            mapped_circuit_properties["usability"] = {
+                CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+                CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+            }
+    else:
+        # For MEModel entities, set default usability
+        mapped_circuit_properties["usability"] = {
+            CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+            CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
+        }
+
     return mapped_circuit_properties

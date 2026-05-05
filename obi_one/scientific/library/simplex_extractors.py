@@ -1,14 +1,25 @@
-"""Helper function to extract nodes in simplices in a matrix
+"""Helper function to extract nodes in simplices in a matrix.
+
+Requires: pip install obi-one[connectivity]
+
 Author: Daniela Egas Santander
-Last updated: 06.2024.
 """
 
 import logging
 
 import numpy as np
 import pandas as pd
-from connalysis.network.topology import list_simplices_by_dimension
 from scipy import sparse
+
+# Connectivity dependencies (optional) - check for connalysis
+try:
+    from connalysis.network.topology import list_simplices_by_dimension
+except ImportError as e:  # pragma: no cover
+    msg = (
+        "Simplex extraction requires connectome-analysis (connalysis). "
+        "Install with: pip install obi-one[connectivity]"
+    )
+    raise ImportError(msg) from e
 
 L = logging.getLogger(__name__)
 
@@ -37,7 +48,7 @@ def determine_selection(
         selection = subsample_by_node_participation(sl, n_count_max, dim)
     elif subsample_method == "sample_simplices":
         selection = subsample_simplices(sl, n_count_max, dim)
-    return selection
+    return selection  # ty:ignore[invalid-return-type]
 
 
 def simplex_submat(
@@ -121,7 +132,7 @@ def simplex_submat(
     if dim > sl.index.max():
         dim = sl.index.max()
         L.info(f"> Dimension not attained using dimension {dim} instead.")
-    if subsample and (n_count_max < dim + 1):
+    if subsample and (n_count_max < dim + 1):  # ty:ignore[unsupported-operator]
         n_count_max = dim + 1
         L.info(
             f"> n_count_max is too small to form a single {dim}-simplex, sampling n_count_max = \
@@ -133,9 +144,9 @@ def simplex_submat(
         v,
         dim,
         subsample=subsample,
-        n_count_max=n_count_max,
+        n_count_max=n_count_max,  # ty:ignore[invalid-argument-type]
         subsample_method=subsample_method,
-        seed=seed,
+        seed=seed,  # ty:ignore[invalid-argument-type]
     )
 
 

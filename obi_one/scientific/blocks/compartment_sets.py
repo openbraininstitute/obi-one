@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, Mapping
 from operator import itemgetter
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
 
 import morphio
 import pandas as pd
@@ -63,12 +64,8 @@ class CompartmentSet(Block):
         locations: Iterable[CompartmentLocation],
     ) -> CompartmentSet:
         """Convenience constructor from CompartmentLocation objects."""
-        triplets = [
-            (loc.node_id, loc.section_id, loc.offset)
-            for loc in locations
-        ]
+        triplets = [(loc.node_id, loc.section_id, loc.offset) for loc in locations]
         return cls(population=population, compartment_entries=tuple(triplets))
-
 
 
 def build_compartment_set_from_locations_block(
@@ -110,6 +107,7 @@ def build_compartment_set_from_locations_block(
 
     return CompartmentSet.from_locations(population=population, locations=locations)
 
+
 def build_compartment_set_for_neuron_set(
     *,
     circuit: Circuit,
@@ -119,8 +117,7 @@ def build_compartment_set_for_neuron_set(
     locations_block: MorphologyLocationsBlock,
     morphology_loader: Callable[[Circuit, int, str | None], morphio.Morphology],
 ) -> CompartmentSet:
-    """
-    Public bridge used by high-level configs/examples:
+    """Public bridge used by high-level configs/examples:
       neuron_set + locations_block -> CompartmentSet
 
     Notes:
