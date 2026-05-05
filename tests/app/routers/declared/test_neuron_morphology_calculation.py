@@ -120,9 +120,13 @@ def mock_io_for_test(monkeypatch):
         mock_inst.suffix = real.suffix
         mock_inst.stem = real.stem
         mock_inst.name = real.name
-        mock_inst.parent = _make_mock_path(str(real.parent))
         mock_inst.__str__ = lambda _self: str(real)
         mock_inst.__truediv__ = lambda _self, other: _make_mock_path(str(real / other))
+
+        parent_mock = MagicMock()
+        parent_mock.__str__ = lambda _self: str(real.parent)
+        mock_inst.parent = parent_mock
+
         return mock_inst
 
     monkeypatch.setattr(
