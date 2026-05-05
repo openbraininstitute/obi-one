@@ -146,7 +146,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         self._cleanup_temp_dir()  # In case it exists already
         self._temp_dir = tempfile.TemporaryDirectory()
         return Path(self._temp_dir.name).resolve()
-    
+
     def _cleanup_temp_dir(self) -> None:
         """Clean-up of temporary directory, if any."""
         if self._temp_dir is not None:
@@ -181,7 +181,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         if self._circuit is None:
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
-        
+
         return circuit_dest_dir
 
     def execute(
@@ -196,7 +196,7 @@ class CreateExtracellularRecordingArrayTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        circuit_dest_dir =self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+        circuit_dest_dir = self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
         print(circuit_dest_dir)
         files = os.listdir(circuit_dest_dir)
         print(files)
@@ -239,7 +239,6 @@ class CreateExtracellularRecordingArrayTask(Task):
             neurite_types=neurite_types,
         )
         print("Weights saved to:", weights_output_path)
-        
 
         # Todo later: Update execution activity (if any)
         # CreateExtracellularRecordingArrayTask._update_execution_activity(
