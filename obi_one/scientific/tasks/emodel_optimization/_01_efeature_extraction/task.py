@@ -189,7 +189,7 @@ class EModelEFeatureExtractionTask(Task):
 
             configurator = TargetsConfigurator(pipeline.access_point)
             configurator.new_configuration(
-                files_metadata=files_metadata,
+                files=files_metadata,
                 targets=targets_formatted,
                 protocols_rheobase=list(targets.protocols_rheobase),
             )

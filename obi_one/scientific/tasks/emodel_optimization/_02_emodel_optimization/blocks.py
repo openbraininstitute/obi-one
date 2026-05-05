@@ -85,12 +85,16 @@ class OptimizationParams(Block):
 class OptimizationSettings(Block):
     """Top-level ``pipeline_settings`` keys controlling optimisation."""
 
-    optimiser: Literal["CMA_ES", "MO-CMA", "IBEA", "SO-CMA"] = Field(
-        default="CMA_ES",
+    optimiser: Literal["SO-CMA", "MO-CMA", "IBEA"] = Field(
+        default="SO-CMA",
         title="Optimiser",
         description=(
-            "BluePyEModel optimiser. ``CMA_ES`` is the single-objective Covariance"
-            " Matrix Adaptation Evolution Strategy; the L5PC example uses ``MO-CMA``."
+            "BluePyEModel optimiser. ``SO-CMA`` is the single-objective"
+            " Covariance Matrix Adaptation Evolution Strategy (commonly"
+            " referred to as 'CMA-ES'); ``MO-CMA`` is its multi-objective"
+            " variant (the L5PC recipe default); ``IBEA`` is the"
+            " Indicator-Based Evolutionary Algorithm. See"
+            " ``bluepyemodel.optimisation.optimisation.setup_optimiser``."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
