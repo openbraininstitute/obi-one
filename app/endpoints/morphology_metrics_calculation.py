@@ -386,14 +386,16 @@ def _register_assets_and_measurements(
 
 
 def _resolve_swc_bytes_for_mesh(
-    converted_morphology_file1: Path | None,
-    converted_morphology_file2: Path | None,
+    converted_morphology_file1: str | Path | None,
+    converted_morphology_file2: str | Path | None,
     file_extension: str,
     content: bytes,
 ) -> bytes | None:
     for converted_path in (converted_morphology_file1, converted_morphology_file2):
-        if converted_path and converted_path.suffix.lower() == ".swc" and converted_path.exists():
-            return converted_path.read_bytes()
+        if converted_path:
+            p = Path(converted_path)
+            if p.suffix.lower() == ".swc" and p.exists():
+                return p.read_bytes()
     if file_extension == ".swc":
         return content
     return None
