@@ -1,6 +1,7 @@
 import json
 import sys
 import uuid
+from http import HTTPStatus
 from pathlib import Path
 from unittest.mock import MagicMock, create_autospec
 
@@ -175,8 +176,6 @@ def test_validation_errors(client, filename, content, metadata, expected_code):
 
 
 def test_internal_errors(client, monkeypatch, mock_entity_payload):
-    from http import HTTPStatus
-    from fastapi import HTTPException
 
     def mock_fail(*_args, **_kwargs):
         raise HTTPException(
