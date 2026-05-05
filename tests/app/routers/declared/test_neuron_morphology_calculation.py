@@ -18,21 +18,21 @@ from app.endpoints.morphology_metrics_calculation import (
 )
 from app.services.morphology import validate_and_convert_morphology
 
-ROUTE = "/declared/register-morphology-with-calculated-metrics"  # [cite: 2]
+ROUTE = "/declared/register-morphology-with-calculated-metrics"
 
-VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"  # [cite: 2]
-PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"  # [cite: 2]
+VIRTUAL_LAB_ID = "bf7d398c-b812-408a-a2ee-098f633f7798"
+PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 
 @pytest.fixture(scope="module")
-def monkeypatch_session():  # [cite: 2]
+def monkeypatch_session():
     m = MonkeyPatch()
     yield m
     m.undo()
 
 
 @pytest.fixture(autouse=True, scope="module")
-def mock_heavy_dependencies(_monkeypatch_session):  # [cite: 2]
+def mock_heavy_dependencies(monkeypatch_session):
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
     sys.modules["neurom"] = mock_neurom
@@ -42,7 +42,7 @@ def mock_heavy_dependencies(_monkeypatch_session):  # [cite: 2]
 
 
 @pytest.fixture(autouse=True)
-def mock_template_and_functions(monkeypatch):  # [cite: 2]
+def mock_template_and_functions(monkeypatch):
     fake_template = {
         "data": [
             {
@@ -88,7 +88,7 @@ def mock_template_and_functions(monkeypatch):  # [cite: 2]
 
 
 @pytest.fixture(autouse=True)
-def mock_io_for_test(monkeypatch):  # [cite: 2]
+def mock_io_for_test(monkeypatch):
     mock_file_handle = MagicMock()
     mock_file_handle.name = "/mock/temp_uploaded_file.swc"
     mock_file_handle.__enter__.return_value = mock_file_handle
@@ -121,7 +121,7 @@ def mock_io_for_test(monkeypatch):  # [cite: 2]
 
 
 @pytest.fixture
-def mock_entity_payload():  # [cite: 2]
+def mock_entity_payload():
     return json.dumps(
         {
             "name": "Test Morphology",
@@ -133,7 +133,7 @@ def mock_entity_payload():  # [cite: 2]
     )
 
 
-def test_morphology_registration_success(client, monkeypatch, mock_entity_payload):  # [cite: 2]
+def test_morphology_registration_success(client, monkeypatch, mock_entity_payload):
     mock_id = str(uuid.uuid4())
     entitysdk_client_mock = MagicMock()
     entitysdk_client_mock.register_entity.return_value = MagicMock(id=mock_id)
@@ -155,19 +155,19 @@ def test_morphology_registration_success(client, monkeypatch, mock_entity_payloa
 
 @pytest.mark.parametrize(
     ("filename", "content", "metadata", "expected_code"),
-    [  # [cite: 1]
+    [
         ("test.swc", b"", "{}", "BAD_REQUEST"),
         ("test.txt", b"content", "{}", "BAD_REQUEST"),
         ("test.swc", b"content", "{invalid}", "INVALID_METADATA"),
     ],
 )
-def test_validation_errors(client, filename, content, metadata, expected_code):  # [cite: 1]
+def test_validation_errors(client, filename, content, metadata, expected_code):
     response = client.post(ROUTE, data={"metadata": metadata}, files={"file": (filename, content)})
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == expected_code
 
 
-def test_internal_errors(client, monkeypatch, mock_entity_payload):  # [cite: 1]
+def test_internal_errors(client, monkeypatch, mock_entity_payload):
     def mock_fail(*_args, **_kwargs):
         msg = "Neurom error"
         raise RuntimeError(msg)
@@ -183,7 +183,7 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):  # [cite: 1]
     assert response.json()["detail"]["code"] == "MORPHOLOGY_ANALYSIS_ERROR"
 
 
-def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):  # [cite: 1]
+def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
     mock_client = MagicMock()
     mock_client.register_entity.return_value = MagicMock(id="123")
     mock_client.upload_file.side_effect = requests.exceptions.RequestException("Upload fail")
@@ -200,7 +200,7 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):  # 
     client.app.dependency_overrides.clear()
 
 
-def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):  # [cite: 1]
+def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._mesh_and_register",
@@ -222,7 +222,7 @@ def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload): 
     client.app.dependency_overrides.clear()
 
 
-def test_register_morphology_logic_variants():  # [cite: 1]
+def test_register_morphology_logic_variants():
     client = MagicMock()
     client.search_entity.side_effect = EntitySDKError("Search fail")
 
@@ -232,7 +232,7 @@ def test_register_morphology_logic_variants():  # [cite: 1]
     assert result is not None
 
 
-def test_utility_branch_coverage():  # [cite: 1]
+def test_utility_branch_coverage():
     # Cover _validate_file_extension empty filename
     with pytest.raises(HTTPException):
         _validate_file_extension("")
