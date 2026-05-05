@@ -205,6 +205,40 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
+        from bluerecording import compute_weights
+        from bluerecording.weights import Electrode, ElectrodeType, save_weights
+        import numpy as np
+
+        electrodes = {
+            f"electrode_{i}": Electrode(
+                position=np.array(loc, dtype=float),
+                type=ElectrodeType.POINT_SOURCE,
+            )
+            for i, loc in enumerate(test_locations)
+        }
+
+        circuit_config_path = Path(circuit_dest_dir) / "circuit_config.json"
+        weights, positions_df, cols, neurite_types, population_name = compute_weights(
+            path_to_config=circuit_config_path,
+            electrodes=electrodes,
+            replace_axons=True,
+        )
+        print("weights shape:", weights.shape if weights is not None else None)
+        print("positions_df shape:", positions_df.shape)
+        print("cols shape:", cols.shape)
+        print("neurite_types shape:", neurite_types.shape)
+        print("population_name:", population_name)
+
+        weights_output_path = Path(circuit_dest_dir) / "weights.h5"
+        save_weights(
+            weights=weights,
+            cols=cols,
+            population_name=population_name,
+            outputfile=str(weights_output_path),
+            electrodes=electrodes,
+            neurite_types=neurite_types,
+        )
+        print("Weights saved to:", weights_output_path)
         
 
         # Todo later: Update execution activity (if any)
