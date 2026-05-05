@@ -1,4 +1,5 @@
 import json
+import pathlib
 import sys
 import uuid
 from http import HTTPStatus
@@ -99,6 +100,7 @@ def mock_io_for_test(monkeypatch):
     mock_file_handle = MagicMock()
     mock_file_handle.name = "/mock/temp_uploaded_file.swc"
     mock_file_handle.__enter__.return_value = mock_file_handle
+    mock_file_handle.__exit__ = MagicMock(return_value=False)
     mock_file_handle.write.return_value = 100
     mock_file_handle.close.return_value = None
 
@@ -107,16 +109,19 @@ def mock_io_for_test(monkeypatch):
         lambda *_args, **_kwargs: mock_file_handle,
     )
 
-    mock_path_instance = MagicMock()
-    mock_path_instance.unlink.return_value = None
-    mock_path_instance.exists.return_value = True
-    mock_path_instance.is_file.return_value = True
-    mock_path_instance.suffix = ".swc"
-    mock_path_instance.parent = mock_path_instance
-    mock_path_instance.name = "mock_file.swc"
-    mock_path_instance.__truediv__.return_value = mock_path_instance
+    real_path = pathlib.Path
 
-    def mock_path_constructor_final(_path_str):
+    def mock_path_constructor_final(path_str):
+        mock_path_instance = MagicMock()
+        mock_path_instance.unlink.return_value = None
+        mock_path_instance.exists.return_value = True
+        mock_path_instance.is_file.return_value = True
+        real = real_path(path_str)
+        mock_path_instance.suffix = real.suffix
+        mock_path_instance.stem = real.stem
+        mock_path_instance.name = real.name
+        mock_path_instance.parent = mock_path_instance
+        mock_path_instance.__truediv__.return_value = mock_path_instance
         return mock_path_instance
 
     monkeypatch.setattr(
@@ -176,7 +181,6 @@ def test_validation_errors(client, filename, content, metadata, expected_code):
 
 
 def test_internal_errors(client, monkeypatch, mock_entity_payload):
-
     def mock_fail(*_args, **_kwargs):
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -241,17 +245,14 @@ def test_register_morphology_logic_variants():
     client = MagicMock()
     client.search_entity.side_effect = EntitySDKError("Search fail")
 
-    # Test entity search failure and short brain location
     payload = {"brain_location": [1.0], "subject_id": "sub123", "name": "test"}
     result = register_morphology(client, payload)
     assert result is not None
 
 
 def test_utility_branch_coverage():
-    # Cover _validate_file_extension empty filename
     with pytest.raises(HTTPException):
         _validate_file_extension("")
 
-    # Cover _get_h5_analysis_path branch for .h5 extension
     path = _get_h5_analysis_path("original.h5", ".h5", "conv1.swc", "conv2.swc")
     assert path == "original.h5"
