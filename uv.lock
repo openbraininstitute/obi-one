@@ -302,6 +302,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/34/82/394f79ff7da5c77793348edc87d39e4a6267d98688b6d8076c1d9ac3b9bd/bluepysnap-3.0.2.tar.gz", hash = "sha256:4a04fe8fa2fe421f17cdc3f5a5e342b6d2d84102b19d41b1ecb4ebae9941ae70", size = 1051738, upload-time = "2025-05-01T11:52:49.088Z" }
 
 [[package]]
+name = "bluerecording"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "h5py" },
+    { name = "libsonata" },
+    { name = "morphio" },
+    { name = "mpi4py" },
+    { name = "neurodamus" },
+    { name = "pandas" },
+    { name = "scikit-learn" },
+    { name = "voxcell" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c2/16/3c20ee6dc88ddbbd3da230e418fcd1618b2125cabe481b04c86e09e51dfe/bluerecording-0.4.1.tar.gz", hash = "sha256:80f2f65eb48abb54f8926e6e82769cc224c7284402be12676ab0b980d6d88322", size = 17499, upload-time = "2026-04-29T13:55:20.332Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/24/edb6e0d39fc47bb540ff9fbdaa1ffd924f2cd2076eef18615747392cb2c6/bluerecording-0.4.1-py3-none-any.whl", hash = "sha256:c7f2825d6e8a4928263e747508c603fc1ead1c18f7719f27f9bbe68c5353ce7d", size = 19592, upload-time = "2026-04-29T13:55:18.768Z" },
+]
+
+[[package]]
 name = "bqplot"
 version = "0.12.45"
 source = { registry = "https://pypi.org/simple" }
@@ -810,14 +829,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.14.3"
+version = "0.15.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/3d/4dcbf763cc3a121d62c662ce7cf91590e2b5071403a8f7231622904e6ba1/entitysdk-0.14.3.tar.gz", hash = "sha256:d87b00d1b0e3e4f8b29ac2d4f8b11f32b30f8974e8c298dbfda5bcb017592b68", size = 81619, upload-time = "2026-04-21T15:45:07.15Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/50/fa40693c1037d480d98c9a244cf65a3cc1ccdc64ecb4090da3247a69180e/entitysdk-0.15.3.tar.gz", hash = "sha256:bf6dcb4833c15b030cb59ec8bd26941905d5920d388195909f2f94eb24629179", size = 87519, upload-time = "2026-05-05T13:54:26.441Z" }
 
 [[package]]
 name = "executing"
@@ -1882,6 +1901,23 @@ wheels = [
 ]
 
 [[package]]
+name = "neurodamus"
+version = "4.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "docopt-ng" },
+    { name = "h5py" },
+    { name = "libsonata" },
+    { name = "packaging" },
+    { name = "psutil" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7c/64/d0efd695cf5032e7e2e97030da6c35264c5f0749ccecad01f0cf600bc26c/neurodamus-4.2.1.tar.gz", hash = "sha256:5a4650c6a1473a6b5eed04f46f8b26352a83805e1d6e3fddf87a64d4b5f33d60", size = 191389, upload-time = "2026-04-27T13:49:28.196Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/2f/601187d4b7071caae44e62b66f99f9160bc8a5d13b42848ba04b2c469cdf/neurodamus-4.2.1-py3-none-any.whl", hash = "sha256:b81f6d062ccea2e219d18ff29cdc863f11bf207333dc9c8bd8e295598151ab75", size = 222192, upload-time = "2026-04-27T13:49:26.511Z" },
+]
+
+[[package]]
 name = "neurom"
 version = "4.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2084,6 +2120,9 @@ all = [
     { name = "starlette" },
     { name = "uvicorn" },
 ]
+bluerecording = [
+    { name = "bluerecording" },
+]
 connectivity = [
     { name = "connectome-analysis" },
     { name = "networkx" },
@@ -2131,6 +2170,7 @@ requires-dist = [
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.53" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
@@ -2163,7 +2203,7 @@ requires-dist = [
     { name = "starlette", marker = "extra == 'service'" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["connectivity", "notebooks", "service", "all"]
+provides-extras = ["connectivity", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [
