@@ -1,7 +1,6 @@
 import json
 import sys
 import uuid
-import pathlib
 from pathlib import Path
 from unittest.mock import MagicMock, create_autospec
 
@@ -12,12 +11,12 @@ from entitysdk.exception import EntitySDKError
 from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
-from app.services.morphology import validate_and_convert_morphology
 from app.endpoints.morphology_metrics_calculation import (
-    register_morphology,
-    _validate_file_extension,
     _get_h5_analysis_path,
+    _validate_file_extension,
+    register_morphology,
 )
+from app.services.morphology import validate_and_convert_morphology
 
 ROUTE = "/declared/register-morphology-with-calculated-metrics"  # [cite: 2]
 
@@ -33,7 +32,7 @@ def monkeypatch_session():  # [cite: 2]
 
 
 @pytest.fixture(autouse=True, scope="module")
-def mock_heavy_dependencies(monkeypatch_session):  # [cite: 2]
+def mock_heavy_dependencies(_monkeypatch_session):  # [cite: 2]
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
     sys.modules["neurom"] = mock_neurom
@@ -110,7 +109,7 @@ def mock_io_for_test(monkeypatch):  # [cite: 2]
     mock_path_instance.name = "mock_file.swc"
     mock_path_instance.__truediv__.return_value = mock_path_instance
 
-    def mock_path_constructor_final(path_str):
+    def mock_path_constructor_final(_path_str):
         return mock_path_instance
 
     monkeypatch.setattr(
@@ -155,7 +154,7 @@ def test_morphology_registration_success(client, monkeypatch, mock_entity_payloa
 
 
 @pytest.mark.parametrize(
-    "filename, content, metadata, expected_code",
+    ("filename", "content", "metadata", "expected_code"),
     [  # [cite: 1]
         ("test.swc", b"", "{}", "BAD_REQUEST"),
         ("test.txt", b"content", "{}", "BAD_REQUEST"),
@@ -169,8 +168,9 @@ def test_validation_errors(client, filename, content, metadata, expected_code): 
 
 
 def test_internal_errors(client, monkeypatch, mock_entity_payload):  # [cite: 1]
-    def mock_fail(*args, **kwargs):
-        raise Exception("Neurom error")
+    def mock_fail(*_args, **_kwargs):
+        msg = "Neurom error"
+        raise RuntimeError(msg)
 
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", mock_fail
