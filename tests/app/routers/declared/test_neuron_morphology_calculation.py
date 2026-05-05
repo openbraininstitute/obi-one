@@ -136,7 +136,7 @@ def mock_io_for_test(monkeypatch):
 
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_measurements",
-        lambda client, entity_id, measurements: MagicMock(id=entity_id),
+        lambda _client, entity_id, _measurements: MagicMock(id=entity_id),
     )
 
 
