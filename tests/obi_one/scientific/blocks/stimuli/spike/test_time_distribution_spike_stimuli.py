@@ -19,7 +19,7 @@ def _set_block_name(block: object, name: str) -> None:
 def _make_time_distribution_stimulus(
     *,
     duration: float = 25.0,
-    number_of_spikes: int = 3,
+    mean_firing_rate: float = 10.0,
     resample_each_repetition: bool = False,
 ) -> obi.SpikeTimeDistributionSpikeStimulus:
     stimulus = obi.SpikeTimeDistributionSpikeStimulus(
@@ -36,7 +36,7 @@ def _make_time_distribution_stimulus(
             block_name="test_timestamps",
         ),
         duration=duration,
-        number_of_spikes=number_of_spikes,
+        mean_firing_rate=mean_firing_rate,
         resample_each_repetition=resample_each_repetition,
     )
     _set_block_name(stimulus, "test_stimulus")
@@ -112,6 +112,17 @@ def _patch_resolved_timestamps(
     )
 
 
+def _patch_number_of_spikes(
+    monkeypatch: pytest.MonkeyPatch,
+    value: int,
+) -> None:
+    monkeypatch.setattr(
+        SpikeTimeDistributionSpikeStimulus,
+        "_sample_number_of_spikes",
+        MagicMock(return_value=value),
+    )
+
+
 class TestSampleSpikeTimesFromDistribution:
     def test_samples_are_sorted(self):
         dist = obi.FloatConstantDistribution(value=10.0)
@@ -155,7 +166,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         timestamps = obi.SingleTimestamp(start_time=0.0)
         stimulus = _make_time_distribution_stimulus(
             duration=25.0,
-            number_of_spikes=2,
+            mean_firing_rate=2.0,
             resample_each_repetition=False,
         )
 
@@ -164,6 +175,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         _patch_timestamps_ref(monkeypatch, stimulus, timestamps)
         _patch_neuron_set_methods(monkeypatch, neuron_set, neuron_ids=[0, 1, 2])
         _patch_resolved_timestamps(monkeypatch, [5.0, 45.0])
+        _patch_number_of_spikes(monkeypatch, 2)
 
         stimulus.generate_spikes(
             circuit=MagicMock(),
@@ -194,7 +206,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         timestamps = obi.SingleTimestamp(start_time=0.0)
         stimulus = _make_time_distribution_stimulus(
             duration=25.0,
-            number_of_spikes=5,
+            mean_firing_rate=5.0,
             resample_each_repetition=False,
         )
 
@@ -203,6 +215,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         _patch_timestamps_ref(monkeypatch, stimulus, timestamps)
         _patch_neuron_set_methods(monkeypatch, neuron_set, neuron_ids=[0, 1, 2])
         _patch_resolved_timestamps(monkeypatch, [0.0, 50.0])
+        _patch_number_of_spikes(monkeypatch, 2)
 
         stimulus.generate_spikes(
             circuit=MagicMock(),
@@ -229,7 +242,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         timestamps = obi.SingleTimestamp(start_time=0.0)
         stimulus = _make_time_distribution_stimulus(
             duration=25.0,
-            number_of_spikes=5,
+            mean_firing_rate=5.0,
             resample_each_repetition=True,
         )
 
@@ -238,6 +251,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         _patch_timestamps_ref(monkeypatch, stimulus, timestamps)
         _patch_neuron_set_methods(monkeypatch, neuron_set, neuron_ids=[0, 1, 2])
         _patch_resolved_timestamps(monkeypatch, [0.0, 50.0])
+        _patch_number_of_spikes(monkeypatch, 2)
 
         stimulus.generate_spikes(
             circuit=MagicMock(),
@@ -255,10 +269,11 @@ class TestSpikeTimeDistributionSpikeStimulus:
         assert not np.allclose(first_rep, second_rep)
 
     def test_default_distribution_is_uniform_over_duration(self, monkeypatch):
-        stimulus = _make_time_distribution_stimulus(duration=25.0, number_of_spikes=3)
+        stimulus = _make_time_distribution_stimulus(duration=25.0, mean_firing_rate=3.0)
+
         stimulus.distribution = None
 
-        mock_sample = MagicMock(return_value=[1.0, 2.0, 3.0])
+        mock_sample = MagicMock(return_value=[1.0, 2.0])
         monkeypatch.setattr(
             SpikeTimeDistributionSpikeStimulus,
             "_sample_spike_times_from_distribution",
@@ -266,6 +281,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         )
 
         _patch_resolved_timestamps(monkeypatch, [0.0])
+        _patch_number_of_spikes(monkeypatch, 2)
 
         stimulus.generate_spikes_by_gid([0])
 
@@ -280,13 +296,14 @@ class TestSpikeTimeStimulusIndexingConvention:
         neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[5, 10, 15]))
         distribution = obi.FloatConstantDistribution(value=10.0)
         timestamps = obi.SingleTimestamp(start_time=0.0)
-        stimulus = _make_time_distribution_stimulus(duration=25.0, number_of_spikes=2)
+        stimulus = _make_time_distribution_stimulus(duration=25.0, mean_firing_rate=2.0)
 
         _patch_distribution_ref(monkeypatch, stimulus, distribution)
         _patch_source_neuron_set_ref(monkeypatch, stimulus, neuron_set)
         _patch_timestamps_ref(monkeypatch, stimulus, timestamps)
         _patch_neuron_set_methods(monkeypatch, neuron_set, neuron_ids=[5, 10, 15])
         _patch_resolved_timestamps(monkeypatch, [0.0])
+        _patch_number_of_spikes(monkeypatch, 2)
 
         stimulus.generate_spikes(
             circuit=MagicMock(),
@@ -300,3 +317,18 @@ class TestSpikeTimeStimulusIndexingConvention:
             node_ids = sorted(set(f["/spikes/test_pop/node_ids"][:].tolist()))
 
         assert node_ids == [5, 10, 15]
+
+
+class TestSampleNumberOfSpikes:
+    def test_expected_spikes_uses_rate_and_duration(self):
+        mock_rng = MagicMock()
+        mock_rng.poisson.return_value = 7
+
+        number_of_spikes = SpikeTimeDistributionSpikeStimulus._sample_number_of_spikes(
+            mean_firing_rate=20.0,
+            duration=1000.0,
+            rng=mock_rng,
+        )
+
+        assert number_of_spikes == 7
+        mock_rng.poisson.assert_called_once_with(20.0)

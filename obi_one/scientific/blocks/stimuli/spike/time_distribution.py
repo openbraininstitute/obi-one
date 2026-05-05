@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
 import numpy as np
-from pydantic import Field, NonNegativeFloat, NonNegativeInt
+from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -38,12 +38,13 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
         },
     )
 
-    number_of_spikes: NonNegativeInt | list[NonNegativeInt] = Field(
-        default=1,
-        title="Number of Spikes",
-        description="Number of spike times to sample per source neuron per timestamp.",
+    mean_firing_rate: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        default=10.0,
+        title="Mean Firing Rate",
+        description="Mean firing rate in Hz used to sample the number of spikes per neuron.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.HERTZ,
         },
     )
 
@@ -74,6 +75,18 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
     )
 
     @staticmethod
+    def _sample_number_of_spikes(
+        mean_firing_rate: float,
+        duration: float,
+        rng: np.random.Generator | None = None,
+    ) -> int:
+        if rng is None:
+            rng = np.random.default_rng()
+
+        expected_spikes = mean_firing_rate * duration / 1000.0
+        return int(rng.poisson(expected_spikes))
+
+    @staticmethod
     def _sample_spike_times_from_distribution(
         distribution: Distribution,
         number_of_spikes: int,
@@ -98,22 +111,33 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
         for gid in source_gids:
             if self.resample_each_repetition:
                 for timestamp in timestamps:
+                    number_of_spikes = self._sample_number_of_spikes(
+                        self.mean_firing_rate,  # ty:ignore[invalid-argument-type]
+                        self.duration,  # ty:ignore[invalid-argument-type]
+                        rng=rng,
+                    )
                     relative_spikes = self._sample_spike_times_from_distribution(
                         distribution,  # ty:ignore[invalid-argument-type]
-                        number_of_spikes=self.number_of_spikes,  # ty:ignore[invalid-argument-type]
+                        number_of_spikes=number_of_spikes,
                         duration=self.duration,  # ty:ignore[invalid-argument-type]
                         rng=rng,
                     )
                     spike_offset = timestamp + self.timestamp_offset  # ty:ignore[unsupported-operator]
                     spikes_by_gid[gid].extend(spike_offset + t for t in relative_spikes)
             else:
+                number_of_spikes = self._sample_number_of_spikes(
+                    self.mean_firing_rate,  # ty:ignore[invalid-argument-type]
+                    self.duration,  # ty:ignore[invalid-argument-type]
+                    rng=rng,
+                )
                 relative_spikes = self._sample_spike_times_from_distribution(
                     distribution,  # ty:ignore[invalid-argument-type]
-                    number_of_spikes=self.number_of_spikes,  # ty:ignore[invalid-argument-type]
+                    number_of_spikes=number_of_spikes,
                     duration=self.duration,  # ty:ignore[invalid-argument-type]
                     rng=rng,
                 )
                 for timestamp in timestamps:
                     spike_offset = timestamp + self.timestamp_offset  # ty:ignore[unsupported-operator]
                     spikes_by_gid[gid].extend(spike_offset + t for t in relative_spikes)
+
         return spikes_by_gid

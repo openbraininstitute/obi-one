@@ -25,7 +25,7 @@ class GammaDistribution(Distribution):
         default=25.0,
         title="Scale",
         description="Scale parameter of the gamma distribution in milliseconds."
-                    "Mean ISI = shape x scale.",
+        "Mean ISI = shape x scale.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -49,9 +49,7 @@ class GammaDistribution(Distribution):
         },
     )
 
-    def _sample_generator(
-        self, n: int = 1, rng: np.random.Generator | None = None
-    ) -> list[float]:
+    def _sample_generator(self, n: int = 1, rng: np.random.Generator | None = None) -> list[float]:
         """Sample n values from the gamma distribution."""
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
