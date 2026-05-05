@@ -1,5 +1,4 @@
 import logging
-import os
 import tempfile
 from enum import StrEnum
 from pathlib import Path
@@ -61,8 +60,10 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
             | list[Literal["PointSource", "LineSource", "ObjectiveCSD"]]
         ) = Field(
             title="Calculation Method",
-            description="Method to calculate extracellular signals from the specified neuron set and"
-            " electrode locations.",
+            description=(
+                "Method to calculate extracellular signals from the"
+                " specified neuron set and electrode locations."
+            ),
             json_schema_extra={
                 "ui_element": "string_selection_enhanced",
                 "title_by_key": {
@@ -73,7 +74,9 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
                 "description_by_key": {
                     "PointSource": "Calculate extracellular signals using the Point Source method.",
                     "LineSource": "Calculate extracellular signals using the Line Source method.",
-                    "ObjectiveCSD": "Calculate extracellular signals using the Objective CSD method.",
+                    "ObjectiveCSD": (
+                        "Calculate extracellular signals using the Objective CSD method."
+                    ),
                 },
             },
         )
@@ -96,22 +99,13 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
             "group_order": 1,
         },
     )
-    # extracellular_locations: ExtracellularLocationsUnion = Field(
-    #     title="Extracellular Locations",
-    #     description="Electrode locations for recording extracellular signals.",
-    #     json_schema_extra={
-    #         "ui_element": "block_union",
-    #         "group": BlockGroup.ELECTRODE_POSITIONS,
-    #         "group_order": 0,
-    #     },
-    # )
 
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
         db_client: Client = None,
-    ):
+    ) -> None:
         pass
 
     def create_campaign_generation_entity(self, generated: list, db_client: Client) -> None:
@@ -127,7 +121,7 @@ class CreateExtracellularRecordingArraySingleConfig(
         self,
         campaign: TaskConfig,
         db_client: Client,
-    ):
+    ) -> None:
         pass
 
 
@@ -192,22 +186,19 @@ class CreateExtracellularRecordingArrayTask(Task):
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
         """Run the task."""
-        execution_activity = CreateExtracellularRecordingArrayTask._get_execution_activity(
+        _ = CreateExtracellularRecordingArrayTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
         circuit_dest_dir = self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
-        print(circuit_dest_dir)
-        files = os.listdir(circuit_dest_dir)
-        print(files)
 
         test_locations = [[0.0, 0.0, 0.0], [50.0, 50.0, 50.0]]  # multiple x, y, z locations to test
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
-        from bluerecording import compute_weights
-        from bluerecording.weights import Electrode, ElectrodeType, save_weights
-        import numpy as np
+        import numpy as np  # noqa: PLC0415
+        from bluerecording import compute_weights  # noqa: PLC0415
+        from bluerecording.weights import Electrode, ElectrodeType, save_weights  # noqa: PLC0415
 
         electrodes = {
             f"electrode_{i}": Electrode(
@@ -223,11 +214,11 @@ class CreateExtracellularRecordingArrayTask(Task):
             electrodes=electrodes,
             replace_axons=True,
         )
-        print("weights shape:", weights.shape if weights is not None else None)
-        print("positions_df shape:", positions_df.shape)
-        print("cols shape:", cols.shape)
-        print("neurite_types shape:", neurite_types.shape)
-        print("population_name:", population_name)
+        L.info("weights shape: %s", weights.shape if weights is not None else None)
+        L.info("positions_df shape: %s", positions_df.shape)
+        L.info("cols shape: %s", cols.shape)
+        L.info("neurite_types shape: %s", neurite_types.shape)
+        L.info("population_name: %s", population_name)
 
         weights_output_path = Path(circuit_dest_dir) / "weights.h5"
         save_weights(
@@ -238,11 +229,4 @@ class CreateExtracellularRecordingArrayTask(Task):
             electrodes=electrodes,
             neurite_types=neurite_types,
         )
-        print("Weights saved to:", weights_output_path)
-
-        # Todo later: Update execution activity (if any)
-        # CreateExtracellularRecordingArrayTask._update_execution_activity(
-        #     db_client=db_client,
-        #     execution_activity=execution_activity,
-        #     generated=[registered_circuit_id],
-        # )
+        L.info("Weights saved to: %s", weights_output_path)
