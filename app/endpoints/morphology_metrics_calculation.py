@@ -392,11 +392,7 @@ def _resolve_swc_bytes_for_mesh(
     content: bytes,
 ) -> bytes | None:
     for converted_path in (converted_morphology_file1, converted_morphology_file2):
-        if (
-            converted_path
-            and converted_path.suffix.lower() == ".swc"
-            and converted_path.exists()
-        ):
+        if converted_path and converted_path.suffix.lower() == ".swc" and converted_path.exists():
             return converted_path.read_bytes()
     if file_extension == ".swc":
         return content
