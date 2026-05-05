@@ -25,7 +25,7 @@ PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 
 @pytest.fixture(scope="module")
-def monkeypatch_session():
+def _monkeypatch_session():
     """Session-wide monkeypatch for module-scoped fixtures."""
     m = MonkeyPatch()
     yield m
@@ -36,7 +36,6 @@ def monkeypatch_session():
 def mock_heavy_dependencies(_monkeypatch_session):
     """
     Mock neurom to avoid heavy imports and potential environment issues.
-    The underscore prefix on the argument resolves ruff error ARG001.
     """
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
@@ -141,9 +140,6 @@ def mock_entity_payload():
     )
 
 
-# Test Cases
-
-
 def test_morphology_registration_success(client, monkeypatch, mock_entity_payload):
     mock_id = str(uuid.uuid4())
     entitysdk_client_mock = MagicMock()
@@ -184,7 +180,7 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):
         raise RuntimeError(msg)
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", mock_fail
+        "app.endpoints.useful_functions.useful_functions._run_morphology_analysis", mock_fail
     )
 
     response = client.post(
