@@ -26,6 +26,7 @@ PROJECT_ID = "100a9a8a-5229-4f3d-aef3-6a4184c59e74"
 
 @pytest.fixture(scope="module")
 def monkeypatch_session():
+    """Session-wide monkeypatch for module-scoped fixtures."""
     m = MonkeyPatch()
     yield m
     m.undo()
@@ -33,6 +34,10 @@ def monkeypatch_session():
 
 @pytest.fixture(autouse=True, scope="module")
 def mock_heavy_dependencies(_monkeypatch_session):
+    """
+    Mock neurom to avoid heavy imports and potential environment issues.
+    The underscore prefix on the argument resolves ruff error ARG001.
+    """
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
     sys.modules["neurom"] = mock_neurom
@@ -43,6 +48,7 @@ def mock_heavy_dependencies(_monkeypatch_session):
 
 @pytest.fixture(autouse=True)
 def mock_template_and_functions(monkeypatch):
+    """Mocks file system reads and core analysis functions."""
     fake_template = {
         "data": [
             {
@@ -89,6 +95,7 @@ def mock_template_and_functions(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def mock_io_for_test(monkeypatch):
+    """Mocks IO operations to prevent actual file creation during testing."""
     mock_file_handle = MagicMock()
     mock_file_handle.name = "/mock/temp_uploaded_file.swc"
     mock_file_handle.__enter__.return_value = mock_file_handle
@@ -122,6 +129,7 @@ def mock_io_for_test(monkeypatch):
 
 @pytest.fixture
 def mock_entity_payload():
+    """Generates a valid metadata payload."""
     return json.dumps(
         {
             "name": "Test Morphology",
@@ -131,6 +139,9 @@ def mock_entity_payload():
             "brain_location": [100.0, 200.0, 300.0],
         }
     )
+
+
+# Test Cases
 
 
 def test_morphology_registration_success(client, monkeypatch, mock_entity_payload):
