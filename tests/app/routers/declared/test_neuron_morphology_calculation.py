@@ -175,9 +175,17 @@ def test_validation_errors(client, filename, content, metadata, expected_code):
 
 
 def test_internal_errors(client, monkeypatch, mock_entity_payload):
+    from http import HTTPStatus
+    from fastapi import HTTPException
+
     def mock_fail(*_args, **_kwargs):
-        msg = "Neurom error"
-        raise RuntimeError(msg)
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "MORPHOLOGY_ANALYSIS_ERROR",
+                "detail": "Error during morphology analysis: Neurom error",
+            },
+        )
 
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", mock_fail
