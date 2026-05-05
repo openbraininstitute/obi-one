@@ -180,14 +180,11 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):
         raise RuntimeError(msg)
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis",
-        mock_fail
+        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", mock_fail
     )
 
     response = client.post(
-        ROUTE,
-        data={"metadata": mock_entity_payload},
-        files={"file": ("test.swc", b"content")}
+        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
     )
 
     assert response.status_code == 500
