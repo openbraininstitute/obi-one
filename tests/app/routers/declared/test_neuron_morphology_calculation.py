@@ -134,6 +134,11 @@ def mock_io_for_test(monkeypatch):
     )
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", _make_mock_path)
 
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_measurements",
+        lambda client, entity_id, measurements: MagicMock(id=entity_id),
+    )
+
 
 @pytest.fixture
 def mock_entity_payload():
