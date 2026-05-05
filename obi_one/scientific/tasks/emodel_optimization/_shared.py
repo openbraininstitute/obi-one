@@ -11,6 +11,7 @@ import logging
 import os
 import shutil
 import subprocess  # noqa: S404
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -113,6 +114,26 @@ def update_pipeline_settings(
     return recipes
 
 
+def _resolve_nrnivmodl() -> str:
+    """Return an absolute path to ``nrnivmodl``.
+
+    Falls back to ``<sys.prefix>/bin/nrnivmodl`` so the task still works inside
+    a venv whose ``bin/`` directory hasn't been prepended to ``PATH`` (e.g. when
+    Jupyter is launched without first activating the venv).
+    """
+    found = shutil.which("nrnivmodl")
+    if found:
+        return found
+    candidate = Path(sys.prefix) / "bin" / "nrnivmodl"
+    if candidate.exists():
+        return str(candidate)
+    msg = (
+        "Could not locate nrnivmodl. Install NEURON in the active venv"
+        " (BluePyEModel pulls it in as a dependency) or add nrnivmodl to PATH."
+    )
+    raise FileNotFoundError(msg)
+
+
 def compile_mechanisms(mechanisms_dir: Path) -> None:
     """Compile NEURON mod files via ``nrnivmodl``.
 
@@ -129,9 +150,10 @@ def compile_mechanisms(mechanisms_dir: Path) -> None:
             L.info("Mechanisms already compiled (%s); skipping nrnivmodl.", arch)
             return
 
-    L.info("Compiling NEURON mechanisms in %s ...", mechanisms_dir)
+    nrnivmodl = _resolve_nrnivmodl()
+    L.info("Compiling NEURON mechanisms in %s with %s ...", mechanisms_dir, nrnivmodl)
     subprocess.run(  # noqa: S603
-        ["nrnivmodl", str(mechanisms_dir.name)],  # noqa: S607
+        [nrnivmodl, mechanisms_dir.name],
         cwd=parent,
         check=True,
     )
