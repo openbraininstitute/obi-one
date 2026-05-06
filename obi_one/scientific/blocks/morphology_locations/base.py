@@ -31,7 +31,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     )
 
     section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
-        default=(1),
+        default=(1,),
         title="Section Types",
         description=(
             "Valid types of sections :"
