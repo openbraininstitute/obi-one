@@ -261,7 +261,11 @@ def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):
     client.app.dependency_overrides.clear()
 
 
-def test_register_morphology_logic_variants():
+def test_register_morphology_logic_variants(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.CellMorphology",
+        MagicMock(return_value=MagicMock()),
+    )
     client = MagicMock()
     client.search_entity.side_effect = EntitySDKError("Search fail")
 
