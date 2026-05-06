@@ -8,6 +8,7 @@ import morphio
 import neurom
 from fastapi import HTTPException
 from neurom.exceptions import NeuroMError
+from pydantic import BaseModel
 
 from app.errors import ApiErrorCode
 
@@ -22,6 +23,11 @@ SOMA_RADIUS_THRESHOLD = 100.0
 L = logging.getLogger(__name__)
 
 
+class MorphologyFiles(BaseModel):
+    swc: Path | None = None
+    hdf5: Path | None = None
+
+
 def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
     warnings = warning_handler.get_all()
     if warnings:
@@ -30,10 +36,6 @@ def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
 
 
 def load_morphio_morphology(file_path: Path, *, raise_warnings: bool) -> morphio.Morphology:
-    """Load a morphology with MorphIO and return the result.
-
-    Raises an error if it fails, or if `raise_warnings` is True and any warning is produced.
-    """
     warning_handler = morphio.WarningHandlerCollector()
     try:
         morphology = morphio.Morphology(file_path, warning_handler=warning_handler)
@@ -57,11 +59,6 @@ def _check_soma_radius(radius: float | None, threshold: float) -> None:
 
 
 def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRESHOLD) -> None:
-    """Validate the soma diameter of the given morphology.
-
-    Raises an HTTPException if the morphology cannot be loaded or if the soma diameter is
-    outside the acceptable range.
-    """
     try:
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
@@ -82,22 +79,13 @@ def convert_morphology(
     single_point_soma_by_ext: dict[str, bool],
     target_exts: Iterable[str] | None = None,
     output_stem: str | None = None,
-) -> list[Path]:
-    """Convert a morphology to other formats.
-
-    Args:
-        input_file: input morphology.
-        output_dir: directory where to save the generated morphologies.
-        single_point_soma_by_ext: map the extensions to single_point_soma (bool).
-        target_exts: iterable of formats to generate, given as extensions (e.g. [".h5", ".asc"]).
-            If None, generate all the formats different from the original.
-        output_stem: stem of the output files. If None, use the same as the input file.
-    """
+) -> MorphologyFiles:
     try:
         file_extension = input_file.suffix
         output_stem = output_stem or input_file.stem
         target_exts = target_exts or ALLOWED_EXTENSIONS - {file_extension}
-        output_files = []
+
+        output_paths = {}
         for ext in target_exts:
             output_file = output_dir / f"{output_stem}{ext}"
             single_point_soma = single_point_soma_by_ext.get(ext, False)
@@ -106,7 +94,10 @@ def convert_morphology(
                 output_file=str(output_file),
                 single_point_soma=single_point_soma,
             )
-            output_files.append(output_file)
+            if ext == ".swc":
+                output_paths["swc"] = output_file
+            elif ext == ".h5":
+                output_paths["hdf5"] = output_file
 
     except Exception as e:
         raise HTTPException(
@@ -116,7 +107,7 @@ def convert_morphology(
                 "detail": f"Failed to convert the file: {e!s}",
             },
         ) from e
-    return output_files
+    return MorphologyFiles(**output_paths)
 
 
 def validate_and_convert_morphology(
@@ -126,11 +117,7 @@ def validate_and_convert_morphology(
     single_point_soma_by_ext: dict[str, bool],
     target_exts: Iterable[str] | None = None,
     output_stem: str | None = None,
-) -> list[Path]:
-    """Validate the morphology with MorphIO and return the morphologies converted.
-
-    Note: warnings in MorphIO are ignored!
-    """
+) -> MorphologyFiles:
     load_morphio_morphology(input_file, raise_warnings=False)
     return convert_morphology(
         input_file,

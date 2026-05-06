@@ -32,12 +32,13 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.convert_morphology_to_registered_mesh import (
     HAS_MESHING,
-    _mesh_and_register,
+    mesh_and_register,
 )
 from app.errors import ApiError
 from app.logger import L
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
+    MorphologyFiles,
     validate_and_convert_morphology,
 )
 
@@ -62,6 +63,14 @@ BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
+
+
+class MorphologyRegistrationResponse(BaseModel):
+    entity_id: str
+    measurement_entity_id: str
+    mesh_asset_id: str | None
+    status: str
+    morphology_name: str
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -152,19 +161,13 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
 def _get_h5_analysis_path(
     original_file_path: str,
     file_extension: str,
-    converted_morphology_file1: str,
-    converted_morphology_file2: str,
+    converted_files: MorphologyFiles,
 ) -> str:
     if file_extension == ".h5":
         return original_file_path
 
-    for converted_path in (converted_morphology_file1, converted_morphology_file2):
-        if (
-            converted_path
-            and pathlib.Path(converted_path).suffix.lower() == ".h5"
-            and pathlib.Path(converted_path).exists()
-        ):
-            return converted_path
+    if converted_files.hdf5 and converted_files.hdf5.exists():
+        return str(converted_files.hdf5)
 
     return original_file_path
 
@@ -363,42 +366,25 @@ def _register_assets_and_measurements(
     morphology_name: str,
     content: bytes,
     measurement_list: list[dict[str, Any]],
-    converted_morphology_file1: str,
-    converted_morphology_file2: str,
+    converted_files: MorphologyFiles,
 ) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as temp_dir_for_upload:
         temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
         temp_upload_path_obj.write_bytes(content)
         register_assets(client, entity_id, temp_dir_for_upload, morphology_name)
 
-    if converted_morphology_file1:
-        output1_path_obj = pathlib.Path(converted_morphology_file1)
-        if output1_path_obj.exists():
-            register_assets(client, entity_id, str(output1_path_obj.parent), output1_path_obj.name)
+    if converted_files.swc and converted_files.swc.exists():
+        register_assets(
+            client, entity_id, str(converted_files.swc.parent), converted_files.swc.name
+        )
 
-    if converted_morphology_file2:
-        output2_path_obj = pathlib.Path(converted_morphology_file2)
-        if output2_path_obj.exists():
-            register_assets(client, entity_id, str(output2_path_obj.parent), output2_path_obj.name)
+    if converted_files.hdf5 and converted_files.hdf5.exists():
+        register_assets(
+            client, entity_id, str(converted_files.hdf5.parent), converted_files.hdf5.name
+        )
 
     registered = register_measurements(client, entity_id, measurement_list)
     return registered
-
-
-def _resolve_swc_bytes_for_mesh(
-    converted_morphology_file1: str | Path | None,
-    converted_morphology_file2: str | Path | None,
-    file_extension: str,
-    content: bytes,
-) -> bytes | None:
-    for converted_path in (converted_morphology_file1, converted_morphology_file2):
-        if converted_path:
-            p = Path(converted_path)
-            if p.suffix.lower() == ".swc" and p.exists():
-                return p.read_bytes()
-    if file_extension == ".swc":
-        return content
-    return None
 
 
 def _try_mesh_and_register(
@@ -410,7 +396,7 @@ def _try_mesh_and_register(
         L.info("_try_mesh_and_register: meshing dependencies not available, skipping")
         return None
     try:
-        asset = _mesh_and_register(client, uuid.UUID(entity_id), swc_bytes)
+        asset = mesh_and_register(client, uuid.UUID(entity_id), swc_bytes)
         return str(asset.id)
     except ApiError as err:
         L.warning(f"_try_mesh_and_register: meshing failed for {entity_id}: {err.message}")
@@ -437,26 +423,23 @@ async def _run_pipeline(
         temp_file_obj.close()
         stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-        (
-            converted_morphology_file1,
-            converted_morphology_file2,
-        ) = await run_in_threadpool(
+        converted_files: MorphologyFiles = await run_in_threadpool(
             validate_and_convert_morphology,
             input_file=pathlib.Path(temp_file_path),
             output_dir=pathlib.Path(temp_file_path).parent,
             output_stem=Path(morphology_name).stem,
             single_point_soma_by_ext=single_point_soma_by_ext,
         )
-        if converted_morphology_file1:
-            stack.callback(pathlib.Path(converted_morphology_file1).unlink, missing_ok=True)
-        if converted_morphology_file2:
-            stack.callback(pathlib.Path(converted_morphology_file2).unlink, missing_ok=True)
+
+        if converted_files.swc:
+            stack.callback(converted_files.swc.unlink, missing_ok=True)
+        if converted_files.hdf5:
+            stack.callback(converted_files.hdf5.unlink, missing_ok=True)
 
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
             file_extension=file_extension,
-            converted_morphology_file1=converted_morphology_file1,  # ty:ignore[invalid-argument-type]
-            converted_morphology_file2=converted_morphology_file2,  # ty:ignore[invalid-argument-type]
+            converted_files=converted_files,
         )
         measurement_list = _run_morphology_analysis(analysis_path)
 
@@ -468,22 +451,18 @@ async def _run_pipeline(
             morphology_name,
             content,
             measurement_list,
-            converted_morphology_file1,  # ty:ignore[invalid-argument-type]
-            converted_morphology_file2,  # ty:ignore[invalid-argument-type]
-        )
-
-        swc_bytes_for_mesh: bytes | None = await run_in_threadpool(
-            _resolve_swc_bytes_for_mesh,
-            converted_morphology_file1,
-            converted_morphology_file2,
-            file_extension,
-            content,
+            converted_files,
         )
 
         mesh_asset_id: str | None = None
-        if swc_bytes_for_mesh is not None:
+        if converted_files.swc:
+            swc_bytes = converted_files.swc.read_bytes()
             mesh_asset_id = await run_in_threadpool(
-                _try_mesh_and_register, client, entity_id, swc_bytes_for_mesh
+                _try_mesh_and_register, client, entity_id, swc_bytes
+            )
+        elif file_extension == ".swc":
+            mesh_asset_id = await run_in_threadpool(
+                _try_mesh_and_register, client, entity_id, content
             )
 
         return entity_id, str(data2.id), mesh_asset_id  # ty:ignore[unresolved-attribute]
@@ -501,7 +480,7 @@ async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     client: Annotated[entitysdk.client.Client, Depends(get_client)],
     metadata: Annotated[str, Form()] = "{}",
-) -> dict:
+) -> MorphologyRegistrationResponse:
     (
         morphology_name,
         file_extension,
@@ -534,11 +513,11 @@ async def morphology_metrics_calculation(
                 "detail": f"Pipeline failed: {type(e).__name__} - {e!s}",
             },
         ) from e
-    else:
-        return {
-            "entity_id": entity_id,
-            "measurement_entity_id": measurement_entity_id,
-            "mesh_asset_id": mesh_asset_id,
-            "status": "success",
-            "morphology_name": morphology_name,
-        }
+
+    return MorphologyRegistrationResponse(
+        entity_id=entity_id,
+        measurement_entity_id=measurement_entity_id,
+        mesh_asset_id=mesh_asset_id,
+        status="success",
+        morphology_name=morphology_name,
+    )
