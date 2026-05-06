@@ -30,17 +30,15 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
 
-    section_types: int | list[int] = Field(
-        default=1,
+    section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
+        default=(1),
         title="Section Types",
         description=(
-            "SWC section types to generate locations on. "
-            "0: undefined, 1: soma, 2: axon, 3: basal dendrite, "
-            "4: apical dendrite, 5+: custom."
+            "Valid types of sections :"
+            "1: soma, 2: axon, 3: basal dendrite, "
+            "4: apical dendrite."
+            "Use a tuple for one selection, e.g. (3, 4), or a list of tuples for scans."
         ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
     )
 
     @abc.abstractmethod

@@ -186,29 +186,63 @@ class Circuit(OBIBaseModel):
         msg = f"Could not find population config for population={pop!r} in SONATA circuit."
         raise KeyError(msg)
 
+    def _population_config(self, population: str | None) -> dict[str, Any]:
+        c = self.sonata_circuit
+        pop = population or self.default_population_name
+
+        components = c.config.get("components", {})
+        networks = c.config.get("networks", {})
+
+        for nodes_entry in networks.get("nodes", []):
+            pops = nodes_entry.get("populations", {})
+            if pop in pops:
+                return {
+                    **components,
+                    **pops[pop],
+                }
+
+        msg = f"Could not find population config for population={pop!r} in SONATA circuit."
+        raise KeyError(msg)
+
+    def _resolve_circuit_path(self, raw_path: str | Path) -> Path:
+        path = str(raw_path)
+
+        manifest = self.sonata_circuit.config.get("manifest", {})
+        manifest = {".": "."} | manifest
+
+        for key, value in sorted(manifest.items(), key=lambda item: len(item[0]), reverse=True):
+            if path.startswith(key):
+                path = path.replace(key, value, 1)
+                break
+
+        resolved = Path(path)
+        if not resolved.is_absolute():
+            resolved = self.directory / resolved
+
+        return resolved
+
     def get_morphology_path(self, node_id: int, population: str | None = None) -> Path:
         morph_name = self.get_morphology_name(node_id, population=population)
         pop_cfg = self._population_config(population)
+
         morph_dir_raw = pop_cfg.get("morphologies_dir")
         if not morph_dir_raw:
-            msg = f"No 'morphologies_dir' found in config for population={population}."
+            msg = f"No 'morphologies_dir' found in config for population={population!r}."
             raise KeyError(msg)
 
-        morph_dir = Path(morph_dir_raw)
+        morph_dir = self._resolve_circuit_path(morph_dir_raw)
 
-        # If morph_name already contains an extension, try directly first.
         direct = morph_dir / morph_name
         if direct.exists():
             return direct
 
-        # Try common extensions if the stored name is extension-less.
         for ext in (".asc", ".swc", ".h5"):
-            p = morph_dir / f"{morph_name}{ext}"
-            if p.exists():
-                return p
+            path = morph_dir / f"{morph_name}{ext}"
+            if path.exists():
+                return path
 
         msg = (
-            f"Could not find morphology file for node_id={node_id}, population={population}. "
+            f"Could not find morphology file for node_id={node_id}, population={population!r}. "
             f"Tried '{direct}' and common extensions in '{morph_dir}'."
         )
         raise FileNotFoundError(msg)
