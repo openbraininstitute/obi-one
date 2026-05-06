@@ -11,7 +11,7 @@ from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
-from obi_one.utils.circuit import get_circuit_size
+from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
 
 L = logging.getLogger(__name__)
 
@@ -855,10 +855,6 @@ def register_circuit(
     subject: models.Subject,
     brain_region: models.BrainRegion,
     build_category: str,
-    has_morphologies: bool,
-    has_point_neurons: bool,
-    has_electrical_cell_models: bool,
-    has_spines: bool,
     license: models.License | None = None,
     root_circuit_id=None,
     atlas_id=None,
@@ -878,7 +874,8 @@ def register_circuit(
     All entity references (subject, brain_region, license, parent) must already
     be resolved.
 
-    Scale and neuron/synapse/connection counts are computed automatically from
+    Scale, neuron/synapse/connection counts, and circuit properties (morphologies,
+    point neurons, electrical models, spines) are computed automatically from
     the circuit files. The SONATA circuit folder is registered as an asset.
 
     Args:
@@ -889,10 +886,6 @@ def register_circuit(
         subject: Resolved subject entity.
         brain_region: Resolved brain region entity.
         build_category: Build category (computational_model, em_reconstruction).
-        has_morphologies: Whether the circuit includes morphologies.
-        has_point_neurons: Whether the circuit uses point neurons.
-        has_electrical_cell_models: Whether the circuit includes electrical cell models.
-        has_spines: Whether the circuit includes spines.
         license: Resolved license entity (optional).
         root_circuit_id: UUID of the root circuit in the derivation hierarchy (optional).
         atlas_id: UUID of the associated atlas (optional).
@@ -918,9 +911,12 @@ def register_circuit(
         raise ValueError(msg)
     circuit_folder = circuit_path.parent
 
-    # Compute scale and counts from circuit
+    # Compute scale, counts, and properties from circuit
     c = OBICircuit(name=name, path=str(circuit_path))
     scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
+    has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
+        get_circuit_properties(c)
+    )
     L.info(
         f"Computed from circuit: scale={scale}, neurons={number_neurons}, "
         f"synapses={number_synapses}, connections={number_connections}"
@@ -1017,9 +1013,7 @@ def register_circuit_from_metadata(
     Args:
         client: The entitycore SDK client.
         circuit_metadata: Dictionary with circuit properties. Required keys:
-            name, description, build_category, species, subject,
-            brain_region, has_morphologies, has_point_neurons,
-            has_electrical_cell_models, has_spines.
+            name, description, build_category, species, subject, brain_region.
             Optional keys: root, parent, derivation_type, license, published_in,
             contact, experiment_date.
         circuit_path: Path to the SONATA circuit folder (containing circuit_config.json)
@@ -1063,10 +1057,6 @@ def register_circuit_from_metadata(
         brain_region=brain_region,
         license=license_entity,
         build_category=circuit_metadata["build_category"],
-        has_morphologies=circuit_metadata["has_morphologies"],
-        has_point_neurons=circuit_metadata["has_point_neurons"],
-        has_electrical_cell_models=circuit_metadata["has_electrical_cell_models"],
-        has_spines=circuit_metadata["has_spines"],
         root_circuit_id=root.id if root is not None else None,
         contact_email=circuit_metadata.get("contact"),
         published_in=circuit_metadata.get("published_in"),

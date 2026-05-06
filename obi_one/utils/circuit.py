@@ -275,3 +275,16 @@ def copy_hoc_files(
             # Copy only, if not yet existing (could happen for shared hoc files
             # among populations)
             shutil.copyfile(src_file, dest_file)
+
+
+def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:
+    """Returns circuit properties derived from the circuit files.
+
+    Args:
+        c: A Circuit object pointing to a valid SONATA circuit.
+
+    Returns:
+        Tuple of (has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines).
+    """
+    # TODO: Implement actual detection logic based on circuit contents
+    raise NotImplementedError("get_circuit_properties() is not yet implemented")
