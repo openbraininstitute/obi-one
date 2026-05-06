@@ -160,6 +160,7 @@ def mock_io_for_test(monkeypatch):
         lambda _client, entity_id, _measurements: MagicMock(id=entity_id),
     )
 
+    # Clear function-level caches before each test
     if hasattr(_get_template, "cached"):
         del _get_template.cached
     if hasattr(_get_analysis_dict, "cached"):
@@ -282,7 +283,7 @@ def test_meshing_api_error_is_graceful(client, monkeypatch, mock_entity_payload)
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._mesh_and_register",
-        MagicMock(side_effect=ApiError(message="api err")),
+        MagicMock(side_effect=ApiError(message="api err", error_code="TEST_ERR")),
     )
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
@@ -297,6 +298,7 @@ def test_meshing_api_error_is_graceful(client, monkeypatch, mock_entity_payload)
 
 def test_meshing_success(client, monkeypatch, mock_entity_payload):
     mesh_id = str(uuid.uuid4())
+    entity_id = str(uuid.uuid4())
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._mesh_and_register",
@@ -304,6 +306,10 @@ def test_meshing_success(client, monkeypatch, mock_entity_payload):
     )
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_morphology",
+        lambda _client, _payload: MagicMock(id=entity_id),
     )
 
     response = client.post(
@@ -384,6 +390,7 @@ def test_get_template_caches():
     if hasattr(_get_template, "cached"):
         del _get_template.cached
     t1 = _get_template()
+    assert hasattr(_get_template, "cached")
     t2 = _get_template()
     assert t1 is t2
 
@@ -392,6 +399,7 @@ def test_get_analysis_dict_caches():
     if hasattr(_get_analysis_dict, "cached"):
         del _get_analysis_dict.cached
     d1 = _get_analysis_dict()
+    assert hasattr(_get_analysis_dict, "cached")
     d2 = _get_analysis_dict()
     assert d1 is d2
 
@@ -552,10 +560,18 @@ def test_register_assets_and_measurements_converted_file_not_exists(monkeypatch)
     assert mock_register_assets.call_count == 1
 
 
-def test_resolve_swc_bytes_for_mesh_swc_converted_exists(tmp_path):
-    swc_file = tmp_path / "converted.swc"
-    swc_file.write_bytes(b"swc data")
-    result = _resolve_swc_bytes_for_mesh(None, str(swc_file), ".h5", b"original")
+def test_resolve_swc_bytes_for_mesh_swc_converted_exists(monkeypatch):
+    real_pathlib = pathlib.Path
+
+    def _mock_path_for_mesh(p):
+        inst = MagicMock()
+        inst.suffix = real_pathlib(p).suffix
+        inst.exists.return_value = True
+        inst.read_bytes.return_value = b"swc data"
+        return inst
+
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", _mock_path_for_mesh)
+    result = _resolve_swc_bytes_for_mesh(None, "converted.swc", ".h5", b"original")
     assert result == b"swc data"
 
 
@@ -592,7 +608,7 @@ def test_try_mesh_and_register_api_error(monkeypatch):
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._mesh_and_register",
-        MagicMock(side_effect=ApiError(message="mesh failed")),
+        MagicMock(side_effect=ApiError(message="mesh failed", error_code="TEST_ERR")),
     )
     client = MagicMock()
     result = _try_mesh_and_register(client, str(uuid.uuid4()), b"swc")
@@ -631,6 +647,9 @@ def test_run_morphology_analysis_success(monkeypatch):
         MagicMock(return_value=fake_filled),
     )
 
+    _get_template.cached = {"data": [{"measurement_kinds": []}]}
+    _get_analysis_dict.cached = {}
+
     result = _run_morphology_analysis("some/path.h5")
     assert len(result) == 1
 
@@ -660,6 +679,9 @@ def test_run_morphology_analysis_filters_none_values(monkeypatch):
         "app.endpoints.useful_functions.useful_functions.fill_json",
         MagicMock(return_value=fake_filled),
     )
+
+    _get_template.cached = {"data": [{"measurement_kinds": []}]}
+    _get_analysis_dict.cached = {}
 
     result = _run_morphology_analysis("some/path.h5")
     assert len(result) == 1
