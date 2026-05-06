@@ -4,19 +4,31 @@ import sys
 import uuid
 from http import HTTPStatus
 from pathlib import Path
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
+import requests
 from _pytest.monkeypatch import MonkeyPatch
 from entitysdk.exception import EntitySDKError
 from fastapi import HTTPException
+from requests.exceptions import RequestException
 
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import (
+    _get_analysis_dict,
     _get_h5_analysis_path,
+    _get_template,
+    _prepare_entity_payload,
+    _register_assets_and_measurements,
+    _resolve_swc_bytes_for_mesh,
+    _try_mesh_and_register,
     _validate_file_extension,
+    register_assets,
+    register_measurements,
     register_morphology,
+    MorphologyMetadata,
 )
+from app.errors import ApiError
 from app.services.morphology import validate_and_convert_morphology
 
 ROUTE = "/declared/register-morphology-with-calculated-metrics"
@@ -148,6 +160,12 @@ def mock_io_for_test(monkeypatch):
         lambda _client, entity_id, _measurements: MagicMock(id=entity_id),
     )
 
+    # Clear function-level caches before each test
+    if hasattr(_get_template, "cached"):
+        del _get_template.cached
+    if hasattr(_get_analysis_dict, "cached"):
+        del _get_analysis_dict.cached
+
 
 @pytest.fixture
 def mock_entity_payload():
@@ -261,6 +279,193 @@ def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):
     client.app.dependency_overrides.clear()
 
 
+def test_meshing_api_error_is_graceful(client, monkeypatch, mock_entity_payload):
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._mesh_and_register",
+        MagicMock(side_effect=ApiError(message="api err")),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+    )
+
+    response = client.post(
+        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
+    )
+    assert response.status_code == 200
+    assert response.json()["mesh_asset_id"] is None
+
+
+def test_meshing_success(client, monkeypatch, mock_entity_payload):
+    mesh_id = str(uuid.uuid4())
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._mesh_and_register",
+        MagicMock(return_value=MagicMock(id=mesh_id)),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+    )
+
+    response = client.post(
+        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
+    )
+    assert response.status_code == 200
+    assert response.json()["mesh_asset_id"] == mesh_id
+
+
+def test_h5_upload_uses_original_path(client, monkeypatch, mock_entity_payload):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+    )
+    mock_entity_payload_h5 = json.dumps({"name": "H5 Morphology"})
+
+    response = client.post(
+        ROUTE,
+        data={"metadata": mock_entity_payload_h5},
+        files={"file": ("test.h5", b"content")},
+    )
+    assert response.status_code == 200, response.json()
+
+
+def test_prepare_entity_payload_default_name():
+    metadata = MorphologyMetadata()
+    payload = _prepare_entity_payload(metadata, "my_cell.swc")
+    assert payload["name"] == "Morphology: my_cell"
+
+
+def test_prepare_entity_payload_test_name_replaced():
+    metadata = MorphologyMetadata(name="test")
+    payload = _prepare_entity_payload(metadata, "my_cell.swc")
+    assert payload["name"] == "Morphology: my_cell"
+
+
+def test_prepare_entity_payload_custom_name_kept():
+    metadata = MorphologyMetadata(name="My Custom Morphology")
+    payload = _prepare_entity_payload(metadata, "my_cell.swc")
+    assert payload["name"] == "My Custom Morphology"
+
+
+def test_get_h5_analysis_path_h5_extension():
+    result = _get_h5_analysis_path("original.h5", ".h5", "conv1.swc", "conv2.swc")
+    assert result == "original.h5"
+
+
+def test_get_h5_analysis_path_converted_h5_found(tmp_path):
+    h5_file = tmp_path / "converted.h5"
+    h5_file.write_bytes(b"")
+    result = _get_h5_analysis_path("original.swc", ".swc", str(h5_file), "conv2.swc")
+    assert result == str(h5_file)
+
+
+def test_get_h5_analysis_path_falls_back_to_original(tmp_path):
+    result = _get_h5_analysis_path("original.swc", ".swc", "noexist.swc", "noexist2.swc")
+    assert result == "original.swc"
+
+
+def test_validate_file_extension_empty():
+    with pytest.raises(HTTPException) as exc_info:
+        _validate_file_extension("")
+    assert exc_info.value.detail["code"] == "BAD_REQUEST"
+
+
+def test_validate_file_extension_invalid():
+    with pytest.raises(HTTPException) as exc_info:
+        _validate_file_extension("file.txt")
+    assert exc_info.value.detail["code"] == "BAD_REQUEST"
+
+
+def test_validate_file_extension_valid():
+    assert _validate_file_extension("neuron.swc") == ".swc"
+    assert _validate_file_extension("neuron.h5") == ".h5"
+    assert _validate_file_extension("neuron.asc") == ".asc"
+
+
+def test_get_template_caches(monkeypatch):
+    if hasattr(_get_template, "cached"):
+        del _get_template.cached
+    t1 = _get_template()
+    t2 = _get_template()
+    assert t1 is t2
+
+
+def test_get_analysis_dict_caches(monkeypatch):
+    if hasattr(_get_analysis_dict, "cached"):
+        del _get_analysis_dict.cached
+    d1 = _get_analysis_dict()
+    d2 = _get_analysis_dict()
+    assert d1 is d2
+
+
+def test_get_analysis_dict_extends_neurite_domains(monkeypatch):
+    if hasattr(_get_analysis_dict, "cached"):
+        del _get_analysis_dict.cached
+    monkeypatch.setattr(
+        "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
+        lambda _t: {"basal_dendrite": {"metric": lambda _: 1.0}},
+    )
+    result = _get_analysis_dict()
+    assert "apical_dendrite" in result
+    assert "axon" in result
+
+
+def test_register_assets_file_not_found():
+    client = MagicMock()
+    with patch("app.endpoints.morphology_metrics_calculation.pathlib.Path") as mock_path_cls:
+        mock_p = MagicMock()
+        mock_p.exists.return_value = False
+        mock_path_cls.return_value.__truediv__ = MagicMock(return_value=mock_p)
+        with pytest.raises(FileNotFoundError):
+            register_assets(client, "eid", "/some/dir", "file.swc")
+
+
+def test_register_assets_unsupported_extension():
+    client = MagicMock()
+    with patch("app.endpoints.morphology_metrics_calculation.pathlib.Path") as mock_path_cls:
+        mock_p = MagicMock()
+        mock_p.exists.return_value = True
+        mock_p.suffix = ".xyz"
+        mock_path_cls.return_value.__truediv__ = MagicMock(return_value=mock_p)
+        with pytest.raises(ValueError, match="Unsupported file extension"):
+            register_assets(client, "eid", "/some/dir", "file.xyz")
+
+
+def test_register_assets_request_exception():
+    client = MagicMock()
+    client.upload_file.side_effect = RequestException("Network error")
+    with patch("app.endpoints.morphology_metrics_calculation.pathlib.Path") as mock_path_cls:
+        mock_p = MagicMock()
+        mock_p.exists.return_value = True
+        mock_p.suffix = ".swc"
+        mock_path_cls.return_value.__truediv__ = MagicMock(return_value=mock_p)
+        with pytest.raises(HTTPException) as exc_info:
+            register_assets(client, "eid", "/some/dir", "file.swc")
+    assert exc_info.value.detail["code"] == "ENTITYSDK_API_FAILURE"
+
+
+def test_register_measurements_request_exception(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.MeasurementAnnotation",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    client.register_entity.side_effect = RequestException("Network error")
+    with pytest.raises(HTTPException) as exc_info:
+        register_measurements(client, "eid", [])
+    assert exc_info.value.detail["code"] == "ENTITYSDK_API_FAILURE"
+
+
+def test_register_measurements_success(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.MeasurementAnnotation",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    client.register_entity.return_value = MagicMock(id="result-id")
+    result = register_measurements(client, "eid", [])
+    assert result.id == "result-id"
+
+
 def test_register_morphology_logic_variants(monkeypatch):
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.CellMorphology",
@@ -274,9 +479,193 @@ def test_register_morphology_logic_variants(monkeypatch):
     assert result is not None
 
 
-def test_utility_branch_coverage():
-    with pytest.raises(HTTPException):
-        _validate_file_extension("")
+def test_register_morphology_with_valid_brain_location(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.CellMorphology",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    client.search_entity.return_value.one.return_value = None
+    payload = {
+        "brain_location": [1.0, 2.0, 3.0],
+        "name": "test",
+        "authorized_public": False,
+    }
+    result = register_morphology(client, payload)
+    assert result is not None
 
-    path = _get_h5_analysis_path("original.h5", ".h5", "conv1.swc", "conv2.swc")
-    assert path == "original.h5"
+
+def test_register_morphology_request_exception_in_get_entity(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.CellMorphology",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    client.search_entity.side_effect = RequestException("timeout")
+    payload = {"subject_id": "some-id", "name": "test", "authorized_public": False}
+    result = register_morphology(client, payload)
+    assert result is not None
+
+
+def test_register_assets_and_measurements_no_converted_files(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_assets",
+        MagicMock(return_value=MagicMock()),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_measurements",
+        MagicMock(return_value=MagicMock(id="meas-id")),
+    )
+    client = MagicMock()
+    result = _register_assets_and_measurements(client, "eid", "file.swc", b"data", [], None, None)
+    assert result.id == "meas-id"
+
+
+def test_register_assets_and_measurements_converted_file_not_exists(monkeypatch):
+    mock_register_assets = MagicMock(return_value=MagicMock())
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_assets", mock_register_assets
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_measurements",
+        MagicMock(return_value=MagicMock(id="meas-id")),
+    )
+
+    real_path = pathlib.Path
+
+    def _mock_path(p):
+        inst = MagicMock()
+        inst.exists.return_value = False
+        inst.suffix = real_path(p).suffix
+        inst.name = real_path(p).name
+        parent = MagicMock()
+        parent.__str__ = lambda _: str(real_path(p).parent)
+        inst.parent = parent
+        return inst
+
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.pathlib.Path", _mock_path)
+
+    client = MagicMock()
+    result = _register_assets_and_measurements(
+        client, "eid", "file.swc", b"data", [], "conv1.h5", "conv2.swc"
+    )
+    assert result.id == "meas-id"
+    assert mock_register_assets.call_count == 1
+
+
+def test_resolve_swc_bytes_for_mesh_swc_converted_exists(tmp_path):
+    swc_file = tmp_path / "converted.swc"
+    swc_file.write_bytes(b"swc data")
+    result = _resolve_swc_bytes_for_mesh(None, str(swc_file), ".h5", b"original")
+    assert result == b"swc data"
+
+
+def test_resolve_swc_bytes_for_mesh_swc_extension():
+    result = _resolve_swc_bytes_for_mesh(None, None, ".swc", b"original content")
+    assert result == b"original content"
+
+
+def test_resolve_swc_bytes_for_mesh_non_swc_returns_none():
+    result = _resolve_swc_bytes_for_mesh(None, None, ".h5", b"original")
+    assert result is None
+
+
+def test_try_mesh_and_register_no_meshing(monkeypatch):
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", False)
+    client = MagicMock()
+    result = _try_mesh_and_register(client, str(uuid.uuid4()), b"swc")
+    assert result is None
+
+
+def test_try_mesh_and_register_success(monkeypatch):
+    mesh_id = str(uuid.uuid4())
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._mesh_and_register",
+        MagicMock(return_value=MagicMock(id=mesh_id)),
+    )
+    client = MagicMock()
+    result = _try_mesh_and_register(client, str(uuid.uuid4()), b"swc")
+    assert result == mesh_id
+
+
+def test_try_mesh_and_register_api_error(monkeypatch):
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._mesh_and_register",
+        MagicMock(side_effect=ApiError(message="mesh failed")),
+    )
+    client = MagicMock()
+    result = _try_mesh_and_register(client, str(uuid.uuid4()), b"swc")
+    assert result is None
+
+
+def test_try_mesh_and_register_unexpected_error(monkeypatch):
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.HAS_MESHING", True)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._mesh_and_register",
+        MagicMock(side_effect=RuntimeError("crash")),
+    )
+    client = MagicMock()
+    result = _try_mesh_and_register(client, str(uuid.uuid4()), b"swc")
+    assert result is None
+
+
+def test_run_morphology_analysis_success(monkeypatch):
+    fake_neuron = MagicMock()
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        MagicMock(return_value=fake_neuron),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.useful_functions.useful_functions.build_results_dict",
+        MagicMock(return_value={}),
+    )
+
+    fake_filled = {
+        "data": [
+            {"measurement_kinds": [{"pref_label": "metric", "measurement_items": [{"value": 1.0}]}]}
+        ]
+    }
+    monkeypatch.setattr(
+        "app.endpoints.useful_functions.useful_functions.fill_json",
+        MagicMock(return_value=fake_filled),
+    )
+
+    from app.endpoints.morphology_metrics_calculation import _run_morphology_analysis
+
+    result = _run_morphology_analysis("some/path.h5")
+    assert len(result) == 1
+
+
+def test_run_morphology_analysis_filters_none_values(monkeypatch):
+    fake_neuron = MagicMock()
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        MagicMock(return_value=fake_neuron),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.useful_functions.useful_functions.build_results_dict",
+        MagicMock(return_value={}),
+    )
+
+    fake_filled = {
+        "data": [
+            {
+                "measurement_kinds": [
+                    {"pref_label": "null_metric", "measurement_items": [{"value": None}]},
+                    {"pref_label": "valid_metric", "measurement_items": [{"value": 5.0}]},
+                ]
+            }
+        ]
+    }
+    monkeypatch.setattr(
+        "app.endpoints.useful_functions.useful_functions.fill_json",
+        MagicMock(return_value=fake_filled),
+    )
+
+    from app.endpoints.morphology_metrics_calculation import _run_morphology_analysis
+
+    result = _run_morphology_analysis("some/path.h5")
+    assert len(result) == 1
+    assert result[0]["pref_label"] == "valid_metric"
