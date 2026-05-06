@@ -838,3 +838,235 @@ def register_publication_links(
             )
     L.info(f"Publication links: {len(publications_list)} registered")
     return publications_list
+
+
+# --- High-level registration functions ---
+
+
+def register_circuit(
+    client: Client,
+    *,
+    name: str,
+    description: str,
+    subject: models.Subject,
+    brain_region: models.BrainRegion,
+    number_neurons: int,
+    number_synapses: int,
+    scale: str,
+    build_category: str,
+    has_morphologies: bool,
+    has_point_neurons: bool,
+    has_electrical_cell_models: bool,
+    has_spines: bool,
+    license: models.License | None = None,
+    number_connections: int | None = None,
+    root_circuit_id=None,
+    atlas_id=None,
+    contact_email: str | None = None,
+    published_in: str | None = None,
+    experiment_date: datetime | None = None,
+    authorized_public: bool = False,
+    parent: models.Circuit | None = None,
+    derivation_type: str | None = None,
+    assets: dict[str, str | None] | None = None,
+    contributions: dict | None = None,
+    publications: dict | None = None,
+    check_only: bool = False,
+) -> models.Circuit | None:
+    """Register a circuit entity with all associated links and assets.
+
+    This is the main entry point for tasks and programmatic registration.
+    All entity references (subject, brain_region, license, parent) must already
+    be resolved. The function builds the models.Circuit internally.
+
+    Args:
+        client: The entitycore SDK client.
+        name: Circuit name.
+        description: Circuit description.
+        subject: Resolved subject entity.
+        brain_region: Resolved brain region entity.
+        number_neurons: Number of neurons in the circuit.
+        number_synapses: Number of synapses in the circuit.
+        scale: Circuit scale (single, pair, small, microcircuit, region, system, whole_brain).
+        build_category: Build category (computational_model, em_reconstruction).
+        has_morphologies: Whether the circuit includes morphologies.
+        has_point_neurons: Whether the circuit uses point neurons.
+        has_electrical_cell_models: Whether the circuit includes electrical cell models.
+        has_spines: Whether the circuit includes spines.
+        license: Resolved license entity (optional).
+        number_connections: Number of connections (optional).
+        root_circuit_id: UUID of the root circuit in the derivation hierarchy (optional).
+        atlas_id: UUID of the associated atlas (optional).
+        contact_email: Contact email address (optional).
+        published_in: Human-readable publication string (optional).
+        experiment_date: Experiment/build date (optional).
+        authorized_public: Whether to make the circuit publicly accessible.
+        parent: Parent circuit entity for derivation linking (optional).
+        derivation_type: Type of derivation (required if parent is provided).
+        assets: Mapping of asset_label to file_path. None values are skipped.
+        contributions: Resolved contributions dict (from get_contributions, optional).
+        publications: Resolved publications dict (from get_publications, optional).
+        check_only: If True, perform a dry run without registering anything.
+
+    Returns:
+        The registered circuit entity, or None if check_only is True.
+    """
+    # Build circuit model
+    circuit_model = models.Circuit(
+        name=name,
+        description=description,
+        subject=subject,
+        brain_region=brain_region,
+        license=license,
+        number_neurons=number_neurons,
+        number_synapses=number_synapses,
+        number_connections=number_connections,
+        has_morphologies=has_morphologies,
+        has_point_neurons=has_point_neurons,
+        has_electrical_cell_models=has_electrical_cell_models,
+        has_spines=has_spines,
+        scale=scale,
+        build_category=build_category,
+        root_circuit_id=root_circuit_id,
+        atlas_id=atlas_id,
+        contact_email=contact_email,
+        published_in=published_in,
+        experiment_date=experiment_date,
+        authorized_public=authorized_public,
+    )
+
+    if check_only:
+        L.info(f"Circuit entity '{circuit_model.name}': CHECK ONLY (not registered)")
+        return None
+
+    # 1. Register circuit entity
+    registered_circuit = client.register_entity(circuit_model)
+    L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
+
+    # 2. Derivation link
+    if parent is not None:
+        register_derivation(
+            client=client,
+            from_entity=parent,
+            derivation_type=derivation_type,
+            registered_circuit=registered_circuit,
+            check_only=False,
+        )
+
+    # 3. Assets
+    if assets:
+        for asset_label, file_path in assets.items():
+            register_asset(
+                client=client,
+                file_path=file_path,
+                asset_label=asset_label,
+                registered_circuit=registered_circuit,
+                check_only=False,
+            )
+
+    # 4. Contributions
+    if contributions:
+        register_contributions(
+            client=client,
+            contribution_dict=contributions,
+            registered_circuit=registered_circuit,
+            check_only=False,
+        )
+
+    # 5. Publication links
+    if publications:
+        register_publication_links(
+            client=client,
+            publication_dict=publications,
+            registered_circuit=registered_circuit,
+            check_only=False,
+        )
+
+    return registered_circuit
+
+
+def register_circuit_from_metadata(
+    client: Client,
+    circuit_metadata: dict,
+    circuit_assets: dict[str, str | None] | None = None,
+    *,
+    contributions: dict | None = None,
+    publications: dict | None = None,
+    check_only: bool = False,
+    make_public: bool = False,
+) -> models.Circuit | None:
+    """Register a circuit from user-provided metadata (resolving all entities).
+
+    This is the top-level user-facing function. It resolves all entity references
+    from string names in the metadata dict, validates counts and dates, and then
+    delegates to register_circuit().
+
+    Args:
+        client: The entitycore SDK client.
+        circuit_metadata: Dictionary with circuit properties. Required keys:
+            name, description, scale, build_category, species, subject,
+            brain_region, number_neurons, number_synapses, has_morphologies,
+            has_point_neurons, has_electrical_cell_models, has_spines.
+            Optional keys: root, parent, derivation_type, license, published_in,
+            contact, experiment_date, number_connections.
+        circuit_assets: Mapping of asset_label to file_path (local or S3).
+            None values are skipped. Labels must be keys in CIRCUIT_ASSET_MAPPING.
+        contributions: Raw contributions dict (agent name -> {type, role}).
+            Will be resolved via get_contributions(). Optional.
+        publications: Raw publications dict (DOI -> {type}).
+            Will be resolved via get_publications(). Optional.
+        check_only: If True, perform validation and dry run without registering.
+        make_public: Whether to make the circuit publicly accessible.
+
+    Returns:
+        The registered circuit entity, or None if check_only is True.
+    """
+    # Validate and resolve all dependencies
+    check_if_circuit_exists(client, circuit_metadata)
+    check_counts(circuit_metadata)
+
+    subject = get_subject(client, circuit_metadata)
+    brain_region = get_brain_region(client, circuit_metadata)
+    license_entity = get_license(client, circuit_metadata)
+    root = get_root_circuit(client, circuit_metadata)
+    parent = get_parent_circuit(client, circuit_metadata)
+    exp_date = get_exp_date(circuit_metadata)
+
+    # Resolve contributions and publications
+    contribution_dict = None
+    if contributions:
+        contribution_dict = get_contributions(client, contributions)
+
+    publication_dict = None
+    if publications:
+        publication_dict = get_publications(client, publications)
+
+    # Delegate to register_circuit with resolved entities
+    return register_circuit(
+        client=client,
+        name=circuit_metadata["name"],
+        description=circuit_metadata["description"],
+        subject=subject,
+        brain_region=brain_region,
+        license=license_entity,
+        number_neurons=circuit_metadata["number_neurons"],
+        number_synapses=circuit_metadata["number_synapses"],
+        number_connections=circuit_metadata.get("number_connections"),
+        scale=circuit_metadata["scale"],
+        build_category=circuit_metadata["build_category"],
+        has_morphologies=circuit_metadata["has_morphologies"],
+        has_point_neurons=circuit_metadata["has_point_neurons"],
+        has_electrical_cell_models=circuit_metadata["has_electrical_cell_models"],
+        has_spines=circuit_metadata["has_spines"],
+        root_circuit_id=root.id if root is not None else None,
+        contact_email=circuit_metadata.get("contact"),
+        published_in=circuit_metadata.get("published_in"),
+        experiment_date=exp_date,
+        authorized_public=make_public,
+        parent=parent,
+        derivation_type=circuit_metadata.get("derivation_type"),
+        assets=circuit_assets,
+        contributions=contribution_dict,
+        publications=publication_dict,
+        check_only=check_only,
+    )
