@@ -34,7 +34,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         default=(1,),
         title="Section Types",
         description=(
-            "Valid types of sections :"
+            "Valid types of sections: "
             "1: soma, 2: axon, 3: basal dendrite, "
             "4: apical dendrite."
             "Use a tuple for one selection, e.g. (3, 4), or a list of tuples for scans."
