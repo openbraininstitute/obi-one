@@ -13,9 +13,8 @@ class TestLoadAssetMethod:
 
 class TestEntityFromIDStr:
     def test_str_representation(self):
-        """Test __str__ without needing a real entity class."""
-
         class ConcreteEntityFromID(EntityFromID):
+            type: str = "EntityFromID"
             entitysdk_class = MagicMock()
 
         obj = ConcreteEntityFromID(id_str="abc-123")
@@ -27,6 +26,7 @@ class TestEntityFromIDProperties:
         mock_class = MagicMock()
 
         class ConcreteEntityFromID(EntityFromID):
+            type: str = "EntityFromID"
             entitysdk_class = mock_class
 
         obj = ConcreteEntityFromID(id_str="xyz")
@@ -55,6 +55,7 @@ class TestEntityFromIDEntity:
         mock_entity_class = MagicMock()
 
         class ConcreteEntityFromID(EntityFromID):
+            type: str = "EntityFromID"
             entitysdk_class = mock_entity_class
 
         obj = ConcreteEntityFromID(id_str="test-id")
@@ -69,6 +70,7 @@ class TestEntityFromIDEntity:
         mock_entity_class = MagicMock()
 
         class ConcreteEntityFromID(EntityFromID):
+            type: str = "EntityFromID"
             entitysdk_class = mock_entity_class
 
         obj = ConcreteEntityFromID(id_str="test-id")
