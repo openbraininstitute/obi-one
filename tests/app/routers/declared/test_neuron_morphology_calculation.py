@@ -21,12 +21,12 @@ from app.endpoints.morphology_metrics_calculation import (
     _prepare_entity_payload,
     _register_assets_and_measurements,
     _resolve_swc_bytes_for_mesh,
-    _run_morphology_analysis,
     _try_mesh_and_register,
     _validate_file_extension,
     register_assets,
     register_measurements,
     register_morphology,
+    run_morphology_analysis,
 )
 from app.errors import ApiError
 from app.services.morphology import validate_and_convert_morphology
@@ -189,7 +189,7 @@ def test_morphology_registration_success(client, monkeypatch, mock_entity_payloa
         lambda _client, _payload: MagicMock(id=mock_id),
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
     )
 
     response = client.post(
@@ -225,7 +225,7 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):
         )
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", mock_fail
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", mock_fail
     )
 
     response = client.post(
@@ -237,9 +237,7 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):
 
 
 def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
-    )
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.", lambda _: [])
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_assets",
         MagicMock(
@@ -264,7 +262,7 @@ def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):
         MagicMock(side_effect=Exception("Mesh error")),
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
     )
 
     mock_client = MagicMock()
@@ -286,7 +284,7 @@ def test_meshing_api_error_is_graceful(client, monkeypatch, mock_entity_payload)
         MagicMock(side_effect=ApiError(message="api err", error_code="TEST_ERR")),
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
     )
 
     response = client.post(
@@ -305,7 +303,7 @@ def test_meshing_success(client, monkeypatch, mock_entity_payload):
         MagicMock(return_value=MagicMock(id=mesh_id)),
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
     )
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
@@ -321,7 +319,7 @@ def test_meshing_success(client, monkeypatch, mock_entity_payload):
 
 def test_h5_upload_uses_original_path(client, monkeypatch):
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
     )
     mock_entity_payload_h5 = json.dumps({"name": "H5 Morphology"})
 
@@ -647,7 +645,7 @@ def test_run_morphology_analysis_success(monkeypatch):
     _get_template.cached = {"data": [{"measurement_kinds": []}]}
     _get_analysis_dict.cached = {}
 
-    result = _run_morphology_analysis("some/path.h5")
+    result = run_morphology_analysis("some/path.h5")
     assert len(result) == 1
 
 
@@ -680,6 +678,6 @@ def test_run_morphology_analysis_filters_none_values(monkeypatch):
     _get_template.cached = {"data": [{"measurement_kinds": []}]}
     _get_analysis_dict.cached = {}
 
-    result = _run_morphology_analysis("some/path.h5")
+    result = run_morphology_analysis("some/path.h5")
     assert len(result) == 1
     assert result[0]["pref_label"] == "valid_metric"

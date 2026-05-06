@@ -136,7 +136,7 @@ def _get_analysis_dict() -> dict:
     return analysis_dict
 
 
-def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
+def run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
     try:
         neuron = nm.load_morphology(morphology_path)
         results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
@@ -441,7 +441,7 @@ async def _run_pipeline(
             file_extension=file_extension,
             converted_files=converted_files,
         )
-        measurement_list = _run_morphology_analysis(analysis_path)
+        measurement_list = run_morphology_analysis(analysis_path)
 
         data = register_morphology(client, entity_payload)
         entity_id = str(data.id)

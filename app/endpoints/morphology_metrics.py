@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import (
-    _run_morphology_analysis,
     register_measurements,
+    run_morphology_analysis,
 )
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
@@ -98,7 +98,7 @@ def register_morphology_metrics(
         tmp.flush()
 
         # 3) compute measurement_kinds using existing helper
-        measurement_kinds = _run_morphology_analysis(tmp.name)
+        measurement_kinds = run_morphology_analysis(tmp.name)
 
     # 4) register measurement annotation only
     registered = register_measurements(db_client, cell_morphology_id, measurement_kinds)
