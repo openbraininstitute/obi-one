@@ -10,6 +10,9 @@ import numpy as np
 from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
+from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.utils.circuit import get_circuit_size
+
 L = logging.getLogger(__name__)
 
 AWS_S3_ROOT = "s3://openbluebrain"
@@ -845,21 +848,18 @@ def register_publication_links(
 
 def register_circuit(
     client: Client,
+    circuit_path: str | Path,
     *,
     name: str,
     description: str,
     subject: models.Subject,
     brain_region: models.BrainRegion,
-    number_neurons: int,
-    number_synapses: int,
-    scale: str,
     build_category: str,
     has_morphologies: bool,
     has_point_neurons: bool,
     has_electrical_cell_models: bool,
     has_spines: bool,
     license: models.License | None = None,
-    number_connections: int | None = None,
     root_circuit_id=None,
     atlas_id=None,
     contact_email: str | None = None,
@@ -868,7 +868,6 @@ def register_circuit(
     authorized_public: bool = False,
     parent: models.Circuit | None = None,
     derivation_type: str | None = None,
-    assets: dict[str, str | None] | None = None,
     contributions: dict | None = None,
     publications: dict | None = None,
     check_only: bool = False,
@@ -877,24 +876,24 @@ def register_circuit(
 
     This is the main entry point for tasks and programmatic registration.
     All entity references (subject, brain_region, license, parent) must already
-    be resolved. The function builds the models.Circuit internally.
+    be resolved.
+
+    Scale and neuron/synapse/connection counts are computed automatically from
+    the circuit files. The SONATA circuit folder is registered as an asset.
 
     Args:
         client: The entitycore SDK client.
+        circuit_path: Path to circuit_config.json (or the folder containing it).
         name: Circuit name.
         description: Circuit description.
         subject: Resolved subject entity.
         brain_region: Resolved brain region entity.
-        number_neurons: Number of neurons in the circuit.
-        number_synapses: Number of synapses in the circuit.
-        scale: Circuit scale (single, pair, small, microcircuit, region, system, whole_brain).
         build_category: Build category (computational_model, em_reconstruction).
         has_morphologies: Whether the circuit includes morphologies.
         has_point_neurons: Whether the circuit uses point neurons.
         has_electrical_cell_models: Whether the circuit includes electrical cell models.
         has_spines: Whether the circuit includes spines.
         license: Resolved license entity (optional).
-        number_connections: Number of connections (optional).
         root_circuit_id: UUID of the root circuit in the derivation hierarchy (optional).
         atlas_id: UUID of the associated atlas (optional).
         contact_email: Contact email address (optional).
@@ -903,7 +902,6 @@ def register_circuit(
         authorized_public: Whether to make the circuit publicly accessible.
         parent: Parent circuit entity for derivation linking (optional).
         derivation_type: Type of derivation (required if parent is provided).
-        assets: Mapping of asset_label to file_path. None values are skipped.
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         check_only: If True, perform a dry run without registering anything.
@@ -911,6 +909,23 @@ def register_circuit(
     Returns:
         The registered circuit entity, or None if check_only is True.
     """
+    # Resolve circuit_path to the circuit_config.json file
+    circuit_path = Path(circuit_path)
+    if circuit_path.is_dir():
+        circuit_path = circuit_path / "circuit_config.json"
+    if not circuit_path.exists():
+        msg = f"Circuit config not found at '{circuit_path}'!"
+        raise ValueError(msg)
+    circuit_folder = circuit_path.parent
+
+    # Compute scale and counts from circuit
+    c = OBICircuit(name=name, path=str(circuit_path))
+    scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
+    L.info(
+        f"Computed from circuit: scale={scale}, neurons={number_neurons}, "
+        f"synapses={number_synapses}, connections={number_connections}"
+    )
+
     # Build circuit model
     circuit_model = models.Circuit(
         name=name,
@@ -953,18 +968,7 @@ def register_circuit(
             check_only=False,
         )
 
-    # 3. Assets
-    if assets:
-        for asset_label, file_path in assets.items():
-            register_asset(
-                client=client,
-                file_path=file_path,
-                asset_label=asset_label,
-                registered_circuit=registered_circuit,
-                check_only=False,
-            )
-
-    # 4. Contributions
+    # 3. Contributions
     if contributions:
         register_contributions(
             client=client,
@@ -973,7 +977,7 @@ def register_circuit(
             check_only=False,
         )
 
-    # 5. Publication links
+    # 4. Publication links
     if publications:
         register_publication_links(
             client=client,
@@ -982,13 +986,22 @@ def register_circuit(
             check_only=False,
         )
 
+    # 5. Register SONATA circuit folder asset
+    register_asset(
+        client=client,
+        file_path=str(circuit_folder),
+        asset_label="sonata_circuit",
+        registered_circuit=registered_circuit,
+        check_only=False,
+    )
+
     return registered_circuit
 
 
 def register_circuit_from_metadata(
     client: Client,
     circuit_metadata: dict,
-    circuit_assets: dict[str, str | None] | None = None,
+    circuit_path: str | Path,
     *,
     contributions: dict | None = None,
     publications: dict | None = None,
@@ -998,19 +1011,19 @@ def register_circuit_from_metadata(
     """Register a circuit from user-provided metadata (resolving all entities).
 
     This is the top-level user-facing function. It resolves all entity references
-    from string names in the metadata dict, validates counts and dates, and then
-    delegates to register_circuit().
+    from string names in the metadata dict, computes counts/scale from the circuit
+    files, and delegates to register_circuit().
 
     Args:
         client: The entitycore SDK client.
         circuit_metadata: Dictionary with circuit properties. Required keys:
-            name, description, scale, build_category, species, subject,
-            brain_region, number_neurons, number_synapses, has_morphologies,
-            has_point_neurons, has_electrical_cell_models, has_spines.
+            name, description, build_category, species, subject,
+            brain_region, has_morphologies, has_point_neurons,
+            has_electrical_cell_models, has_spines.
             Optional keys: root, parent, derivation_type, license, published_in,
-            contact, experiment_date, number_connections.
-        circuit_assets: Mapping of asset_label to file_path (local or S3).
-            None values are skipped. Labels must be keys in CIRCUIT_ASSET_MAPPING.
+            contact, experiment_date.
+        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json)
+            or directly to the circuit_config.json file.
         contributions: Raw contributions dict (agent name -> {type, role}).
             Will be resolved via get_contributions(). Optional.
         publications: Raw publications dict (DOI -> {type}).
@@ -1023,7 +1036,6 @@ def register_circuit_from_metadata(
     """
     # Validate and resolve all dependencies
     check_if_circuit_exists(client, circuit_metadata)
-    check_counts(circuit_metadata)
 
     subject = get_subject(client, circuit_metadata)
     brain_region = get_brain_region(client, circuit_metadata)
@@ -1044,15 +1056,12 @@ def register_circuit_from_metadata(
     # Delegate to register_circuit with resolved entities
     return register_circuit(
         client=client,
+        circuit_path=circuit_path,
         name=circuit_metadata["name"],
         description=circuit_metadata["description"],
         subject=subject,
         brain_region=brain_region,
         license=license_entity,
-        number_neurons=circuit_metadata["number_neurons"],
-        number_synapses=circuit_metadata["number_synapses"],
-        number_connections=circuit_metadata.get("number_connections"),
-        scale=circuit_metadata["scale"],
         build_category=circuit_metadata["build_category"],
         has_morphologies=circuit_metadata["has_morphologies"],
         has_point_neurons=circuit_metadata["has_point_neurons"],
@@ -1065,7 +1074,6 @@ def register_circuit_from_metadata(
         authorized_public=make_public,
         parent=parent,
         derivation_type=circuit_metadata.get("derivation_type"),
-        assets=circuit_assets,
         contributions=contribution_dict,
         publications=publication_dict,
         check_only=check_only,
