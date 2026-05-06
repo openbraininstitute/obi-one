@@ -9,6 +9,7 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
+from obi_one.scientific.blocks.compartment_sets import CompartmentSet
 from obi_one.scientific.blocks.neuron_sets.specific import AllNeurons
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -76,6 +77,7 @@ class GenerateSimulationTask(Task):
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
     _neuron_set_definitions: dict[str, dict] = PrivateAttr(default={})
+    _materialized_compartment_sets: dict[str, CompartmentSet] = PrivateAttr(default_factory=dict)
 
     def _initialize_sonata_simulation_config(self) -> dict:  # ty:ignore[invalid-return-type]
         """Returns the default SONATA conditions dictionary."""
@@ -277,12 +279,14 @@ class GenerateSimulationTask(Task):
 
         population = circuit.default_population_name
 
-        materialize_locations_to_compartment_sets(
-            form=self.config,
-            circuit=circuit,
-            node_population=population,
-            population=population,
-            morphology_loader=self._load_morphology,
+        self._materialized_compartment_sets.update(
+            materialize_locations_to_compartment_sets(
+                form=self.config,
+                circuit=circuit,
+                node_population=population,
+                population=population,
+                morphology_loader=self._load_morphology,
+            )
         )
 
     def _default_neuron_set_ref(self) -> NeuronSetReference:
@@ -428,17 +432,14 @@ class GenerateSimulationTask(Task):
         # 4. If the config contains compartment_sets, collect them and write a
         # compartment_sets.json file next to the node sets so stimuli referencing
         # named compartment sets will resolve correctly.
-        compartment_sets = getattr(self.config, "compartment_sets", None)
-        if compartment_sets:
+        if self._materialized_compartment_sets:
             compartment_sets_dict: dict = {}
-            for cs_key, cs_block in compartment_sets.items():
+
+            for cs_key, cs_block in self._materialized_compartment_sets.items():
                 if cs_key != cs_block.block_name:
-                    msg = (
-                        "Compartment set name mismatch! "
-                        "Using sim_conf.add(compartment_set, name=compartment_set_name) "
-                        "should ensure this."
-                    )
+                    msg = "Materialized compartment set name mismatch."
                     raise OBIONEError(msg)
+
                 compartment_sets_dict.update(cs_block.to_sonata_dict())
 
             write_circuit_compartment_set_file(
@@ -448,6 +449,7 @@ class GenerateSimulationTask(Task):
                 file_name="compartment_sets.json",
                 overwrite_if_exists=False,
             )
+
             self._sonata_config["compartment_sets_file"] = "compartment_sets.json"
 
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
