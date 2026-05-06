@@ -7,7 +7,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
-import requests
 from _pytest.monkeypatch import MonkeyPatch
 from entitysdk.exception import EntitySDKError
 from fastapi import HTTPException
@@ -135,6 +134,16 @@ def mock_io_for_test(monkeypatch):
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", _make_mock_path)
 
     monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_morphology",
+        lambda _client, _payload: MagicMock(id="mock-entity-id"),
+    )
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_assets",
+        lambda *_args, **_kwargs: MagicMock(),
+    )
+
+    monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_measurements",
         lambda _client, entity_id, _measurements: MagicMock(id=entity_id),
     )
@@ -156,11 +165,11 @@ def mock_entity_payload():
 
 def test_morphology_registration_success(client, monkeypatch, mock_entity_payload):
     mock_id = str(uuid.uuid4())
-    entitysdk_client_mock = MagicMock()
-    entitysdk_client_mock.register_entity.return_value = MagicMock(id=mock_id)
-    entitysdk_client_mock.search_entity.return_value.one.return_value = None
 
-    client.app.dependency_overrides[get_client] = lambda: entitysdk_client_mock
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_morphology",
+        lambda _client, _payload: MagicMock(id=mock_id),
+    )
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
     )
@@ -169,9 +178,8 @@ def test_morphology_registration_success(client, monkeypatch, mock_entity_payloa
         ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     assert response.json()["entity_id"] == mock_id
-    client.app.dependency_overrides.clear()
 
 
 @pytest.mark.parametrize(
@@ -211,12 +219,17 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):
 
 
 def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
-    mock_client = MagicMock()
-    mock_client.register_entity.return_value = MagicMock(id="123")
-    mock_client.upload_file.side_effect = requests.exceptions.RequestException("Upload fail")
-    client.app.dependency_overrides[get_client] = lambda: mock_client
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation._run_morphology_analysis", lambda _: []
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_assets",
+        MagicMock(
+            side_effect=HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"code": "ENTITYSDK_API_FAILURE", "detail": "Upload fail"},
+            )
+        ),
     )
 
     response = client.post(
@@ -224,7 +237,6 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
     )
     assert response.status_code == 500
     assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
-    client.app.dependency_overrides.clear()
 
 
 def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):
