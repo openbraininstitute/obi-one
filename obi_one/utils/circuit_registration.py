@@ -856,8 +856,8 @@ def register_circuit(
     brain_region: models.BrainRegion,
     build_category: str,
     license: models.License | None = None,
-    root_circuit_id=None,
-    atlas_id=None,
+    root: models.Circuit | None = None,
+    atlas: models.BrainAtlas | None = None,
     contact_email: str | None = None,
     published_in: str | None = None,
     experiment_date: datetime | None = None,
@@ -887,8 +887,8 @@ def register_circuit(
         brain_region: Resolved brain region entity.
         build_category: Build category (computational_model, em_reconstruction).
         license: Resolved license entity (optional).
-        root_circuit_id: UUID of the root circuit in the derivation hierarchy (optional).
-        atlas_id: UUID of the associated atlas (optional).
+        root: Root circuit entity in the derivation hierarchy (optional).
+        atlas: Brain atlas entity associated with the circuit (optional).
         contact_email: Contact email address (optional).
         published_in: Human-readable publication string (optional).
         experiment_date: Experiment/build date (optional).
@@ -938,8 +938,8 @@ def register_circuit(
         has_spines=has_spines,
         scale=scale,
         build_category=build_category,
-        root_circuit_id=root_circuit_id,
-        atlas_id=atlas_id,
+        root_circuit_id=root.id if root is not None else None,
+        atlas_id=atlas.id if atlas is not None else None,
         contact_email=contact_email,
         published_in=published_in,
         experiment_date=experiment_date,
@@ -1057,7 +1057,7 @@ def register_circuit_from_metadata(
         brain_region=brain_region,
         license=license_entity,
         build_category=circuit_metadata["build_category"],
-        root_circuit_id=root.id if root is not None else None,
+        root=root,
         contact_email=circuit_metadata.get("contact"),
         published_in=circuit_metadata.get("published_in"),
         experiment_date=exp_date,
