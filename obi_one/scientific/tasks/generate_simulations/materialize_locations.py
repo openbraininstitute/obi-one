@@ -3,7 +3,10 @@ from typing import Any
 
 import morphio
 
-from obi_one.scientific.blocks.compartment_sets import CompartmentSet, build_compartment_set_for_neuron_set
+from obi_one.scientific.blocks.compartment_sets import (
+    CompartmentSet,
+    build_compartment_set_for_neuron_set,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetReference
 
@@ -15,12 +18,12 @@ def materialize_locations_to_compartment_sets(
     node_population: str | None,
     population: str,
     morphology_loader: Callable[[Circuit, int, str | None], morphio.Morphology | None],
-) -> None:
+) -> dict[str, CompartmentSet]:
     """Convert stimulus.locations into generated CompartmentSet blocks."""
     materialized: dict[str, CompartmentSet] = {}
 
     if not hasattr(form, "stimuli"):
-        return
+        return materialized
 
     for stimulus in form.stimuli.values():
         locations_ref = getattr(stimulus, "locations", None)
@@ -57,4 +60,4 @@ def materialize_locations_to_compartment_sets(
 
         materialized[comp_set_name] = comp_set
 
-        return materialized
+    return materialized
