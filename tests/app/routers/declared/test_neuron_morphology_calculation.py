@@ -143,9 +143,7 @@ def mock_io_for_test(monkeypatch):
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.pathlib.Path", _make_mock_path
     )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.Path", _make_mock_path
-    )
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", _make_mock_path)
 
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
@@ -162,7 +160,6 @@ def mock_io_for_test(monkeypatch):
         lambda _client, entity_id, _measurements: MagicMock(id=entity_id),
     )
 
-    # Clear function-level caches before each test
     if hasattr(_get_template, "cached"):
         del _get_template.cached
     if hasattr(_get_analysis_dict, "cached"):
@@ -615,7 +612,10 @@ def test_try_mesh_and_register_unexpected_error(monkeypatch):
 
 def test_run_morphology_analysis_success(monkeypatch):
     fake_neuron = MagicMock()
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.nm.load_morphology", MagicMock(return_value=fake_neuron))
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        MagicMock(return_value=fake_neuron),
+    )
     monkeypatch.setattr(
         "app.endpoints.useful_functions.useful_functions.build_results_dict",
         MagicMock(return_value={}),
@@ -623,11 +623,7 @@ def test_run_morphology_analysis_success(monkeypatch):
 
     fake_filled = {
         "data": [
-            {
-                "measurement_kinds": [
-                    {"pref_label": "metric", "measurement_items": [{"value": 1.0}]}
-                ]
-            }
+            {"measurement_kinds": [{"pref_label": "metric", "measurement_items": [{"value": 1.0}]}]}
         ]
     }
     monkeypatch.setattr(
@@ -641,7 +637,10 @@ def test_run_morphology_analysis_success(monkeypatch):
 
 def test_run_morphology_analysis_filters_none_values(monkeypatch):
     fake_neuron = MagicMock()
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.nm.load_morphology", MagicMock(return_value=fake_neuron))
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        MagicMock(return_value=fake_neuron),
+    )
     monkeypatch.setattr(
         "app.endpoints.useful_functions.useful_functions.build_results_dict",
         MagicMock(return_value={}),
