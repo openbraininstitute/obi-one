@@ -32,6 +32,7 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
@@ -121,7 +122,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         description="Rules to generate locations on morphologies (used by stimuli.locations).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.REFERENCE_TYPE: MorphologyLocationsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Morphology Locations",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 3,

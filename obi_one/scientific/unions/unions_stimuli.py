@@ -8,10 +8,10 @@ from obi_one.scientific.blocks.stimuli.electric_field import (
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
 )
 from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
-    OrnsteinUhlenbeckConductanceSomaticStimulus,
-    OrnsteinUhlenbeckCurrentSomaticStimulus,
-    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
-    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
+    OrnsteinUhlenbeckConductanceStimulus,
+    OrnsteinUhlenbeckCurrentStimulus,
+    RelativeOrnsteinUhlenbeckConductanceStimulus,
+    RelativeOrnsteinUhlenbeckCurrentStimulus,
 )
 from obi_one.scientific.blocks.stimuli.spike import (
     FullySynchronousSpikeStimulus,
@@ -22,38 +22,38 @@ from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
-    ConstantCurrentClampSomaticStimulus,
-    HyperpolarizingCurrentClampSomaticStimulus,
-    LinearCurrentClampSomaticStimulus,
+    ConstantCurrentClampStimulus,
+    HyperpolarizingCurrentClampStimulus,
+    LinearCurrentClampStimulus,
     MultiLevelSEClampSomaticStimulus,
-    MultiPulseCurrentClampSomaticStimulus,
-    NormallyDistributedCurrentClampSomaticStimulus,
-    RelativeConstantCurrentClampSomaticStimulus,
-    RelativeLinearCurrentClampSomaticStimulus,
-    RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    MultiPulseCurrentClampStimulus,
+    NormallyDistributedCurrentClampStimulus,
+    RelativeConstantCurrentClampStimulus,
+    RelativeLinearCurrentClampStimulus,
+    RelativeNormallyDistributedCurrentClampStimulus,
     SEClampSomaticStimulus,
-    SinusoidalCurrentClampSomaticStimulus,
-    SubthresholdCurrentClampSomaticStimulus,
+    SinusoidalCurrentClampStimulus,
+    SubthresholdCurrentClampStimulus,
 )
 
 _ABSOLUTE_INJECTION_STIMULI = (
-    ConstantCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | OrnsteinUhlenbeckCurrentSomaticStimulus
-    | OrnsteinUhlenbeckConductanceSomaticStimulus
+    ConstantCurrentClampStimulus
+    | HyperpolarizingCurrentClampStimulus
+    | LinearCurrentClampStimulus
+    | MultiPulseCurrentClampStimulus
+    | NormallyDistributedCurrentClampStimulus
+    | SinusoidalCurrentClampStimulus
+    | OrnsteinUhlenbeckCurrentStimulus
+    | OrnsteinUhlenbeckConductanceStimulus
 )
 
 _RELATIVE_INJECTION_STIMULI = (
-    RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
-    | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
-    | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
+    RelativeNormallyDistributedCurrentClampStimulus
+    | RelativeConstantCurrentClampStimulus
+    | RelativeLinearCurrentClampStimulus
+    | SubthresholdCurrentClampStimulus
+    | RelativeOrnsteinUhlenbeckCurrentStimulus
+    | RelativeOrnsteinUhlenbeckConductanceStimulus
 )
 
 _INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI

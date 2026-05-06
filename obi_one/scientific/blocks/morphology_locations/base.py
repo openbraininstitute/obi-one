@@ -32,7 +32,6 @@ class MorphologyLocationsBlock(Block, abc.ABC):
 
     section_types: int | list[int] = Field(
         default=1,
-        ge=0,
         title="Section Types",
         description=(
             "SWC section types to generate locations on. "

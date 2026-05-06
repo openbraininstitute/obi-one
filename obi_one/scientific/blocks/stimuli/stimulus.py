@@ -216,10 +216,10 @@ class ContinuousStimulus(
     pass
 
 
-class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
+class ConstantCurrentClampStimulus(ContinuousStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
-    title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Constant Current Clamp (Absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -247,10 +247,10 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
+class RelativeConstantCurrentClampStimulus(ContinuousStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
-    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Constant Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -279,10 +279,10 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
+class LinearCurrentClampStimulus(ContinuousStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
-    title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Linear Current Clamp (Absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -322,12 +322,12 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
+class RelativeLinearCurrentClampStimulus(ContinuousStimulus):
     """A current injection which changes linearly as a percentage of each cell's threshold current
     over time.
     """
 
-    title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Linear Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -367,10 +367,10 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
+class NormallyDistributedCurrentClampStimulus(ContinuousStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
-    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Normally Distributed Current Clamp (Absolute)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -409,12 +409,12 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
+class RelativeNormallyDistributedCurrentClampStimulus(ContinuousStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
     """
 
-    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Normally Distributed Current Clamp (Relative)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -454,12 +454,12 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         return stim_dict
 
 
-class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
+class MultiPulseCurrentClampStimulus(ContinuousStimulus):
     """A series of current pulses injected at a fixed frequency, with each pulse having a fixed
     absolute amplitude and temporal width.
     """
 
-    title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Multi Pulse Current Clamp (Absolute)"
 
     _module: str = "pulse"
     _input_type: str = "current_clamp"
@@ -514,10 +514,10 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
+class SinusoidalCurrentClampStimulus(ContinuousStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
-    title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
 
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
@@ -571,10 +571,10 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
+class SubthresholdCurrentClampStimulus(ContinuousStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
-    title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Subthreshold Current Clamp (Relative)"
 
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
@@ -605,13 +605,13 @@ class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
+class HyperpolarizingCurrentClampStimulus(ContinuousStimulus):
     """A hyperpolarizing current injection which brings a cell to base membrance voltage.
 
     The holding current is pre-defined for each cell.
     """
 
-    title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"
+    title: ClassVar[str] = "Hyperpolarizing Current Clamp"
 
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
@@ -756,3 +756,45 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "represents_physical_electrode": self._represents_physical_electrode,
         }
         return sonata_config
+
+
+class ConstantCurrentClampSomaticStimulus(ConstantCurrentClampStimulus):
+    """Deprecated alias for ConstantCurrentClampStimulus."""
+
+
+class RelativeConstantCurrentClampSomaticStimulus(RelativeConstantCurrentClampStimulus):
+    """Deprecated alias for RelativeConstantCurrentClampStimulus."""
+
+
+class LinearCurrentClampSomaticStimulus(LinearCurrentClampStimulus):
+    """Deprecated alias for LinearCurrentClampStimulus."""
+
+
+class RelativeLinearCurrentClampSomaticStimulus(RelativeLinearCurrentClampStimulus):
+    """Deprecated alias for RelativeLinearCurrentClampStimulus."""
+
+
+class NormallyDistributedCurrentClampSomaticStimulus(NormallyDistributedCurrentClampStimulus):
+    """Deprecated alias for NormallyDistributedCurrentClampStimulus."""
+
+
+class RelativeNormallyDistributedCurrentClampSomaticStimulus(
+    RelativeNormallyDistributedCurrentClampStimulus
+):
+    """Deprecated alias for RelativeNormallyDistributedCurrentClampStimulus."""
+
+
+class MultiPulseCurrentClampSomaticStimulus(MultiPulseCurrentClampStimulus):
+    """Deprecated alias for MultiPulseCurrentClampStimulus."""
+
+
+class SinusoidalCurrentClampSomaticStimulus(SinusoidalCurrentClampStimulus):
+    """Deprecated alias for SinusoidalCurrentClampStimulus."""
+
+
+class SubthresholdCurrentClampSomaticStimulus(SubthresholdCurrentClampStimulus):
+    """Deprecated alias for SubthresholdCurrentClampStimulus."""
+
+
+class HyperpolarizingCurrentClampSomaticStimulus(HyperpolarizingCurrentClampStimulus):
+    """Deprecated alias for HyperpolarizingCurrentClampStimulus."""
