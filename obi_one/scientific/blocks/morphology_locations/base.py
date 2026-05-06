@@ -31,13 +31,14 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     )
 
     section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
-        default=(1,),
+        default=(3, 4),
         title="Section Types",
         description=(
-            "Valid types of sections: "
-            "1: soma, 2: axon, 3: basal dendrite, "
-            "4: apical dendrite."
-            "Use a tuple for one selection, e.g. (3, 4), or a list of tuples for scans."
+            "Valid neurite section types to generate locations on: "
+            "2: axon, 3: basal dendrite, 4: apical dendrite. "
+            "Use a tuple for one selection, e.g. (3, 4), "
+            "or a list of tuples for parameter scans. "
+            "Leave stimulus.locations empty for soma/default targeting."
         ),
     )
 
