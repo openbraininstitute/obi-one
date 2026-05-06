@@ -387,26 +387,23 @@ def test_validate_file_extension_valid():
 
 
 def test_get_template_caches():
-    if hasattr(_get_template, "cached"):
-        del _get_template.cached
-    t1 = _get_template()
-    assert hasattr(_get_template, "cached")
-    t2 = _get_template()
-    assert t1 is t2
+    sentinel = {"data": []}
+    _get_template.cached = sentinel
+    assert _get_template() is sentinel
+    assert _get_template() is sentinel
 
 
 def test_get_analysis_dict_caches():
-    if hasattr(_get_analysis_dict, "cached"):
-        del _get_analysis_dict.cached
-    d1 = _get_analysis_dict()
-    assert hasattr(_get_analysis_dict, "cached")
-    d2 = _get_analysis_dict()
-    assert d1 is d2
+    sentinel = {"soma": {}}
+    _get_analysis_dict.cached = sentinel
+    assert _get_analysis_dict() is sentinel
+    assert _get_analysis_dict() is sentinel
 
 
 def test_get_analysis_dict_extends_neurite_domains(monkeypatch):
     if hasattr(_get_analysis_dict, "cached"):
         del _get_analysis_dict.cached
+    _get_template.cached = {"data": []}
     monkeypatch.setattr(
         "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
         lambda _t: {"basal_dendrite": {"metric": lambda _: 1.0}},
