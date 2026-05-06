@@ -61,7 +61,6 @@ class BlockGroup(StrEnum):
     EVENTS_GROUP = "Events"
 
 
-TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
 
 
