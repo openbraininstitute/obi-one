@@ -624,3 +624,96 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     assert hasattr(dist_stim, "distribution")
     assert dist_stim.distribution.block_dict_name == "distributions"
     assert dist_stim.distribution.block_name == "constant_dist"
+
+
+def test_simulation_campaign_generation_with_morphology_locations(tmp_path):
+    sim_duration = 3000.0
+
+    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
+    info = obi.Info(
+        campaign_name="Test morphology locations",
+        campaign_description="Test morphology location materialization",
+    )
+    sim_conf.set(info, name="info")
+
+    sim_neuron_set = obi.IDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(1))
+    )
+    sim_conf.add(sim_neuron_set, name="ID1")
+
+    timestamps = obi.SingleTimestamp(start_time=0.0)
+    sim_conf.add(timestamps, name="Start")
+
+    locations = obi.RandomMorphologyLocations(
+        random_seed=0,
+        number_of_locations=2,
+        section_types=(3, 4),
+    )
+    sim_conf.add(locations, name="ClampLocations")
+
+    clamp = obi.ConstantCurrentClampStimulus(
+        timestamps=timestamps.ref,
+        duration=500.0,
+        amplitude=0.5,
+        neuron_set=sim_neuron_set.ref,
+        locations=locations.ref,
+    )
+    sim_conf.add(clamp, name="LocationCurrentClamp")
+
+    recording = obi.SomaVoltageRecording(neuron_set=sim_neuron_set.ref)
+    sim_conf.add(recording, name="SomaVoltage")
+
+    circuit = obi.Circuit(
+        name="N_10__top_nodes_dim6",
+        path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+    )
+    sim_conf.set(
+        obi.CircuitSimulationScanConfig.Initialize(
+            circuit=circuit,
+            node_set=sim_neuron_set.ref,
+            simulation_length=sim_duration,
+        ),
+        name="initialize",
+    )
+
+    validated_sim_conf = sim_conf.validated_config()
+
+    grid_scan = obi.GridScanGenerationTask(
+        form=validated_sim_conf,
+        output_root=tmp_path / "morphology_locations_grid_scan",
+        coordinate_directory_option="ZERO_INDEX",
+    )
+
+    grid_scan.execute()
+    obi.run_tasks_for_generated_scan(grid_scan)
+
+    coordinate_root = tmp_path / grid_scan.output_root / "0"
+
+    simulation_config_path = coordinate_root / "simulation_config.json"
+    compartment_sets_path = coordinate_root / "compartment_sets.json"
+
+    assert compartment_sets_path.exists()
+
+    with simulation_config_path.open("r") as f:
+        simulation_config = json.load(f)
+
+    assert simulation_config["compartment_sets_file"] == "compartment_sets.json"
+
+    input_config = simulation_config["inputs"]["LocationCurrentClamp_0"]
+    assert input_config["compartment_set"] == "LocationCurrentClamp__locations"
+    assert "locations" not in input_config
+    assert "node_set" not in input_config
+
+    with compartment_sets_path.open("r") as f:
+        compartment_sets = json.load(f)
+
+    assert set(compartment_sets) == {"LocationCurrentClamp__locations"}
+
+    generated_set = compartment_sets["LocationCurrentClamp__locations"]
+    assert generated_set["population"] == circuit.default_population_name
+    assert len(generated_set["compartment_set"]) == 2
+
+    for node_id, section_id, offset in generated_set["compartment_set"]:
+        assert node_id == 0
+        assert isinstance(section_id, int)
+        assert 0.0 <= offset <= 1.0
