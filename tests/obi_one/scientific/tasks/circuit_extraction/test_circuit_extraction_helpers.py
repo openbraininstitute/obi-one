@@ -1,4 +1,4 @@
-"""Tests for CircuitExtractionTask helper static methods."""
+"""Tests for circuit registration helper functions (asset generation)."""
 
 import json
 import shutil
@@ -6,7 +6,11 @@ import shutil
 import pytest
 
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
+from obi_one.utils.circuit import (
+    run_basic_connectivity_plots,
+    run_circuit_folder_compression,
+    run_connectivity_matrix_extraction,
+)
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
@@ -30,9 +34,10 @@ def test_run_circuit_folder_compression(tmp_path):
     """Test folder compression of a tiny circuit."""
     circuit_path = _copy_circuit(tmp_path)
 
-    result = CircuitExtractionTask._run_circuit_folder_compression(
+    result = run_circuit_folder_compression(
         circuit_path=circuit_path,
         circuit_name="test_compressed",
+        output_root=tmp_path,
     )
     assert result.exists()
     assert result.suffix == ".gz"
@@ -43,8 +48,9 @@ def test_run_connectivity_matrix_extraction(tmp_path):
     """Test connectivity matrix extraction from a tiny circuit."""
     circuit_path = _copy_circuit(tmp_path)
 
-    output_dir, config_file, edge_pop = CircuitExtractionTask._run_connectivity_matrix_extraction(
+    output_dir, config_file, edge_pop = run_connectivity_matrix_extraction(
         circuit_path=circuit_path,
+        output_root=tmp_path,
     )
     assert output_dir.is_dir()
     assert config_file.exists()
@@ -61,7 +67,6 @@ def test_run_basic_connectivity_plots(tmp_path):
     # Set up a circuit_path (only used for naming, not for reading circuit data)
     circuit_dir = tmp_path / CIRCUIT_NAME
     circuit_dir.mkdir()
-    circuit_path = circuit_dir / "circuit_config.json"
 
     # Set up matrix config pointing to existing test matrix
     matrix_dir = tmp_path / (CIRCUIT_NAME + "__CONN_MATRIX__")
@@ -72,10 +77,10 @@ def test_run_basic_connectivity_plots(tmp_path):
         json.dumps({EDGE_POPULATION: {"single": {"path": "connectivity_matrix.h5"}}})
     )
 
-    plot_dir, plot_files = CircuitExtractionTask._run_basic_connectivity_plots(
-        circuit_path=circuit_path,
+    plot_dir, plot_files = run_basic_connectivity_plots(
         matrix_config=matrix_config,
         edge_population=EDGE_POPULATION,
+        output_root=tmp_path,
     )
     assert plot_dir.is_dir()
     assert len(plot_files) > 0
@@ -86,10 +91,10 @@ def test_run_basic_connectivity_plots(tmp_path):
 def test_run_basic_connectivity_plots_missing_config(tmp_path):
     """Test error when matrix config file is missing."""
     with pytest.raises(OBIONEError, match=r"Connectivity matrix config file.*not found"):
-        CircuitExtractionTask._run_basic_connectivity_plots(
-            circuit_path=tmp_path / "circuit_config.json",
+        run_basic_connectivity_plots(
             matrix_config=tmp_path / "nonexistent" / "matrix_config.json",
             edge_population="default",
+            output_root=tmp_path,
         )
 
 
@@ -99,8 +104,8 @@ def test_run_basic_connectivity_plots_missing_matrix(tmp_path):
     config.write_text('{"default": {"single": {"path": "missing.h5"}}}')
 
     with pytest.raises(OBIONEError, match=r"Connectivity matrix file.*not found"):
-        CircuitExtractionTask._run_basic_connectivity_plots(
-            circuit_path=tmp_path / "circuit_config.json",
+        run_basic_connectivity_plots(
             matrix_config=config,
             edge_population="default",
+            output_root=tmp_path,
         )
