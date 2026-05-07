@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import entitysdk
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.validator import run_grid_scan_validation
-from obi_one.core.scan_config import ScanConfig
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
@@ -23,6 +22,9 @@ from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses
 )
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 
+if TYPE_CHECKING:
+    from obi_one.core.scan_config import ScanConfig
+
 router = APIRouter(
     prefix="/config-validation",
     tags=["config-validation"],
@@ -33,15 +35,12 @@ router = APIRouter(
 class SharedStatePartial(BaseModel):
     """All validatable config fields. Each is optional — validate whichever are present."""
 
-    # Simulations (execute_single_config_task=True)
     circuit_simulation_config: CircuitSimulationScanConfig | None = None
     me_model_simulation_config: MEModelSimulationScanConfig | None = None
     me_model_with_synapses_simulation_config: (
         MEModelWithSynapsesCircuitSimulationScanConfig | None
     ) = None
     ion_channel_model_simulation_config: IonChannelModelSimulationScanConfig | None = None
-
-    # Processing (execute_single_config_task=False)
     skeletonization_config: SkeletonizationScanConfig | None = None
     em_synapse_mapping_config: EMSynapseMappingScanConfig | None = None
 
@@ -116,8 +115,8 @@ async def validate_config(
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     errors: dict[str, str] = {}
-    for field_name, result in zip(field_names, results):
-        if isinstance(result, Exception):
+    for field_name, result in zip(field_names, results, strict=True):
+        if isinstance(result, BaseException):
             errors[field_name] = f"Unexpected error: {result!s}"
         elif result is not None:
             errors[field_name] = result

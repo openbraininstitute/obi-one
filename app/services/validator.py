@@ -24,7 +24,7 @@ class _WriteInterceptingClient:
     Thread-safe because each validation gets its own wrapper instance.
     """
 
-    def __init__(self, real_client: entitysdk.client.Client):
+    def __init__(self, real_client: entitysdk.client.Client) -> None:
         self._real_client = real_client
         self.register_call_count = 0
         self.upload_call_count = 0
@@ -40,13 +40,11 @@ class _WriteInterceptingClient:
         mock.id = uuid4()
         return mock
 
-    def upload_file(self, *args: Any, **kwargs: Any) -> None:
+    def upload_file(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
         self.upload_call_count += 1
-        return None
 
-    def update_entity(self, *args: Any, **kwargs: Any) -> None:
+    def update_entity(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
         self.update_call_count += 1
-        return None
 
     def __getattr__(self, name: str) -> Any:
         """Delegate all other attribute access (reads) to the real client."""
@@ -72,7 +70,7 @@ def run_grid_scan_validation(
 
         with tempfile.TemporaryDirectory() as tdir:
             grid_scan = GridScanGenerationTask(
-                form=config,
+                form=config,  # ty:ignore[invalid-argument-type]
                 output_root=tdir,  # ty:ignore[invalid-argument-type]
                 coordinate_directory_option="ZERO_INDEX",
             )
@@ -94,7 +92,7 @@ def run_grid_scan_validation(
                 "Validation error: Expected update operations did not occur. "
                 "The validation logic may be outdated."
             )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return str(e)
 
     return None
