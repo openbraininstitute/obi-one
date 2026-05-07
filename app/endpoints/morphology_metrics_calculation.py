@@ -278,35 +278,67 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     return registered
 
 
-def register_assets(
-    client: Client,
-    entity_id: str,
-    file_folder: str,
-    morphology_name: str,
-) -> dict[str, Any]:
-    file_path_obj = pathlib.Path(file_folder) / morphology_name
-    file_path = str(file_path_obj)
+EXTENSION_MIME_MAP: Final[dict[str, str]] = {
+    ".asc": "application/asc",
+    ".swc": "application/swc",
+    ".h5": "application/x-hdf5",
+}
 
-    if not file_path_obj.exists():
-        error_msg = f"Asset file not found at path: {file_path}"
-        raise FileNotFoundError(error_msg)
 
-    file_extension = file_path_obj.suffix
-    extension_map = {
-        ".asc": "application/asc",
-        ".swc": "application/swc",
-        ".h5": "application/x-hdf5",
-    }
-    mime_type = extension_map.get(file_extension.lower())
+def _get_mime_type(file_extension: str) -> str:
+    mime_type = EXTENSION_MIME_MAP.get(file_extension.lower())
     if not mime_type:
         error_msg = f"Unsupported file extension: '{file_extension}'."
         raise ValueError(error_msg)
+    return mime_type
+
+
+def register_asset_from_content(
+    client: Client,
+    entity_id: str,
+    morphology_name: str,
+    content: bytes,
+) -> dict[str, Any]:
+    file_extension = pathlib.Path(morphology_name).suffix
+    mime_type = _get_mime_type(file_extension)
+
+    try:
+        asset = client.upload_content(
+            entity_id=entity_id,  # ty:ignore[invalid-argument-type]
+            entity_type=CellMorphology,
+            content=content,  # ty:ignore[invalid-argument-type]
+            file_name=morphology_name,  # ty:ignore[invalid-argument-type]
+            file_content_type=mime_type,  # ty:ignore[invalid-argument-type]
+            asset_label="morphology",  # ty:ignore[invalid-argument-type]
+        )
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+                "detail": f"Entity asset registration failed: {e}",
+            },
+        ) from e
+    else:
+        return asset  # ty:ignore[invalid-return-type]
+
+
+def register_assets(
+    client: Client,
+    entity_id: str,
+    file_path: pathlib.Path,
+) -> dict[str, Any]:
+    if not file_path.exists():
+        error_msg = f"Asset file not found at path: {file_path}"
+        raise FileNotFoundError(error_msg)
+
+    mime_type = _get_mime_type(file_path.suffix)
 
     try:
         asset1 = client.upload_file(
             entity_id=entity_id,  # ty:ignore[invalid-argument-type]
             entity_type=CellMorphology,
-            file_path=file_path,  # ty:ignore[invalid-argument-type]
+            file_path=str(file_path),  # ty:ignore[invalid-argument-type]
             file_content_type=mime_type,  # ty:ignore[invalid-argument-type]
             asset_label="morphology",  # ty:ignore[invalid-argument-type]
         )
@@ -368,20 +400,13 @@ def _register_assets_and_measurements(
     measurement_list: list[dict[str, Any]],
     converted_files: MorphologyFiles,
 ) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory() as temp_dir_for_upload:
-        temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
-        temp_upload_path_obj.write_bytes(content)
-        register_assets(client, entity_id, temp_dir_for_upload, morphology_name)
+    register_asset_from_content(client, entity_id, morphology_name, content)
 
     if converted_files.swc and converted_files.swc.exists():
-        register_assets(
-            client, entity_id, str(converted_files.swc.parent), converted_files.swc.name
-        )
+        register_assets(client, entity_id, converted_files.swc)
 
     if converted_files.hdf5 and converted_files.hdf5.exists():
-        register_assets(
-            client, entity_id, str(converted_files.hdf5.parent), converted_files.hdf5.name
-        )
+        register_assets(client, entity_id, converted_files.hdf5)
 
     registered = register_measurements(client, entity_id, measurement_list)
     return registered
