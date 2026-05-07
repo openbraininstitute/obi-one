@@ -169,7 +169,6 @@ def mock_io_for_test(monkeypatch):
         lambda _client, entity_id, _measurements: MagicMock(id=entity_id),
     )
 
-    # Clear function-level caches before each test
     if hasattr(_get_template, "cached"):
         del _get_template.cached
     if hasattr(_get_analysis_dict, "cached"):
@@ -345,7 +344,6 @@ def test_h5_upload_uses_original_path(client, monkeypatch):
 def test_prepare_entity_payload_default_name():
     metadata = MorphologyMetadata()
     payload = _prepare_entity_payload(metadata, "my_cell.swc")
-    # _prepare_entity_payload replaces name=None with file stem
     assert payload["name"] == "Morphology: my_cell"
 
 

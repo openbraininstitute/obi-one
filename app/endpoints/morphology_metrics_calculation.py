@@ -26,7 +26,6 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from requests.exceptions import RequestException
-from scipy import io
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
