@@ -852,20 +852,20 @@ def register_circuit(
     *,
     name: str,
     description: str,
-    subject: models.Subject,
+    build_category: types.CircuitBuildCategory,
     brain_region: models.BrainRegion,
-    build_category: str,
-    license: models.License | None = None,
-    root: models.Circuit | None = None,
-    atlas: models.BrainAtlas | None = None,
+    subject: models.Subject,
     contact_email: str | None = None,
     published_in: str | None = None,
     experiment_date: datetime | None = None,
-    authorized_public: bool = False,
+    license: models.License | None = None,
+    atlas: models.BrainAtlas | None = None,
+    root: models.Circuit | None = None,
     parent: models.Circuit | None = None,
-    derivation_type: str | None = None,
+    derivation_type: DerivationType | None = None,
     contributions: dict | None = None,
     publications: dict | None = None,
+    authorized_public: bool = False,
     check_only: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
@@ -883,20 +883,20 @@ def register_circuit(
         circuit_path: Path to circuit_config.json (or the folder containing it).
         name: Circuit name.
         description: Circuit description.
-        subject: Resolved subject entity.
-        brain_region: Resolved brain region entity.
         build_category: Build category (computational_model, em_reconstruction).
-        license: Resolved license entity (optional).
-        root: Root circuit entity in the derivation hierarchy (optional).
-        atlas: Brain atlas entity associated with the circuit (optional).
+        brain_region: Resolved brain region entity.
+        subject: Resolved subject entity.
         contact_email: Contact email address (optional).
         published_in: Human-readable publication string (optional).
         experiment_date: Experiment/build date (optional).
-        authorized_public: Whether to make the circuit publicly accessible.
+        license: Resolved license entity (optional).
+        atlas: Brain atlas entity associated with the circuit (optional).
+        root: Root circuit entity in the derivation hierarchy (optional).
         parent: Parent circuit entity for derivation linking (optional).
         derivation_type: Type of derivation (required if parent is provided).
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
+        authorized_public: Whether to make the circuit publicly accessible.
         check_only: If True, perform a dry run without registering anything.
 
     Returns:
@@ -1001,8 +1001,8 @@ def register_circuit_from_metadata(
     *,
     contributions: dict | None = None,
     publications: dict | None = None,
+    authorized_public: bool = False,
     check_only: bool = False,
-    make_public: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
 
@@ -1022,8 +1022,8 @@ def register_circuit_from_metadata(
             Will be resolved via get_contributions(). Optional.
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
+        authorized_public: Whether to make the circuit publicly accessible.
         check_only: If True, perform validation and dry run without registering.
-        make_public: Whether to make the circuit publicly accessible.
 
     Returns:
         The registered circuit entity, or None if check_only is True.
@@ -1053,18 +1053,18 @@ def register_circuit_from_metadata(
         circuit_path=circuit_path,
         name=circuit_metadata["name"],
         description=circuit_metadata["description"],
-        subject=subject,
-        brain_region=brain_region,
-        license=license_entity,
         build_category=circuit_metadata["build_category"],
-        root=root,
+        brain_region=brain_region,
+        subject=subject,
         contact_email=circuit_metadata.get("contact"),
         published_in=circuit_metadata.get("published_in"),
         experiment_date=exp_date,
-        authorized_public=make_public,
+        license=license_entity,
+        root=root,
         parent=parent,
         derivation_type=circuit_metadata.get("derivation_type"),
         contributions=contribution_dict,
         publications=publication_dict,
+        authorized_public=authorized_public,
         check_only=check_only,
     )
