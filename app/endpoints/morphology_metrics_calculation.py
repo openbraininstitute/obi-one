@@ -26,6 +26,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from requests.exceptions import RequestException
+from scipy import io
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
@@ -302,15 +303,14 @@ def register_asset_from_content(
 ) -> dict[str, Any]:
     file_extension = pathlib.Path(morphology_name).suffix
     mime_type = _get_mime_type(file_extension)
-
     try:
         asset = client.upload_content(
-            entity_id=entity_id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity_id,
             entity_type=CellMorphology,
-            content=content,  # ty:ignore[invalid-argument-type]
-            file_name=morphology_name,  # ty:ignore[invalid-argument-type]
-            file_content_type=mime_type,  # ty:ignore[invalid-argument-type]
-            asset_label="morphology",  # ty:ignore[invalid-argument-type]
+            file_content=content,
+            file_name=morphology_name,
+            file_content_type=mime_type,
+            asset_label="morphology",
         )
     except requests.exceptions.RequestException as e:
         raise HTTPException(
