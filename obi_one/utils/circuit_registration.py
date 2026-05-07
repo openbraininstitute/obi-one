@@ -5,6 +5,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from uuid import UUID
 
 import numpy as np
 from entitysdk import Client, models, types
@@ -860,8 +861,8 @@ def register_circuit(
     experiment_date: datetime | None = None,
     license: models.License | None = None,
     atlas: models.BrainAtlas | None = None,
-    root: models.Circuit | None = None,
-    parent: models.Circuit | None = None,
+    root: models.Circuit | UUID | None = None,
+    parent: models.Circuit | UUID | None = None,
     derivation_type: DerivationType | None = None,
     contributions: dict | None = None,
     publications: dict | None = None,
@@ -891,8 +892,9 @@ def register_circuit(
         experiment_date: Experiment/build date (optional).
         license: Resolved license entity (optional).
         atlas: Brain atlas entity associated with the circuit (optional).
-        root: Root circuit entity in the derivation hierarchy (optional).
-        parent: Parent circuit entity for derivation linking (optional).
+        root: Root circuit entity or root circuit ID (UUID) in the derivation
+            hierarchy (optional).
+        parent: Parent circuit entity or ID (UUID) for derivation linking (optional).
         derivation_type: Type of derivation (required if parent is provided).
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
@@ -938,7 +940,7 @@ def register_circuit(
         has_spines=has_spines,
         scale=scale,
         build_category=build_category,
-        root_circuit_id=root.id if root is not None else None,
+        root_circuit_id=root.id if isinstance(root, models.Circuit) else root,
         atlas_id=atlas.id if atlas is not None else None,
         contact_email=contact_email,
         published_in=published_in,
@@ -956,6 +958,8 @@ def register_circuit(
 
     # 2. Derivation link
     if parent is not None:
+        if isinstance(parent, UUID):
+            parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
         register_derivation(
             client=client,
             from_entity=parent,

@@ -48,7 +48,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
-from obi_one.utils import circuit as circuit_utils, db_sdk
+from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
 from obi_one.utils.benchmark import BenchmarkTracker
 
 if settings.circuit_extraction.benchmarking_enabled:
@@ -225,11 +225,13 @@ class CircuitExtractionTask(Task):
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
 
-    def _create_circuit_entity(self, db_client: Client, circuit_path: Path) -> models.Circuit:
-        """Register a new Circuit entity of the extracted SONATA circuit (w/o assets)."""
-        parent = self._circuit_entity  # Parent circuit entity
+    def _register_output(
+        self, db_client: Client, circuit_path: Path
+    ) -> models.Circuit:
+        """Register the extracted circuit entity with assets and derivation link."""
+        parent = self._circuit_entity
 
-        # Define metadata for extracted circuit entity
+        # Build circuit name and description
         campaign_str = self.config.info.campaign_name.replace(" ", "-")
         circuit_name = f"{parent.name}__{campaign_str}"  # ty:ignore[unresolved-attribute]
         params = self.config.single_coordinate_scan_params.scan_params
@@ -247,51 +249,23 @@ class CircuitExtractionTask(Task):
             instance_info = f" - Instance {self.config.idx} with {instance_info}"
         circuit_descr = self.config.info.campaign_description + instance_info
 
-        # Get counts
-        c = Circuit(name=circuit_name, path=str(circuit_path))
-        scale, num_nrn, num_syn, num_conn = circuit_utils.get_circuit_size(c)
-
-        # Create circuit model
-        circuit_model = models.Circuit(
+        return circuit_registration.register_circuit(
+            client=db_client,
+            circuit_path=circuit_path,
             name=circuit_name,
             description=circuit_descr,
-            subject=parent.subject,  # ty:ignore[unresolved-attribute]
-            brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute]
-            license=parent.license,  # ty:ignore[unresolved-attribute]
-            number_neurons=num_nrn,
-            number_synapses=num_syn,
-            number_connections=num_conn,
-            has_morphologies=parent.has_morphologies,  # ty:ignore[unresolved-attribute]
-            has_point_neurons=parent.has_point_neurons,  # ty:ignore[unresolved-attribute]
-            has_electrical_cell_models=parent.has_electrical_cell_models,  # ty:ignore[unresolved-attribute]
-            has_spines=parent.has_spines,  # ty:ignore[unresolved-attribute]
-            scale=scale,  # ty:ignore[invalid-argument-type]
             build_category=parent.build_category,  # ty:ignore[unresolved-attribute]
-            root_circuit_id=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
-            atlas_id=parent.atlas_id,  # ty:ignore[unresolved-attribute]
+            brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute]
+            subject=parent.subject,  # ty:ignore[unresolved-attribute]
             contact_email=parent.contact_email,  # ty:ignore[unresolved-attribute]
             published_in=parent.published_in,  # ty:ignore[unresolved-attribute]
             experiment_date=parent.experiment_date,  # ty:ignore[unresolved-attribute]
-            authorized_public=False,
+            license=parent.license,  # ty:ignore[unresolved-attribute]
+            atlas=None,  # TODO: Not yet implemented
+            root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
+            parent=parent,
+            derivation_type=types.DerivationType.circuit_extraction,
         )
-        registered_circuit = db_client.register_entity(circuit_model)
-        L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
-        return registered_circuit
-
-    def _add_derivation_link(
-        self, db_client: Client, registered_circuit: models.Circuit
-    ) -> models.Derivation:
-        """Add a derivation link to the parent circuit."""
-        parent = self._circuit_entity  # Parent circuit entity
-        derivation_type = types.DerivationType.circuit_extraction
-        derivation_model = models.Derivation(
-            used=parent,  # ty:ignore[invalid-argument-type]
-            generated=registered_circuit,
-            derivation_type=derivation_type,
-        )
-        registered_derivation = db_client.register_entity(derivation_model)
-        L.info(f"Derivation link '{derivation_type}' registered")
-        return registered_derivation
 
     @staticmethod
     def _generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:
@@ -717,21 +691,10 @@ class CircuitExtractionTask(Task):
         # Register new circuit entity incl. folder asset and linked entities
         new_circuit_entity = None
         if db_client and self._circuit_entity:
-            with BenchmarkTracker.section("register_circuit_entity"):
-                new_circuit_entity = self._create_circuit_entity(
+            with BenchmarkTracker.section("register_circuit"):
+                new_circuit_entity = self._register_output(
                     db_client=db_client, circuit_path=new_circuit_path
                 )
-
-            # Register circuit folder asset
-            with BenchmarkTracker.section("register_circuit_folder_asset"):
-                db_sdk.add_circuit_folder_asset(
-                    client=db_client,
-                    circuit_path=new_circuit_path,
-                    registered_circuit=new_circuit_entity,
-                )
-
-            # Derivation link
-            self._add_derivation_link(db_client=db_client, registered_circuit=new_circuit_entity)
 
             # Update execution activity (if any)
             if new_circuit_entity is not None:
