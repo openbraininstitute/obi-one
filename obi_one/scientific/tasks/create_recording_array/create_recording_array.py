@@ -220,7 +220,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         L.info("neurite_types shape: %s", neurite_types.shape)
         L.info("population_name: %s", population_name)
 
-        weights_output_path = Path(circuit_dest_dir) / "weights.h5"
+        weights_output_path = self.config.coordinate_output_root / "weights.h5"
         save_weights(
             weights=weights,
             cols=cols,
