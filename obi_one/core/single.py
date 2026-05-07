@@ -13,7 +13,7 @@ from pydantic import Field, field_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
-from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME
+from obi_one.core.serialization_constants import _COORDINATE_CONFIG_FILENAME
 from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
