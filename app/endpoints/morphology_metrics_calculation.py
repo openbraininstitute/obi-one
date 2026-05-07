@@ -32,7 +32,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.convert_morphology_to_registered_mesh import (
     HAS_MESHING,
-    mesh_and_register,
+    mesh_and_register as _mesh_and_register,
 )
 from app.errors import ApiError
 from app.logger import L
@@ -161,13 +161,14 @@ def run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
 def _get_h5_analysis_path(
     original_file_path: str,
     file_extension: str,
-    converted_files: MorphologyFiles,
+    converted_hdf5_path: str | None,
+    converted_swc_path: str | None,  # noqa: ARG001 (kept for symmetry / future use)
 ) -> str:
     if file_extension == ".h5":
         return original_file_path
 
-    if converted_files.hdf5 and converted_files.hdf5.exists():
-        return str(converted_files.hdf5)
+    if converted_hdf5_path and pathlib.Path(converted_hdf5_path).exists():
+        return converted_hdf5_path
 
     return original_file_path
 
@@ -326,8 +327,11 @@ def register_asset_from_content(
 def register_assets(
     client: Client,
     entity_id: str,
-    file_path: pathlib.Path,
+    file_folder: str,
+    morphology_name: str,
 ) -> dict[str, Any]:
+    file_path = pathlib.Path(file_folder) / morphology_name
+
     if not file_path.exists():
         error_msg = f"Asset file not found at path: {file_path}"
         raise FileNotFoundError(error_msg)
@@ -398,18 +402,39 @@ def _register_assets_and_measurements(
     morphology_name: str,
     content: bytes,
     measurement_list: list[dict[str, Any]],
-    converted_files: MorphologyFiles,
+    converted_swc_path: str | None,
+    converted_hdf5_path: str | None,
 ) -> dict[str, Any]:
     register_asset_from_content(client, entity_id, morphology_name, content)
 
-    if converted_files.swc and converted_files.swc.exists():
-        register_assets(client, entity_id, converted_files.swc)
+    if converted_swc_path:
+        swc = pathlib.Path(converted_swc_path)
+        if swc.exists():
+            register_assets(client, entity_id, str(swc.parent), swc.name)
 
-    if converted_files.hdf5 and converted_files.hdf5.exists():
-        register_assets(client, entity_id, converted_files.hdf5)
+    if converted_hdf5_path:
+        hdf5 = pathlib.Path(converted_hdf5_path)
+        if hdf5.exists():
+            register_assets(client, entity_id, str(hdf5.parent), hdf5.name)
 
     registered = register_measurements(client, entity_id, measurement_list)
     return registered
+
+
+def _resolve_swc_bytes_for_mesh(
+    _client: Any,
+    converted_swc_path: str | None,
+    file_extension: str,
+    content: bytes,
+) -> bytes | None:
+    """Return the SWC bytes to use for mesh generation, or None if not applicable."""
+    if converted_swc_path:
+        swc = Path(converted_swc_path)
+        if swc.exists():
+            return swc.read_bytes()
+    if file_extension == ".swc":
+        return content
+    return None
 
 
 def _try_mesh_and_register(
@@ -421,7 +446,7 @@ def _try_mesh_and_register(
         L.info("_try_mesh_and_register: meshing dependencies not available, skipping")
         return None
     try:
-        asset = mesh_and_register(client, uuid.UUID(entity_id), swc_bytes)
+        asset = _mesh_and_register(client, uuid.UUID(entity_id), swc_bytes)
         return str(asset.id)
     except ApiError as err:
         L.warning(f"_try_mesh_and_register: meshing failed for {entity_id}: {err.message}")
@@ -456,6 +481,9 @@ async def _run_pipeline(
             single_point_soma_by_ext=single_point_soma_by_ext,
         )
 
+        converted_swc = str(converted_files.swc) if converted_files.swc else None
+        converted_hdf5 = str(converted_files.hdf5) if converted_files.hdf5 else None
+
         if converted_files.swc:
             stack.callback(converted_files.swc.unlink, missing_ok=True)
         if converted_files.hdf5:
@@ -464,7 +492,8 @@ async def _run_pipeline(
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
             file_extension=file_extension,
-            converted_files=converted_files,
+            converted_hdf5_path=converted_hdf5,
+            converted_swc_path=converted_swc,
         )
         measurement_list = run_morphology_analysis(analysis_path)
 
@@ -476,18 +505,15 @@ async def _run_pipeline(
             morphology_name,
             content,
             measurement_list,
-            converted_files,
+            converted_swc,
+            converted_hdf5,
         )
 
+        swc_bytes = _resolve_swc_bytes_for_mesh(client, converted_swc, file_extension, content)
         mesh_asset_id: str | None = None
-        if converted_files.swc:
-            swc_bytes = converted_files.swc.read_bytes()
+        if swc_bytes is not None:
             mesh_asset_id = await run_in_threadpool(
                 _try_mesh_and_register, client, entity_id, swc_bytes
-            )
-        elif file_extension == ".swc":
-            mesh_asset_id = await run_in_threadpool(
-                _try_mesh_and_register, client, entity_id, content
             )
 
         return entity_id, str(data2.id), mesh_asset_id  # ty:ignore[unresolved-attribute]
