@@ -96,8 +96,12 @@ def mock_template_and_functions(monkeypatch):
         mock_create_analysis_dict,
     )
 
+    mock_result = MagicMock()
+    mock_result.hdf5 = Path("path0.h5")
+    mock_result.swc = Path("path1.swc")
+
     mock_validate_and_convert_morphology = create_autospec(
-        validate_and_convert_morphology, return_value=[Path("path0.h5"), Path("path1.swc")]
+        validate_and_convert_morphology, return_value=mock_result
     )
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
@@ -107,7 +111,7 @@ def mock_template_and_functions(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def mock_io_for_test(monkeypatch):
-    """Mocks IO operations to prevent actual file creation during testing."""
+    """Mocks IO operations and registration functions."""
     mock_file_handle = MagicMock()
     mock_file_handle.name = "/mock/temp_uploaded_file.swc"
     mock_file_handle.__enter__.return_value = mock_file_handle
@@ -148,6 +152,11 @@ def mock_io_for_test(monkeypatch):
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
         lambda _client, _payload: MagicMock(id="mock-entity-id"),
+    )
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_asset_from_content",
+        lambda *_args, **_kwargs: MagicMock(),
     )
 
     monkeypatch.setattr(
@@ -237,7 +246,9 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):
 
 
 def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.", lambda _: [])
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
+    )
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_assets",
         MagicMock(
@@ -334,6 +345,7 @@ def test_h5_upload_uses_original_path(client, monkeypatch):
 def test_prepare_entity_payload_default_name():
     metadata = MorphologyMetadata()
     payload = _prepare_entity_payload(metadata, "my_cell.swc")
+    # _prepare_entity_payload replaces name=None with file stem
     assert payload["name"] == "Morphology: my_cell"
 
 
@@ -549,10 +561,10 @@ def test_register_assets_and_measurements_converted_file_not_exists(monkeypatch)
 
     client = MagicMock()
     result = _register_assets_and_measurements(
-        client, "eid", "file.swc", b"data", [], "conv1.h5", "conv2.swc"
+        client, "eid", "file.swc", b"data", [], "conv1.swc", "conv2.h5"
     )
     assert result.id == "meas-id"
-    assert mock_register_assets.call_count == 1
+    assert mock_register_assets.call_count == 0
 
 
 def test_resolve_swc_bytes_for_mesh_swc_converted_exists(monkeypatch):
