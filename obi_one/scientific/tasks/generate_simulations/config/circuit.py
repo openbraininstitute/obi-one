@@ -136,7 +136,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Distribution",
             SchemaKey.GROUP: BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 2,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
