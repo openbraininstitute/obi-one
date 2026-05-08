@@ -6,10 +6,10 @@ import traceback
 import uuid
 from contextlib import ExitStack, suppress
 from functools import cache
-from uuid import UUID
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
+from uuid import UUID
 
 import entitysdk
 import neurom as nm
@@ -257,7 +257,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     license = _get_entity("license", License)
     name = new_item.get("name")
     description = new_item.get("description")
-    authorized_public: bool = bool(new_item.get("authorized_public", False))
+    authorized_public: bool = bool(new_item.get("authorized_public"))
     morphology = CellMorphology(
         cell_morphology_protocol=morphology_protocol if morphology_protocol is not None else None,
         repair_pipeline_state=repair_pipeline_state,
