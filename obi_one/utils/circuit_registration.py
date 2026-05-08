@@ -1115,6 +1115,13 @@ def register_circuit(
         check_only=False,
     )
 
+    # 6. Generate and register additional circuit assets
+    generate_additional_circuit_assets(
+        db_client=client,
+        circuit_path=circuit_path,
+        circuit_entity=registered_circuit,
+    )
+
     return registered_circuit
 
 

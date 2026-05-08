@@ -367,13 +367,6 @@ class CircuitExtractionTask(Task):
 
             L.info("Registration DONE")
 
-        # Generate and register additional circuit assets
-        circuit_registration.generate_additional_circuit_assets(
-            db_client=db_client,
-            circuit_path=new_circuit_path,
-            circuit_entity=new_circuit_entity,  # ty:ignore[invalid-argument-type]
-        )
-
         # Clean-up
         with BenchmarkTracker.section("cleanup"):
             self._cleanup_temp_dir()
