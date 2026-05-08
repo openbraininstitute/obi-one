@@ -22,6 +22,7 @@ from entitysdk.models import (
     MeasurementAnnotation,
     Subject,
 )
+from entitysdk.types import ContentType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -161,14 +162,13 @@ def run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
 def _get_h5_analysis_path(
     original_file_path: str,
     file_extension: str,
-    converted_hdf5_path: str | None,
-    converted_swc_path: str | None,  # noqa: ARG001 (kept for symmetry / future use)
+    converted_files: MorphologyFiles,
 ) -> str:
     if file_extension == ".h5":
         return original_file_path
 
-    if converted_hdf5_path and pathlib.Path(converted_hdf5_path).exists():
-        return converted_hdf5_path
+    if converted_files.hdf5 and converted_files.hdf5.exists():
+        return str(converted_files.hdf5)
 
     return original_file_path
 
@@ -279,19 +279,19 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     return registered
 
 
-EXTENSION_MIME_MAP: Final[dict[str, str]] = {
-    ".asc": "application/asc",
-    ".swc": "application/swc",
-    ".h5": "application/x-hdf5",
+EXTENSION_CONTENT_TYPE_MAP: Final[dict[str, ContentType]] = {
+    ".asc": ContentType.application_asc,
+    ".swc": ContentType.application_swc,
+    ".h5": ContentType.application_x_hdf5,
 }
 
 
-def _get_mime_type(file_extension: str) -> str:
-    mime_type = EXTENSION_MIME_MAP.get(file_extension.lower())
-    if not mime_type:
+def _get_content_type(file_extension: str) -> ContentType:
+    content_type = EXTENSION_CONTENT_TYPE_MAP.get(file_extension.lower())
+    if not content_type:
         error_msg = f"Unsupported file extension: '{file_extension}'."
         raise ValueError(error_msg)
-    return mime_type
+    return content_type
 
 
 def register_asset_from_content(
@@ -301,14 +301,14 @@ def register_asset_from_content(
     content: bytes,
 ) -> dict[str, Any]:
     file_extension = pathlib.Path(morphology_name).suffix
-    mime_type = _get_mime_type(file_extension)
+    content_type = _get_content_type(file_extension)
     try:
         asset = client.upload_content(
             entity_id=entity_id,
             entity_type=CellMorphology,
             file_content=content,
             file_name=morphology_name,
-            file_content_type=mime_type,
+            file_content_type=content_type,
             asset_label="morphology",
         )
     except requests.exceptions.RequestException as e:
@@ -335,14 +335,14 @@ def register_assets(
         error_msg = f"Asset file not found at path: {file_path}"
         raise FileNotFoundError(error_msg)
 
-    mime_type = _get_mime_type(file_path.suffix)
+    content_type = _get_content_type(file_path.suffix)
 
     try:
         asset1 = client.upload_file(
             entity_id=entity_id,  # ty:ignore[invalid-argument-type]
             entity_type=CellMorphology,
             file_path=str(file_path),  # ty:ignore[invalid-argument-type]
-            file_content_type=mime_type,  # ty:ignore[invalid-argument-type]
+            file_content_type=content_type,  # ty:ignore[invalid-argument-type]
             asset_label="morphology",  # ty:ignore[invalid-argument-type]
         )
     except requests.exceptions.RequestException as e:
@@ -401,20 +401,17 @@ def _register_assets_and_measurements(
     morphology_name: str,
     content: bytes,
     measurement_list: list[dict[str, Any]],
-    converted_swc_path: str | None,
-    converted_hdf5_path: str | None,
+    converted_files: MorphologyFiles,
 ) -> dict[str, Any]:
     register_asset_from_content(client, entity_id, morphology_name, content)
 
-    if converted_swc_path:
-        swc = pathlib.Path(converted_swc_path)
-        if swc.exists():
-            register_assets(client, entity_id, str(swc.parent), swc.name)
+    if converted_files.swc and converted_files.swc.exists():
+        swc = converted_files.swc
+        register_assets(client, entity_id, str(swc.parent), swc.name)
 
-    if converted_hdf5_path:
-        hdf5 = pathlib.Path(converted_hdf5_path)
-        if hdf5.exists():
-            register_assets(client, entity_id, str(hdf5.parent), hdf5.name)
+    if converted_files.hdf5 and converted_files.hdf5.exists():
+        hdf5 = converted_files.hdf5
+        register_assets(client, entity_id, str(hdf5.parent), hdf5.name)
 
     registered = register_measurements(client, entity_id, measurement_list)
     return registered
@@ -422,15 +419,13 @@ def _register_assets_and_measurements(
 
 def _resolve_swc_bytes_for_mesh(
     _client: Any,
-    converted_swc_path: str | None,
+    converted_files: MorphologyFiles,
     file_extension: str,
     content: bytes,
 ) -> bytes | None:
     """Return the SWC bytes to use for mesh generation, or None if not applicable."""
-    if converted_swc_path:
-        swc = Path(converted_swc_path)
-        if swc.exists():
-            return swc.read_bytes()
+    if converted_files.swc and converted_files.swc.exists():
+        return converted_files.swc.read_bytes()
     if file_extension == ".swc":
         return content
     return None
@@ -480,9 +475,6 @@ async def _run_pipeline(
             single_point_soma_by_ext=single_point_soma_by_ext,
         )
 
-        converted_swc = str(converted_files.swc) if converted_files.swc else None
-        converted_hdf5 = str(converted_files.hdf5) if converted_files.hdf5 else None
-
         if converted_files.swc:
             stack.callback(converted_files.swc.unlink, missing_ok=True)
         if converted_files.hdf5:
@@ -491,8 +483,7 @@ async def _run_pipeline(
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
             file_extension=file_extension,
-            converted_hdf5_path=converted_hdf5,
-            converted_swc_path=converted_swc,
+            converted_files=converted_files,
         )
         measurement_list = run_morphology_analysis(analysis_path)
 
@@ -504,11 +495,10 @@ async def _run_pipeline(
             morphology_name,
             content,
             measurement_list,
-            converted_swc,
-            converted_hdf5,
+            converted_files,
         )
 
-        swc_bytes = _resolve_swc_bytes_for_mesh(client, converted_swc, file_extension, content)
+        swc_bytes = _resolve_swc_bytes_for_mesh(client, converted_files, file_extension, content)
         mesh_asset_id: str | None = None
         if swc_bytes is not None:
             mesh_asset_id = await run_in_threadpool(
