@@ -158,6 +158,7 @@ _populate_registry()
 
 # Backward-compatible convenience functions (delegate to the registry)
 
+
 def get_configs_task_type(config: object) -> type:
     return task_registry.get_configs_task_type(config)
 

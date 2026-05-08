@@ -115,7 +115,9 @@ def run_task_type(
         single_config = deserialize_obi_object_from_json_data(json_dict)
 
     else:
-        single_config = task_registry.get_task_type_single_config(task_type)(scan_output_root=scan_output_root)
+        single_config = task_registry.get_task_type_single_config(task_type)(
+            scan_output_root=scan_output_root
+        )
 
     single_config.set_single_entity(entity)  # ty:ignore[unresolved-attribute]
 
