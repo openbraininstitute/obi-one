@@ -132,7 +132,7 @@ def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
             return_value=fake_config,
         ),
         patch(
-            "app.services.resource_estimation.circuit_extraction.get_task_type_config_asset_label",
+            "app.services.resource_estimation.circuit_extraction.task_registry.get_task_type_config_asset_label",
             return_value="circuit_extraction_config",
         ),
         patch(
