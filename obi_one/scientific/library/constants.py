@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from obi_one.core.serialization_constants import (
+from obi_one.core.serialization_constants import (  # noqa: F401
     _COORDINATE_CONFIG_FILENAME,
     _SCAN_CONFIG_FILENAME,
 )

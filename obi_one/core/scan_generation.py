@@ -14,9 +14,9 @@ from pydantic import PrivateAttr, ValidationError
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
+from obi_one.core.serialization_constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
-from obi_one.core.serialization_constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
