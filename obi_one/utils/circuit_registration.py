@@ -1069,6 +1069,7 @@ def register_circuit(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
+    skip_additional_assets: bool = False,
     check_only: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
@@ -1101,6 +1102,8 @@ def register_circuit(
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
+        skip_additional_assets: If True, skip generation of additional assets
+            (compressed circuit, matrices, plots, figures).
         check_only: If True, perform a dry run without registering anything.
 
     Returns:
@@ -1198,11 +1201,12 @@ def register_circuit(
     )
 
     # 6. Generate and register additional circuit assets
-    generate_additional_circuit_assets(
-        circuit_path=circuit_path,
-        client=client,
-        circuit_entity=registered_circuit,
-    )
+    if not skip_additional_assets:
+        generate_additional_circuit_assets(
+            circuit_path=circuit_path,
+            client=client,
+            circuit_entity=registered_circuit,
+        )
 
     return registered_circuit
 
