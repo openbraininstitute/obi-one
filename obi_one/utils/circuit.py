@@ -384,6 +384,7 @@ def run_circuit_folder_compression(circuit_path: Path, circuit_name: str, output
     grid_scan = GridScanGenerationTask(
         form=folder_compressions_config,
         output_root=output_root,
+        coordinate_directory_option="NONE",
     )
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
@@ -432,6 +433,7 @@ def run_connectivity_matrix_extraction(circuit_path: Path, output_root: Path) ->
     grid_scan = GridScanGenerationTask(
         form=matrix_extraction_config,
         output_root=output_root,
+        coordinate_directory_option="NONE",
     )
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
@@ -506,6 +508,7 @@ def run_basic_connectivity_plots(
     grid_scan = GridScanGenerationTask(
         form=plots_config,
         output_root=output_root,
+        coordinate_directory_option="NONE",
     )
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)

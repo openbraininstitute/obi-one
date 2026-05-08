@@ -165,10 +165,16 @@ class SingleConfigMixin:
             )
         elif self._coordinate_directory_option == "ZERO_INDEX":
             self.coordinate_output_root = self.scan_output_root / f"{self.idx}"
+        elif self._coordinate_directory_option == "NONE":
+            # Don't create any subfolder; only works w/o scan params
+            if self.single_coordinate_scan_params.scan_params:
+                msg = "Invalid coordinate_directory_option: NONE only valid w/o scan params."
+                raise ValueError(msg)
+            self.coordinate_output_root = self.scan_output_root
         else:
             msg = (
                 f"Invalid coordinate_directory_option: {self._coordinate_directory_option}. "
-                "Valid options are: NAME_EQUALS_VALUE, VALUE, ZERO_INDEX."
+                "Valid options are: NAME_EQUALS_VALUE, VALUE, ZERO_INDEX, NONE."
             )
             raise ValueError(msg)
 
