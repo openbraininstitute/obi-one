@@ -1,9 +1,12 @@
+import io
 import json
 import pathlib
 import tempfile
 import traceback
 import uuid
 from contextlib import ExitStack, suppress
+from functools import cache
+from uuid import UUID
 from http import HTTPStatus
 from pathlib import Path
 from typing import Annotated, Any, Final, TypeVar
@@ -18,10 +21,13 @@ from entitysdk.models import (
     BrainRegion,
     CellMorphology,
     CellMorphologyProtocol,
+    Identifiable,
     License,
     MeasurementAnnotation,
+    MeasurementKind,
     Subject,
 )
+from entitysdk.models.asset import Asset
 from entitysdk.types import AssetLabel, ContentType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -47,11 +53,6 @@ from app.services.morphology import (
 class ApiErrorCode:
     BAD_REQUEST = "BAD_REQUEST"
     ENTITYSDK_API_FAILURE = "ENTITYSDK_API_FAILURE"
-
-
-class BaseEntity:
-    def __init__(self, entity_id: Any | None = None) -> None:
-        """Initialize the base entity."""
 
 
 ALLOWED_EXTENSIONS: Final[set[str]] = {".swc", ".h5", ".asc"}
@@ -109,22 +110,15 @@ def _validate_file_extension(filename: str | None) -> str:
     return file_extension
 
 
+@cache
 def _get_template() -> dict:
-    if hasattr(_get_template, "cached"):
-        return _get_template.cached
-
     template_path = Path(__file__).parent / "morphology_template.json"
-    template = json.loads(template_path.read_text())
-
-    _get_template.cached = template
-    return template
+    return json.loads(template_path.read_text())
 
 
+@cache
 def _get_analysis_dict() -> dict:
     """Lazily initialize and cache the analysis dictionary."""
-    if hasattr(_get_analysis_dict, "cached"):
-        return _get_analysis_dict.cached
-
     analysis_dict_base = uf.create_analysis_dict(_get_template())
     analysis_dict = dict(analysis_dict_base)
 
@@ -133,11 +127,10 @@ def _get_analysis_dict() -> dict:
         for domain in TARGET_NEURITE_DOMAINS:
             analysis_dict.setdefault(domain, default_analysis)
 
-    _get_analysis_dict.cached = analysis_dict
     return analysis_dict
 
 
-def run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
+def run_morphology_analysis(morphology_path: str) -> list[MeasurementKind]:
     try:
         neuron = nm.load_morphology(morphology_path)
         results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
@@ -208,6 +201,9 @@ async def _parse_file_and_metadata(
 ) -> tuple[str, str, bytes, MorphologyMetadata]:
     morphology_name = file.filename
     file_extension = _validate_file_extension(morphology_name)
+    if morphology_name is None:
+        msg = "filename must not be None"
+        raise AssertionError(msg)
     content = await file.read()
 
     if not content:
@@ -225,7 +221,7 @@ async def _parse_file_and_metadata(
     return morphology_name, file_extension, content, metadata_obj
 
 
-T = TypeVar("T", bound=BaseEntity)
+T = TypeVar("T", bound=Identifiable)
 
 
 def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
@@ -261,9 +257,9 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     license = _get_entity("license", License)
     name = new_item.get("name")
     description = new_item.get("description")
-    authorized_public = new_item.get("authorized_public")
+    authorized_public: bool = bool(new_item.get("authorized_public", False))
     morphology = CellMorphology(
-        cell_morphology_protocol=morphology_protocol,
+        cell_morphology_protocol=morphology_protocol if morphology_protocol is not None else None,
         repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
@@ -299,14 +295,14 @@ def register_asset_from_content(
     entity_id: str,
     morphology_name: str,
     content: bytes,
-) -> dict[str, Any]:
+) -> Asset:
     file_extension = pathlib.Path(morphology_name).suffix
     content_type = _get_content_type(file_extension)
     try:
         asset = client.upload_content(
-            entity_id=entity_id,
+            entity_id=UUID(entity_id),
             entity_type=CellMorphology,
-            file_content=content,
+            file_content=io.BytesIO(content),
             file_name=morphology_name,
             file_content_type=content_type,
             asset_label=AssetLabel.morphology,
@@ -328,7 +324,7 @@ def register_assets(
     entity_id: str,
     file_folder: str,
     morphology_name: str,
-) -> dict[str, Any]:
+) -> Asset:
     file_path = pathlib.Path(file_folder) / morphology_name
 
     if not file_path.exists():
@@ -339,9 +335,9 @@ def register_assets(
 
     try:
         asset1 = client.upload_file(
-            entity_id=entity_id,
+            entity_id=UUID(entity_id),
             entity_type=CellMorphology,
-            file_path=str(file_path),
+            file_path=file_path,
             file_content_type=content_type,
             asset_label=AssetLabel.morphology,
         )
@@ -360,12 +356,12 @@ def register_assets(
 def register_measurements(
     client: Client,
     entity_id: str,
-    measurements: list[dict[str, Any]],
-) -> dict[str, Any]:
+    measurements: list[MeasurementKind],
+) -> MeasurementAnnotation:
     try:
         measurement_annotation = MeasurementAnnotation(
-            entity_id=entity_id,
-            entity_type="cell_morphology",
+            entity_id=UUID(entity_id),
+            entity_type=CellMorphology,
             measurement_kinds=measurements,
         )
         registered = client.register_entity(entity=measurement_annotation)
@@ -400,9 +396,9 @@ def _register_assets_and_measurements(
     entity_id: str,
     morphology_name: str,
     content: bytes,
-    measurement_list: list[dict[str, Any]],
+    measurement_list: list[MeasurementKind],
     converted_files: MorphologyFiles,
-) -> dict[str, Any]:
+) -> MeasurementAnnotation:
     register_asset_from_content(client, entity_id, morphology_name, content)
 
     if converted_files.swc and converted_files.swc.exists():

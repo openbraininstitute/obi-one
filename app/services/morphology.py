@@ -27,6 +27,10 @@ class MorphologyFiles(BaseModel):
     swc: Path | None = None
     hdf5: Path | None = None
 
+    def paths(self) -> list[Path]:
+        """Return all non-None paths as a list."""
+        return [p for p in (self.swc, self.hdf5) if p is not None]
+
 
 def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
     warnings = warning_handler.get_all()
