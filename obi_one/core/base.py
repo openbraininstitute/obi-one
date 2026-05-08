@@ -3,6 +3,8 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from obi_one.core.registry import type_registry
+
 
 class OBIBaseModel(BaseModel):
     """Sets `type` fields for model_dump which are then used for desserialization.
@@ -28,6 +30,9 @@ class OBIBaseModel(BaseModel):
         super().__init_subclass__(**kwargs)
         cls.__annotations__["type"] = Literal[cls.__qualname__]  # ty:ignore[invalid-type-form]
         cls.type = cls.__qualname__
+
+        # Auto-register for deserialization
+        type_registry.register(cls.__qualname__, cls)
 
         cls.model_config = copy.deepcopy(cls.model_config)
 
