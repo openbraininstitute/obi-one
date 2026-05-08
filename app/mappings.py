@@ -161,7 +161,7 @@ CLUSTER_INSTANCES_INFO = {
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
-            memory_per_instance_gb=384,
+            memory_per_instance_gb=768,
         ),
     ],
     "cell_b": [
