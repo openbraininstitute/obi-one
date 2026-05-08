@@ -7,15 +7,19 @@ and type information.
 
 from __future__ import annotations
 
-from entitysdk.types import AssetLabel
+from typing import TYPE_CHECKING
 
-from obi_one.types import TaskType
+if TYPE_CHECKING:
+    from entitysdk.types import AssetLabel
+
+    from obi_one.types import TaskType
 
 
 class TaskRegistry:
     """Maps config classes to task classes, and TaskType enums to task/config/label."""
 
     def __init__(self) -> None:
+        """Initialize empty registry maps."""
         # SingleConfig class -> Task class (used to dispatch execution)
         self._config_task_map: dict[type, type] = {}
         # TaskType -> Task class (used for run_task_type entrypoint)
