@@ -848,164 +848,130 @@ def register_publication_links(
 
 
 def generate_compressed_circuit_asset(
-    client: Client, circuit_path: Path, circuit_entity: models.Circuit, output_dir: Path
+    circuit_path: Path,
+    output_dir: Path,
+    client: Client | None = None,
+    circuit_entity: models.Circuit | None = None,
 ) -> None:
-    """Generate a compressed circuit archive and register it as an asset."""
+    """Generate a compressed circuit archive and optionally register it as an asset."""
     from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
 
-    try:
-        compressed_circuit = circuit_utils.run_circuit_folder_compression(
-            circuit_path=circuit_path,
-            circuit_name=circuit_entity.name,
-            output_root=output_dir,
-        )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Circuit compression failed: {e}")
-        return
-
-    try:
+    compressed_circuit = circuit_utils.run_circuit_folder_compression(
+        circuit_path=circuit_path,
+        circuit_name=circuit_entity.name if circuit_entity else "circuit",
+        output_root=output_dir,
+    )
+    if client and circuit_entity:
         db_sdk.add_compressed_circuit_asset(
             client=client,
             compressed_file=compressed_circuit,
             registered_circuit=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Compressed circuit registration failed: {e}")
 
 
 def generate_connectivity_matrix_asset(
-    client: Client, circuit_path: Path, circuit_entity: models.Circuit, output_dir: Path
-) -> tuple[Path | None, Path | None, str | None]:
-    """Generate connectivity matrices and register them as an asset.
+    circuit_path: Path,
+    output_dir: Path,
+    client: Client | None = None,
+    circuit_entity: models.Circuit | None = None,
+) -> tuple[Path, Path, str]:
+    """Generate connectivity matrices and optionally register them as an asset.
 
     Returns the matrix_dir, matrix_config, and edge_population for downstream use.
     """
     from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
 
-    try:
-        (
-            matrix_dir,
-            matrix_config,
-            edge_population,
-        ) = circuit_utils.run_connectivity_matrix_extraction(
-            circuit_path=circuit_path,
-            output_root=output_dir,
-        )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Connectivity matrix extraction failed: {e}")
-        return None, None, None
-
-    try:
+    (
+        matrix_dir,
+        matrix_config,
+        edge_population,
+    ) = circuit_utils.run_connectivity_matrix_extraction(
+        circuit_path=circuit_path,
+        output_root=output_dir,
+    )
+    if client and circuit_entity:
         db_sdk.add_connectivity_matrix_asset(
             client=client,
             matrix_dir=matrix_dir,
             registered_circuit=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Connectivity matrix registration failed: {e}")
-
     return matrix_dir, matrix_config, edge_population
 
 
 def generate_connectivity_plot_assets(
-    client: Client,
-    circuit_entity: models.Circuit,
-    matrix_config: Path | None,
-    edge_population: str | None,
+    matrix_config: Path,
+    edge_population: str,
     output_dir: Path,
-) -> tuple[Path | None, list | None]:
-    """Generate connectivity plots and register them as assets.
+    client: Client | None = None,
+    circuit_entity: models.Circuit | None = None,
+) -> tuple[Path, list]:
+    """Generate connectivity plots and optionally register them as assets.
 
     Returns the plot_dir and plot_files for downstream use (overview figure generation).
     """
     from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
 
-    if matrix_config is None or edge_population is None:
-        return None, None
-
-    try:
-        plot_dir, plot_files = circuit_utils.run_basic_connectivity_plots(
-            matrix_config=matrix_config,
-            edge_population=edge_population,
-            output_root=output_dir,
-        )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Connectivity plots generation failed: {e}")
-        return None, None
-
-    try:
+    plot_dir, plot_files = circuit_utils.run_basic_connectivity_plots(
+        matrix_config=matrix_config,
+        edge_population=edge_population,
+        output_root=output_dir,
+    )
+    if client and circuit_entity:
         db_sdk.add_image_assets(
             client=client,
             plot_dir=plot_dir,
             plot_files=plot_files,
             registered_circuit=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Connectivity plots registration failed: {e}")
-
     return plot_dir, plot_files
 
 
 def generate_overview_image_asset(
-    client: Client,
-    circuit_entity: models.Circuit,
     plot_dir: Path | None,
     output_dir: Path,
+    client: Client | None = None,
+    circuit_entity: models.Circuit | None = None,
 ) -> None:
-    """Generate the circuit overview image and register it as an asset."""
+    """Generate the circuit overview image and optionally register it as an asset."""
     from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
 
-    try:
-        viz_path = circuit_utils.generate_overview_figure(
-            plot_dir, output_dir / "circuit_visualization.png"
-        )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Overview image generation failed: {e}")
-        return
-
-    try:
+    viz_path = circuit_utils.generate_overview_figure(
+        plot_dir, output_dir / "circuit_visualization.png"
+    )
+    if client and circuit_entity:
         db_sdk.add_image_assets(
             client=client,
             plot_dir=output_dir,
             plot_files=[viz_path.name],
             registered_circuit=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Overview image registration failed: {e}")
 
 
 def generate_sim_designer_image_asset(
-    client: Client,
-    circuit_entity: models.Circuit,
     plot_dir: Path | None,
     output_dir: Path,
+    client: Client | None = None,
+    circuit_entity: models.Circuit | None = None,
 ) -> None:
-    """Generate the simulation designer image and register it as an asset."""
+    """Generate the simulation designer image and optionally register it as an asset."""
     from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
 
-    try:
-        viz_path = circuit_utils.generate_overview_figure(
-            plot_dir, output_dir / "simulation_designer_image.png"
-        )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Simulation designer image generation failed: {e}")
-        return
-
-    try:
+    viz_path = circuit_utils.generate_overview_figure(
+        plot_dir, output_dir / "simulation_designer_image.png"
+    )
+    if client and circuit_entity:
         db_sdk.add_image_assets(
             client=client,
             plot_dir=output_dir,
             plot_files=[viz_path.name],
             registered_circuit=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Simulation designer image registration failed: {e}")
 
 
 def generate_additional_circuit_assets(
-    db_client: Client,
     circuit_path: Path,
-    circuit_entity: models.Circuit,
+    client: Client | None = None,
+    circuit_entity: models.Circuit | None = None,
 ) -> None:
     """Generate and register additional circuit assets.
 
@@ -1013,46 +979,71 @@ def generate_additional_circuit_assets(
     and overview figures. Each step is independent — failures are logged as
     warnings without aborting the remaining steps.
 
+    If client and circuit_entity are provided, assets are registered to entitycore.
+    Otherwise, only generation is performed (useful for local runs).
+
     Args:
-        db_client: The entitycore SDK client.
         circuit_path: Path to the circuit_config.json file.
-        circuit_entity: The registered circuit entity to attach assets to.
+        client: The entitycore SDK client (optional).
+        circuit_entity: The registered circuit entity to attach assets to (optional).
     """
     output_root = circuit_path.parents[1]
     circuit_name = circuit_path.parent.name
 
-    generate_compressed_circuit_asset(
-        client=db_client, circuit_path=circuit_path,
-        circuit_entity=circuit_entity,
-        output_dir=output_root / (circuit_name + "__COMPRESSED__"),
-    )
+    try:
+        generate_compressed_circuit_asset(
+            circuit_path=circuit_path,
+            output_dir=output_root / (circuit_name + "__COMPRESSED__"),
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+    except Exception as e:  # noqa: BLE001
+        L.warning(f"Compressed circuit asset generation/registration failed: {e}")
 
-    _, matrix_config, edge_population = generate_connectivity_matrix_asset(
-        client=db_client, circuit_path=circuit_path,
-        circuit_entity=circuit_entity,
-        output_dir=output_root / (circuit_name + "__CONN_MATRIX__"),
-    )
+    try:
+        _, matrix_config, edge_population = generate_connectivity_matrix_asset(
+            circuit_path=circuit_path,
+            output_dir=output_root / (circuit_name + "__CONN_MATRIX__"),
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+    except Exception as e:  # noqa: BLE001
+        L.warning(f"Connectivity matrix asset generation/registration failed: {e}")
+        matrix_config = edge_population = None
 
-    plot_dir, _ = generate_connectivity_plot_assets(
-        client=db_client,
-        circuit_entity=circuit_entity, matrix_config=matrix_config,
-        edge_population=edge_population,
-        output_dir=output_root / (circuit_name + "__BASIC_PLOTS__"),
-    )
+    try:
+        plot_dir, _ = generate_connectivity_plot_assets(
+            matrix_config=matrix_config,
+            edge_population=edge_population,
+            output_dir=output_root / (circuit_name + "__BASIC_PLOTS__"),
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+    except Exception as e:  # noqa: BLE001
+        L.warning(f"Connectivity plot assets generation/registration failed: {e}")
+        plot_dir = None
 
     viz_dir = output_root / (circuit_name + "__CIRCUIT_VIZ__")
 
-    generate_overview_image_asset(
-        client=db_client,
-        circuit_entity=circuit_entity, plot_dir=plot_dir,
-        output_dir=viz_dir,
-    )
+    try:
+        generate_overview_image_asset(
+            plot_dir=plot_dir,
+            output_dir=viz_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+    except Exception as e:  # noqa: BLE001
+        L.warning(f"Overview image asset generation/registration failed: {e}")
 
-    generate_sim_designer_image_asset(
-        client=db_client,
-        circuit_entity=circuit_entity, plot_dir=plot_dir,
-        output_dir=viz_dir,
-    )
+    try:
+        generate_sim_designer_image_asset(
+            plot_dir=plot_dir,
+            output_dir=viz_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+    except Exception as e:  # noqa: BLE001
+        L.warning(f"Sim designer image asset generation/registration failed: {e}")
 
 
 # --- High-level registration functions ---
@@ -1208,8 +1199,8 @@ def register_circuit(
 
     # 6. Generate and register additional circuit assets
     generate_additional_circuit_assets(
-        db_client=client,
         circuit_path=circuit_path,
+        client=client,
         circuit_entity=registered_circuit,
     )
 
