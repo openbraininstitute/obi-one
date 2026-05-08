@@ -18,9 +18,9 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.registry import block_ref_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import _SCAN_CONFIG_FILENAME
-from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
 from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
@@ -276,13 +276,10 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 
-        # Find the class in AllReferenceTypes whose name matches reference_type_name
-        reference_type = next(
-            (cls for cls in AllBlockReferenceTypes if cls.__name__ == reference_type_name),
-            None,
-        )
+        # Find the class in the registry whose name matches reference_type_name
+        reference_type = block_ref_registry.get_by_name(reference_type_name)
         if reference_type is None:
-            msg = f"Reference type '{reference_type_name}' not found in AllReferenceTypes."
+            msg = f"Reference type '{reference_type_name}' not found in block reference registry."
             raise OBIONEError(msg)
 
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)

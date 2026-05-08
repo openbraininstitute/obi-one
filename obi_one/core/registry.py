@@ -1,8 +1,13 @@
-"""Registries for task dispatch and type resolution.
+"""Registries for task dispatch, type resolution, and block reference lookup.
 
 Scientific modules populate these registries at import time.
-Core modules consume them at runtime to look up task classes, config mappings,
-and type information.
+Core modules consume them at runtime.
+
+Registries:
+    - TaskRegistry: maps config classes to task classes, and TaskType enums
+      to task classes, single configs, and asset labels.
+    - BlockReferenceRegistry: maps BlockReference subclass names to their
+      classes for use in ScanConfig.add().
 """
 
 from __future__ import annotations
@@ -70,3 +75,27 @@ class TaskRegistry:
 
 # Module-level singleton
 task_registry = TaskRegistry()
+
+
+class BlockReferenceRegistry:
+    """Maps BlockReference subclass names to their classes.
+
+    Used by ScanConfig.add() to resolve a reference type by name
+    when adding a block to a scan configuration.
+    """
+
+    def __init__(self) -> None:
+        """Initialize empty registry."""
+        self._by_name: dict[str, type] = {}
+
+    def register(self, cls: type) -> None:
+        """Register a BlockReference subclass."""
+        self._by_name[cls.__name__] = cls
+
+    def get_by_name(self, name: str) -> type | None:
+        """Return the BlockReference subclass with the given name, or None."""
+        return self._by_name.get(name)
+
+
+# Module-level singleton
+block_ref_registry = BlockReferenceRegistry()
