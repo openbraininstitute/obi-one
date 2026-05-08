@@ -73,7 +73,7 @@ from obi_one.scientific.tasks.skeletonization import (
 from obi_one.types import TaskType
 
 
-def _populate_registry() -> None:
+def _populate_task_registry() -> None:
     """Populate the core TaskRegistry with all scientific task mappings.
 
     This allows core/run_tasks.py to look up task classes, single configs,
@@ -152,8 +152,8 @@ def _populate_registry() -> None:
     )
 
 
-# Runs exactly once at module load (cached for subsequent imports).
-_populate_registry()
+# Runs exactly once at module load (Python caches modules in sys.modules).
+_populate_task_registry()
 
 
 # Backward-compatible convenience functions (delegate to the registry)
