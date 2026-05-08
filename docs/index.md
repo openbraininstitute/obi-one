@@ -30,6 +30,27 @@ OBI-ONE is a standardized library of workflows for biophysically-detailed brain 
 brew install uv open-mpi boost cmake
 ```
 
+### Private neuromorphomesh from AWS CodeArtifacts
+
+Certain commands require the installation of `neuromorphomesh`.
+At the OBI, first check that you have access to the `Container Registry` (AWS Id: `985539765147`).
+
+Then setup the the SSO AWS login; steps 1 and 2 from: [Bastion Access](https://github.com/openbraininstitute/aws-terraform-deployment/blob/staging/bastion_host/BASTION_ACCESS.md#database-access-via-port-forwarding)
+
+Then one can get the credentials with:
+
+```bash
+export AWS_PROFILE=$WHAT_YOU_NAMED_IT
+export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+  --domain openbraininstitute \
+  --query authorizationToken \
+  --output text \
+  --region us-east-1)
+export UV_INDEX_OBI_CODEARTIFACT_PASSWORD="$CODEARTIFACT_AUTH_TOKEN"
+export UV_INDEX_OBI_CODEARTIFACT_USERNAME="aws"
+```
+Then `uv` operations should work.
+
 ### For Most Users (Default)
 
 ```bash
