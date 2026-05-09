@@ -4,7 +4,7 @@ import sys
 import uuid
 from http import HTTPStatus
 from pathlib import Path
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -106,7 +106,7 @@ def mock_template_and_functions(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def mock_io_for_test(monkeypatch):
-    """Mocks IO operations and registration functions with a robust Path mock."""
+    """Mocks IO operations with a recursion-proof Path mock."""
     mock_file_handle = MagicMock()
     mock_file_handle.name = "/mock/temp_uploaded_file.swc"
     mock_file_handle.__enter__.return_value = mock_file_handle
@@ -117,30 +117,33 @@ def mock_io_for_test(monkeypatch):
         lambda *_args, **_kwargs: mock_file_handle,
     )
 
-    class MockPath:
-        def __init__(self, *args):
-            self._real_path = pathlib.Path(*args)
-            self.suffix = self._real_path.suffix
-            self.stem = self._real_path.stem
-            self.name = self._real_path.name
-            self.unlink = MagicMock(return_value=None)
-            self.exists = MagicMock(return_value=True)
-            self.is_file = MagicMock(return_value=True)
-            self.read_text = MagicMock(return_value='{"data": []}')
-            self.read_bytes = MagicMock(return_value=b"swc data")
+    # Capture real Path to avoid recursion
+    real_path_cls = pathlib.Path
 
-        @property
-        def parent(self):
-            return MockPath(self._real_path.parent)
+    def _make_mock_path(path_str):
+        real = real_path_cls(path_str)
+        mock_inst = MagicMock()
+        mock_inst.unlink.return_value = None
+        mock_inst.exists.return_value = True
+        mock_inst.is_file.return_value = True
+        mock_inst.suffix = real.suffix
+        mock_inst.stem = real.stem
+        mock_inst.name = real.name
+        mock_inst.__str__ = lambda _self: str(real)
+        mock_inst.__truediv__ = lambda _self, other: _make_mock_path(str(real / other))
+        mock_inst.read_text.return_value = '{"data": []}'
+        mock_inst.read_bytes.return_value = b"swc data"
 
-        def __str__(self):
-            return str(self._real_path)
+        parent_mock = MagicMock()
+        parent_mock.__str__ = lambda _self: str(real.parent)
+        mock_inst.parent = parent_mock
 
-        def __truediv__(self, other):
-            return MockPath(self._real_path / other)
+        return mock_inst
 
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.pathlib.Path", MockPath)
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", MockPath)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.pathlib.Path", _make_mock_path
+    )
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", _make_mock_path)
 
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.register_morphology",
@@ -431,46 +434,38 @@ def test_get_analysis_dict_extends_neurite_domains(monkeypatch):
     assert "axon" in result
 
 
-def test_register_assets_file_not_found(monkeypatch):
+def test_register_assets_file_not_found():
     client = MagicMock()
-
-    class NoExistPath(Path):
-        def exists(self):
-            return False
-
-        def __truediv__(self, other):
-            return self
-
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", NoExistPath)
-    with pytest.raises(FileNotFoundError):
-        register_assets(client, "eid", "/some/dir", "file.swc")
+    with patch("app.endpoints.morphology_metrics_calculation.pathlib.Path") as mock_path_cls:
+        mock_p = MagicMock()
+        mock_p.exists.return_value = False
+        mock_path_cls.return_value.__truediv__ = MagicMock(return_value=mock_p)
+        with pytest.raises(FileNotFoundError):
+            register_assets(client, "eid", "/some/dir", "file.swc")
 
 
-def test_register_assets_unsupported_extension(monkeypatch):
+def test_register_assets_unsupported_extension():
     client = MagicMock()
-
-    class BadExtPath(Path):
-        def exists(self):
-            return True
-
-        @property
-        def suffix(self):
-            return ".xyz"
-
-        def __truediv__(self, other):
-            return self
-
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", BadExtPath)
-    with pytest.raises(ValueError, match="Unsupported file extension"):
-        register_assets(client, "eid", "/some/dir", "file.xyz")
+    with patch("app.endpoints.morphology_metrics_calculation.pathlib.Path") as mock_path_cls:
+        mock_p = MagicMock()
+        mock_p.exists.return_value = True
+        mock_p.suffix = ".xyz"
+        mock_path_cls.return_value.__truediv__ = MagicMock(return_value=mock_p)
+        with pytest.raises(ValueError, match="Unsupported file extension"):
+            register_assets(client, "eid", "/some/dir", "file.xyz")
 
 
 def test_register_assets_request_exception():
     valid_eid = str(uuid.uuid4())
     client = MagicMock()
     client.upload_file.side_effect = RequestException("Network error")
-    with pytest.raises(HTTPException) as exc_info:
-        register_assets(client, valid_eid, "/some/dir", "file.swc")
+    with patch("app.endpoints.morphology_metrics_calculation.pathlib.Path") as mock_path_cls:
+        mock_p = MagicMock()
+        mock_p.exists.return_value = True
+        mock_p.suffix = ".swc"
+        mock_path_cls.return_value.__truediv__ = MagicMock(return_value=mock_p)
+        with pytest.raises(HTTPException) as exc_info:
+            register_assets(client, valid_eid, "/some/dir", "file.swc")
     assert exc_info.value.detail["code"] == "ENTITYSDK_API_FAILURE"
 
 
@@ -505,7 +500,7 @@ def test_register_morphology_logic_variants(monkeypatch):
     mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
     client = MagicMock()
 
-    def _search_side_effect(*_args, **_kwargs):
+    def _search_side_effect(*_args, **__kwargs):
         mock_result = MagicMock()
         mock_result.one.return_value = mock_protocol
         return mock_result
@@ -528,7 +523,7 @@ def test_register_morphology_with_valid_brain_location(monkeypatch):
     )
     mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
 
-    def _search_side_effect(*_args, **_kwargs):
+    def _search_side_effect(*_args, **__kwargs):
         mock_result = MagicMock()
         mock_result.one.return_value = mock_protocol
         return mock_result
@@ -552,7 +547,7 @@ def test_register_morphology_request_exception_in_get_entity(monkeypatch):
     )
     mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
 
-    def _search_side_effect(*_args, **_kwargs):
+    def _search_side_effect(*_args, **__kwargs):
         mock_result = MagicMock()
         mock_result.one.return_value = mock_protocol
         return mock_result
