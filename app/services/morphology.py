@@ -26,10 +26,10 @@ L = logging.getLogger(__name__)
 class MorphologyFiles(BaseModel):
     swc: Path | None = None
     hdf5: Path | None = None
+    asc: Path | None = None  # ADD THIS
 
     def paths(self) -> list[Path]:
-        """Return all non-None paths as a list."""
-        return [p for p in (self.swc, self.hdf5) if p is not None]
+        return [p for p in (self.swc, self.hdf5, self.asc) if p is not None]  # add self.asc
 
 
 def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
@@ -102,6 +102,8 @@ def convert_morphology(
                 output_paths["swc"] = output_file
             elif ext == ".h5":
                 output_paths["hdf5"] = output_file
+            elif ext == ".asc":
+                output_paths["asc"] = output_file
 
     except Exception as e:
         raise HTTPException(

@@ -29,7 +29,7 @@ from app.endpoints.morphology_metrics_calculation import (
     run_morphology_analysis,
 )
 from app.errors import ApiError
-from app.services.morphology import validate_and_convert_morphology
+from app.services.morphology import MorphologyFiles, validate_and_convert_morphology
 
 ROUTE = "/declared/register-morphology-with-calculated-metrics"
 
@@ -169,10 +169,8 @@ def mock_io_for_test(monkeypatch):
         lambda _client, entity_id, _measurements: MagicMock(id=entity_id),
     )
 
-    if hasattr(_get_template, "cached"):
-        del _get_template.cached
-    if hasattr(_get_analysis_dict, "cached"):
-        del _get_analysis_dict.cached
+    _get_template.cache_clear()
+    _get_analysis_dict.cache_clear()
 
 
 @pytest.fixture
@@ -249,7 +247,7 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
         "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.register_assets",
+        "app.endpoints.morphology_metrics_calculation.register_asset_from_content",
         MagicMock(
             side_effect=HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -360,19 +358,19 @@ def test_prepare_entity_payload_custom_name_kept():
 
 
 def test_get_h5_analysis_path_h5_extension():
-    result = _get_h5_analysis_path("original.h5", ".h5", "conv1.swc", "conv2.swc")
+    result = _get_h5_analysis_path("original.h5", ".h5", MorphologyFiles())
     assert result == "original.h5"
 
 
 def test_get_h5_analysis_path_converted_h5_found(tmp_path):
     h5_file = tmp_path / "converted.h5"
     h5_file.write_bytes(b"")
-    result = _get_h5_analysis_path("original.swc", ".swc", str(h5_file), "conv2.swc")
+    result = _get_h5_analysis_path("original.swc", ".swc", MorphologyFiles(hdf5=h5_file))
     assert result == str(h5_file)
 
 
 def test_get_h5_analysis_path_falls_back_to_original():
-    result = _get_h5_analysis_path("original.swc", ".swc", "noexist.swc", "noexist2.swc")
+    result = _get_h5_analysis_path("original.swc", ".swc", MorphologyFiles())
     assert result == "original.swc"
 
 
@@ -394,24 +392,34 @@ def test_validate_file_extension_valid():
     assert _validate_file_extension("neuron.asc") == ".asc"
 
 
-def test_get_template_caches():
+def test_get_template_caches(monkeypatch):
     sentinel = {"data": []}
-    _get_template.cached = sentinel
-    assert _get_template() is sentinel
-    assert _get_template() is sentinel
+    _get_template.cache_clear()
+    monkeypatch.setattr(Path, "read_text", lambda *_args, **_kwargs: json.dumps(sentinel))
+    result1 = _get_template()
+    result2 = _get_template()
+    assert result1 is result2
 
 
-def test_get_analysis_dict_caches():
+def test_get_analysis_dict_caches(monkeypatch):
+    _get_template.cache_clear()
+    _get_analysis_dict.cache_clear()
     sentinel = {"soma": {}}
-    _get_analysis_dict.cached = sentinel
-    assert _get_analysis_dict() is sentinel
-    assert _get_analysis_dict() is sentinel
+    monkeypatch.setattr(Path, "read_text", lambda *_args, **_kwargs: json.dumps({"data": []}))
+    monkeypatch.setattr(
+        "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
+        lambda _: sentinel,
+    )
+    result1 = _get_analysis_dict()
+    result2 = _get_analysis_dict()
+    assert result1 is result2
+    assert result1 is sentinel
 
 
 def test_get_analysis_dict_extends_neurite_domains(monkeypatch):
     if hasattr(_get_analysis_dict, "cached"):
         del _get_analysis_dict.cached
-    _get_template.cached = {"data": []}
+    _get_template.cache_clear()
     monkeypatch.setattr(
         "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
         lambda _t: {"basal_dendrite": {"metric": lambda _: 1.0}},
@@ -529,7 +537,9 @@ def test_register_assets_and_measurements_no_converted_files(monkeypatch):
         MagicMock(return_value=MagicMock(id="meas-id")),
     )
     client = MagicMock()
-    result = _register_assets_and_measurements(client, "eid", "file.swc", b"data", [], None, None)
+    result = _register_assets_and_measurements(
+        client, "eid", "file.swc", b"data", [], MorphologyFiles()
+    )
     assert result.id == "meas-id"
 
 
@@ -559,7 +569,7 @@ def test_register_assets_and_measurements_converted_file_not_exists(monkeypatch)
 
     client = MagicMock()
     result = _register_assets_and_measurements(
-        client, "eid", "file.swc", b"data", [], "conv1.swc", "conv2.h5"
+        client, "eid", "file.swc", b"data", [], MorphologyFiles()
     )
     assert result.id == "meas-id"
     assert mock_register_assets.call_count == 0
@@ -576,17 +586,19 @@ def test_resolve_swc_bytes_for_mesh_swc_converted_exists(monkeypatch):
         return inst
 
     monkeypatch.setattr("app.endpoints.morphology_metrics_calculation.Path", _mock_path_for_mesh)
-    result = _resolve_swc_bytes_for_mesh(None, "converted.swc", ".h5", b"original")
+    result = _resolve_swc_bytes_for_mesh(
+        None, MorphologyFiles(swc=Path("converted.swc")), ".h5", b"original"
+    )
     assert result == b"swc data"
 
 
 def test_resolve_swc_bytes_for_mesh_swc_extension():
-    result = _resolve_swc_bytes_for_mesh(None, None, ".swc", b"original content")
+    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(), ".swc", b"original content")
     assert result == b"original content"
 
 
 def test_resolve_swc_bytes_for_mesh_non_swc_returns_none():
-    result = _resolve_swc_bytes_for_mesh(None, None, ".h5", b"original")
+    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(), ".h5", b"original")
     assert result is None
 
 
