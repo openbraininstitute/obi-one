@@ -500,11 +500,6 @@ def test_register_morphology_logic_variants(monkeypatch):
     mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
     client = MagicMock()
 
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.PlaceholderCellMorphologyProtocol",
-        MagicMock(return_value=mock_protocol),
-    )
-
     def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
         mock_result.one.return_value = mock_protocol
@@ -619,14 +614,9 @@ def test_register_assets_and_measurements_converted_file_not_exists(monkeypatch)
 
 def test_resolve_swc_bytes_for_mesh_swc_converted_exists(tmp_path):
     mock_swc = tmp_path / "mock.swc"
-    with (
-        patch.object(pathlib.Path, "exists", return_value=True),
-        patch.object(pathlib.Path, "read_bytes", return_value=b"swc data"),
-    ):
-        result = _resolve_swc_bytes_for_mesh(
-            None, MorphologyFiles(swc=mock_swc), ".h5", b"original"
-        )
-        assert result == b"swc data"
+    mock_swc.write_bytes(b"swc data")
+    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(swc=mock_swc), ".h5", b"original")
+    assert result == b"swc data"
 
 
 def test_resolve_swc_bytes_for_mesh_swc_extension():
