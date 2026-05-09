@@ -98,7 +98,7 @@ def test_register_morphology_metrics_no_h5_asset(client, morphology_json, monkey
     assert response.json() == {"detail": "No H5 asset on morphology"}
 
     entitysdk_client_mock.get_entity.assert_called_once_with(
-        entity_id=str(entity_id),
+        entity_id=entity_id,  # Removed str() wrapper
         entity_type=CellMorphology,
     )
     entitysdk_client_mock.download_content.assert_not_called()

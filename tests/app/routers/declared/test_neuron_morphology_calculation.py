@@ -117,7 +117,6 @@ def mock_io_for_test(monkeypatch):
         lambda *_args, **_kwargs: mock_file_handle,
     )
 
-    # Capture real Path to avoid recursion
     real_path_cls = pathlib.Path
 
     def _make_mock_path(path_str):
@@ -359,8 +358,9 @@ def test_get_h5_analysis_path_h5_extension():
 
 def test_get_h5_analysis_path_converted_h5_found():
     h5_path = Path("converted.h5")
-    result = _get_h5_analysis_path("original.swc", ".swc", MorphologyFiles(hdf5=h5_path))
-    assert result == str(h5_path)
+    with patch.object(Path, "exists", return_value=True):
+        result = _get_h5_analysis_path("original.swc", ".swc", MorphologyFiles(hdf5=h5_path))
+        assert result == str(h5_path)
 
 
 def test_get_h5_analysis_path_falls_back_to_original():
@@ -386,18 +386,21 @@ def test_validate_file_extension_valid():
     assert _validate_file_extension("neuron.asc") == ".asc"
 
 
-def test_get_template_caches(monkeypatch):
+def test_get_template_caches():
+    """Tests that the template fetching function properly caches its result."""
     sentinel = {"data": []}
     _get_template.cache_clear()
 
-    monkeypatch.setattr(
+    with patch(
         "app.endpoints.morphology_metrics_calculation._get_template",
         MagicMock(return_value=sentinel),
-    )
+    ) as mock_func:
+        result1 = _get_template()
+        result2 = _get_template()
 
-    result1 = _get_template()
-    result2 = _get_template()
-    assert result1 is result2
+        assert result1 is result2
+        assert result1 == sentinel
+        assert mock_func.call_count == 1
 
 
 def test_get_analysis_dict_caches(monkeypatch):
@@ -582,8 +585,14 @@ def test_register_assets_and_measurements_no_converted_files(monkeypatch):
 
 def test_resolve_swc_bytes_for_mesh_swc_converted_exists():
     mock_swc = Path("mock_data/mock.swc")
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(swc=mock_swc), ".h5", b"original")
-    assert result == b"swc data"
+    with (
+        patch.object(Path, "exists", return_value=True),
+        patch.object(Path, "read_bytes", return_value=b"swc data"),
+    ):
+        result = _resolve_swc_bytes_for_mesh(
+            None, MorphologyFiles(swc=mock_swc), ".h5", b"original"
+        )
+        assert result == b"swc data"
 
 
 def test_resolve_swc_bytes_for_mesh_swc_extension():
