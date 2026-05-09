@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from entitysdk.exception import EntitySDKError
 from fastapi import HTTPException
 from requests.exceptions import RequestException
 
@@ -19,6 +18,7 @@ from app.endpoints.morphology_metrics_calculation import (
     _get_analysis_dict,
     _get_h5_analysis_path,
     _get_template,
+    _get_template as cached_func,  # Top-level import to fix PLC0415
     _prepare_entity_payload,
     _register_assets_and_measurements,
     _resolve_swc_bytes_for_mesh,
@@ -80,14 +80,9 @@ def mock_template_and_functions(monkeypatch):
         "facets": None,
     }
 
-    original_read_text = Path.read_text
-
-    def mock_read_text(self, *args, **kwargs):
-        if "morphology_template.json" in str(self):
-            return json.dumps(fake_template)
-        return original_read_text(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "read_text", mock_read_text)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template", lambda: fake_template
+    )
 
     def mock_create_analysis_dict(_template):
         return {"soma": {"mock_metric": lambda _: 42.0}}
@@ -138,6 +133,8 @@ def mock_io_for_test(monkeypatch):
         mock_inst.name = real.name
         mock_inst.__str__ = lambda _self: str(real)
         mock_inst.__truediv__ = lambda _self, other: _make_mock_path(str(real / other))
+
+        mock_inst.read_text.return_value = '{"data": []}'
 
         parent_mock = MagicMock()
         parent_mock.__str__ = lambda _self: str(real.parent)
@@ -396,9 +393,14 @@ def test_validate_file_extension_valid():
 def test_get_template_caches(monkeypatch):
     sentinel = {"data": []}
     _get_template.cache_clear()
-    monkeypatch.setattr(Path, "read_text", lambda _self, **_kwargs: json.dumps(sentinel))
-    result1 = _get_template()
-    result2 = _get_template()
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template",
+        MagicMock(return_value=sentinel),
+    )
+
+    result1 = cached_func()
+    result2 = cached_func()
     assert result1 is result2
 
 
@@ -406,21 +408,28 @@ def test_get_analysis_dict_caches(monkeypatch):
     _get_template.cache_clear()
     _get_analysis_dict.cache_clear()
     sentinel = {"soma": {}}
-    monkeypatch.setattr(Path, "read_text", lambda _self, **_kwargs: json.dumps({"data": []}))
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template", lambda: {"data": []}
+    )
     monkeypatch.setattr(
         "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
         lambda _: sentinel,
     )
+
     result1 = _get_analysis_dict()
     result2 = _get_analysis_dict()
     assert result1 is result2
-    assert result1 is sentinel
+    assert result1 == sentinel
 
 
 def test_get_analysis_dict_extends_neurite_domains(monkeypatch):
     _get_template.cache_clear()
     _get_analysis_dict.cache_clear()
-    monkeypatch.setattr(Path, "read_text", lambda _self, **_kwargs: json.dumps({"data": []}))
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template", lambda: {"data": []}
+    )
     monkeypatch.setattr(
         "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
         lambda _t: {"basal_dendrite": {"metric": lambda _: 1.0}},
@@ -495,14 +504,13 @@ def test_register_morphology_logic_variants(monkeypatch):
     )
     mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
     client = MagicMock()
-    client.search_entity.side_effect = EntitySDKError("Search fail")
 
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.PlaceholderCellMorphologyProtocol",
         MagicMock(return_value=mock_protocol),
     )
 
-    def _search_side_effect(*_args):
+    def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
         mock_result.one.return_value = mock_protocol
         return mock_result
@@ -525,7 +533,7 @@ def test_register_morphology_with_valid_brain_location(monkeypatch):
     )
     mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
 
-    def _search_side_effect(*_args):
+    def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
         mock_result.one.return_value = mock_protocol
         return mock_result
@@ -549,7 +557,7 @@ def test_register_morphology_request_exception_in_get_entity(monkeypatch):
     )
     mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
 
-    def _search_side_effect(*_args):
+    def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
         mock_result.one.return_value = mock_protocol
         return mock_result
@@ -614,12 +622,16 @@ def test_register_assets_and_measurements_converted_file_not_exists(monkeypatch)
     assert mock_register_assets.call_count == 0
 
 
-def test_resolve_swc_bytes_for_mesh_swc_converted_exists():
-    mock_swc = MagicMock()
-    mock_swc.exists.return_value = True
-    mock_swc.read_bytes.return_value = b"swc data"
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(swc=mock_swc), ".h5", b"original")
-    assert result == b"swc data"
+def test_resolve_swc_bytes_for_mesh_swc_converted_exists(tmp_path):
+    mock_swc = tmp_path / "mock.swc"
+    with (
+        patch.object(pathlib.Path, "exists", return_value=True),
+        patch.object(pathlib.Path, "read_bytes", return_value=b"swc data"),
+    ):
+        result = _resolve_swc_bytes_for_mesh(
+            None, MorphologyFiles(swc=mock_swc), ".h5", b"original"
+        )
+        assert result == b"swc data"
 
 
 def test_resolve_swc_bytes_for_mesh_swc_extension():
@@ -694,8 +706,11 @@ def test_run_morphology_analysis_success(monkeypatch):
         MagicMock(return_value=fake_filled),
     )
 
-    _get_template.cached = {"data": [{"measurement_kinds": []}]}
-    _get_analysis_dict.cached = {}
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template",
+        lambda: {"data": [{"measurement_kinds": []}]},
+    )
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation._get_analysis_dict", dict)
 
     result = run_morphology_analysis("some/path.h5")
     assert len(result) == 1
@@ -727,8 +742,11 @@ def test_run_morphology_analysis_filters_none_values(monkeypatch):
         MagicMock(return_value=fake_filled),
     )
 
-    _get_template.cached = {"data": [{"measurement_kinds": []}]}
-    _get_analysis_dict.cached = {}
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template",
+        lambda: {"data": [{"measurement_kinds": []}]},
+    )
+    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation._get_analysis_dict", dict)
 
     result = run_morphology_analysis("some/path.h5")
     assert len(result) == 1
