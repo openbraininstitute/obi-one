@@ -389,18 +389,19 @@ def test_validate_file_extension_valid():
 def test_get_template_caches():
     """Tests that the template fetching function properly caches its result."""
     sentinel = {"data": []}
+
     _get_template.cache_clear()
 
     with patch(
         "app.endpoints.morphology_metrics_calculation._get_template",
         MagicMock(return_value=sentinel),
-    ) as mock_func:
+    ) as mock_impl:
         result1 = _get_template()
         result2 = _get_template()
 
         assert result1 is result2
         assert result1 == sentinel
-        assert mock_func.call_count == 1
+        assert mock_impl.call_count == 1
 
 
 def test_get_analysis_dict_caches(monkeypatch):
