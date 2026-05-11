@@ -1153,15 +1153,15 @@ def register_circuit(
         authorized_public=authorized_public,
     )
 
+    # Register circuit entity
     if check_only:
         L.info(f"Circuit entity '{circuit_model.name}': CHECK ONLY (not registered)")
-        return None
+        registered_circuit = None
+    else:
+        registered_circuit = client.register_entity(circuit_model)
+        L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
 
-    # 1. Register circuit entity
-    registered_circuit = client.register_entity(circuit_model)
-    L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
-
-    # 2. Derivation link
+    # Derivation link
     if parent is not None:
         if isinstance(parent, UUID):
             parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
@@ -1170,37 +1170,37 @@ def register_circuit(
             from_entity=parent,
             derivation_type=derivation_type,
             registered_circuit=registered_circuit,
-            check_only=False,
+            check_only=check_only,
         )
 
-    # 3. Contributions
+    # Contributions
     if contributions:
         register_contributions(
             client=client,
             contribution_dict=contributions,
             registered_circuit=registered_circuit,
-            check_only=False,
+            check_only=check_only,
         )
 
-    # 4. Publication links
+    # Publication links
     if publications:
         register_publication_links(
             client=client,
             publication_dict=publications,
             registered_circuit=registered_circuit,
-            check_only=False,
+            check_only=check_only,
         )
 
-    # 5. Register SONATA circuit folder asset
+    # Register SONATA circuit folder asset
     register_asset(
         client=client,
         file_path=str(circuit_folder),
         asset_label="sonata_circuit",
         registered_circuit=registered_circuit,
-        check_only=False,
+        check_only=check_only,
     )
 
-    # 6. Generate and register additional circuit assets
+    # Generate and register additional circuit assets
     if not skip_additional_assets:
         generate_additional_circuit_assets(
             circuit_path=circuit_path,
