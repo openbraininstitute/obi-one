@@ -48,7 +48,7 @@ def neuron_morphology_metrics_endpoint(
         metrics = get_morphology_metrics(
             cell_morphology_id=str(cell_morphology_id),
             db_client=db_client,
-            requested_metrics=requested_metrics,
+            requested_metrics=list(requested_metrics) if requested_metrics is not None else None,
         )
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(

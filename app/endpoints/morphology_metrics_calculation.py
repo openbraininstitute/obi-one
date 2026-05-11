@@ -257,25 +257,25 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     brain_region = _get_entity("brain_region", BrainRegion)
     raw_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
 
-    morphology_protocol: CellMorphologyProtocolUnion | None = None
-    if raw_protocol is not None:
-        if not isinstance(
-            raw_protocol,
-            (
-                DigitalReconstructionCellMorphologyProtocol,
-                ModifiedReconstructionCellMorphologyProtocol,
-                ComputationallySynthesizedCellMorphologyProtocol,
-                PlaceholderCellMorphologyProtocol,
-            ),
-        ):
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail={
-                    "code": ApiErrorCode.BAD_REQUEST,
-                    "detail": "A valid cell_morphology_protocol_id is required.",
-                },
-            )
-        morphology_protocol = raw_protocol
+    # raw_protocol may be None (no id supplied) or the base CellMorphologyProtocol type
+    # (returned unexpectedly by entitysdk). Only the four concrete subtypes are valid to use.
+    if not isinstance(
+        raw_protocol,
+        (
+            DigitalReconstructionCellMorphologyProtocol,
+            ModifiedReconstructionCellMorphologyProtocol,
+            ComputationallySynthesizedCellMorphologyProtocol,
+            PlaceholderCellMorphologyProtocol,
+        ),
+    ):
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.BAD_REQUEST,
+                "detail": "A valid cell_morphology_protocol_id is required.",
+            },
+        )
+    morphology_protocol: CellMorphologyProtocolUnion = raw_protocol
 
     repair_pipeline_state = new_item.get("repair_pipeline_state")
 
@@ -327,6 +327,8 @@ def register_asset_from_content(
         asset = client.upload_content(
             entity_id=entity_id,
             entity_type=CellMorphology,
+            # TODO: Remove io.BytesIO wrapper once entitysdk#229 is released,
+            # which will allow passing bytes directly to upload_content.
             file_content=io.BytesIO(content),
             file_name=morphology_name,
             file_content_type=content_type,
