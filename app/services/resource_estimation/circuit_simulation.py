@@ -31,11 +31,7 @@ def estimate_task_resources(
         entity_id=json_model.config_id,
         entity_type=models.Simulation,
     )
-    circuit = db_client.get_entity(
-        entity_id=config.entity_id,
-        entity_type=models.Circuit,
-    )
-    number_of_neurons = circuit.number_neurons
+    number_of_neurons = config.number_neurons
 
     # get instance types that support the neuron number in ascending order
     instances = sorted(
