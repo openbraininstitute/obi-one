@@ -1,4 +1,5 @@
 import math
+from typing import cast
 
 from entitysdk import Client, models
 
@@ -31,7 +32,7 @@ def estimate_task_resources(
         entity_id=json_model.config_id,
         entity_type=models.Simulation,
     )
-    number_of_neurons = config.number_neurons
+    number_of_neurons = cast("int", config.number_neurons)
 
     # get instance types that support the neuron number in ascending order
     instances = sorted(
