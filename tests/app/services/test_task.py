@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 import entitysdk
 import httpx
+import libsonata
 import pytest
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
@@ -725,14 +726,14 @@ def test_select_simulation_task_falls_back_to_circuit_target_simulator():
     )
     db_client.get_entity.side_effect = [simulation, circuit]
 
+    unspecified = libsonata.SimulationConfig.SimulatorType.UNSPECIFIED
+
     with (
         patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
-        patch.object(
-            test_module.libsonata,
-            "SimulationConfig",
-            return_value=SimpleNamespace(target_simulator=None),
-        ),
+        patch.object(test_module.libsonata, "SimulationConfig") as mock_sim_config,
     ):
+        mock_sim_config.return_value = SimpleNamespace(target_simulator=unspecified)
+        mock_sim_config.SimulatorType.UNSPECIFIED = unspecified
         task_type = test_module.select_simulation_task(
             db_client=db_client,
             config_id=config_id,
@@ -759,7 +760,9 @@ def test_select_simulation_task_raises_for_unsupported_target_simulator():
         patch.object(
             test_module.libsonata,
             "SimulationConfig",
-            return_value=SimpleNamespace(target_simulator=None),
+            return_value=SimpleNamespace(
+                target_simulator=libsonata.SimulationConfig.SimulatorType.UNSPECIFIED
+            ),
         ),
         pytest.raises(RuntimeError, match="Unsupported target simulator"),
     ):
