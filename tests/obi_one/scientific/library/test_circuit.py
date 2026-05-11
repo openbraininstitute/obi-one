@@ -4,6 +4,9 @@ import pytest
 
 from obi_one.scientific.library import circuit as test_module
 
+from tests.utils import CIRCUIT_DIR
+
+import obi_one as obi
 
 class _FakePopulation:
     def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None):
@@ -322,3 +325,22 @@ def test_mechanisms_dir_for_subclass(fake_snap_circuit, tmp_path):
     mech_dir = tmp_path / "mechanisms"
     mech_dir.mkdir()
     assert c.mechanisms_dir == mech_dir
+
+
+def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
+    circuit = obi.Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+
+    pop_cfg = circuit._population_config(circuit.default_population_name)
+
+    assert "morphologies_dir" in pop_cfg
+
+    morph_path = circuit.get_morphology_path(
+        node_id=0,
+        population=circuit.default_population_name,
+    )
+
+    assert morph_path.exists()
+    assert morph_path.suffix in {".asc", ".swc", ".h5"}
