@@ -40,6 +40,9 @@ class MorphologyLocationsBlock(Block, abc.ABC):
             "or a list of tuples for parameter scans. "
             "Leave stimulus.locations empty for soma/default targeting."
         ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_TUPLE_PARAMETER_SWEEP,
+        }
     )
 
     @abc.abstractmethod

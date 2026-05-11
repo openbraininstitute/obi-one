@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -51,6 +51,29 @@ L = logging.getLogger(__name__)
 DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exp, scale 50 ms, 20 Hz"
+
+_STIMULUS_TYPE_ALIASES = {
+    "ConstantCurrentClampSomaticStimulus": "ConstantCurrentClampStimulus",
+    "RelativeConstantCurrentClampSomaticStimulus": "RelativeConstantCurrentClampStimulus",
+    "LinearCurrentClampSomaticStimulus": "LinearCurrentClampStimulus",
+    "RelativeLinearCurrentClampSomaticStimulus": "RelativeLinearCurrentClampStimulus",
+    "NormallyDistributedCurrentClampSomaticStimulus": "NormallyDistributedCurrentClampStimulus",
+    "RelativeNormallyDistributedCurrentClampSomaticStimulus": (
+        "RelativeNormallyDistributedCurrentClampStimulus"
+    ),
+    "MultiPulseCurrentClampSomaticStimulus": "MultiPulseCurrentClampStimulus",
+    "SinusoidalCurrentClampSomaticStimulus": "SinusoidalCurrentClampStimulus",
+    "SubthresholdCurrentClampSomaticStimulus": "SubthresholdCurrentClampStimulus",
+    "HyperpolarizingCurrentClampSomaticStimulus": "HyperpolarizingCurrentClampStimulus",
+    "OrnsteinUhlenbeckCurrentSomaticStimulus": "OrnsteinUhlenbeckCurrentStimulus",
+    "OrnsteinUhlenbeckConductanceSomaticStimulus": "OrnsteinUhlenbeckConductanceStimulus",
+    "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus": (
+        "RelativeOrnsteinUhlenbeckCurrentStimulus"
+    ),
+    "RelativeOrnsteinUhlenbeckConductanceSomaticStimulus": (
+        "RelativeOrnsteinUhlenbeckConductanceStimulus"
+    ),
+}
 
 
 class BlockGroup(StrEnum):
@@ -271,6 +294,33 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
                 generated=simulations,
             )
         )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _replace_legacy_stimulus_type_aliases(cls, data):
+        if not isinstance(data, dict):
+            return data
+
+        stimuli = data.get("stimuli")
+        if not isinstance(stimuli, dict):
+            return data
+
+        data = dict(data)
+        data["stimuli"] = dict(stimuli)
+
+        for name, stimulus_data in data["stimuli"].items():
+            if not isinstance(stimulus_data, dict):
+                continue
+
+            stimulus_type = stimulus_data.get("type")
+            aliased_type = _STIMULUS_TYPE_ALIASES.get(stimulus_type)
+
+            if aliased_type is not None:
+                stimulus_data = dict(stimulus_data)
+                stimulus_data["type"] = aliased_type
+                data["stimuli"][name] = stimulus_data
+
+        return data
 
 
 class SimulationSingleConfigMixin(SingleConfigMixin):

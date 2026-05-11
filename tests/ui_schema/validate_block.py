@@ -180,6 +180,60 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
+def validate_int_tuple_param_sweep(schema: dict, param: str, ref: str) -> None:
+    any_of = schema.get("anyOf", [])
+
+    if len(any_of) < 2:
+        msg = (
+            f"Validation error at {ref}: int_tuple_parameter_sweep param {param} "
+            "should be a union of array[int], array[array[int]], and optionally null"
+        )
+        raise ValidationError(msg) from None
+
+    single_tuple_schema = any_of[0]
+    scan_schema = any_of[1]
+
+    if single_tuple_schema.get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: int_tuple_parameter_sweep param {param} "
+            "should have array[int] as first element"
+        )
+        raise ValidationError(msg) from None
+
+    if single_tuple_schema.get("items", {}).get("type") != "integer":
+        msg = (
+            f"Validation error at {ref}: int_tuple_parameter_sweep param {param} "
+            "first array should contain integers"
+        )
+        raise ValidationError(msg) from None
+
+    if scan_schema.get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: int_tuple_parameter_sweep param {param} "
+            "should have array[array[int]] as second element"
+        )
+        raise ValidationError(msg) from None
+
+    scan_items = scan_schema.get("items", {})
+    if scan_items.get("type") != "array" or scan_items.get("items", {}).get("type") != "integer":
+        msg = (
+            f"Validation error at {ref}: int_tuple_parameter_sweep param {param} "
+            "second array should contain arrays of integers"
+        )
+        raise ValidationError(msg) from None
+
+    try:
+        validate([3, 4], schema)
+        validate([[3], [4], [3, 4]], schema)
+        validate(None, schema)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: int_tuple_parameter_sweep param {param} "
+            "failed to validate example values"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> None:
     validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
@@ -550,6 +604,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_float_param_sweep(schema, param, ref)
         case UIElement.INT_PARAMETER_SWEEP:
             validate_int_param_sweep(schema, param, ref)
+        case UIElement.INT_TUPLE_PARAMETER_SWEEP:
+            validate_int_tuple_param_sweep(schema, param, ref)
         case UIElement.ENTITY_PROPERTY_DROPDOWN:
             validate_entity_property_dropdown(schema, param, ref)
         case UIElement.REFERENCE:
