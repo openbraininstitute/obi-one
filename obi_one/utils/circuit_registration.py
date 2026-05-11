@@ -379,7 +379,7 @@ def register_circuit_entity(
     exp_date: datetime | None,
     *,
     make_public: bool,
-    check_only: bool,
+    dry_run: bool,
 ) -> models.Circuit | None:
     """Register a new circuit entity to entitycore.
 
@@ -392,10 +392,10 @@ def register_circuit_entity(
         root: The root circuit entity (or None).
         exp_date: The experiment date (or None).
         make_public: Whether to make the circuit publicly accessible.
-        check_only: If True, perform a dry run without registering.
+        dry_run: If True, perform a dry run without registering.
 
     Returns:
-        The registered circuit entity, or None if check_only is True.
+        The registered circuit entity, or None if dry_run is True.
     """
     circuit_model = models.Circuit(
         name=circuit_metadata["name"],
@@ -420,7 +420,7 @@ def register_circuit_entity(
         authorized_public=make_public,
     )
 
-    if check_only:
+    if dry_run:
         L.info(f"Circuit entity '{circuit_model.name}': CHECK ONLY (not registered)")
         return None
 
@@ -590,7 +590,7 @@ def register_asset(
     asset_label: str,
     registered_circuit: models.Circuit,
     *,
-    check_only: bool,
+    dry_run: bool,
 ) -> models.Asset | None:
     """Register an asset for a circuit entity.
 
@@ -602,10 +602,10 @@ def register_asset(
         file_path: Path to the asset (local or S3). None to skip.
         asset_label: Label identifying the asset type (must be in CIRCUIT_ASSET_MAPPING).
         registered_circuit: The circuit entity to attach the asset to.
-        check_only: If True, perform validation only without registering.
+        dry_run: If True, perform validation only without registering.
 
     Returns:
-        The registered asset, or None if skipped or check_only.
+        The registered asset, or None if skipped or dry_run.
     """
     if file_path is None:
         L.info(f"No path for '{asset_label}' asset provided - skipping")
@@ -636,7 +636,7 @@ def register_asset(
 
     content_type = asset_config["content_type"]
 
-    if check_only:
+    if dry_run:
         L.info(f"Asset '{asset_label}': CHECK ONLY (not registered)")
         return None
 
@@ -699,7 +699,7 @@ def register_derivation(
     derivation_type: str,
     registered_circuit: models.Circuit,
     *,
-    check_only: bool,
+    dry_run: bool,
 ) -> models.Derivation | None:
     """Register a derivation link between a parent and a derived circuit.
 
@@ -708,10 +708,10 @@ def register_derivation(
         from_entity: The parent circuit entity (None to skip).
         derivation_type: The type of derivation (must be a valid DerivationType).
         registered_circuit: The derived circuit entity.
-        check_only: If True, perform validation only without registering.
+        dry_run: If True, perform validation only without registering.
 
     Returns:
-        The registered derivation, or None if skipped or check_only.
+        The registered derivation, or None if skipped or dry_run.
     """
     if from_entity is None:
         L.info("No derivation parent provided - skipping")
@@ -722,7 +722,7 @@ def register_derivation(
         msg = f"Derivation type '{derivation_type}' unknown (valid: {valid_derivation_types})!"
         raise ValueError(msg)
 
-    if check_only:
+    if dry_run:
         L.info(f"Derivation '{derivation_type}': CHECK ONLY (not registered)")
         return None
 
@@ -758,7 +758,7 @@ def register_contributions(
     contribution_dict: dict,
     registered_circuit: models.Circuit,
     *,
-    check_only: bool,
+    dry_run: bool,
 ) -> list[models.Contribution]:
     """Register contributions for a circuit entity.
 
@@ -768,12 +768,12 @@ def register_contributions(
         client: The entitycore SDK client.
         contribution_dict: Resolved contributions (from get_contributions).
         registered_circuit: The circuit entity.
-        check_only: If True, perform validation only without registering.
+        dry_run: If True, perform validation only without registering.
 
     Returns:
         List of newly registered contribution entities.
     """
-    if check_only:
+    if dry_run:
         L.info(f"Contributions: {len(contribution_dict)} (CHECK ONLY)")
         return []
 
@@ -797,7 +797,7 @@ def register_publication_links(
     publication_dict: dict,
     registered_circuit: models.Circuit,
     *,
-    check_only: bool,
+    dry_run: bool,
 ) -> list[models.ScientificArtifactPublicationLink]:
     """Register publication links for a circuit entity.
 
@@ -807,12 +807,12 @@ def register_publication_links(
         client: The entitycore SDK client.
         publication_dict: Resolved publications (from get_publications).
         registered_circuit: The circuit entity.
-        check_only: If True, perform validation only without registering.
+        dry_run: If True, perform validation only without registering.
 
     Returns:
         List of newly registered publication link entities.
     """
-    if check_only:
+    if dry_run:
         L.info(f"Publication links: {len(publication_dict)} (CHECK ONLY)")
         return []
 
@@ -1070,7 +1070,7 @@ def register_circuit(
     publications: dict | None = None,
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
-    check_only: bool = False,
+    dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
 
@@ -1104,10 +1104,10 @@ def register_circuit(
         authorized_public: Whether to make the circuit publicly accessible.
         skip_additional_assets: If True, skip generation of additional assets
             (compressed circuit, matrices, plots, figures).
-        check_only: If True, perform a dry run without registering anything.
+        dry_run: If True, perform a dry run without registering anything.
 
     Returns:
-        The registered circuit entity, or None if check_only is True.
+        The registered circuit entity, or None if dry_run is True.
     """
     # Resolve circuit_path to the circuit_config.json file
     circuit_path = Path(circuit_path)
@@ -1154,7 +1154,7 @@ def register_circuit(
     )
 
     # Register circuit entity
-    if check_only:
+    if dry_run:
         L.info(f"Circuit entity '{circuit_model.name}': CHECK ONLY (not registered)")
         registered_circuit = None
     else:
@@ -1170,7 +1170,7 @@ def register_circuit(
             from_entity=parent,
             derivation_type=derivation_type,
             registered_circuit=registered_circuit,
-            check_only=check_only,
+            dry_run=dry_run,
         )
 
     # Contributions
@@ -1179,7 +1179,7 @@ def register_circuit(
             client=client,
             contribution_dict=contributions,
             registered_circuit=registered_circuit,
-            check_only=check_only,
+            dry_run=dry_run,
         )
 
     # Publication links
@@ -1188,7 +1188,7 @@ def register_circuit(
             client=client,
             publication_dict=publications,
             registered_circuit=registered_circuit,
-            check_only=check_only,
+            dry_run=dry_run,
         )
 
     # Register SONATA circuit folder asset
@@ -1197,7 +1197,7 @@ def register_circuit(
         file_path=str(circuit_folder),
         asset_label="sonata_circuit",
         registered_circuit=registered_circuit,
-        check_only=check_only,
+        dry_run=dry_run,
     )
 
     # Generate and register additional circuit assets
@@ -1219,7 +1219,7 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
-    check_only: bool = False,
+    dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
 
@@ -1240,10 +1240,10 @@ def register_circuit_from_metadata(
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
         authorized_public: Whether to make the circuit publicly accessible.
-        check_only: If True, perform validation and dry run without registering.
+        dry_run: If True, perform validation and dry run without registering.
 
     Returns:
-        The registered circuit entity, or None if check_only is True.
+        The registered circuit entity, or None if dry_run is True.
     """
     # Validate and resolve all dependencies
     check_if_circuit_exists(client, circuit_metadata)
@@ -1283,5 +1283,5 @@ def register_circuit_from_metadata(
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
-        check_only=check_only,
+        dry_run=dry_run,
     )
