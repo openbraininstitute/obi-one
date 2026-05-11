@@ -1,4 +1,5 @@
 import tempfile
+from enum import StrEnum
 from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
@@ -24,6 +25,8 @@ from obi_one.scientific.library.morphology_metrics import (
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
+MorphologyMetric = StrEnum("MorphologyMetric", {m: m for m in MORPHOLOGY_METRICS})
+
 
 @router.get(
     "/neuron-morphology-metrics/{cell_morphology_id}",
@@ -31,31 +34,19 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
     description=("This calculates neuron morphology metrics for a given cell morphology."),
 )
 def neuron_morphology_metrics_endpoint(
-    cell_morphology_id: str,
+    cell_morphology_id: UUID,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     requested_metrics: Annotated[
-        list[str] | None,
+        list[MorphologyMetric] | None,
         Query(
             description="List of requested metrics",
         ),
     ] = None,
 ) -> MorphologyMetricsOutput:
-    if requested_metrics is not None:
-        invalid = [m for m in requested_metrics if m not in MORPHOLOGY_METRICS]
-        if invalid:
-            raise HTTPException(
-                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": ApiErrorCode.INVALID_REQUEST,
-                    "detail": (
-                        f"Unknown metrics: {invalid}. Valid options: {list(MORPHOLOGY_METRICS)}"
-                    ),
-                },
-            )
     L.info("get_morphology_metrics")
     try:
         metrics = get_morphology_metrics(
-            cell_morphology_id=cell_morphology_id,
+            cell_morphology_id=str(cell_morphology_id),
             db_client=db_client,
             requested_metrics=requested_metrics,
         )
@@ -83,11 +74,10 @@ def neuron_morphology_metrics_endpoint(
     summary="Compute & register morphology metrics for an existing morphology",
 )
 def register_morphology_metrics(
-    cell_morphology_id: str,
+    cell_morphology_id: UUID,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
-    # 1) fetch morphology and its H5 asset
-    morph = db_client.get_entity(entity_id=UUID(cell_morphology_id), entity_type=CellMorphology)
+    morph = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)
     asset = next(
         (
             a
@@ -99,20 +89,17 @@ def register_morphology_metrics(
     if not asset:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No H5 asset on morphology")
 
-    # 2) download to temp file
     with tempfile.NamedTemporaryFile(suffix=".h5") as tmp:
         tmp.write(
             db_client.download_content(
-                entity_id=UUID(cell_morphology_id),
+                entity_id=cell_morphology_id,
                 entity_type=CellMorphology,
                 asset_id=asset.id,
             )
         )
         tmp.flush()
 
-        # 3) compute measurement_kinds using existing helper
         measurement_kinds = run_morphology_analysis(tmp.name)
 
-    # 4) register measurement annotation only
     registered = register_measurements(db_client, cell_morphology_id, measurement_kinds)
     return {"measurement_entity_id": str(registered.id), "status": "success"}

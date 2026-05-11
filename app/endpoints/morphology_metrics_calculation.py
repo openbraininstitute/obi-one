@@ -3,7 +3,6 @@ import json
 import pathlib
 import tempfile
 import traceback
-import uuid
 from contextlib import ExitStack, suppress
 from functools import cache
 from http import HTTPStatus
@@ -13,7 +12,6 @@ from uuid import UUID
 
 import entitysdk
 import neurom as nm
-import requests
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import (
@@ -39,7 +37,6 @@ from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
-from requests.exceptions import RequestException
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
@@ -240,7 +237,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
 
         try:
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
-        except (EntitySDKError, RequestException):
+        except EntitySDKError:
             return None
 
     brain_location_data = new_item.get("brain_location", [])
@@ -259,29 +256,33 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     subject = _get_entity("subject", Subject)
     brain_region = _get_entity("brain_region", BrainRegion)
     raw_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
-    if not isinstance(
-        raw_protocol,
-        (
-            DigitalReconstructionCellMorphologyProtocol,
-            ModifiedReconstructionCellMorphologyProtocol,
-            ComputationallySynthesizedCellMorphologyProtocol,
-            PlaceholderCellMorphologyProtocol,
-        ),
-    ):
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": "A valid cell_morphology_protocol_id is required.",
-            },
-        )
-    morphology_protocol: CellMorphologyProtocolUnion = raw_protocol
+
+    morphology_protocol: CellMorphologyProtocolUnion | None = None
+    if raw_protocol is not None:
+        if not isinstance(
+            raw_protocol,
+            (
+                DigitalReconstructionCellMorphologyProtocol,
+                ModifiedReconstructionCellMorphologyProtocol,
+                ComputationallySynthesizedCellMorphologyProtocol,
+                PlaceholderCellMorphologyProtocol,
+            ),
+        ):
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail={
+                    "code": ApiErrorCode.BAD_REQUEST,
+                    "detail": "A valid cell_morphology_protocol_id is required.",
+                },
+            )
+        morphology_protocol = raw_protocol
+
     repair_pipeline_state = new_item.get("repair_pipeline_state")
 
     license = _get_entity("license", License)
     name = new_item.get("name")
     description = new_item.get("description")
-    authorized_public: bool = bool(new_item.get("authorized_public"))
+    authorized_public: bool = new_item.get("authorized_public", False)
     morphology = CellMorphology(
         cell_morphology_protocol=morphology_protocol,
         repair_pipeline_state=repair_pipeline_state,
@@ -316,7 +317,7 @@ def _get_content_type(file_extension: str) -> ContentType:
 
 def register_asset_from_content(
     client: Client,
-    entity_id: str,
+    entity_id: UUID,
     morphology_name: str,
     content: bytes,
 ) -> Asset:
@@ -324,14 +325,14 @@ def register_asset_from_content(
     content_type = _get_content_type(file_extension)
     try:
         asset = client.upload_content(
-            entity_id=UUID(entity_id),
+            entity_id=entity_id,
             entity_type=CellMorphology,
             file_content=io.BytesIO(content),
             file_name=morphology_name,
             file_content_type=content_type,
             asset_label=AssetLabel.morphology,
         )
-    except requests.exceptions.RequestException as e:
+    except EntitySDKError as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -345,7 +346,7 @@ def register_asset_from_content(
 
 def register_assets(
     client: Client,
-    entity_id: str,
+    entity_id: UUID,
     file_folder: str,
     morphology_name: str,
 ) -> Asset:
@@ -359,13 +360,13 @@ def register_assets(
 
     try:
         asset1 = client.upload_file(
-            entity_id=UUID(entity_id),
+            entity_id=entity_id,
             entity_type=CellMorphology,
             file_path=file_path,
             file_content_type=content_type,
             asset_label=AssetLabel.morphology,
         )
-    except requests.exceptions.RequestException as e:
+    except EntitySDKError as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -379,17 +380,17 @@ def register_assets(
 
 def register_measurements(
     client: Client,
-    entity_id: str,
+    entity_id: UUID,
     measurements: list[MeasurementKind],
 ) -> MeasurementAnnotation:
     try:
         measurement_annotation = MeasurementAnnotation(
-            entity_id=UUID(entity_id),
+            entity_id=entity_id,
             entity_type=MeasurableEntity.cell_morphology,
             measurement_kinds=measurements,
         )
         registered = client.register_entity(entity=measurement_annotation)
-    except requests.exceptions.RequestException as e:
+    except EntitySDKError as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -417,23 +418,23 @@ def _prepare_entity_payload(
 
 def _register_assets_and_measurements(
     client: Client,
-    entity_id: str,
+    entity_uuid: UUID,
     morphology_name: str,
     content: bytes,
     measurement_list: list[MeasurementKind],
     converted_files: MorphologyFiles,
 ) -> MeasurementAnnotation:
-    register_asset_from_content(client, entity_id, morphology_name, content)
+    register_asset_from_content(client, entity_uuid, morphology_name, content)
 
     if converted_files.swc and converted_files.swc.exists():
         swc = converted_files.swc
-        register_assets(client, entity_id, str(swc.parent), swc.name)
+        register_assets(client, entity_uuid, str(swc.parent), swc.name)
 
     if converted_files.hdf5 and converted_files.hdf5.exists():
         hdf5 = converted_files.hdf5
-        register_assets(client, entity_id, str(hdf5.parent), hdf5.name)
+        register_assets(client, entity_uuid, str(hdf5.parent), hdf5.name)
 
-    registered = register_measurements(client, entity_id, measurement_list)
+    registered = register_measurements(client, entity_uuid, measurement_list)
     return registered
 
 
@@ -453,20 +454,20 @@ def _resolve_swc_bytes_for_mesh(
 
 def _try_mesh_and_register(
     client: entitysdk.client.Client,
-    entity_id: str,
+    entity_uuid: UUID,
     swc_bytes: bytes,
 ) -> str | None:
     if not HAS_MESHING:
         L.info("_try_mesh_and_register: meshing dependencies not available, skipping")
         return None
     try:
-        asset = _mesh_and_register(client, uuid.UUID(entity_id), swc_bytes)
+        asset = _mesh_and_register(client, entity_uuid, swc_bytes)
         return str(asset.id)
     except ApiError as err:
-        L.warning(f"_try_mesh_and_register: meshing failed for {entity_id}: {err.message}")
+        L.warning(f"_try_mesh_and_register: meshing failed for {entity_uuid}: {err.message}")
         return None
     except Exception as err:  # noqa: BLE001
-        L.warning(f"_try_mesh_and_register: unexpected meshing error for {entity_id}: {err}")
+        L.warning(f"_try_mesh_and_register: unexpected meshing error for {entity_uuid}: {err}")
         return None
 
 
@@ -508,10 +509,10 @@ async def _run_pipeline(
         measurement_list = run_morphology_analysis(analysis_path)
 
         data = register_morphology(client, entity_payload)
-        entity_id = str(data.id)
+        entity_uuid = UUID(str(data.id))
         data2 = _register_assets_and_measurements(
             client,
-            entity_id,
+            entity_uuid,
             morphology_name,
             content,
             measurement_list,
@@ -522,10 +523,10 @@ async def _run_pipeline(
         mesh_asset_id: str | None = None
         if swc_bytes is not None:
             mesh_asset_id = await run_in_threadpool(
-                _try_mesh_and_register, client, entity_id, swc_bytes
+                _try_mesh_and_register, client, entity_uuid, swc_bytes
             )
 
-        return entity_id, str(data2.id), mesh_asset_id
+        return str(entity_uuid), str(data2.id), mesh_asset_id
 
 
 @router.post(
