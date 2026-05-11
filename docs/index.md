@@ -33,7 +33,7 @@ brew install uv open-mpi boost cmake
 ### Private neuromorphomesh from AWS CodeArtifacts
 
 Certain commands require the installation of `neuromorphomesh`.
-At the OBI, first check that you have access to the `Container Registry` (AWS Id: `985539765147`).
+At the OBI [AWS Console](https://openbraininstitute.awsapps.com/start), first check that you have access to the `Container Registry` (AWS Account Id: `985539765147`).
 
 Then setup the the SSO AWS login; steps 1 and 2 from: [Bastion Access](https://github.com/openbraininstitute/aws-terraform-deployment/blob/staging/bastion_host/BASTION_ACCESS.md#database-access-via-port-forwarding)
 
