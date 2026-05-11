@@ -334,14 +334,13 @@ def select_simulation_task(
             details=str(e),
         ) from e
 
-    target_simulator = None
-
-    if simulation_config.target_simulator is not None:
+    if simulation_config.target_simulator != libsonata.SimulatorType.UNSPECIFIED:
         target_simulator = TargetSimulator(simulation_config.target_simulator.name)
         msg = f"Using target simulator '{target_simulator}' from simulation config."
         L.info(msg)
     else:
-        L.info("No `target_simulator` found in simulation config.")
+        target_simulator = None
+        L.info("`target_simulator` in unspecified in simulation config.")
 
     circuit = db_client.get_entity(
         entity_id=simulation.entity_id,
