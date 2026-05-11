@@ -81,6 +81,7 @@ class BlockGroup(StrEnum):
 
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    TARGETING_BLOCK_GROUP = "Targeting"
     DISTRIBUTIONS_BLOCK_GROUP = "Distributions"
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
@@ -103,12 +104,14 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            MorphologyLocationsReference.__name__: "Default: None",
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
@@ -147,8 +150,8 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPE: MorphologyLocationsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Morphology Locations",
-            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 3,
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
