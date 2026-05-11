@@ -84,6 +84,9 @@ class TemporaryPartialCircuit:
 
     def _fetch_file(self, rel_path: str) -> Path:
         temp_file_path = Path(self.temp_dir.name) / rel_path
+        if self.asset.id is None:
+            msg = "Asset must have an id"
+            raise ValueError(msg)
         self._db_client.fetch_file(
             entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
             entity_type=Circuit,

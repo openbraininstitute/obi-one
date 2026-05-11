@@ -65,6 +65,9 @@ def _get_skeletonization_config(
     asset = get_entity_asset_by_label(
         client=db_client, config=task_config, asset_label=AssetLabel.task_config
     )
+    if asset.id is None:
+        msg = "Asset must have an id"
+        raise ValueError(msg)
 
     # Download and parse the config JSON
     config_bytes = db_client.download_content(

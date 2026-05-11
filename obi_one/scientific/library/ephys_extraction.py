@@ -249,6 +249,9 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
         for asset in trace_metadata.assets:
             logger.debug("Asset object: %s", asset)
             if asset.content_type == "application/nwb":
+                if asset.id is None:
+                    msg = "Asset must have an id"
+                    raise ValueError(msg)
                 trace_content = entity_client.download_content(
                     entity_id=trace_id,  # ty:ignore[invalid-argument-type]
                     entity_type=ElectricalCellRecording,

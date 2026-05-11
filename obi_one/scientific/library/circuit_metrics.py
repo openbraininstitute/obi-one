@@ -487,7 +487,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
         return self.number_of_biophys_node_populations + self.number_of_virtual_node_populations
 
 
-def get_circuit_metrics(  # noqa: PLR0914
+def get_circuit_metrics(  # noqa: PLR0914, C901
     circuit_id: str,
     db_client: Client,
     level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None = None,
@@ -509,6 +509,9 @@ def get_circuit_metrics(  # noqa: PLR0914
         raise ValueError(error_msg)
 
     asset_id = directory_assets[0].id
+    if asset_id is None:
+        msg = "Directory asset must have an id"
+        raise ValueError(msg)
 
     # db_client.download_content does not support `asset_path` at the time of writing this
     # Use db_client.fetch_file with temporary directory instead

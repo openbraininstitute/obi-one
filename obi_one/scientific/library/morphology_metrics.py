@@ -233,6 +233,9 @@ def get_morphology_metrics(
 
     for asset in morphology.assets:
         if asset.content_type == "application/swc":
+            if asset.id is None:
+                msg = "Asset must have an id"
+                raise ValueError(msg)
             content = db_client.download_content(
                 entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
                 entity_type=CellMorphology,
