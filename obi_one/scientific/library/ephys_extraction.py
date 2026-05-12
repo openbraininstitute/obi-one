@@ -4,7 +4,7 @@ import logging
 import tempfile
 from io import StringIO
 from statistics import mean
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import entitysdk.client
 from bluepyefe.extract import extract_efeatures
@@ -13,6 +13,9 @@ from entitysdk.models import ElectricalCellRecording
 from pydantic import BaseModel, Field
 
 from obi_one.core.exception import ProtocolNotFoundError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 EFEL_SETTINGS = {"strict_stiminterval": True, "Threshold": -20.0, "interp_step": 0.025}
 
@@ -252,7 +255,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
                 trace_content = entity_client.download_content(
                     entity_id=trace_id,  # ty:ignore[invalid-argument-type]
                     entity_type=ElectricalCellRecording,
-                    asset_id=asset.id,
+                    asset_id=cast("UUID", asset.id),
                 )
                 temp_file.write(trace_content)
                 temp_file.flush()
