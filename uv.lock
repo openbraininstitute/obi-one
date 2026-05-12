@@ -2225,7 +2225,7 @@ requires-dist = [
     { name = "starlette", marker = "extra == 'service'" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["meshing", "connectivity", "notebooks", "service", "all"]
+provides-extras = ["connectivity", "meshing", "notebooks", "service", "all"]
 
 [package.metadata.requires-dev]
 dev = [
