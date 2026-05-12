@@ -108,36 +108,6 @@ def get_parent_circuit(client: Client, circuit_metadata: dict) -> models.Circuit
     return parent
 
 
-def check_counts(circuit_metadata: dict) -> None:
-    """Validate neuron/synapse/connection counts and circuit scale consistency."""
-    nnrn = circuit_metadata.get("number_neurons", 0)
-    if nnrn <= 0:
-        msg = "Valid number of neurons required!"
-        raise ValueError(msg)
-    nsyn = circuit_metadata.get("number_synapses", 0)
-    if nsyn <= 0:
-        msg = "Valid number of synapses required!"
-        raise ValueError(msg)
-    nconn = circuit_metadata.get("number_connections")
-    if nconn is not None and nconn <= 0:
-        msg = "Valid number of connections required (or None to skip)!"
-        raise ValueError(msg)
-
-    scale = circuit_metadata["scale"]
-    if (
-        (nnrn == 1 and scale != "single")
-        or (nnrn == 2 and scale != "pair")
-        or (nnrn > 2 and nnrn <= 20 and scale != "small")
-        or (
-            nnrn > 20
-            and scale not in ["microcircuit", "region", "system", "whole_brain"]
-        )
-    ):
-        msg = f"Number of neurons ({nnrn}) does not match circuit scale '{scale}'!"
-        raise ValueError(msg)
-    L.info(f"#Neurons: {nnrn}, #Synapses: {nsyn}, #Connections: {nconn}, Scale: {scale}")
-
-
 def get_exp_date(circuit_metadata: dict) -> datetime | None:
     """Parse experiment date from metadata.
 
@@ -367,66 +337,6 @@ def get_license(client: Client, circuit_metadata: dict) -> models.License | None
     license_entity = license_results[0]
     L.info(f"License '{license_entity.label}' {license_entity.name} (ID {license_entity.id})")
     return license_entity
-
-
-def register_circuit_entity(
-    client: Client,
-    circuit_metadata: dict,
-    subject: models.Subject,
-    brain_region: models.BrainRegion,
-    license: models.License | None,
-    root: models.Circuit | None,
-    exp_date: datetime | None,
-    *,
-    make_public: bool,
-    dry_run: bool,
-) -> models.Circuit | None:
-    """Register a new circuit entity to entitycore.
-
-    Args:
-        client: The entitycore SDK client.
-        circuit_metadata: Dictionary with circuit properties (name, description, counts, etc.).
-        subject: The subject entity.
-        brain_region: The brain region entity.
-        license: The license entity (or None).
-        root: The root circuit entity (or None).
-        exp_date: The experiment date (or None).
-        make_public: Whether to make the circuit publicly accessible.
-        dry_run: If True, perform a dry run without registering.
-
-    Returns:
-        The registered circuit entity, or None if dry_run is True.
-    """
-    circuit_model = models.Circuit(
-        name=circuit_metadata["name"],
-        description=circuit_metadata["description"],
-        subject=subject,
-        brain_region=brain_region,
-        license=license,
-        number_neurons=circuit_metadata["number_neurons"],
-        number_synapses=circuit_metadata["number_synapses"],
-        number_connections=circuit_metadata.get("number_connections"),
-        has_morphologies=circuit_metadata["has_morphologies"],
-        has_point_neurons=circuit_metadata["has_point_neurons"],
-        has_electrical_cell_models=circuit_metadata["has_electrical_cell_models"],
-        has_spines=circuit_metadata["has_spines"],
-        scale=circuit_metadata["scale"],
-        build_category=circuit_metadata["build_category"],
-        root_circuit_id=None if root is None else root.id,
-        atlas_id=None,  # TODO: Not yet implemented
-        contact_email=circuit_metadata.get("contact"),
-        published_in=circuit_metadata.get("published_in"),
-        experiment_date=exp_date,
-        authorized_public=make_public,
-    )
-
-    if dry_run:
-        L.info(f"Circuit entity '{circuit_model.name}': CHECK ONLY (not registered)")
-        return None
-
-    registered_circuit = client.register_entity(circuit_model)
-    L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
-    return registered_circuit
 
 
 # --- Asset validation and registration ---
