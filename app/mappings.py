@@ -81,6 +81,24 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_brian2_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref="commit:b3e8670db32d26e9fa4c71d79d6f6de46b61cb16",
+            path="examples/J_drosophila/simulate-brian2.py",
+            dependencies="examples/J_drosophila/requirements.txt",
+            staged_directories=[],
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+        ),
+    ),
     TaskType.circuit_simulation_neuron: TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neuron,
         config_type=models.Simulation,
