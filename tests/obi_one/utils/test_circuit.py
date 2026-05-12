@@ -1,4 +1,4 @@
-"""Tests for circuit registration helper functions (asset generation)."""
+"""Tests for circuit utility functions (asset generation)."""
 
 import json
 import shutil
