@@ -57,15 +57,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# New group for the private dependency
-meshing = [
-    "neuromorphomesh",
-]
-
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
     "networkx>=3.4.2",
+]
+
+# MESHING - optional, private dependency needed to create meshes from morphologies
+meshing = [
+    "neuromorphomesh",
 ]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
@@ -93,7 +93,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service,meshing]",
+    "obi-one[connectivity,meshing,notebooks,service]",
 ]
 
 [dependency-groups]
