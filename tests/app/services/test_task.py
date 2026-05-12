@@ -640,18 +640,7 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
             "entity_id": str(circuit_id),
             "simulation_campaign_id": str(uuid4()),
             "scan_parameters": {},
-        },
-    )
-    httpx_mock.add_response(
-        url=f"http://my-url/circuit/{circuit_id}",
-        method="GET",
-        json={
-            "id": str(circuit_id),
             "number_neurons": 1000,
-            "number_connections": 20,
-            "number_synapses": 35,
-            "scale": "microcircuit",
-            "build_category": "em_reconstruction",
         },
     )
     with patch.object(
