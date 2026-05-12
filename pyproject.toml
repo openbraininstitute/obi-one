@@ -93,7 +93,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service,meshing]",
+    "obi-one[connectivity,meshing,notebooks,service]",
 ]
 
 [dependency-groups]
