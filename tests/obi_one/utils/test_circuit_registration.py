@@ -929,3 +929,183 @@ def test_register_asset_all_labels(tmp_path, asset_label, is_dir, setup_fn):
         client.upload_directory.assert_called_once()
     else:
         client.upload_file.assert_called_once()
+
+
+from obi_one.utils.circuit_registration import register_circuit
+from tests.utils import CIRCUIT_DIR
+
+
+# --- register_circuit ---
+
+
+def _patch_register_circuit_internals():
+    """Patches for register_circuit that mock circuit computation and side effects."""
+
+    class _FakeCircuit:
+        """Fake Circuit class that accepts any kwargs and supports isinstance."""
+
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+    return (
+        patch(
+            "obi_one.utils.circuit_registration.get_circuit_properties",
+            return_value=(True, False, True, False),
+        ),
+        patch(
+            "obi_one.utils.circuit_registration.get_circuit_size",
+            return_value=("small", 10, 500, 45),
+        ),
+        patch("obi_one.utils.circuit_registration.OBICircuit"),
+        patch("obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit),
+        patch("obi_one.utils.circuit_registration.register_asset"),
+        patch("obi_one.utils.circuit_registration.generate_additional_circuit_assets"),
+    )
+
+
+def test_register_circuit_dry_run():
+    """Test that dry_run computes properties but does not register."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+
+    patches = _patch_register_circuit_internals()
+    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+        result = register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=MagicMock(),
+            subject=MagicMock(),
+            dry_run=True,
+        )
+
+    assert result is None
+    client.register_entity.assert_not_called()
+
+
+def test_register_circuit_registers_entity():
+    """Test that register_circuit registers the entity and returns it."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+
+    patches = _patch_register_circuit_internals()
+    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+        result = register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=MagicMock(),
+            subject=MagicMock(),
+            dry_run=False,
+        )
+
+    assert result is registered
+    client.register_entity.assert_called_once()
+
+
+def test_register_circuit_with_derivation():
+    """Test that derivation link is created when parent is provided."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    parent = MagicMock()
+
+    class _FakeCircuit:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items(): setattr(self, k, v)
+    with patch(
+        "obi_one.utils.circuit_registration.get_circuit_properties",
+        return_value=(True, False, True, False),
+    ), patch(
+        "obi_one.utils.circuit_registration.get_circuit_size",
+        return_value=("small", 10, 500, 45),
+    ), patch("obi_one.utils.circuit_registration.OBICircuit"), patch(
+        "obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit
+    ), patch(
+        "obi_one.utils.circuit_registration.register_asset"
+    ), patch(
+        "obi_one.utils.circuit_registration.register_derivation"
+    ) as mock_derivation, patch(
+        "obi_one.utils.circuit_registration.generate_additional_circuit_assets"
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=MagicMock(),
+            subject=MagicMock(),
+            parent=parent,
+            derivation_type="circuit_extraction",
+            dry_run=False,
+        )
+
+    mock_derivation.assert_called_once()
+
+
+def test_register_circuit_skip_additional_assets():
+    """Test that skip_additional_assets prevents asset generation."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+
+    class _FakeCircuit:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items(): setattr(self, k, v)
+    with patch(
+        "obi_one.utils.circuit_registration.get_circuit_properties",
+        return_value=(True, False, True, False),
+    ), patch(
+        "obi_one.utils.circuit_registration.get_circuit_size",
+        return_value=("small", 10, 500, 45),
+    ), patch("obi_one.utils.circuit_registration.OBICircuit"), patch(
+        "obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit
+    ), patch(
+        "obi_one.utils.circuit_registration.register_asset"
+    ), patch(
+        "obi_one.utils.circuit_registration.generate_additional_circuit_assets"
+    ) as mock_gen:
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=MagicMock(),
+            subject=MagicMock(),
+            skip_additional_assets=True,
+            dry_run=False,
+        )
+
+    mock_gen.assert_not_called()
+
+
+def test_register_circuit_invalid_path():
+    """Test that non-existent circuit path raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Circuit config not found"):
+        register_circuit(
+            client=client,
+            circuit_path="/nonexistent/path",
+            name="test",
+            description="test",
+            build_category="computational_model",
+            brain_region=MagicMock(),
+            subject=MagicMock(),
+        )
