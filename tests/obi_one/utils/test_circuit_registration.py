@@ -187,3 +187,347 @@ def test_check_matrix_folder_nested_structure(tmp_path):
     )
 
     _check_matrix_folder(str(tmp_path))  # Should not raise
+
+
+from unittest.mock import MagicMock, patch
+
+from obi_one.utils.circuit_registration import (
+    check_if_circuit_exists,
+    find_agent,
+    find_role,
+    get_brain_region,
+    get_circuit,
+    get_contributions,
+    get_license,
+    get_parent_circuit,
+    get_publications,
+    get_root_circuit,
+    get_subject,
+)
+
+
+def _mock_client_search(results):
+    """Create a mock client whose search_entity returns the given results."""
+    client = MagicMock()
+    client.search_entity.return_value.all.return_value = results
+    return client
+
+
+# --- get_circuit ---
+
+
+def test_get_circuit_none_name():
+    """Test that None name returns None."""
+    client = MagicMock()
+    assert get_circuit(client, None) is None
+
+
+def test_get_circuit_found():
+    """Test that a single match is returned."""
+    circuit = MagicMock(id="abc-123")
+    client = _mock_client_search([circuit])
+
+    result = get_circuit(client, "my_circuit")
+    assert result is circuit
+
+
+def test_get_circuit_not_found():
+    """Test that missing circuit returns None when must_exist=False."""
+    client = _mock_client_search([])
+    assert get_circuit(client, "missing", must_exist=False) is None
+
+
+def test_get_circuit_not_found_must_exist():
+    """Test that missing circuit raises when must_exist=True."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_circuit(client, "missing", must_exist=True)
+
+
+def test_get_circuit_multiple():
+    """Test that multiple matches raises."""
+    client = _mock_client_search([MagicMock(id="1"), MagicMock(id="2")])
+    with pytest.raises(ValueError, match="Multiple circuits"):
+        get_circuit(client, "duplicate")
+
+
+# --- check_if_circuit_exists ---
+
+
+def test_check_if_circuit_exists_missing_name():
+    """Test that missing name raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Circuit name missing"):
+        check_if_circuit_exists(client, {})
+
+
+def test_check_if_circuit_exists_already_registered():
+    """Test that existing circuit raises."""
+    circuit = MagicMock()
+    client = _mock_client_search([circuit])
+    with pytest.raises(ValueError, match="already exists"):
+        check_if_circuit_exists(client, {"name": "existing"})
+
+
+def test_check_if_circuit_exists_not_registered():
+    """Test that non-existing circuit passes."""
+    client = _mock_client_search([])
+    check_if_circuit_exists(client, {"name": "new_circuit"})  # Should not raise
+
+
+# --- get_root_circuit ---
+
+
+def test_get_root_circuit_none():
+    """Test that no root specified returns None."""
+    client = _mock_client_search([])
+    result = get_root_circuit(client, {"root": None})
+    assert result is None
+
+
+def test_get_root_circuit_found():
+    """Test that root circuit is resolved."""
+    circuit = MagicMock(name="root_circuit", id="root-id")
+    client = _mock_client_search([circuit])
+    result = get_root_circuit(client, {"root": "root_circuit"})
+    assert result is circuit
+
+
+# --- get_parent_circuit ---
+
+
+def test_get_parent_circuit_none_no_derivation():
+    """Test that no parent with no derivation type passes."""
+    client = _mock_client_search([])
+    result = get_parent_circuit(client, {"parent": None, "derivation_type": None})
+    assert result is None
+
+
+def test_get_parent_circuit_none_with_derivation_type():
+    """Test that no parent with derivation type raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="requires a parent circuit"):
+        get_parent_circuit(client, {"parent": None, "derivation_type": "circuit_extraction"})
+
+
+def test_get_parent_circuit_found_valid_derivation():
+    """Test that parent with valid derivation type passes."""
+    circuit = MagicMock(name="parent_circuit", id="parent-id")
+    client = _mock_client_search([circuit])
+    result = get_parent_circuit(
+        client, {"parent": "parent_circuit", "derivation_type": "circuit_extraction"}
+    )
+    assert result is circuit
+
+
+def test_get_parent_circuit_found_invalid_derivation():
+    """Test that parent with invalid derivation type raises."""
+    circuit = MagicMock(name="parent_circuit", id="parent-id")
+    client = _mock_client_search([circuit])
+    with pytest.raises(ValueError, match="valid derivation type is required"):
+        get_parent_circuit(
+            client, {"parent": "parent_circuit", "derivation_type": "invalid_type"}
+        )
+
+
+# --- find_agent ---
+
+
+def test_find_agent_found():
+    """Test that agent is found."""
+    agent = MagicMock(pref_label="John Doe")
+    client = _mock_client_search([agent])
+    result = find_agent(client, "John Doe", "person")
+    assert result is agent
+
+
+def test_find_agent_not_found():
+    """Test that missing agent raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        find_agent(client, "Unknown", "person")
+
+
+def test_find_agent_multiple_returns_first():
+    """Test that multiple matches returns first with warning."""
+    agent1 = MagicMock(pref_label="John Doe")
+    agent2 = MagicMock(pref_label="John Doe")
+    client = _mock_client_search([agent1, agent2])
+    result = find_agent(client, "John Doe", "person")
+    assert result is agent1
+
+
+# --- find_role ---
+
+
+def test_find_role_found():
+    """Test that role is found."""
+    role = MagicMock()
+    role.name = "unspecified"
+    client = _mock_client_search([role])
+    result = find_role(client, "unspecified")
+    assert result is role
+
+
+def test_find_role_not_found():
+    """Test that missing role raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found or multiple"):
+        find_role(client, "nonexistent")
+
+
+def test_find_role_multiple():
+    """Test that multiple roles raises."""
+    role1 = MagicMock()
+    role1.name = "unspecified"
+    role2 = MagicMock()
+    role2.name = "unspecified"
+    client = _mock_client_search([role1, role2])
+    with pytest.raises(ValueError, match="not found or multiple"):
+        find_role(client, "unspecified")
+
+
+# --- get_subject ---
+
+
+def test_get_subject_found():
+    """Test that subject is resolved with matching species."""
+    subject = MagicMock(name="Average rat P14", id="subj-id")
+    subject.species.name = "Rattus norvegicus"
+    client = _mock_client_search([subject])
+    result = get_subject(client, {"subject": "Average rat P14", "species": "Rattus norvegicus"})
+    assert result is subject
+
+
+def test_get_subject_missing_name():
+    """Test that missing subject name raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Subject must be provided"):
+        get_subject(client, {"subject": None})
+
+
+def test_get_subject_not_found():
+    """Test that missing subject raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_subject(client, {"subject": "Unknown", "species": "Rattus norvegicus"})
+
+
+def test_get_subject_species_mismatch():
+    """Test that species mismatch raises."""
+    subject = MagicMock(name="Average rat P14")
+    subject.species.name = "Mus musculus"
+    client = _mock_client_search([subject])
+    with pytest.raises(ValueError, match="inconsistent"):
+        get_subject(client, {"subject": "Average rat P14", "species": "Rattus norvegicus"})
+
+
+def test_get_subject_no_species_provided():
+    """Test that missing species in metadata raises inconsistency."""
+    subject = MagicMock(name="Average rat P14")
+    subject.species.name = "Rattus norvegicus"
+    client = _mock_client_search([subject])
+    with pytest.raises(ValueError, match="inconsistent"):
+        get_subject(client, {"subject": "Average rat P14"})
+
+
+# --- get_brain_region ---
+
+
+def test_get_brain_region_found():
+    """Test that brain region is resolved."""
+    region = MagicMock(name="Primary somatosensory area", id="region-id")
+    client = _mock_client_search([region])
+    result = get_brain_region(client, {"brain_region": "Primary somatosensory area"})
+    assert result is region
+
+
+def test_get_brain_region_missing_name():
+    """Test that missing brain region name raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Brain region must be provided"):
+        get_brain_region(client, {"brain_region": None})
+
+
+def test_get_brain_region_not_found():
+    """Test that missing brain region raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_brain_region(client, {"brain_region": "Unknown"})
+
+
+# --- get_license ---
+
+
+def test_get_license_found():
+    """Test that license is resolved."""
+    lic = MagicMock(label="CC BY 4.0", name="Creative Commons", id="lic-id")
+    client = _mock_client_search([lic])
+    result = get_license(client, {"license": "CC BY 4.0"})
+    assert result is lic
+
+
+def test_get_license_none():
+    """Test that no license returns None."""
+    client = MagicMock()
+    result = get_license(client, {"license": None})
+    assert result is None
+
+
+def test_get_license_not_found():
+    """Test that missing license raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_license(client, {"license": "Unknown License"})
+
+
+# --- get_contributions ---
+
+
+def test_get_contributions_resolves_agents_and_roles():
+    """Test that contributions are resolved."""
+    agent = MagicMock(type="person", pref_label="John Doe", id="agent-id")
+    role = MagicMock(id="role-id")
+    role.name = "unspecified"
+
+    client = MagicMock()
+    # find_agent call, then find_role call
+    client.search_entity.return_value.all.side_effect = [
+        [agent],  # find_agent
+        [role],   # find_role
+    ]
+
+    result = get_contributions(
+        client, {"John Doe": {"type": "person", "role": "unspecified"}}
+    )
+    assert "John Doe" in result
+    assert result["John Doe"]["agent"] is agent
+    assert result["John Doe"]["role"] is role
+
+
+# --- get_publications ---
+
+
+def test_get_publications_resolves():
+    """Test that publications are resolved."""
+    pub = MagicMock(id="pub-id", DOI="10.1234/test")
+    client = _mock_client_search([pub])
+
+    result = get_publications(client, {"10.1234/test": {"type": "entity_source"}})
+    assert "10.1234/test" in result
+    assert result["10.1234/test"]["entity"] is pub
+    assert result["10.1234/test"]["type"] == "entity_source"
+
+
+def test_get_publications_unknown_type():
+    """Test that unknown publication type raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="unknown"):
+        get_publications(client, {"10.1234/test": {"type": "invalid_type"}})
+
+
+def test_get_publications_not_found():
+    """Test that missing publication raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_publications(client, {"10.1234/test": {"type": "entity_source"}})
