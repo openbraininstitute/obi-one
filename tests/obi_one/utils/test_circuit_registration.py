@@ -939,7 +939,7 @@ from tests.utils import CIRCUIT_DIR
 
 
 def _patch_register_circuit_internals():
-    """Patches for register_circuit that mock circuit computation and side effects."""
+    """Minimal patches for register_circuit unit tests."""
 
     class _FakeCircuit:
         """Fake Circuit class that accepts any kwargs and supports isinstance."""
@@ -953,14 +953,7 @@ def _patch_register_circuit_internals():
             "obi_one.utils.circuit_registration.get_circuit_properties",
             return_value=(True, False, True, False),
         ),
-        patch(
-            "obi_one.utils.circuit_registration.get_circuit_size",
-            return_value=("small", 10, 500, 45),
-        ),
-        patch("obi_one.utils.circuit_registration.OBICircuit"),
         patch("obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit),
-        patch("obi_one.utils.circuit_registration.register_asset"),
-        patch("obi_one.utils.circuit_registration.generate_additional_circuit_assets"),
     )
 
 
@@ -970,7 +963,7 @@ def test_register_circuit_dry_run():
     client = MagicMock()
 
     patches = _patch_register_circuit_internals()
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+    with patches[0], patches[1]:
         result = register_circuit(
             client=client,
             circuit_path=str(circuit_path),
@@ -979,6 +972,7 @@ def test_register_circuit_dry_run():
             build_category="computational_model",
             brain_region=MagicMock(),
             subject=MagicMock(),
+            skip_additional_assets=True,
             dry_run=True,
         )
 
@@ -996,7 +990,11 @@ def test_register_circuit_registers_entity():
     client.register_entity.return_value = registered
 
     patches = _patch_register_circuit_internals()
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+    with patches[0], patches[1], patch(
+        "obi_one.utils.circuit_registration.register_asset"
+    ), patch(
+        "obi_one.utils.circuit_registration.generate_additional_circuit_assets"
+    ):
         result = register_circuit(
             client=client,
             circuit_path=str(circuit_path),
@@ -1022,18 +1020,8 @@ def test_register_circuit_with_derivation():
     client.register_entity.return_value = registered
     parent = MagicMock()
 
-    class _FakeCircuit:
-        def __init__(self, **kwargs):
-            for k, v in kwargs.items(): setattr(self, k, v)
-    with patch(
-        "obi_one.utils.circuit_registration.get_circuit_properties",
-        return_value=(True, False, True, False),
-    ), patch(
-        "obi_one.utils.circuit_registration.get_circuit_size",
-        return_value=("small", 10, 500, 45),
-    ), patch("obi_one.utils.circuit_registration.OBICircuit"), patch(
-        "obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit
-    ), patch(
+    patches = _patch_register_circuit_internals()
+    with patches[0], patches[1], patch(
         "obi_one.utils.circuit_registration.register_asset"
     ), patch(
         "obi_one.utils.circuit_registration.register_derivation"
@@ -1065,18 +1053,8 @@ def test_register_circuit_skip_additional_assets():
     registered.id = "new-id"
     client.register_entity.return_value = registered
 
-    class _FakeCircuit:
-        def __init__(self, **kwargs):
-            for k, v in kwargs.items(): setattr(self, k, v)
-    with patch(
-        "obi_one.utils.circuit_registration.get_circuit_properties",
-        return_value=(True, False, True, False),
-    ), patch(
-        "obi_one.utils.circuit_registration.get_circuit_size",
-        return_value=("small", 10, 500, 45),
-    ), patch("obi_one.utils.circuit_registration.OBICircuit"), patch(
-        "obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit
-    ), patch(
+    patches = _patch_register_circuit_internals()
+    with patches[0], patches[1], patch(
         "obi_one.utils.circuit_registration.register_asset"
     ), patch(
         "obi_one.utils.circuit_registration.generate_additional_circuit_assets"
