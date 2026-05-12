@@ -12,7 +12,7 @@ from obi_one.utils.circuit import (
     run_connectivity_matrix_extraction,
 )
 
-from tests.utils import CIRCUIT_DIR, MATRIX_DIR
+from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
 EDGE_POPULATION = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical"
@@ -109,3 +109,51 @@ def test_run_basic_connectivity_plots_missing_matrix(tmp_path):
             edge_population="default",
             output_root=tmp_path,
         )
+
+
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.utils.circuit import get_circuit_size
+
+
+def test_get_circuit_size_small_circuit():
+    """Test scale and counts for a small (10-neuron) circuit."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_small", path=circuit_path)
+
+    scale, num_nrn, num_syn, num_conn = get_circuit_size(c)
+
+    assert scale == "small"
+    assert num_nrn == 10
+    assert num_syn > 0
+    assert num_conn > 0
+    assert num_conn <= num_syn  # connections <= synapses
+
+
+def test_get_circuit_size_pair_circuit():
+    """Test scale and counts for a pair (2-neuron) circuit."""
+    circuit_path = str(
+        CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"
+    )
+    c = Circuit(name="test_pair", path=circuit_path)
+
+    scale, num_nrn, num_syn, num_conn = get_circuit_size(c)
+
+    assert scale == "pair"
+    assert num_nrn == 2
+    assert num_syn > 0
+    assert num_conn > 0
+
+
+def test_get_circuit_size_single_neuron_circuit():
+    """Test scale and counts for a single-neuron circuit."""
+    circuit_path = str(
+        SINGLE_NEURON_CIRCUIT_DIR
+        / "SingleNeuronCircuit__top_nodes_dim6__IDX0"
+        / "circuit_config.json"
+    )
+    c = Circuit(name="test_single", path=circuit_path)
+
+    scale, num_nrn, num_syn, num_conn = get_circuit_size(c)
+
+    assert scale == "single"
+    assert num_nrn == 1

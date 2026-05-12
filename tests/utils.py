@@ -7,6 +7,7 @@ from starlette.testclient import TestClient
 DATA_DIR = Path(__file__).parent / "test_data"
 EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
 CIRCUIT_DIR = EXAMPLES_DIR / "data" / "tiny_circuits"
+SINGLE_NEURON_CIRCUIT_DIR = EXAMPLES_DIR / "data" / "single_neuron_circuits"
 MATRIX_DIR = EXAMPLES_DIR / "data" / "connectivity_matrices"
 
 VIRTUAL_LAB_ID = "9c6fba01-2c6f-4eac-893f-f0dc665605c5"
