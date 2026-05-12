@@ -531,3 +531,401 @@ def test_get_publications_not_found():
     client = _mock_client_search([])
     with pytest.raises(ValueError, match="not found"):
         get_publications(client, {"10.1234/test": {"type": "entity_source"}})
+
+
+from obi_one.utils.circuit_registration import register_derivation
+
+
+# --- register_derivation ---
+
+
+def test_register_derivation_none_parent():
+    """Test that None parent skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    result = register_derivation(
+        client=client,
+        from_entity=None,
+        derivation_type="circuit_extraction",
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is None
+    client.register_entity.assert_not_called()
+
+
+def test_register_derivation_invalid_type():
+    """Test that invalid derivation type raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="unknown"):
+        register_derivation(
+            client=client,
+            from_entity=MagicMock(),
+            derivation_type="invalid_type",
+            registered_circuit=MagicMock(),
+            dry_run=False,
+        )
+
+
+def test_register_derivation_dry_run():
+    """Test that dry_run skips registration."""
+    client = MagicMock()
+    result = register_derivation(
+        client=client,
+        from_entity=MagicMock(),
+        derivation_type="circuit_extraction",
+        registered_circuit=MagicMock(),
+        dry_run=True,
+    )
+    assert result is None
+    client.register_entity.assert_not_called()
+
+
+def test_register_derivation_success():
+    """Test successful derivation registration."""
+    client = MagicMock()
+    registered_derivation = MagicMock()
+    client.register_entity.return_value = registered_derivation
+
+    parent = MagicMock()
+    circuit = MagicMock()
+
+    with patch("obi_one.utils.circuit_registration.models.Derivation"):
+        result = register_derivation(
+            client=client,
+            from_entity=parent,
+            derivation_type="circuit_extraction",
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert result is registered_derivation
+    client.register_entity.assert_called_once()
+
+
+from obi_one.utils.circuit_registration import register_contributions
+
+
+# --- register_contributions ---
+
+
+def test_register_contributions_dry_run():
+    """Test that dry_run skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    contribution_dict = {"John Doe": {"agent": MagicMock(), "role": MagicMock()}}
+
+    result = register_contributions(
+        client=client,
+        contribution_dict=contribution_dict,
+        registered_circuit=circuit,
+        dry_run=True,
+    )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+def test_register_contributions_new():
+    """Test that new contributions are registered."""
+    client = MagicMock()
+    circuit = MagicMock()
+    registered_contr = MagicMock()
+    client.register_entity.return_value = registered_contr
+    # _contribution_exists returns None (not existing)
+    client.search_entity.return_value.all.return_value = []
+
+    agent = MagicMock(pref_label="John Doe", type="person")
+    role = MagicMock()
+    role.name = "unspecified"
+
+    with patch("obi_one.utils.circuit_registration.models.Contribution"):
+        result = register_contributions(
+            client=client,
+            contribution_dict={"John Doe": {"agent": agent, "role": role}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert len(result) == 1
+    assert result[0] is registered_contr
+
+
+def test_register_contributions_already_exists():
+    """Test that existing contributions are skipped."""
+    client = MagicMock()
+    circuit = MagicMock(id="circuit-id")
+
+    agent = MagicMock(pref_label="John Doe", type="person")
+    role = MagicMock()
+    role.name = "unspecified"
+
+    # _contribution_exists finds a match
+    existing = MagicMock()
+    existing.agent.pref_label = "John Doe"
+    existing.agent.type = "person"
+    existing.role.name = "unspecified"
+
+    # Mock: models.Contribution() returns a mock that matches the existing contribution
+    mock_contr_model = MagicMock()
+    mock_contr_model.entity.id = "circuit-id"
+    mock_contr_model.agent.pref_label = "John Doe"
+    mock_contr_model.agent.type = "person"
+    mock_contr_model.role.name = "unspecified"
+
+    with patch(
+        "obi_one.utils.circuit_registration.models.Contribution",
+        return_value=mock_contr_model,
+    ):
+        # search_entity for _contribution_exists returns the existing match
+        client.search_entity.return_value.all.return_value = [existing]
+
+        result = register_contributions(
+            client=client,
+            contribution_dict={"John Doe": {"agent": agent, "role": role}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+from obi_one.utils.circuit_registration import register_publication_links
+
+
+# --- register_publication_links ---
+
+
+def test_register_publication_links_dry_run():
+    """Test that dry_run skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    publication_dict = {"10.1234/test": {"entity": MagicMock(), "type": "entity_source"}}
+
+    result = register_publication_links(
+        client=client,
+        publication_dict=publication_dict,
+        registered_circuit=circuit,
+        dry_run=True,
+    )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+def test_register_publication_links_new():
+    """Test that new publication links are registered."""
+    client = MagicMock()
+    circuit = MagicMock(id="circuit-id")
+    registered_link = MagicMock()
+    client.register_entity.return_value = registered_link
+    # No existing links found
+    client.search_entity.return_value.all.return_value = []
+
+    pub_entity = MagicMock(DOI="10.1234/test")
+
+    with patch("obi_one.utils.circuit_registration.models.ScientificArtifactPublicationLink"):
+        result = register_publication_links(
+            client=client,
+            publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert len(result) == 1
+    assert result[0] is registered_link
+
+
+def test_register_publication_links_already_exists():
+    """Test that existing publication links are skipped."""
+    client = MagicMock()
+    circuit = MagicMock(id="circuit-id")
+    # Existing link found
+    client.search_entity.return_value.all.return_value = [MagicMock()]
+
+    pub_entity = MagicMock(DOI="10.1234/test")
+
+    with patch("obi_one.utils.circuit_registration.models.ScientificArtifactPublicationLink"):
+        result = register_publication_links(
+            client=client,
+            publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+from obi_one.utils.circuit_registration import register_asset
+
+
+# --- register_asset ---
+
+
+def test_register_asset_none_path():
+    """Test that None file_path skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    result = register_asset(
+        client=client,
+        file_path=None,
+        asset_label="sonata_circuit",
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is None
+
+
+def test_register_asset_unsupported_label():
+    """Test that unsupported asset label raises."""
+    client = MagicMock()
+    circuit = MagicMock()
+    with pytest.raises(ValueError, match="not supported"):
+        register_asset(
+            client=client,
+            file_path="/some/path",
+            asset_label="invalid_label",
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+
+
+def test_register_asset_dry_run(tmp_path):
+    """Test that dry_run skips registration after validation."""
+    # Create a valid sonata_circuit directory
+    (tmp_path / "circuit_config.json").write_text("{}")
+    (tmp_path / "node_sets.json").write_text("{}")
+
+    client = MagicMock()
+    circuit = MagicMock()
+    result = register_asset(
+        client=client,
+        file_path=str(tmp_path),
+        asset_label="sonata_circuit",
+        registered_circuit=circuit,
+        dry_run=True,
+    )
+    assert result is None
+    client.upload_directory.assert_not_called()
+
+
+def test_register_asset_local_directory(tmp_path):
+    """Test uploading a local directory asset."""
+    # Create a valid sonata_circuit directory
+    (tmp_path / "circuit_config.json").write_text("{}")
+    (tmp_path / "node_sets.json").write_text("{}")
+
+    client = MagicMock()
+    uploaded_asset = MagicMock(id="asset-123")
+    client.upload_directory.return_value = uploaded_asset
+    circuit = MagicMock(id="circuit-id")
+
+    result = register_asset(
+        client=client,
+        file_path=str(tmp_path),
+        asset_label="sonata_circuit",
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is uploaded_asset
+    client.upload_directory.assert_called_once()
+
+
+def test_register_asset_local_file(tmp_path):
+    """Test uploading a local file asset."""
+    gz_file = tmp_path / "circuit.gz"
+    gz_file.write_text("compressed data")
+
+    client = MagicMock()
+    uploaded_asset = MagicMock(id="asset-456")
+    client.upload_file.return_value = uploaded_asset
+    circuit = MagicMock(id="circuit-id")
+
+    result = register_asset(
+        client=client,
+        file_path=str(gz_file),
+        asset_label="compressed_sonata_circuit",
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is uploaded_asset
+    client.upload_file.assert_called_once()
+
+
+def test_register_asset_nonexistent_path():
+    """Test that non-existent local path raises."""
+    client = MagicMock()
+    circuit = MagicMock()
+    with pytest.raises(ValueError, match="does not exist"):
+        register_asset(
+            client=client,
+            file_path="/nonexistent/path",
+            asset_label="sonata_circuit",
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+
+
+def test_register_asset_missing_required_contents(tmp_path):
+    """Test that missing required contents raises."""
+    # Create directory without required files
+    (tmp_path / "some_file.txt").write_text("hello")
+
+    client = MagicMock()
+    circuit = MagicMock()
+    with pytest.raises(ValueError, match="not found in"):
+        register_asset(
+            client=client,
+            file_path=str(tmp_path),
+            asset_label="sonata_circuit",
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+
+
+import json as json_module
+
+@pytest.mark.parametrize(
+    "asset_label,is_dir,setup_fn",
+    [
+        ("sonata_circuit", True, lambda p: [
+            (p / "circuit_config.json").write_text("{}"),
+            (p / "node_sets.json").write_text("{}"),
+        ]),
+        ("compressed_sonata_circuit", False, lambda p: (p / "circuit.gz").write_text("data")),
+        ("circuit_connectivity_matrices", True, lambda p: [
+            (p / "matrix_config.json").write_text(json_module.dumps({})),
+        ]),
+        ("circuit_visualization", False, lambda p: (p / "circuit_visualization.webp").write_text("img")),
+        ("node_stats", False, lambda p: (p / "node_stats.webp").write_text("img")),
+        ("network_stats_a", False, lambda p: (p / "network_stats_a.webp").write_text("img")),
+        ("network_stats_b", False, lambda p: (p / "network_stats_b.webp").write_text("img")),
+        ("simulation_designer_image", False, lambda p: (p / "simulation_designer_image.png").write_text("img")),
+    ],
+)
+def test_register_asset_all_labels(tmp_path, asset_label, is_dir, setup_fn):
+    """Test that all supported asset labels can be registered."""
+    if is_dir:
+        asset_path = tmp_path / asset_label
+        asset_path.mkdir()
+        setup_fn(asset_path)
+        file_path = str(asset_path)
+    else:
+        setup_fn(tmp_path)
+        # For files, find the created file
+        files = [f for f in tmp_path.iterdir() if f.is_file()]
+        file_path = str(files[0])
+
+    client = MagicMock()
+    uploaded = MagicMock(id=f"{asset_label}-id")
+    client.upload_directory.return_value = uploaded
+    client.upload_file.return_value = uploaded
+    circuit = MagicMock(id="circuit-id")
+
+    result = register_asset(
+        client=client,
+        file_path=file_path,
+        asset_label=asset_label,
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is uploaded
+    if is_dir:
+        client.upload_directory.assert_called_once()
+    else:
+        client.upload_file.assert_called_once()
