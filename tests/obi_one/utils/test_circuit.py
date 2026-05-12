@@ -173,3 +173,83 @@ def test_run_validation_invalid_path(tmp_path):
     """Test that validation raises for a non-existent circuit."""
     with pytest.raises(Exception):
         run_validation(str(tmp_path / "nonexistent" / "circuit_config.json"))
+
+
+from PIL import Image
+
+from obi_one.utils.circuit import generate_overview_figure
+
+
+def test_generate_overview_figure_fallback_template(tmp_path):
+    """Test that template is used when no plots directory is provided."""
+    output_file = tmp_path / "overview.png"
+
+    result = generate_overview_figure(basic_plots_dir=None, output_file=output_file)
+
+    assert result == output_file
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
+
+
+def test_generate_overview_figure_fallback_when_no_circular_plot(tmp_path):
+    """Test that template is used when plots dir exists but has no circular plot."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    output_file = tmp_path / "overview.png"
+
+    result = generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
+
+    assert result == output_file
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
+
+
+def test_generate_overview_figure_with_circular_plot(tmp_path):
+    """Test that circular plot is used when available."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    # Create a dummy circular plot image
+    img = Image.new("RGB", (123, 123), color="blue")
+    img.save(plots_dir / "small_network_in_2D_circular.png")
+
+    output_file = tmp_path / "overview.png"
+    result = generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
+
+    assert result == output_file
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
+    img = Image.open(output_file)
+    assert img.width == 123
+
+
+def test_generate_overview_figure_with_circular_and_table(tmp_path):
+    """Test that circular plot and table are merged when both available."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    # Create dummy images
+    img1 = Image.new("RGB", (123, 123), color="blue")
+    img1.save(plots_dir / "small_network_in_2D_circular.png")
+    img2 = Image.new("RGB", (321, 123), color="red")
+    img2.save(plots_dir / "property_table_extra.png")
+
+    output_file = tmp_path / "overview.png"
+    result = generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
+
+    assert result == output_file
+    assert output_file.exists()
+    # Merged image should be wider than either input
+    merged = Image.open(output_file)
+    assert merged.width == 444  # 123 + 321
+
+
+def test_generate_overview_figure_raises_if_output_exists(tmp_path):
+    """Test that error is raised when output file already exists."""
+    from obi_one.core.exception import OBIONEError
+
+    # Create a dummy output image
+    output_file = tmp_path / "overview.png"
+    img = Image.new("RGB", (123, 123), color="blue")
+    img.save(output_file)
+
+    with pytest.raises(OBIONEError, match="already exists"):
+        generate_overview_figure(basic_plots_dir=None, output_file=output_file)
