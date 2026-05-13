@@ -2,12 +2,11 @@
 
 import json
 import logging
-import subprocess
+import subprocess  # noqa: S404
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
-import numpy as np
 from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
@@ -35,9 +34,7 @@ def get_circuit(
     if circuit_name is None:
         return None
 
-    res = client.search_entity(
-        entity_type=models.Circuit, query={"name": circuit_name}
-    ).all()
+    res = client.search_entity(entity_type=models.Circuit, query={"name": circuit_name}).all()
     if len(res) == 0:
         if must_exist:
             msg = f"Circuit '{circuit_name}' not found!"
@@ -97,11 +94,14 @@ def get_parent_circuit(client: Client, circuit_metadata: dict) -> models.Circuit
     if parent is None:
         L.info("No parent circuit specified")
         if circuit_metadata["derivation_type"] is not None:
-            msg = f"Derivation type '{circuit_metadata['derivation_type']}' requires a parent circuit!"
+            msg = (
+                f"Derivation type '{circuit_metadata['derivation_type']}'"
+                " requires a parent circuit!"
+            )
             raise ValueError(msg)
     else:
         L.info(f"Parent circuit: {parent.name} (ID {parent.id})")
-        valid_derivation_types = [str(_dtype) for _dtype in DerivationType]
+        valid_derivation_types = [str(dtype) for dtype in DerivationType]
         if circuit_metadata["derivation_type"] not in valid_derivation_types:
             msg = f"A valid derivation type is required (valid: {valid_derivation_types})!"
             raise ValueError(msg)
@@ -146,9 +146,7 @@ def find_agent(
         The agent entity.
     """
     entity_type = getattr(models, agent_type.title())
-    agents = client.search_entity(
-        entity_type=entity_type, query={"pref_label": agent_name}
-    ).all()
+    agents = client.search_entity(entity_type=entity_type, query={"pref_label": agent_name}).all()
     if len(agents) == 0:
         msg = f"{agent_type.title()} '{agent_name}' not found!"
         raise ValueError(msg)
@@ -170,7 +168,7 @@ def find_role(client: Client, role_name: str) -> models.Role:
         The role entity.
     """
     all_roles = client.search_entity(entity_type=models.Role).all()
-    matches = [_role for _role in all_roles if _role.name == role_name]
+    matches = [role for role in all_roles if role.name == role_name]
     if len(matches) != 1:
         msg = f"Role '{role_name}' not found or multiple entities exist!"
         raise ValueError(msg)
@@ -206,9 +204,7 @@ def get_contributions(
     return contr_entities
 
 
-def get_publications(
-    client: Client, circuit_publications: dict, *, verbose: bool = False
-) -> dict:
+def get_publications(client: Client, circuit_publications: dict, *, verbose: bool = False) -> dict:
     """Resolve publication entities from a publications dictionary.
 
     Args:
@@ -229,13 +225,14 @@ def get_publications(
             raise ValueError(msg)
 
         # Get publication entity
-        res = client.search_entity(
-            entity_type=models.Publication, query={"DOI": doi}
-        ).all()
+        res = client.search_entity(entity_type=models.Publication, query={"DOI": doi}).all()
         if len(res) == 0:
-            msg = f"Publication with DOI {doi} not found! The publication needs to be registered first."
+            msg = (
+                f"Publication with DOI {doi} not found!"
+                " The publication needs to be registered first."
+            )
             raise ValueError(msg)
-        elif len(res) > 1:
+        if len(res) > 1:
             msg = f"Publication with DOI {doi} found multiple times!"
             raise ValueError(msg)
         publ = res[0]
@@ -261,9 +258,7 @@ def get_subject(client: Client, circuit_metadata: dict) -> models.Subject:
     if subj_name is None:
         msg = "Subject must be provided!"
         raise ValueError(msg)
-    subject = client.search_entity(
-        entity_type=models.Subject, query={"name": subj_name}
-    ).all()
+    subject = client.search_entity(entity_type=models.Subject, query={"name": subj_name}).all()
     if len(subject) == 0:
         msg = f"Subject '{subj_name}' not found! Subjects need to be registered beforehand."
         raise ValueError(msg)
@@ -300,7 +295,10 @@ def get_brain_region(client: Client, circuit_metadata: dict) -> models.BrainRegi
         entity_type=models.BrainRegion, query={"name": region_name}
     ).all()
     if len(brain_region) == 0:
-        msg = f"Brain region '{region_name}' not found! Brain regions need to be registered beforehand."
+        msg = (
+            f"Brain region '{region_name}' not found!"
+            " Brain regions need to be registered beforehand."
+        )
         raise ValueError(msg)
     if len(brain_region) > 1:
         msg = f"Multiple brain regions with name '{region_name}' found!"
@@ -357,22 +355,19 @@ def _check_file_path(file_path: str) -> None:
         raise ValueError(msg)
 
     if _is_on_aws_s3(file_path):
-        aws_out = subprocess.check_output(
-            ["aws", "s3", "ls", file_path, "--no-sign-request", "--human-readable"],
+        aws_out = subprocess.check_output(  # noqa: S603
+            ["aws", "s3", "ls", file_path, "--no-sign-request", "--human-readable"],  # noqa: S607
             text=True,
         )
         if Path(file_path).name not in aws_out:
             msg = f"File path '{file_path}' not found on AWS S3 Open Data!"
             raise ValueError(msg)
-    else:
-        if not Path(file_path).exists():
-            msg = f"File path '{file_path}' does not exist in local file system!"
-            raise ValueError(msg)
+    elif not Path(file_path).exists():
+        msg = f"File path '{file_path}' does not exist in local file system!"
+        raise ValueError(msg)
 
 
-def _check_required_contents(
-    file_path: str, contents: list[str], *, is_directory: bool
-) -> None:
+def _check_required_contents(file_path: str, contents: list[str], *, is_directory: bool) -> None:
     """Validate that required files exist within a path.
 
     Args:
@@ -385,30 +380,29 @@ def _check_required_contents(
 
     if _is_on_aws_s3(file_path):
         sep = "/" if is_directory else ""
-        aws_out = subprocess.check_output(
-            ["aws", "s3", "ls", f"{file_path}{sep}", "--no-sign-request", "--human-readable"],
+        aws_out = subprocess.check_output(  # noqa: S603
+            ["aws", "s3", "ls", f"{file_path}{sep}", "--no-sign-request", "--human-readable"],  # noqa: S607
             text=True,
         )
         for file in contents:
             if file not in aws_out:
                 msg = f"Required content '{file}' not found on AWS path '{file_path}'!"
                 raise ValueError(msg)
+    elif is_directory:
+        files_in_dir = {
+            str(path.relative_to(file_path)): path
+            for path in Path(file_path).rglob("*")
+            if path.is_file()
+        }
+        for file in contents:
+            if file not in files_in_dir:
+                msg = f"Required content '{file}' not found in '{file_path}'!"
+                raise ValueError(msg)
     else:
-        if is_directory:
-            files_in_dir = {
-                str(path.relative_to(file_path)): path
-                for path in Path(file_path).rglob("*")
-                if path.is_file()
-            }
-            for file in contents:
-                if file not in files_in_dir:
-                    msg = f"Required content '{file}' not found in '{file_path}'!"
-                    raise ValueError(msg)
-        else:
-            for file in contents:
-                if Path(file_path).name != file:
-                    msg = f"Required content '{file}' does not match '{file_path}'!"
-                    raise ValueError(msg)
+        for file in contents:
+            if Path(file_path).name != file:
+                msg = f"Required content '{file}' does not match '{file_path}'!"
+                raise ValueError(msg)
 
 
 def _check_matrix_folder(file_path: str) -> None:
@@ -498,7 +492,7 @@ def register_asset(
     client: Client,
     file_path: str | None,
     asset_label: str,
-    registered_circuit: models.Circuit,
+    registered_circuit: models.Circuit | None,
     *,
     dry_run: bool,
 ) -> models.Asset | None:
@@ -526,8 +520,7 @@ def register_asset(
         raise ValueError(msg)
 
     # Normalize trailing slash (Needed for aws s3 ls!!)
-    if file_path.endswith("/"):
-        file_path = file_path[:-1]
+    file_path = file_path.removesuffix("/")
 
     _check_file_path(file_path)
 
@@ -550,17 +543,21 @@ def register_asset(
         L.info(f"Asset '{asset_label}': CHECK ONLY (not registered)")
         return None
 
+    if registered_circuit is None:
+        msg = "registered_circuit is required when dry_run is False!"
+        raise ValueError(msg)
+
     # Register on AWS S3
     if _is_on_aws_s3(file_path):
         storage_path = Path(file_path).relative_to(AWS_S3_ROOT)
         asset_name = asset_label if is_dir else storage_path.name
         asset = client.register_asset(
-            asset_label=asset_label,
+            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
             name=asset_name,
-            entity_id=registered_circuit.id,
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
             entity_type=models.Circuit,
             storage_path=str(storage_path),
-            storage_type="aws_s3_open",
+            storage_type="aws_s3_open",  # ty:ignore[invalid-argument-type]
             is_directory=is_dir,
             content_type=content_type,
         )
@@ -578,22 +575,20 @@ def register_asset(
         num_ignored = sum(1 for f in files_in_dir if ".ds_store" in f.lower())
         if num_ignored > 0:
             L.warning(f"{num_ignored} '.DS_Store' file(s) found in '{file_path}' - ignoring")
-        files_in_dir = {
-            k: v for k, v in files_in_dir.items() if ".ds_store" not in k.lower()
-        }
+        files_in_dir = {k: v for k, v in files_in_dir.items() if ".ds_store" not in k.lower()}
         asset = client.upload_directory(
-            label=asset_label,
+            label=asset_label,  # ty:ignore[invalid-argument-type]
             name=asset_label,
-            entity_id=registered_circuit.id,
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
             entity_type=models.Circuit,
-            paths=files_in_dir,
+            paths=files_in_dir,  # ty:ignore[invalid-argument-type]
         )
     else:
         asset = client.upload_file(
-            asset_label=asset_label,
-            entity_id=registered_circuit.id,
+            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
             entity_type=models.Circuit,
-            file_path=file_path,
+            file_path=file_path,  # ty:ignore[invalid-argument-type]
             file_content_type=content_type,
         )
     L.info(f"'{asset_label}' asset uploaded under ID {asset.id}")
@@ -606,8 +601,8 @@ def register_asset(
 def register_derivation(
     client: Client,
     from_entity: models.Circuit | None,
-    derivation_type: str,
-    registered_circuit: models.Circuit,
+    derivation_type: DerivationType | None,
+    registered_circuit: models.Circuit | None,
     *,
     dry_run: bool,
 ) -> models.Derivation | None:
@@ -627,14 +622,17 @@ def register_derivation(
         L.info("No derivation parent provided - skipping")
         return None
 
-    valid_derivation_types = [str(_dtype) for _dtype in DerivationType]
-    if derivation_type not in valid_derivation_types:
-        msg = f"Derivation type '{derivation_type}' unknown (valid: {valid_derivation_types})!"
+    if derivation_type is None:
+        msg = "derivation_type is required when from_entity is provided!"
         raise ValueError(msg)
 
     if dry_run:
         L.info(f"Derivation '{derivation_type}': CHECK ONLY (not registered)")
         return None
+
+    if registered_circuit is None:
+        msg = "registered_circuit is required when dry_run is False!"
+        raise ValueError(msg)
 
     derivation_model = models.Derivation(
         used=from_entity,
@@ -651,22 +649,23 @@ def _contribution_exists(
 ) -> models.Contribution | None:
     """Check if a contribution already exists for the given entity/agent/role combination."""
     res = client.search_entity(
-        entity_type=models.Contribution, query={"entity__id": contr_model.entity.id}
+        entity_type=models.Contribution,
+        query={"entity__id": contr_model.entity.id},  # ty:ignore[unresolved-attribute]
     ).all()
-    for _r in res:
+    for r in res:
         if (
-            _r.agent.pref_label == contr_model.agent.pref_label
-            and _r.agent.type == contr_model.agent.type
-            and _r.role.name == contr_model.role.name
+            r.agent.pref_label == contr_model.agent.pref_label
+            and r.agent.type == contr_model.agent.type
+            and r.role.name == contr_model.role.name
         ):
-            return _r
+            return r
     return None
 
 
 def register_contributions(
     client: Client,
     contribution_dict: dict,
-    registered_circuit: models.Circuit,
+    registered_circuit: models.Circuit | None,
     *,
     dry_run: bool,
 ) -> list[models.Contribution]:
@@ -687,6 +686,10 @@ def register_contributions(
         L.info(f"Contributions: {len(contribution_dict)} (CHECK ONLY)")
         return []
 
+    if registered_circuit is None:
+        msg = "registered_circuit is required when dry_run is False!"
+        raise ValueError(msg)
+
     contributions_list = []
     for cdict in contribution_dict.values():
         contr_model = models.Contribution(
@@ -697,7 +700,9 @@ def register_contributions(
             registered_contr = client.register_entity(contr_model)
             contributions_list.append(registered_contr)
         else:
-            L.warning(f"Contribution for agent '{cdict['agent'].pref_label}' already exists - skipping")
+            L.warning(
+                f"Contribution for agent '{cdict['agent'].pref_label}' already exists - skipping"
+            )
     L.info(f"Contributions: {len(contributions_list)} registered")
     return contributions_list
 
@@ -705,7 +710,7 @@ def register_contributions(
 def register_publication_links(
     client: Client,
     publication_dict: dict,
-    registered_circuit: models.Circuit,
+    registered_circuit: models.Circuit | None,
     *,
     dry_run: bool,
 ) -> list[models.ScientificArtifactPublicationLink]:
@@ -725,6 +730,10 @@ def register_publication_links(
     if dry_run:
         L.info(f"Publication links: {len(publication_dict)} (CHECK ONLY)")
         return []
+
+    if registered_circuit is None:
+        msg = "registered_circuit is required when dry_run is False!"
+        raise ValueError(msg)
 
     publications_list = []
     for pdict in publication_dict.values():
@@ -768,7 +777,7 @@ def generate_compressed_circuit_asset(
 
     compressed_circuit = circuit_utils.run_circuit_folder_compression(
         circuit_path=circuit_path,
-        circuit_name=circuit_entity.name if circuit_entity else "circuit",
+        circuit_name=circuit_entity.name if circuit_entity else "circuit",  # ty:ignore[invalid-argument-type]
         output_root=output_dir,
     )
     if client and circuit_entity:
@@ -897,7 +906,8 @@ def generate_additional_circuit_assets(
 
     Args:
         circuit_path: Path to the circuit_config.json file.
-        edge_population: Name of the edge population for matrix extraction and connectivity plots (optional).
+        edge_population: Name of the edge population for matrix extraction
+            and connectivity plots (optional).
         client: The entitycore SDK client (optional).
         circuit_entity: The registered circuit entity to attach assets to (optional).
     """
@@ -926,16 +936,19 @@ def generate_additional_circuit_assets(
         L.warning(f"Connectivity matrix asset generation/registration failed: {e}")
         matrix_config = edge_population = None
 
-    try:
-        plot_dir, _ = generate_connectivity_plot_assets(
-            matrix_config=matrix_config,
-            edge_population=edge_population,
-            output_dir=output_root / (circuit_name + "__BASIC_PLOTS__"),
-            client=client,
-            circuit_entity=circuit_entity,
-        )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Connectivity plot assets generation/registration failed: {e}")
+    if matrix_config is not None and edge_population is not None:
+        try:
+            plot_dir, _ = generate_connectivity_plot_assets(
+                matrix_config=matrix_config,
+                edge_population=edge_population,
+                output_dir=output_root / (circuit_name + "__BASIC_PLOTS__"),
+                client=client,
+                circuit_entity=circuit_entity,
+            )
+        except Exception as e:  # noqa: BLE001
+            L.warning(f"Connectivity plot assets generation/registration failed: {e}")
+            plot_dir = None
+    else:
         plot_dir = None
 
     viz_dir = output_root / (circuit_name + "__CIRCUIT_VIZ__")
@@ -964,7 +977,7 @@ def generate_additional_circuit_assets(
 # --- High-level registration functions ---
 
 
-def register_circuit(
+def register_circuit(  # noqa: PLR0913
     client: Client,
     circuit_path: str | Path,
     *,
@@ -1027,7 +1040,7 @@ def register_circuit(
     # Resolve circuit_path to the circuit_config.json file
     circuit_path = Path(circuit_path)
     if circuit_path.is_dir():
-        circuit_path = circuit_path / "circuit_config.json"
+        circuit_path /= "circuit_config.json"
     if not circuit_path.exists():
         msg = f"Circuit config not found at '{circuit_path}'!"
         raise ValueError(msg)

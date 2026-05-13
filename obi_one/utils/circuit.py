@@ -69,7 +69,7 @@ def fix_node_sets_file(circuit_path: Path) -> None:
         json.dump(nset_dict, f, indent=2)
 
 
-def get_circuit_size(c: Circuit) -> tuple[str, int, int, int]:
+def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
     """Returns the circuit scale, number of neurons, synapses, and connections."""
     c_sonata = c.sonata_circuit
     num_nrn = c_sonata.nodes[c.default_population_name].size

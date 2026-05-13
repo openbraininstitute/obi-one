@@ -555,13 +555,13 @@ def test_register_derivation_none_parent():
 
 
 def test_register_derivation_invalid_type():
-    """Test that invalid derivation type raises."""
+    """Test that None derivation type raises when parent is provided."""
     client = MagicMock()
-    with pytest.raises(ValueError, match="unknown"):
+    with pytest.raises(ValueError, match="derivation_type is required"):
         register_derivation(
             client=client,
             from_entity=MagicMock(),
-            derivation_type="invalid_type",
+            derivation_type=None,
             registered_circuit=MagicMock(),
             dry_run=False,
         )
