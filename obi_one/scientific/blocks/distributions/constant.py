@@ -1,16 +1,14 @@
 from typing import ClassVar
 
 import numpy as np
-from pydantic import (
-    Field,
-)
+from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.distributions.base import Distribution
 
 
 class FloatConstantDistribution(Distribution):
-    """A single float value."""
+    """A constant float value."""
 
     title: ClassVar[str] = "Constant Float"
 
@@ -28,12 +26,13 @@ class FloatConstantDistribution(Distribution):
         n: int = 1,
         rng: np.random.Generator | None = None,  # noqa: ARG002
     ) -> list[float]:
-        """Sample n values from the distribution."""
-        return [self.value] * n  # ty:ignore[invalid-return-type]
+        if isinstance(self.value, list):
+            return [float(v) for v in self.value][:n]
+        return [float(self.value)] * n
 
 
 class IntConstantDistribution(Distribution):
-    """A single integer value."""
+    """A constant integer value."""
 
     title: ClassVar[str] = "Constant Integer"
 
@@ -51,5 +50,6 @@ class IntConstantDistribution(Distribution):
         n: int = 1,
         rng: np.random.Generator | None = None,  # noqa: ARG002
     ) -> list[float]:
-        """Sample n values from the distribution."""
-        return [float(self.value)] * n  # ty:ignore[invalid-argument-type]
+        if isinstance(self.value, list):
+            return [float(v) for v in self.value][:n]
+        return [float(self.value)] * n

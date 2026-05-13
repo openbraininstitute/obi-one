@@ -58,12 +58,12 @@ class BlockGroup(StrEnum):
 
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    DISTRIBUTIONS_BLOCK_GROUP = "Distributions"
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
 
 
-TARGET_SIMULATOR = "NEURON"
 SONATA_VERSION = 2.4
 
 

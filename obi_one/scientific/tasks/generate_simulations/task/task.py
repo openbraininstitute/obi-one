@@ -25,7 +25,6 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     SONATA_VERSION,
-    TARGET_SIMULATOR,
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
@@ -77,7 +76,6 @@ class GenerateSimulationTask(Task):
         """Returns the default SONATA conditions dictionary."""
         self._sonata_config = {}
         self._sonata_config["version"] = SONATA_VERSION
-        self._sonata_config["target_simulator"] = TARGET_SIMULATOR
 
         self._sonata_config["run"] = {}
         self._sonata_config["run"]["dt"] = self.config.initialize.timestep
@@ -302,7 +300,7 @@ class GenerateSimulationTask(Task):
                         self._circuit,
                         self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                     )
-                    != "biophysical"
+                    not in {"biophysical", "inait_point_neuron_lif"}
                 ):
                     # Get list of biophysical populations to help user
                     biophysical_populations = Circuit.get_node_population_names(

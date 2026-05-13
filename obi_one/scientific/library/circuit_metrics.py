@@ -5,6 +5,7 @@ from collections.abc import Iterator, Mapping
 from enum import IntEnum, StrEnum, auto
 from os.path import realpath
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 import numpy as np
@@ -511,7 +512,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         error_msg = "Circuit must have exactly one directory asset."
         raise ValueError(error_msg)
 
-    asset_id = directory_assets[0].id
+    asset_id = cast("UUID", directory_assets[0].id)
 
     # db_client.download_content does not support `asset_path` at the time of writing this
     # Use db_client.fetch_file with temporary directory instead

@@ -172,6 +172,7 @@ __all__ = [
     "SkeletonizationSingleConfig",
     "SomaVoltageRecording",
     "SpatiallyUniformElectricFieldStimulus",
+    "SpikeTimeDistributionSpikeStimulus",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -298,6 +299,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
 )
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
+    SpikeTimeDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
