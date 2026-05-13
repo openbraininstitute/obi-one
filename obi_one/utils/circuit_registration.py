@@ -782,6 +782,7 @@ def generate_compressed_circuit_asset(
 def generate_connectivity_matrix_asset(
     circuit_path: Path,
     output_dir: Path,
+    edge_population: str | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
 ) -> tuple[Path, Path, str]:
@@ -798,6 +799,7 @@ def generate_connectivity_matrix_asset(
     ) = circuit_utils.run_connectivity_matrix_extraction(
         circuit_path=circuit_path,
         output_root=output_dir,
+        edge_population=edge_population,
     )
     if client and circuit_entity:
         db_sdk.add_connectivity_matrix_asset(
@@ -880,6 +882,7 @@ def generate_sim_designer_image_asset(
 
 def generate_additional_circuit_assets(
     circuit_path: Path,
+    edge_population: str | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
 ) -> None:
@@ -894,6 +897,7 @@ def generate_additional_circuit_assets(
 
     Args:
         circuit_path: Path to the circuit_config.json file.
+        edge_population: Name of the edge population for matrix extraction and connectivity plots (optional).
         client: The entitycore SDK client (optional).
         circuit_entity: The registered circuit entity to attach assets to (optional).
     """
@@ -914,6 +918,7 @@ def generate_additional_circuit_assets(
         _, matrix_config, edge_population = generate_connectivity_matrix_asset(
             circuit_path=circuit_path,
             output_dir=output_root / (circuit_name + "__CONN_MATRIX__"),
+            edge_population=edge_population,
             client=client,
             circuit_entity=circuit_entity,
         )

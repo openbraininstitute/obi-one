@@ -307,3 +307,15 @@ def test_get_circuit_properties_single_neuron_circuit():
     assert has_point_neurons is False
     assert has_electrical_cell_models is True
     assert has_spines is False
+
+
+def test_run_connectivity_matrix_extraction_custom_edge_population(tmp_path):
+    """Test that a custom edge_population name is used (and raises if invalid)."""
+    circuit_path = _copy_circuit(tmp_path)
+
+    with pytest.raises(Exception, match="nonexistent_population"):
+        run_connectivity_matrix_extraction(
+            circuit_path=circuit_path,
+            output_root=tmp_path,
+            edge_population="nonexistent_population",
+        )

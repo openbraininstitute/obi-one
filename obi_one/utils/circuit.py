@@ -448,12 +448,16 @@ def run_circuit_folder_compression(circuit_path: Path, circuit_name: str, output
     return output_file
 
 
-def run_connectivity_matrix_extraction(circuit_path: Path, output_root: Path) -> tuple[Path, Path, str]:
+def run_connectivity_matrix_extraction(
+    circuit_path: Path, output_root: Path, edge_population: str | None = None
+) -> tuple[Path, Path, str]:
     """Set up and run connectivity matrix extraction task.
 
     Args:
         circuit_path: Path to the circuit_config.json file.
         output_root: Directory where the matrix output will be written.
+        edge_population: Name of the edge population to extract. If not provided,
+            falls back to the circuit's default edge population.
 
     Returns:
         Tuple of (output_dir, matrix_config_path, edge_population_name).
@@ -469,7 +473,8 @@ def run_connectivity_matrix_extraction(circuit_path: Path, output_root: Path) ->
         name="circuit",
         path=str(circuit_path),
     )
-    edge_population = circuit.default_edge_population_name
+    if edge_population is None:
+        edge_population = circuit.default_edge_population_name
     matrix_init = ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit,
         edge_population=edge_population,
