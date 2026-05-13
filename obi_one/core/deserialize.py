@@ -3,13 +3,13 @@ from pathlib import Path
 from pydantic import TypeAdapter
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core.registry import type_registry
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.deserializable_types import load_class
 from obi_one.utils.io import load_json
 
 
 def deserialize_obi_object_from_json_data(json_dict: dict) -> OBIBaseModel:
-    cls = type_registry.get(json_dict["type"])
+    cls = load_class(json_dict["type"])
     return cls.model_validate(json_dict)  # ty:ignore[unresolved-attribute]
 
 

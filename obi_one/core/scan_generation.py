@@ -14,11 +14,11 @@ from pydantic import PrivateAttr, SerializeAsAny, ValidationError, field_validat
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
-from obi_one.core.registry import type_registry
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.serialization_constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
+from obi_one.core.deserializable_types import load_class
 
 L = logging.getLogger(__name__)
 
@@ -41,11 +41,10 @@ class ScanGenerationTask(Task, abc.ABC):
     @field_validator("form", mode="before")
     @classmethod
     def _validate_form(cls, v: Any) -> Any:
-        """Resolve the concrete ScanConfig subclass from the type registry."""
+        """Resolve the concrete ScanConfig subclass from the type map."""
         if isinstance(v, dict):
-            form_cls = type_registry.get(v.get("type"))
-            if form_cls is not None:
-                return form_cls.model_validate(v)  # ty:ignore[unresolved-attribute]
+            form_cls = load_class(v["type"])
+            return form_cls.model_validate(v)  # ty:ignore[unresolved-attribute]
         return v
 
     _single_configs: list[SingleConfigMixin] = PrivateAttr(default=[])

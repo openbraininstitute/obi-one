@@ -1,11 +1,9 @@
-"""Registries for task dispatch, type resolution, and block reference lookup.
+"""Registries for task dispatch and block reference lookup.
 
 Scientific modules populate these registries at import time.
 Core modules consume them at runtime.
 
 Registries:
-    - TypeRegistry: maps type name strings to OBIBaseModel subclasses
-      for deserialization.
     - TaskRegistry: maps config classes to task classes, and TaskType enums
       to task classes, single configs, and asset labels.
     - BlockReferenceRegistry: maps BlockReference subclass names to their
@@ -20,30 +18,6 @@ if TYPE_CHECKING:
     from entitysdk.types import AssetLabel
 
     from obi_one.types import TaskType
-
-
-class TypeRegistry:
-    """Maps type name strings to OBIBaseModel subclasses for deserialization.
-
-    Automatically populated by OBIBaseModel.__init_subclass__ - every subclass
-    is registered under its __qualname__ when defined.
-    """
-
-    def __init__(self) -> None:
-        """Initialize empty registry."""
-        self._registry: dict[str, type] = {}
-
-    def register(self, name: str, cls: type) -> None:
-        """Register a type name to class mapping."""
-        self._registry[name] = cls
-
-    def get(self, name: str) -> type | None:
-        """Return the class registered under the given name, or None."""
-        return self._registry.get(name)
-
-
-# Module-level singleton
-type_registry = TypeRegistry()
 
 
 class TaskRegistry:
