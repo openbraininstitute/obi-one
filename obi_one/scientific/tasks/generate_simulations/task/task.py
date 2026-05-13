@@ -262,6 +262,12 @@ class GenerateSimulationTask(Task):
                     stimulus
                 )
 
+            if hasattr(self.config, "neuronal_manipulations"):
+                for manipulation in self.config.neuronal_manipulations.values():
+                    self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
+                        manipulation
+                    )
+
     def _default_neuron_set_ref(self) -> NeuronSetReference:
         """Returns the reference for the default neuron set."""
         if (

@@ -113,7 +113,23 @@ def get_mechanism_variables(
         Tuple of (variables_list, channel_mapping) where channel_mapping shows
         which section lists each ion channel appears in based on emodel JSON.
     """
-    emodel = db_client.get_entity(entity_id=memodel.emodel.id, entity_type=EModel)  # ty:ignore[invalid-argument-type]
+    return get_mechanism_variables_for_emodel(db_client, str(memodel.emodel.id))
+
+
+def get_mechanism_variables_for_emodel(
+    db_client: entitysdk.client.Client,
+    emodel_id: str,
+) -> tuple[list[MechanismVariable], ChannelSectionListMapping]:
+    """Fetch all modifiable mechanism variables directly from an EModel entity ID.
+
+    Retrieves optimized parameters from the emodel_optimization_output asset and
+    additional RANGE/GLOBAL variables from ion channel models.
+
+    Returns:
+        Tuple of (variables_list, channel_mapping) where channel_mapping shows
+        which section lists each ion channel appears in based on emodel JSON.
+    """
+    emodel = db_client.get_entity(entity_id=emodel_id, entity_type=EModel)  # ty:ignore[invalid-argument-type]
 
     optimized_params = _fetch_optimization_parameters(db_client, emodel)
     ion_channel_vars = _get_ion_channel_variables(emodel)
@@ -153,7 +169,7 @@ def get_mechanism_variables(
     ]
 
     # Add section properties (cm and Ra) for all section lists
-    section_properties = _extract_section_properties(memodel, channel_mapping)
+    section_properties = _extract_section_properties(channel_mapping)
     merged.extend(section_properties)
 
     return merged, channel_mapping
@@ -449,15 +465,15 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
 
 
 def _extract_section_properties(
-    _memodel: MEModel, channel_mapping: ChannelSectionListMapping
+    channel_mapping: ChannelSectionListMapping,
 ) -> list[MechanismVariable]:
-    r"""Extract cm and Ra properties for all section lists in the MEModel.
+    r"""Extract cm and Ra properties for all section lists.
 
     Returns MechanismVariable objects for cm and Ra with:
     - neuron_variable: "cm" or "Ra"
     - channel_name: "-" (special identifier for section properties)
     - section_list: derived from channel_mapping section lists
-    - value: None if not found in MEModel, actual value if available
+    - value: None (user checks defaults on platform)
     - units: r"$\mu$F/cm$^2$" for cm, r"$\Omega$-cm" for Ra
     - variable_type: "RANGE"
     - limits: [0.0, 10.0] for cm, [10.0, 500.0] for Ra
@@ -482,7 +498,7 @@ def _extract_section_properties(
                     neuron_variable="cm",
                     channel_name="-",
                     section_list=section_list,
-                    value=None,  # Not available in MEModel, will be null
+                    value=None,
                     units=r"$\mu$F/cm$^2$",
                     limits=[0.0, 10.0],
                     variable_type="RANGE",
@@ -491,7 +507,7 @@ def _extract_section_properties(
                     neuron_variable="Ra",
                     channel_name="-",
                     section_list=section_list,
-                    value=None,  # Not available in MEModel, will be null
+                    value=None,
                     units=r"$\Omega$-cm",
                     limits=[10.0, 500.0],
                     variable_type="RANGE",
