@@ -125,6 +125,7 @@ def _evaluate_accounting_parameters(
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_cluster
             | TaskType.circuit_simulation_inait_machine
+            | TaskType.circuit_simulation_brian2_machine
         ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
@@ -149,7 +150,7 @@ def _evaluate_accounting_parameters(
             # For other task types, use the default mapping
             return AccountingParameters(
                 count=1,
-                service_subtype=task_definition.accounting_service_subtype,  # ty:ignore[unresolved-attribute]
+                service_subtype=ServiceSubtype.SMALL_SIM,
             )
 
 
