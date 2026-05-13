@@ -1,4 +1,3 @@
-import io
 import json
 import pathlib
 import tempfile
@@ -325,7 +324,7 @@ def register_asset_from_content(
         asset = client.upload_content(
             entity_id=entity_id,
             entity_type=CellMorphology,
-            file_content=io.BytesIO(content),
+            file_content=content,
             file_name=morphology_name,
             file_content_type=content_type,
             asset_label=AssetLabel.morphology,
