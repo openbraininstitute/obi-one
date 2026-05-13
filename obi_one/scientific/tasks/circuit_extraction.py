@@ -208,9 +208,7 @@ class CircuitExtractionTask(Task):
             msg = "Failed to resolve circuit!"
             raise OBIONEError(msg)
 
-    def _register_output(
-        self, db_client: Client, circuit_path: Path
-    ) -> models.Circuit:
+    def _register_output(self, db_client: Client, circuit_path: Path) -> models.Circuit | None:
         """Register the extracted circuit entity with assets and derivation link."""
         parent = self._circuit_entity
 
@@ -238,8 +236,8 @@ class CircuitExtractionTask(Task):
             name=circuit_name,
             description=circuit_descr,
             build_category=parent.build_category,  # ty:ignore[unresolved-attribute]
-            brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute]
-            subject=parent.subject,  # ty:ignore[unresolved-attribute]
+            brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+            subject=parent.subject,  # ty:ignore[unresolved-attribute, invalid-argument-type]
             contact_email=parent.contact_email,  # ty:ignore[unresolved-attribute]
             published_in=parent.published_in,  # ty:ignore[unresolved-attribute]
             experiment_date=parent.experiment_date,  # ty:ignore[unresolved-attribute]
@@ -250,7 +248,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(  # noqa: PLR0915
+    def execute(
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
