@@ -833,14 +833,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.15.5"
+version = "0.15.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/aa/79/e1f623365c43d8f831bf129b372d1a21113d843f62576c491150e828e0e9/entitysdk-0.15.5.tar.gz", hash = "sha256:334652e97cfbcbb076a187506718985b65c5821ad233342eca68c98c579f576f", size = 86292, upload-time = "2026-05-08T07:24:16.38Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/13/b1efdd3e36ecf2e5dcfbdc29eea6adc6dddc39bcb27ef7cd7408e50344d8/entitysdk-0.15.7.tar.gz", hash = "sha256:5fc8a233b299290e2b2509fb052a9b6fd550a0cd2c97baf6f3c6afee5ff062d2", size = 86787, upload-time = "2026-05-11T16:12:00.603Z" }
 
 [[package]]
 name = "executing"
@@ -2225,7 +2225,7 @@ requires-dist = [
     { name = "starlette", marker = "extra == 'service'" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["meshing", "connectivity", "notebooks", "service", "all"]
+provides-extras = ["connectivity", "meshing", "notebooks", "service", "all"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -1,6 +1,6 @@
 import tempfile
 from http import HTTPStatus
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal, cast
 
 import entitysdk.client
 import entitysdk.exception
@@ -20,6 +20,9 @@ from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -92,7 +95,7 @@ def register_morphology_metrics(
             db_client.download_content(
                 entity_id=cell_morphology_id,  # ty:ignore[invalid-argument-type]
                 entity_type=CellMorphology,
-                asset_id=asset.id,
+                asset_id=cast("UUID", asset.id),
             )
         )
         tmp.flush()

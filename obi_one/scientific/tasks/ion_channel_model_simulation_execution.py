@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import entitysdk
 from entitysdk import models
@@ -28,6 +28,9 @@ from obi_one.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from uuid import UUID
+
 
 class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
     pass
@@ -49,7 +52,7 @@ class IonChannelModelSimulationExecutionTask(Task):
         json_str = db_client.download_content(
             entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-            asset_id=config_asset.id,
+            asset_id=cast("UUID", config_asset.id),
         ).decode(encoding="utf-8")
 
         json_dict = json.loads(json_str)

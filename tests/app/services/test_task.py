@@ -111,6 +111,17 @@ def callbacks(activity_id):
             "simulation-execution",
             {},
         ),
+        (
+            TaskType.circuit_simulation_brian2_machine,
+            "simulation",
+            {
+                "entity_id": str(uuid4()),
+                "simulation_campaign_id": str(uuid4()),
+                "scan_parameters": {},
+            },
+            "simulation-execution",
+            {},
+        ),
     ],
 )
 def test_submit_task_job__success(
@@ -219,6 +230,17 @@ def test_submit_task_job__success(
             "simulation-execution",
             {},
         ),
+        (
+            TaskType.circuit_simulation_brian2_machine,
+            "simulation",
+            {
+                "entity_id": str(uuid4()),
+                "simulation_campaign_id": str(uuid4()),
+                "scan_parameters": {},
+            },
+            "simulation-execution",
+            {},
+        ),
     ],
 )
 def test_submit_task_job__failure(
@@ -306,6 +328,66 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "dependencies": "scripts/simulate-circuits/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": ["wheels", "scripts/simulate-circuits/"],
+        },
+        "resources": {
+            "type": "machine",
+            "cores": 1,
+            "memory": 8,
+            "compute_cell": "local",
+            "timelimit": "02:00",
+        },
+        "inputs": [
+            "sonata-simulation-task",
+            f" --project-id {PROJECT_ID}",
+            f" --virtual-lab-id {VIRTUAL_LAB_ID}",
+            f" --simulation-id {config_id}",
+            f" --simulation-execution-id {activity_id}",
+        ],
+        "project_id": PROJECT_ID,
+        "callbacks": [
+            {
+                "action_type": "http_request_with_token",
+                "event_type": "job_on_failure",
+                "config": {
+                    "url": "http://failure",
+                    "method": "POST",
+                    "params": {
+                        "task_type": "circuit_simulation_neurodamus_cluster",
+                        "activity_id": str(activity_id),
+                    },
+                    "headers": {
+                        "virtual-lab-id": VIRTUAL_LAB_ID,
+                        "project-id": PROJECT_ID,
+                    },
+                    "payload": None,
+                },
+            }
+        ],
+    }
+
+
+def test_brian2_job_data(config_id, activity_id, callbacks):
+    task_type = TaskType.circuit_simulation_brian2_machine
+    task_definition = TASK_DEFINITIONS[task_type]
+
+    res = test_module._brian2_job_data(
+        simulation_id=config_id,
+        simulation_execution_id=activity_id,
+        project_id=PROJECT_ID,
+        virtual_lab_id=VIRTUAL_LAB_ID,
+        callbacks=callbacks,
+        task_definition=task_definition,
+    )
+
+    assert res == {
+        "code": {
+            "type": "python_repository",
+            "location": task_definition.code.location,
+            "ref": "commit:b3e8670db32d26e9fa4c71d79d6f6de46b61cb16",
+            "path": "examples/J_drosophila/simulate-brian2.py",
+            "dependencies": "examples/J_drosophila/requirements.txt",
+            "capabilities": {"private_packages": False, "env_secrets": []},
+            "staged_directories": [],
         },
         "resources": {
             "type": "machine",
@@ -640,18 +722,7 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
             "entity_id": str(circuit_id),
             "simulation_campaign_id": str(uuid4()),
             "scan_parameters": {},
-        },
-    )
-    httpx_mock.add_response(
-        url=f"http://my-url/circuit/{circuit_id}",
-        method="GET",
-        json={
-            "id": str(circuit_id),
             "number_neurons": 1000,
-            "number_connections": 20,
-            "number_synapses": 35,
-            "scale": "microcircuit",
-            "build_category": "em_reconstruction",
         },
     )
     with patch.object(
@@ -677,6 +748,7 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
         ("LearningEngine", "system", TaskType.circuit_simulation_inait_machine),
         ("NEURON", "small", TaskType.circuit_simulation_neuron),
         ("CORENEURON", "microcircuit", TaskType.circuit_simulation_neurodamus_cluster),
+        ("Brian2", "small", TaskType.circuit_simulation_brian2_machine),
     ],
 )
 def test_select_simulation_task(
