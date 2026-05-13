@@ -924,29 +924,32 @@ def generate_additional_circuit_assets(
     except Exception as e:  # noqa: BLE001
         L.warning(f"Compressed circuit asset generation/registration failed: {e}")
 
-    try:
-        _, matrix_config, edge_population = generate_connectivity_matrix_asset(
-            circuit_path=circuit_path,
-            output_dir=output_root / (circuit_name + "__CONN_MATRIX__"),
-            edge_population=edge_population,
-            client=client,
-            circuit_entity=circuit_entity,
-        )
-    except Exception as e:  # noqa: BLE001
-        L.warning(f"Connectivity matrix asset generation/registration failed: {e}")
-        matrix_config = edge_population = None
-
-    if matrix_config is not None and edge_population is not None:
+    if edge_population is not None:
         try:
-            plot_dir, _ = generate_connectivity_plot_assets(
-                matrix_config=matrix_config,
+            _, matrix_config, edge_population = generate_connectivity_matrix_asset(
+                circuit_path=circuit_path,
+                output_dir=output_root / (circuit_name + "__CONN_MATRIX__"),
                 edge_population=edge_population,
-                output_dir=output_root / (circuit_name + "__BASIC_PLOTS__"),
                 client=client,
                 circuit_entity=circuit_entity,
             )
         except Exception as e:  # noqa: BLE001
-            L.warning(f"Connectivity plot assets generation/registration failed: {e}")
+            L.warning(f"Connectivity matrix asset generation/registration failed: {e}")
+            matrix_config = None
+
+        if matrix_config is not None:
+            try:
+                plot_dir, _ = generate_connectivity_plot_assets(
+                    matrix_config=matrix_config,
+                    edge_population=edge_population,
+                    output_dir=output_root / (circuit_name + "__BASIC_PLOTS__"),
+                    client=client,
+                    circuit_entity=circuit_entity,
+                )
+            except Exception as e:  # noqa: BLE001
+                L.warning(f"Connectivity plot assets generation/registration failed: {e}")
+                plot_dir = None
+        else:
             plot_dir = None
     else:
         plot_dir = None
@@ -977,7 +980,7 @@ def generate_additional_circuit_assets(
 # --- High-level registration functions ---
 
 
-def register_circuit(  # noqa: PLR0913
+def register_circuit(  # noqa: PLR0913, PLR0914
     client: Client,
     circuit_path: str | Path,
     *,
@@ -1130,8 +1133,10 @@ def register_circuit(  # noqa: PLR0913
 
     # Generate and register additional circuit assets
     if not skip_additional_assets:
+        edge_pop = c.default_edge_population_name if scale != types.CircuitScale.single else None
         generate_additional_circuit_assets(
             circuit_path=circuit_path,
+            edge_population=edge_pop,
             client=client,
             circuit_entity=registered_circuit,
         )
