@@ -277,6 +277,12 @@ def copy_hoc_files(
             shutil.copyfile(src_file, dest_file)
 
 
+def _any_not_empty(data_series):
+    """Checks if any value in a data series is not empty, 'none', or 'null'."""
+    values = data_series.apply(lambda x: x.strip(" -_").lower()).values
+    return any(v not in ("", "none", "null") for v in values)
+
+
 def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:
     """Returns circuit properties derived from the circuit files.
 
@@ -286,8 +292,50 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:
     Returns:
         Tuple of (has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines).
     """
-    # TODO: Implement actual detection logic based on circuit contents
-    raise NotImplementedError("get_circuit_properties() is not yet implemented")
+    c_sonata = c.sonata_circuit
+
+    # Check morphologies
+    has_morphologies = False
+    for npop_name in c_sonata.nodes.population_names:
+        npop = c_sonata.nodes[npop_name]
+        if npop.size == 0:
+            continue
+        if "morphology" in npop.property_names and _any_not_empty(npop.get(properties="morphology")):
+            has_morphologies = True
+            break
+
+    # Check point neurons
+    has_point_neurons = False
+    for npop_name in c_sonata.nodes.population_names:
+        npop = c_sonata.nodes[npop_name]
+        if npop.size == 0:
+            continue
+        if npop.type.startswith("point_"):
+            # E.g., point_neuron, point_process
+            has_point_neurons = True
+            break
+
+    # Check electrical models
+    has_electrical_cell_models = False
+    for npop_name in c_sonata.nodes.population_names:
+        npop = c_sonata.nodes[npop_name]
+        if npop.size == 0:
+            continue
+        if "model_template" in npop.property_names and _any_not_empty(npop.get(properties="model_template")):
+            has_electrical_cell_models = True
+            break
+
+    # Check spines
+    has_spines = False
+    for epop_name in c_sonata.edges.population_names:
+        epop = c_sonata.edges[epop_name]
+        if epop.size == 0:
+            continue
+        if "spine_id" in epop.property_names:
+            has_spines = True
+            break
+
+    return has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines
 
 
 def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:

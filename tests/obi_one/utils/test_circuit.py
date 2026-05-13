@@ -253,3 +253,57 @@ def test_generate_overview_figure_raises_if_output_exists(tmp_path):
 
     with pytest.raises(OBIONEError, match="already exists"):
         generate_overview_figure(basic_plots_dir=None, output_file=output_file)
+
+
+from obi_one.utils.circuit import get_circuit_properties
+
+
+def test_get_circuit_properties_small_circuit():
+    """Test properties for a small biophysical circuit with morphologies and e-models."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_small", path=circuit_path)
+
+    has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
+        get_circuit_properties(c)
+    )
+
+    assert has_morphologies is True
+    assert has_point_neurons is False
+    assert has_electrical_cell_models is True
+    assert has_spines is False
+
+
+def test_get_circuit_properties_pair_circuit():
+    """Test properties for a pair circuit with morphologies and e-models."""
+    circuit_path = str(
+        CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"
+    )
+    c = Circuit(name="test_pair", path=circuit_path)
+
+    has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
+        get_circuit_properties(c)
+    )
+
+    assert has_morphologies is True
+    assert has_point_neurons is False
+    assert has_electrical_cell_models is True
+    assert has_spines is False
+
+
+def test_get_circuit_properties_single_neuron_circuit():
+    """Test properties for a single-neuron circuit (with empty virtual populations)."""
+    circuit_path = str(
+        SINGLE_NEURON_CIRCUIT_DIR
+        / "SingleNeuronCircuit__top_nodes_dim6__IDX0"
+        / "circuit_config.json"
+    )
+    c = Circuit(name="test_single", path=circuit_path)
+
+    has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
+        get_circuit_properties(c)
+    )
+
+    assert has_morphologies is True
+    assert has_point_neurons is False
+    assert has_electrical_cell_models is True
+    assert has_spines is False

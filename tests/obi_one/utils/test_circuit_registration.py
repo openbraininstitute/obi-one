@@ -938,23 +938,17 @@ from tests.utils import CIRCUIT_DIR
 # --- register_circuit ---
 
 
-def _patch_register_circuit_internals():
-    """Minimal patches for register_circuit unit tests."""
+class _FakeCircuit:
+    """Fake Circuit class that accepts any kwargs and supports isinstance."""
 
-    class _FakeCircuit:
-        """Fake Circuit class that accepts any kwargs and supports isinstance."""
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
-        def __init__(self, **kwargs):
-            for k, v in kwargs.items():
-                setattr(self, k, v)
 
-    return (
-        patch(
-            "obi_one.utils.circuit_registration.get_circuit_properties",
-            return_value=(True, False, True, False),
-        ),
-        patch("obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit),
-    )
+_patch_models_circuit = patch(
+    "obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit
+)
 
 
 def test_register_circuit_dry_run():
@@ -962,8 +956,7 @@ def test_register_circuit_dry_run():
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     client = MagicMock()
 
-    patches = _patch_register_circuit_internals()
-    with patches[0], patches[1]:
+    with _patch_models_circuit:
         result = register_circuit(
             client=client,
             circuit_path=str(circuit_path),
@@ -989,8 +982,7 @@ def test_register_circuit_registers_entity():
     registered.id = "new-id"
     client.register_entity.return_value = registered
 
-    patches = _patch_register_circuit_internals()
-    with patches[0], patches[1], patch(
+    with _patch_models_circuit, patch(
         "obi_one.utils.circuit_registration.register_asset"
     ), patch(
         "obi_one.utils.circuit_registration.generate_additional_circuit_assets"
@@ -1020,8 +1012,7 @@ def test_register_circuit_with_derivation():
     client.register_entity.return_value = registered
     parent = MagicMock()
 
-    patches = _patch_register_circuit_internals()
-    with patches[0], patches[1], patch(
+    with _patch_models_circuit, patch(
         "obi_one.utils.circuit_registration.register_asset"
     ), patch(
         "obi_one.utils.circuit_registration.register_derivation"
@@ -1053,8 +1044,7 @@ def test_register_circuit_skip_additional_assets():
     registered.id = "new-id"
     client.register_entity.return_value = registered
 
-    patches = _patch_register_circuit_internals()
-    with patches[0], patches[1], patch(
+    with _patch_models_circuit, patch(
         "obi_one.utils.circuit_registration.register_asset"
     ), patch(
         "obi_one.utils.circuit_registration.generate_additional_circuit_assets"
