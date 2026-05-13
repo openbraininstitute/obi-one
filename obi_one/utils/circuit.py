@@ -1,13 +1,19 @@
 """Circuit-related utility functions."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import bluepysnap as snap
 import bluepysnap.circuit_validation
+
+if TYPE_CHECKING:
+    import pandas as pd
 import h5py
 import numpy as np
 from bluepysnap import BluepySnapError
@@ -277,13 +283,13 @@ def copy_hoc_files(
             shutil.copyfile(src_file, dest_file)
 
 
-def _any_not_empty(data_series):
+def _any_not_empty(data_series: pd.Series) -> bool:
     """Checks if any value in a data series is not empty, 'none', or 'null'."""
-    values = data_series.apply(lambda x: x.strip(" -_").lower()).values
-    return any(v not in ("", "none", "null") for v in values)
+    values = data_series.apply(lambda x: x.strip(" -_").lower()).to_numpy()
+    return any(v not in {"", "none", "null"} for v in values)
 
 
-def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:
+def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa: C901
     """Returns circuit properties derived from the circuit files.
 
     Args:
@@ -300,7 +306,9 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue
-        if "morphology" in npop.property_names and _any_not_empty(npop.get(properties="morphology")):
+        if "morphology" in npop.property_names and _any_not_empty(
+            npop.get(properties="morphology")
+        ):
             has_morphologies = True
             break
 
@@ -321,7 +329,9 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue
-        if "model_template" in npop.property_names and _any_not_empty(npop.get(properties="model_template")):
+        if "model_template" in npop.property_names and _any_not_empty(
+            npop.get(properties="model_template")
+        ):
             has_electrical_cell_models = True
             break
 
@@ -364,9 +374,7 @@ def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) ->
 
     # Use template figure from library if no circular plot available
     if fig_paths is None:
-        fig_paths = Path(
-            str(files("obi_one.scientific.library").joinpath("circuit_template.png"))
-        )
+        fig_paths = Path(str(files("obi_one.scientific.library").joinpath("circuit_template.png")))
 
     # Check that output file does not exist yet
     if output_file.exists():
@@ -400,7 +408,9 @@ def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) ->
     return output_file
 
 
-def run_circuit_folder_compression(circuit_path: Path, circuit_name: str, output_root: Path) -> Path:
+def run_circuit_folder_compression(
+    circuit_path: Path, circuit_name: str, output_root: Path
+) -> Path:
     """Set up and run folder compression task.
 
     Args:
@@ -415,7 +425,9 @@ def run_circuit_folder_compression(circuit_path: Path, circuit_name: str, output
     from obi_one.core.path import NamedPath  # noqa: PLC0415
     from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
     from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig  # noqa: PLC0415
+    from obi_one.scientific.tasks.folder_compression import (  # noqa: PLC0415
+        FolderCompressionScanConfig,
+    )
 
     folder_path = NamedPath(
         name="circuit_folder",
