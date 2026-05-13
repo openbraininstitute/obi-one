@@ -833,14 +833,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.15.5"
+version = "0.15.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/aa/79/e1f623365c43d8f831bf129b372d1a21113d843f62576c491150e828e0e9/entitysdk-0.15.5.tar.gz", hash = "sha256:334652e97cfbcbb076a187506718985b65c5821ad233342eca68c98c579f576f", size = 86292, upload-time = "2026-05-08T07:24:16.38Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/13/b1efdd3e36ecf2e5dcfbdc29eea6adc6dddc39bcb27ef7cd7408e50344d8/entitysdk-0.15.7.tar.gz", hash = "sha256:5fc8a233b299290e2b2509fb052a9b6fd550a0cd2c97baf6f3c6afee5ff062d2", size = 86787, upload-time = "2026-05-11T16:12:00.603Z" }
 
 [[package]]
 name = "executing"
@@ -1510,16 +1510,17 @@ wheels = [
 
 [[package]]
 name = "libsonata"
-version = "0.1.34"
+version = "0.1.36"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/8f/b32a05fa124a711bb32d80d596392c361dad967254c4efc043f63d07c7b9/libsonata-0.1.34.tar.gz", hash = "sha256:a9015e42da17d08a473c47cb6104deb06d1280e065af956d00ac95894295c323", size = 1185106, upload-time = "2026-02-13T09:20:17.615Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/9c/7724edb2f3436e2ecd1f1d6421876934379026427885add4835e0fe54662/libsonata-0.1.36.tar.gz", hash = "sha256:db9ab996eb13fc5ecd4ab1f5795f2f868491bfbb9d8f24c2f02bd739a4ab78d2", size = 1187936, upload-time = "2026-05-08T11:55:50.906Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/f4/eca05a0028d2901d2e7bc3f99b1cad90c0c8569ed4ccb825739fbad99c11/libsonata-0.1.34-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:70c52fac3e30fbc0f605c75422a339239a95acd3c6fcfd51e87167f6c25761c5", size = 2065323, upload-time = "2026-02-13T09:19:59.931Z" },
-    { url = "https://files.pythonhosted.org/packages/e7/9e/907f3cfd7d651f76705c5c69b61ee3f3126c8ce108f04d16239a5dd88050/libsonata-0.1.34-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f07e64ce2b7310f43541851e287012c11bc9f5caa3865e76b47dba879796274c", size = 1783528, upload-time = "2026-02-13T09:20:02.2Z" },
-    { url = "https://files.pythonhosted.org/packages/0c/06/6e0f51926e25b35019411906a9ac1449bb6becf8654db9ffdb87609fa401/libsonata-0.1.34-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:666bb96a0fe04353e5046c3c37a495554cf31388754eb1ce9bce85967ef68e10", size = 2455684, upload-time = "2026-02-13T09:20:04.307Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/5f/43c994c90dcf5f6b9b51e282acdc63345c77232ac40dd38e7c19c9a2ecfb/libsonata-0.1.36-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:08bb0f0e65c9385526bcb36af73b351372c609c39b58d54169282b08002cb5dc", size = 2090586, upload-time = "2026-05-08T11:55:28.555Z" },
+    { url = "https://files.pythonhosted.org/packages/64/2d/51774302092a9dfa4a06701771718f1848afe1561b7c4c82faca1581fb2a/libsonata-0.1.36-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a35d5c9c84c428d5f375b609044ee29f07823aee187c168940dbb9350903fb43", size = 1809991, upload-time = "2026-05-08T11:55:30.059Z" },
+    { url = "https://files.pythonhosted.org/packages/97/0d/95a4cda2d9b0c235acbd25e89e012ade35838f8711626d5e41957d16a789/libsonata-0.1.36-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:f97c487b30fd50b5ce804f0351429893a42636fbb053a6aeff612024c170e3a5", size = 2246604, upload-time = "2026-05-08T11:55:32.339Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/f4/938b8687b87eb5e8bc3344a0fbece55369321ba5bfcd0c5583490ba43af5/libsonata-0.1.36-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:c8905decf96f3906346a1e255f4dc15a82534c28d3301f7a2da145c47b1531ed", size = 2485472, upload-time = "2026-05-08T11:55:33.807Z" },
 ]
 
 [[package]]
@@ -2200,7 +2201,7 @@ requires-dist = [
     { name = "ipykernel", marker = "extra == 'notebooks'" },
     { name = "jupyter", marker = "extra == 'notebooks'" },
     { name = "jupyterlab", marker = "extra == 'notebooks'", specifier = ">=4.4.8" },
-    { name = "libsonata", specifier = ">=0.1.33" },
+    { name = "libsonata", specifier = ">=0.1.36" },
     { name = "morph-spines" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
@@ -2224,7 +2225,7 @@ requires-dist = [
     { name = "starlette", marker = "extra == 'service'" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["meshing", "connectivity", "notebooks", "service", "all"]
+provides-extras = ["connectivity", "meshing", "notebooks", "service", "all"]
 
 [package.metadata.requires-dev]
 dev = [
