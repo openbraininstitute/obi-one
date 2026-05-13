@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import Field, model_validator
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
 from obi_one.scientific.library.circuit import Circuit
 
 L = logging.getLogger(__name__)

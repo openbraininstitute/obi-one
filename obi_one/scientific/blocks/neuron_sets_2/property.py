@@ -96,23 +96,10 @@ class PropertyNeuronSet(NeuronSet):
             SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
         },
     )
-    node_sets: (
-        tuple[Annotated[str, Field(min_length=1)], ...]
-        | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)]
-    ) = ()
 
     def check_properties(self, circuit: Circuit, population: str | None = None) -> None:
         population = self._population(population)
         self.property_filter.test_validity(circuit, population)
-
-    def check_node_sets(self, circuit: Circuit, _population: str) -> None:
-        for _nset in self.node_sets:
-            if _nset not in circuit.node_sets:
-                msg = (
-                    f"Node set '{_nset}' not found in circuit '{circuit.name}'. "
-                    f"Available node sets: {', '.join(circuit.node_sets)}"
-                )
-                raise ValueError(msg)
 
     def _get_resolved_expression(self, circuit: Circuit, population: str | None = None) -> dict:
         """A helper function used to make subclasses work."""
