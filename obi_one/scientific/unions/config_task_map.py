@@ -1,5 +1,6 @@
 from entitysdk.types import AssetLabel
 
+from obi_one.core.registry import task_registry
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
@@ -71,57 +72,104 @@ from obi_one.scientific.tasks.skeletonization import (
 )
 from obi_one.types import TaskType
 
-_config_tasks_map = {
-    CircuitSimulationSingleConfig: GenerateSimulationTask,
-    CircuitExtractionSingleConfig: CircuitExtractionTask,
-    MEModelSimulationSingleConfig: GenerateSimulationTask,
-    ContributeMorphologySingleConfig: ContributeMorphologyTask,
-    BasicConnectivityPlotsSingleConfig: BasicConnectivityPlotsTask,
-    ConnectivityMatrixExtractionSingleConfig: ConnectivityMatrixExtractionTask,
-    ElectrophysiologyMetricsSingleConfig: ElectrophysiologyMetricsTask,
-    FolderCompressionSingleConfig: FolderCompressionTask,
-    IonChannelFittingSingleConfig: IonChannelFittingTask,
-    MorphologyContainerizationSingleConfig: MorphologyContainerizationTask,
-    MorphologyDecontainerizationSingleConfig: MorphologyDecontainerizationTask,
-    MorphologyMetricsSingleConfig: MorphologyMetricsTask,
-    MorphologyLocationsSingleConfig: MorphologyLocationsTask,
-    MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
-    SkeletonizationSingleConfig: SkeletonizationTask,
-    EMSynapseMappingSingleConfig: EMSynapseMappingTask,
-    IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
-}
-_task_type_task_map = {
-    TaskType.circuit_extraction: CircuitExtractionTask,
-    TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationExecutionTask,
-    TaskType.morphology_skeletonization: SkeletonizationTask,
-    TaskType.em_synapse_mapping: EMSynapseMappingTask,
-}
-_task_type_single_config_map = {
-    TaskType.circuit_extraction: CircuitExtractionSingleConfig,
-    TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationExecutionSingleConfig,
-    TaskType.morphology_skeletonization: SkeletonizationSingleConfig,
-    TaskType.em_synapse_mapping: EMSynapseMappingSingleConfig,
-}
-_task_type_config_asset_label_map = {
-    TaskType.circuit_extraction: AssetLabel.task_config,
-    TaskType.morphology_skeletonization: AssetLabel.task_config,
-    TaskType.circuit_simulation: None,
-    TaskType.ion_channel_model_simulation_execution: None,
-    TaskType.em_synapse_mapping: AssetLabel.task_config,
-}
+
+def _populate_task_registry() -> None:
+    """Populate the core TaskRegistry with all scientific task mappings.
+
+    This allows core/run_tasks.py to look up task classes, single configs,
+    and asset labels without importing scientific modules directly.
+    Called once at module load time.
+    """
+    # Config class -> Task class
+    task_registry.register_config_task(CircuitSimulationSingleConfig, GenerateSimulationTask)
+    task_registry.register_config_task(CircuitExtractionSingleConfig, CircuitExtractionTask)
+    task_registry.register_config_task(MEModelSimulationSingleConfig, GenerateSimulationTask)
+    task_registry.register_config_task(ContributeMorphologySingleConfig, ContributeMorphologyTask)
+    task_registry.register_config_task(
+        BasicConnectivityPlotsSingleConfig, BasicConnectivityPlotsTask
+    )
+    task_registry.register_config_task(
+        ConnectivityMatrixExtractionSingleConfig, ConnectivityMatrixExtractionTask
+    )
+    task_registry.register_config_task(
+        ElectrophysiologyMetricsSingleConfig, ElectrophysiologyMetricsTask
+    )
+    task_registry.register_config_task(FolderCompressionSingleConfig, FolderCompressionTask)
+    task_registry.register_config_task(IonChannelFittingSingleConfig, IonChannelFittingTask)
+    task_registry.register_config_task(
+        MorphologyContainerizationSingleConfig, MorphologyContainerizationTask
+    )
+    task_registry.register_config_task(
+        MorphologyDecontainerizationSingleConfig, MorphologyDecontainerizationTask
+    )
+    task_registry.register_config_task(MorphologyMetricsSingleConfig, MorphologyMetricsTask)
+    task_registry.register_config_task(MorphologyLocationsSingleConfig, MorphologyLocationsTask)
+    task_registry.register_config_task(
+        MEModelWithSynapsesCircuitSimulationSingleConfig, GenerateSimulationTask
+    )
+    task_registry.register_config_task(SkeletonizationSingleConfig, SkeletonizationTask)
+    task_registry.register_config_task(EMSynapseMappingSingleConfig, EMSynapseMappingTask)
+    task_registry.register_config_task(
+        IonChannelModelSimulationSingleConfig, GenerateSimulationTask
+    )
+
+    # TaskType -> Task class
+    task_registry.register_task_type(TaskType.circuit_extraction, CircuitExtractionTask)
+    task_registry.register_task_type(
+        TaskType.ion_channel_model_simulation_execution, IonChannelModelSimulationExecutionTask
+    )
+    task_registry.register_task_type(TaskType.morphology_skeletonization, SkeletonizationTask)
+    task_registry.register_task_type(TaskType.em_synapse_mapping, EMSynapseMappingTask)
+
+    # TaskType -> SingleConfig class
+    task_registry.register_task_type_single_config(
+        TaskType.circuit_extraction, CircuitExtractionSingleConfig
+    )
+    task_registry.register_task_type_single_config(
+        TaskType.ion_channel_model_simulation_execution,
+        IonChannelModelSimulationExecutionSingleConfig,
+    )
+    task_registry.register_task_type_single_config(
+        TaskType.morphology_skeletonization, SkeletonizationSingleConfig
+    )
+    task_registry.register_task_type_single_config(
+        TaskType.em_synapse_mapping, EMSynapseMappingSingleConfig
+    )
+
+    # TaskType -> config asset label
+    task_registry.register_task_type_config_asset_label(
+        TaskType.circuit_extraction, AssetLabel.task_config
+    )
+    task_registry.register_task_type_config_asset_label(
+        TaskType.morphology_skeletonization, AssetLabel.task_config
+    )
+    task_registry.register_task_type_config_asset_label(TaskType.circuit_simulation, None)
+    task_registry.register_task_type_config_asset_label(
+        TaskType.ion_channel_model_simulation_execution, None
+    )
+    task_registry.register_task_type_config_asset_label(
+        TaskType.em_synapse_mapping, AssetLabel.task_config
+    )
+
+
+# Runs exactly once at module load (Python caches modules in sys.modules).
+_populate_task_registry()
+
+
+# Backward-compatible convenience functions (delegate to the registry)
 
 
 def get_configs_task_type(config: object) -> type:
-    return _config_tasks_map[config.__class__]  # ty:ignore[invalid-argument-type]
+    return task_registry.get_configs_task_type(config)
 
 
 def get_task_type(task_type: TaskType) -> type:
-    return _task_type_task_map[task_type]
+    return task_registry.get_task_type(task_type)
 
 
 def get_task_type_single_config(task_type: TaskType) -> type:
-    return _task_type_single_config_map[task_type]
+    return task_registry.get_task_type_single_config(task_type)
 
 
 def get_task_type_config_asset_label(task_type: TaskType) -> AssetLabel | None:
-    return _task_type_config_asset_label_map[task_type]
+    return task_registry.get_task_type_config_asset_label(task_type)

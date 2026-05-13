@@ -24,7 +24,7 @@ def mock_single_config():
 
 
 @patch("obi_one.core.run_tasks.db_sdk.get_entity_asset_by_label")
-@patch("obi_one.core.run_tasks.get_task_type")
+@patch("obi_one.core.run_tasks.task_registry.get_task_type")
 @patch("obi_one.core.run_tasks.deserialize_obi_object_from_json_data")
 def test_run_task_type_downloads_config_deserializes_sets_entity_and_executes_task(
     mock_deserialize, mock_get_task_type, mock_get_asset, db_client, mock_single_config

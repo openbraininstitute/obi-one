@@ -5,14 +5,9 @@ from typing import TYPE_CHECKING, Any, cast
 import entitysdk
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
+from obi_one.core.registry import task_registry
 from obi_one.core.scan_generation import ScanGenerationTask
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.unions.config_task_map import (
-    get_configs_task_type,
-    get_task_type,
-    get_task_type_config_asset_label,
-    get_task_type_single_config,
-)
 from obi_one.types import TaskType
 from obi_one.utils import db_sdk
 
@@ -27,7 +22,7 @@ def run_task_for_single_config(
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
 ) -> Any:
-    task_type = get_configs_task_type(single_config)
+    task_type = task_registry.get_configs_task_type(single_config)
     task = task_type(config=single_config)
     return task.execute(
         db_client=db_client, entity_cache=entity_cache, execution_activity_id=execution_activity_id
@@ -102,7 +97,7 @@ def run_task_type(
 ) -> None:
     entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
 
-    config_asset_label = get_task_type_config_asset_label(task_type)
+    config_asset_label = task_registry.get_task_type_config_asset_label(task_type)
 
     if config_asset_label is not None:
         config_asset_id = db_sdk.get_entity_asset_by_label(
@@ -123,11 +118,13 @@ def run_task_type(
         single_config = deserialize_obi_object_from_json_data(json_dict)
 
     else:
-        single_config = get_task_type_single_config(task_type)(scan_output_root=scan_output_root)
+        single_config = task_registry.get_task_type_single_config(task_type)(
+            scan_output_root=scan_output_root
+        )
 
     single_config.set_single_entity(entity)  # ty:ignore[unresolved-attribute]
 
-    task_cls = get_task_type(task_type)
+    task_cls = task_registry.get_task_type(task_type)
     task = task_cls(config=single_config)
     task.execute(
         db_client=db_client, entity_cache=entity_cache, execution_activity_id=execution_activity_id
