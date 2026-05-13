@@ -62,6 +62,18 @@ __all__ = [
     "EMCellMeshFromID",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
+    "EModelAnalysisAndValidationScanConfig",
+    "EModelAnalysisAndValidationSingleConfig",
+    "EModelAnalysisAndValidationTask",
+    "EModelEFeatureExtractionScanConfig",
+    "EModelEFeatureExtractionSingleConfig",
+    "EModelEFeatureExtractionTask",
+    "EModelExportFinalModelScanConfig",
+    "EModelExportFinalModelSingleConfig",
+    "EModelExportFinalModelTask",
+    "EModelOptimizationScanConfig",
+    "EModelOptimizationSingleConfig",
+    "EModelOptimizationTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -377,6 +389,34 @@ from obi_one.scientific.tasks.contribute import (
 from obi_one.scientific.tasks.em_synapse_mapping.config import (
     EMSynapseMappingScanConfig,
     EMSynapseMappingSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
+    EModelEFeatureExtractionScanConfig,
+    EModelEFeatureExtractionSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
+)
+from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
+    EModelOptimizationTask,
+)
+from obi_one.scientific.tasks.emodel_optimization._03_analysis_and_validation.config import (
+    EModelAnalysisAndValidationScanConfig,
+    EModelAnalysisAndValidationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization._03_analysis_and_validation.task import (
+    EModelAnalysisAndValidationTask,
+)
+from obi_one.scientific.tasks.emodel_optimization._04_export_final_model.config import (
+    EModelExportFinalModelScanConfig,
+    EModelExportFinalModelSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization._04_export_final_model.task import (
+    EModelExportFinalModelTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,

@@ -6,6 +6,18 @@ from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityP
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
 from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
+)
+from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
+    EModelOptimizationTask,
+)
+from obi_one.scientific.tasks.emodel_optimization._03_analysis_and_validation.task import (
+    EModelAnalysisAndValidationTask,
+)
+from obi_one.scientific.tasks.emodel_optimization._04_export_final_model.task import (
+    EModelExportFinalModelTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
@@ -23,6 +35,10 @@ TasksUnion = Annotated[
     | BasicConnectivityPlotsTask
     | ConnectivityMatrixExtractionTask
     | ElectrophysiologyMetricsTask
+    | EModelEFeatureExtractionTask
+    | EModelOptimizationTask
+    | EModelAnalysisAndValidationTask
+    | EModelExportFinalModelTask
     | FolderCompressionTask
     | IonChannelFittingTask
     | SkeletonizationTask
