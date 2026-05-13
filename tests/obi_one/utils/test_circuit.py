@@ -4,12 +4,18 @@ import json
 import shutil
 
 import pytest
+from PIL import Image
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
+    generate_overview_figure,
+    get_circuit_properties,
+    get_circuit_size,
     run_basic_connectivity_plots,
     run_circuit_folder_compression,
     run_connectivity_matrix_extraction,
+    run_validation,
 )
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
@@ -111,10 +117,6 @@ def test_run_basic_connectivity_plots_missing_matrix(tmp_path):
         )
 
 
-from obi_one.scientific.library.circuit import Circuit
-from obi_one.utils.circuit import get_circuit_size
-
-
 def test_get_circuit_size_small_circuit():
     """Test scale and counts for a small (10-neuron) circuit."""
     circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
@@ -131,9 +133,7 @@ def test_get_circuit_size_small_circuit():
 
 def test_get_circuit_size_pair_circuit():
     """Test scale and counts for a pair (2-neuron) circuit."""
-    circuit_path = str(
-        CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"
-    )
+    circuit_path = str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json")
     c = Circuit(name="test_pair", path=circuit_path)
 
     scale, num_nrn, num_syn, num_conn = get_circuit_size(c)
@@ -153,13 +153,10 @@ def test_get_circuit_size_single_neuron_circuit():
     )
     c = Circuit(name="test_single", path=circuit_path)
 
-    scale, num_nrn, num_syn, num_conn = get_circuit_size(c)
+    scale, num_nrn, _num_syn, _num_conn = get_circuit_size(c)
 
     assert scale == "single"
     assert num_nrn == 1
-
-
-from obi_one.utils.circuit import run_validation
 
 
 def test_run_validation_circuit_with_errors():
@@ -171,13 +168,8 @@ def test_run_validation_circuit_with_errors():
 
 def test_run_validation_invalid_path(tmp_path):
     """Test that validation raises for a non-existent circuit."""
-    with pytest.raises(Exception):
+    with pytest.raises((FileNotFoundError, ValueError)):
         run_validation(str(tmp_path / "nonexistent" / "circuit_config.json"))
-
-
-from PIL import Image
-
-from obi_one.utils.circuit import generate_overview_figure
 
 
 def test_generate_overview_figure_fallback_template(tmp_path):
@@ -244,8 +236,6 @@ def test_generate_overview_figure_with_circular_and_table(tmp_path):
 
 def test_generate_overview_figure_raises_if_output_exists(tmp_path):
     """Test that error is raised when output file already exists."""
-    from obi_one.core.exception import OBIONEError
-
     # Create a dummy output image
     output_file = tmp_path / "overview.png"
     img = Image.new("RGB", (123, 123), color="blue")
@@ -253,9 +243,6 @@ def test_generate_overview_figure_raises_if_output_exists(tmp_path):
 
     with pytest.raises(OBIONEError, match="already exists"):
         generate_overview_figure(basic_plots_dir=None, output_file=output_file)
-
-
-from obi_one.utils.circuit import get_circuit_properties
 
 
 def test_get_circuit_properties_small_circuit():
@@ -275,9 +262,7 @@ def test_get_circuit_properties_small_circuit():
 
 def test_get_circuit_properties_pair_circuit():
     """Test properties for a pair circuit with morphologies and e-models."""
-    circuit_path = str(
-        CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"
-    )
+    circuit_path = str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json")
     c = Circuit(name="test_pair", path=circuit_path)
 
     has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
