@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from pydantic import TypeAdapter
@@ -6,6 +5,7 @@ from pydantic import TypeAdapter
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.registry import type_registry
 from obi_one.core.scan_config import ScanConfig
+from obi_one.utils.io import load_json
 
 
 def deserialize_obi_object_from_json_data(json_dict: dict) -> OBIBaseModel:
@@ -14,8 +14,7 @@ def deserialize_obi_object_from_json_data(json_dict: dict) -> OBIBaseModel:
 
 
 def deserialize_obi_object_from_json_file(json_path: Path) -> OBIBaseModel:
-    with Path.open(json_path) as file:
-        json_dict = json.load(file)
+    json_dict = load_json(json_path)
     return deserialize_obi_object_from_json_data(json_dict)
 
 
