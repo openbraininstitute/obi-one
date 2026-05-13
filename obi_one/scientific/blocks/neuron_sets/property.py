@@ -81,10 +81,6 @@ class PropertyNeuronSet(NeuronSet):
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         default=(),
     )  # ty:ignore[invalid-assignment]
-    node_sets: (
-        tuple[Annotated[str, Field(min_length=1)], ...]
-        | Annotated[list[tuple[Annotated[str, Field(min_length=1)], ...]], Field(min_length=1)]
-    ) = ()
 
     def check_properties(self, circuit: Circuit, population: str | None = None) -> None:
         population = self._population(population)
