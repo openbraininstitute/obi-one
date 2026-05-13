@@ -1,7 +1,8 @@
 import tempfile
 from enum import StrEnum
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Annotated, Literal, cast
+from typing import Annotated, cast
+from uuid import UUID
 
 import entitysdk.client
 import entitysdk.exception
@@ -21,9 +22,6 @@ from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
