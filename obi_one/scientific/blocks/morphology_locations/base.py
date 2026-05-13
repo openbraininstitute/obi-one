@@ -31,7 +31,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     )
 
     section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
-        default=(3, 4),
+        default=(2, 3, 4),
         title="Section Types",
         description=(
             "Valid neurite section types to generate locations on: "
