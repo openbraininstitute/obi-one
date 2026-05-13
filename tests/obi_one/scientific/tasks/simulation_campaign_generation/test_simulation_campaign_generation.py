@@ -629,7 +629,7 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     assert dist_stim.distribution.block_name == "constant_dist"
 
 
-def test_simulation_campaign_generation_with_morphology_locations(tmp_path):
+def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # noqa: PLR0914
     sim_duration = 3000.0
 
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()

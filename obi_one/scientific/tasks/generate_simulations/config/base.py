@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import entitysdk
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
@@ -298,7 +298,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def _replace_legacy_stimulus_type_aliases(cls, data):
+    def _replace_legacy_stimulus_type_aliases(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
 
@@ -317,9 +317,9 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             aliased_type = _STIMULUS_TYPE_ALIASES.get(stimulus_type)
 
             if aliased_type is not None:
-                stimulus_data = dict(stimulus_data)
-                stimulus_data["type"] = aliased_type
-                data["stimuli"][name] = stimulus_data
+                updated_stimulus_data = dict(stimulus_data)
+                updated_stimulus_data["type"] = aliased_type
+                data["stimuli"][name] = updated_stimulus_data
 
         return data
 
