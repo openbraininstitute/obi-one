@@ -3,8 +3,8 @@ from pathlib import Path
 from pydantic import TypeAdapter
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.deserializable_types import load_class
+from obi_one.core.scan_config import ScanConfig
 from obi_one.utils.io import load_json
 
 
