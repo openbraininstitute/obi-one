@@ -76,9 +76,24 @@ def fix_node_sets_file(circuit_path: Path) -> None:
 
 
 def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
-    """Returns the circuit scale, number of neurons, synapses, and connections."""
+    """Returns the circuit scale, number of neurons, synapses, and connections.
+
+    Counts neurons across all biophysical populations. If none exist,
+    falls back to point neuron populations.
+    """
     c_sonata = c.sonata_circuit
-    num_nrn = c_sonata.nodes[c.default_population_name].size
+
+    # Get neuron populations (biophysical first, then point neurons as fallback)
+    npop_names = Circuit.get_node_population_names(c_sonata, incl_virtual=False, incl_point=False)
+    if len(npop_names) == 0:
+        npop_names = Circuit.get_node_population_names(
+            c_sonata, incl_virtual=False, incl_point=True
+        )
+
+    # Count neurons across all relevant populations
+    num_nrn = sum(c_sonata.nodes[pop].size for pop in npop_names)
+
+    # Determine scale
     if num_nrn == 1:
         scale = types.CircuitScale.single
     elif num_nrn == _NEURON_PAIR_SIZE:
@@ -90,21 +105,20 @@ def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
     # TODO: Add support for other scales as well
     # https://github.com/openbraininstitute/obi-one/issues/463
 
+    # Get edge populations for synapse/connection counting
     if scale == types.CircuitScale.single:
         # Special case: Include extrinsic synapses & connections
         edge_pops = Circuit.get_edge_population_names(c_sonata, incl_virtual=True)
-        edge_pops = [
-            e for e in edge_pops if c_sonata.edges[e].target.name == c.default_population_name
-        ]
+        edge_pops = [e for e in edge_pops if c_sonata.edges[e].target.name in npop_names]
     else:
-        # Default case: Only include intrinsic synapse & connections
-        try:
-            default_epop = c.default_edge_population_name
-        except ValueError as e:
-            default_epop = None
-            L.warning(e)
-            # TODO: May erroneously lead to 0 synapses
-        edge_pops = [] if default_epop is None else [default_epop]
+        # Default case: Only include intrinsic synapses & connections
+        # (edges where both source and target are in the neuron populations)
+        edge_pops = [
+            e
+            for e in Circuit.get_edge_population_names(c_sonata, incl_virtual=False)
+            if c_sonata.edges[e].source.name in npop_names
+            and c_sonata.edges[e].target.name in npop_names
+        ]
 
     num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
     num_conn = np.sum(
