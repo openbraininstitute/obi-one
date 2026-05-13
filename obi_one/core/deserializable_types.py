@@ -59,6 +59,7 @@ TYPE_MAP: dict[str, str] = {
     # __init__.py aliases
     "GridScan": "obi_one.GridScan",
     "CoupledScan": "obi_one.CoupledScan",
+    "SimulationsForm": "obi_one.scientific.unions.aliases.SimulationsForm",
 }
 
 
