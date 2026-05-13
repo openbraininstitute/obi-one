@@ -2,11 +2,11 @@ from types import SimpleNamespace
 
 import pytest
 
+import obi_one as obi
 from obi_one.scientific.library import circuit as test_module
 
 from tests.utils import CIRCUIT_DIR
 
-import obi_one as obi
 
 class _FakePopulation:
     def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None):

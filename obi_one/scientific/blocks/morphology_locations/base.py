@@ -41,8 +41,8 @@ class MorphologyLocationsBlock(Block, abc.ABC):
             "Leave stimulus.locations empty for soma/default targeting."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_TUPLE_PARAMETER_SWEEP,
-        }
+            SchemaKey.UI_HIDDEN: True,
+        },
     )
 
     @abc.abstractmethod

@@ -8,8 +8,10 @@ import pytest
 from bluepysnap import Simulation
 
 import obi_one as obi
+from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
+    materialize_locations_to_compartment_sets,
+)
 
-from obi_one.scientific.tasks.generate_simulations.materialize_locations import materialize_locations_to_compartment_sets
 from tests.utils import CIRCUIT_DIR
 
 
@@ -723,9 +725,7 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):
 def test_morphology_locations_materialize_to_matching_compartment_set():
     form = obi.CircuitSimulationScanConfig.empty_config()
 
-    neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=[0])
-    )
+    neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=[0]))
     form.add(neuron_set, name="ID1")
 
     locations = obi.RandomMorphologyLocations(
@@ -783,9 +783,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
 
     comp_set = materialized["LocationCurrentClamp__locations"]
 
-    actual_rows = comp_set.to_sonata_dict()["LocationCurrentClamp__locations"][
-        "compartment_set"
-    ]
+    actual_rows = comp_set.to_sonata_dict()["LocationCurrentClamp__locations"]["compartment_set"]
 
     actual_df = pd.DataFrame(
         actual_rows,

@@ -67,9 +67,7 @@ _STIMULUS_TYPE_ALIASES = {
     "HyperpolarizingCurrentClampSomaticStimulus": "HyperpolarizingCurrentClampStimulus",
     "OrnsteinUhlenbeckCurrentSomaticStimulus": "OrnsteinUhlenbeckCurrentStimulus",
     "OrnsteinUhlenbeckConductanceSomaticStimulus": "OrnsteinUhlenbeckConductanceStimulus",
-    "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus": (
-        "RelativeOrnsteinUhlenbeckCurrentStimulus"
-    ),
+    "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus": "RelativeOrnsteinUhlenbeckCurrentStimulus",
     "RelativeOrnsteinUhlenbeckConductanceSomaticStimulus": (
         "RelativeOrnsteinUhlenbeckConductanceStimulus"
     ),
