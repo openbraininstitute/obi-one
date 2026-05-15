@@ -6,7 +6,7 @@ from contextlib import ExitStack, suppress
 from functools import cache
 from http import HTTPStatus
 from pathlib import Path
-from typing import Annotated, Any, Final, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Final, TypeVar, cast
 from uuid import UUID
 
 import entitysdk
@@ -24,7 +24,6 @@ from entitysdk.models import (
 )
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
-
 from entitysdk.models.measurement_annotation import MeasurementKind
 from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -45,6 +44,9 @@ from app.services.morphology import (
     MorphologyFiles,
     validate_and_convert_morphology,
 )
+
+if TYPE_CHECKING:
+    from entitysdk.models.cell_morphology_protocol import CellMorphologyProtocolUnion
 
 
 class ApiErrorCode:
@@ -257,7 +259,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     description = new_item.get("description")
     authorized_public: bool = new_item.get("authorized_public", False)
     morphology = CellMorphology(
-        cell_morphology_protocol=morphology_protocol,
+        cell_morphology_protocol=cast("CellMorphologyProtocolUnion", morphology_protocol),
         repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
