@@ -54,7 +54,9 @@ def validate_neuron_file(
 
     # 5. Create and return the zip archive
     zip_file = temp_dir / "morph_archive.zip"
-    file_service.create_zip_file(input_files=morphology, output_file=zip_file, delete_input=True)
+    file_service.create_zip_file(
+        input_files=morphology.paths(), output_file=zip_file, delete_input=True
+    )
 
     return FileResponse(
         path=zip_file,
