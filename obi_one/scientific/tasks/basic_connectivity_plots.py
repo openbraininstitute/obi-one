@@ -41,8 +41,8 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
-    from connalysis.network.topology import node_degree
-    from connalysis.randomization import ER_model
+    from connalysis.network.topology import node_degree  # ty:ignore[unresolved-import]
+    from connalysis.randomization import ER_model  # ty:ignore[unresolved-import]
 
 L = logging.getLogger(__name__)
 

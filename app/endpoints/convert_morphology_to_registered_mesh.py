@@ -16,8 +16,8 @@ from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 
 try:
-    from nmm.common import NEURON_COLORS
-    from nmm.morphology import NeuronMorphology
+    from nmm.common import NEURON_COLORS  # ty:ignore[unresolved-import]
+    from nmm.morphology import NeuronMorphology  # ty:ignore[unresolved-import]
 
     HAS_MESHING = True
 except ImportError:
