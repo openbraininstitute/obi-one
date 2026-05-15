@@ -114,10 +114,6 @@ class TestEMSynapseMappingTask:
                 return_value={"version": 2.3},
             ),
             patch(
-                f"{_TASK_MODULE}.compress_output",
-                return_value="/fake/path.tar.gz",
-            ),
-            patch(
                 f"{_TASK_MODULE}.register_output",
                 return_value="circuit-id-123",
             ) as mock_register,

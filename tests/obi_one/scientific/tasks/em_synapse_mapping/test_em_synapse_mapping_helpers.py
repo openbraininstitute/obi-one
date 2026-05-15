@@ -15,7 +15,6 @@ from obi_one.scientific.tasks.em_synapse_mapping.publication_links import (
 )
 from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import resolve_provenance
-from obi_one.scientific.tasks.em_synapse_mapping.util import compress_output
 
 
 @pytest.fixture
@@ -48,31 +47,9 @@ def em_dataset():
     return SimpleNamespace(id=uuid4(), license="license")
 
 
-def test_compress_output(tmp_path):
-    out_root = tmp_path / "out"
-    out_root.mkdir()
-    test_files = [str(out_root / "a.h5"), str(out_root / "b.h5")]
-
-    with (
-        patch(
-            "obi_one.scientific.tasks.em_synapse_mapping.util.subprocess.check_output",
-            return_value=b"tar-bytes",
-        ) as mock_check_output,
-        patch(
-            "obi_one.scientific.tasks.em_synapse_mapping.util.subprocess.check_call"
-        ) as mock_check_call,
-    ):
-        compressed_path = compress_output(out_root, test_files)
-
-    assert compressed_path == str(out_root / "sonata.tar.gz")
-    assert (out_root / "sonata.tar").read_bytes() == b"tar-bytes"
-    mock_check_output.assert_called_once_with(["tar", "-cf", "-", *test_files])
-    mock_check_call.assert_called_once_with(["gzip", "-1", "-f", str(out_root / "sonata.tar")])
-
-
 def test_assemble_publication_links_filters_application(mock_db_client):
-    publication_keep = SimpleNamespace(id=uuid4())
-    publication_ignore = SimpleNamespace(id=uuid4())
+    publication_keep = SimpleNamespace(id=uuid4(), DOI="10.1234/keep")
+    publication_ignore = SimpleNamespace(id=uuid4(), DOI="10.1234/ignore")
     src_links = [
         SimpleNamespace(
             publication=publication_keep, publication_type=PublicationType.component_source
@@ -83,9 +60,12 @@ def test_assemble_publication_links_filters_application(mock_db_client):
     ]
     mock_db_client.search_entity.return_value.all.return_value = src_links
 
-    links = assemble_publication_links(mock_db_client, SimpleNamespace(id=uuid4()), [])
+    result = assemble_publication_links(mock_db_client, SimpleNamespace(id=uuid4()), [])
 
-    assert links == [publication_keep]
+    assert "10.1234/keep" in result
+    assert "10.1234/ignore" not in result
+    assert result["10.1234/keep"]["entity"] is publication_keep
+    assert result["10.1234/keep"]["type"] == PublicationType.component_source
     mock_db_client.search_entity.assert_called_once()
 
 
@@ -152,11 +132,11 @@ def test_plot_mapping_stats():
 
 
 def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
-    existing_circuit = SimpleNamespace(id=uuid4())
-    mock_db_client.register_entity.side_effect = [existing_circuit, "link-1", "link-2"]
+    """Test that register_output delegates to circuit_registration.register_circuit."""
+    circuit_path = tmp_path / "circuit_config.json"
+    circuit_path.write_text("{}")
 
-    file_paths = {"a.txt": str(tmp_path / "a.txt")}
-    compressed_path = tmp_path / "sonata.tar.gz"
+    registered_circuit = SimpleNamespace(id=uuid4(), name="test-circuit")
 
     resolved_neuron = SimpleNamespace(
         pt_root_id=42,
@@ -164,38 +144,35 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
         phys_node_props={},
     )
 
+    em_dataset_from_id = Mock()
+    em_dataset_from_id.entity.return_value = em_dataset
+
     with (
         patch(
             "obi_one.scientific.tasks.em_synapse_mapping.register.assemble_publication_links",
-            return_value=[SimpleNamespace(id=1), SimpleNamespace(id=2)],
-        ) as mock_links,
-        patch(
-            "obi_one.scientific.tasks.em_synapse_mapping.register.Circuit",
-            return_value=SimpleNamespace(name="fake-circuit"),
+            return_value={"10.1234/test": {"entity": Mock(), "type": "component_source"}},
         ),
         patch(
-            "obi_one.scientific.tasks.em_synapse_mapping.register.ScientificArtifactPublicationLink",
-            return_value=SimpleNamespace(id=uuid4()),
-        ),
+            "obi_one.scientific.tasks.em_synapse_mapping.register.circuit_registration.register_circuit",
+            return_value=registered_circuit,
+        ) as mock_register,
     ):
-        em_dataset_from_id = Mock()
-        em_dataset_from_id.entity.return_value = em_dataset
         circuit_id = register_output(
             db_client=mock_db_client,
+            circuit_path=circuit_path,
             resolved_neurons=[resolved_neuron],
             source_dataset=source_dataset,
             em_dataset=em_dataset_from_id,
             all_notices=["notice"],
-            total_synapses=3,
-            total_connections=2,
             total_internal=0,
             total_external=3,
-            file_paths=file_paths,
-            compressed_path=compressed_path,
         )
 
-    assert circuit_id == str(existing_circuit.id)
-    mock_db_client.upload_directory.assert_called_once()
-    mock_db_client.upload_file.assert_called_once()
-    mock_links.assert_called_once_with(mock_db_client, em_dataset, ["notice"])
-    assert mock_db_client.register_entity.call_count == 3
+    assert circuit_id == str(registered_circuit.id)
+    mock_register.assert_called_once()
+    # Verify key arguments passed to register_circuit
+    call_kwargs = mock_register.call_args.kwargs
+    assert call_kwargs["client"] is mock_db_client
+    assert call_kwargs["circuit_path"] == circuit_path
+    assert "Afferent-synaptome-42" in call_kwargs["name"]
+    assert call_kwargs["build_category"].value == "em_reconstruction"

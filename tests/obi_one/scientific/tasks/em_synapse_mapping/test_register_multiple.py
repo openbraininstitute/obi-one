@@ -21,11 +21,10 @@ def _source_dataset():
 class TestRegisterOutputMultiple:
     def test_register_and_upload(self, tmp_path):
         db_client = Mock()
-        circuit = SimpleNamespace(id=uuid4())
-        db_client.register_entity.side_effect = [circuit, "link-1"]
+        circuit_path = tmp_path / "circuit_config.json"
+        circuit_path.write_text("{}")
 
-        compressed = tmp_path / "sonata.tar.gz"
-        compressed.write_bytes(b"x" * 100)
+        registered_circuit = SimpleNamespace(id=uuid4(), name="multi-synaptome")
 
         em_dataset = Mock()
         em_dataset.entity.return_value = SimpleNamespace(license=SimpleNamespace(id="lic"))
@@ -33,115 +32,62 @@ class TestRegisterOutputMultiple:
         with (
             patch(
                 "obi_one.scientific.tasks.em_synapse_mapping.register.assemble_publication_links",
-                return_value=[SimpleNamespace(id=uuid4())],
+                return_value={"10.1234/test": {"entity": Mock(), "type": "component_source"}},
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.register.Circuit",
-                return_value=SimpleNamespace(name="fake-circuit"),
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.register.ScientificArtifactPublicationLink",
-                return_value=SimpleNamespace(id=uuid4()),
-            ),
+                "obi_one.scientific.tasks.em_synapse_mapping.register.circuit_registration.register_circuit",
+                return_value=registered_circuit,
+            ) as mock_register,
         ):
             result = register_output(
                 db_client=db_client,
+                circuit_path=circuit_path,
                 resolved_neurons=[_resolved_neuron(111), _resolved_neuron(222)],
                 source_dataset=_source_dataset(),
                 em_dataset=em_dataset,
                 all_notices=["notice-1"],
-                total_synapses=50,
-                total_connections=40,
                 total_internal=30,
                 total_external=20,
-                file_paths={"a.txt": str(tmp_path / "a.txt")},
-                compressed_path=compressed,
             )
 
-        assert result == str(circuit.id)
-        db_client.upload_directory.assert_called_once()
-        db_client.upload_file.assert_called_once()
-
-    def test_upload_large_compressed_with_multipart(self, tmp_path):
-        db_client = Mock()
-        circuit = SimpleNamespace(id=uuid4())
-        db_client.register_entity.return_value = circuit
-
-        compressed = tmp_path / "sonata.tar.gz"
-        compressed.write_bytes(b"x" * 600_000_000)
-
-        em_dataset = Mock()
-        em_dataset.entity.return_value = SimpleNamespace(license=SimpleNamespace(id="lic"))
-
-        with (
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.register.assemble_publication_links",
-                return_value=[],
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.register.Circuit",
-                return_value=SimpleNamespace(name="fake-circuit"),
-            ),
-        ):
-            register_output(
-                db_client=db_client,
-                resolved_neurons=[_resolved_neuron(111), _resolved_neuron(222)],
-                source_dataset=_source_dataset(),
-                em_dataset=em_dataset,
-                all_notices=[],
-                total_synapses=0,
-                total_connections=0,
-                total_internal=0,
-                total_external=0,
-                file_paths={},
-                compressed_path=compressed,
-            )
-
-        db_client.upload_file.assert_called_once()
-        call_kwargs = db_client.upload_file.call_args.kwargs
-        assert call_kwargs["transfer_config"] is not None
+        assert result == str(registered_circuit.id)
+        mock_register.assert_called_once()
+        call_kwargs = mock_register.call_args.kwargs
+        assert "Multi-synaptome" in call_kwargs["name"]
+        assert call_kwargs["publications"] is not None
 
     def test_deduplicates_notices(self, tmp_path):
         db_client = Mock()
-        circuit = SimpleNamespace(id=uuid4())
-        db_client.register_entity.return_value = circuit
+        circuit_path = tmp_path / "circuit_config.json"
+        circuit_path.write_text("{}")
 
-        compressed = tmp_path / "sonata.tar.gz"
-        compressed.write_bytes(b"x" * 100)
+        registered_circuit = SimpleNamespace(id=uuid4(), name="multi-synaptome")
 
         em_dataset = Mock()
         em_dataset.entity.return_value = SimpleNamespace(license=SimpleNamespace(id="lic"))
 
-        captured_description = {}
-
-        def fake_circuit(**kwargs):
-            captured_description["desc"] = kwargs.get("description", "")
-            return SimpleNamespace(name="fake")
-
         with (
             patch(
                 "obi_one.scientific.tasks.em_synapse_mapping.register.assemble_publication_links",
-                return_value=[],
+                return_value={},
             ),
             patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.register.Circuit",
-                side_effect=fake_circuit,
-            ),
+                "obi_one.scientific.tasks.em_synapse_mapping.register.circuit_registration.register_circuit",
+                return_value=registered_circuit,
+            ) as mock_register,
         ):
             register_output(
                 db_client=db_client,
+                circuit_path=circuit_path,
                 resolved_neurons=[_resolved_neuron(111), _resolved_neuron(222)],
                 source_dataset=_source_dataset(),
                 em_dataset=em_dataset,
                 all_notices=["dup", "dup", "unique"],
-                total_synapses=0,
-                total_connections=0,
                 total_internal=0,
                 total_external=0,
-                file_paths={},
-                compressed_path=compressed,
             )
 
-        desc = captured_description["desc"]
+        call_kwargs = mock_register.call_args.kwargs
+        desc = call_kwargs["description"]
         assert desc.count("dup") == 1
         assert "unique" in desc
