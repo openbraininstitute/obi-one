@@ -28,6 +28,10 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
+from obi_one.scientific.unions.unions_neuronal_manipulations import (
+    CircuitNeuronalManipulationReference,
+    CircuitNeuronalManipulationUnion,
+)
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
@@ -85,6 +89,18 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+    neuronal_manipulations: dict[str, CircuitNeuronalManipulationUnion] = Field(
+        default_factory=dict,
+        title="Neuronal Manipulations",
+        description="Neuronal manipulations for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: CircuitNeuronalManipulationReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 

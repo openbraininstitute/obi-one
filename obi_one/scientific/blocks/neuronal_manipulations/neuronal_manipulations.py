@@ -227,3 +227,47 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
                 ),
             }
         ]
+
+
+class CircuitBySectionListMechanismVariableNeuronalManipulation(
+    BySectionListMechanismVariableNeuronalManipulation,
+):
+    """Circuit variant of Variable Modification by Section List.
+
+    The neuron_set field is visible so the user can select which neurons
+    the manipulation targets. All logic is inherited from the parent class.
+    """
+
+    title: ClassVar[str] = "Variable Modification by Section List"
+
+    neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set (Target)",
+        description="Neuron set to which modification is applied.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+        },
+    )
+
+
+class CircuitByNeuronMechanismVariableNeuronalManipulation(
+    ByNeuronMechanismVariableNeuronalManipulation,
+):
+    """Circuit variant of Full Neuron Variable Modification.
+
+    The neuron_set field is visible so the user can select which neurons
+    the manipulation targets. All logic is inherited from the parent class.
+    """
+
+    title: ClassVar[str] = "Full Neuron Variable Modification"
+
+    neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set (Target)",
+        description="Neuron set to which modification is applied.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+        },
+    )
