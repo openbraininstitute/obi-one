@@ -28,7 +28,4 @@ def assemble_publication_links(
         x.publication for x in src_links if x.publication_type != PublicationType.application
     ]
     # TODO: Parse DOIs out of the lst_notices. Create publications for them.
-    return {
-        pub.DOI: {"entity": pub, "type": PublicationType.component_source}
-        for pub in src_pubs
-    }
+    return {pub.DOI: {"entity": pub, "type": PublicationType.component_source} for pub in src_pubs}
