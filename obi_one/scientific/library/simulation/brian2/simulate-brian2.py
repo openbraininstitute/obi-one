@@ -113,7 +113,6 @@ def _make_spikes(spike_input):
     sr = libsonata.SpikeReader(spike_input.spike_file)
     sp = sr[POPULATION]
     ids, times = zip(*sp.get())
-    return
 
 
 def _get_inputs(
@@ -299,19 +298,19 @@ def sonata_simulation(
 
 
 import contextlib
-from enum import auto
-from entitysdk.staging import stage_circuit, stage_simulation
 import os
-from entitysdk.models.activity import Activity
-from entitysdk import Client, models, ProjectContext
-from entitysdk.token_manager import TokenFromFunction
-from functools import partial
-from obi_auth import get_token
-from collections.abc import Iterator
-from entitysdk.types import AssetLabel, ContentType, StrEnum, ActivityStatus
-from datetime import UTC, datetime, timezone
 import tempfile
+from collections.abc import Iterator
+from datetime import UTC, datetime, timezone
+from functools import partial
+
+from entitysdk import Client, ProjectContext, models
+from entitysdk.models.activity import Activity
+from entitysdk.staging import stage_simulation
+from entitysdk.token_manager import TokenFromFunction
+from entitysdk.types import ActivityStatus, AssetLabel, ContentType
 from entitysdk.utils.store import LocalAssetStore
+from obi_auth import get_token
 
 
 def _init_entitysdk_client(
