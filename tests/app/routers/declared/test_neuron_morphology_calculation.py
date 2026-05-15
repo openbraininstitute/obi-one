@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, create_autospec, patch
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from entitysdk.exception import EntitySDKError
+from entitysdk.models import CellMorphologyProtocol
 from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
@@ -24,6 +25,7 @@ from app.endpoints.morphology_metrics_calculation import (
     _resolve_swc_bytes_for_mesh,
     _try_mesh_and_register,
     _validate_file_extension,
+    register_asset_from_content,
     register_assets,
     register_measurements,
     register_morphology,
@@ -248,6 +250,22 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
             )
         ),
     )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_asset_from_content",
+        MagicMock(
+            side_effect=HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"code": "ENTITYSDK_API_FAILURE", "detail": "Upload fail"},
+            )
+        ),
+    )
+
+    response = client.post(
+        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
+    )
+    assert response.status_code == 500
+    assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
+
 
     response = client.post(
         ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
@@ -521,7 +539,7 @@ def test_register_morphology_with_valid_brain_location(monkeypatch):
         "app.endpoints.morphology_metrics_calculation.CellMorphology",
         MagicMock(return_value=MagicMock()),
     )
-    mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
+    mock_protocol = MagicMock(spec=CellMorphologyProtocol)
 
     def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
@@ -545,7 +563,7 @@ def test_register_morphology_request_exception_in_get_entity(monkeypatch):
         "app.endpoints.morphology_metrics_calculation.CellMorphology",
         MagicMock(return_value=MagicMock()),
     )
-    mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
+    mock_protocol = MagicMock(spec=CellMorphologyProtocol)
 
     def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
@@ -736,3 +754,128 @@ def test_run_morphology_analysis_filters_none_values(monkeypatch):
     result = run_morphology_analysis("some/path.h5")
     assert len(result) == 1
     assert result[0]["pref_label"] == "valid_metric"
+
+
+def test_run_morphology_analysis_exception(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        MagicMock(side_effect=RuntimeError("neurom crash")),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_analysis_dict",
+        dict,
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        run_morphology_analysis("bad/path.h5")
+    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert exc_info.value.detail["code"] == "MORPHOLOGY_ANALYSIS_ERROR"
+
+
+def test_validate_file_extension_none():
+    with pytest.raises(HTTPException) as exc_info:
+        _validate_file_extension(None)
+    assert exc_info.value.detail["code"] == "BAD_REQUEST"
+
+
+def test_register_morphology_entity_sdk_error_in_get_entity(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.CellMorphology",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    client.search_entity.side_effect = EntitySDKError("lookup failed")
+    payload = {
+        "subject_id": str(uuid.uuid4()),
+        "brain_region_id": str(uuid.uuid4()),
+        "name": "test",
+        "authorized_public": False,
+    }
+    result = register_morphology(client, payload)
+    assert result is not None
+
+
+def test_register_morphology_invalid_brain_location_values(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.CellMorphology",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    payload = {
+        "brain_location": ["not", "a", "float"],
+        "name": "test",
+        "authorized_public": False,
+    }
+    result = register_morphology(client, payload)
+    assert result is not None
+
+
+def test_register_morphology_entity_sdk_error_on_register(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.CellMorphology",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    client.search_entity.side_effect = EntitySDKError("not found")
+    client.register_entity.side_effect = EntitySDKError("register failed")
+    payload = {"name": "test", "authorized_public": False}
+    with pytest.raises(EntitySDKError):
+        register_morphology(client, payload)
+
+
+def test_register_asset_from_content_entity_sdk_error():
+    client = MagicMock()
+    client.upload_content.side_effect = EntitySDKError("upload failed")
+    with pytest.raises(HTTPException) as exc_info:
+        register_asset_from_content(client, uuid.uuid4(), "file.swc", b"data")
+    assert exc_info.value.detail["code"] == "ENTITYSDK_API_FAILURE"
+
+
+def test_register_assets_and_measurements_with_converted_files(monkeypatch, tmp_path):
+    swc_file = tmp_path / "cell.swc"
+    swc_file.write_bytes(b"swc")
+    hdf5_file = tmp_path / "cell.h5"
+    hdf5_file.write_bytes(b"h5")
+
+    mock_register_assets = MagicMock(return_value=MagicMock())
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_assets", mock_register_assets
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_measurements",
+        MagicMock(return_value=MagicMock(id="meas-id")),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_asset_from_content",
+        MagicMock(return_value=MagicMock()),
+    )
+
+    client = MagicMock()
+    result = _register_assets_and_measurements(
+        client,
+        uuid.uuid4(),
+        "file.swc",
+        b"data",
+        [],
+        MorphologyFiles(swc=swc_file, hdf5=hdf5_file),
+    )
+    assert result.id == "meas-id"
+    assert mock_register_assets.call_count == 2
+
+
+def test_prepare_entity_payload_none_name():
+    metadata = MorphologyMetadata(name=None)
+    payload = _prepare_entity_payload(metadata, "neuron.asc")
+    assert payload["name"] == "Morphology: neuron"
+
+
+def test_asc_upload_success(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
+    )
+    response = client.post(
+        ROUTE,
+        data={"metadata": "{}"},
+        files={"file": ("cell.asc", b"asc content")},
+    )
+    assert response.status_code == 200, response.json()
+    assert response.json()["morphology_name"] == "cell.asc"

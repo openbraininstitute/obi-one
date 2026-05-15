@@ -13,7 +13,7 @@ L = logging.getLogger(__name__)
 class Task(OBIBaseModel, abc.ABC):
     @staticmethod
     def _get_execution_activity(
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         execution_activity_id: str | None = None,
     ) -> TaskActivity | None:
         """Returns the TaskAcitivity.

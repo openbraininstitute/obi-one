@@ -86,6 +86,15 @@ def run_quality_checks(file_path: Path) -> dict[str, Any]:
         }
 
 
+class MorphologyFiles(BaseModel):
+    swc: Path | None = None
+    hdf5: Path | None = None
+    asc: Path | None = None  # ADD THIS
+
+    def paths(self) -> list[Path]:
+        return [p for p in (self.swc, self.hdf5, self.asc) if p is not None]  # add self.asc
+
+
 def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
     warnings = warning_handler.get_all()
     if warnings:

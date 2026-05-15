@@ -6,7 +6,7 @@ from contextlib import ExitStack, suppress
 from functools import cache
 from http import HTTPStatus
 from pathlib import Path
-from typing import Annotated, Any, Final, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Final, TypeVar, cast
 from uuid import UUID
 
 import entitysdk
@@ -52,6 +52,9 @@ from app.services.morphology import (
     run_quality_checks,
     validate_and_convert_morphology,
 )
+
+if TYPE_CHECKING:
+    from entitysdk.models.cell_morphology_protocol import CellMorphologyProtocolUnion
 
 
 class ApiErrorCode:
@@ -255,25 +258,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
 
     subject = _get_entity("subject", Subject)
     brain_region = _get_entity("brain_region", BrainRegion)
-    raw_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
-
-    if not isinstance(
-        raw_protocol,
-        (
-            DigitalReconstructionCellMorphologyProtocol,
-            ModifiedReconstructionCellMorphologyProtocol,
-            ComputationallySynthesizedCellMorphologyProtocol,
-            PlaceholderCellMorphologyProtocol,
-        ),
-    ):
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": "A valid cell_morphology_protocol_id is required.",
-            },
-        )
-    morphology_protocol: CellMorphologyProtocolUnion = raw_protocol
+    morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
 
     repair_pipeline_state = new_item.get("repair_pipeline_state")
 
@@ -282,7 +267,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     description = new_item.get("description")
     authorized_public: bool = new_item.get("authorized_public", False)
     morphology = CellMorphology(
-        cell_morphology_protocol=morphology_protocol,
+        cell_morphology_protocol=cast("CellMorphologyProtocolUnion", morphology_protocol),
         repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
@@ -486,27 +471,13 @@ async def _run_pipeline(
         temp_file_obj.close()
         stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-        try:
-            converted_files: MorphologyFiles = await run_in_threadpool(
-                validate_and_convert_morphology,
-                input_file=pathlib.Path(temp_file_path),
-                output_dir=pathlib.Path(temp_file_path).parent,
-                output_stem=Path(morphology_name).stem,
-                single_point_soma_by_ext=single_point_soma_by_ext,
-            )
-        except HTTPException as exc:
-            # Augment the validation error with quality-check diagnostics so
-            # callers know exactly which checks failed.
-            qc = run_quality_checks(pathlib.Path(temp_file_path))
-            detail: dict[str, Any] = (
-                exc.detail if isinstance(exc.detail, dict) else {"detail": exc.detail}
-            )
-            detail["quality_checks"] = {
-                "ran_to_completion": qc["ran_to_completion"],
-                "failed_checks": qc["failed_checks"],
-                "passed_checks": qc["passed_checks"],
-            }
-            raise HTTPException(status_code=exc.status_code, detail=detail) from exc
+        converted_files: MorphologyFiles = await run_in_threadpool(
+            validate_and_convert_morphology,
+            input_file=pathlib.Path(temp_file_path),
+            output_dir=pathlib.Path(temp_file_path).parent,
+            output_stem=Path(morphology_name).stem,
+            single_point_soma_by_ext=single_point_soma_by_ext,
+        )
 
         if converted_files.swc:
             stack.callback(converted_files.swc.unlink, missing_ok=True)
