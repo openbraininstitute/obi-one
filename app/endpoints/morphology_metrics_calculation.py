@@ -23,14 +23,8 @@ from entitysdk.models import (
     Subject,
 )
 from entitysdk.models.asset import Asset
-from entitysdk.models.cell_morphology_protocol import (
-    CellMorphologyProtocolUnion,
-    ComputationallySynthesizedCellMorphologyProtocol,
-    DigitalReconstructionCellMorphologyProtocol,
-    ModifiedReconstructionCellMorphologyProtocol,
-    PlaceholderCellMorphologyProtocol,
-)
 from entitysdk.models.core import Identifiable
+
 from entitysdk.models.measurement_annotation import MeasurementKind
 from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -254,25 +248,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
 
     subject = _get_entity("subject", Subject)
     brain_region = _get_entity("brain_region", BrainRegion)
-    raw_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
-
-    if not isinstance(
-        raw_protocol,
-        (
-            DigitalReconstructionCellMorphologyProtocol,
-            ModifiedReconstructionCellMorphologyProtocol,
-            ComputationallySynthesizedCellMorphologyProtocol,
-            PlaceholderCellMorphologyProtocol,
-        ),
-    ):
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.BAD_REQUEST,
-                "detail": "A valid cell_morphology_protocol_id is required.",
-            },
-        )
-    morphology_protocol: CellMorphologyProtocolUnion = raw_protocol
+    morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
 
     repair_pipeline_state = new_item.get("repair_pipeline_state")
 

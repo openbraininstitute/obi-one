@@ -14,11 +14,9 @@ from fastapi import HTTPException
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import (
     MorphologyMetadata,
-    PlaceholderCellMorphologyProtocol,
     _get_analysis_dict,
     _get_h5_analysis_path,
     _get_template,
-    _get_template as cached_func,
     _prepare_entity_payload,
     _register_assets_and_measurements,
     _resolve_swc_bytes_for_mesh,
@@ -29,6 +27,7 @@ from app.endpoints.morphology_metrics_calculation import (
     register_morphology,
     run_morphology_analysis,
 )
+from entitysdk.models import CellMorphologyProtocol
 from app.errors import ApiError
 from app.services.morphology import MorphologyFiles, validate_and_convert_morphology
 
@@ -386,16 +385,9 @@ def test_validate_file_extension_valid():
 
 
 def test_get_template_caches(monkeypatch):
-    sentinel = {"data": []}
     _get_template.cache_clear()
-
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template",
-        MagicMock(return_value=sentinel),
-    )
-
-    result1 = cached_func()
-    result2 = cached_func()
+    result1 = _get_template()
+    result2 = _get_template()
     assert result1 is result2
 
 
@@ -497,7 +489,7 @@ def test_register_morphology_logic_variants(monkeypatch):
         "app.endpoints.morphology_metrics_calculation.CellMorphology",
         MagicMock(return_value=MagicMock()),
     )
-    mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
+    mock_protocol = MagicMock(spec=CellMorphologyProtocol)
     client = MagicMock()
 
     def _search_side_effect(*_args, **_kwargs):
@@ -521,7 +513,7 @@ def test_register_morphology_with_valid_brain_location(monkeypatch):
         "app.endpoints.morphology_metrics_calculation.CellMorphology",
         MagicMock(return_value=MagicMock()),
     )
-    mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
+    mock_protocol = MagicMock(spec=CellMorphologyProtocol)
 
     def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
@@ -545,7 +537,7 @@ def test_register_morphology_request_exception_in_get_entity(monkeypatch):
         "app.endpoints.morphology_metrics_calculation.CellMorphology",
         MagicMock(return_value=MagicMock()),
     )
-    mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
+    mock_protocol = MagicMock(spec=CellMorphologyProtocol)
 
     def _search_side_effect(*_args, **_kwargs):
         mock_result = MagicMock()
