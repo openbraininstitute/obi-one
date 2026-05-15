@@ -4,12 +4,6 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
 )
-from obi_one.scientific.tasks.brian2_simulation_from_sonata.config import (
-    Brian2SimulationFromSonataSingleConfig,
-)
-from obi_one.scientific.tasks.brian2_simulation_from_sonata.task import (
-    Brian2SimulationFromSonataTask,
-)
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionSingleConfig,
     CircuitExtractionTask,
@@ -104,7 +98,6 @@ _config_tasks_map = {
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
     Brian2CircuitSimulationSingleConfig: GenerateSimulationTask,
-    Brian2SimulationFromSonataSingleConfig: Brian2SimulationFromSonataTask,
 }
 _task_type_task_map = {
     TaskType.circuit_extraction: CircuitExtractionTask,

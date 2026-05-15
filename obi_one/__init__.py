@@ -31,9 +31,6 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
-    "Brian2SimulationFromSonataScanConfig",
-    "Brian2SimulationFromSonataSingleConfig",
-    "Brian2SimulationFromSonataTask",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -365,13 +362,6 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
-)
-from obi_one.scientific.tasks.brian2_simulation_from_sonata.config import (
-    Brian2SimulationFromSonataScanConfig,
-    Brian2SimulationFromSonataSingleConfig,
-)
-from obi_one.scientific.tasks.brian2_simulation_from_sonata.task import (
-    Brian2SimulationFromSonataTask,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,

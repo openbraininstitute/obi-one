@@ -25,7 +25,6 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     SONATA_VERSION,
-    TARGET_SIMULATOR,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
     BRIAN2_TARGET_SIMULATOR,
@@ -83,9 +82,8 @@ class GenerateSimulationTask(Task):
 
         self._sonata_config = {}
         self._sonata_config["version"] = SONATA_VERSION
-        self._sonata_config["target_simulator"] = (
-            BRIAN2_TARGET_SIMULATOR if is_brian2 else TARGET_SIMULATOR
-        )
+        if is_brian2:
+            self._sonata_config["target_simulator"] = BRIAN2_TARGET_SIMULATOR
 
         self._sonata_config["run"] = {}
         self._sonata_config["run"]["dt"] = self.config.initialize.timestep

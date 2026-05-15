@@ -35,7 +35,7 @@ L = logging.getLogger(__name__)
 
 Brian2CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
-BRIAN2_TARGET_SIMULATOR = "BRIAN2"
+BRIAN2_TARGET_SIMULATOR = "Brian2"  # must match libsonata.SimulatorType.Brian2
 
 
 class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
@@ -43,7 +43,7 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
 
     Only exposes stimulus, recording, and neuron set types that are
     compatible with Brian2 point neuron models. The generated
-    ``simulation_config.json`` will have ``target_simulator: "BRIAN2"``.
+    ``simulation_config.json`` will have ``target_simulator: "Brian2"``.
     """
 
     single_coord_class_name: ClassVar[str] = "Brian2CircuitSimulationSingleConfig"
