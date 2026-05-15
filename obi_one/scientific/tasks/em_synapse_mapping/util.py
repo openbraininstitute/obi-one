@@ -1,24 +1,9 @@
 import logging
-import os
-import subprocess  # NOQA: S404
 from pathlib import Path
 
 import h5py
 
 L = logging.getLogger(__name__)
-
-
-def compress_output(
-    out_root: Path,
-    files: list[str],
-) -> os.PathLike:
-    tar_path = out_root / "sonata.tar"
-    gz_path = out_root / "sonata.tar.gz"
-    Path(tar_path).write_bytes(
-        subprocess.check_output(["tar", "-cf", "-", *files])  # NOQA: S607, S603
-    )
-    subprocess.check_call(["gzip", "-1", "-f", str(tar_path)])  # NOQA: S607, S603
-    return str(gz_path)  # ty:ignore[invalid-return-type]
 
 
 def merge_spiny_morphologies(
