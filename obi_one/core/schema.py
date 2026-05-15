@@ -2,6 +2,7 @@ from enum import StrEnum
 
 
 class SchemaKey(StrEnum):
+    ACCEPTED_INPUT_TYPES = "accepted_input_types"
     BLOCK_USABILITY_DICTIONARY = "block_usability_dictionary"
     DEFAULT_BLOCK_REFERENCE_LABELS = "default_block_reference_labels"
     DESCRIPTION_BY_KEY = "description_by_key"
@@ -49,3 +50,15 @@ class UIElement(StrEnum):
     STRING_SELECTION = "string_selection"
     STRING_SELECTION_ENHANCED = "string_selection_enhanced"
     VOLTAGE_DURATION = "voltage_duration"
+
+
+class AcceptedInputTypes(StrEnum):
+    """Contains types that can be used as inputs.
+
+    For now, is only used for models that use a subclass of NamedTuples as input
+    to make explicit the accepted types of models.
+    Can be extended in the future if needed.
+    """
+
+    CELL_MORPHOLOGY_FROM_ID = "CellMorphologyFromID"
+    ME_MODEL_FROM_ID = "MEModelFromID"
