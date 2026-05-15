@@ -87,7 +87,7 @@ class PropertyNeuronSet(NeuronSet):
         sets.
     """
 
-    property_filter: NeuronPropertyFilter | list[NeuronPropertyFilter] = Field(
+    property_filter: NeuronPropertyFilter | Annotated[list[NeuronPropertyFilter], Field(min_length=1)] = Field(
         title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         json_schema_extra={
