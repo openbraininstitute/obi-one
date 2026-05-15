@@ -2,11 +2,13 @@ import logging
 from collections.abc import Iterable
 from http import HTTPStatus
 from pathlib import Path
+from typing import Any, Final
 
 import morph_tool
 import morphio
 import neurom
 from fastapi import HTTPException
+from neurom.check.runner import CheckRunner
 from neurom.exceptions import NeuroMError
 from pydantic import BaseModel
 
@@ -22,6 +24,33 @@ SOMA_RADIUS_THRESHOLD = 100.0
 
 L = logging.getLogger(__name__)
 
+_QUALITY_CHECK_CONFIG: Final[dict] = {
+    "checks": {
+        "morphology_checks": [
+            "has_axon",
+            "has_basal_dendrite",
+            "has_apical_dendrite",
+            "has_no_jumps",
+            "has_no_fat_ends",
+            "has_nonzero_soma_radius",
+            "has_all_nonzero_neurite_radii",
+            "has_all_nonzero_section_lengths",
+            "has_all_nonzero_segment_lengths",
+            "has_no_flat_neurites",
+            "has_no_narrow_start",
+            "has_no_dangling_branch",
+        ]
+    },
+    "options": {
+        "has_nonzero_soma_radius": 0.0,
+        "has_all_nonzero_neurite_radii": 0.007,
+        "has_all_nonzero_segment_lengths": 0.01,
+        "has_all_nonzero_section_lengths": 0.01,
+    },
+}
+
+_quality_check_runner = CheckRunner(_QUALITY_CHECK_CONFIG)
+
 
 class MorphologyFiles(BaseModel):
     swc: Path | None = None
@@ -30,6 +59,31 @@ class MorphologyFiles(BaseModel):
 
     def paths(self) -> list[Path]:
         return [p for p in (self.swc, self.hdf5, self.asc) if p is not None]  # add self.asc
+
+
+def run_quality_checks(file_path: Path) -> dict[str, Any]:
+    """Run standard morphology quality checks and return a structured result.
+
+    Returns a dict with:
+      - "ran_to_completion": bool
+      - "failed_checks": list[str]  – names of checks that returned False
+      - "passed_checks": list[str]  – names of checks that returned True
+    """
+    try:
+        neuron = neurom.load_morphology(file_path)
+        _, check_results = _quality_check_runner._check_loop(neuron, "morphology_checks")
+        return {
+            "ran_to_completion": True,
+            "failed_checks": [name for name, ok in check_results.items() if not ok],
+            "passed_checks": [name for name, ok in check_results.items() if ok],
+        }
+    except Exception as exc:  # noqa: BLE001
+        L.warning(f"run_quality_checks: could not complete checks for {file_path}: {exc}")
+        return {
+            "ran_to_completion": False,
+            "failed_checks": [],
+            "passed_checks": [],
+        }
 
 
 def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:

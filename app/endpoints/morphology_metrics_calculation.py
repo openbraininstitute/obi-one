@@ -49,6 +49,7 @@ from app.logger import L
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
     MorphologyFiles,
+    run_quality_checks,
     validate_and_convert_morphology,
 )
 
@@ -485,13 +486,27 @@ async def _run_pipeline(
         temp_file_obj.close()
         stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-        converted_files: MorphologyFiles = await run_in_threadpool(
-            validate_and_convert_morphology,
-            input_file=pathlib.Path(temp_file_path),
-            output_dir=pathlib.Path(temp_file_path).parent,
-            output_stem=Path(morphology_name).stem,
-            single_point_soma_by_ext=single_point_soma_by_ext,
-        )
+        try:
+            converted_files: MorphologyFiles = await run_in_threadpool(
+                validate_and_convert_morphology,
+                input_file=pathlib.Path(temp_file_path),
+                output_dir=pathlib.Path(temp_file_path).parent,
+                output_stem=Path(morphology_name).stem,
+                single_point_soma_by_ext=single_point_soma_by_ext,
+            )
+        except HTTPException as exc:
+            # Augment the validation error with quality-check diagnostics so
+            # callers know exactly which checks failed.
+            qc = run_quality_checks(pathlib.Path(temp_file_path))
+            detail: dict[str, Any] = (
+                exc.detail if isinstance(exc.detail, dict) else {"detail": exc.detail}
+            )
+            detail["quality_checks"] = {
+                "ran_to_completion": qc["ran_to_completion"],
+                "failed_checks": qc["failed_checks"],
+                "passed_checks": qc["passed_checks"],
+            }
+            raise HTTPException(status_code=exc.status_code, detail=detail) from exc
 
         if converted_files.swc:
             stack.callback(converted_files.swc.unlink, missing_ok=True)
