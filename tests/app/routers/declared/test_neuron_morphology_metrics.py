@@ -90,12 +90,13 @@ def test_register_morphology_metrics_success(client, morphology_json, monkeypatc
     entity_id = uuid.uuid4()
     measurement_id = uuid.uuid4()
 
-    morphology = CellMorphology.model_validate(morphology_json)
     h5_asset = MagicMock()
     h5_asset.content_type = "application/x-hdf5"
     h5_asset.label = "morphology"
     h5_asset.id = uuid.uuid4()
-    morphology.assets = [h5_asset]
+
+    morphology = CellMorphology.model_validate(morphology_json)
+    morphology = morphology.model_copy(update={"assets": [h5_asset]})
 
     entitysdk_client_mock = MagicMock(entitysdk.client.Client)
     entitysdk_client_mock.get_entity.return_value = morphology
@@ -134,13 +135,14 @@ def test_register_morphology_metrics_no_h5_asset(client, morphology_json, monkey
 
 def test_register_morphology_metrics_asset_no_id(client, morphology_json, monkeypatch):
     entity_id = uuid.uuid4()
-    morphology = CellMorphology.model_validate(morphology_json)
 
     h5_asset = MagicMock()
     h5_asset.content_type = "application/x-hdf5"
     h5_asset.label = "morphology"
     h5_asset.id = None
-    morphology.assets = [h5_asset]
+
+    morphology = CellMorphology.model_validate(morphology_json)
+    morphology = morphology.model_copy(update={"assets": [h5_asset]})
 
     entitysdk_client_mock = MagicMock(entitysdk.client.Client)
     entitysdk_client_mock.get_entity.return_value = morphology
