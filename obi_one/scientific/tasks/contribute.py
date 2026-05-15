@@ -179,7 +179,7 @@ class ContributeMorphologyScanConfig(ScanConfig):
         default_factory=License,
         title="Subject",
         description="The subject from which the morphology was derived.",
-    )
+    )  # ty:ignore[invalid-assignment]
 
     license: License = Field(
         default_factory=License,
@@ -210,7 +210,7 @@ class ContributeMorphologyTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> None:
@@ -241,7 +241,7 @@ class ContributeSubjectTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> None:

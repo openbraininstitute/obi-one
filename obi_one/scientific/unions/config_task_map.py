@@ -117,7 +117,7 @@ _task_type_config_asset_label_map = {
 
 
 def get_configs_task_type(config: object) -> type:
-    return _config_tasks_map[config.__class__]
+    return _config_tasks_map[config.__class__]  # ty:ignore[invalid-argument-type]
 
 
 def get_task_type(task_type: TaskType) -> type:

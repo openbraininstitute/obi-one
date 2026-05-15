@@ -4,6 +4,7 @@ import json
 import math
 import tempfile
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 import pylmesh
@@ -29,7 +30,7 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
     with tempfile.TemporaryDirectory() as tmp_dir:
         output_path = Path(tmp_dir) / "mesh.glb"
         db_client.fetch_assets(
-            entity_or_id=(cell_mesh.id_str, models.EMCellMesh),
+            entity_or_id=(cell_mesh.id_str, models.EMCellMesh),  # ty:ignore[invalid-argument-type]
             selection={
                 "label": AssetLabel.cell_surface_mesh,
                 "content_type": ContentType.model_gltf_binary,
@@ -70,7 +71,7 @@ def _get_skeletonization_config(
     config_bytes = db_client.download_content(
         entity_id=config_id,
         entity_type=models.TaskConfig,
-        asset_id=asset.id,
+        asset_id=cast("UUID", asset.id),
     )
     config_dict = json.loads(config_bytes.decode("utf-8"))
 
@@ -96,6 +97,6 @@ def estimate_skeletonization_count(
     """
     config = _get_skeletonization_config(db_client, config_id)
     cell_mesh = config.initialize.cell_mesh
-    total_area = _compute_mesh_surface_area(db_client, cell_mesh)
+    total_area = _compute_mesh_surface_area(db_client, cell_mesh)  # ty:ignore[invalid-argument-type]
 
     return max(1, math.ceil(total_area))

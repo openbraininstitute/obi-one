@@ -1,6 +1,6 @@
 import tempfile
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 import bluepysnap as snap
 import numpy as np
@@ -15,6 +15,9 @@ from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
 
 import obi_one as obi
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 class ConnectivityMetricsRequest(BaseModel):
@@ -85,18 +88,18 @@ class TemporaryPartialCircuit:
     def _fetch_file(self, rel_path: str) -> Path:
         temp_file_path = Path(self.temp_dir.name) / rel_path
         self._db_client.fetch_file(
-            entity_id=self._circuit_id,
+            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
             entity_type=Circuit,
-            asset_id=self.asset.id,
+            asset_id=cast("UUID", self.asset.id),
             output_path=temp_file_path,
-            asset_path=rel_path,
+            asset_path=rel_path,  # ty:ignore[invalid-argument-type]
             strategy=FetchFileStrategy.link_or_download,
         )
         return temp_file_path
 
     def _get_sonata_asset(self) -> Asset:
         circuit = self._db_client.get_entity(
-            entity_id=self._circuit_id,
+            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
             entity_type=Circuit,
         )
         sonata_assets = [
@@ -140,12 +143,12 @@ class TemporaryPartialCircuit:
             rel_path = Path(c.config["node_sets_file"]).relative_to(
                 Path(self.temp_dir.name).resolve()
             )
-            self._fetch_file(rel_path)
+            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
 
             # Fetch edge population
             edges_path = self._get_edges_path(c)
             rel_path = Path(edges_path).relative_to(Path(self.temp_dir.name).resolve())
-            self._fetch_file(rel_path)
+            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
 
             # Fetch src/tgt node populations
             src_nodes = c.edges[self._edge_population].source.name
@@ -153,7 +156,7 @@ class TemporaryPartialCircuit:
             for npop in np.unique([src_nodes, tgt_nodes]):
                 nodes_path = self._get_nodes_path(c, npop)
                 rel_path = Path(nodes_path).relative_to(Path(self.temp_dir.name).resolve())
-                self._fetch_file(rel_path)
+                self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
         except HTTPStatusError:
             self.temp_dir.__exit__(None, None, None)
             raise

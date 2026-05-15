@@ -1,5 +1,6 @@
 import json
 import uuid
+from http import HTTPStatus
 from unittest.mock import MagicMock
 
 import entitysdk.client
@@ -72,3 +73,32 @@ def test_get_not_found(client, morphology_json, monkeypatch):
     }
     assert entitysdk_client_mock.get_entity.call_count == 1
     assert entitysdk_client_mock.download_content.call_count == 0
+
+
+def test_register_morphology_metrics_no_h5_asset(client, morphology_json, monkeypatch):
+    entity_id = uuid.uuid4()
+
+    morphology = CellMorphology.model_validate(morphology_json)
+    morphology = morphology.model_copy(update={"assets": []})
+
+    entitysdk_client_mock = MagicMock(entitysdk.client.Client)
+    entitysdk_client_mock.get_entity.return_value = morphology
+
+    monkeypatch.setitem(
+        client.app.dependency_overrides,
+        get_client,
+        lambda: entitysdk_client_mock,
+    )
+
+    response = client.post(f"{ROUTE}/{entity_id}/register")
+
+    client.app.dependency_overrides.pop(get_client, None)
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {"detail": "No H5 asset on morphology"}
+
+    entitysdk_client_mock.get_entity.assert_called_once_with(
+        entity_id=str(entity_id),
+        entity_type=CellMorphology,
+    )
+    entitysdk_client_mock.download_content.assert_not_called()

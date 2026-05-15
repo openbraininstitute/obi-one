@@ -13,19 +13,15 @@ from app.services.resource_estimation import circuit_simulation as test_module
 
 
 def _make_db_client(number_neurons: int) -> tuple[Mock, str]:
-    circuit_id = str(uuid4())
     db_client = Mock()
-    db_client.get_entity.side_effect = [
-        SimpleNamespace(entity_id=circuit_id),
-        SimpleNamespace(number_neurons=number_neurons),
-    ]
-    return db_client, circuit_id
+    db_client.get_entity.return_value = SimpleNamespace(number_neurons=number_neurons)
+    return db_client
 
 
 def test_estimate_task_resources_success():
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
-    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
-    db_client, circuit_id = _make_db_client(number_neurons=9)
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
+    db_client = _make_db_client(number_neurons=9)
     mocked_instances = {
         "cell_a": [
             ClusterInstanceInfo(name="big", max_neurons=10, memory_per_instance_gb=100),
@@ -51,7 +47,6 @@ def test_estimate_task_resources_success():
     db_client.get_entity.assert_has_calls(
         [
             call(entity_id=json_model.config_id, entity_type=models.Simulation),
-            call(entity_id=circuit_id, entity_type=models.Circuit),
         ]
     )
 
@@ -59,7 +54,7 @@ def test_estimate_task_resources_success():
 def test_estimate_task_resources_unknown_compute_cell():
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
     task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
-    db_client, _ = _make_db_client(number_neurons=20_000)
+    db_client = _make_db_client(number_neurons=20_000)
 
     with pytest.raises(ApiError) as exc_info:
         test_module.estimate_task_resources(
@@ -75,7 +70,7 @@ def test_estimate_task_resources_unknown_compute_cell():
 def test_estimate_task_resources_no_available_instances():
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
     task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation]
-    db_client, _ = _make_db_client(number_neurons=100)
+    db_client = _make_db_client(number_neurons=100)
     mocked_instances = {
         "cell_a": [
             ClusterInstanceInfo(name="big-only", max_neurons=10, memory_per_instance_gb=32),

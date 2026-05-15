@@ -87,7 +87,7 @@ def compile_mechanisms(circuit: MEModelCircuit) -> Path:
 
     circuit_dir = circuit.directory.resolve()
 
-    compilation_output = run_and_log(command, cwd=str(circuit_dir)).stdout
+    compilation_output = run_and_log(command, cwd=str(circuit_dir)).stdout  # ty:ignore[invalid-argument-type]
 
     L.debug(compilation_output)
 
