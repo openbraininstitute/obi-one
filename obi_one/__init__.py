@@ -20,6 +20,39 @@ from obi_one.core.task import Task
 from obi_one.core.tuple import NamedTuple
 
 __all__ = [
+    "AINDEPhysDispatchScanConfig",
+    "AINDEPhysDispatchSingleConfig",
+    "AINDEPhysDispatchTask",
+    "AINDEPhysPreprocessingScanConfig",
+    "AINDEPhysPreprocessingSingleConfig",
+    "AINDEPhysPreprocessingTask",
+    "AINDEPhysCurationScanConfig",
+    "AINDEPhysCurationSingleConfig",
+    "AINDEPhysCurationTask",
+    "AINDEPhysProcessingQCScanConfig",
+    "AINDEPhysProcessingQCSingleConfig",
+    "AINDEPhysProcessingQCTask",
+    "AINDEPhysQCCollectorScanConfig",
+    "AINDEPhysQCCollectorSingleConfig",
+    "AINDEPhysQCCollectorTask",
+    "AINDEcephysNWBScanConfig",
+    "AINDEcephysNWBSingleConfig",
+    "AINDEcephysNWBTask",
+    "AINDUnitsNWBScanConfig",
+    "AINDUnitsNWBSingleConfig",
+    "AINDUnitsNWBTask",
+    "AINDEPhysResultsCollectorScanConfig",
+    "AINDEPhysResultsCollectorSingleConfig",
+    "AINDEPhysResultsCollectorTask",
+    "AINDEPhysVisualizationScanConfig",
+    "AINDEPhysVisualizationSingleConfig",
+    "AINDEPhysVisualizationTask",
+    "AINDEPhysPostprocessingScanConfig",
+    "AINDEPhysPostprocessingSingleConfig",
+    "AINDEPhysPostprocessingTask",
+    "AINDEPhysSpikesortKilosort4ScanConfig",
+    "AINDEPhysSpikesortKilosort4SingleConfig",
+    "AINDEPhysSpikesortKilosort4Task",
     "AfferentSynapsesBlock",
     "AllDistributionsReference",
     "AllDistributionsUnion",
@@ -435,6 +468,83 @@ from obi_one.scientific.tasks.morphology_metrics import (
 from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import (
+    AINDEPhysDispatchScanConfig,
+    AINDEPhysDispatchSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import (
+    AINDEPhysDispatchTask,
+)
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
+    AINDEPhysPreprocessingScanConfig,
+    AINDEPhysPreprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import (
+    AINDEPhysPreprocessingTask,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.config import (
+    AINDEPhysCurationScanConfig,
+    AINDEPhysCurationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.task import (
+    AINDEPhysCurationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.config import (
+    AINDEPhysProcessingQCScanConfig,
+    AINDEPhysProcessingQCSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.task import (
+    AINDEPhysProcessingQCTask,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config import (
+    AINDEcephysNWBScanConfig,
+    AINDEcephysNWBSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.task import (
+    AINDEcephysNWBTask,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.config import (
+    AINDUnitsNWBScanConfig,
+    AINDUnitsNWBSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.task import (
+    AINDUnitsNWBTask,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.config import (
+    AINDEPhysQCCollectorScanConfig,
+    AINDEPhysQCCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.task import (
+    AINDEPhysQCCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
+    AINDEPhysResultsCollectorScanConfig,
+    AINDEPhysResultsCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.task import (
+    AINDEPhysResultsCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
+    AINDEPhysVisualizationScanConfig,
+    AINDEPhysVisualizationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.task import (
+    AINDEPhysVisualizationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
+    AINDEPhysPostprocessingScanConfig,
+    AINDEPhysPostprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.task import (
+    AINDEPhysPostprocessingTask,
+)
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
+    AINDEPhysSpikesortKilosort4ScanConfig,
+    AINDEPhysSpikesortKilosort4SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.task import (
+    AINDEPhysSpikesortKilosort4Task,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.config_task_map import get_configs_task_type

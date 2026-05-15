@@ -69,6 +69,70 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
     SkeletonizationTask,
 )
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchSingleConfig
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import (
+    AINDEPhysDispatchTask,
+)
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
+    AINDEPhysPreprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import (
+    AINDEPhysPreprocessingTask,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.config import (
+    AINDEPhysCurationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.task import (
+    AINDEPhysCurationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.config import (
+    AINDEPhysProcessingQCSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.task import (
+    AINDEPhysProcessingQCTask,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config import (
+    AINDEcephysNWBSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.task import (
+    AINDEcephysNWBTask,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.config import (
+    AINDUnitsNWBSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.task import (
+    AINDUnitsNWBTask,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.config import (
+    AINDEPhysQCCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.task import (
+    AINDEPhysQCCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
+    AINDEPhysResultsCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.task import (
+    AINDEPhysResultsCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
+    AINDEPhysVisualizationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.task import (
+    AINDEPhysVisualizationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
+    AINDEPhysPostprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.task import (
+    AINDEPhysPostprocessingTask,
+)
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
+    AINDEPhysSpikesortKilosort4SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.task import (
+    AINDEPhysSpikesortKilosort4Task,
+)
 from obi_one.types import TaskType
 
 _config_tasks_map = {
@@ -88,6 +152,17 @@ _config_tasks_map = {
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
     SkeletonizationSingleConfig: SkeletonizationTask,
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
+    AINDEPhysDispatchSingleConfig: AINDEPhysDispatchTask,
+    AINDEPhysPreprocessingSingleConfig: AINDEPhysPreprocessingTask,
+    AINDEPhysSpikesortKilosort4SingleConfig: AINDEPhysSpikesortKilosort4Task,
+    AINDEPhysPostprocessingSingleConfig: AINDEPhysPostprocessingTask,
+    AINDEPhysCurationSingleConfig: AINDEPhysCurationTask,
+    AINDEPhysVisualizationSingleConfig: AINDEPhysVisualizationTask,
+    AINDEPhysResultsCollectorSingleConfig: AINDEPhysResultsCollectorTask,
+    AINDEPhysProcessingQCSingleConfig: AINDEPhysProcessingQCTask,
+    AINDEPhysQCCollectorSingleConfig: AINDEPhysQCCollectorTask,
+    AINDEcephysNWBSingleConfig: AINDEcephysNWBTask,
+    AINDUnitsNWBSingleConfig: AINDUnitsNWBTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {
