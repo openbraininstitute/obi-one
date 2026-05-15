@@ -53,6 +53,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
@@ -134,8 +135,8 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Distribution",
-            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 2,
+            SchemaKey.GROUP: BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
