@@ -1,5 +1,6 @@
 import logging
 import tempfile
+import typing
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar, Literal
@@ -41,11 +42,12 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[unresolved-assignment]
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[unresolved-assignment]
+    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
 
+    @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
-        return [n.entity(db_client=db_client) for n in self.initialize.neurons]
+        return []
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
@@ -104,8 +106,8 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,
-    ) -> None:
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> None:  # ty:ignore[invalid-method-override]
         pass
 
     def create_campaign_generation_entity(self, generated: list, db_client: Client) -> None:
@@ -121,7 +123,7 @@ class CreateExtracellularRecordingArraySingleConfig(
         self,
         campaign: TaskConfig,
         db_client: Client,
-    ) -> None:
+    ) -> None:  # ty:ignore[invalid-method-override]
         pass
 
 
@@ -147,7 +149,7 @@ class CreateExtracellularRecordingArrayTask(Task):
             self._temp_dir.cleanup()
             self._temp_dir = None
 
-    def _resolve_circuit(self, *, db_client: Client, entity_cache: bool) -> None:
+    def _resolve_circuit(self, *, db_client: Client, entity_cache: bool) -> Path:
         """Set circuit variable based on the type of initialize.circuit."""
         if isinstance(self.config.initialize.circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
@@ -181,7 +183,7 @@ class CreateExtracellularRecordingArrayTask(Task):
     def execute(
         self,
         *,
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
