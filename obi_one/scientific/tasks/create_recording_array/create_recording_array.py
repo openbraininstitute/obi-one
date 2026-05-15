@@ -41,8 +41,8 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
+    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[unresolved-assignment]
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[unresolved-assignment]
 
     def input_entities(self, db_client: Client) -> list[Entity]:
         return [n.entity(db_client=db_client) for n in self.initialize.neurons]
@@ -130,8 +130,8 @@ class CreateExtracellularRecordingArrayTask(Task):
 
     config: CreateExtracellularRecordingArraySingleConfig
 
-    _single_task_config_type: ClassVar[TaskConfigType] = None
-    _single_task_activity_type: ClassVar[TaskActivityType] = None
+    _single_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
+    _single_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
@@ -197,8 +197,12 @@ class CreateExtracellularRecordingArrayTask(Task):
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
         import numpy as np  # noqa: PLC0415
-        from bluerecording import compute_weights  # noqa: PLC0415
-        from bluerecording.weights import Electrode, ElectrodeType, save_weights  # noqa: PLC0415
+        from bluerecording import compute_weights  # noqa: PLC0415 # ty:ignore[unresolved-import]
+        from bluerecording.weights import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
+            Electrode,
+            ElectrodeType,
+            save_weights,
+        )
 
         electrodes = {
             f"electrode_{i}": Electrode(
