@@ -30,6 +30,9 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -94,6 +97,7 @@ _config_tasks_map = {
     CreateExtracellularRecordingArraySingleConfig: CreateExtracellularRecordingArrayTask,
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
+    Brian2CircuitSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {
     TaskType.circuit_extraction: CircuitExtractionTask,
