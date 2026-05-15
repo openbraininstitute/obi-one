@@ -40,14 +40,14 @@ class MorphologyMetricsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> MorphologyMetricsOutput:
         try:
             L.info("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(
-                self.config.initialize.morphology.neurom_morphology(db_client=db_client)
+                self.config.initialize.morphology.neurom_morphology(db_client=db_client)  # ty:ignore[unresolved-attribute]
             )
             L.info(morphology_metrics)
 

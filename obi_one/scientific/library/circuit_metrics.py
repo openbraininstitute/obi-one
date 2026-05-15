@@ -5,6 +5,7 @@ from collections.abc import Iterator, Mapping
 from enum import IntEnum, StrEnum, auto
 from os.path import realpath
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 import numpy as np
@@ -59,6 +60,13 @@ class CircuitStatsLevelOfDetail(IntEnum):
     basic = 1
     advanced = 2
     full = 3
+
+
+MAX_UNIQUE_VALUES = {
+    CircuitStatsLevelOfDetail.basic: 25,
+    CircuitStatsLevelOfDetail.advanced: 50,
+    CircuitStatsLevelOfDetail.full: 100,
+}
 
 
 def _assert_level_of_detail_specs(
@@ -206,34 +214,48 @@ def names_from_node_sets_file(
     return list(contents.keys())
 
 
-def unique_node_property_values_from_population(pop: NodePopulation) -> dict[str, list]:
-    return {name: pop.enumeration_values(name) for name in pop.enumeration_names}
+def dynamics_params_from_population(pop: NodePopulation) -> list[str]:
+    return list(pop.dynamics_attribute_names)
 
 
-def number_of_nodes_per_unique_value_from_population(pop: NodePopulation) -> dict:
+def unique_node_property_values_from_population(
+    pop: NodePopulation,
+    max_unique_values: int,
+) -> dict[str, list]:
+    return {
+        name: pop.enumeration_values(name)
+        for name in pop.enumeration_names
+        if len(pop.enumeration_values(name)) <= max_unique_values
+    }
+
+
+def number_of_nodes_per_unique_value_from_population(
+    pop: NodePopulation, max_unique_values: int
+) -> dict:
     vals_dict = {}
     for name in pop.enumeration_names:
         prop_vals = pop.enumeration_values(name)
-        prop_idx = pop.get_enumeration(name, pop.select_all())
+        if len(prop_vals) <= max_unique_values:
+            prop_idx = pop.get_enumeration(name, pop.select_all())
 
-        prop_counts = (
-            pd.Series(prop_idx).value_counts().reindex(range(len(prop_vals)), fill_value=0)
-        )
-        prop_counts.index = prop_vals
-        vals_dict[name] = prop_counts.to_dict()
+            prop_counts = (
+                pd.Series(prop_idx).value_counts().reindex(range(len(prop_vals)), fill_value=0)
+            )
+            prop_counts.index = prop_vals
+            vals_dict[name] = prop_counts.to_dict()
     return vals_dict
 
 
 def node_location_properties_from_population(pop: NodePopulation) -> dict:
     vals_dict = {}
     coord_names = [
-        _coord
-        for _coord in [SpatialCoordinate.x, SpatialCoordinate.y, SpatialCoordinate.z]
-        if str(_coord) in pop.attribute_names
+        coord
+        for coord in [SpatialCoordinate.x, SpatialCoordinate.y, SpatialCoordinate.z]
+        if str(coord) in pop.attribute_names
     ]
-    for _coord in coord_names:
-        coord_v = pop.get_attribute(_coord, pop.select_all())
-        vals_dict[_coord] = {
+    for coord in coord_names:
+        coord_v = pop.get_attribute(coord, pop.select_all())
+        vals_dict[coord] = {
             "min": np.min(coord_v),
             "max": np.max(coord_v),
             "mean": np.mean(coord_v),
@@ -265,9 +287,9 @@ def degree_stats_from_population(
     pop: EdgePopulation, node_stats_dict: dict
 ) -> dict[str, dict[str, float]]:
     sz = node_stats_dict[pop.target]["population_length"]
-    indegs = np.array([pop.afferent_edges(_i).flat_size for _i in range(sz)])
+    indegs = np.array([pop.afferent_edges(i).flat_size for i in range(sz)])
     sz = node_stats_dict[pop.source]["population_length"]
-    outdegs = np.array([pop.efferent_edges(_i).flat_size for _i in range(sz)])
+    outdegs = np.array([pop.efferent_edges(i).flat_size for i in range(sz)])
     stats = {
         degtype: {
             "min": np.min(degs),
@@ -298,7 +320,7 @@ def degree_stats_from_population(
             )
         }
         stats.update(add_stats)
-    return stats
+    return stats  # ty:ignore[invalid-return-type]
 
 
 def properties_from_nodes_files(
@@ -321,24 +343,27 @@ def properties_from_nodes_files(
     for nodepop in get_names_of_typed_node_populations(
         config, TYPES_OF_VIRTUAL_NODES + TYPES_OF_BIOPHYS_NODES
     ):
-        if level_of_detail_specs.get(nodepop, default_lod) > CircuitStatsLevelOfDetail.none:
+        lod = level_of_detail_specs.get(nodepop, default_lod)
+        if lod > CircuitStatsLevelOfDetail.none:
             np_file_path = circ.nodes[nodepop].h5_filepath
             remote_path = Path(np_file_path).relative_to(temp_dir)
-            properties_dict[nodepop] = {_k: {} for _k in lst_req_props}
+            properties_dict[nodepop] = {k: {} for k in lst_req_props}
+            max_uv = MAX_UNIQUE_VALUES[lod]
             with TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as fn:
                 pop_obj = NodeStorage(fn).open_population(nodepop)
                 properties_dict[nodepop]["population_length"] = pop_obj.size
                 properties_dict[nodepop]["property_list"] = list(pop_obj.attribute_names)
                 properties_dict[nodepop]["property_unique_values"] = (
-                    unique_node_property_values_from_population(pop_obj)
+                    unique_node_property_values_from_population(pop_obj, max_uv)
                 )
                 properties_dict[nodepop]["property_value_counts"] = (
-                    number_of_nodes_per_unique_value_from_population(pop_obj)
+                    number_of_nodes_per_unique_value_from_population(pop_obj, max_uv)
                 )
-                if (
-                    level_of_detail_specs.get(nodepop, default_lod)
-                    > CircuitStatsLevelOfDetail.basic
-                ):
+                if nodepop in get_names_of_typed_node_populations(config, TYPES_OF_BIOPHYS_NODES):
+                    properties_dict[nodepop]["dynamics_param_names"] = (
+                        dynamics_params_from_population(pop_obj)
+                    )
+                if lod > CircuitStatsLevelOfDetail.basic:
                     properties_dict[nodepop]["node_location_info"] = (
                         node_location_properties_from_population(pop_obj)
                     )
@@ -363,7 +388,7 @@ def properties_from_edges_files(
         config, TYPES_OF_CHEMICAL_SYNS + TYPES_OF_ELECTRICAL_SYNS
     ):
         if level_of_detail_specs.get(edgepop, default_lod) > CircuitStatsLevelOfDetail.none:
-            properties_dict[edgepop] = {_k: {} for _k in lst_req_props}
+            properties_dict[edgepop] = {k: {} for k in lst_req_props}
 
             ep_file_path = circ.edges[edgepop].h5_filepath
             remote_path = Path(ep_file_path).relative_to(temp_dir)
@@ -395,6 +420,7 @@ class CircuitMetricsNodePopulation(BaseModel):
     property_names: list[str]
     property_unique_values: dict[str, list[str]]
     property_value_counts: dict[str, dict[str, int]]
+    dynamics_param_names: list[str] | None = None
     node_location_info: dict[SpatialCoordinate, dict[str, float]] | None
 
 
@@ -432,9 +458,9 @@ class CircuitMetricsOutput(BaseModel, Mapping):
     chemical_edge_populations: list[CircuitMetricsEdgePopulation | None]
     electrical_edge_populations: list[CircuitMetricsEdgePopulation | None]
 
-    def __iter__(self) -> Iterator[CircuitMetricsEdgePopulation | None]:
+    def __iter__(self) -> Iterator[CircuitMetricsEdgePopulation | None]:  # ty:ignore[invalid-method-override]
         """Provides iterator over all populations (node + edge)."""
-        yield from self.biophysical_node_populations + self.virtual_node_populations
+        yield from self.biophysical_node_populations + self.virtual_node_populations  # ty:ignore[invalid-yield]
 
     def __getitem__(
         self, key: str
@@ -483,7 +509,7 @@ def get_circuit_metrics(  # noqa: PLR0914
         error_msg = "Circuit must have exactly one directory asset."
         raise ValueError(error_msg)
 
-    asset_id = directory_assets[0].id
+    asset_id = cast("UUID", directory_assets[0].id)
 
     # db_client.download_content does not support `asset_path` at the time of writing this
     # Use db_client.fetch_file with temporary directory instead
@@ -524,6 +550,7 @@ def get_circuit_metrics(  # noqa: PLR0914
                 property_names=node_props[nodepop]["property_list"],
                 property_unique_values=node_props[nodepop]["property_unique_values"],
                 property_value_counts=node_props[nodepop]["property_value_counts"],
+                dynamics_param_names=node_props[nodepop]["dynamics_param_names"],
                 # Use .get() because node_location_info is only added when level_of_detail > basic
                 node_location_info=node_props[nodepop].get("node_location_info"),
             )

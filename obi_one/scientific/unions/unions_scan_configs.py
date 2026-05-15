@@ -8,6 +8,9 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
 )
 from obi_one.scientific.tasks.contribute import ContributeMorphologyScanConfig
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
@@ -55,6 +58,7 @@ ScanConfigsUnion = Annotated[
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig
     | Brian2CircuitSimulationScanConfig
+    | CreateExtracellularRecordingArrayScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),
 ]

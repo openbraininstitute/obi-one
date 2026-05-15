@@ -22,6 +22,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeMorphologyTask,
 )
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArraySingleConfig,
+    CreateExtracellularRecordingArrayTask,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
 from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
 from obi_one.scientific.tasks.ephys_extraction import (
@@ -96,6 +100,7 @@ _config_tasks_map = {
     MorphologyLocationsSingleConfig: MorphologyLocationsTask,
     MEModelWithSynapsesCircuitSimulationSingleConfig: GenerateSimulationTask,
     SkeletonizationSingleConfig: SkeletonizationTask,
+    CreateExtracellularRecordingArraySingleConfig: CreateExtracellularRecordingArrayTask,
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
     Brian2CircuitSimulationSingleConfig: GenerateSimulationTask,
@@ -123,7 +128,7 @@ _task_type_config_asset_label_map = {
 
 
 def get_configs_task_type(config: object) -> type:
-    return _config_tasks_map[config.__class__]
+    return _config_tasks_map[config.__class__]  # ty:ignore[invalid-argument-type]
 
 
 def get_task_type(task_type: TaskType) -> type:

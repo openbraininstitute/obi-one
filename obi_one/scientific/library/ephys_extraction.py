@@ -4,7 +4,7 @@ import logging
 import tempfile
 from io import StringIO
 from statistics import mean
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import entitysdk.client
 from bluepyefe.extract import extract_efeatures
@@ -13,6 +13,9 @@ from entitysdk.models import ElectricalCellRecording
 from pydantic import BaseModel, Field
 
 from obi_one.core.exception import ProtocolNotFoundError
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 EFEL_SETTINGS = {"strict_stiminterval": True, "Threshold": -20.0, "interp_step": 0.025}
 
@@ -44,7 +47,7 @@ STIMULI_TYPES = list[
         "genericstep",
     ]
 ]
-POSSIBLE_STIMULI_STR = "', '".join(STIMULI_TYPES.__args__[0].__args__)
+POSSIBLE_STIMULI_STR = "', '".join(STIMULI_TYPES.__args__[0].__args__)  # ty:ignore[unresolved-attribute]
 
 STEP_LIKE_STIMULI_TYPES = list[
     Literal[
@@ -141,25 +144,28 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
 
     # Get the trace metadata from the entitycore
     trace_metadata = entity_client.get_entity(
-        entity_id=trace_id, entity_type=ElectricalCellRecording
+        entity_id=trace_id,  # ty:ignore[invalid-argument-type]
+        entity_type=ElectricalCellRecording,
     )
 
     # Get the available stimulus types from the trace metadata
-    available_stimuli = {stimulus.name.lower() for stimulus in trace_metadata.stimuli}
+    available_stimuli = {stimulus.name.lower() for stimulus in trace_metadata.stimuli}  # ty:ignore[not-iterable, unresolved-attribute]
 
     # If the user did not specify any stimulus types, try to use all step-like stimuli present in
     # the trace.
     if not stimuli_types:
         stimuli_types = [
-            s for s in available_stimuli if s in STEP_LIKE_STIMULI_TYPES.__args__[0].__args__
-        ]
+            s
+            for s in available_stimuli
+            if s in STEP_LIKE_STIMULI_TYPES.__args__[0].__args__  # ty:ignore[unresolved-attribute]
+        ]  # ty:ignore[invalid-assignment]
 
         if not stimuli_types:
             logger.warning(
                 "No stimulus type specified, and no valid stimuli found in the trace metadata. "
                 "Falling back to default STEP_LIKE_STIMULI_TYPES."
             )
-            stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)
+            stimuli_types = list(STEP_LIKE_STIMULI_TYPES.__args__[0].__args__)  # ty:ignore[unresolved-attribute]
         else:
             msg = f"No stimulus type specified. Using all valid stimuli found in the trace: \
                     {stimuli_types}"
@@ -174,7 +180,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
                 f"None of the requested protocols {stimuli_types} are present in the trace. "
                 f"Available: {sorted(available_stimuli)}"
             )
-            raise ProtocolNotFoundError(msg)
+            raise ProtocolNotFoundError(msg)  # ty:ignore[invalid-argument-type]
 
         if invalid_stimuli:
             msg = (
@@ -188,7 +194,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
     if not calculated_feature:
         # Compute ALL of the available features if not specified
         logger.warning("No feature specified. Defaulting to everything.")
-        calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)
+        calculated_feature = list(CALCULATED_FEATURES.__args__[0].__args__)  # ty:ignore[unresolved-attribute]
 
     # Turn amplitude requirement of user into a bluepyefe compatible representation
     if (
@@ -235,7 +241,8 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
     logger.info("Generated %d targets.", len(targets))
     logger.info("Trace ID: %s", trace_id)
     trace_metadata = entity_client.get_entity(
-        entity_id=trace_id, entity_type=ElectricalCellRecording
+        entity_id=trace_id,  # ty:ignore[invalid-argument-type]
+        entity_type=ElectricalCellRecording,
     )
     # Download the .nwb file associated to the trace from the KG
     with (
@@ -246,7 +253,9 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
             logger.debug("Asset object: %s", asset)
             if asset.content_type == "application/nwb":
                 trace_content = entity_client.download_content(
-                    entity_id=trace_id, entity_type=ElectricalCellRecording, asset_id=asset.id
+                    entity_id=trace_id,  # ty:ignore[invalid-argument-type]
+                    entity_type=ElectricalCellRecording,
+                    asset_id=cast("UUID", asset.id),
                 )
                 temp_file.write(trace_content)
                 temp_file.flush()
@@ -287,7 +296,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
                 f"None of the requested protocols {stimuli_types} are present in the trace. "
                 f"Available: {sorted(available_stimuli)}"
             )
-            raise ProtocolNotFoundError(msg)
+            raise ProtocolNotFoundError(msg)  # ty:ignore[invalid-argument-type]
 
         output_features = {}
         logger.debug("Efeatures: %s", efeatures)

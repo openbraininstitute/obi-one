@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import entitysdk
 from entitysdk import models
@@ -28,6 +28,9 @@ from obi_one.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from uuid import UUID
+
 
 class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
     pass
@@ -43,18 +46,18 @@ class IonChannelModelSimulationExecutionTask(Task):
         config_asset = db_sdk.get_entity_asset_by_label(
             client=db_client,
             config=self.config.single_entity,
-            asset_label="simulation_generation_config",
+            asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
         )
 
         json_str = db_client.download_content(
-            entity_id=self.config.single_entity.id,
-            entity_type=entitysdk.models.Simulation,
-            asset_id=config_asset.id,
+            entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+            asset_id=cast("UUID", config_asset.id),
         ).decode(encoding="utf-8")
 
         json_dict = json.loads(json_str)
         single_config = deserialize_obi_object_from_json_data(json_dict)
-        return single_config
+        return single_config  # ty:ignore[invalid-return-type]
 
     def execute(
         self,
@@ -95,7 +98,7 @@ class IonChannelModelSimulationExecutionTask(Task):
 
         if execution_activity_id is not None:
             execution_activity = db_client.get_entity(
-                entity_id=execution_activity_id,
+                entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
                 entity_type=self.activity_type,
             )
 
@@ -110,12 +113,12 @@ class IonChannelModelSimulationExecutionTask(Task):
         simulation_entity = self.config.single_entity
 
         simulation_metadata = SimulationMetadata(
-            simulation_id=simulation_entity.id,
+            simulation_id=simulation_entity.id,  # ty:ignore[invalid-argument-type]
         )
         staged_simulation_config_path = stage_simulation(
             client=db_client,
-            model=simulation_entity,
-            circuit_config_path=staged_circuit.path,
+            model=simulation_entity,  # ty:ignore[invalid-argument-type]
+            circuit_config_path=staged_circuit.path,  # ty:ignore[invalid-argument-type]
             output_dir=data_dir,
             override_results_dir=results_dir,
         )
@@ -137,9 +140,9 @@ class IonChannelModelSimulationExecutionTask(Task):
                 simulation_metadata=simulation_metadata,
             )
             db_client.update_entity(
-                entity_id=execution_activity.id,
+                entity_id=execution_activity.id,  # ty:ignore[invalid-argument-type]
                 entity_type=self.activity_type,
-                attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
+                attrs_or_entity={"generated_ids": [str(generated_entity.id)]},  # ty:ignore[unresolved-attribute]
             )
 
         L.info("Simulation completed")
