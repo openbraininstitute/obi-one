@@ -110,6 +110,9 @@ def run_task_type(
             config=entity,
             asset_label=config_asset_label,
         ).id
+        if config_asset_id is None:
+            msg = "Config asset must have an id"
+            raise ValueError(msg)
 
         json_str = db_client.download_content(
             entity_id=entity_id,  # ty:ignore[invalid-argument-type]

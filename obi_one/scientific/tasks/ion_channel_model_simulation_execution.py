@@ -48,6 +48,9 @@ class IonChannelModelSimulationExecutionTask(Task):
             config=self.config.single_entity,
             asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
         )
+        if config_asset.id is None:
+            msg = "Config asset must have an id"
+            raise ValueError(msg)
 
         json_str = db_client.download_content(
             entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]

@@ -90,6 +90,8 @@ def register_morphology_metrics(
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No H5 asset on morphology")
 
     # 2) download to temp file
+    if asset.id is None:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Asset has no id")
     with tempfile.NamedTemporaryFile(suffix=".h5") as tmp:
         tmp.write(
             db_client.download_content(

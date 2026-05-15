@@ -42,6 +42,9 @@ class CellMorphologyFromID(EntityFromID):
                         L.info("Downloading SWC file for morphology...")
 
                         # Download the content into memory
+                        if asset.id is None:
+                            msg = "Asset must have an id"
+                            raise ValueError(msg)
                         content = db_client.download_content(
                             entity_id=self.entity(db_client=db_client).id,  # ty:ignore[invalid-argument-type]
                             entity_type=self.entitysdk_type,
@@ -125,6 +128,9 @@ class CellMorphologyFromID(EntityFromID):
             if (asset.label == AssetLabel.morphology_with_spines) and (
                 asset.content_type == ContentType.application_x_hdf5
             ):
+                if asset.id is None:
+                    msg = "Asset must have an id"
+                    raise ValueError(msg)
                 db_client.download_file(
                     entity_id=entity.id,  # ty:ignore[invalid-argument-type]
                     entity_type=self.entitysdk_class,
