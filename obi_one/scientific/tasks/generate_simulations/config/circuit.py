@@ -24,9 +24,14 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    SimulationNeuronSetUnion,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    AllNeuronSetUnion,
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
@@ -59,21 +64,24 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            BiophysicalNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            VirtualNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            PointNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
         },
     }
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, AllNeuronSetUnion] = Field(
         default_factory=dict,
-        description="Neuron sets for the simulation.",
+        title="Neuron Sets",
+        description="Neuron sets for the simulation (new version).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
@@ -81,7 +89,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticManipulationsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticManipulationsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,
@@ -94,13 +102,13 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             description="Circuit to simulate.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
         )
-        node_set: NeuronSetReference | None = Field(
+        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
             default=None,
             title="Neuron Set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+                SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
             },
         )
 
@@ -120,7 +128,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         description="Stimuli for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [StimulusReference.__name__],
             SchemaKey.SINGULAR_NAME: "Stimulus",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
@@ -133,7 +141,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         description="Distributions used by stimuli (e.g. inter-spike interval distributions).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Distribution",
             SchemaKey.GROUP: BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

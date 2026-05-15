@@ -11,9 +11,9 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    resolve_neuron_set_ref_to_node_set,
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    NonVirtualNeuronSetUnion,
+    resolve_neuron_set_2_ref_to_node_set,
 )
 
 
@@ -106,7 +106,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Variable Modification by Section List"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NonVirtualNeuronSetUnion | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -130,7 +130,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         Returns:
             List of SONATA modification dicts, one per section list.
         """
-        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
+        node_set = resolve_neuron_set_2_ref_to_node_set(self.neuron_set, default_node_set)
 
         modifications = []
         for section_list, value in self.modification.section_list_modifications.items():
@@ -165,7 +165,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Full Neuron Variable Modification"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NonVirtualNeuronSetUnion | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -196,7 +196,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         """
         # Handle RANGE variables (including section properties)
         if self.modification.variable_type == "RANGE":
-            node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
+            node_set = resolve_neuron_set_2_ref_to_node_set(self.neuron_set, default_node_set)
             return [
                 {
                     "name": f"modify_{self.modification.variable_name}_all",
@@ -216,7 +216,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
                 }
             }
 
-        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
+        node_set = resolve_neuron_set_2_ref_to_node_set(self.neuron_set, default_node_set)
         return [
             {
                 "name": f"modify_{self.modification.variable_name}_all",

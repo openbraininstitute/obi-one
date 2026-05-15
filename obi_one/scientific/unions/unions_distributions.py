@@ -34,3 +34,7 @@ class AllDistributionsReference(BlockReference):
     """A reference to a Distribution block."""
 
     allowed_block_types: ClassVar[Any] = AllDistributionsUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_ALL_DISTRIBUTIONS)
+    }

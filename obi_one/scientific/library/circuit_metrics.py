@@ -181,6 +181,9 @@ def properties_from_config(config: CircuitConfig) -> dict:
         "names_of_virtual_node_populations": get_names_of_typed_node_populations(
             config, TYPES_OF_VIRTUAL_NODES
         ),
+        # "names_of_point_node_populations": get_names_of_typed_node_populations(
+        #     config_dict, "point"
+        # ),
         "names_of_chemical_edge_populations": get_names_of_typed_edge_populations(
             config, TYPES_OF_CHEMICAL_SYNS
         ),
