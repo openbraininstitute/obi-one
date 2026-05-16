@@ -10,6 +10,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphologyProtocol
+from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
 from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
@@ -18,6 +19,7 @@ from app.endpoints.morphology_metrics_calculation import (
     _get_analysis_dict,
     _get_h5_analysis_path,
     _get_template,
+    _get_template as cached_func,
     _prepare_entity_payload,
     _register_assets_and_measurements,
     _resolve_swc_bytes_for_mesh,
@@ -248,6 +250,21 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
             )
         ),
     )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_asset_from_content",
+        MagicMock(
+            side_effect=HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={"code": "ENTITYSDK_API_FAILURE", "detail": "Upload fail"},
+            )
+        ),
+    )
+
+    response = client.post(
+        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
+    )
+    assert response.status_code == 500
+    assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
 
     response = client.post(
         ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
@@ -385,10 +402,17 @@ def test_validate_file_extension_valid():
     assert _validate_file_extension("neuron.asc") == ".asc"
 
 
-def test_get_template_caches():
+def test_get_template_caches(monkeypatch):
+    sentinel = {"data": []}
     _get_template.cache_clear()
-    result1 = _get_template()
-    result2 = _get_template()
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation._get_template",
+        MagicMock(return_value=sentinel),
+    )
+
+    result1 = cached_func()
+    result2 = cached_func()
     assert result1 is result2
 
 
@@ -490,7 +514,7 @@ def test_register_morphology_logic_variants(monkeypatch):
         "app.endpoints.morphology_metrics_calculation.CellMorphology",
         MagicMock(return_value=MagicMock()),
     )
-    mock_protocol = MagicMock(spec=CellMorphologyProtocol)
+    mock_protocol = MagicMock(spec=PlaceholderCellMorphologyProtocol)
     client = MagicMock()
 
     def _search_side_effect(*_args, **_kwargs):
