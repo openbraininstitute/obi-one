@@ -66,16 +66,17 @@ def run_quality_checks(file_path: Path) -> dict[str, Any]:
 
     Returns a dict with:
       - "ran_to_completion": bool
-      - "failed_checks": list[str]  – names of checks that returned False
-      - "passed_checks": list[str]  – names of checks that returned True
+      - "failed_checks": list[str]  - names of checks that returned False
+      - "passed_checks": list[str]  - names of checks that returned True
     """
     try:
         neuron = neurom.load_morphology(file_path)
-        _, check_results = _quality_check_runner._check_loop(neuron, "morphology_checks")
+        check_results = _quality_check_runner.run(neuron)
+        morphology_results = check_results.get("morphology_checks", {})
         return {
             "ran_to_completion": True,
-            "failed_checks": [name for name, ok in check_results.items() if not ok],
-            "passed_checks": [name for name, ok in check_results.items() if ok],
+            "failed_checks": [name for name, ok in morphology_results.items() if not ok],
+            "passed_checks": [name for name, ok in morphology_results.items() if ok],
         }
     except Exception as exc:  # noqa: BLE001
         L.warning(f"run_quality_checks: could not complete checks for {file_path}: {exc}")
@@ -84,15 +85,6 @@ def run_quality_checks(file_path: Path) -> dict[str, Any]:
             "failed_checks": [],
             "passed_checks": [],
         }
-
-
-class MorphologyFiles(BaseModel):
-    swc: Path | None = None
-    hdf5: Path | None = None
-    asc: Path | None = None  # ADD THIS
-
-    def paths(self) -> list[Path]:
-        return [p for p in (self.swc, self.hdf5, self.asc) if p is not None]  # add self.asc
 
 
 def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
