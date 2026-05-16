@@ -23,13 +23,6 @@ from entitysdk.models import (
     Subject,
 )
 from entitysdk.models.asset import Asset
-from entitysdk.models.cell_morphology_protocol import (
-    CellMorphologyProtocolUnion,
-    ComputationallySynthesizedCellMorphologyProtocol,
-    DigitalReconstructionCellMorphologyProtocol,
-    ModifiedReconstructionCellMorphologyProtocol,
-    PlaceholderCellMorphologyProtocol,
-)
 from entitysdk.models.core import Identifiable
 from entitysdk.models.measurement_annotation import MeasurementKind
 from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
@@ -49,7 +42,6 @@ from app.logger import L
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
     MorphologyFiles,
-    run_quality_checks,
     validate_and_convert_morphology,
 )
 
