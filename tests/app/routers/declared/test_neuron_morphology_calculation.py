@@ -266,7 +266,6 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
     assert response.status_code == 500
     assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
 
-
     response = client.post(
         ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
     )
