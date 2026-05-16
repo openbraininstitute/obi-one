@@ -10,12 +10,12 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphologyProtocol
+from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
 from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import (
     MorphologyMetadata,
-    PlaceholderCellMorphologyProtocol,
     _get_analysis_dict,
     _get_h5_analysis_path,
     _get_template,
