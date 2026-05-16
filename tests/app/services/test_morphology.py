@@ -382,7 +382,8 @@ class TestValidateAndConvertMorphology:
             patch(
                 _LOAD_MORPHIO,
                 side_effect=HTTPException(status_code=422, detail="bad"),
-            ), pytest.raises(HTTPException)
+            ),
+            pytest.raises(HTTPException),
         ):
             validate_and_convert_morphology(
                 input_file,
