@@ -156,13 +156,8 @@ class TestLoadMorphioMorphology:
 
         with (
             pytest.raises(HTTPException) as exc_info,
-            (
-                patch(_COLLECTOR, return_value=mock_handler),
-                patch(
-                    _MORPHOLOGY,
-                    side_effect=morphio.MorphioError("bad morphology"),
-                ),
-            ),
+            patch(_COLLECTOR, return_value=mock_handler),
+            patch(_MORPHOLOGY, side_effect=morphio.MorphioError("bad morphology")),
         ):
             load_morphio_morphology(tmp_path / "bad.swc", raise_warnings=False)
 
@@ -202,14 +197,9 @@ class TestLoadMorphioMorphology:
 
         with (
             pytest.raises(HTTPException) as exc_info,
-            (
-                patch(_COLLECTOR, return_value=mock_handler),
-                patch(_MORPHOLOGY, return_value=mock_morphology),
-                patch(
-                    _CHECK_WARNINGS,
-                    side_effect=morphio.MorphioError("a warning"),
-                ),
-            ),
+            patch(_COLLECTOR, return_value=mock_handler),
+            patch(_MORPHOLOGY, return_value=mock_morphology),
+            patch(_CHECK_WARNINGS, side_effect=morphio.MorphioError("a warning")),
         ):
             load_morphio_morphology(tmp_path / "neuron.swc", raise_warnings=True)
 
@@ -248,7 +238,7 @@ class TestValidateSomaDiameter:
 
         with (
             pytest.raises(HTTPException) as exc_info,
-            (patch(_LOAD_MORPHOLOGY, return_value=mock_morphology),),
+            patch(_LOAD_MORPHOLOGY, return_value=mock_morphology),
         ):
             validate_soma_diameter(tmp_path / "neuron.swc")
 
@@ -258,7 +248,7 @@ class TestValidateSomaDiameter:
     def test_neurom_error_raises_http_exception(self, tmp_path):
         with (
             pytest.raises(HTTPException) as exc_info,
-            (patch(_LOAD_MORPHOLOGY, side_effect=NeuroMError("neurom failed")),),
+            patch(_LOAD_MORPHOLOGY, side_effect=NeuroMError("neurom failed")),
         ):
             validate_soma_diameter(tmp_path / "neuron.swc")
 
@@ -275,7 +265,10 @@ class TestValidateSomaDiameter:
         mock_morphology = MagicMock()
         mock_morphology.soma.radius = 10.0
 
-        with pytest.raises(HTTPException), (patch(_LOAD_MORPHOLOGY, return_value=mock_morphology),):
+        with (
+            pytest.raises(HTTPException),
+            patch(_LOAD_MORPHOLOGY, return_value=mock_morphology),
+        ):
             validate_soma_diameter(tmp_path / "neuron.swc", threshold=5.0)
 
 
@@ -331,7 +324,7 @@ class TestConvertMorphology:
 
         with (
             pytest.raises(HTTPException) as exc_info,
-            (patch(_MORPH_TOOL, side_effect=Exception("conversion failed")),),
+            patch(_MORPH_TOOL, side_effect=Exception("conversion failed")),
         ):
             convert_morphology(
                 input_file,
@@ -389,8 +382,7 @@ class TestValidateAndConvertMorphology:
             patch(
                 _LOAD_MORPHIO,
                 side_effect=HTTPException(status_code=422, detail="bad"),
-            ),
-            pytest.raises(HTTPException),
+            ), pytest.raises(HTTPException)
         ):
             validate_and_convert_morphology(
                 input_file,
