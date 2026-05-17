@@ -2,6 +2,7 @@ import morphio
 import pandas  # noqa: ICN001
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
@@ -44,6 +45,9 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
         title="Number of groups",
         description="Number of groups of locations to \
             generate",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:

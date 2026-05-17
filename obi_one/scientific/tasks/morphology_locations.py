@@ -17,6 +17,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.library.morphology_loader import load_morphology_nrn_order
 from obi_one.scientific.library.morphology_locations import (
     _PRE_IDX,
     _SEC_ID,
@@ -89,7 +90,7 @@ class MorphologyLocationsTask(Task):
     ) -> None:
         try:
             if isinstance(self.config.initialize.morphology, Path):
-                m = morphio.Morphology(self.config.initialize.morphology)
+                m = load_morphology_nrn_order(self.config.initialize.morphology)
             else:
                 m = self.config.initialize.morphology.morphio_morphology  # ty:ignore[unresolved-attribute]
             dataframe = self.config.morph_locations.points_on(m)

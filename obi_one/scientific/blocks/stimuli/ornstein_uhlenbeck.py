@@ -9,12 +9,9 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    resolve_neuron_set_ref_to_node_set,
-)
 
 
-class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
+class OrnsteinUhlenbeckCurrentStimulus(ContinuousStimulus):
     """A current injection based on the Ornstein-Uhlenbeck process."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Absolute)"
@@ -56,7 +53,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,
@@ -67,7 +64,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
+class OrnsteinUhlenbeckConductanceStimulus(ContinuousStimulus):
     """A conductance injection based on the Ornstein-Uhlenbeck process."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Absolute)"
@@ -119,7 +116,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,
@@ -131,7 +128,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
+class RelativeOrnsteinUhlenbeckCurrentStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck current injection as a percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Relative)"
@@ -173,7 +170,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,
@@ -184,7 +181,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
+class RelativeOrnsteinUhlenbeckConductanceStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck conductance injection as a percentage of each cell's input conductance."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
@@ -247,7 +244,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,
@@ -257,3 +254,21 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
             "represents_physical_electrode": self._represents_physical_electrode,
         }
         return stim_dict
+
+
+class OrnsteinUhlenbeckCurrentSomaticStimulus(OrnsteinUhlenbeckCurrentStimulus):
+    """Deprecated alias for OrnsteinUhlenbeckCurrentStimulus."""
+
+
+class OrnsteinUhlenbeckConductanceSomaticStimulus(OrnsteinUhlenbeckConductanceStimulus):
+    """Deprecated alias for OrnsteinUhlenbeckConductanceStimulus."""
+
+
+class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(RelativeOrnsteinUhlenbeckCurrentStimulus):
+    """Deprecated alias for RelativeOrnsteinUhlenbeckCurrentStimulus."""
+
+
+class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(
+    RelativeOrnsteinUhlenbeckConductanceStimulus
+):
+    """Deprecated alias for RelativeOrnsteinUhlenbeckConductanceStimulus."""

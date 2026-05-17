@@ -2,7 +2,7 @@ import json
 
 import obi_one as obi
 
-from tests.utils import DATA_DIR
+from tests.utils import CIRCUIT_DIR, DATA_DIR
 
 
 def test_deserialization(tmp_path):
@@ -59,3 +59,53 @@ def test_deserialization(tmp_path):
     grid_scan.output_root = tmp_path / "simulation_output_8"
     grid_scan.execute()
     obi.run_tasks_for_generated_scan(grid_scan)
+
+
+def test_deserialization_legacy_somatic_stimulus_alias():
+    data = {
+        "type": "CircuitSimulationScanConfig",
+        "info": {
+            "type": "Info",
+            "campaign_name": "test",
+            "campaign_description": "test",
+        },
+        "initialize": {
+            "type": "CircuitSimulationScanConfig.Initialize",
+            "circuit": {
+                "type": "Circuit",
+                "name": "dummy",
+                "path": str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+                "matrix_path": None,
+            },
+            "node_set": None,
+            "simulation_length": 100.0,
+            "extracellular_calcium_concentration": 1.1,
+            "v_init": -80.0,
+            "random_seed": 1,
+        },
+        "stimuli": {
+            "LegacyStimulus": {
+                "type": "ConstantCurrentClampSomaticStimulus",
+                "duration": 10.0,
+                "amplitude": 0.2,
+                "timestamps": None,
+                "timestamp_offset": 5.0,
+                "neuron_set": None,
+                "compartment_set": None,
+                "locations": None,
+            }
+        },
+        "recordings": {},
+        "timestamps": {},
+        "neuron_sets": {},
+        "synaptic_manipulations": {},
+        "morphology_locations": {},
+        "distributions": {},
+    }
+
+    config = obi.deserialize_obi_object_from_json_data(data)
+
+    stimulus = config.stimuli["LegacyStimulus"]
+
+    assert isinstance(stimulus, obi.ConstantCurrentClampStimulus)
+    assert stimulus.type == "ConstantCurrentClampStimulus"

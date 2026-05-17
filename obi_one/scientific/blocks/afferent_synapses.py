@@ -7,6 +7,7 @@ import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.find_afferent_synapses import (
     add_section_types,
     all_syns_on,
@@ -288,12 +289,20 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
     """
 
     n_clusters: int | list[int] = Field(
-        default=1, title="Number of clusters", description="Number of synapse clusters to find"
+        default=1,
+        title="Number of clusters",
+        description="Number of synapse clusters to find",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
     cluster_max_distance: float | list[float] = Field(
         title="Maximum distance of synapses from cluster center",
         description="Synapses within a cluster will be closer than this value\
             from the cluster center (in um)",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
     def _check_parameter_values(self) -> None:
@@ -325,7 +334,12 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
     """
 
     n_clusters: int | list[int] = Field(
-        default=1, title="Number of clusters", description="Number of synapse clusters to find"
+        default=1,
+        title="Number of clusters",
+        description="Number of synapse clusters to find",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
     n_per_cluster: int | list[int] = Field(
         title="Number of synapses per cluster",

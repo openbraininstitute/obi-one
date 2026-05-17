@@ -3,10 +3,14 @@ import re
 
 import h5py
 import numpy as np
+import pandas as pd
 import pytest
 from bluepysnap import Simulation
 
 import obi_one as obi
+from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
+    materialize_locations_to_compartment_sets,
+)
 
 from tests.utils import CIRCUIT_DIR
 
@@ -315,6 +319,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         },
         "initialize": init_dict,
         "info": info_dict,
+        "morphology_locations": {},
     }
     assert cfg.pop("form") == form_dict
     assert cfg.pop("coordinate_directory_option") == "ZERO_INDEX"
@@ -471,6 +476,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         }
         assert cfg.pop("info") == info_dict
         assert cfg.pop("distributions") == {}
+        assert cfg.pop("morphology_locations") == {}
         assert len(cfg) == 0  # No additional entries
 
 
@@ -621,3 +627,183 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     assert hasattr(dist_stim, "distribution")
     assert dist_stim.distribution.block_dict_name == "distributions"
     assert dist_stim.distribution.block_name == "constant_dist"
+
+
+def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # noqa: PLR0914
+    sim_duration = 3000.0
+
+    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
+    info = obi.Info(
+        campaign_name="Test morphology locations",
+        campaign_description="Test morphology location materialization",
+    )
+    sim_conf.set(info, name="info")
+
+    sim_neuron_set = obi.IDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(1))
+    )
+    sim_conf.add(sim_neuron_set, name="ID1")
+
+    timestamps = obi.SingleTimestamp(start_time=0.0)
+    sim_conf.add(timestamps, name="Start")
+
+    locations = obi.RandomMorphologyLocations(
+        random_seed=0,
+        number_of_locations=2,
+        section_types=(3, 4),
+    )
+    sim_conf.add(locations, name="ClampLocations")
+
+    clamp = obi.ConstantCurrentClampStimulus(
+        timestamps=timestamps.ref,
+        duration=500.0,
+        amplitude=0.5,
+        neuron_set=sim_neuron_set.ref,
+        locations=locations.ref,
+    )
+    sim_conf.add(clamp, name="LocationCurrentClamp")
+
+    recording = obi.SomaVoltageRecording(neuron_set=sim_neuron_set.ref)
+    sim_conf.add(recording, name="SomaVoltage")
+
+    circuit = obi.Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+    sim_conf.set(
+        obi.CircuitSimulationScanConfig.Initialize(
+            circuit=circuit,
+            node_set=sim_neuron_set.ref,
+            simulation_length=sim_duration,
+        ),
+        name="initialize",
+    )
+
+    validated_sim_conf = sim_conf.validated_config()
+
+    grid_scan = obi.GridScanGenerationTask(
+        form=validated_sim_conf,
+        output_root=tmp_path / "morphology_locations_grid_scan",
+        coordinate_directory_option="ZERO_INDEX",
+    )
+
+    grid_scan.execute()
+    obi.run_tasks_for_generated_scan(grid_scan)
+
+    coordinate_root = tmp_path / grid_scan.output_root / "0"
+
+    simulation_config_path = coordinate_root / "simulation_config.json"
+    compartment_sets_path = coordinate_root / "compartment_sets.json"
+
+    assert compartment_sets_path.exists()
+
+    with simulation_config_path.open("r") as f:
+        simulation_config = json.load(f)
+
+    assert simulation_config["compartment_sets_file"] == "compartment_sets.json"
+
+    input_config = simulation_config["inputs"]["LocationCurrentClamp_0"]
+    assert input_config["compartment_set"] == "LocationCurrentClamp__locations"
+    assert "locations" not in input_config
+    assert "node_set" not in input_config
+
+    with compartment_sets_path.open("r") as f:
+        compartment_sets = json.load(f)
+
+    assert set(compartment_sets) == {"LocationCurrentClamp__locations"}
+
+    generated_set = compartment_sets["LocationCurrentClamp__locations"]
+    assert generated_set["population"] == circuit.default_population_name
+    assert len(generated_set["compartment_set"]) == 2
+
+    for node_id, section_id, offset in generated_set["compartment_set"]:
+        assert node_id == 0
+        assert isinstance(section_id, int)
+        assert 0.0 <= offset <= 1.0
+
+
+def test_morphology_locations_materialize_to_matching_compartment_set():
+    form = obi.CircuitSimulationScanConfig.empty_config()
+
+    neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=[0]))
+    form.add(neuron_set, name="ID1")
+
+    locations = obi.RandomMorphologyLocations(
+        random_seed=0,
+        number_of_locations=5,
+        section_types=(3, 4),
+    )
+    form.add(locations, name="ClampLocations")
+
+    stimulus = obi.ConstantCurrentClampStimulus(
+        neuron_set=neuron_set.ref,
+        locations=locations.ref,
+    )
+    form.add(stimulus, name="LocationCurrentClamp")
+
+    circuit = obi.Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+
+    morph = circuit.load_morphology(
+        node_id=0,
+        population=circuit.default_population_name,
+    )
+
+    form.set(
+        obi.Info(
+            campaign_name="Test morphology locations",
+            campaign_description="Test morphology location materialization",
+        ),
+        name="info",
+    )
+
+    form.set(
+        obi.CircuitSimulationScanConfig.Initialize(
+            circuit=circuit,
+            node_set=neuron_set.ref,
+            simulation_length=100.0,
+        ),
+        name="initialize",
+    )
+
+    form = form.validated_config()
+    locations = form.morphology_locations["ClampLocations"]
+
+    expected_df = locations.points_on(morph)
+
+    materialized = materialize_locations_to_compartment_sets(
+        form=form,
+        circuit=circuit,
+        node_population=circuit.default_population_name,
+        population=circuit.default_population_name,
+        morphology_loader=lambda *_args, **_kwargs: morph,
+    )
+
+    comp_set = materialized["LocationCurrentClamp__locations"]
+
+    actual_rows = comp_set.to_sonata_dict()["LocationCurrentClamp__locations"]["compartment_set"]
+
+    actual_df = pd.DataFrame(
+        actual_rows,
+        columns=["node_id", "section_id", "offset"],
+    )
+
+    expected = pd.DataFrame(
+        {
+            "node_id": 0,
+            "section_id": expected_df["section_id"].astype(int),
+            "offset": expected_df["normalized_section_offset"].astype(float),
+        }
+    ).reset_index(drop=True)
+
+    actual = actual_df.astype(
+        {
+            "node_id": int,
+            "section_id": int,
+            "offset": float,
+        }
+    ).reset_index(drop=True)
+
+    pd.testing.assert_frame_equal(actual, expected)

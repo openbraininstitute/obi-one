@@ -103,7 +103,7 @@ def task_launch_endpoint(
             task_definition=task_definition,
             callbacks=accounting_callbacks,
         )
-    except Exception as exc:
+    except (FileNotFoundError, KeyError, ValueError) as exc:
         # TODO: Remove once
         # https://github.com/openbraininstitute/accounting-sdk/issues/29 is addressed
         if settings.ACCOUNTING_DISABLED:

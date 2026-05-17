@@ -6,23 +6,43 @@ import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
 
     random_seed: int | list[int] = Field(
-        default=0, title="Random seed", description="Seed for the random generation of locations"
+        default=0,
+        title="Random Seed",
+        description="Seed for the random generation of locations.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
+
     number_of_locations: int | list[int] = Field(
         default=1,
-        title="Number of locations",
-        description="Number of locations to generate on morphology",
+        title="Number of Locations",
+        description="Number of locations to generate on morphology.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
+
     section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
-        default=None,
-        title="Section types",
-        description="Types of sections to generate locations on. 2: axon, 3: basal, 4: apical",
+        default=(2, 3, 4),
+        title="Section Types",
+        description=(
+            "Valid neurite section types to generate locations on: "
+            "2: axon, 3: basal dendrite, 4: apical dendrite. "
+            "Use a tuple for one selection, e.g. (3, 4), "
+            "or a list of tuples for parameter scans. "
+            "Leave stimulus.locations empty for soma/default targeting."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
+        },
     )
 
     @abc.abstractmethod

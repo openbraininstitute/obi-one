@@ -3,10 +3,10 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -31,6 +31,8 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
@@ -50,12 +52,34 @@ DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exp, scale 50 ms, 20 Hz"
 
+_STIMULUS_TYPE_ALIASES = {
+    "ConstantCurrentClampSomaticStimulus": "ConstantCurrentClampStimulus",
+    "RelativeConstantCurrentClampSomaticStimulus": "RelativeConstantCurrentClampStimulus",
+    "LinearCurrentClampSomaticStimulus": "LinearCurrentClampStimulus",
+    "RelativeLinearCurrentClampSomaticStimulus": "RelativeLinearCurrentClampStimulus",
+    "NormallyDistributedCurrentClampSomaticStimulus": "NormallyDistributedCurrentClampStimulus",
+    "RelativeNormallyDistributedCurrentClampSomaticStimulus": (
+        "RelativeNormallyDistributedCurrentClampStimulus"
+    ),
+    "MultiPulseCurrentClampSomaticStimulus": "MultiPulseCurrentClampStimulus",
+    "SinusoidalCurrentClampSomaticStimulus": "SinusoidalCurrentClampStimulus",
+    "SubthresholdCurrentClampSomaticStimulus": "SubthresholdCurrentClampStimulus",
+    "HyperpolarizingCurrentClampSomaticStimulus": "HyperpolarizingCurrentClampStimulus",
+    "OrnsteinUhlenbeckCurrentSomaticStimulus": "OrnsteinUhlenbeckCurrentStimulus",
+    "OrnsteinUhlenbeckConductanceSomaticStimulus": "OrnsteinUhlenbeckConductanceStimulus",
+    "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus": "RelativeOrnsteinUhlenbeckCurrentStimulus",
+    "RelativeOrnsteinUhlenbeckConductanceSomaticStimulus": (
+        "RelativeOrnsteinUhlenbeckConductanceStimulus"
+    ),
+}
+
 
 class BlockGroup(StrEnum):
     """Authentication and authorization errors."""
 
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    TARGETING_BLOCK_GROUP = "Targeting"
     DISTRIBUTIONS_BLOCK_GROUP = "Distributions"
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
@@ -78,12 +102,14 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            MorphologyLocationsReference.__name__: "Default: None",
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
@@ -111,6 +137,19 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology Locations",
+        description="Rules to generate locations on morphologies (used by stimuli.locations).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: MorphologyLocationsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Morphology Locations",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -256,6 +295,33 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
                 generated=simulations,
             )
         )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _replace_legacy_stimulus_type_aliases(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        stimuli = data.get("stimuli")
+        if not isinstance(stimuli, dict):
+            return data
+
+        data = dict(data)
+        data["stimuli"] = dict(stimuli)
+
+        for name, stimulus_data in data["stimuli"].items():
+            if not isinstance(stimulus_data, dict):
+                continue
+
+            stimulus_type = stimulus_data.get("type")
+            aliased_type = _STIMULUS_TYPE_ALIASES.get(stimulus_type)
+
+            if aliased_type is not None:
+                updated_stimulus_data = dict(stimulus_data)
+                updated_stimulus_data["type"] = aliased_type
+                data["stimuli"][name] = updated_stimulus_data
+
+        return data
 
 
 class SimulationSingleConfigMixin(SingleConfigMixin):
