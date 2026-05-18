@@ -991,8 +991,10 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         get_circuit_properties(c)
     )
     L.info(
-        f"Computed from circuit: scale={scale}, neurons={number_neurons}, "
-        f"synapses={number_synapses}, connections={number_connections}"
+        f"Circuit size & properties: scale={scale}, neurons={number_neurons}, "
+        f"synapses={number_synapses}, connections={number_connections}, "
+        f"has_morphologies={has_morphologies}, has_point_neurons={has_point_neurons}, "
+        f"has_electrical_cell_models={has_electrical_cell_models}, has_spines={has_spines}"
     )
 
     # Build circuit model
