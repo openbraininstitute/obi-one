@@ -11,6 +11,7 @@ from app.schemas.base import Schema
 from app.types import (
     BuiltinScript,
     CodeType,
+    MachineExecutorImageType,
     ResourcesConfigType,
     TaskType,
 )
@@ -50,6 +51,7 @@ class MachineResources(Schema):
     memory: int = 2
     compute_cell: str
     timelimit: str | None = None
+    image_type: MachineExecutorImageType = MachineExecutorImageType.python_3_12_compiler
 
 
 class ClusterResources(Schema):
