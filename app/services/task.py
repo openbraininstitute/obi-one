@@ -74,6 +74,16 @@ def submit_task_job(
     all_callbacks = [failure_callback, *callbacks]
 
     match task_definition.task_type:
+        case TaskType.circuit_simulation_brian2_machine:
+            executor_type = ExecutorType.single_node_job
+            job_data = _brian2_job_data(
+                simulation_id=config_id,
+                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
+                project_id=project_context.project_id,
+                virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
+                callbacks=all_callbacks,
+                task_definition=task_definition,
+            )
         case TaskType.circuit_simulation_inait_machine:
             executor_type = ExecutorType.single_node_job
             job_data = _inait_job_data(
@@ -153,6 +163,31 @@ def _circuit_simulation_job_data(
             str(simulation_id),
             "--simulation-execution-id",
             str(simulation_execution_id),
+        ],
+        "project_id": str(project_id),
+        "callbacks": [c.model_dump(mode="json") for c in callbacks],
+    }
+
+
+def _brian2_job_data(
+    *,
+    simulation_id: UUID,
+    simulation_execution_id: UUID,
+    project_id: UUID,
+    virtual_lab_id: UUID,
+    callbacks: list[CallBack],
+    task_definition: TaskDefinition,
+) -> dict:
+    resources = task_definition.resources.model_dump(mode="json")
+    return {
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": resources,
+        "inputs": [
+            "sonata-simulation-task",
+            f" --project-id {project_id}",
+            f" --virtual-lab-id {virtual_lab_id}",
+            f" --simulation-id {simulation_id}",
+            f" --simulation-execution-id {simulation_execution_id}",
         ],
         "project_id": str(project_id),
         "callbacks": [c.model_dump(mode="json") for c in callbacks],
@@ -334,14 +369,13 @@ def select_simulation_task(
             details=str(e),
         ) from e
 
-    target_simulator = None
-
-    if simulation_config.target_simulator is not None:
+    if simulation_config.target_simulator != libsonata.SimulatorType.UNSPECIFIED:
         target_simulator = TargetSimulator(simulation_config.target_simulator.name)
         msg = f"Using target simulator '{target_simulator}' from simulation config."
         L.info(msg)
     else:
-        L.info("No `target_simulator` found in simulation config.")
+        target_simulator = None
+        L.info("`target_simulator` in unspecified in simulation config.")
 
     circuit = db_client.get_entity(
         entity_id=simulation.entity_id,
@@ -357,6 +391,8 @@ def select_simulation_task(
     L.info(msg)
 
     match target_simulator:
+        case TargetSimulator.Brian2:
+            return TaskType.circuit_simulation_brian2_machine
         case TargetSimulator.LearningEngine:
             return TaskType.circuit_simulation_inait_machine
         case TargetSimulator.NEURON | TargetSimulator.CORENEURON:

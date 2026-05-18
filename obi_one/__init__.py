@@ -57,6 +57,9 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "CreateExtracellularRecordingArrayScanConfig",
+    "CreateExtracellularRecordingArraySingleConfig",
+    "CreateExtracellularRecordingArrayTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
@@ -175,6 +178,7 @@ __all__ = [
     "SkeletonizationSingleConfig",
     "SomaVoltageRecording",
     "SpatiallyUniformElectricFieldStimulus",
+    "SpikeTimeDistributionSpikeStimulus",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -302,6 +306,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
+    SpikeTimeDistributionSpikeStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
@@ -369,6 +376,11 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
+)
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+    CreateExtracellularRecordingArraySingleConfig,
+    CreateExtracellularRecordingArrayTask,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import (
     EMSynapseMappingScanConfig,

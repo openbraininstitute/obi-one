@@ -42,30 +42,30 @@ dependencies = [
     "bluepysnap>=3.0.2",
     "brainbuilder>=0.20.2",
     "caveclient>=7.11.0",
-    "connectome-utilities>=0.4.11",
+    "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
     "morph_spines",
     "morph-tool",
     "neurom",
-    "libsonata>=0.1.33",
+    "libsonata>=0.1.36",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
     "obp-accounting-sdk>=0.6.0",
-    "numpy<2.4", # Needs https://github.com/openbraininstitute/ConnectomeUtilities/pull/5
+    "numpy",
 ]
 
 [project.optional-dependencies]
-# New group for the private dependency
-meshing = [
-    "neuromorphomesh",
-]
-
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
     "networkx>=3.4.2",
+]
+
+# MESHING - optional, private dependency needed to create meshes from morphologies
+meshing = [
+    "neuromorphomesh",
 ]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
@@ -93,7 +93,14 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service,meshing]",
+    "obi-one[connectivity,meshing,notebooks,service]",
+]
+
+# BLUERECORDING - optional, needed for extracellular recording array tasks.
+# Requires MPI-enabled h5py and NEURON built from source.
+# Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
+bluerecording = [
+    "bluerecording",
 ]
 
 [dependency-groups]

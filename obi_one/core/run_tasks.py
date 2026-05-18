@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import entitysdk
 
@@ -15,6 +15,9 @@ from obi_one.scientific.unions.config_task_map import (
 )
 from obi_one.types import TaskType
 from obi_one.utils import db_sdk
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 def run_task_for_single_config(
@@ -107,11 +110,14 @@ def run_task_type(
             config=entity,
             asset_label=config_asset_label,
         ).id
+        if config_asset_id is None:
+            msg = "Config asset must have an id"
+            raise ValueError(msg)
 
         json_str = db_client.download_content(
             entity_id=entity_id,  # ty:ignore[invalid-argument-type]
             entity_type=entity_type,
-            asset_id=config_asset_id,
+            asset_id=cast("UUID", config_asset_id),
         ).decode(encoding="utf-8")
 
         json_dict = json.loads(json_str)

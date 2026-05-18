@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from app.endpoints.morphology_metrics_calculation import _run_morphology_analysis
+from app.endpoints.morphology_metrics_calculation import run_morphology_analysis
 
 from tests.utils import DATA_DIR
 
@@ -29,7 +29,7 @@ def _flatten_measurements(measurements):
 
 
 def test_real_morphology_metrics_match_golden_values():
-    actual_measurements = _run_morphology_analysis(str(DATA_DIR / "ch150801A1.swc"))
+    actual_measurements = run_morphology_analysis(str(DATA_DIR / "ch150801A1.swc"))
 
     expected_measurements = json.loads(
         (DATA_DIR / "measurement_kinds_ch150801A1_swc.json").read_text()

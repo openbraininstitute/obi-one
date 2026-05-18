@@ -2,7 +2,7 @@ import io
 import logging
 import os
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import entitysdk
 import morphio
@@ -17,6 +17,9 @@ from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 L = logging.getLogger(__name__)
 
@@ -39,10 +42,13 @@ class CellMorphologyFromID(EntityFromID):
                         L.info("Downloading SWC file for morphology...")
 
                         # Download the content into memory
+                        if asset.id is None:
+                            msg = "Asset must have an id"
+                            raise ValueError(msg)
                         content = db_client.download_content(
                             entity_id=self.entity(db_client=db_client).id,  # ty:ignore[invalid-argument-type]
                             entity_type=self.entitysdk_type,
-                            asset_id=asset.id,
+                            asset_id=cast("UUID", asset.id),
                         ).decode(encoding="utf-8")
 
                         self._swc_file_content = content
@@ -122,10 +128,13 @@ class CellMorphologyFromID(EntityFromID):
             if (asset.label == AssetLabel.morphology_with_spines) and (
                 asset.content_type == ContentType.application_x_hdf5
             ):
+                if asset.id is None:
+                    msg = "Asset must have an id"
+                    raise ValueError(msg)
                 db_client.download_file(
                     entity_id=entity.id,  # ty:ignore[invalid-argument-type]
                     entity_type=self.entitysdk_class,
-                    asset_id=asset.id,
+                    asset_id=cast("UUID", asset.id),
                     output_path=str(path_to),  # ty:ignore[invalid-argument-type]
                 )
                 return

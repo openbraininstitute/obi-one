@@ -15,7 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -73,6 +73,25 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             path="scripts/simulate-circuits/run.py",
             dependencies="scripts/simulate-circuits/requirements.txt",
             staged_directories=["wheels", "scripts/simulate-circuits/"],
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_inait,
+        ),
+    ),
+    TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_brian2_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref="commit:b3e8670db32d26e9fa4c71d79d6f6de46b61cb16",
+            path="examples/J_drosophila/simulate-brian2.py",
+            dependencies="examples/J_drosophila/requirements.txt",
+            staged_directories=[],
         ),
         resources=MachineResources(
             cores=1,
@@ -161,7 +180,7 @@ CLUSTER_INSTANCES_INFO = {
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
-            memory_per_instance_gb=384,
+            memory_per_instance_gb=768,
         ),
     ],
     "cell_b": [
