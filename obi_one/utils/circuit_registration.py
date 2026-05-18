@@ -2,6 +2,7 @@
 
 import json
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
@@ -849,10 +850,21 @@ def generate_additional_circuit_assets(
     output_root = circuit_path.parents[1]
     circuit_name = circuit_path.parent.name
 
+    # Define output directories
+    compressed_dir = output_root / (circuit_name + "__COMPRESSED__")
+    matrix_dir = output_root / (circuit_name + "__CONN_MATRIX__")
+    plot_dir = output_root / (circuit_name + "__BASIC_PLOTS__")
+    viz_dir = output_root / (circuit_name + "__CIRCUIT_VIZ__")
+
+    # Clean up existing output directories for idempotent reruns
+    for d in (compressed_dir, matrix_dir, plot_dir, viz_dir):
+        if d.exists():
+            shutil.rmtree(d)
+
     try:
         generate_compressed_circuit_asset(
             circuit_path=circuit_path,
-            output_dir=output_root / (circuit_name + "__COMPRESSED__"),
+            output_dir=compressed_dir,
             client=client,
             circuit_entity=circuit_entity,
         )
@@ -863,7 +875,7 @@ def generate_additional_circuit_assets(
         try:
             _, matrix_config, edge_population = generate_connectivity_matrix_asset(
                 circuit_path=circuit_path,
-                output_dir=output_root / (circuit_name + "__CONN_MATRIX__"),
+                output_dir=matrix_dir,
                 edge_population=edge_population,
                 client=client,
                 circuit_entity=circuit_entity,
@@ -874,22 +886,15 @@ def generate_additional_circuit_assets(
 
         if matrix_config is not None:
             try:
-                plot_dir, _ = generate_connectivity_plot_assets(
+                generate_connectivity_plot_assets(
                     matrix_config=matrix_config,
                     edge_population=edge_population,
-                    output_dir=output_root / (circuit_name + "__BASIC_PLOTS__"),
+                    output_dir=plot_dir,
                     client=client,
                     circuit_entity=circuit_entity,
                 )
             except Exception as e:  # noqa: BLE001
                 L.warning(f"Connectivity plot assets generation/registration failed: {e}")
-                plot_dir = None
-        else:
-            plot_dir = None
-    else:
-        plot_dir = None
-
-    viz_dir = output_root / (circuit_name + "__CIRCUIT_VIZ__")
 
     try:
         generate_overview_image_asset(
