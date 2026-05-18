@@ -335,6 +335,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "memory": 8,
             "compute_cell": "local",
             "timelimit": "02:00",
+            "image_type": "python_3_12_inait",
         },
         "inputs": [
             "sonata-simulation-task",
@@ -395,6 +396,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "memory": 8,
             "compute_cell": "local",
             "timelimit": "02:00",
+            "image_type": "python_3_12_compiler",
         },
         "inputs": [
             "sonata-simulation-task",
@@ -501,6 +503,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "memory": 2,
             "timelimit": "00:10",
             "compute_cell": "local",
+            "image_type": "python_3_12_compiler",
         },
         "code": {
             "type": "python_repository",

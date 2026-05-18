@@ -15,7 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -79,6 +79,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_inait,
         ),
     ),
     TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
