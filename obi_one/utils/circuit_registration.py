@@ -2,7 +2,6 @@
 
 import json
 import logging
-import subprocess  # noqa: S404
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
@@ -14,8 +13,6 @@ from obi_one.scientific.library.circuit import Circuit as OBICircuit
 from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
 
 L = logging.getLogger(__name__)
-
-AWS_S3_ROOT = "s3://openbluebrain"
 
 
 def get_circuit(
@@ -340,58 +337,21 @@ def get_license(client: Client, circuit_metadata: dict) -> models.License | None
 # --- Asset validation and registration ---
 
 
-def _is_on_aws_s3(file_path: str) -> bool:
-    """Check if a file path points to an AWS S3 Open Data location."""
-    return file_path.lower().startswith(AWS_S3_ROOT)
-
-
-def _check_file_path(file_path: str) -> None:
-    """Validate that a file path exists (locally or on AWS S3).
-
-    Raises ValueError if the path is empty or does not exist.
-    """
-    if len(file_path) == 0:
-        msg = "File path missing!"
-        raise ValueError(msg)
-
-    if _is_on_aws_s3(file_path):
-        aws_out = subprocess.check_output(  # noqa: S603
-            ["aws", "s3", "ls", file_path, "--no-sign-request", "--human-readable"],  # noqa: S607
-            text=True,
-        )
-        if Path(file_path).name not in aws_out:
-            msg = f"File path '{file_path}' not found on AWS S3 Open Data!"
-            raise ValueError(msg)
-    elif not Path(file_path).exists():
-        msg = f"File path '{file_path}' does not exist in local file system!"
-        raise ValueError(msg)
-
-
-def _check_required_contents(file_path: str, contents: list[str], *, is_directory: bool) -> None:
+def _check_required_contents(file_path: Path, contents: list[str], *, is_directory: bool) -> None:
     """Validate that required files exist within a path.
 
     Args:
-        file_path: Path to check (local or AWS S3).
+        file_path: Path to check.
         contents: List of required file names.
         is_directory: Whether the path is a directory.
     """
     if len(contents) == 0:
         return
 
-    if _is_on_aws_s3(file_path):
-        sep = "/" if is_directory else ""
-        aws_out = subprocess.check_output(  # noqa: S603
-            ["aws", "s3", "ls", f"{file_path}{sep}", "--no-sign-request", "--human-readable"],  # noqa: S607
-            text=True,
-        )
-        for file in contents:
-            if file not in aws_out:
-                msg = f"Required content '{file}' not found on AWS path '{file_path}'!"
-                raise ValueError(msg)
-    elif is_directory:
+    if is_directory:
         files_in_dir = {
             str(path.relative_to(file_path)): path
-            for path in Path(file_path).rglob("*")
+            for path in file_path.rglob("*")
             if path.is_file()
         }
         for file in contents:
@@ -400,24 +360,18 @@ def _check_required_contents(file_path: str, contents: list[str], *, is_director
                 raise ValueError(msg)
     else:
         for file in contents:
-            if Path(file_path).name != file:
+            if file_path.name != file:
                 msg = f"Required content '{file}' does not match '{file_path}'!"
                 raise ValueError(msg)
 
 
-def _check_matrix_folder(file_path: str) -> None:
+def _check_matrix_folder(file_path: Path) -> None:
     """Validate connectivity matrix folder contents.
 
     Checks that matrix_config.json exists and all referenced matrix files are present.
     """
-    if _is_on_aws_s3(file_path):
-        L.warning("Matrix folder check skipped for AWS directory")
-        return
-
     matrix_files = {
-        str(path.relative_to(file_path)): path
-        for path in Path(file_path).rglob("*")
-        if path.is_file()
+        str(path.relative_to(file_path)): path for path in file_path.rglob("*") if path.is_file()
     }
     L.info(f"{len(matrix_files)} files in '{file_path}'")
 
@@ -425,7 +379,7 @@ def _check_matrix_folder(file_path: str) -> None:
         msg = "matrix_config.json missing!"
         raise ValueError(msg)
 
-    with Path(matrix_files["matrix_config.json"]).open(encoding="utf-8") as f:
+    with matrix_files["matrix_config.json"].open(encoding="utf-8") as f:
         mat_cfg = json.load(f)
 
     for pop in mat_cfg:
@@ -490,7 +444,7 @@ CIRCUIT_ASSET_MAPPING: dict[str, dict] = {
 
 def register_asset(
     client: Client,
-    file_path: str | None,
+    file_path: Path | None,
     asset_label: str,
     registered_circuit: models.Circuit | None,
     *,
@@ -498,12 +452,11 @@ def register_asset(
 ) -> models.Asset | None:
     """Register an asset for a circuit entity.
 
-    Supports both local file system and AWS S3 Open Data paths.
     Validates the asset label, file existence, and required contents before registration.
 
     Args:
         client: The entitycore SDK client.
-        file_path: Path to the asset (local or S3). None to skip.
+        file_path: Path to the asset. None to skip.
         asset_label: Label identifying the asset type (must be in CIRCUIT_ASSET_MAPPING).
         registered_circuit: The circuit entity to attach the asset to.
         dry_run: If True, perform validation only without registering.
@@ -519,10 +472,9 @@ def register_asset(
         msg = f"Asset label '{asset_label}' not supported!"
         raise ValueError(msg)
 
-    # Normalize trailing slash (Needed for aws s3 ls!!)
-    file_path = file_path.removesuffix("/")
-
-    _check_file_path(file_path)
+    if not file_path.exists():
+        msg = f"File path '{file_path}' does not exist!"
+        raise ValueError(msg)
 
     # Validate required contents
     asset_config = CIRCUIT_ASSET_MAPPING[asset_label]
@@ -547,28 +499,11 @@ def register_asset(
         msg = "registered_circuit is required when dry_run is False!"
         raise ValueError(msg)
 
-    # Register on AWS S3
-    if _is_on_aws_s3(file_path):
-        storage_path = Path(file_path).relative_to(AWS_S3_ROOT)
-        asset_name = asset_label if is_dir else storage_path.name
-        asset = client.register_asset(
-            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
-            name=asset_name,
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
-            entity_type=models.Circuit,
-            storage_path=str(storage_path),
-            storage_type="aws_s3_open",  # ty:ignore[invalid-argument-type]
-            is_directory=is_dir,
-            content_type=content_type,
-        )
-        L.info(f"'{asset_label}' asset registered (AWS S3) under ID {asset.id}")
-        return asset
-
     # Upload from local file system
     if is_dir:
         files_in_dir = {
             str(path.relative_to(file_path)): path
-            for path in Path(file_path).rglob("*")
+            for path in file_path.rglob("*")
             if path.is_file()
         }
         # Filter out .DS_Store files
@@ -588,7 +523,7 @@ def register_asset(
             asset_label=asset_label,  # ty:ignore[invalid-argument-type]
             entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
             entity_type=models.Circuit,
-            file_path=file_path,  # ty:ignore[invalid-argument-type]
+            file_path=file_path,
             file_content_type=content_type,
         )
     L.info(f"'{asset_label}' asset uploaded under ID {asset.id}")
@@ -1125,7 +1060,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     # Register SONATA circuit folder asset
     register_asset(
         client=client,
-        file_path=str(circuit_folder),
+        file_path=circuit_folder,
         asset_label="sonata_circuit",
         registered_circuit=registered_circuit,
         dry_run=dry_run,

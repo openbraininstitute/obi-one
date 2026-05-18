@@ -2,15 +2,14 @@
 
 import json as json_module
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from obi_one.utils.circuit_registration import (
-    _check_file_path,
     _check_matrix_folder,
     _check_required_contents,
-    _is_on_aws_s3,
     check_if_circuit_exists,
     find_agent,
     find_role,
@@ -65,58 +64,12 @@ def test_get_exp_date_invalid_string():
         get_exp_date({"experiment_date": "not a date"})
 
 
-# --- _is_on_aws_s3 ---
-
-
-def test_is_on_aws_s3_true():
-    """Test that S3 paths are detected."""
-    assert _is_on_aws_s3("s3://openbluebrain/some/path") is True
-
-
-def test_is_on_aws_s3_case_insensitive():
-    """Test that detection is case-insensitive."""
-    assert _is_on_aws_s3("S3://OpenBlueBrain/some/path") is True
-
-
-def test_is_on_aws_s3_false():
-    """Test that local paths are not detected as S3."""
-    assert _is_on_aws_s3("/local/path/to/file") is False
-    assert _is_on_aws_s3("relative/path") is False
-
-
-def test_is_on_aws_s3_other_bucket():
-    """Test that other S3 buckets are not detected."""
-    assert _is_on_aws_s3("s3://some/path") is False
-
-
-# --- _check_file_path ---
-
-
-def test_check_file_path_empty():
-    """Test that empty path raises."""
-    with pytest.raises(ValueError, match="File path missing"):
-        _check_file_path("")
-
-
-def test_check_file_path_local_exists(tmp_path):
-    """Test that existing local path passes."""
-    f = tmp_path / "test.txt"
-    f.write_text("hello")
-    _check_file_path(str(f))  # Should not raise
-
-
-def test_check_file_path_local_not_exists():
-    """Test that non-existent local path raises."""
-    with pytest.raises(ValueError, match="does not exist in local file system"):
-        _check_file_path("/nonexistent/path/to/file.txt")
-
-
 # --- _check_required_contents ---
 
 
 def test_check_required_contents_empty_list(tmp_path):
     """Test that empty contents list passes without checking."""
-    _check_required_contents(str(tmp_path), [], is_directory=True)
+    _check_required_contents(tmp_path, [], is_directory=True)
 
 
 def test_check_required_contents_directory_valid(tmp_path):
@@ -124,7 +77,7 @@ def test_check_required_contents_directory_valid(tmp_path):
     (tmp_path / "file_a.txt").write_text("a")
     (tmp_path / "file_b.txt").write_text("b")
 
-    _check_required_contents(str(tmp_path), ["file_a.txt", "file_b.txt"], is_directory=True)
+    _check_required_contents(tmp_path, ["file_a.txt", "file_b.txt"], is_directory=True)
 
 
 def test_check_required_contents_directory_missing(tmp_path):
@@ -132,7 +85,7 @@ def test_check_required_contents_directory_missing(tmp_path):
     (tmp_path / "file_a.txt").write_text("a")
 
     with pytest.raises(ValueError, match="not found in"):
-        _check_required_contents(str(tmp_path), ["file_a.txt", "missing.txt"], is_directory=True)
+        _check_required_contents(tmp_path, ["file_a.txt", "missing.txt"], is_directory=True)
 
 
 def test_check_required_contents_file_valid(tmp_path):
@@ -140,7 +93,7 @@ def test_check_required_contents_file_valid(tmp_path):
     f = tmp_path / "circuit.gz"
     f.write_text("data")
 
-    _check_required_contents(str(f), ["circuit.gz"], is_directory=False)
+    _check_required_contents(f, ["circuit.gz"], is_directory=False)
 
 
 def test_check_required_contents_file_mismatch(tmp_path):
@@ -149,7 +102,7 @@ def test_check_required_contents_file_mismatch(tmp_path):
     f.write_text("data")
 
     with pytest.raises(ValueError, match="does not match"):
-        _check_required_contents(str(f), ["circuit.gz"], is_directory=False)
+        _check_required_contents(f, ["circuit.gz"], is_directory=False)
 
 
 # --- _check_matrix_folder ---
@@ -163,7 +116,7 @@ def test_check_matrix_folder_valid(tmp_path):
         json_module.dumps({"pop1": {"single": {"path": "connectivity_matrix.h5"}}})
     )
 
-    _check_matrix_folder(str(tmp_path))  # Should not raise
+    _check_matrix_folder(tmp_path)  # Should not raise
 
 
 def test_check_matrix_folder_missing_config(tmp_path):
@@ -171,7 +124,7 @@ def test_check_matrix_folder_missing_config(tmp_path):
     (tmp_path / "connectivity_matrix.h5").write_text("data")
 
     with pytest.raises(ValueError, match=r"matrix_config\.json missing"):
-        _check_matrix_folder(str(tmp_path))
+        _check_matrix_folder(tmp_path)
 
 
 def test_check_matrix_folder_missing_referenced_file(tmp_path):
@@ -182,7 +135,7 @@ def test_check_matrix_folder_missing_referenced_file(tmp_path):
     )
 
     with pytest.raises(ValueError, match="referenced in config but not found"):
-        _check_matrix_folder(str(tmp_path))
+        _check_matrix_folder(tmp_path)
 
 
 def test_check_matrix_folder_nested_structure(tmp_path):
@@ -194,7 +147,7 @@ def test_check_matrix_folder_nested_structure(tmp_path):
         json_module.dumps({"pop1": {"single": {"path": "pop1/single/connectivity_matrix.h5"}}})
     )
 
-    _check_matrix_folder(str(tmp_path))  # Should not raise
+    _check_matrix_folder(tmp_path)  # Should not raise
 
 
 def _mock_client_search(results):
@@ -753,7 +706,7 @@ def test_register_asset_unsupported_label():
     with pytest.raises(ValueError, match="not supported"):
         register_asset(
             client=client,
-            file_path="/some/path",
+            file_path=Path("/some/path"),
             asset_label="invalid_label",
             registered_circuit=circuit,
             dry_run=False,
@@ -770,7 +723,7 @@ def test_register_asset_dry_run(tmp_path):
     circuit = MagicMock()
     result = register_asset(
         client=client,
-        file_path=str(tmp_path),
+        file_path=tmp_path,
         asset_label="sonata_circuit",
         registered_circuit=circuit,
         dry_run=True,
@@ -792,7 +745,7 @@ def test_register_asset_local_directory(tmp_path):
 
     result = register_asset(
         client=client,
-        file_path=str(tmp_path),
+        file_path=tmp_path,
         asset_label="sonata_circuit",
         registered_circuit=circuit,
         dry_run=False,
@@ -813,7 +766,7 @@ def test_register_asset_local_file(tmp_path):
 
     result = register_asset(
         client=client,
-        file_path=str(gz_file),
+        file_path=gz_file,
         asset_label="compressed_sonata_circuit",
         registered_circuit=circuit,
         dry_run=False,
@@ -829,7 +782,7 @@ def test_register_asset_nonexistent_path():
     with pytest.raises(ValueError, match="does not exist"):
         register_asset(
             client=client,
-            file_path="/nonexistent/path",
+            file_path=Path("/nonexistent/path"),
             asset_label="sonata_circuit",
             registered_circuit=circuit,
             dry_run=False,
@@ -846,7 +799,7 @@ def test_register_asset_missing_required_contents(tmp_path):
     with pytest.raises(ValueError, match="not found in"):
         register_asset(
             client=client,
-            file_path=str(tmp_path),
+            file_path=tmp_path,
             asset_label="sonata_circuit",
             registered_circuit=circuit,
             dry_run=False,
@@ -893,12 +846,12 @@ def test_register_asset_all_labels(tmp_path, asset_label, is_dir, setup_fn):
         asset_path = tmp_path / asset_label
         asset_path.mkdir()
         setup_fn(asset_path)
-        file_path = str(asset_path)
+        file_path = asset_path
     else:
         setup_fn(tmp_path)
         # For files, find the created file
         files = [f for f in tmp_path.iterdir() if f.is_file()]
-        file_path = str(files[0])
+        file_path = files[0]
 
     client = MagicMock()
     uploaded = MagicMock(id=f"{asset_label}-id")
