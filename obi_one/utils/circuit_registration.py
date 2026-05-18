@@ -492,7 +492,7 @@ def register_asset(
     content_type = asset_config["content_type"]
 
     if dry_run:
-        L.info(f"Asset '{asset_label}': CHECK ONLY (not registered)")
+        L.info(f"Asset '{asset_label}': DRY RUN (not registered)")
         return None
 
     if registered_circuit is None:
@@ -562,7 +562,7 @@ def register_derivation(
         raise ValueError(msg)
 
     if dry_run:
-        L.info(f"Derivation '{derivation_type}': CHECK ONLY (not registered)")
+        L.info(f"Derivation '{derivation_type}': DRY RUN (not registered)")
         return None
 
     if registered_circuit is None:
@@ -618,7 +618,7 @@ def register_contributions(
         List of newly registered contribution entities.
     """
     if dry_run:
-        L.info(f"Contributions: {len(contribution_dict)} (CHECK ONLY)")
+        L.info(f"Contributions: {len(contribution_dict)} (DRY RUN)")
         return []
 
     if registered_circuit is None:
@@ -663,7 +663,7 @@ def register_publication_links(
         List of newly registered publication link entities.
     """
     if dry_run:
-        L.info(f"Publication links: {len(publication_dict)} (CHECK ONLY)")
+        L.info(f"Publication links: {len(publication_dict)} (DRY RUN)")
         return []
 
     if registered_circuit is None:
@@ -1023,7 +1023,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
 
     # Register circuit entity
     if dry_run:
-        L.info(f"Circuit entity '{circuit_model.name}': CHECK ONLY (not registered)")
+        L.info(f"Circuit entity '{circuit_model.name}': DRY RUN (not registered)")
         registered_circuit = None
     else:
         registered_circuit = client.register_entity(circuit_model)
