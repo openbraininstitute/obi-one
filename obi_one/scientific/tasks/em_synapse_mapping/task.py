@@ -294,6 +294,10 @@ class EMSynapseMappingTask(Task):
         with circuit_config_path.open("w") as fid:
             json.dump(sonata_cfg, fid, indent=2)
 
+        # Write node_sets.json with "All" node set for the biophysical population
+        node_sets = {"All": {"population": pop_bio, "node_id": list(range(n_neurons))}}
+        (out_root / "node_sets.json").write_text(json.dumps(node_sets, indent=2))
+
         # Register entity, if possible
         L.info("Registering the output...")
         total_internal = sum(len(df) for df in all_internal_pre_post)
