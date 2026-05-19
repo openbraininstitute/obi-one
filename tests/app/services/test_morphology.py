@@ -64,9 +64,12 @@ class TestRunQualityChecks:
 
     def test_ran_to_completion_true_on_success(self, tmp_path):
         mock_neuron = MagicMock()
-
+        
+        custom_config = {"checks": {"morphology_checks": ["has_axon", "has_basal_dendrite"]}}
+        
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
+            patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
             patch("app.services.morphology.morph_checks.has_axon", return_value=True),
             patch("app.services.morphology.morph_checks.has_basal_dendrite", return_value=False),
         ):
@@ -78,9 +81,9 @@ class TestRunQualityChecks:
 
     def test_passed_and_failed_checks_are_separated_correctly(self):
         mock_neuron = MagicMock()
-
+        
         custom_config = {"checks": {"morphology_checks": ["check_a", "check_b", "check_c"]}}
-
+        
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
             patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
@@ -96,7 +99,7 @@ class TestRunQualityChecks:
     def test_empty_morphology_checks_key(self):
         mock_neuron = MagicMock()
         custom_config = {"checks": {"morphology_checks": []}}
-
+        
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
             patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
