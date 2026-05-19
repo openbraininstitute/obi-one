@@ -1,6 +1,6 @@
 import tempfile
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 import bluepysnap as snap
 import numpy as np
@@ -15,6 +15,9 @@ from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
 
 import obi_one as obi
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 class ConnectivityMetricsRequest(BaseModel):
@@ -84,10 +87,13 @@ class TemporaryPartialCircuit:
 
     def _fetch_file(self, rel_path: str) -> Path:
         temp_file_path = Path(self.temp_dir.name) / rel_path
+        if self.asset.id is None:
+            msg = "Asset must have an id"
+            raise ValueError(msg)
         self._db_client.fetch_file(
             entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
             entity_type=Circuit,
-            asset_id=self.asset.id,
+            asset_id=cast("UUID", self.asset.id),
             output_path=temp_file_path,
             asset_path=rel_path,  # ty:ignore[invalid-argument-type]
             strategy=FetchFileStrategy.link_or_download,

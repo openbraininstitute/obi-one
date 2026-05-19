@@ -1,4 +1,5 @@
 import json
+from typing import TYPE_CHECKING, cast
 
 import entitysdk
 import numpy as np
@@ -12,6 +13,9 @@ from obi_one.scientific.library.circuit_metrics import (
 )
 from obi_one.scientific.unions.config_task_map import get_task_type_config_asset_label
 from obi_one.utils import db_sdk
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
@@ -70,11 +74,14 @@ def estimate_task_resources(  # noqa: PLR0914
         config=config,
         asset_label=get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
     ).id
+    if config_asset_id is None:
+        msg = "Config asset must have an id"
+        raise ValueError(msg)
 
     json_str = db_client.download_content(
         entity_id=json_model.config_id,
         entity_type=config_type,
-        asset_id=config_asset_id,
+        asset_id=cast("UUID", config_asset_id),
     ).decode(encoding="utf-8")
 
     json_dict = json.loads(json_str)

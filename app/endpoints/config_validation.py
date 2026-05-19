@@ -1,7 +1,6 @@
-import tempfile
-from typing import Annotated, Any
-from unittest.mock import MagicMock, patch
-from uuid import uuid4
+import asyncio
+from functools import partial
+from typing import TYPE_CHECKING, Annotated, Any
 
 import entitysdk
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,9 +8,22 @@ from pydantic import BaseModel
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from obi_one.core.run_tasks import run_tasks_for_generated_scan
-from obi_one.core.scan_generation import GridScanGenerationTask
+from app.services.validator import run_grid_scan_validation
+from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+    IonChannelModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+    MEModelSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+    MEModelWithSynapsesCircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
+
+if TYPE_CHECKING:
+    from obi_one.core.scan_config import ScanConfig
 
 router = APIRouter(
     prefix="/config-validation",
@@ -21,9 +33,16 @@ router = APIRouter(
 
 
 class SharedStatePartial(BaseModel):
-    """For validation and schema dumping."""
+    """All validatable config fields. Each is optional — validate whichever are present."""
 
-    smc_simulation_config: CircuitSimulationScanConfig | None = None
+    circuit_simulation_config: CircuitSimulationScanConfig | None = None
+    me_model_simulation_config: MEModelSimulationScanConfig | None = None
+    me_model_with_synapses_simulation_config: (
+        MEModelWithSynapsesCircuitSimulationScanConfig | None
+    ) = None
+    ion_channel_model_simulation_config: IonChannelModelSimulationScanConfig | None = None
+    skeletonization_config: SkeletonizationScanConfig | None = None
+    em_synapse_mapping_config: EMSynapseMappingScanConfig | None = None
 
 
 class ConfigValidationRequest(BaseModel):
@@ -36,80 +55,76 @@ class ConfigValidationResponse(BaseModel):
     """Response body for config validation."""
 
     valid: bool
+    errors: dict[str, str]
+
+
+_VALIDATION_CONFIG: dict[str, bool] = {
+    "circuit_simulation_config": True,
+    "me_model_simulation_config": True,
+    "me_model_with_synapses_simulation_config": True,
+    "ion_channel_model_simulation_config": True,
+    "skeletonization_config": False,
+    "em_synapse_mapping_config": False,
+}
 
 
 @router.post(
     "/validate",
     summary="Validate scan config data",
-    description="Instantiate a scan config class and return validation results.",
+    description=(
+        "Validate one or more scan config fields present in the state. "
+        "All present configs are validated in parallel. "
+        "Returns per-field errors for any that fail."
+    ),
 )
-def validate_config(
+async def validate_config(
     request: ConfigValidationRequest,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> ConfigValidationResponse:
-    """Validate arbitrary data against a scan config class."""
+    """Validate arbitrary data against scan config classes."""
     try:
-        # Validate the state which contains the config
         state = SharedStatePartial(**request.state)
-        # If we have a simulation config, try to instantiate a scan and run it
-        if state.smc_simulation_config is not None:
-            form = state.smc_simulation_config
-
-            # Create mock return values for write operations
-            # The mock entity needs to look like a real entitysdk entity
-            mock_entity = MagicMock(spec=["id"])
-            mock_entity.id = uuid4()
-
-            # Mock for Simulation entities that will be in the generated list
-            mock_simulation = MagicMock(spec=entitysdk.models.Simulation)  # ty:ignore[possibly-missing-submodule]
-            mock_simulation.id = uuid4()
-
-            # Make register_entity return appropriate mocks based on what's being registered
-            def register_entity_side_effect(entity: Any) -> MagicMock:
-                if isinstance(entity, entitysdk.models.Simulation):  # ty:ignore[possibly-missing-submodule]
-                    return mock_simulation
-                return mock_entity
-
-            # Patch only the write methods, keeping read methods intact
-            with (
-                patch.object(
-                    db_client, "register_entity", side_effect=register_entity_side_effect
-                ) as mock_register,
-                patch.object(db_client, "upload_file", return_value=None) as mock_upload,
-                patch.object(db_client, "update_entity", return_value=None) as mock_update,
-                patch("entitysdk.models.SimulationGeneration", return_value=MagicMock()),
-            ):
-                with tempfile.TemporaryDirectory() as tdir:
-                    grid_scan = GridScanGenerationTask(
-                        form=form,
-                        output_root=tdir,  # ty:ignore[invalid-argument-type]
-                        coordinate_directory_option="ZERO_INDEX",
-                    )
-                    # Execute with real db_client but patched write methods
-                    grid_scan.execute(db_client=db_client)
-
-                    # Run full task execution to validate the complete simulation config
-                    # This validates block references and all config generation logic
-                    run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
-
-                # Verify that patched methods were actually called
-                # This ensures the mocks are not stale and writes are being intercepted
-                if (
-                    mock_register.call_count == 0
-                    or mock_upload.call_count == 0
-                    or mock_update.call_count == 0
-                ):
-                    raise HTTPException(  # noqa: TRY301
-                        status_code=500,
-                        detail=(
-                            "Validation error: Expected database operations did not occur. "
-                            "The validation logic may be outdated."
-                        ),
-                    )
-
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error: {e!s} Please fix the outstanding errors."
-        ) from e
+        raise HTTPException(status_code=422, detail=f"Invalid state structure: {e!s}") from e
 
-    return ConfigValidationResponse(valid=True)
+    # Determine which validations to run based on non-None fields
+    validations: dict[str, tuple[ScanConfig, bool]] = {}
+    for field_name, execute_single_config_task in _VALIDATION_CONFIG.items():
+        config_value = getattr(state, field_name, None)
+        if config_value is not None:
+            validations[field_name] = (config_value, execute_single_config_task)
+
+    if not validations:
+        return ConfigValidationResponse(valid=True, errors={})
+
+    # Run all validations concurrently in the default thread pool
+    loop = asyncio.get_event_loop()
+    field_names = list(validations.keys())
+    tasks = [
+        loop.run_in_executor(
+            None,
+            partial(
+                run_grid_scan_validation,
+                config,
+                db_client,
+                execute_single_config_task=execute_task,
+            ),
+        )
+        for config, execute_task in validations.values()
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    errors: dict[str, str] = {}
+    for field_name, result in zip(field_names, results, strict=True):
+        if isinstance(result, BaseException):
+            errors[field_name] = f"Unexpected error: {result!s}"
+        elif result is not None:
+            errors[field_name] = result
+
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail=ConfigValidationResponse(valid=False, errors=errors).model_dump(),
+        )
+
+    return ConfigValidationResponse(valid=True, errors={})

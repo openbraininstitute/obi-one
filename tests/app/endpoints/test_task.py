@@ -557,7 +557,7 @@ def test_task_launch_success__circuit_simulation(
                 "resources": {
                     "type": "cluster",
                     "instances": 1,
-                    "instance_type": "large",
+                    "instance_type": "small",
                     "compute_cell": "cell_a",
                     "timelimit": None,
                 },

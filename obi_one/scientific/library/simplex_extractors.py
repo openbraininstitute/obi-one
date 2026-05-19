@@ -13,7 +13,9 @@ from scipy import sparse
 
 # Connectivity dependencies (optional) - check for connalysis
 try:
-    from connalysis.network.topology import list_simplices_by_dimension
+    from connalysis.network.topology import (  # ty:ignore[unresolved-import]
+        list_simplices_by_dimension,
+    )
 except ImportError as e:  # pragma: no cover
     msg = (
         "Simplex extraction requires connectome-analysis (connalysis). "
