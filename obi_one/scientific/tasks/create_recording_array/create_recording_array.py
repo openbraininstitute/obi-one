@@ -10,6 +10,7 @@ from entitysdk.models import Entity, TaskConfig, SimulatableExtracellularRecordi
 from entitysdk.types import TaskActivityType, TaskConfigType, ElectrodeType, AssetLabel, ContentType
 from pydantic import Field, PrivateAttr
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
@@ -19,6 +20,9 @@ from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitDiscriminator
+from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsUnion,
+)
 
 L = logging.getLogger(__name__)
 
@@ -27,7 +31,7 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    ELECTRODE_POSITIONS = "Electrode Location"
+    ELECTRODE_POSITIONS = "Electrode Positions"
 
 
 class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
@@ -42,19 +46,19 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.simulatable_extracellular_recording_array__campaign
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = TaskConfigType.simulatable_extracellular_recording_array__config_generation
+    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_array_weights_calculation__campaign
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = TaskConfigType.extracellular_recording_array_weights_calculation__config_generation
 
     @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
-        return []
+        return [self.initialize.circuit.entity(db_client=db_client)]
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Parent circuit to extract a sub-circuit from.",
             json_schema_extra={
-                "ui_element": "model_identifier",
+                SchemaKey.UIElement: UIElement.MODEL_IDENTIFIER,
             },
         )
         calculation_method: (
@@ -67,7 +71,7 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
                 " specified neuron set and electrode locations."
             ),
             json_schema_extra={
-                "ui_element": "string_selection_enhanced",
+                SchemaKey.UIElement: "string_selection_enhanced",
                 "title_by_key": {
                     "PointSource": "Point Source",
                     "LineSource": "Line Source",
@@ -87,18 +91,28 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         title="Info",
         description="Information...",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 0,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the extracellular recording array creation.",
         json_schema_extra={
-            "ui_element": "block_single",
-            "group": BlockGroup.SETUP,
-            "group_order": 1,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    electrode_locations: ExtracellularLocationsUnion = Field(
+        title="Electrode Locations",
+        description="Parameters defining the locations of the electrodes for the extracellular recording array.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.GROUP: BlockGroup.ELECTRODE_POSITIONS,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -108,21 +122,13 @@ class CreateExtracellularRecordingArraySingleConfig(
 ):
     """Description."""
 
-    def create_single_entity_with_config(
-        self,
-        campaign: TaskConfig,
-        db_client: Client,
-    ) -> None:  # ty:ignore[invalid-method-override]
-        pass
-
-
 class CreateExtracellularRecordingArrayTask(Task):
     """Task to create an extracellular recording array."""
 
     config: CreateExtracellularRecordingArraySingleConfig
 
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.simulatable_extracellular_recording_array__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = TaskActivityType.simulatable_extracellular_recording_array__execution
+    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_array_weights_calculation__config
+    _single_task_activity_type: ClassVar[TaskActivityType] = TaskActivityType.extracellular_recording_array_weights_calculation__execution
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
@@ -183,7 +189,8 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         circuit_dest_dir = self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
-        test_locations = [[0.0, 0.0, 0.0], [50.0, 50.0, 50.0]]  # multiple x, y, z locations to test
+        # electrode_locations = [[0.0, 0.0, 0.0], [50.0, 50.0, 50.0]]  # multiple x, y, z locations to test
+        electrode_xyz_locations = self.config.electrode_locations.get_xyz_locations()
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
@@ -200,7 +207,7 @@ class CreateExtracellularRecordingArrayTask(Task):
                 position=np.array(loc, dtype=float),
                 type=ElectrodeType.POINT_SOURCE,
             )
-            for i, loc in enumerate(test_locations)
+            for i, loc in enumerate(electrode_xyz_locations)
         }
 
         circuit_config_path = Path(circuit_dest_dir) / "circuit_config.json"

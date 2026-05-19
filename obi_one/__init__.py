@@ -245,7 +245,7 @@ from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
-from obi_one.scientific.blocks.extracellular_locations import (
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
     XYZExtracellularLocations,
 )
