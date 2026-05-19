@@ -1,4 +1,3 @@
-import operator
 import zipfile
 from http import HTTPStatus
 from io import BytesIO
@@ -11,8 +10,19 @@ from tests.utils import DATA_DIR
 
 ROUTE = "/declared/test-neuron-file"
 
-get_error_code = operator.itemgetter("code")
-get_error_detail = operator.itemgetter("detail")
+
+def get_error_code(response_json: dict) -> str:
+    detail = response_json.get("detail")
+    if isinstance(detail, dict):
+        return detail["code"]
+    return response_json["code"]
+
+
+def get_error_detail(response_json: dict) -> str:
+    detail = response_json.get("detail")
+    if isinstance(detail, dict):
+        return detail["detail"]
+    return response_json["detail"]
 
 
 @pytest.fixture
