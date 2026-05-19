@@ -64,15 +64,11 @@ class TestRunQualityChecks:
 
     def test_ran_to_completion_true_on_success(self, tmp_path):
         mock_neuron = MagicMock()
-        mock_check_results = {
-            "morphology_checks": {
-                "has_axon": True,
-                "has_basal_dendrite": False,
-            }
-        }
+
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
-            patch(_QUALITY_RUNNER, return_value=mock_check_results),
+            patch("app.services.morphology.morph_checks.has_axon", return_value=True),
+            patch("app.services.morphology.morph_checks.has_basal_dendrite", return_value=False),
         ):
             result = run_quality_checks(tmp_path / "dummy.swc")
 
@@ -82,16 +78,15 @@ class TestRunQualityChecks:
 
     def test_passed_and_failed_checks_are_separated_correctly(self):
         mock_neuron = MagicMock()
-        mock_results = {
-            "morphology_checks": {
-                "check_a": True,
-                "check_b": True,
-                "check_c": False,
-            }
-        }
+
+        custom_config = {"checks": {"morphology_checks": ["check_a", "check_b", "check_c"]}}
+
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
-            patch(_QUALITY_RUNNER, return_value=mock_results),
+            patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
+            patch("app.services.morphology.morph_checks.check_a", return_value=True, create=True),
+            patch("app.services.morphology.morph_checks.check_b", return_value=True, create=True),
+            patch("app.services.morphology.morph_checks.check_c", return_value=False, create=True),
         ):
             result = run_quality_checks(Path("anything.swc"))
 
@@ -100,9 +95,11 @@ class TestRunQualityChecks:
 
     def test_empty_morphology_checks_key(self):
         mock_neuron = MagicMock()
+        custom_config = {"checks": {"morphology_checks": []}}
+
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
-            patch(_QUALITY_RUNNER, return_value={}),
+            patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
         ):
             result = run_quality_checks(Path("anything.swc"))
 
