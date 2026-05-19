@@ -71,6 +71,16 @@ def neuron_morphology_metrics_endpoint(
     )
 
 
+def _run_analysis_with_temp_file(
+    content: bytes,
+    suffix: Literal[".swc", ".h5", ".asc"],
+) -> list[dict[str, Any]]:
+    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
+        tmp.write(content)
+        tmp.flush()
+        return _run_morphology_analysis(tmp.name)
+
+
 def compute_measurement_kinds(
     cell_morphology_id: str,
     db_client: entitysdk.client.Client,
@@ -106,17 +116,27 @@ def compute_measurement_kinds(
             ),
         )
 
-    suffix = "." + morphology_format
-    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
-        tmp.write(
-            db_client.download_content(
-                entity_id=morphology.id,
-                entity_type=CellMorphology,
-                asset_id=asset.id,
-            )
-        )
-        tmp.flush()
-        return _run_morphology_analysis(tmp.name)
+    content = db_client.download_content(
+        entity_id=morphology.id,
+        entity_type=CellMorphology,
+        asset_id=asset.id,
+    )
+
+    match morphology_format:
+        case "swc":
+            return _run_analysis_with_temp_file(content, ".swc")
+        case "h5":
+            return _run_analysis_with_temp_file(content, ".h5")
+        case "asc":
+            return _run_analysis_with_temp_file(content, ".asc")
+
+    raise HTTPException(
+        status_code=HTTPStatus.BAD_REQUEST,
+        detail=(
+            f"Unsupported morphology format: {morphology_format} "
+            f"(expected one of: {', '.join(MORPHOLOGY_FORMAT_TO_CONTENT_TYPE)})"
+        ),
+    )
 
 
 @router.get(
