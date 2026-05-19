@@ -1,0 +1,2449 @@
+[
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.9287570245538976
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 5.694635210152461
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 2.6144675077711863
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 2.7881794813497187
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.9275026806100325
+      }
+    ],
+    "pref_label": "diameter_power_relations"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.9236240451883704
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 8.24585064000931
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 2.9629645734042693
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 3.3134209523255684
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 1.5294582583345395
+      }
+    ],
+    "pref_label": "diameter_power_relations"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.8866913623089483
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 8.928422563305244
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 2.3994493131748773
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 3.5053293493980506
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 2.186840747095108
+      }
+    ],
+    "pref_label": "diameter_power_relations"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "radian",
+        "value": 0.27806305965648964
+      },
+      {
+        "name": "maximum",
+        "unit": "radian",
+        "value": 2.416835286549622
+      },
+      {
+        "name": "median",
+        "unit": "radian",
+        "value": 1.2465031602567986
+      },
+      {
+        "name": "mean",
+        "unit": "radian",
+        "value": 1.2526724088128338
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "radian",
+        "value": 0.4155387643213558
+      }
+    ],
+    "pref_label": "local_bifurcation_angles"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "radian",
+        "value": 0.4095877677544448
+      },
+      {
+        "name": "maximum",
+        "unit": "radian",
+        "value": 2.665738915217932
+      },
+      {
+        "name": "median",
+        "unit": "radian",
+        "value": 1.309769267626102
+      },
+      {
+        "name": "mean",
+        "unit": "radian",
+        "value": 1.3197762360456287
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "radian",
+        "value": 0.5027826090404228
+      }
+    ],
+    "pref_label": "local_bifurcation_angles"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "radian",
+        "value": 0.5799767616150432
+      },
+      {
+        "name": "maximum",
+        "unit": "radian",
+        "value": 2.6490701068310822
+      },
+      {
+        "name": "median",
+        "unit": "radian",
+        "value": 1.5155470348657938
+      },
+      {
+        "name": "mean",
+        "unit": "radian",
+        "value": 1.629079748066265
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "radian",
+        "value": 0.6073005874952082
+      }
+    ],
+    "pref_label": "local_bifurcation_angles"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 793.4895629882812
+      }
+    ],
+    "pref_label": "morphology_max_radial_distance"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 147.9813690185547
+      }
+    ],
+    "pref_label": "neurite_max_radial_distance"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 793.4895629882812
+      }
+    ],
+    "pref_label": "neurite_max_radial_distance"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 517.5640258789062
+      }
+    ],
+    "pref_label": "neurite_max_radial_distance"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 36.0
+      }
+    ],
+    "pref_label": "number_of_bifurcations"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 39.0
+      }
+    ],
+    "pref_label": "number_of_bifurcations"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 16.0
+      }
+    ],
+    "pref_label": "number_of_bifurcations"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 41.0
+      }
+    ],
+    "pref_label": "number_of_leaves"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 40.0
+      }
+    ],
+    "pref_label": "number_of_leaves"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 17.0
+      }
+    ],
+    "pref_label": "number_of_leaves"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 7.0
+      }
+    ],
+    "pref_label": "number_of_neurites"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 77.0
+      }
+    ],
+    "pref_label": "number_of_sections"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 79.0
+      }
+    ],
+    "pref_label": "number_of_sections"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "dimensionless",
+        "value": 33.0
+      }
+    ],
+    "pref_label": "number_of_sections"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 5.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 79.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 21.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 27.0
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 23.4703460319004
+      }
+    ],
+    "pref_label": "number_of_sections_per_neurite"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 0.9090909090909091
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 0.275
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 0.2863636363636364
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.2916199840204609
+      }
+    ],
+    "pref_label": "partition_asymmetry"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 0.9743589743589743
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 0.5
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 0.45327103176668804
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.3772017094084089
+      }
+    ],
+    "pref_label": "partition_asymmetry"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 0.9375
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 0.5
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 0.4630174512987013
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.3197603347599918
+      }
+    ],
+    "pref_label": "partition_asymmetry"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 0.0010476107396490122
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 0.6296767175383742
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 0.08005380397237813
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 0.14381130237480608
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 0.16932883530966056
+      }
+    ],
+    "pref_label": "partition_asymmetry_length"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 8.014901801704872e-05
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 0.9490026654566108
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 0.01115476881977255
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 0.1829437284760619
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 0.32901715440121626
+      }
+    ],
+    "pref_label": "partition_asymmetry_length"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 0.0023686688770496317
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 0.9401529715682794
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 0.11756729436582422
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 0.18423327773056128
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 0.2276052003998543
+      }
+    ],
+    "pref_label": "partition_asymmetry_length"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "radian",
+        "value": 0.024538242406115237
+      },
+      {
+        "name": "maximum",
+        "unit": "radian",
+        "value": 2.3170520500477467
+      },
+      {
+        "name": "median",
+        "unit": "radian",
+        "value": 0.8460808466542682
+      },
+      {
+        "name": "mean",
+        "unit": "radian",
+        "value": 0.9349247942269732
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "radian",
+        "value": 0.49769836148384144
+      }
+    ],
+    "pref_label": "remote_bifurcation_angles"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "radian",
+        "value": 0.16848237898695645
+      },
+      {
+        "name": "maximum",
+        "unit": "radian",
+        "value": 3.0683514459525743
+      },
+      {
+        "name": "median",
+        "unit": "radian",
+        "value": 0.9191215138824885
+      },
+      {
+        "name": "mean",
+        "unit": "radian",
+        "value": 1.0621076752796004
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "radian",
+        "value": 0.6626015308566424
+      }
+    ],
+    "pref_label": "remote_bifurcation_angles"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "radian",
+        "value": 0.04853562729926412
+      },
+      {
+        "name": "maximum",
+        "unit": "radian",
+        "value": 2.560895368679841
+      },
+      {
+        "name": "median",
+        "unit": "radian",
+        "value": 1.5211383935448746
+      },
+      {
+        "name": "mean",
+        "unit": "radian",
+        "value": 1.5208279257046318
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "radian",
+        "value": 0.5901351425514141
+      }
+    ],
+    "pref_label": "remote_bifurcation_angles"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm\u00b2",
+        "value": 1.2962527212743462
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm\u00b2",
+        "value": 160.04193353004044
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm\u00b2",
+        "value": 22.252066917579267
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm\u00b2",
+        "value": 33.0043287385934
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm\u00b2",
+        "value": 31.84365514094516
+      }
+    ],
+    "pref_label": "section_areas"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm\u00b2",
+        "value": 0.9615659294552446
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm\u00b2",
+        "value": 845.6056603186144
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm\u00b2",
+        "value": 25.331730752166965
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm\u00b2",
+        "value": 81.31869614565774
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm\u00b2",
+        "value": 160.5418453845263
+      }
+    ],
+    "pref_label": "section_areas"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm\u00b2",
+        "value": 0.15479427940882914
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm\u00b2",
+        "value": 457.3574092687651
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm\u00b2",
+        "value": 42.1700497307824
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm\u00b2",
+        "value": 90.50467684046562
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm\u00b2",
+        "value": 103.25518473200499
+      }
+    ],
+    "pref_label": "section_areas"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 7.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 2.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 2.2777777777777777
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 1.7258027296676741
+      }
+    ],
+    "pref_label": "section_bif_branch_orders"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 14.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 10.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 9.128205128205128
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 3.7497315266596063
+      }
+    ],
+    "pref_label": "section_bif_branch_orders"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 8.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 4.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 4.0
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 2.179449471770337
+      }
+    ],
+    "pref_label": "section_bif_branch_orders"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 0.7020571827888489
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 120.11872863769531
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 9.549462795257568
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 16.463034028808277
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 20.98260304505118
+      }
+    ],
+    "pref_label": "section_bif_lengths"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 1.2413774728775024
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 574.3662109375
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 18.817434310913086
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 72.10104615260393
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 126.68213854724713
+      }
+    ],
+    "pref_label": "section_bif_lengths"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 13.352164268493652
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 218.06912231445312
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 39.34654998779297
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 70.41795462369919
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 68.62433969391161
+      }
+    ],
+    "pref_label": "section_bif_lengths"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 16.479408264160156
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 75.33407592773438
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 32.74443817138672
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 37.44161860148112
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 17.185629826438067
+      }
+    ],
+    "pref_label": "section_bif_radial_distances"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 17.3142032623291
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 787.5216064453125
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 647.2451782226562
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 449.94711895478076
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 300.06949998838627
+      }
+    ],
+    "pref_label": "section_bif_radial_distances"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 86.4880142211914
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 514.5396118164062
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 170.52081298828125
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 221.18544149398804
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 122.94652002034577
+      }
+    ],
+    "pref_label": "section_bif_radial_distances"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 8.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 3.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 3.064935064935065
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 1.8540069791940696
+      }
+    ],
+    "pref_label": "section_branch_orders"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 15.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 11.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 10.0
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 3.894169611358154
+      }
+    ],
+    "pref_label": "section_branch_orders"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 9.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 5.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 4.848484848484849
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 2.3109910260530446
+      }
+    ],
+    "pref_label": "section_branch_orders"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 0.7020571827888489
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 120.11872863769531
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 20.62441062927246
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 30.464290573225394
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 29.494895506640074
+      }
+    ],
+    "pref_label": "section_lengths"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 1.2413774728775024
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 574.3662109375
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 17.789844512939453
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 54.697868817969216
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 97.39918194646745
+      }
+    ],
+    "pref_label": "section_lengths"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 0.14462514221668243
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 245.5657196044922
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 31.253459930419922
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 62.75146988892194
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 71.98457133738371
+      }
+    ],
+    "pref_label": "section_lengths"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 5.415913105010986
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 181.33551144599915
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 60.72712278366089
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 65.2912608671498
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 45.34088213675806
+      }
+    ],
+    "pref_label": "section_path_distances"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 17.41693115234375
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 941.4526319503784
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 792.1795053482056
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 558.6235963332502
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 345.90164019753036
+      }
+    ],
+    "pref_label": "section_path_distances"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 76.3779296875
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 737.4560890197754
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 299.9583053588867
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 329.75387875464827
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 189.05598003213188
+      }
+    ],
+    "pref_label": "section_path_distances"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 16.479408264160156
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 147.9813690185547
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 56.69233703613281
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 57.04886634628494
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 28.470219019319543
+      }
+    ],
+    "pref_label": "section_radial_distances"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 17.3142032623291
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 793.4895629882812
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 708.1902465820312
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 483.056304279762
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 302.0597949045825
+      }
+    ],
+    "pref_label": "section_radial_distances"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 75.70173645019531
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 517.5640258789062
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 277.359375
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 251.32538650975084
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 142.26117103209262
+      }
+    ],
+    "pref_label": "section_radial_distances"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 3.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 1.5974025974025974
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.7072856521657197
+      }
+    ],
+    "pref_label": "section_strahler_orders"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 4.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 1.8481012658227849
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 1.0322472424240565
+      }
+    ],
+    "pref_label": "section_strahler_orders"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 3.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 1.696969696969697
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.7971482689676306
+      }
+    ],
+    "pref_label": "section_strahler_orders"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": -0.03852199763059616
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 2.907906724269172e-16
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": -6.2511587372739e-17
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": -0.004004971153713612
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.007926275425219335
+      }
+    ],
+    "pref_label": "section_taper_rates"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": -0.03913178667426109
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 6.243935134420597e-17
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": -3.2866648519977717e-18
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": -0.0022314212291567386
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.0069334454505803975
+      }
+    ],
+    "pref_label": "section_taper_rates"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": -0.005411271937191486
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 9.868327573484174e-17
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": -3.5167731084238583e-19
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": -0.0003204128182860015
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.0010551970390260117
+      }
+    ],
+    "pref_label": "section_taper_rates"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 8.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 3.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 3.7560975609756095
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 1.6788568672539532
+      }
+    ],
+    "pref_label": "section_term_branch_orders"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 15.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 12.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 10.85
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 3.844151401805085
+      }
+    ],
+    "pref_label": "section_term_branch_orders"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 9.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 5.0
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 5.647058823529412
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 2.1404006351365004
+      }
+    ],
+    "pref_label": "section_term_branch_orders"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 3.8583736419677734
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 117.8284912109375
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 39.22834396362305
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 42.75807680734774
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 30.39675229800152
+      }
+    ],
+    "pref_label": "section_term_lengths"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 1.8259048461914062
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 264.1619873046875
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 17.16135883331299
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 37.72977091670036
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 50.05662780452278
+      }
+    ],
+    "pref_label": "section_term_lengths"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 0.14462514221668243
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 245.5657196044922
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 21.29269027709961
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 55.5359548444257
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 74.29053018972168
+      }
+    ],
+    "pref_label": "section_term_lengths"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 16.503135681152344
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 147.9813690185547
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 71.63957977294922
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 74.2649863173322
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 25.079377392781367
+      }
+    ],
+    "pref_label": "section_term_radial_distances"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 65.72560119628906
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 793.4895629882812
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 748.884521484375
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 515.3377599716187
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 300.49570565950955
+      }
+    ],
+    "pref_label": "section_term_radial_distances"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 75.70173645019531
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 517.5640258789062
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 292.80999755859375
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 279.6923935834099
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 152.96944258228274
+      }
+    ],
+    "pref_label": "section_term_radial_distances"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 1.98529052734375
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 1.1812036037445068
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 1.2110578425518879
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.17554393529819334
+      }
+    ],
+    "pref_label": "section_tortuosity"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 6.279057502746582
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 1.1789003610610962
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 1.3489554652684852
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.7700626384797915
+      }
+    ],
+    "pref_label": "section_tortuosity"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 1.6864893436431885
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 1.1102427244186401
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 1.1454522103974314
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.1306381332287117
+      }
+    ],
+    "pref_label": "section_tortuosity"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm\u00b3",
+        "value": 0.05760362389260265
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm\u00b3",
+        "value": 17.80527887092774
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm\u00b3",
+        "value": 2.1623767536549594
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm\u00b3",
+        "value": 3.1773614455251793
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm\u00b3",
+        "value": 3.1729583379431614
+      }
+    ],
+    "pref_label": "section_volumes"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm\u00b3",
+        "value": 0.05495660006286685
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm\u00b3",
+        "value": 132.1579499524967
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm\u00b3",
+        "value": 2.0737874049041114
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm\u00b3",
+        "value": 11.344999121950668
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm\u00b3",
+        "value": 22.887569854450337
+      }
+    ],
+    "pref_label": "section_volumes"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm\u00b3",
+        "value": 0.013184272293470639
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm\u00b3",
+        "value": 133.8504051404758
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm\u00b3",
+        "value": 3.7464828911642796
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm\u00b3",
+        "value": 14.220309854101306
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm\u00b3",
+        "value": 24.246127775852884
+      }
+    ],
+    "pref_label": "section_volumes"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.3812500238418579
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 0.8032786846160889
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 0.7924067386322551
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.20076435704228165
+      }
+    ],
+    "pref_label": "sibling_ratios"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.2606837749481201
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 0.7551020383834839
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 0.738051217335921
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.2237811029720899
+      }
+    ],
+    "pref_label": "sibling_ratios"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "dimensionless",
+        "value": 0.2551020383834839
+      },
+      {
+        "name": "maximum",
+        "unit": "dimensionless",
+        "value": 1.0
+      },
+      {
+        "name": "median",
+        "unit": "dimensionless",
+        "value": 0.8378378450870514
+      },
+      {
+        "name": "mean",
+        "unit": "dimensionless",
+        "value": 0.7085992302745581
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "dimensionless",
+        "value": 0.31266177133222045
+      }
+    ],
+    "pref_label": "sibling_ratios"
+  },
+  {
+    "structural_domain": "soma",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 7.022326461248707
+      }
+    ],
+    "pref_label": "soma_radius"
+  },
+  {
+    "structural_domain": "soma",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm\u00b2",
+        "value": 619.6863002851334
+      }
+    ],
+    "pref_label": "soma_surface_area"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 22.73025131225586
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 181.33551144599915
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 86.48622512817383
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 89.91679830376695
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 37.53604155181634
+      }
+    ],
+    "pref_label": "terminal_path_lengths"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 118.89156341552734
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 941.4526319503784
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 856.5510187149048
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 605.6549468368291
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 337.20428048948384
+      }
+    ],
+    "pref_label": "terminal_path_lengths"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 100.15453338623047
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 737.4560890197754
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 351.7756757736206
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 380.9610736834652
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 196.09383441668348
+      }
+    ],
+    "pref_label": "terminal_path_lengths"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm\u00b2",
+        "value": 2541.3333128716913
+      }
+    ],
+    "pref_label": "total_area"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm\u00b2",
+        "value": 6424.176995506961
+      }
+    ],
+    "pref_label": "total_area"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm\u00b2",
+        "value": 2986.6543357353653
+      }
+    ],
+    "pref_label": "total_area"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm\u00b2",
+        "value": 103.80368479425026
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm\u00b2",
+        "value": 6424.176995506961
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm\u00b2",
+        "value": 619.4865507036205
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm\u00b2",
+        "value": 1707.4520920162884
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm\u00b2",
+        "value": 2131.710765273016
+      }
+    ],
+    "pref_label": "total_area_per_neurite"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 116.20946502685547
+      }
+    ],
+    "pref_label": "total_depth"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 1114.3104248046875
+      }
+    ],
+    "pref_label": "total_height"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 2345.7503741383553
+      }
+    ],
+    "pref_label": "total_length"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 4321.131636619568
+      }
+    ],
+    "pref_label": "total_length"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 2070.798506334424
+      }
+    ],
+    "pref_label": "total_length"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "minimum",
+        "unit": "\u03bcm",
+        "value": 81.00812077522278
+      },
+      {
+        "name": "maximum",
+        "unit": "\u03bcm",
+        "value": 4321.131636619568
+      },
+      {
+        "name": "median",
+        "unit": "\u03bcm",
+        "value": 549.5496461987495
+      },
+      {
+        "name": "mean",
+        "unit": "\u03bcm",
+        "value": 1248.2400738703352
+      },
+      {
+        "name": "standard_deviation",
+        "unit": "\u03bcm",
+        "value": 1405.1532484226625
+      }
+    ],
+    "pref_label": "total_length_per_neurite"
+  },
+  {
+    "structural_domain": "basal_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm\u00b3",
+        "value": 244.65683130543877
+      }
+    ],
+    "pref_label": "total_volume"
+  },
+  {
+    "structural_domain": "apical_dendrite",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm\u00b3",
+        "value": 896.2549306341031
+      }
+    ],
+    "pref_label": "total_volume"
+  },
+  {
+    "structural_domain": "axon",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm\u00b3",
+        "value": 469.270225185343
+      }
+    ],
+    "pref_label": "total_volume"
+  },
+  {
+    "structural_domain": "neuron_morphology",
+    "measurement_items": [
+      {
+        "name": "raw",
+        "unit": "\u03bcm",
+        "value": 827.319580078125
+      }
+    ],
+    "pref_label": "total_width"
+  }
+]

@@ -41,8 +41,8 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
-    from connalysis.network.topology import node_degree
-    from connalysis.randomization import ER_model
+    from connalysis.network.topology import node_degree  # ty:ignore[unresolved-import]
+    from connalysis.randomization import ER_model  # ty:ignore[unresolved-import]
 
 L = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
         def check_rendering_colors_for_property_table(self) -> Self:
             if "property_table" in self.plot_types:
                 if self.rendering_cmap == "custom":
-                    if not Path(self.rendering_color_file).is_file():
+                    if not Path(self.rendering_color_file).is_file():  # ty:ignore[invalid-argument-type]
                         msg = "The rendering_color_file is not an existing file."
                         raise ValueError(msg)
                 elif self.rendering_cmap is not None:
@@ -160,7 +160,10 @@ class BasicConnectivityPlotsTask(Task):
             )
         # Plot network metrics
         fig_network_pathway = plot_connection_probability_pathway_stats(
-            full_width, conn_probs, deg, deg_er
+            full_width,
+            conn_probs,
+            deg,  # ty:ignore[invalid-argument-type]
+            deg_er,  # ty:ignore[invalid-argument-type]
         )
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"network_pathway_stats.{fmt}"
@@ -188,7 +191,7 @@ class BasicConnectivityPlotsTask(Task):
         )
 
         # Plot network metrics
-        fig_network_global = plot_connection_probability_stats(full_width, global_conn_probs)
+        fig_network_global = plot_connection_probability_stats(full_width, global_conn_probs)  # ty:ignore[invalid-argument-type]
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"network_global_stats.{fmt}"
             fig_network_global.savefig(output_file, dpi=dpi, bbox_inches="tight")
@@ -286,7 +289,7 @@ class BasicConnectivityPlotsTask(Task):
                 projection="circular",
                 coord_names=None,
                 axis_fontsize=14,
-                title=None,
+                title=None,  # ty:ignore[invalid-argument-type]
                 title_fontsize=14,
             )
 
@@ -329,8 +332,8 @@ class BasicConnectivityPlotsTask(Task):
             fig_property_table = plot_node_table(
                 conn,
                 figsize=figsize,
-                colors_cmap=colors_cmap,
-                colors_file=colors_file,
+                colors_cmap=colors_cmap,  # ty:ignore[invalid-argument-type]
+                colors_file=colors_file,  # ty:ignore[invalid-argument-type]
                 h_scale=2.5,
                 v_scale=2.5,
             )
@@ -369,7 +372,7 @@ class BasicConnectivityPlotsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
@@ -396,7 +399,7 @@ class BasicConnectivityPlotsTask(Task):
 
         # Load matrix
         L.info(f"Info: Loading matrix '{self.config.initialize.matrix_path}'")
-        conn = ConnectivityMatrix.from_h5(self.config.initialize.matrix_path.path)
+        conn = ConnectivityMatrix.from_h5(self.config.initialize.matrix_path.path)  # ty:ignore[unresolved-attribute]
 
         # Size metrics
         size = np.array([len(conn.vertices), conn.matrix.nnz, conn.matrix.sum()])
@@ -425,7 +428,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_min_stats,
                 conn,
                 deg,
@@ -439,7 +442,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_min_stats,
                 adj,
                 adj_er,
@@ -454,7 +457,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
@@ -466,7 +469,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
@@ -477,7 +480,7 @@ class BasicConnectivityPlotsTask(Task):
             self.network_in_2D_circular_plot(
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
@@ -488,12 +491,12 @@ class BasicConnectivityPlotsTask(Task):
             self.property_table_plot(
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
-                colors_cmap=self.config.initialize.rendering_cmap,
-                colors_file=self.config.initialize.rendering_color_file,
+                colors_cmap=self.config.initialize.rendering_cmap,  # ty:ignore[invalid-argument-type]
+                colors_file=self.config.initialize.rendering_color_file,  # ty:ignore[invalid-argument-type]
                 figsize=(5, 2),
             )
 
@@ -502,7 +505,7 @@ class BasicConnectivityPlotsTask(Task):
             self.property_table_extra_plot(
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,

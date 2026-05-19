@@ -1,4 +1,5 @@
 import tempfile
+from enum import StrEnum
 from http import HTTPStatus
 from typing import Annotated, Any, Literal
 
@@ -10,8 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import (
-    _run_morphology_analysis,
     register_measurements,
+    run_morphology_analysis,
 )
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
@@ -29,6 +30,8 @@ MORPHOLOGY_FORMAT_TO_CONTENT_TYPE = {
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
+MorphologyMetric = StrEnum("MorphologyMetric", {m: m for m in MORPHOLOGY_METRICS})
+
 
 @router.get(
     "/neuron-morphology-metrics/{cell_morphology_id}",
@@ -36,10 +39,10 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
     description=("This calculates neuron morphology metrics for a given cell morphology."),
 )
 def neuron_morphology_metrics_endpoint(
-    cell_morphology_id: str,
+    cell_morphology_id: UUID,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     requested_metrics: Annotated[
-        list[Literal[*MORPHOLOGY_METRICS]] | None,  # type: ignore[misc]
+        list[MorphologyMetric] | None,
         Query(
             description="List of requested metrics",
         ),
@@ -48,9 +51,9 @@ def neuron_morphology_metrics_endpoint(
     L.info("get_morphology_metrics")
     try:
         metrics = get_morphology_metrics(
-            cell_morphology_id=cell_morphology_id,
+            cell_morphology_id=str(cell_morphology_id),
             db_client=db_client,
-            requested_metrics=requested_metrics,
+            requested_metrics=list(requested_metrics) if requested_metrics is not None else None,
         )
     except entitysdk.exception.EntitySDKError as err:
         raise HTTPException(
@@ -84,7 +87,7 @@ def _run_analysis_with_temp_file(
 def compute_measurement_kinds(
     cell_morphology_id: str,
     db_client: entitysdk.client.Client,
-    morphology_format: Literal["swc", "h5", "asc"] = "swc",
+    morphology_format: Literal["swc", "h5", "asc"] = "h5",
 ) -> list[dict[str, Any]]:
     morphology = db_client.get_entity(
         entity_id=cell_morphology_id,
@@ -169,10 +172,10 @@ def preview_morphology_measurement_kinds(
     summary="Compute & register morphology metrics for an existing morphology",
 )
 def register_morphology_metrics(
-    cell_morphology_id: str,
+    cell_morphology_id: UUID,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
-    measurement_kinds = compute_measurement_kinds(cell_morphology_id, db_client)
+    measurement_kinds = compute_measurement_kinds(cell_morphology_id, db_client, morphology_format="h5",)
     registered = register_measurements(db_client, cell_morphology_id, measurement_kinds)
 
     return {

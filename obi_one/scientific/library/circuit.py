@@ -21,7 +21,7 @@ class Circuit(OBIBaseModel):
 
     def __init__(self, name: str, path: str, **kwargs) -> None:
         """Initialize object."""
-        super().__init__(name=name, path=path, **kwargs)
+        super().__init__(name=name, path=path, **kwargs)  # ty:ignore[unknown-argument]
         c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
         if self.matrix_path is not None:
@@ -72,10 +72,10 @@ class Circuit(OBIBaseModel):
         """Returns node population names."""
         popul_names = c.nodes.population_names
         if not incl_virtual:
-            popul_names = [_pop for _pop in popul_names if c.nodes[_pop].type != "virtual"]
+            popul_names = [pop for pop in popul_names if c.nodes[pop].type != "virtual"]
         if not incl_point:
             # Exclude "point_neuron", "point_process", etc. types
-            popul_names = [_pop for _pop in popul_names if "point_" not in c.nodes[_pop].type]
+            popul_names = [pop for pop in popul_names if "point_" not in c.nodes[pop].type]
         return popul_names
 
     @staticmethod
@@ -86,7 +86,7 @@ class Circuit(OBIBaseModel):
             # Include point neurons
             popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=True)
         if len(popul_names) == 0:
-            return None  # No biophysical/point neurons
+            return None  # No biophysical/point neurons  # ty:ignore[invalid-return-type]
         if len(popul_names) != 1:
             msg = "Default node population unknown!"
             raise ValueError(msg)
@@ -104,14 +104,14 @@ class Circuit(OBIBaseModel):
         """Returns edge population names."""
         popul_names = c.edges.population_names
         if not incl_virtual:
-            popul_names = [_pop for _pop in popul_names if c.edges[_pop].source.type != "virtual"]
+            popul_names = [pop for pop in popul_names if c.edges[pop].source.type != "virtual"]
         if not incl_point:
             # Exclude "point_neuron", "point_process", etc. source/target types
             popul_names = [
-                _pop
-                for _pop in popul_names
-                if "point_" not in c.edges[_pop].source.type
-                and "point_" not in c.edges[_pop].target.type
+                pop
+                for pop in popul_names
+                if "point_" not in c.edges[pop].source.type
+                and "point_" not in c.edges[pop].target.type
             ]
         return popul_names
 
@@ -133,7 +133,7 @@ class Circuit(OBIBaseModel):
             and c.edges[epop].target.name == default_npop
         ]
         if len(intrinsic_epops) == 0:
-            return None
+            return None  # ty:ignore[invalid-return-type]
         if len(intrinsic_epops) > 1:
             msg = "Default edge population unknown!"
             raise ValueError(msg)

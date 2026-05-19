@@ -11,6 +11,7 @@ from app.schemas.base import Schema
 from app.types import (
     BuiltinScript,
     CodeType,
+    MachineExecutorImageType,
     ResourcesConfigType,
     TaskType,
 )
@@ -18,6 +19,7 @@ from app.types import (
 
 class Capabilities(Schema):
     private_packages: bool = False
+    env_secrets: list[str] = []  # noqa: RUF012
 
 
 class PythonRepositoryCode(Schema):
@@ -27,6 +29,7 @@ class PythonRepositoryCode(Schema):
     path: str
     dependencies: str
     capabilities: Capabilities = Capabilities()
+    staged_directories: list[str] = []  # noqa: RUF012
 
 
 class BuiltinCode(Schema):
@@ -48,6 +51,7 @@ class MachineResources(Schema):
     memory: int = 2
     compute_cell: str
     timelimit: str | None = None
+    image_type: MachineExecutorImageType = MachineExecutorImageType.python_3_12_compiler
 
 
 class ClusterResources(Schema):
@@ -88,6 +92,11 @@ class TaskAccountingCreate(Schema):
 class TaskAccountingInfo(TaskAccountingCreate):
     cost: float
     parameters: AccountingParameters
+
+
+class TaskGroupLegacyDefinition(Schema):
+    task_type: TaskType
+    config_type: type[Entity]
 
 
 class TaskDefinition(Schema):

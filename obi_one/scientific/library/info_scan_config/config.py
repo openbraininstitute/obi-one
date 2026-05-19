@@ -12,7 +12,7 @@ class BlockGroup(StrEnum):
 
 
 class InfoScanConfig(ScanConfig):
-    info: Info = Field(  # type: ignore[]
+    info: Info = Field(
         title="Info",
         description="Information about the campaign.",
         json_schema_extra={

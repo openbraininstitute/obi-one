@@ -7,6 +7,10 @@ class CircuitExtractionSettings(BaseModel):
     run_validation: bool = False
 
 
+class CaveClientConfig(BaseModel):
+    microns_api_key: str = "CAVECLIENT_MICRONS_API_KEY"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="OBI_ONE_",
@@ -16,6 +20,8 @@ class Settings(BaseSettings):
     )
 
     circuit_extraction: CircuitExtractionSettings = CircuitExtractionSettings()
+
+    cave_client_config: CaveClientConfig = CaveClientConfig()
 
 
 settings = Settings()
