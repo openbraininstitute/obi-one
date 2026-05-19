@@ -2,10 +2,12 @@ import tempfile
 from enum import StrEnum
 from http import HTTPStatus
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 import entitysdk.client
 import entitysdk.exception
 from entitysdk.models.cell_morphology import CellMorphology
+from entitysdk.models.measurement_annotation import MeasurementKind
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -77,35 +79,35 @@ def neuron_morphology_metrics_endpoint(
 def _run_analysis_with_temp_file(
     content: bytes,
     suffix: Literal[".swc", ".h5", ".asc"],
-) -> list[dict[str, Any]]:
+) -> list[MeasurementKind]:
     with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
         tmp.write(content)
         tmp.flush()
-        return _run_morphology_analysis(tmp.name)
+        return run_morphology_analysis(tmp.name)
 
 
 def compute_measurement_kinds(
-    cell_morphology_id: str,
+    cell_morphology_id: UUID,
     db_client: entitysdk.client.Client,
-    morphology_format: Literal["swc", "h5", "asc"] = "h5",
-) -> list[dict[str, Any]]:
+    morphology_format: str = "h5",
+) -> list[MeasurementKind]:
     morphology = db_client.get_entity(
         entity_id=cell_morphology_id,
         entity_type=CellMorphology,
     )
 
-    morphology_format = morphology_format.strip().lower()
+    normalized_format = morphology_format.strip().lower()
 
-    if morphology_format not in MORPHOLOGY_FORMAT_TO_CONTENT_TYPE:
+    if normalized_format not in MORPHOLOGY_FORMAT_TO_CONTENT_TYPE:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail=(
-                f"Unsupported morphology format: {morphology_format} "
+                f"Unsupported morphology format: {normalized_format} "
                 f"(expected one of: {', '.join(MORPHOLOGY_FORMAT_TO_CONTENT_TYPE)})"
             ),
         )
 
-    expected_content_type = MORPHOLOGY_FORMAT_TO_CONTENT_TYPE[morphology_format]
+    expected_content_type = MORPHOLOGY_FORMAT_TO_CONTENT_TYPE[normalized_format]
     asset = next(
         (a for a in morphology.assets if a.content_type == expected_content_type),
         None,
@@ -114,18 +116,24 @@ def compute_measurement_kinds(
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail=(
-                f"No {morphology_format.upper()} asset on morphology "
+                f"No {normalized_format.upper()} asset on morphology "
                 f"(expected content type: {expected_content_type})"
             ),
         )
 
+    if asset.id is None:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="Morphology asset is missing an id",
+        )
+
     content = db_client.download_content(
-        entity_id=morphology.id,
+        entity_id=cell_morphology_id,
         entity_type=CellMorphology,
         asset_id=asset.id,
     )
 
-    match morphology_format:
+    match normalized_format:
         case "swc":
             return _run_analysis_with_temp_file(content, ".swc")
         case "h5":
@@ -136,7 +144,7 @@ def compute_measurement_kinds(
     raise HTTPException(
         status_code=HTTPStatus.BAD_REQUEST,
         detail=(
-            f"Unsupported morphology format: {morphology_format} "
+            f"Unsupported morphology format: {normalized_format} "
             f"(expected one of: {', '.join(MORPHOLOGY_FORMAT_TO_CONTENT_TYPE)})"
         ),
     )
@@ -147,7 +155,7 @@ def compute_measurement_kinds(
     summary="Preview morphology measurement kinds without registering",
 )
 def preview_morphology_measurement_kinds(
-    cell_morphology_id: str,
+    cell_morphology_id: UUID,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     morphology_format: Annotated[
         Literal["swc", "h5", "asc"],
@@ -175,7 +183,11 @@ def register_morphology_metrics(
     cell_morphology_id: UUID,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
-    measurement_kinds = compute_measurement_kinds(cell_morphology_id, db_client, morphology_format="h5",)
+    measurement_kinds = compute_measurement_kinds(
+        cell_morphology_id,
+        db_client,
+        morphology_format="h5",
+    )
     registered = register_measurements(db_client, cell_morphology_id, measurement_kinds)
 
     return {

@@ -116,7 +116,11 @@ def test_register_morphology_metrics_success(client, morphology_json, monkeypatc
         response = client.post(f"{ROUTE}/{entity_id}/register")
 
     assert response.status_code == 200
-    assert response.json() == {"measurement_entity_id": str(measurement_id), "status": "success"}
+    assert response.json() == {
+        "measurement_entity_id": str(measurement_id),
+        "measurement_kinds": ["metric1", "metric2"],
+        "status": "success",
+    }
 
 
 def test_register_morphology_metrics_no_h5_asset(client, morphology_json, monkeypatch):
@@ -130,7 +134,9 @@ def test_register_morphology_metrics_no_h5_asset(client, morphology_json, monkey
 
     response = client.post(f"{ROUTE}/{entity_id}/register")
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json() == {"detail": "No H5 asset on morphology"}
+    assert response.json() == {
+        "detail": "No H5 asset on morphology (expected content type: application/x-hdf5)"
+    }
 
 
 def test_register_morphology_metrics_asset_no_id(client, morphology_json, monkeypatch):
@@ -150,4 +156,4 @@ def test_register_morphology_metrics_asset_no_id(client, morphology_json, monkey
 
     response = client.post(f"{ROUTE}/{entity_id}/register")
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json() == {"detail": "Asset has no id"}
+    assert response.json() == {"detail": "Morphology asset is missing an id"}
