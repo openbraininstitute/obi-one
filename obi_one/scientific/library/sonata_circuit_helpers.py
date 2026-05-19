@@ -13,9 +13,9 @@ def add_node_set_to_circuit(
     """
     existing_node_sets = sonata_circuit.node_sets.content
     if not overwrite_if_exists:
-        for _k in node_set_dict:
-            if _k in existing_node_sets:
-                msg = f"Node set '{_k}' already exists!"
+        for k in node_set_dict:
+            if k in existing_node_sets:
+                msg = f"Node set '{k}' already exists!"
                 raise ValueError(msg)
     existing_node_sets.update(node_set_dict)
     sonata_circuit.node_sets = snap.circuit.NodeSets.from_dict(existing_node_sets)

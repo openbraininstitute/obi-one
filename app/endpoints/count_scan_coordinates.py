@@ -25,7 +25,7 @@ def grid_scan_parameters_count_endpoint(
     L.info("grid_scan_parameters_endpoint")
     grid_scan = GridScanGenerationTask(
         form=scan_config,
-        output_root="",
+        output_root="",  # ty:ignore[invalid-argument-type]
         coordinate_directory_option="ZERO_INDEX",
     )
 

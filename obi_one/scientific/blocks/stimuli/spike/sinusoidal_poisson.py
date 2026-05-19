@@ -151,7 +151,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
         # Upper-bound on expected spikes to guard against pathological params
         total_expected = (
-            (self.duration * len(self._offset_timestamps()) / 1000.0)
+            (self.duration * len(self._offset_timestamps()) / 1000.0)  # ty:ignore[unsupported-operator]
             * self.maximum_rate
             * len(source_gids)
         )
@@ -168,12 +168,12 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
         for t0 in self._offset_timestamps():
             start_time = t0
-            end_time = start_time + self.duration
+            end_time = start_time + self.duration  # ty:ignore[unsupported-operator]
 
             for gid in source_gids:
                 t = start_time
                 while t < end_time:
-                    dt_ms = _draw_inhomogeneous_poisson_interval_ms(rng, lam_max_hz)
+                    dt_ms = _draw_inhomogeneous_poisson_interval_ms(rng, lam_max_hz)  # ty:ignore[invalid-argument-type]
                     if not np.isfinite(dt_ms):
                         break
                     t_candidate = t + dt_ms
@@ -183,12 +183,12 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
                     # Accept with probability λ(t_candidate)/λ_max
                     lam_tc = self._lambda_t_ms(
                         t_candidate - start_time,
-                        self.minimum_rate,
-                        self.maximum_rate,
-                        self.modulation_frequency_hz,
-                        phase_rad,
+                        self.minimum_rate,  # ty:ignore[invalid-argument-type]
+                        self.maximum_rate,  # ty:ignore[invalid-argument-type]
+                        self.modulation_frequency_hz,  # ty:ignore[invalid-argument-type]
+                        phase_rad,  # ty:ignore[invalid-argument-type]
                     )
-                    if lam_max_hz > 0.0 and rng.uniform() <= lam_tc / lam_max_hz:
+                    if lam_max_hz > 0.0 and rng.uniform() <= lam_tc / lam_max_hz:  # ty:ignore[unsupported-operator]
                         spikes_by_gid[gid].append(t_candidate)
 
                     t = t_candidate

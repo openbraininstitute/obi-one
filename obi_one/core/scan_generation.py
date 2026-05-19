@@ -29,7 +29,7 @@ class ScanGenerationTask(Task, abc.ABC):
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     obi_one_version: str | None = None
-    _multiple_value_parameters: list = None
+    _multiple_value_parameters: list = None  # ty:ignore[invalid-assignment]
     _coordinate_parameters: list = PrivateAttr(default=[])
     _single_configs: list[SingleConfigMixin] = PrivateAttr(default=[])
 
@@ -166,8 +166,8 @@ class ScanGenerationTask(Task, abc.ABC):
                 single_coord_config = single_coord_config.cast_to_single_coord()
 
                 # Set the variables of the coordinate instance related to the scan
-                single_coord_config.idx = idx
-                single_coord_config.single_coordinate_scan_params = single_coordinate_scan_params
+                single_coord_config.idx = idx  # ty:ignore[invalid-assignment]
+                single_coord_config.single_coordinate_scan_params = single_coordinate_scan_params  # ty:ignore[invalid-assignment]
 
                 # Append the coordinate instance to self._coordinate_instances
                 single_configs.append(single_coord_config)
@@ -217,7 +217,7 @@ class ScanGenerationTask(Task, abc.ABC):
 
     def execute(
         self,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
@@ -250,13 +250,14 @@ class ScanGenerationTask(Task, abc.ABC):
             # Create the single coordinate entity
             if db_client and hasattr(single_coord_config, "create_single_entity_with_config"):
                 single_coord_config.create_single_entity_with_config(
-                    campaign=campaign, db_client=db_client
+                    campaign=campaign,  # ty:ignore[invalid-argument-type]
+                    db_client=db_client,
                 )
 
         # Create the campaign generation entity
         if db_client and hasattr(self.form, "create_campaign_generation_entity"):
             single_entities = [sc.single_entity for sc in self._single_configs]
-            self.form.create_campaign_generation_entity(single_entities, db_client=db_client)
+            self.form.create_campaign_generation_entity(single_entities, db_client=db_client)  # ty:ignore[invalid-argument-type]
 
 
 class GridScanGenerationTask(ScanGenerationTask):
@@ -283,13 +284,13 @@ class GridScanGenerationTask(ScanGenerationTask):
             self._coordinate_parameters = []
             for scan_params in product(*single_values_by_multi_value):
                 self._coordinate_parameters.append(
-                    SingleCoordinateScanParams(scan_params=scan_params)
+                    SingleCoordinateScanParams(scan_params=scan_params)  # ty:ignore[invalid-argument-type]
                 )
 
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
                 )
             ]
 
@@ -338,7 +339,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
                 )
             ]
 

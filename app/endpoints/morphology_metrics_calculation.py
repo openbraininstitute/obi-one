@@ -3,13 +3,14 @@ import pathlib
 import tempfile
 import traceback
 from contextlib import ExitStack, suppress
+from functools import cache
 from http import HTTPStatus
 from pathlib import Path
-from typing import Annotated, Any, Final, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Final, TypeVar, cast
+from uuid import UUID
 
 import entitysdk
 import neurom as nm
-import requests
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import (
@@ -21,28 +22,36 @@ from entitysdk.models import (
     MeasurementAnnotation,
     Subject,
 )
+from entitysdk.models.asset import Asset
+from entitysdk.models.core import Identifiable
+from entitysdk.models.measurement_annotation import MeasurementKind
+from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
-from requests.exceptions import RequestException
 
 import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
+from app.endpoints.convert_morphology_to_registered_mesh import (
+    HAS_MESHING,
+    mesh_and_register as _mesh_and_register,
+)
+from app.errors import ApiError
+from app.logger import L
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
+    MorphologyFiles,
     validate_and_convert_morphology,
 )
+
+if TYPE_CHECKING:
+    from entitysdk.models.cell_morphology_protocol import CellMorphologyProtocolUnion
 
 
 class ApiErrorCode:
     BAD_REQUEST = "BAD_REQUEST"
     ENTITYSDK_API_FAILURE = "ENTITYSDK_API_FAILURE"
-
-
-class BaseEntity:
-    def __init__(self, entity_id: Any | None = None) -> None:
-        """Initialize the base entity."""
 
 
 ALLOWED_EXTENSIONS: Final[set[str]] = {".swc", ".h5", ".asc"}
@@ -55,6 +64,14 @@ BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
+
+
+class MorphologyRegistrationResponse(BaseModel):
+    entity_id: str
+    measurement_entity_id: str
+    mesh_asset_id: str | None
+    status: str
+    morphology_name: str
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -92,22 +109,15 @@ def _validate_file_extension(filename: str | None) -> str:
     return file_extension
 
 
+@cache
 def _get_template() -> dict:
-    if hasattr(_get_template, "cached"):
-        return _get_template.cached
-
     template_path = Path(__file__).parent / "morphology_template.json"
-    template = json.loads(template_path.read_text())
-
-    _get_template.cached = template
-    return template
+    return json.loads(template_path.read_text())
 
 
+@cache
 def _get_analysis_dict() -> dict:
     """Lazily initialize and cache the analysis dictionary."""
-    if hasattr(_get_analysis_dict, "cached"):
-        return _get_analysis_dict.cached
-
     analysis_dict_base = uf.create_analysis_dict(_get_template())
     analysis_dict = dict(analysis_dict_base)
 
@@ -116,11 +126,10 @@ def _get_analysis_dict() -> dict:
         for domain in TARGET_NEURITE_DOMAINS:
             analysis_dict.setdefault(domain, default_analysis)
 
-    _get_analysis_dict.cached = analysis_dict
     return analysis_dict
 
 
-def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
+def run_morphology_analysis(morphology_path: str) -> list[MeasurementKind]:
     try:
         neuron = nm.load_morphology(morphology_path)
         results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
@@ -145,19 +154,13 @@ def _run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
 def _get_h5_analysis_path(
     original_file_path: str,
     file_extension: str,
-    converted_morphology_file1: str,
-    converted_morphology_file2: str,
+    converted_files: MorphologyFiles,
 ) -> str:
     if file_extension == ".h5":
         return original_file_path
 
-    for converted_path in (converted_morphology_file1, converted_morphology_file2):
-        if (
-            converted_path
-            and pathlib.Path(converted_path).suffix.lower() == ".h5"
-            and pathlib.Path(converted_path).exists()
-        ):
-            return converted_path
+    if converted_files.hdf5 and converted_files.hdf5.exists():
+        return str(converted_files.hdf5)
 
     return original_file_path
 
@@ -197,6 +200,9 @@ async def _parse_file_and_metadata(
 ) -> tuple[str, str, bytes, MorphologyMetadata]:
     morphology_name = file.filename
     file_extension = _validate_file_extension(morphology_name)
+    if morphology_name is None:
+        msg = "filename must not be None"
+        raise AssertionError(msg)
     content = await file.read()
 
     if not content:
@@ -214,7 +220,7 @@ async def _parse_file_and_metadata(
     return morphology_name, file_extension, content, metadata_obj
 
 
-T = TypeVar("T", bound=BaseEntity)
+T = TypeVar("T", bound=Identifiable)
 
 
 def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
@@ -226,7 +232,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
 
         try:
             return client.search_entity(entity_type=entity_class, query={"id": entity_id}).one()
-        except (EntitySDKError, RequestException):
+        except EntitySDKError:
             return None
 
     brain_location_data = new_item.get("brain_location", [])
@@ -245,14 +251,15 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     subject = _get_entity("subject", Subject)
     brain_region = _get_entity("brain_region", BrainRegion)
     morphology_protocol = _get_entity("cell_morphology_protocol", CellMorphologyProtocol)
+
     repair_pipeline_state = new_item.get("repair_pipeline_state")
 
     license = _get_entity("license", License)
     name = new_item.get("name")
     description = new_item.get("description")
-    authorized_public = new_item.get("authorized_public")
+    authorized_public: bool = new_item.get("authorized_public", False)
     morphology = CellMorphology(
-        cell_morphology_protocol=morphology_protocol,
+        cell_morphology_protocol=cast("CellMorphologyProtocolUnion", morphology_protocol),
         repair_pipeline_state=repair_pipeline_state,
         name=name,
         description=description,
@@ -268,39 +275,73 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     return registered
 
 
+EXTENSION_CONTENT_TYPE_MAP: Final[dict[str, ContentType]] = {
+    ".asc": ContentType.application_asc,
+    ".swc": ContentType.application_swc,
+    ".h5": ContentType.application_x_hdf5,
+}
+
+
+def _get_content_type(file_extension: str) -> ContentType:
+    content_type = EXTENSION_CONTENT_TYPE_MAP.get(file_extension.lower())
+    if not content_type:
+        error_msg = f"Unsupported file extension: '{file_extension}'."
+        raise ValueError(error_msg)
+    return content_type
+
+
+def register_asset_from_content(
+    client: Client,
+    entity_id: UUID,
+    morphology_name: str,
+    content: bytes,
+) -> Asset:
+    file_extension = pathlib.Path(morphology_name).suffix
+    content_type = _get_content_type(file_extension)
+    try:
+        asset = client.upload_content(
+            entity_id=entity_id,
+            entity_type=CellMorphology,
+            file_content=content,
+            file_name=morphology_name,
+            file_content_type=content_type,
+            asset_label=AssetLabel.morphology,
+        )
+    except EntitySDKError as e:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+                "detail": f"Entity asset registration failed: {e}",
+            },
+        ) from e
+    else:
+        return asset
+
+
 def register_assets(
     client: Client,
-    entity_id: str,
+    entity_id: UUID,
     file_folder: str,
     morphology_name: str,
-) -> dict[str, Any]:
-    file_path_obj = pathlib.Path(file_folder) / morphology_name
-    file_path = str(file_path_obj)
+) -> Asset:
+    file_path = pathlib.Path(file_folder) / morphology_name
 
-    if not file_path_obj.exists():
+    if not file_path.exists():
         error_msg = f"Asset file not found at path: {file_path}"
         raise FileNotFoundError(error_msg)
 
-    file_extension = file_path_obj.suffix
-    extension_map = {
-        ".asc": "application/asc",
-        ".swc": "application/swc",
-        ".h5": "application/x-hdf5",
-    }
-    mime_type = extension_map.get(file_extension.lower())
-    if not mime_type:
-        error_msg = f"Unsupported file extension: '{file_extension}'."
-        raise ValueError(error_msg)
+    content_type = _get_content_type(file_path.suffix)
 
     try:
         asset1 = client.upload_file(
             entity_id=entity_id,
             entity_type=CellMorphology,
             file_path=file_path,
-            file_content_type=mime_type,
-            asset_label="morphology",
+            file_content_type=content_type,
+            asset_label=AssetLabel.morphology,
         )
-    except requests.exceptions.RequestException as e:
+    except EntitySDKError as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -314,15 +355,17 @@ def register_assets(
 
 def register_measurements(
     client: Client,
-    entity_id: str,
-    measurements: list[dict[str, Any]],
-) -> dict[str, Any]:
+    entity_id: UUID,
+    measurements: list[MeasurementKind],
+) -> MeasurementAnnotation:
     try:
         measurement_annotation = MeasurementAnnotation(
-            entity_id=entity_id, entity_type="cell_morphology", measurement_kinds=measurements
+            entity_id=entity_id,
+            entity_type=MeasurableEntity.cell_morphology,
+            measurement_kinds=measurements,
         )
         registered = client.register_entity(entity=measurement_annotation)
-    except requests.exceptions.RequestException as e:
+    except EntitySDKError as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -350,30 +393,57 @@ def _prepare_entity_payload(
 
 def _register_assets_and_measurements(
     client: Client,
-    entity_id: str,
+    entity_uuid: UUID,
     morphology_name: str,
     content: bytes,
-    measurement_list: list[dict[str, Any]],
-    converted_morphology_file1: str,
-    converted_morphology_file2: str,
-) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory() as temp_dir_for_upload:
-        temp_upload_path_obj = pathlib.Path(temp_dir_for_upload) / morphology_name
-        temp_upload_path_obj.write_bytes(content)
-        register_assets(client, entity_id, temp_dir_for_upload, morphology_name)
+    measurement_list: list[MeasurementKind],
+    converted_files: MorphologyFiles,
+) -> MeasurementAnnotation:
+    register_asset_from_content(client, entity_uuid, morphology_name, content)
 
-    if converted_morphology_file1:
-        output1_path_obj = pathlib.Path(converted_morphology_file1)
-        if output1_path_obj.exists():
-            register_assets(client, entity_id, str(output1_path_obj.parent), output1_path_obj.name)
+    if converted_files.swc and converted_files.swc.exists():
+        swc = converted_files.swc
+        register_assets(client, entity_uuid, str(swc.parent), swc.name)
 
-    if converted_morphology_file2:
-        output2_path_obj = pathlib.Path(converted_morphology_file2)
-        if output2_path_obj.exists():
-            register_assets(client, entity_id, str(output2_path_obj.parent), output2_path_obj.name)
+    if converted_files.hdf5 and converted_files.hdf5.exists():
+        hdf5 = converted_files.hdf5
+        register_assets(client, entity_uuid, str(hdf5.parent), hdf5.name)
 
-    registered = register_measurements(client, entity_id, measurement_list)
+    registered = register_measurements(client, entity_uuid, measurement_list)
     return registered
+
+
+def _resolve_swc_bytes_for_mesh(
+    _client: Any,
+    converted_files: MorphologyFiles,
+    file_extension: str,
+    content: bytes,
+) -> bytes | None:
+    """Return the SWC bytes to use for mesh generation, or None if not applicable."""
+    if converted_files.swc and converted_files.swc.exists():
+        return converted_files.swc.read_bytes()
+    if file_extension == ".swc":
+        return content
+    return None
+
+
+def _try_mesh_and_register(
+    client: entitysdk.client.Client,
+    entity_uuid: UUID,
+    swc_bytes: bytes,
+) -> str | None:
+    if not HAS_MESHING:
+        L.info("_try_mesh_and_register: meshing dependencies not available, skipping")
+        return None
+    try:
+        asset = _mesh_and_register(client, entity_uuid, swc_bytes)
+        return str(asset.id)
+    except ApiError as err:
+        L.warning(f"_try_mesh_and_register: meshing failed for {entity_uuid}: {err.message}")
+        return None
+    except Exception as err:  # noqa: BLE001
+        L.warning(f"_try_mesh_and_register: unexpected meshing error for {entity_uuid}: {err}")
+        return None
 
 
 async def _run_pipeline(
@@ -383,7 +453,7 @@ async def _run_pipeline(
     content: bytes,
     entity_payload: dict[str, Any],
     single_point_soma_by_ext: dict[str, bool],
-) -> tuple[str, str]:
+) -> tuple[str, str, str | None]:
     with ExitStack() as stack:
         temp_file_obj = stack.enter_context(
             tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
@@ -393,41 +463,45 @@ async def _run_pipeline(
         temp_file_obj.close()
         stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-        (
-            converted_morphology_file1,
-            converted_morphology_file2,
-        ) = await run_in_threadpool(
+        converted_files: MorphologyFiles = await run_in_threadpool(
             validate_and_convert_morphology,
             input_file=pathlib.Path(temp_file_path),
             output_dir=pathlib.Path(temp_file_path).parent,
             output_stem=Path(morphology_name).stem,
             single_point_soma_by_ext=single_point_soma_by_ext,
         )
-        if converted_morphology_file1:
-            stack.callback(pathlib.Path(converted_morphology_file1).unlink, missing_ok=True)
-        if converted_morphology_file2:
-            stack.callback(pathlib.Path(converted_morphology_file2).unlink, missing_ok=True)
+
+        if converted_files.swc:
+            stack.callback(converted_files.swc.unlink, missing_ok=True)
+        if converted_files.hdf5:
+            stack.callback(converted_files.hdf5.unlink, missing_ok=True)
 
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
             file_extension=file_extension,
-            converted_morphology_file1=converted_morphology_file1,
-            converted_morphology_file2=converted_morphology_file2,
+            converted_files=converted_files,
         )
-        measurement_list = _run_morphology_analysis(analysis_path)
+        measurement_list = run_morphology_analysis(analysis_path)
 
         data = register_morphology(client, entity_payload)
-        entity_id = str(data.id)
+        entity_uuid = UUID(str(data.id))
         data2 = _register_assets_and_measurements(
             client,
-            entity_id,
+            entity_uuid,
             morphology_name,
             content,
             measurement_list,
-            converted_morphology_file1,
-            converted_morphology_file2,
+            converted_files,
         )
-        return entity_id, str(data2.id)
+
+        swc_bytes = _resolve_swc_bytes_for_mesh(client, converted_files, file_extension, content)
+        mesh_asset_id: str | None = None
+        if swc_bytes is not None:
+            mesh_asset_id = await run_in_threadpool(
+                _try_mesh_and_register, client, entity_uuid, swc_bytes
+            )
+
+        return str(entity_uuid), str(data2.id), mesh_asset_id
 
 
 @router.post(
@@ -435,14 +509,14 @@ async def _run_pipeline(
     summary="Calculate morphology metrics and register entities.",
     description=(
         "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
-        "asset, and measurements."
+        "asset, measurements, and (when possible) a GLB surface mesh."
     ),
 )
 async def morphology_metrics_calculation(
     file: Annotated[UploadFile, File(description="Neuron file to upload (.swc, .h5, or .asc)")],
     client: Annotated[entitysdk.client.Client, Depends(get_client)],
     metadata: Annotated[str, Form()] = "{}",
-) -> dict:
+) -> MorphologyRegistrationResponse:
     (
         morphology_name,
         file_extension,
@@ -456,7 +530,7 @@ async def morphology_metrics_calculation(
         or DEFAULT_SINGLE_POINT_SOMA_BY_EXT
     )
     try:
-        entity_id, measurement_entity_id = await _run_pipeline(
+        entity_id, measurement_entity_id, mesh_asset_id = await _run_pipeline(
             client=client,
             morphology_name=morphology_name,
             file_extension=file_extension,
@@ -475,10 +549,11 @@ async def morphology_metrics_calculation(
                 "detail": f"Pipeline failed: {type(e).__name__} - {e!s}",
             },
         ) from e
-    else:
-        return {
-            "entity_id": entity_id,
-            "measurement_entity_id": measurement_entity_id,
-            "status": "success",
-            "morphology_name": morphology_name,
-        }
+
+    return MorphologyRegistrationResponse(
+        entity_id=entity_id,
+        measurement_entity_id=measurement_entity_id,
+        mesh_asset_id=mesh_asset_id,
+        status="success",
+        morphology_name=morphology_name,
+    )

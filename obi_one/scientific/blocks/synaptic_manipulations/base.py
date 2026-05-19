@@ -63,20 +63,20 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
             ),
         }
 
-        return [sonata_config]
+        return [sonata_config]  # ty:ignore[invalid-return-type]
 
 
 class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
     """Base class for synaptic manipulations applied to all mechanisms using the variable."""
 
-    def _get_synapse_configure(self) -> str:
+    def _get_synapse_configure(self) -> str:  # ty:ignore[empty-body]
         pass
 
     def _sonata_manipulations_list(self) -> dict:
         manipulation = super()._sonata_manipulations_list()[0]
         manipulation["synapse_configure"] = self._get_synapse_configure()
 
-        return [manipulation]
+        return [manipulation]  # ty:ignore[invalid-return-type]
 
 
 class ModSpecificVariableInterNeuronSetSynapticManipulation(
@@ -84,10 +84,10 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
 ):
     """Base class for synaptic manipulation of a single variable applied to a single mechanism."""
 
-    def _get_synapse_configure(self) -> str:
+    def _get_synapse_configure(self) -> str:  # ty:ignore[empty-body]
         pass
 
-    def _get_modoverride_name(self) -> str:
+    def _get_modoverride_name(self) -> str:  # ty:ignore[empty-body]
         pass
 
     def _sonata_manipulations_list(self) -> dict:
@@ -95,13 +95,13 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
         manipulation["synapse_configure"] = self._get_synapse_configure()
         manipulation["modoverride"] = self._get_modoverride_name()
 
-        return [manipulation]
+        return [manipulation]  # ty:ignore[invalid-return-type]
 
 
 class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
     """Base class for synaptic manipulations applied with a delay at different timestamps."""
 
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
+    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))  # ty:ignore[invalid-assignment]
 
     timestamps: TimestampsReference | None = Field(
         default=None,
@@ -132,9 +132,10 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
 
     _weight: float = PrivateAttr(default=0.0)
 
-    def _sonata_manipulations_list(self) -> list:
+    def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
+            self.timestamps,
+            self._default_timestamps,  # ty:ignore[invalid-argument-type]
         )
 
         timestamps = timestamps_block.timestamps()

@@ -74,12 +74,12 @@ def register_output(
         has_spines=True,
         brain_region=source_dataset.brain_region,
         experiment_date=source_dataset.experiment_date,
-        license=em_entity.license,
+        license=em_entity.license,  # ty:ignore[unresolved-attribute]
     )
     existing_circuit = db_client.register_entity(circ_entity)
 
     db_client.upload_directory(
-        entity_id=existing_circuit.id,
+        entity_id=existing_circuit.id,  # ty:ignore[invalid-argument-type]
         entity_type=Circuit,
         name="sonata_synaptome",
         paths=file_paths,
@@ -87,7 +87,7 @@ def register_output(
     )
 
     db_client.upload_file(
-        entity_id=existing_circuit.id,
+        entity_id=existing_circuit.id,  # ty:ignore[invalid-argument-type]
         entity_type=Circuit,
         file_path=compressed_path,
         file_content_type=ContentType.application_gzip,
@@ -95,7 +95,7 @@ def register_output(
         transfer_config=MultipartUploadTransferConfig(),
     )
 
-    for publication in assemble_publication_links(db_client, em_entity, all_notices):
+    for publication in assemble_publication_links(db_client, em_entity, all_notices):  # ty:ignore[invalid-argument-type]
         new_link = ScientificArtifactPublicationLink(
             scientific_artifact=existing_circuit,
             publication=publication,

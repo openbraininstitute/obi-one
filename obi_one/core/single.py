@@ -26,9 +26,9 @@ class SingleCoordinateScanParams(OBIBaseModel):
     @property
     def nested_param_name_and_value_subpath(self) -> Path:
         if len(self.scan_params):
-            self.nested_coordinate_subpath_str = ""
+            self.nested_coordinate_subpath_str = ""  # ty:ignore[invalid-assignment]
             for scan_param in self.scan_params:
-                self.nested_coordinate_subpath_str += (
+                self.nested_coordinate_subpath_str += (  # ty:ignore[unsupported-operator]
                     f"{scan_param.location_str}={scan_param.value}/"
                 )
             return Path(self.nested_coordinate_subpath_str)
@@ -37,9 +37,9 @@ class SingleCoordinateScanParams(OBIBaseModel):
     @property
     def nested_param_value_subpath(self) -> Path:
         if len(self.scan_params):
-            self.nested_coordinate_subpath_str = ""
+            self.nested_coordinate_subpath_str = ""  # ty:ignore[invalid-assignment]
             for scan_param in self.scan_params:
-                self.nested_coordinate_subpath_str += f"{scan_param.value}/"
+                self.nested_coordinate_subpath_str += f"{scan_param.value}/"  # ty:ignore[unsupported-operator]
             return Path(self.nested_coordinate_subpath_str)
         return Path(self.nested_coordinate_subpath_str)
 
@@ -79,10 +79,10 @@ class SingleConfigMixin:
     coordinate_output_root: Path = Path()
     obi_one_version: str | None = None
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
-    single_coordinate_scan_params: SingleCoordinateScanParams = None
+    single_coordinate_scan_params: SingleCoordinateScanParams = None  # ty:ignore[invalid-assignment]
 
-    _single_task_config_type: ClassVar[TaskActivityType] = None
-    _single_entity: Entity = None
+    _single_task_config_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
+    _single_entity: Entity = None  # ty:ignore[invalid-assignment]
 
     @property
     def single_entity(self) -> Entity:
@@ -122,7 +122,7 @@ class SingleConfigMixin:
             description=f"{single_name} {self.idx}",
             task_config_type=self.single_task_config_type,
             multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
-            input_entities=self.input_entities(db_client=db_client),
+            input_entities=self.input_entities(db_client=db_client),  # ty:ignore[unresolved-attribute]
             task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             task_config_generator_id=campaign.id,
         )
@@ -179,7 +179,7 @@ class SingleConfigMixin:
         """Serialize the object to a JSON file."""
         # Important to use model_dump_json() instead of model_dump()
         # (so Path objects are serialized as strings)
-        model_dump = self.model_dump_json()
+        model_dump = self.model_dump_json()  # ty:ignore[unresolved-attribute]
 
         # Now load it back into a dict to do some additional modifications
         model_dump = OrderedDict(json.loads(model_dump))
