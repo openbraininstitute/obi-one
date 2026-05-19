@@ -7,8 +7,10 @@ import entitysdk.client
 import entitysdk.exception
 import pytest
 from entitysdk.models.cell_morphology import CellMorphology
+from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
+from app.endpoints.morphology_metrics import compute_measurement_kinds
 
 from tests.utils import DATA_DIR
 
@@ -157,3 +159,79 @@ def test_register_morphology_metrics_asset_no_id(client, morphology_json, monkey
     response = client.post(f"{ROUTE}/{entity_id}/register")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json() == {"detail": "Morphology asset is missing an id"}
+
+
+def test_compute_measurement_kinds_unsupported_format():
+    entitysdk_client_mock = MagicMock(entitysdk.client.Client)
+
+    with pytest.raises(HTTPException) as exc:
+        compute_measurement_kinds(
+            uuid.uuid4(),
+            entitysdk_client_mock,
+            morphology_format="foo",
+        )
+
+    assert exc.value.status_code == HTTPStatus.BAD_REQUEST
+    assert exc.value.detail == (
+        "Unsupported morphology format: foo (expected one of: swc, h5, asc)"
+    )
+
+
+@pytest.mark.parametrize(
+    ("morphology_format", "expected_content_type", "expected_suffix"),
+    [
+        ("swc", "application/swc", ".swc"),
+        ("h5", "application/x-hdf5", ".h5"),
+        ("asc", "application/asc", ".asc"),
+    ],
+)
+def test_preview_morphology_measurement_kinds_formats(
+    client,
+    morphology_json,
+    monkeypatch,
+    morphology_format,
+    expected_content_type,
+    expected_suffix,
+):
+    entity_id = uuid.uuid4()
+
+    asset = MagicMock()
+    asset.content_type = expected_content_type
+    asset.label = "morphology"
+    asset.id = uuid.uuid4()
+
+    morphology = CellMorphology.model_validate(morphology_json)
+    morphology = morphology.model_copy(update={"assets": [asset]})
+
+    entitysdk_client_mock = MagicMock(entitysdk.client.Client)
+    entitysdk_client_mock.get_entity.return_value = morphology
+    entitysdk_client_mock.download_content.return_value = b"dummy content"
+
+    monkeypatch.setitem(
+        client.app.dependency_overrides,
+        get_client,
+        lambda: entitysdk_client_mock,
+    )
+
+    def mock_run_analysis_with_temp_file(content, suffix):
+        assert content == b"dummy content"
+        assert suffix == expected_suffix
+        return ["metric1", "metric2"]
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics._run_analysis_with_temp_file",
+        mock_run_analysis_with_temp_file,
+    )
+
+    response = client.get(
+        f"{ROUTE}/{entity_id}/measurement-kinds",
+        params={"morphology_format": morphology_format},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "cell_morphology_id": str(entity_id),
+        "morphology_format": morphology_format,
+        "measurement_kinds": ["metric1", "metric2"],
+        "status": "success",
+    }
