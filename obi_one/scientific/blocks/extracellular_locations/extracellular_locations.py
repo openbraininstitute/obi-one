@@ -69,6 +69,23 @@ class PatternedExtracellularLocations(ExtracellularLocations, abc.ABC):
         },
     )
 
+    def xyz_locations_with_origin_and_direction_applied(self) -> list[tuple[float, float, float]]:
+        """Calculate the XYZ locations of the electrodes based on the origin and direction."""
+        
+        initial_xyz_locations = self.get_xyz_locations()
+        xyz_locations = []
+
+        unit_direction_x = self.direction_x / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5
+        unit_direction_y = self.direction_y / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5
+        unit_direction_z = self.direction_z / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5
+
+        for x, y, z in initial_xyz_locations:
+            x = self.origin_x + (x * unit_direction_x)
+            y = self.origin_y + (y * unit_direction_y)
+            z = self.origin_z + (z * unit_direction_z)
+            xyz_locations.append((x, y, z))
+        return xyz_locations
+
 class LinearExtracellularLocations(PatternedExtracellularLocations):
     """Extracellular locations arranged in a linear pattern."""
 
@@ -95,9 +112,9 @@ class LinearExtracellularLocations(PatternedExtracellularLocations):
         """Calculate the XYZ locations of the electrodes based on the number of electrodes and spacing."""
         xyz_locations = []
         for electrode_i in range(self.n_electrodes):
-            x = self.origin_x + (electrode_i * self.direction_x * self.spacing)
-            y = self.origin_y + (electrode_i * self.direction_y * self.spacing)
-            z = self.origin_z + (electrode_i * self.direction_z * self.spacing)
+            x = self.origin_x + (electrode_i * self.spacing)
+            y = self.origin_y + (electrode_i * self.spacing)
+            z = self.origin_z + (electrode_i * self.spacing)
             xyz_locations.append((x, y, z))
         return xyz_locations
 
