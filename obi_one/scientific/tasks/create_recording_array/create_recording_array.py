@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import ClassVar, Literal
 
 from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import TaskActivityType, TaskConfigType
+from entitysdk.models import Entity, TaskConfig, SimulatableExtracellularRecordingArray
+from entitysdk.types import TaskActivityType, TaskConfigType, ElectrodeType, AssetLabel, ContentType
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
@@ -42,8 +42,8 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
+    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.simulatable_extracellular_recording_array__campaign
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = TaskConfigType.simulatable_extracellular_recording_array__config_generation
 
     @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
@@ -102,17 +102,6 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         },
     )
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
-    ) -> None:  # ty:ignore[invalid-method-override]
-        pass
-
-    def create_campaign_generation_entity(self, generated: list, db_client: Client) -> None:
-        pass
-
 
 class CreateExtracellularRecordingArraySingleConfig(
     CreateExtracellularRecordingArrayScanConfig, SingleConfigMixin
@@ -132,8 +121,8 @@ class CreateExtracellularRecordingArrayTask(Task):
 
     config: CreateExtracellularRecordingArraySingleConfig
 
-    _single_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
-    _single_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
+    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.simulatable_extracellular_recording_array__config
+    _single_task_activity_type: ClassVar[TaskActivityType] = TaskActivityType.simulatable_extracellular_recording_array__execution
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
@@ -236,3 +225,20 @@ class CreateExtracellularRecordingArrayTask(Task):
             neurite_types=neurite_types,
         )
         L.info("Weights saved to: %s", weights_output_path)
+
+        entity = SimulatableExtracellularRecordingArray(
+            name=f"Extracellular Recording Array for {population_name}",
+            description="Temp description.",
+            electrode_type=ElectrodeType.custom,
+            authorized_public=False,
+            circuit_id=self._circuit_entity.id
+        )
+        db_client.register_entity(entity)
+
+        _ = db_client.upload_file(
+            entity_id=entity.id,
+            entity_type=SimulatableExtracellularRecordingArray,
+            file_path=weights_output_path,
+            file_content_type=ContentType.h5,
+            asset_label=AssetLabel.electrode_array_weight_matrix,
+        )
