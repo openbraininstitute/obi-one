@@ -46,8 +46,8 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_array_weights_calculation__campaign
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = TaskConfigType.extracellular_recording_array_weights_calculation__config_generation
+    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_weights_calculation__campaign
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = TaskConfigType.extracellular_recording_weights_calculation__config_generation
 
     @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
@@ -127,8 +127,8 @@ class CreateExtracellularRecordingArrayTask(Task):
 
     config: CreateExtracellularRecordingArraySingleConfig
 
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_array_weights_calculation__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = TaskActivityType.extracellular_recording_array_weights_calculation__execution
+    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_weights_calculation__config
+    _single_task_activity_type: ClassVar[TaskActivityType] = TaskActivityType.extracellular_recording_weights_calculation__execution
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
