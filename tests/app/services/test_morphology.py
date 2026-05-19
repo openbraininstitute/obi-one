@@ -1,5 +1,3 @@
-"""Tests for app/services/morphology.py"""
-
 from http import HTTPStatus
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -24,7 +22,6 @@ _COLLECTOR = "app.services.morphology.morphio.WarningHandlerCollector"
 _MORPHOLOGY = "app.services.morphology.morphio.Morphology"
 _CHECK_WARNINGS = "app.services.morphology._check_warnings"
 _LOAD_MORPHOLOGY = "app.services.morphology.neurom.load_morphology"
-_QUALITY_RUNNER = "app.services.morphology._quality_check_runner.run"
 _MORPH_TOOL = "app.services.morphology.morph_tool.convert"
 _LOAD_MORPHIO = "app.services.morphology.load_morphio_morphology"
 _CONVERT = "app.services.morphology.convert_morphology"
@@ -64,9 +61,7 @@ class TestRunQualityChecks:
 
     def test_ran_to_completion_true_on_success(self, tmp_path):
         mock_neuron = MagicMock()
-
         custom_config = {"checks": {"morphology_checks": ["has_axon", "has_basal_dendrite"]}}
-
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
             patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
@@ -81,9 +76,7 @@ class TestRunQualityChecks:
 
     def test_passed_and_failed_checks_are_separated_correctly(self):
         mock_neuron = MagicMock()
-
         custom_config = {"checks": {"morphology_checks": ["check_a", "check_b", "check_c"]}}
-
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
             patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
@@ -99,7 +92,6 @@ class TestRunQualityChecks:
     def test_empty_morphology_checks_key(self):
         mock_neuron = MagicMock()
         custom_config = {"checks": {"morphology_checks": []}}
-
         with (
             patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
             patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
@@ -109,6 +101,19 @@ class TestRunQualityChecks:
         assert result["ran_to_completion"] is True
         assert result["passed_checks"] == []
         assert result["failed_checks"] == []
+
+    def test_check_function_missing_falls_back_to_failed(self):
+        mock_neuron = MagicMock()
+        custom_config = {"checks": {"morphology_checks": ["missing_check"]}}
+        with (
+            patch(_LOAD_MORPHOLOGY, return_value=mock_neuron),
+            patch("app.services.morphology._QUALITY_CHECK_CONFIG", custom_config),
+        ):
+            result = run_quality_checks(Path("anything.swc"))
+
+        assert result["ran_to_completion"] is True
+        assert result["passed_checks"] == []
+        assert result["failed_checks"] == ["missing_check"]
 
 
 class TestCheckWarnings:
