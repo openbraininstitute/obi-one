@@ -8,8 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from obi_one.utils.circuit_registration import (
-    _check_matrix_folder,
-    _check_required_contents,
     check_if_circuit_exists,
     find_agent,
     find_role,
@@ -27,6 +25,10 @@ from obi_one.utils.circuit_registration import (
     register_contributions,
     register_derivation,
     register_publication_links,
+)
+from obi_one.utils.circuit_registration.assets import (
+    _check_matrix_folder,
+    _check_required_contents,
 )
 
 from tests.utils import CIRCUIT_DIR
@@ -527,7 +529,7 @@ def test_register_derivation_success():
     parent = MagicMock()
     circuit = MagicMock()
 
-    with patch("obi_one.utils.circuit_registration.models.Derivation"):
+    with patch("obi_one.utils.circuit_registration.links.models.Derivation"):
         result = register_derivation(
             client=client,
             from_entity=parent,
@@ -571,7 +573,7 @@ def test_register_contributions_new():
     role = MagicMock()
     role.name = "unspecified"
 
-    with patch("obi_one.utils.circuit_registration.models.Contribution"):
+    with patch("obi_one.utils.circuit_registration.links.models.Contribution"):
         result = register_contributions(
             client=client,
             contribution_dict={"John Doe": {"agent": agent, "role": role}},
@@ -605,7 +607,7 @@ def test_register_contributions_already_exists():
     mock_contr_model.role.name = "unspecified"
 
     with patch(
-        "obi_one.utils.circuit_registration.models.Contribution",
+        "obi_one.utils.circuit_registration.links.models.Contribution",
         return_value=mock_contr_model,
     ):
         # search_entity for _contribution_exists returns the existing match
@@ -651,7 +653,7 @@ def test_register_publication_links_new():
 
     pub_entity = MagicMock(DOI="10.1234/test")
 
-    with patch("obi_one.utils.circuit_registration.models.ScientificArtifactPublicationLink"):
+    with patch("obi_one.utils.circuit_registration.links.models.ScientificArtifactPublicationLink"):
         result = register_publication_links(
             client=client,
             publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
@@ -671,7 +673,7 @@ def test_register_publication_links_already_exists():
 
     pub_entity = MagicMock(DOI="10.1234/test")
 
-    with patch("obi_one.utils.circuit_registration.models.ScientificArtifactPublicationLink"):
+    with patch("obi_one.utils.circuit_registration.links.models.ScientificArtifactPublicationLink"):
         result = register_publication_links(
             client=client,
             publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
@@ -884,7 +886,9 @@ class _FakeCircuit:
             setattr(self, k, v)
 
 
-_patch_models_circuit = patch("obi_one.utils.circuit_registration.models.Circuit", _FakeCircuit)
+_patch_models_circuit = patch(
+    "obi_one.utils.circuit_registration.register.models.Circuit", _FakeCircuit
+)
 
 
 def test_register_circuit_dry_run():
@@ -920,8 +924,8 @@ def test_register_circuit_registers_entity():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register_asset"),
-        patch("obi_one.utils.circuit_registration.generate_additional_circuit_assets"),
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
     ):
         result = register_circuit(
             client=client,
@@ -950,9 +954,9 @@ def test_register_circuit_with_derivation():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register_asset"),
-        patch("obi_one.utils.circuit_registration.register_derivation") as mock_derivation,
-        patch("obi_one.utils.circuit_registration.generate_additional_circuit_assets"),
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.register_derivation") as mock_derivation,
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
             client=client,
@@ -981,8 +985,10 @@ def test_register_circuit_skip_additional_assets():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register_asset"),
-        patch("obi_one.utils.circuit_registration.generate_additional_circuit_assets") as mock_gen,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch(
+            "obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"
+        ) as mock_gen,
     ):
         register_circuit(
             client=client,
