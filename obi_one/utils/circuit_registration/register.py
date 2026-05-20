@@ -18,6 +18,7 @@ from obi_one.utils.circuit_registration.links import (
     register_publication_links,
 )
 from obi_one.utils.circuit_registration.resolve import (
+    check_brain_region,
     check_if_circuit_exists,
     get_brain_region,
     get_contributions,
@@ -237,6 +238,7 @@ def register_circuit_from_metadata(
 
     subject = get_subject(client, circuit_metadata)
     brain_region = get_brain_region(client, circuit_metadata)
+    check_brain_region(brain_region, subject)
     license_entity = get_license(client, circuit_metadata)
     root = get_root_circuit(client, circuit_metadata)
     parent = get_parent_circuit(client, circuit_metadata)

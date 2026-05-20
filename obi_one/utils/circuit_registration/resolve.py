@@ -280,6 +280,17 @@ def get_brain_region(client: Client, circuit_metadata: dict) -> models.BrainRegi
     return brain_region
 
 
+def check_brain_region(brain_region: models.BrainRegion, subject: models.Subject) -> None:
+    """Check that brain region is consistent with given species."""
+    if brain_region.species.id != subject.species.id:
+        msg = (
+            f"Species mismatch for brain region '{brain_region.name}'"
+            f" ('{brain_region.species.name}'),"
+            f" should belong to '{subject.species.name}'!"
+        )
+        raise ValueError(msg)
+
+
 def get_license(client: Client, circuit_metadata: dict) -> models.License | None:
     """Resolve the license entity from metadata."""
     lic_name = circuit_metadata.get("license")

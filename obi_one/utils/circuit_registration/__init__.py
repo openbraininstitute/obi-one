@@ -22,6 +22,7 @@ from obi_one.utils.circuit_registration.register import (
     register_circuit_from_metadata,
 )
 from obi_one.utils.circuit_registration.resolve import (
+    check_brain_region,
     check_if_circuit_exists,
     find_agent,
     find_role,
@@ -38,6 +39,7 @@ from obi_one.utils.circuit_registration.resolve import (
 
 __all__ = [
     "CIRCUIT_ASSET_MAPPING",
+    "check_brain_region",
     "check_if_circuit_exists",
     "find_agent",
     "find_role",
