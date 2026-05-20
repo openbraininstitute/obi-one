@@ -12,8 +12,8 @@ from pathlib import Path
 
 import bluepysnap
 import bluepysnap.input
-import brian2
-import brian2.units
+import brian2  # ty:ignore[unresolved-import]
+import brian2.units  # ty:ignore[unresolved-import]
 import click
 import h5py
 import libsonata
@@ -25,6 +25,7 @@ from entitysdk.token_manager import TokenFromFunction
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType
 from entitysdk.utils.store import LocalAssetStore
 from obi_auth import get_token
+from obi_auth.typedef import AuthMode, DeploymentEnvironment
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 POPULATION = "drosophila"
@@ -319,8 +320,8 @@ def _init_entitysdk_client(
     token_manager = TokenFromFunction(
         partial(
             get_token,
-            environment=environment,
-            auth_mode="persistent_token",
+            environment=DeploymentEnvironment(environment),
+            auth_mode=AuthMode.persistent_token,
             persistent_token_id=persistent_token_id,
         ),
     )

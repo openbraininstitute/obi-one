@@ -30,8 +30,14 @@ except ImportError as e:  # pragma: no cover
 
 # Connectivity dependencies (optional) - check for connalysis
 try:
-    from connalysis.network.classic import connection_probability_within, density
-    from connalysis.network.topology import node_degree, rc_submatrix
+    from connalysis.network.classic import (  # ty:ignore[unresolved-import]
+        connection_probability_within,
+        density,
+    )
+    from connalysis.network.topology import (  # ty:ignore[unresolved-import]
+        node_degree,
+        rc_submatrix,
+    )
 except ImportError as e:  # pragma: no cover
     msg = (
         "Connectivity plotting requires connectome-analysis (connalysis). "

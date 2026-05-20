@@ -96,6 +96,13 @@ all = [
     "obi-one[connectivity,meshing,notebooks,service]",
 ]
 
+# BLUERECORDING - optional, needed for extracellular recording array tasks.
+# Requires MPI-enabled h5py and NEURON built from source.
+# Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
+bluerecording = [
+    "bluerecording",
+]
+
 [dependency-groups]
 dev = [
     "coverage[toml]",
