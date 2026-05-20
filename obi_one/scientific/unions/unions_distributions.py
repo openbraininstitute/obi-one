@@ -9,6 +9,9 @@ from obi_one.scientific.blocks.distributions.constant import (
 )
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
@@ -19,8 +22,11 @@ _ALL_FLOAT_DISTRIBUTIONS = (
     | FloatUniformDistribution
     | ExponentialDistribution
     | GammaDistribution
+    | NormalDistribution
+    | LogNormalDistribution
 )
-_ALL_INT_DISTRIBUTIONS = IntConstantDistribution | IntUniformDistribution
+
+_ALL_INT_DISTRIBUTIONS = IntConstantDistribution | IntUniformDistribution | PoissonDistribution
 
 _ALL_DISTRIBUTIONS = _ALL_FLOAT_DISTRIBUTIONS | _ALL_INT_DISTRIBUTIONS
 
