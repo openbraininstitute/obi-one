@@ -7,6 +7,7 @@ from typing import Any, Final
 import morph_tool
 import morphio
 import neurom
+import neurom.check.morphology_checks as morph_checks
 from fastapi import HTTPException
 from neurom.check.runner import CheckRunner
 from neurom.exceptions import NeuroMError
@@ -71,19 +72,35 @@ def run_quality_checks(file_path: Path) -> dict[str, Any]:
     """
     try:
         neuron = neurom.load_morphology(file_path)
-        check_results = _quality_check_runner.run(neuron)
-        morphology_results = check_results.get("morphology_checks", {})
-        return {
-            "ran_to_completion": True,
-            "failed_checks": [name for name, ok in morphology_results.items() if not ok],
-            "passed_checks": [name for name, ok in morphology_results.items() if ok],
-        }
+
+        failed_checks = []
+        passed_checks = []
+
+        for check_name in _QUALITY_CHECK_CONFIG["checks"]["morphology_checks"]:
+            check_func = getattr(morph_checks, check_name, None)
+
+            if check_func is not None:
+                if bool(check_func(neuron)):
+                    passed_checks.append(check_name)
+                else:
+                    failed_checks.append(check_name)
+            else:
+                L.warning(
+                    f"Check function '{check_name}' not found in neurom.check.morphology_checks"
+                )
+                failed_checks.append(check_name)
     except Exception as exc:  # noqa: BLE001
         L.warning(f"run_quality_checks: could not complete checks for {file_path}: {exc}")
         return {
             "ran_to_completion": False,
             "failed_checks": [],
             "passed_checks": [],
+        }
+    else:
+        return {
+            "ran_to_completion": True,
+            "failed_checks": failed_checks,
+            "passed_checks": passed_checks,
         }
 
 
