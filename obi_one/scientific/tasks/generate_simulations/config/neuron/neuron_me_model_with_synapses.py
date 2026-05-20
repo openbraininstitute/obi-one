@@ -11,12 +11,12 @@ from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircui
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.circuit import (
-    CircuitSimulationScanConfig,
-)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
     NeuronSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,

@@ -11,7 +11,7 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (

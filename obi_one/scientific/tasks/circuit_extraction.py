@@ -44,7 +44,7 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
