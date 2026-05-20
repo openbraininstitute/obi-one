@@ -14,6 +14,14 @@ from obi_one.types import TaskType
             TaskType.ion_channel_model_simulation_execution,
             test_module.IonChannelModelSimulationExecutionTask,
         ),
+        (
+            TaskType.single_neuron_simulation_execution,
+            test_module.SingleNeuronSimulationExecutionTask,
+        ),
+        (
+            TaskType.single_neuron_synaptome_simulation_execution,
+            test_module.SingleNeuronSynaptomeSimulationExecutionTask,
+        ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationTask),
     ],
 )
@@ -30,6 +38,14 @@ def test_get_task_type(task_type, task_class):
             TaskType.ion_channel_model_simulation_execution,
             test_module.IonChannelModelSimulationExecutionSingleConfig,
         ),
+        (
+            TaskType.single_neuron_simulation_execution,
+            test_module.SingleNeuronSimulationExecutionSingleConfig,
+        ),
+        (
+            TaskType.single_neuron_synaptome_simulation_execution,
+            test_module.SingleNeuronSynaptomeSimulationExecutionSingleConfig,
+        ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationSingleConfig),
     ],
 )
@@ -45,6 +61,8 @@ def test_get_task_type_single_config(task_type, single_config_class):
         (TaskType.morphology_skeletonization, test_module.AssetLabel.task_config),
         (TaskType.circuit_simulation, None),
         (TaskType.ion_channel_model_simulation_execution, None),
+        (TaskType.single_neuron_simulation_execution, None),
+        (TaskType.single_neuron_synaptome_simulation_execution, None),
     ],
 )
 def test_get_task_type_config_asset_label(task_type, asset_label):

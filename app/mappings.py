@@ -18,7 +18,8 @@ from app.schemas.task import (
 from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
-APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
+# APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"  # noqa: ERA001
+APP_TAG = "commit:2e733a00aad0664584c305922bf2ff0214d1e4e2"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
@@ -97,6 +98,25 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:10",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.circuit_simulation_neurodamus_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neurodamus_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
     TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
@@ -111,6 +131,60 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             instance_type="small",
             timelimit=None,
             compute_cell="local",
+        ),
+    ),
+    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
+        task_type=TaskType.ion_channel_model_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=2,
+            timelimit="00:30",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.single_neuron_simulation_execution: TaskDefinitionLegacy(
+        task_type=TaskType.single_neuron_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=2,
+            timelimit="00:30",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.single_neuron_synaptome_simulation_execution: TaskDefinitionLegacy(
+        task_type=TaskType.single_neuron_synaptome_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=2,
+            timelimit="00:30",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
     TaskType.em_synapse_mapping: TaskDefinition(
@@ -151,20 +225,21 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
-        task_type=TaskType.ion_channel_model_simulation_execution,
-        config_type=models.Simulation,
-        activity_type=models.SimulationExecution,
+    TaskType.mesh_lod_generation: TaskDefinition(
+        task_type=TaskType.mesh_lod_generation,
+        config_type=TaskConfigType.mesh_lod_generation__config,
+        activity_type=TaskActivityType.mesh_lod_generation__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependencies=str(OBI_ONE_DEPS_DIR / "mesh_lod_generation.txt"),
+            capabilities=Capabilities(private_packages=True),
         ),
         resources=MachineResources(
-            cores=1,
-            memory=2,
-            timelimit="00:10",
+            cores=4,
+            memory=8,
+            timelimit="01:00",
             compute_cell="local",
         ),
     ),

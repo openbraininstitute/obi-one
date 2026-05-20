@@ -8,16 +8,26 @@ from obi_one.scientific.blocks.ion_channel_model.ion_channel_model import (
     IonChannelModelWithConductance,
 )
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.library.simulation.schemas import SimulationParameters, SimulationResults
-from obi_one.scientific.tasks import ion_channel_model_simulation_execution as test_module
+from obi_one.scientific.library.simulation.schemas import (
+    NeurodamusMechanismBuild,
+    NeurodamusSimulationParameters,
+    SimulationResults,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationScanConfig,
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.ion_channel_model_simulation_execution import (
+from obi_one.scientific.tasks.simulation_execution import (
+    ion_channel_simulation_execution as test_module,
+)
+from obi_one.scientific.tasks.simulation_execution.ion_channel_simulation_execution import (
     IonChannelModelSimulationExecutionSingleConfig,
     IonChannelModelSimulationExecutionTask,
 )
+from obi_one.types import SimulationBackend
+
+_BASE = "obi_one.scientific.tasks.simulation_execution.base"
+_ION_CHANNEL = "obi_one.scientific.tasks.simulation_execution.ion_channel_simulation_execution"
 
 
 @pytest.fixture
@@ -62,17 +72,36 @@ def db_client():
     return MagicMock()
 
 
-@patch(
-    "obi_one.scientific.tasks.ion_channel_model_simulation_execution.IonChannelModelSimulationExecutionTask.get_generation_single_config"
-)
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.run_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.get_simulation_parameters")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.compile_mechanisms")
-@patch(
-    "obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_ion_channel_models_as_circuit"
-)
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.create_dir")
+def _touch(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("dummy")
+    return path
+
+
+def _neurodamus_mechanism_build(tmp_path):
+    return NeurodamusMechanismBuild(
+        libnrnmech_path=_touch(tmp_path / "libnrnmech.so"),
+        libcorenrnmech_path=_touch(tmp_path / "libcorenrnmech.so"),
+        special_binary_path=_touch(tmp_path / "special"),
+    )
+
+
+def _neurodamus_simulation_parameters(tmp_path, mechanism_build):
+    return NeurodamusSimulationParameters(
+        number_of_cells=1,
+        stop_time=100.0,
+        config_file=tmp_path / "config.json",
+        mechanism_build=mechanism_build,
+    )
+
+
+@patch(f"{_ION_CHANNEL}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
+@patch(f"{_BASE}.run_simulation")
+@patch(f"{_BASE}.get_simulation_parameters")
+@patch(f"{_BASE}.stage_simulation")
+@patch(f"{_BASE}.compile_mechanisms")
+@patch(f"{_ION_CHANNEL}.stage_ion_channel_models_as_circuit")
+@patch(f"{_BASE}.create_dir")
 def test_execute_local_does_not_register(
     mock_create_dir,
     mock_stage_circuit,
@@ -86,20 +115,17 @@ def test_execute_local_does_not_register(
     db_client,
     tmp_path,
 ):
-    mock_create_dir.side_effect = lambda p: p
+    mock_create_dir.side_effect = lambda path: path
     mock_get_generation_config.return_value = generation_config
     staged_circuit = MagicMock()
     staged_circuit.path = tmp_path / "circuit.json"
+    staged_circuit.mechanisms_dir = tmp_path / "mechanisms"
+    staged_circuit.directory = tmp_path / "circuit"
     mock_stage_circuit.return_value = staged_circuit
-    mock_compile.return_value = tmp_path / "libnrnmech.so"
-    db_client.get_entity.return_value = config.single_entity
+    mechanism_build = _neurodamus_mechanism_build(tmp_path)
+    mock_compile.return_value = mechanism_build
     mock_stage_sim.return_value = tmp_path / "sim_config.json"
-    mock_get_params.return_value = SimulationParameters(
-        number_of_cells=1,
-        stop_time=100.0,
-        config_file=tmp_path / "config.json",
-        libnrnmech_path=tmp_path / "libnrnmech.so",
-    )
+    mock_get_params.return_value = _neurodamus_simulation_parameters(tmp_path, mechanism_build)
     mock_run_simulation.return_value = SimulationResults(
         spike_report_file=tmp_path / "spikes.h5",
         voltage_report_files=[],
@@ -109,7 +135,11 @@ def test_execute_local_does_not_register(
     task.execute(db_client=db_client, execution_activity_id=None)
 
     mock_stage_circuit.assert_called_once()
-    mock_compile.assert_called_once_with(staged_circuit)
+    mock_compile.assert_called_once_with(
+        mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+        output_dir=staged_circuit.directory.resolve(),
+        simulation_backend=SimulationBackend.neurodamus,
+    )
     db_client.get_entity.assert_not_called()
     mock_stage_sim.assert_called_once()
     mock_get_params.assert_called_once()
@@ -117,20 +147,14 @@ def test_execute_local_does_not_register(
     db_client.update_entity.assert_not_called()
 
 
-@patch(
-    "obi_one.scientific.tasks.ion_channel_model_simulation_execution.IonChannelModelSimulationExecutionTask.get_generation_single_config"
-)
-@patch(
-    "obi_one.scientific.tasks.ion_channel_model_simulation_execution.register_simulation_results"
-)
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.run_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.get_simulation_parameters")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_simulation")
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.compile_mechanisms")
-@patch(
-    "obi_one.scientific.tasks.ion_channel_model_simulation_execution.stage_ion_channel_models_as_circuit"
-)
-@patch("obi_one.scientific.tasks.ion_channel_model_simulation_execution.create_dir")
+@patch(f"{_ION_CHANNEL}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
+@patch(f"{_BASE}.register_simulation_results")
+@patch(f"{_BASE}.run_simulation")
+@patch(f"{_BASE}.get_simulation_parameters")
+@patch(f"{_BASE}.stage_simulation")
+@patch(f"{_BASE}.compile_mechanisms")
+@patch(f"{_ION_CHANNEL}.stage_ion_channel_models_as_circuit")
+@patch(f"{_BASE}.create_dir")
 def test_execute_tracked_registers_and_updates_activity(
     mock_create_dir,
     mock_stage_circuit,
@@ -145,22 +169,20 @@ def test_execute_tracked_registers_and_updates_activity(
     db_client,
     tmp_path,
 ):
-    mock_create_dir.side_effect = lambda p: p
+    mock_create_dir.side_effect = lambda path: path
     mock_get_generation_config.return_value = generation_config
     staged_circuit = MagicMock()
     staged_circuit.path = tmp_path / "circuit.json"
+    staged_circuit.mechanisms_dir = tmp_path / "mechanisms"
+    staged_circuit.directory = tmp_path / "circuit"
     mock_stage_circuit.return_value = staged_circuit
-    mock_compile.return_value = tmp_path / "libnrnmech.so"
+    mechanism_build = _neurodamus_mechanism_build(tmp_path)
+    mock_compile.return_value = mechanism_build
     execution_activity = MagicMock()
     execution_activity.id = "act-456"
-    db_client.get_entity.side_effect = [execution_activity, config.single_entity]
+    db_client.get_entity.return_value = execution_activity
     mock_stage_sim.return_value = tmp_path / "sim_config.json"
-    mock_get_params.return_value = SimulationParameters(
-        number_of_cells=1,
-        stop_time=100.0,
-        config_file=tmp_path / "config.json",
-        libnrnmech_path=tmp_path / "libnrnmech.so",
-    )
+    mock_get_params.return_value = _neurodamus_simulation_parameters(tmp_path, mechanism_build)
     sim_results = SimulationResults(
         spike_report_file=tmp_path / "spikes.h5",
         voltage_report_files=[],
@@ -173,7 +195,6 @@ def test_execute_tracked_registers_and_updates_activity(
     task = IonChannelModelSimulationExecutionTask(config=config)
     task.execute(db_client=db_client, execution_activity_id="act-456")
 
-    assert db_client.get_entity.call_count == 1
     db_client.get_entity.assert_called_once_with(
         entity_id="act-456",
         entity_type=test_module.IonChannelModelSimulationExecutionTask.activity_type,

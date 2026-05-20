@@ -1,4 +1,5 @@
 import logging
+import os
 from subprocess import CalledProcessError  # noqa: S404
 from unittest.mock import Mock, patch
 
@@ -26,6 +27,7 @@ def test_run_success_logs_and_returns(tmp_path, caplog):
         text=True,
         shell=False,
         cwd=tmp_path,
+        env=os.environ,
     )
 
     # return value

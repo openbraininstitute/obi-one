@@ -1,14 +1,37 @@
 import logging
 from pathlib import Path
+from typing import cast
 
-from entitysdk import Client
+from entitysdk import Client, models
+from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
+from entitysdk.staging.memodel import stage_sonata_from_memodel
 
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.library.simulation.schemas import SimulationParameters
+from obi_one.scientific.library.simulation.schemas import (
+    BluecellulabSimulationParameters,
+    MechanismBuild,
+    NeurodamusMechanismBuild,
+    NeurodamusSimulationParameters,
+    NeuronMechanismBuild,
+    SimulationParameters,
+)
+from obi_one.types import SimulationBackend
 from obi_one.utils.io import load_json
 
 L = logging.getLogger(__name__)
+
+
+def stage_circuit(*, client: Client, model: models.Circuit, output_dir: Path) -> Circuit:
+    """Stage circuit."""
+    circuit_config_path: Path = stage_circuit_entity(
+        client=client,
+        model=model,
+        output_dir=output_dir,
+    )
+    return Circuit(name=cast("str", model.name), path=str(circuit_config_path))
 
 
 def stage_ion_channel_models_as_circuit(
@@ -50,8 +73,33 @@ def stage_ion_channel_models_as_circuit(
     return MEModelCircuit(name="single_cell", path=str(circuit_config_path))
 
 
+def _build_memodel_circuit(circuit_config_path: Path) -> MEModelCircuit:
+    return MEModelCircuit(name="single_cell", path=str(circuit_config_path))
+
+
+def stage_memodel_as_circuit(
+    *,
+    client: Client,
+    circuit: MEModelCircuit | MEModelFromID,
+    output_dir: Path,
+) -> MEModelCircuit:
+    """Stage a single-neuron ME-model circuit for simulation execution."""
+    if isinstance(circuit, MEModelCircuit):
+        return circuit
+
+    circuit_config_path = stage_sonata_from_memodel(
+        client=client,
+        memodel=circuit.entity(db_client=client),
+        output_dir=output_dir,
+    )
+    return _build_memodel_circuit(circuit_config_path)
+
+
 def get_simulation_parameters(
-    simulation_config_file: Path, libnrnmech_path: Path
+    *,
+    simulation_backend: SimulationBackend,
+    simulation_config_file: Path,
+    mechanism_build: MechanismBuild,
 ) -> SimulationParameters:
     """Return simulation parameters."""
     config_data = load_json(simulation_config_file)
@@ -68,9 +116,21 @@ def get_simulation_parameters(
     num_cells = len(node_set_data[node_set_name]["node_id"])
     tstop = config_data["run"]["tstop"]
 
-    return SimulationParameters(
-        config_file=simulation_config_file,
-        number_of_cells=num_cells,
-        stop_time=tstop,
-        libnrnmech_path=libnrnmech_path,
-    )
+    match simulation_backend:
+        case SimulationBackend.bluecellulab:
+            return BluecellulabSimulationParameters(
+                config_file=simulation_config_file,
+                number_of_cells=num_cells,
+                stop_time=tstop,
+                mechanism_build=cast("NeuronMechanismBuild", mechanism_build),
+            )
+        case SimulationBackend.neurodamus:
+            return NeurodamusSimulationParameters(
+                config_file=simulation_config_file,
+                number_of_cells=num_cells,
+                stop_time=tstop,
+                mechanism_build=cast("NeurodamusMechanismBuild", mechanism_build),
+            )
+        case _:
+            msg = f"Unsupported simulation backend {simulation_backend}."
+            raise RuntimeError(msg)

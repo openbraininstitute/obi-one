@@ -401,7 +401,7 @@ def select_simulation_task(
         case TargetSimulator.NEURON | TargetSimulator.CORENEURON:
             match circuit.scale:
                 case CircuitScale.single | CircuitScale.pair | CircuitScale.small:
-                    return TaskType.circuit_simulation_neuron
+                    return TaskType.circuit_simulation_neurodamus_machine
                 case _:
                     return TaskType.circuit_simulation_neurodamus_cluster
         case _:
