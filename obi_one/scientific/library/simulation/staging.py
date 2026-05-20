@@ -1,14 +1,27 @@
 import logging
 from pathlib import Path
+from typing import cast
 
-from entitysdk import Client
+from entitysdk import Client, models
+from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.simulation.schemas import SimulationParameters
 from obi_one.utils.io import load_json
 
 L = logging.getLogger(__name__)
+
+
+def stage_circuit(*, client: Client, model: models.Circuit, output_dir: Path) -> Circuit:
+    """Stage circuit."""
+    circuit_config_path: Path = stage_circuit_entity(
+        client=client,
+        model=model,
+        output_dir=output_dir,
+    )
+    return Circuit(name=cast("str", model.name), path=str(circuit_config_path))
 
 
 def stage_ion_channel_models_as_circuit(
@@ -51,7 +64,9 @@ def stage_ion_channel_models_as_circuit(
 
 
 def get_simulation_parameters(
-    simulation_config_file: Path, libnrnmech_path: Path
+    *,
+    simulation_config_file: Path,
+    libmech_path: Path,
 ) -> SimulationParameters:
     """Return simulation parameters."""
     config_data = load_json(simulation_config_file)
@@ -72,5 +87,5 @@ def get_simulation_parameters(
         config_file=simulation_config_file,
         number_of_cells=num_cells,
         stop_time=tstop,
-        libnrnmech_path=libnrnmech_path,
+        libmech_path=libmech_path,
     )

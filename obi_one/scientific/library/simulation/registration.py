@@ -19,7 +19,7 @@ def register_simulation_results(
     client: Client,
     simulation_metadata: SimulationMetadata,
     simulation_results: SimulationResults,
-) -> None:
+) -> models.SimulationResult:
     # TODO: Add proper name, consider adding a description
     simulation_result = client.register_entity(
         models.SimulationResult(
@@ -61,4 +61,4 @@ def register_simulation_results(
             asset.label,
         )
 
-    return simulation_result  # ty:ignore[invalid-return-type]
+    return simulation_result

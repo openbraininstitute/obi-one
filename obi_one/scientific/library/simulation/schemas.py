@@ -12,7 +12,7 @@ class SimulationParameters(BaseModel):
     number_of_cells: int
     stop_time: float
     config_file: Path
-    libnrnmech_path: Path
+    libmech_path: Path
 
 
 class SimulationResults(BaseModel):

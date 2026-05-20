@@ -10,12 +10,25 @@ from entitysdk.exception import EntitySDKError
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
+from entitysdk.models.core import Identifiable
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
 from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
+
+
+def get_identifiable[T: Identifiable](
+    *, client: Client, identifiable_id: UUID, identifiable_type: type[T]
+) -> T:
+    resource = client.get_entity(entity_id=identifiable_id, entity_type=identifiable_type)
+
+    if resource.id is None:
+        msg = f"Model {identifiable_type} has no ID"
+        raise OBIONEError(msg)
+
+    return resource
 
 
 def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: AssetLabel) -> Asset:
