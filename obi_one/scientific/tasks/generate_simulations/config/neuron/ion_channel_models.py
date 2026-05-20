@@ -20,8 +20,10 @@ from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonC
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    SimulationScanConfig,
-    SimulationSingleConfigMixin,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
+    NeuronSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_ion_channel_model import (
     IonChannelModelReference,
@@ -43,7 +45,7 @@ from obi_one.scientific.unions.unions_timestamps import (
 L = logging.getLogger(__name__)
 
 
-class IonChannelModelSimulationScanConfig(SimulationScanConfig):
+class IonChannelModelSimulationScanConfig(NeuronSimulationScanConfig):
     """Form for simulating ion channel model(s)."""
 
     single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
@@ -233,6 +235,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
 
 
 class IonChannelModelSimulationSingleConfig(
-    IonChannelModelSimulationScanConfig, SimulationSingleConfigMixin
+    IonChannelModelSimulationScanConfig, NeuronSimulationSingleConfig
 ):
     """Only allows single values."""

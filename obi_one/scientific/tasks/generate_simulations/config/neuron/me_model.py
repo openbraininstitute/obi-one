@@ -9,8 +9,10 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    SimulationScanConfig,
-    SimulationSingleConfigMixin,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
+    NeuronSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,
@@ -30,14 +32,14 @@ L = logging.getLogger(__name__)
 MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
 
 
-class MEModelSimulationScanConfig(SimulationScanConfig):
+class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
             title="ME Model",
             description="ME Model to simulate.",
@@ -94,5 +96,5 @@ class MEModelSimulationScanConfig(SimulationScanConfig):
     }
 
 
-class MEModelSimulationSingleConfig(MEModelSimulationScanConfig, SimulationSingleConfigMixin):
+class MEModelSimulationSingleConfig(MEModelSimulationScanConfig, NeuronSimulationSingleConfig):
     """Only allows single values."""

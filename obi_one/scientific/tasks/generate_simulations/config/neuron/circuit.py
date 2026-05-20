@@ -13,8 +13,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    SimulationScanConfig,
-    SimulationSingleConfigMixin,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
+    NeuronSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
@@ -41,7 +43,7 @@ L = logging.getLogger(__name__)
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
-class CircuitSimulationScanConfig(SimulationScanConfig):
+class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
@@ -88,7 +90,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",
@@ -141,5 +143,5 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
     )
 
 
-class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SimulationSingleConfigMixin):
+class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, NeuronSimulationSingleConfig):
     """Only allows single values."""

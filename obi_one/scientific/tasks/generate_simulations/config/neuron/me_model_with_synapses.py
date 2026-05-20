@@ -10,11 +10,13 @@ from obi_one.scientific.from_id.circuit_from_id import (
 from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
-    SimulationScanConfig,
-    SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.circuit import (
     CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
+    NeuronSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
@@ -48,7 +50,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         },
     )
 
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
         ) = Field(
@@ -69,6 +71,6 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
 
 
 class MEModelWithSynapsesCircuitSimulationSingleConfig(
-    MEModelWithSynapsesCircuitSimulationScanConfig, SimulationSingleConfigMixin
+    MEModelWithSynapsesCircuitSimulationScanConfig, NeuronSimulationSingleConfig
 ):
     """Only allows single values."""
