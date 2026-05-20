@@ -1,0 +1,18 @@
+{
+  "anyOf": [
+    // Single value must come before the array
+    {
+      "type": "integer"
+    },
+    {
+      "items": {
+        "type": "integer"
+      },
+      "type": "array"
+    }
+  ],
+  "title": "Random Seed",
+  "description": "Random seed for the simulation.",
+  "default": 1,
+  "ui_element": "int_parameter_sweep"
+}

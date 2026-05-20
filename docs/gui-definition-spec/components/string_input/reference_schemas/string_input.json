@@ -1,0 +1,7 @@
+{
+  "type": "string",
+  "ui_element": "string_input",
+  "minLength": 1,
+  "title": "title",
+  "description": "description"
+}

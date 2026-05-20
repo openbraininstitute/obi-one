@@ -1,0 +1,7 @@
+{
+  "type": "boolean",
+  "ui_element": "boolean_input",
+  "title": "title",
+  "description": "description",
+  "default": false
+}
