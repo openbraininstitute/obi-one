@@ -11,6 +11,7 @@ from entitysdk.types import AssetLabel
 
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionSingleConfig
 from obi_one.utils import db_sdk
 
@@ -29,7 +30,7 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
     config_bytes = db_client.download_content(
         entity_id=config_id,
         entity_type=models.TaskConfig,
-        asset_id=config_asset.id,
+        asset_id=config_asset.id,  # ty:ignore[invalid-argument-type]
     )
     config_dict = json.loads(config_bytes.decode("utf-8"))
 
@@ -38,18 +39,22 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
     )
 
     parent_circuit = single_config.initialize.circuit
-    if isinstance(single_config.initialize.circuit, CircuitFromID):
+    if isinstance(parent_circuit, CircuitFromID):
         with tempfile.TemporaryDirectory() as temp_dir:
-            parent_circuit = single_config.initialize.circuit.stage_circuit(
+            staged_circuit = parent_circuit.stage_circuit(
                 db_client=db_client,
                 dest_dir=Path(temp_dir) / "sonata_circuit",
                 entity_cache=False,
             )
             neuron_ids = single_config.neuron_set.get_neuron_ids(
-                circuit=parent_circuit,
-                population=parent_circuit.default_population_name,
+                circuit=staged_circuit,
+                population=staged_circuit.default_population_name,
             )
             return max(1, len(neuron_ids))
+
+    if not isinstance(parent_circuit, Circuit):
+        msg = f"Unsupported circuit type: {type(parent_circuit)}"
+        raise TypeError(msg)
 
     neuron_ids = single_config.neuron_set.get_neuron_ids(
         circuit=parent_circuit,
