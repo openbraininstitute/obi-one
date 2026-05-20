@@ -1,14 +1,30 @@
+#!/usr/bin/python3
+# ruff: noqa: S101
+import contextlib
 import logging
+import os
+import tempfile
 import uuid
+from collections.abc import Iterator
+from datetime import UTC, datetime, timezone
+from functools import partial
 from pathlib import Path
 
 import bluepysnap
+import bluepysnap.input
 import brian2
 import brian2.units
 import click
 import h5py
 import libsonata
 import numpy as np
+from entitysdk import Client, ProjectContext, models
+from entitysdk.models.activity import Activity
+from entitysdk.staging import stage_simulation
+from entitysdk.token_manager import TokenFromFunction
+from entitysdk.types import ActivityStatus, AssetLabel, ContentType
+from entitysdk.utils.store import LocalAssetStore
+from obi_auth import get_token
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 POPULATION = "drosophila"
@@ -18,7 +34,7 @@ L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 
 
-def _convert_to_known_unit(v: str):
+def _convert_to_known_unit(v: str) -> brian2.Unit:
     if v not in KNOWN_UNITS:
         msg = f"Expecting a known brian2 unit, got: `{v}`"
         raise RuntimeError(msg)
@@ -51,7 +67,7 @@ class FloatUnit(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def convert(cls, v) -> dict:
+    def convert(cls, v: tuple | list) -> dict:
         if not isinstance(v, (tuple, list)):
             msg = f"Unexpected FloatingUnit: `{v}`"
             raise TypeError(msg)
@@ -88,7 +104,7 @@ def _make_poisson(
     simulation: bluepysnap.Simulation,
     config: libsonata.SimulationConfig.Poisson,
     n0: brian2.NeuronGroup,
-):
+) -> tuple[brian2.NeuronGroup, list]:
     L.info("Making Poisson Stimulus: rate: %f Hz, weight: %f mV", config.rate, config.weight)
     exc_node_ids = simulation.circuit.node_sets.to_libsonata.materialize(
         "sugar", simulation.circuit.nodes["drosophila"].to_libsonata
@@ -108,14 +124,6 @@ def _make_poisson(
     return n0, poisson_inputs
 
 
-def _make_spikes(spike_input):
-    L.info("Making SpikeReplay input")
-    sr = libsonata.SpikeReader(spike_input.spike_file)
-    sp = sr[POPULATION]
-    ids, times = zip(*sp.get())
-    return
-
-
 def _get_inputs(
     simulation: bluepysnap.Simulation, n0: brian2.NeuronGroup
 ) -> tuple[brian2.NeuronGroup, list]:
@@ -123,9 +131,9 @@ def _get_inputs(
     inputs = []
     for input_ in simulation.inputs.values():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
-            pass
-            # inputs.append(_make_spikes(input_))
-        elif isinstance(input_, libsonata.SimulationConfig.Poisson):
+            msg = "`SynapseReplay not handled`"
+            raise TypeError(msg)
+        if isinstance(input_, libsonata.SimulationConfig.Poisson):
             n0, poissons = _make_poisson(simulation, input_, n0)
             inputs += poissons
 
@@ -298,22 +306,6 @@ def sonata_simulation(
     run_sonata_brian2_trial(Path(simulation_path))
 
 
-import contextlib
-from enum import auto
-from entitysdk.staging import stage_circuit, stage_simulation
-import os
-from entitysdk.models.activity import Activity
-from entitysdk import Client, models, ProjectContext
-from entitysdk.token_manager import TokenFromFunction
-from functools import partial
-from obi_auth import get_token
-from collections.abc import Iterator
-from entitysdk.types import AssetLabel, ContentType, StrEnum, ActivityStatus
-from datetime import UTC, datetime, timezone
-import tempfile
-from entitysdk.utils.store import LocalAssetStore
-
-
 def _init_entitysdk_client(
     virtual_lab_id: uuid.UUID,
     project_id: uuid.UUID,
@@ -334,7 +326,7 @@ def _init_entitysdk_client(
     )
     local_store = None
     if "LOCAL_STORE_PREFIX" in os.environ:
-        local_store = LocalAssetStore(prefix=os.environ["LOCAL_STORE_PREFIX"])
+        local_store = LocalAssetStore(prefix=Path(os.environ["LOCAL_STORE_PREFIX"]))
 
     return Client(
         project_context=project_context,
