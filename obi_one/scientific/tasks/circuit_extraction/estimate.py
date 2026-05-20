@@ -11,7 +11,6 @@ from entitysdk.types import AssetLabel
 
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionSingleConfig
 from obi_one.utils import db_sdk
 
@@ -52,12 +51,8 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
             )
             return max(1, len(neuron_ids))
 
-    if not isinstance(parent_circuit, Circuit):
-        msg = f"Unsupported circuit type: {type(parent_circuit)}"
-        raise TypeError(msg)
-
     neuron_ids = single_config.neuron_set.get_neuron_ids(
-        circuit=parent_circuit,
-        population=parent_circuit.default_population_name,
+        circuit=parent_circuit,  # ty:ignore[invalid-argument-type]
+        population=parent_circuit.default_population_name,  # ty:ignore[unresolved-attribute]
     )
     return max(1, len(neuron_ids))
