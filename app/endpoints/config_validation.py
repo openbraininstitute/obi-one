@@ -10,14 +10,16 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.validator import run_grid_scan_validation
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.circuit import (
+    CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.ion_channel_models import (
     IonChannelModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.me_model import (
     MEModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig

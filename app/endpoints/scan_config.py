@@ -17,16 +17,16 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.circuit import (
     CircuitSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.ion_channel_models import (
     IonChannelModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.me_model import (
     MEModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.me_model_with_synapses import (
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig

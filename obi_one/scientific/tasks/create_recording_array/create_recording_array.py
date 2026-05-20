@@ -18,7 +18,9 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitDiscriminator
+from obi_one.scientific.tasks.generate_simulations.config.neuron.circuit import (
+    CircuitDiscriminator,
+)
 
 L = logging.getLogger(__name__)
 
