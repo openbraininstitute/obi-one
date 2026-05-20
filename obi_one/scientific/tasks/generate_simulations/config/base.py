@@ -34,10 +34,6 @@ from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonC
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
 )
-from obi_one.scientific.unions.unions_recordings import (
-    RecordingReference,
-    RecordingUnion,
-)
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
@@ -102,18 +98,6 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
-    recordings: dict[str, RecordingUnion] = Field(
-        default_factory=dict,
-        description="Recordings for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Recording",
-            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-
     class Initialize(Block):
         circuit: None
         simulation_length: (
