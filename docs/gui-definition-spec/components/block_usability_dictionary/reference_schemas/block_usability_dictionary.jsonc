@@ -1,8 +1,0 @@
-{
-    // ...
-    "block_usability_dictionary": {
-        "property_group": "Circuit",
-        "property": "InputResistanceBasedStimuli",
-        "false_message": "This example block is not available for this circuit."
-    },
-}

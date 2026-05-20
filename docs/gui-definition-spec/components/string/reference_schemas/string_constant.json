@@ -1,7 +1,0 @@
-{
-    "type": "string",
-    "const": "A",
-    "title": "Constant",
-    "description": "Constant description.",
-    "ui_element": "string_constant"
-}
