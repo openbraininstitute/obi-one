@@ -82,7 +82,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.0",
+    "obp-accounting-sdk>=0.6.1",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -94,6 +94,13 @@ service = [
 # ALL - convenience alias to install all optional dependencies
 all = [
     "obi-one[connectivity,meshing,notebooks,service]",
+]
+
+# BLUERECORDING - optional, needed for extracellular recording array tasks.
+# Requires MPI-enabled h5py and NEURON built from source.
+# Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
+bluerecording = [
+    "bluerecording",
 ]
 
 [dependency-groups]

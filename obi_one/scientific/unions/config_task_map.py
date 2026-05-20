@@ -17,6 +17,10 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologySingleConfig,
     ContributeMorphologyTask,
 )
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArraySingleConfig,
+    CreateExtracellularRecordingArrayTask,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
 from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
 from obi_one.scientific.tasks.ephys_extraction import (
@@ -108,6 +112,9 @@ def _populate_task_registry() -> None:
         MEModelWithSynapsesCircuitSimulationSingleConfig, GenerateSimulationTask
     )
     task_registry.register_config_task(SkeletonizationSingleConfig, SkeletonizationTask)
+    task_registry.register_config_task(
+        CreateExtracellularRecordingArraySingleConfig, CreateExtracellularRecordingArrayTask
+    )
     task_registry.register_config_task(EMSynapseMappingSingleConfig, EMSynapseMappingTask)
     task_registry.register_config_task(
         IonChannelModelSimulationSingleConfig, GenerateSimulationTask
