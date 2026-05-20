@@ -8,6 +8,8 @@ The key is the class name (matching the 'type' field in JSON), and the
 value is the module where that class is defined.
 """
 
+# ruff: noqa: E501 — long lines are unavoidable in a path mapping dict
+
 from importlib import import_module
 
 TYPE_MAP: dict[str, str] = {
