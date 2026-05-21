@@ -238,6 +238,7 @@ class CircuitExtractionTask(Task):
             build_category=parent.build_category,  # ty:ignore[unresolved-attribute]
             brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute, invalid-argument-type]
             subject=parent.subject,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+            target_simulator=parent.target_simulator,  # ty:ignore[unresolved-attribute]
             experiment_date=parent.experiment_date,  # ty:ignore[unresolved-attribute]
             license=parent.license,  # ty:ignore[unresolved-attribute]
             atlas=None,  # TODO: Not yet implemented
