@@ -112,7 +112,7 @@ class IonChannelModelSimulationExecutionTask(Task):
         libmech_path = compile_mechanisms(
             mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
             output_dir=staged_circuit.directory.resolve(),
-            simulation_backend=SimulationBackend.bluecellulab,
+            simulation_backend=SimulationBackend.neurodamus,
         )
         simulation_entity = self.config.single_entity
 
@@ -133,7 +133,7 @@ class IonChannelModelSimulationExecutionTask(Task):
         simulation_results = run_simulation(
             parameters=simulation_parameters,
             results_dir=results_dir,
-            simulation_backend=SimulationBackend.bluecellulab,
+            simulation_backend=SimulationBackend.neurodamus,
         )
 
         if execution_activity_id is not None:
