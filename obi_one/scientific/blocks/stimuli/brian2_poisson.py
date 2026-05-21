@@ -9,7 +9,7 @@ entry backed by a pre-generated spike file and propagates the replayed spikes
 through the circuit's *existing* synapses, this block emits a SONATA ``poisson``
 input module (non-standard) and bypasses the circuit's synapses entirely. The
 SONATA -> Brian2 runner
-``obi_one/scientific/library/simulation/brian2/simulate-brian2.py``
+``obi_one/scientific/library/simulation/brian2/simulate_brian2.py``
 (``run_sonata_brian2_trial``) understands the ``poisson`` module.
 """
 
