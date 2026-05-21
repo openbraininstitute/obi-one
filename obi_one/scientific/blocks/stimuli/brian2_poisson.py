@@ -78,21 +78,6 @@ class Brian2DirectPoissonStimulus(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
 
-    target_var: str | list[str] = Field(
-        default="v",
-        title="Target Variable",
-        description="Brian2 neuron state variable that each Poisson kick increments.",
-    )
-
-    zero_refractory: bool | list[bool] = Field(
-        default=True,
-        title="Zero Refractory",
-        description=(
-            "If true, clear the neuron group's 'rfc' refractory state variable on "
-            "targeted neurons so they can follow the Poisson rate."
-        ),
-    )
-
     duration: (
         Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
         | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
@@ -139,8 +124,6 @@ class Brian2DirectPoissonStimulus(Block):
                 ),
                 "rate": self.frequency,
                 "weight": self.weight,
-                "target_var": self.target_var,
-                "zero_refractory": self.zero_refractory,
                 # libsonata requires `delay` on every input; the Brian2
                 # PoissonInput is always-on from t=0, so it is fixed at 0.
                 "delay": 0.0,

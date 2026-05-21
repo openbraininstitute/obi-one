@@ -19,10 +19,14 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
+from obi_one.scientific.unions.unions_brian2 import (
+    Brian2CircuitStimulusUnion,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
+from obi_one.scientific.unions.unions_stimuli import StimulusReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
@@ -98,7 +102,6 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    """
     stimuli: dict[str, Brian2CircuitStimulusUnion] = Field(
         default_factory=dict,
         title="Stimuli",
@@ -112,6 +115,7 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
         },
     )
 
+    """
     recordings: dict[str, Brian2RecordingUnion] = Field(
         default_factory=dict,
         description="Brian2-compatible recordings for the simulation.",

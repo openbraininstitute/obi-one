@@ -43,7 +43,7 @@ _BRIAN2_SPIKE_STIMULI = (
 )
 
 Brian2CircuitStimulusUnion = Annotated[
-    _BRIAN2_INJECTION_STIMULI | _BRIAN2_SPIKE_STIMULI | Brian2DirectPoissonStimulus,
+    Brian2DirectPoissonStimulus,
     Discriminator("type"),
 ]
 
