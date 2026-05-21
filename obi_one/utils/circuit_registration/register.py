@@ -18,9 +18,10 @@ from obi_one.utils.circuit_registration.links import (
     register_publication_links,
 )
 from obi_one.utils.circuit_registration.resolve import (
-    check_brain_region,
+    check_hierarchy_species,
     check_if_circuit_exists,
     get_brain_region,
+    get_brain_region_hierarchy,
     get_contributions,
     get_exp_date,
     get_license,
@@ -101,6 +102,15 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         msg = f"Circuit config not found at '{circuit_path}'!"
         raise ValueError(msg)
     circuit_folder = circuit_path.parent
+
+    # Validate species consistency
+    if brain_region.species.id != subject.species.id:
+        msg = (
+            f"Species mismatch: brain region '{brain_region.name}'"
+            f" ('{brain_region.species.name}') does not match"
+            f" subject species '{subject.species.name}'!"
+        )
+        raise ValueError(msg)
 
     # Compute scale, counts, and properties from circuit
     c = OBICircuit(name=name, path=str(circuit_path))
@@ -237,8 +247,9 @@ def register_circuit_from_metadata(
     check_if_circuit_exists(client, circuit_metadata)
 
     subject = get_subject(client, circuit_metadata)
-    brain_region = get_brain_region(client, circuit_metadata)
-    check_brain_region(brain_region, subject)
+    brain_hierarchy = get_brain_region_hierarchy(client, circuit_metadata)
+    check_hierarchy_species(brain_hierarchy, subject)
+    brain_region = get_brain_region(client, circuit_metadata, brain_hierarchy)
     license_entity = get_license(client, circuit_metadata)
     root = get_root_circuit(client, circuit_metadata)
     parent = get_parent_circuit(client, circuit_metadata)

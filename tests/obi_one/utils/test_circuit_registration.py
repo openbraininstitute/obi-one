@@ -382,22 +382,25 @@ def test_get_brain_region_found():
     """Test that brain region is resolved."""
     region = MagicMock(name="Primary somatosensory area", id="region-id")
     client = _mock_client_search([region])
-    result = get_brain_region(client, {"brain_region": "Primary somatosensory area"})
+    hierarchy = MagicMock(id="hierarchy-id", name="Mouse CCFv3")
+    result = get_brain_region(client, {"brain_region": "Primary somatosensory area"}, hierarchy)
     assert result is region
 
 
 def test_get_brain_region_missing_name():
     """Test that missing brain region name raises."""
     client = MagicMock()
+    hierarchy = MagicMock(id="hierarchy-id", name="Mouse CCFv3")
     with pytest.raises(ValueError, match="Brain region must be provided"):
-        get_brain_region(client, {"brain_region": None})
+        get_brain_region(client, {"brain_region": None}, hierarchy)
 
 
 def test_get_brain_region_not_found():
     """Test that missing brain region raises."""
     client = _mock_client_search([])
+    hierarchy = MagicMock(id="hierarchy-id", name="Mouse CCFv3")
     with pytest.raises(ValueError, match="not found"):
-        get_brain_region(client, {"brain_region": "Unknown"})
+        get_brain_region(client, {"brain_region": "Unknown"}, hierarchy)
 
 
 # --- get_license ---
@@ -891,10 +894,19 @@ _patch_models_circuit = patch(
 )
 
 
+def _mock_brain_region_and_subject():
+    """Create brain_region and subject mocks with matching species."""
+    species = MagicMock(id="species-id", name="Mus musculus")
+    brain_region = MagicMock(species=species, name="SSp")
+    subject = MagicMock(species=species, name="mouse-subject")
+    return brain_region, subject
+
+
 def test_register_circuit_dry_run():
     """Test that dry_run computes properties but does not register."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     client = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
 
     with _patch_models_circuit:
         result = register_circuit(
@@ -903,8 +915,8 @@ def test_register_circuit_dry_run():
             name="test_circuit",
             description="A test circuit",
             build_category="computational_model",
-            brain_region=MagicMock(),
-            subject=MagicMock(),
+            brain_region=brain_region,
+            subject=subject,
             skip_additional_assets=True,
             dry_run=True,
         )
@@ -921,6 +933,7 @@ def test_register_circuit_registers_entity():
     registered.name = "test_circuit"
     registered.id = "new-id"
     client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
 
     with (
         _patch_models_circuit,
@@ -933,8 +946,8 @@ def test_register_circuit_registers_entity():
             name="test_circuit",
             description="A test circuit",
             build_category="computational_model",
-            brain_region=MagicMock(),
-            subject=MagicMock(),
+            brain_region=brain_region,
+            subject=subject,
             dry_run=False,
         )
 
@@ -951,6 +964,7 @@ def test_register_circuit_with_derivation():
     registered.id = "new-id"
     client.register_entity.return_value = registered
     parent = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
 
     with (
         _patch_models_circuit,
@@ -964,8 +978,8 @@ def test_register_circuit_with_derivation():
             name="test_circuit",
             description="A test circuit",
             build_category="computational_model",
-            brain_region=MagicMock(),
-            subject=MagicMock(),
+            brain_region=brain_region,
+            subject=subject,
             parent=parent,
             derivation_type="circuit_extraction",
             dry_run=False,
@@ -982,6 +996,7 @@ def test_register_circuit_skip_additional_assets():
     registered.name = "test_circuit"
     registered.id = "new-id"
     client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
 
     with (
         _patch_models_circuit,
@@ -996,8 +1011,8 @@ def test_register_circuit_skip_additional_assets():
             name="test_circuit",
             description="A test circuit",
             build_category="computational_model",
-            brain_region=MagicMock(),
-            subject=MagicMock(),
+            brain_region=brain_region,
+            subject=subject,
             skip_additional_assets=True,
             dry_run=False,
         )
@@ -1017,4 +1032,28 @@ def test_register_circuit_invalid_path():
             build_category="computational_model",
             brain_region=MagicMock(),
             subject=MagicMock(),
+        )
+
+
+def test_register_circuit_species_mismatch():
+    """Test that mismatched species between brain_region and subject raises."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    brain_region = MagicMock(
+        species=MagicMock(id="species-mouse", name="Mus musculus"),
+        name="SSp",
+    )
+    subject = MagicMock(
+        species=MagicMock(id="species-rat", name="Rattus norvegicus"),
+    )
+
+    with pytest.raises(ValueError, match="Species mismatch"):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test",
+            description="test",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
         )

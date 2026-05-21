@@ -257,38 +257,71 @@ def get_subject(client: Client, circuit_metadata: dict) -> models.Subject:
     return subject
 
 
-def get_brain_region(client: Client, circuit_metadata: dict) -> models.BrainRegion:
-    """Resolve the brain region entity from metadata."""
+def get_brain_region_hierarchy(
+    client: Client, circuit_metadata: dict
+) -> models.BrainRegionHierarchy:
+    """Resolve the brain region hierarchy entity from metadata."""
+    hierarchy_name = circuit_metadata.get("brain_region_hierarchy")
+    if hierarchy_name is None:
+        msg = "Brain region hierarchy must be provided!"
+        raise ValueError(msg)
+    brain_hierarchy = client.search_entity(
+        entity_type=models.BrainRegionHierarchy, query={"name": hierarchy_name}
+    ).all()
+    if len(brain_hierarchy) == 0:
+        msg = (
+            f"Brain region hierarchy '{hierarchy_name}' not found!"
+            " Brain hierarchies need to be registered beforehand."
+        )
+        raise ValueError(msg)
+    if len(brain_hierarchy) > 1:
+        msg = f"Multiple brain region hierarchies with name '{hierarchy_name}' found!"
+        raise ValueError(msg)
+    brain_hierarchy = brain_hierarchy[0]
+    L.info(f"Brain region hierarchy '{brain_hierarchy.name}' (ID {brain_hierarchy.id})")
+    return brain_hierarchy
+
+
+def check_hierarchy_species(
+    brain_hierarchy: models.BrainRegionHierarchy, subject: models.Subject
+) -> None:
+    """Check that brain region hierarchy is consistent with given species."""
+    if brain_hierarchy.species.id != subject.species.id:
+        msg = (
+            f"Species mismatch for brain region hierarchy '{brain_hierarchy.name}'"
+            f" ('{brain_hierarchy.species.name}'),"
+            f" should belong to '{subject.species.name}'!"
+        )
+        raise ValueError(msg)
+
+
+def get_brain_region(
+    client: Client, circuit_metadata: dict, brain_hierarchy: models.BrainRegionHierarchy
+) -> models.BrainRegion:
+    """Resolve the brain region entity from metadata within hierarchy."""
     region_name = circuit_metadata.get("brain_region")
     if region_name is None:
         msg = "Brain region must be provided!"
         raise ValueError(msg)
     brain_region = client.search_entity(
-        entity_type=models.BrainRegion, query={"name": region_name}
+        entity_type=models.BrainRegion,
+        query={"name": region_name, "hierarchy_id": brain_hierarchy.id},
     ).all()
     if len(brain_region) == 0:
         msg = (
-            f"Brain region '{region_name}' not found!"
+            f"Brain region '{region_name}' not found in hierarchy '{brain_hierarchy.name}'!"
             " Brain regions need to be registered beforehand."
         )
         raise ValueError(msg)
     if len(brain_region) > 1:
-        msg = f"Multiple brain regions with name '{region_name}' found!"
+        msg = (
+            f"Multiple brain regions with name '{region_name}'"
+            f" found in hierarchy '{brain_hierarchy.name}'!"
+        )
         raise ValueError(msg)
     brain_region = brain_region[0]
     L.info(f"Brain region '{brain_region.name}' (ID {brain_region.id})")
     return brain_region
-
-
-def check_brain_region(brain_region: models.BrainRegion, subject: models.Subject) -> None:
-    """Check that brain region is consistent with given species."""
-    if brain_region.species.id != subject.species.id:
-        msg = (
-            f"Species mismatch for brain region '{brain_region.name}'"
-            f" ('{brain_region.species.name}'),"
-            f" should belong to '{subject.species.name}'!"
-        )
-        raise ValueError(msg)
 
 
 def get_license(client: Client, circuit_metadata: dict) -> models.License | None:

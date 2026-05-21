@@ -22,11 +22,12 @@ from obi_one.utils.circuit_registration.register import (
     register_circuit_from_metadata,
 )
 from obi_one.utils.circuit_registration.resolve import (
-    check_brain_region,
+    check_hierarchy_species,
     check_if_circuit_exists,
     find_agent,
     find_role,
     get_brain_region,
+    get_brain_region_hierarchy,
     get_circuit,
     get_contributions,
     get_exp_date,
@@ -39,7 +40,7 @@ from obi_one.utils.circuit_registration.resolve import (
 
 __all__ = [
     "CIRCUIT_ASSET_MAPPING",
-    "check_brain_region",
+    "check_hierarchy_species",
     "check_if_circuit_exists",
     "find_agent",
     "find_role",
@@ -50,6 +51,7 @@ __all__ = [
     "generate_overview_image_asset",
     "generate_sim_designer_image_asset",
     "get_brain_region",
+    "get_brain_region_hierarchy",
     "get_circuit",
     "get_contributions",
     "get_exp_date",
