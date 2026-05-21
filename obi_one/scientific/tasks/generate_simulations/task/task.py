@@ -310,8 +310,9 @@ class GenerateSimulationTask(Task):
                     not isinstance(self.config, Brian2CircuitSimulationSingleConfig)
                     and isinstance(self.config.initialize.node_set, NeuronSetReference)
                     and (
-                        self.config.initialize.node_set.block.population_type(
-                            self._circuit, self._circuit.default_population_name
+                        self.config.initialize.node_set.block.population_type(  # ty:ignore[unresolved-attribute]
+                            self._circuit,
+                            self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                         )
                         not in {"biophysical", "inait_point_neuron_lif"}
                     )
