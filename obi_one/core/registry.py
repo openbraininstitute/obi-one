@@ -27,30 +27,21 @@ class TaskRegistry:
         """Initialize empty registry maps."""
         # SingleConfig class -> Task class (used to dispatch execution)
         self._config_task_map: dict[type, type] = {}
-        # TaskType -> Task class (used for run_task_type entrypoint)
-        self._task_type_task_map: dict[TaskType, type] = {}
-        # TaskType -> SingleConfig class (used to create default configs)
-        self._task_type_single_config_map: dict[TaskType, type] = {}
-        # TaskType -> AssetLabel or None (used to locate config assets)
-        self._task_type_config_asset_label_map: dict[TaskType, AssetLabel | None] = {}
+        # TaskType -> (Task class, SingleConfig class, AssetLabel | None)
+        self._task_type_map: dict[TaskType, tuple[type, type, AssetLabel | None]] = {}
 
-    def register_config_task(self, config_cls: type, task_cls: type) -> None:
-        """Register a config class to task class mapping."""
-        self._config_task_map[config_cls] = task_cls
-
-    def register_task_type(self, task_type: TaskType, task_cls: type) -> None:
-        """Register a TaskType to task class mapping."""
-        self._task_type_task_map[task_type] = task_cls
-
-    def register_task_type_single_config(self, task_type: TaskType, config_cls: type) -> None:
-        """Register a TaskType to single config class mapping."""
-        self._task_type_single_config_map[task_type] = config_cls
-
-    def register_task_type_config_asset_label(
-        self, task_type: TaskType, label: AssetLabel | None
+    def register_task(
+        self,
+        *,
+        task_cls: type,
+        single_config_cls: type,
+        task_type: TaskType | None = None,
+        asset_label: AssetLabel | None = None,
     ) -> None:
-        """Register a TaskType to config asset label mapping."""
-        self._task_type_config_asset_label_map[task_type] = label
+        """Register a task with all its associated mappings in one call."""
+        self._config_task_map[single_config_cls] = task_cls
+        if task_type is not None:
+            self._task_type_map[task_type] = (task_cls, single_config_cls, asset_label)
 
     def get_configs_task_type(self, config: object) -> type:
         """Return the Task class for a given config instance."""
@@ -58,11 +49,11 @@ class TaskRegistry:
 
     def get_task_type(self, task_type: TaskType) -> type:
         """Return the Task class for a given TaskType enum."""
-        return self._task_type_task_map[task_type]
+        return self._task_type_map[task_type][0]
 
     def get_task_type_single_config(self, task_type: TaskType) -> type:
         """Return the SingleConfig class for a given TaskType enum."""
-        return self._task_type_single_config_map[task_type]
+        return self._task_type_map[task_type][1]
 
     def get_task_type_config_asset_label(self, task_type: TaskType) -> AssetLabel | None:
         """Return the config asset label for a given TaskType enum.
@@ -70,7 +61,8 @@ class TaskRegistry:
         Returns None if the task type does not use a config asset (e.g., tasks that receive their
         config inline rather than as a stored asset).
         """
-        return self._task_type_config_asset_label_map.get(task_type)
+        entry = self._task_type_map.get(task_type)
+        return entry[2] if entry is not None else None
 
 
 # Module-level singleton
