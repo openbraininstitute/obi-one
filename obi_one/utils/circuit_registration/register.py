@@ -104,7 +104,11 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     circuit_folder = circuit_path.parent
 
     # Validate species consistency
-    if brain_region.species.id != subject.species.id:
+    if (
+        brain_region.species is not None
+        and subject.species is not None
+        and brain_region.species.id != subject.species.id
+    ):
         msg = (
             f"Species mismatch: brain region '{brain_region.name}'"
             f" ('{brain_region.species.name}') does not match"
