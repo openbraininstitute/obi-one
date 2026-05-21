@@ -168,7 +168,7 @@ class GenerateSimulationTask(Task):
 
     def _add_sonata_simulation_config_inputs(self) -> None:
         self._sonata_config["inputs"] = {}
-        for stimulus in self.config.stimuli.values():
+        for stimulus in self.config.stimuli.values():  # ty:ignore[unresolved-attribute]
             if isinstance(stimulus, SpikeStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
@@ -269,7 +269,7 @@ class GenerateSimulationTask(Task):
                     recording
                 )
 
-            for stimulus in self.config.stimuli.values():
+            for stimulus in self.config.stimuli.values():  # ty:ignore[unresolved-attribute]
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     stimulus
                 )
