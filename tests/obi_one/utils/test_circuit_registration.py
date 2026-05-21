@@ -968,6 +968,7 @@ def test_register_circuit_dry_run():
             build_category="computational_model",
             brain_region=brain_region,
             subject=subject,
+            target_simulator="NEURON",
             skip_additional_assets=True,
             dry_run=True,
         )
@@ -999,6 +1000,7 @@ def test_register_circuit_registers_entity():
             build_category="computational_model",
             brain_region=brain_region,
             subject=subject,
+            target_simulator="NEURON",
             dry_run=False,
         )
 
@@ -1031,6 +1033,7 @@ def test_register_circuit_with_derivation():
             build_category="computational_model",
             brain_region=brain_region,
             subject=subject,
+            target_simulator="NEURON",
             parent=parent,
             derivation_type="circuit_extraction",
             dry_run=False,
@@ -1064,6 +1067,7 @@ def test_register_circuit_skip_additional_assets():
             build_category="computational_model",
             brain_region=brain_region,
             subject=subject,
+            target_simulator="NEURON",
             skip_additional_assets=True,
             dry_run=False,
         )
@@ -1083,6 +1087,7 @@ def test_register_circuit_invalid_path():
             build_category="computational_model",
             brain_region=MagicMock(),
             subject=MagicMock(),
+            target_simulator="NEURON",
         )
 
 
@@ -1107,4 +1112,5 @@ def test_register_circuit_species_mismatch():
             build_category="computational_model",
             brain_region=brain_region,
             subject=subject,
+            target_simulator="NEURON",
         )
