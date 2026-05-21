@@ -115,6 +115,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:10",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
     TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
