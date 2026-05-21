@@ -8,10 +8,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from obi_one.utils.circuit_registration import (
+    check_hierarchy_species,
     check_if_circuit_exists,
     find_agent,
     find_role,
     get_brain_region,
+    get_brain_region_hierarchy,
     get_circuit,
     get_contributions,
     get_exp_date,
@@ -401,6 +403,55 @@ def test_get_brain_region_not_found():
     hierarchy = MagicMock(id="hierarchy-id", name="Mouse CCFv3")
     with pytest.raises(ValueError, match="not found"):
         get_brain_region(client, {"brain_region": "Unknown"}, hierarchy)
+
+
+# --- get_brain_region_hierarchy ---
+
+
+def test_get_brain_region_hierarchy_found():
+    """Test that brain region hierarchy is resolved."""
+    hierarchy = MagicMock(name="Mouse CCFv3", id="hierarchy-id")
+    client = _mock_client_search([hierarchy])
+    result = get_brain_region_hierarchy(client, {"brain_region_hierarchy": "Mouse CCFv3"})
+    assert result is hierarchy
+
+
+def test_get_brain_region_hierarchy_missing_name():
+    """Test that missing hierarchy name raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Brain region hierarchy must be provided"):
+        get_brain_region_hierarchy(client, {"brain_region_hierarchy": None})
+
+
+def test_get_brain_region_hierarchy_not_found():
+    """Test that missing hierarchy raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_brain_region_hierarchy(client, {"brain_region_hierarchy": "Unknown"})
+
+
+# --- check_hierarchy_species ---
+
+
+def test_check_hierarchy_species_matching():
+    """Test that matching species passes without error."""
+    species = MagicMock(id="species-id", name="Mus musculus")
+    hierarchy = MagicMock(species=species, name="Mouse CCFv3")
+    subject = MagicMock(species=species)
+    check_hierarchy_species(hierarchy, subject)  # Should not raise
+
+
+def test_check_hierarchy_species_mismatch():
+    """Test that mismatched species raises."""
+    hierarchy = MagicMock(
+        species=MagicMock(id="species-mouse", name="Mus musculus"),
+        name="Mouse CCFv3",
+    )
+    subject = MagicMock(
+        species=MagicMock(id="species-rat", name="Rattus norvegicus"),
+    )
+    with pytest.raises(ValueError, match="Species mismatch"):
+        check_hierarchy_species(hierarchy, subject)
 
 
 # --- get_license ---
