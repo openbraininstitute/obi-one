@@ -17,8 +17,9 @@ to fetch coordinates from FlyWire and join them on `root_id`.
 |---|---|---|---|
 | `Completeness_783.csv` | [philshiu/Drosophila_brain_model](https://github.com/philshiu/Drosophila_brain_model/blob/main/Completeness_783.csv) | 3.3 MB | The 138 639 FlyWire `root_id`s that make up the model |
 | `Supplemental_file1_neuron_annotations.tsv` | [flyconnectome/flywire_annotations](https://github.com/flyconnectome/flywire_annotations/blob/main/supplemental_files/Supplemental_file1_neuron_annotations.tsv) | 32.6 MB | Per-neuron annotations for FlyWire 783 — including `pos_x/y/z` and `soma_x/y/z` |
+| `flywire_whole_brain.ply` | [navis-org/navis-flybrains](https://github.com/navis-org/navis-flybrains/blob/main/flybrains/meshes/FLYWIRE_whole_brain.ply) | 1.9 MB | Whole-brain surface mesh in FlyWire/FAFB14.1 space (vertex units: nm). Used as a translucent 3D outline for the neuron scatter. |
 
-Both are downloaded once and cached under `~/.cache/flywire_783/`.
+All three are downloaded once and cached under `~/.cache/flywire_783/`.
 
 ## What the notebook does
 
@@ -29,9 +30,10 @@ Both are downloaded once and cached under `~/.cache/flywire_783/`.
 4. Converts FlyWire voxel space (4 × 4 × 40 nm) to micrometres.
 5. Renders:
    - a 3D scatter of all 138 617 matched neurons coloured by `super_class`,
+     wrapped inside the translucent FlyWire whole-brain surface mesh,
    - three 2D orthogonal projections (frontal / horizontal / sagittal),
-   - an optional Plotly interactive view (skipped cleanly if Plotly is not
-     installed).
+   - an optional Plotly interactive view with the same brain-mesh overlay
+     (skipped cleanly if Plotly is not installed).
 6. Writes the joined coordinate table to
    `~/.cache/flywire_783/model_neuron_coordinates_783.csv`
    (138 617 rows: `root_id, x_um, y_um, z_um, super_class, side, top_nt`).
@@ -105,8 +107,8 @@ From the repo root, with the project venv:
 Or open it in JupyterLab and run all cells. The first run takes ~30 s
 (downloads ~36 MB); subsequent runs read from the cache.
 
-Required packages: `pandas`, `numpy`, `matplotlib` (already in the project
-venv). `plotly` is optional.
+Required packages: `pandas`, `numpy`, `matplotlib`, `trimesh` (already in the
+project venv). `plotly` is optional.
 
 Required packages for the SONATA writer: `h5py`, `libsonata` (already in the
 project venv).
