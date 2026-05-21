@@ -37,10 +37,27 @@ At the OBI [AWS Console](https://openbraininstitute.awsapps.com/start), first ch
 
 Then setup the the SSO AWS login; steps 1 and 2 from: [Bastion Access](https://github.com/openbraininstitute/aws-terraform-deployment/blob/staging/bastion_host/BASTION_ACCESS.md#database-access-via-port-forwarding)
 
+Make sure you have the following profile in your `~/.aws/config` file:
+
+```ini
+[profile codeartifact]
+sso_session = obi
+sso_account_id = 985539765147
+sso_role_name = ReadOnlyAccess
+region = us-east-1
+output = json
+```
+
+Then login to SSO if you haven't already:
+
+```bash
+aws sso login --sso-session obi
+```
+
 Then one can get the credentials with:
 
 ```bash
-export AWS_PROFILE=$WHAT_YOU_NAMED_IT
+export AWS_PROFILE=codeartifact
 export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
   --domain openbraininstitute \
   --query authorizationToken \

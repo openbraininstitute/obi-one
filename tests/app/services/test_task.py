@@ -323,7 +323,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute-partners/inait",
-            "ref": "commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            "ref": "commit:55428c970249d37d4d0f22f69a81ab07987dfa33",
             "path": "scripts/simulate-circuits/run.py",
             "dependencies": "scripts/simulate-circuits/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
