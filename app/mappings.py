@@ -88,9 +88,9 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref="commit:b3e8670db32d26e9fa4c71d79d6f6de46b61cb16",
-            path="examples/J_drosophila/simulate-brian2.py",
-            dependencies="examples/J_drosophila/requirements.txt",
+            ref=APP_TAG,
+            path="scientific/library/simulation/brian2/simulate_brian2.py",
+            dependencies="scientific/library/simulation/brian2/requirements.txt",
             staged_directories=[],
         ),
         resources=MachineResources(

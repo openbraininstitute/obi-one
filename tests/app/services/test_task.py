@@ -13,7 +13,7 @@ from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
 from app.errors import ApiError, ApiErrorCode
-from app.mappings import TASK_DEFINITIONS
+from app.mappings import APP_TAG, TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
@@ -384,9 +384,9 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": task_definition.code.location,
-            "ref": "commit:b3e8670db32d26e9fa4c71d79d6f6de46b61cb16",
-            "path": "examples/J_drosophila/simulate-brian2.py",
-            "dependencies": "examples/J_drosophila/requirements.txt",
+            "ref": APP_TAG,
+            "path": "scientific/library/simulation/brian2/simulate_brian2.py",
+            "dependencies": "scientific/library/simulation/brian2/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": [],
         },
