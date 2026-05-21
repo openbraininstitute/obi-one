@@ -15,7 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -69,7 +69,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location="https://github.com/openbraininstitute-partners/inait",
-            ref="commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            ref="commit:55428c970249d37d4d0f22f69a81ab07987dfa33",
             path="scripts/simulate-circuits/run.py",
             dependencies="scripts/simulate-circuits/requirements.txt",
             staged_directories=["wheels", "scripts/simulate-circuits/"],
@@ -79,6 +79,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_inait,
         ),
     ),
     TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(

@@ -12,11 +12,17 @@ ROUTE = "/declared/test-neuron-file"
 
 
 def get_error_code(response_json: dict) -> str:
-    return response_json["detail"]["code"]
+    detail = response_json.get("detail")
+    if isinstance(detail, dict):
+        return detail["code"]
+    return response_json["code"]
 
 
 def get_error_detail(response_json: dict) -> str:
-    return response_json["detail"]["detail"]
+    detail = response_json.get("detail")
+    if isinstance(detail, dict):
+        return detail["detail"]
+    return response_json["detail"]
 
 
 @pytest.fixture

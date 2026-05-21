@@ -74,6 +74,9 @@ def estimate_task_resources(  # noqa: PLR0914
         config=config,
         asset_label=get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
     ).id
+    if config_asset_id is None:
+        msg = "Config asset must have an id"
+        raise ValueError(msg)
 
     json_str = db_client.download_content(
         entity_id=json_model.config_id,
