@@ -31,7 +31,7 @@ L = logging.getLogger("obi-one")
 
 
 class NeuronPropertyFilter(OBIBaseModel):
-    filter_dict: dict[str, list] = Field(
+    filter_dict: dict[str, list[str] | list[int]] = Field(
         title="Filter",
         description="Filter dictionary. Note as this is NOT a Block and the list here is \
                     not to support multi-dimensional parameters but to support a key-value pair \
