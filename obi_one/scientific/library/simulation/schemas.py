@@ -1,18 +1,41 @@
 """Data schemas used by simulation execution and registration."""
 
 from pathlib import Path
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, FilePath
 
 
-class SimulationParameters(BaseModel):
+class NeuronMechanismBuild(BaseModel):
+    libnrnmech_path: Annotated[FilePath, Field(description="Path to libnrnmech.so")]
+
+
+class NeurodamusMechanismBuild(BaseModel):
+    libnrnmech_path: Annotated[FilePath, Field(description="Path to libnrnmech.so")]
+    libcorenrnmech_path: Annotated[FilePath, Field(description="Path to libcorenrnmech.so")]
+
+
+type MechanismBuild = NeuronMechanismBuild | NeurodamusMechanismBuild
+
+
+class SimulationParametersBase(BaseModel):
     """Inputs required to execute a simulation run."""
 
     number_of_cells: int
     stop_time: float
     config_file: Path
-    libmech_path: Path
+
+
+class BluecellulabSimulationParameters(SimulationParametersBase):
+    mechanism_build: NeuronMechanismBuild
+
+
+class NeurodamusSimulationParameters(SimulationParametersBase):
+    mechanism_build: NeurodamusMechanismBuild
+
+
+type SimulationParameters = BluecellulabSimulationParameters | NeurodamusSimulationParameters
 
 
 class SimulationResults(BaseModel):

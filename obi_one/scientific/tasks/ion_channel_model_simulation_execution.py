@@ -90,6 +90,7 @@ class IonChannelModelSimulationExecutionTask(Task):
             locally and does **not** register any generated resources in
             the database.
         """
+        simulation_backend = SimulationBackend.neurodamus
         output_dir = Path(self.config.coordinate_output_root).resolve()
         data_dir = create_dir(output_dir / "data")
         results_dir = create_dir(output_dir / "outputs")
@@ -109,10 +110,10 @@ class IonChannelModelSimulationExecutionTask(Task):
             ion_channel_models=generation_single_config.ion_channel_models,
             output_dir=create_dir(data_dir / "circuit"),
         )
-        libmech_path = compile_mechanisms(
+        mechanism_build = compile_mechanisms(
             mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
             output_dir=staged_circuit.directory.resolve(),
-            simulation_backend=SimulationBackend.neurodamus,
+            simulation_backend=simulation_backend,
         )
         simulation_entity = self.config.single_entity
 
@@ -127,7 +128,9 @@ class IonChannelModelSimulationExecutionTask(Task):
             override_results_dir=results_dir,
         )
         simulation_parameters = get_simulation_parameters(
-            simulation_config_file=staged_simulation_config_path, libmech_path=libmech_path
+            simulation_backend=simulation_backend,
+            simulation_config_file=staged_simulation_config_path,
+            mechanism_build=mechanism_build,
         )
 
         simulation_results = run_simulation(

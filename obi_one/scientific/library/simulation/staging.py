@@ -8,7 +8,15 @@ from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.library.simulation.schemas import SimulationParameters
+from obi_one.scientific.library.simulation.schemas import (
+    BluecellulabSimulationParameters,
+    MechanismBuild,
+    NeurodamusMechanismBuild,
+    NeurodamusSimulationParameters,
+    NeuronMechanismBuild,
+    SimulationParameters,
+)
+from obi_one.types import SimulationBackend
 from obi_one.utils.io import load_json
 
 L = logging.getLogger(__name__)
@@ -65,8 +73,9 @@ def stage_ion_channel_models_as_circuit(
 
 def get_simulation_parameters(
     *,
+    simulation_backend: SimulationBackend,
     simulation_config_file: Path,
-    libmech_path: Path,
+    mechanism_build: MechanismBuild,
 ) -> SimulationParameters:
     """Return simulation parameters."""
     config_data = load_json(simulation_config_file)
@@ -83,9 +92,21 @@ def get_simulation_parameters(
     num_cells = len(node_set_data[node_set_name]["node_id"])
     tstop = config_data["run"]["tstop"]
 
-    return SimulationParameters(
-        config_file=simulation_config_file,
-        number_of_cells=num_cells,
-        stop_time=tstop,
-        libmech_path=libmech_path,
-    )
+    match simulation_backend:
+        case SimulationBackend.bluecellulab:
+            return BluecellulabSimulationParameters(
+                config_file=simulation_config_file,
+                number_of_cells=num_cells,
+                stop_time=tstop,
+                mechanism_build=cast("NeuronMechanismBuild", mechanism_build),
+            )
+        case SimulationBackend.neurodamus:
+            return NeurodamusSimulationParameters(
+                config_file=simulation_config_file,
+                number_of_cells=num_cells,
+                stop_time=tstop,
+                mechanism_build=cast("NeurodamusMechanismBuild", mechanism_build),
+            )
+        case _:
+            msg = f"Unsupported simulation backend {simulation_backend}."
+            raise RuntimeError(msg)

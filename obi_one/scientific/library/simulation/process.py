@@ -2,8 +2,17 @@ import logging
 import math
 import os
 from pathlib import Path
+from typing import cast
 
-from obi_one.scientific.library.simulation.schemas import SimulationParameters, SimulationResults
+from obi_one.scientific.library.simulation.schemas import (
+    BluecellulabSimulationParameters,
+    MechanismBuild,
+    NeurodamusMechanismBuild,
+    NeurodamusSimulationParameters,
+    NeuronMechanismBuild,
+    SimulationParameters,
+    SimulationResults,
+)
 from obi_one.types import SimulationBackend
 from obi_one.utils.process import run_and_log
 
@@ -23,18 +32,18 @@ def run_simulation(
     match simulation_backend:
         case SimulationBackend.bluecellulab:
             _run_bluecellulab_simulation(
-                parameters=parameters,
+                parameters=cast("BluecellulabSimulationParameters", parameters),
                 simulation_entrypoint_path=ENTRYPOINT_PATH,
             )
         case SimulationBackend.neurodamus:
             _run_neurodamus_simulation(
-                parameters=parameters,
+                parameters=cast("NeurodamusSimulationParameters", parameters),
             )
     return _collect_simulation_outputs(results_dir=results_dir)
 
 
 def _run_bluecellulab_simulation(
-    parameters: SimulationParameters,
+    parameters: BluecellulabSimulationParameters,
     simulation_entrypoint_path: Path,
 ) -> None:
     number_of_mpi_processes = _get_number_of_mpi_processes(parameters.number_of_cells)
@@ -49,7 +58,7 @@ def _run_bluecellulab_simulation(
             "--config",
             str(parameters.config_file),
             "--libnrnmech-path",
-            str(parameters.libmech_path),
+            str(parameters.mechanism_build.libnrnmech_path),
             "--simulation-backend",
             str(SimulationBackend.bluecellulab),
             "--save-nwb",
@@ -58,7 +67,7 @@ def _run_bluecellulab_simulation(
 
 
 def _run_neurodamus_simulation(
-    parameters: SimulationParameters,
+    parameters: NeurodamusSimulationParameters,
 ) -> None:
     number_of_mpi_processes = _get_number_of_mpi_processes(parameters.number_of_cells)
 
@@ -78,7 +87,8 @@ def _run_neurodamus_simulation(
         ],
         env=os.environ
         | {
-            "CORENEURONLIB": str(parameters.libmech_path),
+            "NRNMECH_LIB_PATH": str(parameters.mechanism_build.libnrnmech_path),
+            "CORENEURONLIB": str(parameters.mechanism_build.libcorenrnmech_path),
         },
     )
 
@@ -112,7 +122,7 @@ def compile_mechanisms(
     output_dir: Path,
     mechanisms_dir: Path,
     simulation_backend: SimulationBackend,
-) -> Path:
+) -> MechanismBuild:
 
     match simulation_backend:
         case SimulationBackend.bluecellulab:
@@ -130,7 +140,7 @@ def compile_mechanisms(
             raise RuntimeError(msg)
 
 
-def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> Path:
+def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> NeuronMechanismBuild:
     command = [
         "nrnivmodl",
         "-incflags",
@@ -148,10 +158,12 @@ def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> Pat
         msg = "Compiled mechanisms shared object libnrnmech.so was not found."
         raise RuntimeError(msg) from e
 
-    return libnrnmech_path
+    return NeuronMechanismBuild(libnrnmech_path=libnrnmech_path)
 
 
-def _compile_neurodamus_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> Path:
+def _compile_neurodamus_mechanisms(
+    *, output_dir: Path, mechanisms_dir: Path
+) -> NeurodamusMechanismBuild:
     command = [
         "nrnivmodl",
         "-coreneuron",
@@ -163,9 +175,18 @@ def _compile_neurodamus_mechanisms(*, output_dir: Path, mechanisms_dir: Path) ->
     L.debug(compilation_output)
 
     try:
+        libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
+    except StopIteration as e:
+        msg = "Compiled mechanisms shared object libnrnmech.so was not found."
+        raise RuntimeError(msg) from e
+
+    try:
         libcorenrnmech_path = next(output_dir.rglob("libcorenrnmech.so"))
     except StopIteration as e:
         msg = "Compiled mechanisms shared object libcorenrnmech.so was not found."
         raise RuntimeError(msg) from e
 
-    return libcorenrnmech_path
+    return NeurodamusMechanismBuild(
+        libnrnmech_path=libnrnmech_path,
+        libcorenrnmech_path=libcorenrnmech_path,
+    )

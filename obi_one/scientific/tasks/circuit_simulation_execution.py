@@ -104,16 +104,17 @@ class CircuitSimulationExecutionTask(Task):
             simulation_metadata,
         )
         L.info("Compiling mechanisms in %s...", staged_circuit.mechanisms_dir)
-        libmech_path = compile_mechanisms(
+        mechanism_build = compile_mechanisms(
             mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
             output_dir=staged_circuit.directory.resolve(),
             simulation_backend=simulation_backend,
         )
-        L.info("Mechanisms compiled at %s", libmech_path)
+        L.info("Mechanisms compiled successfully.")
 
         simulation_parameters = get_simulation_parameters(
+            simulation_backend=simulation_backend,
             simulation_config_file=staged_simulation_config_path,
-            libmech_path=libmech_path,
+            mechanism_build=mechanism_build,
         )
         L.info("Simulation parameters: %s", simulation_parameters)
 
