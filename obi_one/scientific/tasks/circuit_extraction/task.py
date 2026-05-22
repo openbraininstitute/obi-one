@@ -15,7 +15,6 @@ from pydantic import Field, PrivateAttr
 
 from obi_one.config import settings
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
@@ -31,7 +30,7 @@ from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
-from obi_one.utils import circuit as circuit_utils, circuit_registration
+from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
 from obi_one.utils.benchmark import BenchmarkTracker
 
 if settings.circuit_extraction.benchmarking_enabled:
@@ -179,35 +178,6 @@ class CircuitExtractionTask(Task):
             self._temp_dir.cleanup()
             self._temp_dir = None
 
-    def _resolve_circuit(self, *, db_client: Client, entity_cache: bool) -> None:
-        """Set circuit variable based on the type of initialize.circuit."""
-        if isinstance(self.config.initialize.circuit, Circuit):
-            L.info("initialize.circuit is a Circuit instance.")
-            self._circuit = self.config.initialize.circuit
-
-        elif isinstance(self.config.initialize.circuit, CircuitFromID):
-            L.info("initialize.circuit is a CircuitFromID instance.")
-            circuit_id = self.config.initialize.circuit.id_str
-
-            if entity_cache:
-                # Use a cache directory at the campaign root --> Won't be deleted after extraction!
-                L.info("Use entity cache")
-                circuit_dest_dir = (
-                    self.config.scan_output_root / "entity_cache" / "sonata_circuit" / circuit_id
-                )
-            else:
-                # Stage circuit in a temporary directory --> Will be deleted after extraction!
-                circuit_dest_dir = self._create_temp_dir() / "sonata_circuit"
-
-            self._circuit = self.config.initialize.circuit.stage_circuit(
-                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=entity_cache
-            )
-            self._circuit_entity = self.config.initialize.circuit.entity(db_client=db_client)  # ty:ignore[invalid-assignment]
-
-        if self._circuit is None:
-            msg = "Failed to resolve circuit!"
-            raise OBIONEError(msg)
-
     def _register_output(self, db_client: Client, circuit_path: Path) -> models.Circuit | None:
         """Register the extracted circuit entity with assets and derivation link."""
         parent = self._circuit_entity
@@ -264,23 +234,29 @@ class CircuitExtractionTask(Task):
 
         # Resolve parent circuit (local path or staging from ID)
         with BenchmarkTracker.section("resolve_circuit"):
-            self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+            self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+                self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
+                db_client=db_client,
+                entity_cache=entity_cache,
+                cache_root=self.config.scan_output_root,
+                temp_dir=self._create_temp_dir(),
+            )
 
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         with BenchmarkTracker.section("add_node_set"):
             nset_name = self.config.neuron_set.__class__.__name__
             nset_def = self.config.neuron_set.get_node_set_definition(
-                self._circuit,  # ty:ignore[invalid-argument-type]
-                self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
+                self._circuit,
+                self._circuit.default_population_name,
             )
-            sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
+            sonata_circuit = self._circuit.sonata_circuit
             add_node_set_to_circuit(
                 sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
             )
 
         # Create subcircuit using "brainbuilder"
-        L.info(f"Extracting subcircuit from '{self._circuit.name}'")  # ty:ignore[unresolved-attribute]
+        L.info(f"Extracting subcircuit from '{self._circuit.name}'")
         with BenchmarkTracker.section("split_subcircuit"):
             split_population.split_subcircuit(
                 self.config.coordinate_output_root,
@@ -293,11 +269,11 @@ class CircuitExtractionTask(Task):
         # Custom edit of the circuit config so that all paths are relative to the new base directory
         # (in case there were absolute paths in the original config)
 
-        old_base = os.path.split(self._circuit.path)[0]  # ty:ignore[unresolved-attribute]
+        old_base = os.path.split(self._circuit.path)[0]
 
         # Fix to deal with symbolic links in the base circuit which may have been resolved
         # Note: .resolve() resolves symlinks!
-        alt_base = str(Path(self._circuit.path).resolve().parent)  # ty:ignore[unresolved-attribute]
+        alt_base = str(Path(self._circuit.path).resolve().parent)
 
         new_base = "$BASE_DIR"
         new_circuit_path = Path(self.config.coordinate_output_root) / "circuit_config.json"
@@ -320,7 +296,7 @@ class CircuitExtractionTask(Task):
 
         # Copy subcircuit morphologies and e-models (separately per node population)
         with BenchmarkTracker.section("copy_morph_hoc_mod"):
-            original_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
+            original_circuit = self._circuit.sonata_circuit
             new_circuit = snap.Circuit(new_circuit_path)
             for pop_name, pop in new_circuit.nodes.items():
                 if pop.config["type"] == "biophysical":
@@ -334,7 +310,7 @@ class CircuitExtractionTask(Task):
 
             # Copy .mod files, if any
             circuit_utils.copy_mod_files(
-                self._circuit.path,  # ty:ignore[unresolved-attribute]
+                self._circuit.path,
                 self.config.coordinate_output_root,  # ty:ignore[invalid-argument-type]
                 "mod",
             )
