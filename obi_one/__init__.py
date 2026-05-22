@@ -29,6 +29,8 @@ __all__ = [
     "BasicConnectivityPlotsTask",
     "Block",
     "BlockReference",
+    "Brian2CircuitSimulationScanConfig",
+    "Brian2CircuitSimulationSingleConfig",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -101,6 +103,7 @@ __all__ = [
     "IonChannelModelSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
     "LoadAssetMethod",
+    "LogNormalDistribution",
     "MEModelCircuit",
     "MEModelFromID",
     "MEModelSimulationScanConfig",
@@ -132,6 +135,7 @@ __all__ = [
     "NeuronSetUnion",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
@@ -143,6 +147,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PoissonDistribution",
     "PoissonSpikeStimulus",
     "PositiveFloatRange",
     "PositiveIntRange",
@@ -241,6 +246,9 @@ from obi_one.scientific.blocks.distributions.constant import (
 )
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
@@ -395,6 +403,10 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
     FolderCompressionTask,
+)
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+    Brian2CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,

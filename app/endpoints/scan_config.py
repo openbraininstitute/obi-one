@@ -17,6 +17,9 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
 )
@@ -110,6 +113,7 @@ def activate_scan_config_endpoints() -> None:
     # Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method, execute_single_config_task in [
         (CircuitSimulationScanConfig, "generate", "", True),
+        (Brian2CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
         (MorphologyMetricsScanConfig, "run", "", True),
