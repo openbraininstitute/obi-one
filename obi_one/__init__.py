@@ -102,6 +102,7 @@ __all__ = [
     "IonChannelModelSimulationScanConfig",
     "IonChannelModelSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
+    "LinearExtracellularLocations",
     "LoadAssetMethod",
     "LogNormalDistribution",
     "MEModelCircuit",
@@ -133,6 +134,7 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
     "NormalDistribution",
@@ -255,6 +257,8 @@ from obi_one.scientific.blocks.distributions.uniform import (
 )
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    LinearExtracellularLocations,
+    Neuropixels1ExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (

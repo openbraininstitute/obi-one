@@ -6,15 +6,15 @@ from pathlib import Path
 from typing import ClassVar, Literal
 
 from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig, SimulatableExtracellularRecordingArray
-from entitysdk.types import TaskActivityType, TaskConfigType, ElectrodeType, AssetLabel, ContentType
+from entitysdk.models import Entity, SimulatableExtracellularRecordingArray
+from entitysdk.types import AssetLabel, ContentType, ElectrodeType, TaskActivityType, TaskConfigType
 from pydantic import Field, PrivateAttr
 
-from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -46,8 +46,12 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_weights_calculation__campaign
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = TaskConfigType.extracellular_recording_weights_calculation__config_generation
+    _campaign_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.extracellular_recording_weights_calculation__campaign
+    )
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.extracellular_recording_weights_calculation__config_generation
+    )
 
     @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
@@ -58,7 +62,7 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
             title="Circuit",
             description="Parent circuit to extract a sub-circuit from.",
             json_schema_extra={
-                SchemaKey.UIElement: UIElement.MODEL_IDENTIFIER,
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
             },
         )
         calculation_method: (
@@ -71,7 +75,7 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
                 " specified neuron set and electrode locations."
             ),
             json_schema_extra={
-                SchemaKey.UIElement: "string_selection_enhanced",
+                SchemaKey.UI_ELEMENT: "string_selection_enhanced",
                 "title_by_key": {
                     "PointSource": "Point Source",
                     "LineSource": "Line Source",
@@ -108,7 +112,10 @@ class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
 
     electrode_locations: ExtracellularLocationsUnion = Field(
         title="Electrode Locations",
-        description="Parameters defining the locations of the electrodes for the extracellular recording array.",
+        description=(
+            "Parameters defining the locations of the electrodes for the"
+            " extracellular recording array."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
             SchemaKey.GROUP: BlockGroup.ELECTRODE_POSITIONS,
@@ -122,13 +129,18 @@ class CreateExtracellularRecordingArraySingleConfig(
 ):
     """Description."""
 
+
 class CreateExtracellularRecordingArrayTask(Task):
     """Task to create an extracellular recording array."""
 
     config: CreateExtracellularRecordingArraySingleConfig
 
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.extracellular_recording_weights_calculation__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = TaskActivityType.extracellular_recording_weights_calculation__execution
+    _single_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.extracellular_recording_weights_calculation__config
+    )
+    _single_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.extracellular_recording_weights_calculation__execution
+    )
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
@@ -189,7 +201,6 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         circuit_dest_dir = self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
 
-        # electrode_locations = [[0.0, 0.0, 0.0], [50.0, 50.0, 50.0]]  # multiple x, y, z locations to test
         electrode_xyz_locations = self.config.electrode_locations.get_xyz_locations()
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
@@ -198,14 +209,14 @@ class CreateExtracellularRecordingArrayTask(Task):
         from bluerecording import compute_weights  # noqa: PLC0415 # ty:ignore[unresolved-import]
         from bluerecording.weights import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
             Electrode,
-            ElectrodeType,
+            ElectrodeType as BlueRecordingElectrodeType,
             save_weights,
         )
 
         electrodes = {
             f"electrode_{i}": Electrode(
                 position=np.array(loc, dtype=float),
-                type=ElectrodeType.POINT_SOURCE,
+                type=BlueRecordingElectrodeType.POINT_SOURCE,
             )
             for i, loc in enumerate(electrode_xyz_locations)
         }
@@ -238,7 +249,7 @@ class CreateExtracellularRecordingArrayTask(Task):
             description="Temp description.",
             electrode_type=ElectrodeType.custom,
             authorized_public=False,
-            circuit_id=self._circuit_entity.id
+            circuit_id=self._circuit_entity.id,
         )
         db_client.register_entity(entity)
 
@@ -246,6 +257,6 @@ class CreateExtracellularRecordingArrayTask(Task):
             entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=weights_output_path,
-            file_content_type=ContentType.h5,
+            file_content_type=ContentType.application_x_hdf5,
             asset_label=AssetLabel.electrode_array_weight_matrix,
         )
