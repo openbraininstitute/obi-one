@@ -79,7 +79,7 @@ def _run_neurodamus_simulation(
             "--use-hwthread-cpus",
             "-np",
             str(number_of_mpi_processes),
-            "special",
+            str(parameters.mechanism_build.special_binary_path),
             "-mpi",
             "-python",
             f"{neurodamus_python}/init.py",
@@ -173,6 +173,11 @@ def _compile_neurodamus_mechanisms(
     compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
 
     L.debug(compilation_output)
+    try:
+        special_binary_path = next(output_dir.rglob("special"))
+    except StopIteration as e:
+        msg = "Special binary path was not found."
+        raise RuntimeError(msg) from e
 
     try:
         libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
@@ -189,4 +194,5 @@ def _compile_neurodamus_mechanisms(
     return NeurodamusMechanismBuild(
         libnrnmech_path=libnrnmech_path,
         libcorenrnmech_path=libcorenrnmech_path,
+        special_binary_path=special_binary_path,
     )

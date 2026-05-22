@@ -14,6 +14,9 @@ class NeuronMechanismBuild(BaseModel):
 class NeurodamusMechanismBuild(BaseModel):
     libnrnmech_path: Annotated[FilePath, Field(description="Path to libnrnmech.so")]
     libcorenrnmech_path: Annotated[FilePath, Field(description="Path to libcorenrnmech.so")]
+    special_binary_path: Annotated[
+        FilePath, Field(description="Path to compiled NEURON special binary")
+    ]
 
 
 type MechanismBuild = NeuronMechanismBuild | NeurodamusMechanismBuild
