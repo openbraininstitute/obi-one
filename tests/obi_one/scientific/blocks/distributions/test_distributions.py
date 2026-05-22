@@ -202,7 +202,7 @@ class TestLogNormalDistribution:
 class TestPoissonDistribution:
     def test_sample_returns_non_negative_integer_like_samples(self):
         dist = obi.PoissonDistribution(
-            lam=5.0,
+            rate=5.0,
             random_seed=42,
         )
 
@@ -215,7 +215,7 @@ class TestPoissonDistribution:
 
     def test_sample_with_explicit_rng(self):
         dist = obi.PoissonDistribution(
-            lam=5.0,
+            rate=5.0,
         )
 
         rng = np.random.default_rng(789)

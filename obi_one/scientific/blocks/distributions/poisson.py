@@ -12,10 +12,10 @@ class PoissonDistribution(Distribution):
 
     title: ClassVar[str] = "Poisson"
 
-    lam: NonNegativeFloat | list[NonNegativeFloat] = Field(
+    rate: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=1.0,
-        title="Lambda",
-        description="Expected number of events.",
+        title="Event Rate",
+        description="Average event occurrence rate for the sampled interval.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     random_seed: int | list[int] = Field(
@@ -32,5 +32,5 @@ class PoissonDistribution(Distribution):
     ) -> list[float]:
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
-        samples = rng.poisson(lam=self.lam, size=n)
+        samples = rng.poisson(lam=self.rate, size=n)
         return samples.astype(float).tolist()
