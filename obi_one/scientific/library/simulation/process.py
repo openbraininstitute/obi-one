@@ -67,7 +67,6 @@ def _run_neurodamus_simulation(
     run_and_log(
         [
             "mpirun",
-            "--allow-run-as-root",
             "--use-hwthread-cpus",
             "-np",
             str(number_of_mpi_processes),
