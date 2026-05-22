@@ -275,7 +275,7 @@ class GenerateSimulationTask(Task):
                 )
 
             if hasattr(self.config, "neuronal_manipulations"):
-                for manipulation in self.config.neuronal_manipulations.values():
+                for manipulation in self.config.neuronal_manipulations.values():  # ty:ignore[unresolved-attribute]
                     self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                         manipulation
                     )

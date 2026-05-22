@@ -54,7 +54,12 @@ def _get_circuit_asset(
         msg = f"Circuit {circuit_id} must have exactly one sonata_circuit directory asset."
         raise ValueError(msg)
 
-    return circuit_entity, directory_assets[0].id
+    asset_id = directory_assets[0].id
+    if asset_id is None:
+        msg = f"Circuit {circuit_id} sonata_circuit asset has no ID."
+        raise ValueError(msg)
+
+    return circuit_entity, asset_id
 
 
 def get_circuit_node_ids(
@@ -87,7 +92,7 @@ def get_circuit_node_ids(
             strategy=FetchFileStrategy.link_or_download,
         )
 
-        obi_circuit = ObiCircuit(name=circuit_entity.name, path=str(temp_config_path))
+        obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(temp_config_path))
 
         if population is None:
             population = obi_circuit.default_population_name
@@ -259,7 +264,9 @@ def get_circuit_manipulation_properties(
                     asset_path=Path("circuit_config.json"),
                     strategy=FetchFileStrategy.link_or_download,
                 )
-                obi_circuit = ObiCircuit(name=circuit_entity.name, path=str(temp_config_path))
+                obi_circuit = ObiCircuit(
+                    name=circuit_entity.name or circuit_id, path=str(temp_config_path)
+                )
                 population = obi_circuit.default_population_name
         resolved_population = population
     else:
