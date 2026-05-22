@@ -34,6 +34,29 @@ from obi_one.utils.circuit_registration.resolve import (
 L = logging.getLogger(__name__)
 
 
+def _resolve_target_simulator(
+    target_simulator: types.TargetSimulator | None,
+    circuit: OBICircuit,
+) -> types.TargetSimulator | None:
+    """Resolve target simulator from user input and circuit config.
+
+    If both are specified, checks consistency. If only the config specifies it,
+    uses the config value.
+    """
+    cfg_target_simulator = circuit.sonata_circuit.config.get("target_simulator")
+    if cfg_target_simulator:
+        if target_simulator:
+            if target_simulator != cfg_target_simulator:
+                msg = (
+                    f"Specified target simulator '{target_simulator}' does not match"
+                    f" '{cfg_target_simulator}' in circuit config!"
+                )
+                raise ValueError(msg)
+        else:
+            target_simulator = cfg_target_simulator
+    return target_simulator
+
+
 def register_circuit(  # noqa: PLR0913, PLR0914
     client: Client,
     circuit_path: str | Path,
@@ -119,8 +142,11 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         )
         raise ValueError(msg)
 
-    # Compute scale, counts, and properties from circuit
+    # Assure target simulator consistency
     c = OBICircuit(name=name, path=str(circuit_path))
+    target_simulator = _resolve_target_simulator(target_simulator, c)
+
+    # Compute scale, counts, and properties from circuit
     scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
     has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
         get_circuit_properties(c)
