@@ -140,3 +140,88 @@ class TestDistributionConstraints:
         dist = obi.FloatConstantDistribution(value=1.0)
         with pytest.raises(ValueError, match="gt must be less than le"):
             dist.sample(n=1, gt=2.0, le=2.0)
+
+
+class TestNormalDistribution:
+    def test_sample_returns_float_samples(self):
+        dist = obi.NormalDistribution(
+            mean=0.0,
+            standard_deviation=1.0,
+            random_seed=42,
+        )
+
+        samples = dist.sample(n=10)
+
+        assert len(samples) == 10
+        assert all(isinstance(s, float) for s in samples)
+
+    def test_sample_with_explicit_rng(self):
+        dist = obi.NormalDistribution(
+            mean=0.0,
+            standard_deviation=1.0,
+        )
+
+        rng = np.random.default_rng(123)
+        samples1 = dist.sample(n=3, rng=rng)
+
+        rng = np.random.default_rng(123)
+        samples2 = dist.sample(n=3, rng=rng)
+
+        assert samples1 == samples2
+
+
+class TestLogNormalDistribution:
+    def test_sample_returns_positive_float_samples(self):
+        dist = obi.LogNormalDistribution(
+            mean=0.0,
+            sigma=1.0,
+            random_seed=42,
+        )
+
+        samples = dist.sample(n=10)
+
+        assert len(samples) == 10
+        assert all(isinstance(s, float) for s in samples)
+        assert all(s > 0 for s in samples)
+
+    def test_sample_with_explicit_rng(self):
+        dist = obi.LogNormalDistribution(
+            mean=0.0,
+            sigma=1.0,
+        )
+
+        rng = np.random.default_rng(456)
+        samples1 = dist.sample(n=3, rng=rng)
+
+        rng = np.random.default_rng(456)
+        samples2 = dist.sample(n=3, rng=rng)
+
+        assert samples1 == samples2
+
+
+class TestPoissonDistribution:
+    def test_sample_returns_non_negative_integer_like_samples(self):
+        dist = obi.PoissonDistribution(
+            rate=5.0,
+            random_seed=42,
+        )
+
+        samples = dist.sample(n=10)
+
+        assert len(samples) == 10
+        assert all(isinstance(s, float) for s in samples)
+        assert all(s >= 0 for s in samples)
+        assert all(float(s).is_integer() for s in samples)
+
+    def test_sample_with_explicit_rng(self):
+        dist = obi.PoissonDistribution(
+            rate=5.0,
+        )
+
+        rng = np.random.default_rng(789)
+        samples1 = dist.sample(n=3, rng=rng)
+
+        rng = np.random.default_rng(789)
+        samples2 = dist.sample(n=3, rng=rng)
+
+        assert samples1 == samples2
