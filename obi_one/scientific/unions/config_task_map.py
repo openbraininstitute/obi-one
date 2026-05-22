@@ -31,6 +31,9 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -81,6 +84,11 @@ from obi_one.types import TaskType
 TASK_MAP: dict[type, tuple[type, TaskType | None, AssetLabel | None]] = {
     BasicConnectivityPlotsSingleConfig: (
         BasicConnectivityPlotsTask,
+        None,
+        None,
+    ),
+    Brian2CircuitSimulationSingleConfig: (
+        GenerateSimulationTask,
         None,
         None,
     ),
