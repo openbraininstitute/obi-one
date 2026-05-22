@@ -29,6 +29,8 @@ __all__ = [
     "BasicConnectivityPlotsTask",
     "Block",
     "BlockReference",
+    "Brian2CircuitSimulationScanConfig",
+    "Brian2CircuitSimulationSingleConfig",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -401,6 +403,10 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
     FolderCompressionTask,
+)
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+    Brian2CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
