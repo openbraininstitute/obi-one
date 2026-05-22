@@ -13,12 +13,12 @@ from pydantic import Field, PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitDiscriminator
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
@@ -34,7 +34,7 @@ class BlockGroup(StrEnum):
     ELECTRODE_POSITIONS = "Electrode Positions"
 
 
-class CreateExtracellularRecordingArrayScanConfig(ScanConfig):
+class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
     """Description."""
 
     single_coord_class_name: ClassVar[str] = "CreateExtracellularRecordingArraySingleConfig"
@@ -129,18 +129,18 @@ class CreateExtracellularRecordingArraySingleConfig(
 ):
     """Description."""
 
-
-class CreateExtracellularRecordingArrayTask(Task):
-    """Task to create an extracellular recording array."""
-
-    config: CreateExtracellularRecordingArraySingleConfig
-
     _single_task_config_type: ClassVar[TaskConfigType] = (
         TaskConfigType.extracellular_recording_weights_calculation__config
     )
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.extracellular_recording_weights_calculation__execution
     )
+
+
+class CreateExtracellularRecordingArrayTask(Task):
+    """Task to create an extracellular recording array."""
+
+    config: CreateExtracellularRecordingArraySingleConfig
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
@@ -196,6 +196,10 @@ class CreateExtracellularRecordingArrayTask(Task):
     ) -> str | None:  # Returns the ID of the extracted circuit
         """Run the task."""
         _ = CreateExtracellularRecordingArrayTask._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
+
+        execution_activity = CreateExtracellularRecordingArrayTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
@@ -260,3 +264,11 @@ class CreateExtracellularRecordingArrayTask(Task):
             file_content_type=ContentType.application_x_hdf5,
             asset_label=AssetLabel.electrode_array_weight_matrix,
         )
+
+        # Update execution activity (if any)
+        CreateExtracellularRecordingArrayTask._update_execution_activity(
+            db_client=db_client,
+            execution_activity=execution_activity,
+            generated=[entity.id],
+        )
+
