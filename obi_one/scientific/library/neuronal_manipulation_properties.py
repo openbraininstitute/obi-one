@@ -17,8 +17,9 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from bluepysnap import Circuit as SnapCircuit
+from entitysdk.models import Derivation as DerivationModel
 from entitysdk.models.circuit import Circuit
-from entitysdk.types import DerivationType, FetchFileStrategy
+from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage
 
 from obi_one.scientific.library.circuit import Circuit as ObiCircuit
@@ -154,11 +155,13 @@ def _fetch_emodel_derivation_mapping(
     circuit_id: str,
 ) -> dict[str, str]:
     """Fetch emodel_circuit derivations and build label -> emodel_id map."""
-    derivations = db_client.get_entity_derivations(
-        entity_id=UUID(circuit_id),
-        entity_type=Circuit,
-        derivation_type=DerivationType.emodel_circuit,
-    )
+    derivations = db_client.search_entity(
+        entity_type=DerivationModel,
+        query={
+            "generated__id": circuit_id,
+            "derivation_type": "emodel_circuit",
+        },
+    ).all()
     label_to_emodel_id: dict[str, str] = {}
     for deriv in derivations:
         if deriv.label:

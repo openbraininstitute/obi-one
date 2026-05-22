@@ -87,6 +87,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            "NeuronalManipulation": "/neuronal-manipulation-properties",
         },
     }
 
