@@ -10,7 +10,6 @@ from entitysdk.exception import EntitySDKError
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
-from entitysdk.schemas.asset import MultipartDirectoryUploadTransferConfig
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
@@ -316,14 +315,12 @@ def add_circuit_folder_asset(
         raise FileNotFoundError(msg)
 
     # Upload asset
-    transfer_config = MultipartDirectoryUploadTransferConfig()
     directory_asset = client.upload_directory(
         label=asset_label,  # ty:ignore[invalid-argument-type]
         name=asset_label,
         entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.Circuit,
         paths=circuit_files,  # ty:ignore[invalid-argument-type]
-        transfer_config=transfer_config,
     )
     L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
     return directory_asset
@@ -370,14 +367,12 @@ def add_connectivity_matrix_asset(
     L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
 
     # Upload directory asset
-    transfer_config = MultipartDirectoryUploadTransferConfig()
     matrix_asset = client.upload_directory(
         label=asset_label,  # ty:ignore[invalid-argument-type]
         name=asset_label,
         entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.Circuit,
         paths=matrix_files,  # ty:ignore[invalid-argument-type]
-        transfer_config=transfer_config,
     )
     L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
     return matrix_asset
