@@ -216,14 +216,14 @@ class CreateExtracellularRecordingArrayTask(Task):
             save_weights,
         )
 
-        electrodes = {
-            f"electrode_{i}": Electrode(
+        electrodes = [
+            Electrode(
                 name=f"electrode_{i}",
                 position=np.array(loc, dtype=float),
                 type=BlueRecordingElectrodeType.POINT_SOURCE,
             )
             for i, loc in enumerate(electrode_xyz_locations)
-        }
+        ]
 
         circuit_config_path = Path(circuit_dest_dir) / "circuit_config.json"
         weights, positions_df, cols, neurite_types, population_name = compute_weights(
