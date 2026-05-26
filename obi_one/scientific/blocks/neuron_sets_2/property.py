@@ -106,7 +106,7 @@ class PropertyNeuronSet(NeuronSet):
             SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
-            "population_source_dropdown": "population",
+            "population_source_dropdown_key": "population",
         },
     )
 
