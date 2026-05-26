@@ -8,8 +8,10 @@ from uuid import uuid4
 import entitysdk
 import httpx
 import pytest
+from entitysdk import MultipartUploadTransferConfig
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Asset, Entity, SimulationExecution
+from entitysdk.schemas.asset import MultipartDirectoryUploadTransferConfig
 from entitysdk.types import AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
@@ -398,6 +400,8 @@ def test_add_circuit_folder_asset_success(tmp_path):
 
     assert result is directory_asset
     client.upload_directory.assert_called_once()
+    call_kwargs = client.upload_directory.call_args[1]
+    assert isinstance(call_kwargs["transfer_config"], MultipartDirectoryUploadTransferConfig)
 
 
 def test_add_compressed_circuit_asset_missing_file(tmp_path):
@@ -425,6 +429,8 @@ def test_add_compressed_circuit_asset_success(tmp_path):
 
     assert result is compressed_asset
     client.upload_file.assert_called_once()
+    call_kwargs = client.upload_file.call_args[1]
+    assert isinstance(call_kwargs["transfer_config"], MultipartUploadTransferConfig)
 
 
 def test_add_connectivity_matrix_asset_missing_dir(tmp_path):
@@ -453,6 +459,8 @@ def test_add_connectivity_matrix_asset_success(tmp_path):
 
     assert result is matrix_asset
     client.upload_directory.assert_called_once()
+    call_kwargs = client.upload_directory.call_args[1]
+    assert isinstance(call_kwargs["transfer_config"], MultipartDirectoryUploadTransferConfig)
 
 
 def test_add_image_assets_missing_dir(tmp_path):
