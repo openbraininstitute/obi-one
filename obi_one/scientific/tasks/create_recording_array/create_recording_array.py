@@ -271,4 +271,3 @@ class CreateExtracellularRecordingArrayTask(Task):
             execution_activity=execution_activity,
             generated=[entity.id],
         )
-

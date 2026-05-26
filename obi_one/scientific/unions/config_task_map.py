@@ -104,12 +104,14 @@ _task_type_task_map = {
     TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationExecutionTask,
     TaskType.morphology_skeletonization: SkeletonizationTask,
     TaskType.em_synapse_mapping: EMSynapseMappingTask,
+    TaskType.extracellular_recording_weights_calculation: CreateExtracellularRecordingArrayTask,
 }
 _task_type_single_config_map = {
     TaskType.circuit_extraction: CircuitExtractionSingleConfig,
     TaskType.ion_channel_model_simulation_execution: IonChannelModelSimulationExecutionSingleConfig,
     TaskType.morphology_skeletonization: SkeletonizationSingleConfig,
     TaskType.em_synapse_mapping: EMSynapseMappingSingleConfig,
+    TaskType.extracellular_recording_weights_calculation: CreateExtracellularRecordingArraySingleConfig,  # noqa: E501
 }
 _task_type_config_asset_label_map = {
     TaskType.circuit_extraction: AssetLabel.task_config,
@@ -117,6 +119,7 @@ _task_type_config_asset_label_map = {
     TaskType.circuit_simulation: None,
     TaskType.ion_channel_model_simulation_execution: None,
     TaskType.em_synapse_mapping: AssetLabel.task_config,
+    TaskType.extracellular_recording_weights_calculation: AssetLabel.task_config,
 }
 
 
