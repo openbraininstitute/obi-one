@@ -95,7 +95,7 @@ class PropertyNeuronSet(NeuronSet):
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
-            "filter_key": "property_filter",
+            "property_filter_key": "property_filter",
         },
     )
 
