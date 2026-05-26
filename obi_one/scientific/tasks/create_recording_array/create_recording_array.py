@@ -42,7 +42,7 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
     description: ClassVar[str] = "Description."
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "ui_enabled": False,
+        "ui_enabled": True,
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
 
@@ -67,7 +67,6 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
         )
         calculation_method: (
             Literal["PointSource", "LineSource", "ObjectiveCSD"]
-            | list[Literal["PointSource", "LineSource", "ObjectiveCSD"]]
         ) = Field(
             title="Calculation Method",
             description=(
@@ -75,7 +74,7 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
                 " specified neuron set and electrode locations."
             ),
             json_schema_extra={
-                SchemaKey.UI_ELEMENT: "string_selection_enhanced",
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
                 "title_by_key": {
                     "PointSource": "Point Source",
                     "LineSource": "Line Source",
