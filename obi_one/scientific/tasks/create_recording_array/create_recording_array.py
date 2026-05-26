@@ -11,14 +11,12 @@ from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitDiscriminator
+from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -149,37 +147,6 @@ class CreateExtracellularRecordingArrayTask(Task):
             self._temp_dir.cleanup()
             self._temp_dir = None
 
-    def _resolve_circuit(self, *, db_client: Client, entity_cache: bool) -> Path:
-        """Set circuit variable based on the type of initialize.circuit."""
-        if isinstance(self.config.initialize.circuit, Circuit):
-            L.info("initialize.circuit is a Circuit instance.")
-            self._circuit = self.config.initialize.circuit
-
-        elif isinstance(self.config.initialize.circuit, CircuitFromID):
-            L.info("initialize.circuit is a CircuitFromID instance.")
-            circuit_id = self.config.initialize.circuit.id_str
-
-            if entity_cache:
-                # Use a cache directory at the campaign root --> Won't be deleted after extraction!
-                L.info("Use entity cache")
-                circuit_dest_dir = (
-                    self.config.scan_output_root / "entity_cache" / "sonata_circuit" / circuit_id
-                )
-            else:
-                # Stage circuit in a temporary directory --> Will be deleted after extraction!
-                circuit_dest_dir = self._create_temp_dir() / "sonata_circuit"
-
-            self._circuit = self.config.initialize.circuit.stage_circuit(
-                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=entity_cache
-            )
-            self._circuit_entity = self.config.initialize.circuit.entity(db_client=db_client)
-
-        if self._circuit is None:
-            msg = "Failed to resolve circuit!"
-            raise OBIONEError(msg)
-
-        return circuit_dest_dir
-
     def execute(
         self,
         *,
@@ -192,7 +159,13 @@ class CreateExtracellularRecordingArrayTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        circuit_dest_dir = self._resolve_circuit(db_client=db_client, entity_cache=entity_cache)
+        self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+            self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
+            db_client=db_client,
+            entity_cache=entity_cache,
+            cache_root=self.config.scan_output_root,
+            temp_dir=self._create_temp_dir(),
+        )
 
         test_locations = [[0.0, 0.0, 0.0], [50.0, 50.0, 50.0]]  # multiple x, y, z locations to test
 
@@ -214,7 +187,7 @@ class CreateExtracellularRecordingArrayTask(Task):
             for i, loc in enumerate(test_locations)
         }
 
-        circuit_config_path = Path(circuit_dest_dir) / "circuit_config.json"
+        circuit_config_path = Path(self._circuit.path)
         weights, positions_df, cols, neurite_types, population_name = compute_weights(
             path_to_config=circuit_config_path,
             electrodes=electrodes,
