@@ -100,7 +100,7 @@ all = [
 # Requires MPI-enabled h5py and NEURON built from source.
 # Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
 bluerecording = [
-    "bluerecording",
+    "bluerecording>=0.4.4",
 ]
 
 [dependency-groups]
