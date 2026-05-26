@@ -218,6 +218,7 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         electrodes = {
             f"electrode_{i}": Electrode(
+                name=f"electrode_{i}",
                 position=np.array(loc, dtype=float),
                 type=BlueRecordingElectrodeType.POINT_SOURCE,
             )
