@@ -314,7 +314,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/e4/83/af976d39f7e690f3d
 
 [[package]]
 name = "bluerecording"
-version = "0.4.1"
+version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -326,9 +326,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/16/3c20ee6dc88ddbbd3da230e418fcd1618b2125cabe481b04c86e09e51dfe/bluerecording-0.4.1.tar.gz", hash = "sha256:80f2f65eb48abb54f8926e6e82769cc224c7284402be12676ab0b980d6d88322", size = 17499, upload-time = "2026-04-29T13:55:20.332Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/79/0a/fb3a9a777dda24d1c84de4e00e1dba3aaf017182bb8145a03b4c05c71373/bluerecording-0.4.4.tar.gz", hash = "sha256:ba72d81a0f32526f4436eae38f3190ed442838943a881c9999a2e8088d9bd002", size = 19918, upload-time = "2026-05-26T19:27:57.893Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/24/edb6e0d39fc47bb540ff9fbdaa1ffd924f2cd2076eef18615747392cb2c6/bluerecording-0.4.1-py3-none-any.whl", hash = "sha256:c7f2825d6e8a4928263e747508c603fc1ead1c18f7719f27f9bbe68c5353ce7d", size = 19592, upload-time = "2026-04-29T13:55:18.768Z" },
+    { url = "https://files.pythonhosted.org/packages/09/f2/923b55a7d94f13b7d1ca6cfb49e0ea7ee88a9f37b2cba214c0cd427d9706/bluerecording-0.4.4-py3-none-any.whl", hash = "sha256:dd176f5ff2d53bedd8819c2797ca7c5d30bada1cd8f6b563d2980577f93537c4", size = 21895, upload-time = "2026-05-26T19:27:56.627Z" },
 ]
 
 [[package]]
@@ -863,14 +863,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.16.0"
+version = "0.16.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/05/6268b044636f06ac8f0d4952ff12ebc04d759140935f30e982521d3345b7/entitysdk-0.16.0.tar.gz", hash = "sha256:ad7945e987581b58a6afd70ad4d7e7bbb037139f4bfff01f02e67b7ad507cf75", size = 88899, upload-time = "2026-05-22T14:02:27.5Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/7b/167f9327df8504efd7d8afd3c82f63ac749ee520841a03de4e941e43a37d/entitysdk-0.16.1.tar.gz", hash = "sha256:f1703431246f7aaa44dda0fd96cd97577859815e6de4023fa07750ff3e4a0d65", size = 88885, upload-time = "2026-05-26T09:35:22.04Z" }
 
 [[package]]
 name = "executing"
@@ -1974,7 +1974,7 @@ wheels = [
 
 [[package]]
 name = "neurodamus"
-version = "4.2.1"
+version = "4.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -1984,9 +1984,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7c/64/d0efd695cf5032e7e2e97030da6c35264c5f0749ccecad01f0cf600bc26c/neurodamus-4.2.1.tar.gz", hash = "sha256:5a4650c6a1473a6b5eed04f46f8b26352a83805e1d6e3fddf87a64d4b5f33d60", size = 191389, upload-time = "2026-04-27T13:49:28.196Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/c6/8876703503cd8c08f200ca6b35d1017b2b41c3e2088de0251df13a294a33/neurodamus-4.2.2.tar.gz", hash = "sha256:41c74b2a8fafe252d3984a7a003a3e79b0a7c8bc4e4a00f266c6c708fe7d3bc8", size = 191926, upload-time = "2026-05-20T11:56:44.763Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/2f/601187d4b7071caae44e62b66f99f9160bc8a5d13b42848ba04b2c469cdf/neurodamus-4.2.1-py3-none-any.whl", hash = "sha256:b81f6d062ccea2e219d18ff29cdc863f11bf207333dc9c8bd8e295598151ab75", size = 222192, upload-time = "2026-04-27T13:49:26.511Z" },
+    { url = "https://files.pythonhosted.org/packages/32/c6/07dbe4fde2a221bded4a95010e7504f62bcb5c0dbc1af6031ace2de9eeca/neurodamus-4.2.2-py3-none-any.whl", hash = "sha256:8c6d47b4fafadf684b1c509c081fe3805c51e490bdecb45c1a5b2c2bdf82edcd", size = 222948, upload-time = "2026-05-20T11:56:43.207Z" },
 ]
 
 [[package]]
@@ -2020,9 +2020,9 @@ dependencies = [
     { name = "scikit-image" },
     { name = "scipy" },
 ]
-sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha256:9369a7dc13de9d4294e982c952c397b31bbc17403e43794e6d28f8a2864cd509" }
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha256:9369a7dc13de9d4294e982c952c397b31bbc17403e43794e6d28f8a2864cd509", upload-time = "2026-03-24T13:23:51.355Z" }
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha256:46a4221731317b131e2780b07d78bf5f0a2e698207467208de22ce09ac9e01c1" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha256:46a4221731317b131e2780b07d78bf5f0a2e698207467208de22ce09ac9e01c1", upload-time = "2026-03-24T13:23:51.355Z" },
 ]
 
 [[package]]
@@ -2239,7 +2239,7 @@ requires-dist = [
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.53" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.4" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
