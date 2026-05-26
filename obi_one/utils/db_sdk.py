@@ -10,8 +10,8 @@ from entitysdk.exception import EntitySDKError
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
-from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 from entitysdk.schemas.asset import MultipartDirectoryUploadTransferConfig
+from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
