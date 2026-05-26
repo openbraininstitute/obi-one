@@ -2020,9 +2020,9 @@ dependencies = [
     { name = "scikit-image" },
     { name = "scipy" },
 ]
-sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha256:9369a7dc13de9d4294e982c952c397b31bbc17403e43794e6d28f8a2864cd509" }
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha256:9369a7dc13de9d4294e982c952c397b31bbc17403e43794e6d28f8a2864cd509", upload-time = "2026-03-24T13:23:51.355Z" }
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha256:46a4221731317b131e2780b07d78bf5f0a2e698207467208de22ce09ac9e01c1" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha256:46a4221731317b131e2780b07d78bf5f0a2e698207467208de22ce09ac9e01c1", upload-time = "2026-03-24T13:23:51.355Z" },
 ]
 
 [[package]]
@@ -2246,7 +2246,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.13.3" },
+    { name = "entitysdk", specifier = ">=0.16.0" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },
