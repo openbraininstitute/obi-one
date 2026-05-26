@@ -33,15 +33,14 @@ class TaskRegistry:
     def register_task(
         self,
         *,
+        task_type: TaskType,
         task_cls: type,
         single_config_cls: type,
-        task_type: TaskType | None = None,
         asset_label: AssetLabel | None = None,
     ) -> None:
         """Register a task with all its associated mappings in one call."""
         self._config_task_map[single_config_cls] = task_cls
-        if task_type is not None:
-            self._task_type_map[task_type] = (task_cls, single_config_cls, asset_label)
+        self._task_type_map[task_type] = (task_cls, single_config_cls, asset_label)
 
     def get_configs_task_type(self, config: object) -> type:
         """Return the Task class for a given config instance."""

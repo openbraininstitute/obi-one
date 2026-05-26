@@ -79,117 +79,119 @@ from obi_one.scientific.tasks.skeletonization import (
 )
 from obi_one.types import TaskType
 
-# Complete task registry: single_config_cls -> (task_cls, task_type, asset_label)
-# task_type and asset_label are None for tasks not launchable via the API.
-TASK_MAP: dict[type, tuple[type, TaskType | None, AssetLabel | None]] = {
-    BasicConnectivityPlotsSingleConfig: (
-        BasicConnectivityPlotsTask,
-        None,
-        None,
-    ),
-    Brian2CircuitSimulationSingleConfig: (
-        GenerateSimulationTask,
-        None,
-        None,
-    ),
-    CircuitExtractionSingleConfig: (
+# Task registry: TaskType -> (task_cls, single_config_cls, asset_label)
+# asset_label is None for tasks that receive their config inline.
+TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
+    # API-launchable tasks (submitted via the launch-system)
+    TaskType.circuit_extraction: (
         CircuitExtractionTask,
-        TaskType.circuit_extraction,
+        CircuitExtractionSingleConfig,
         AssetLabel.task_config,
     ),
-    CircuitSimulationSingleConfig: (
+    TaskType.circuit_simulation: (
         GenerateSimulationTask,
-        TaskType.circuit_simulation,
+        CircuitSimulationSingleConfig,
         None,
     ),
-    ConnectivityMatrixExtractionSingleConfig: (
-        ConnectivityMatrixExtractionTask,
-        None,
-        None,
-    ),
-    ContributeMorphologySingleConfig: (
-        ContributeMorphologyTask,
-        None,
-        None,
-    ),
-    CreateExtracellularRecordingArraySingleConfig: (
-        CreateExtracellularRecordingArrayTask,
-        None,
-        None,
-    ),
-    ElectrophysiologyMetricsSingleConfig: (
-        ElectrophysiologyMetricsTask,
-        None,
-        None,
-    ),
-    EMSynapseMappingSingleConfig: (
+    TaskType.em_synapse_mapping: (
         EMSynapseMappingTask,
-        TaskType.em_synapse_mapping,
+        EMSynapseMappingSingleConfig,
         AssetLabel.task_config,
     ),
-    FolderCompressionSingleConfig: (
-        FolderCompressionTask,
-        None,
-        None,
-    ),
-    IonChannelFittingSingleConfig: (
-        IonChannelFittingTask,
-        None,
-        None,
-    ),
-    IonChannelModelSimulationExecutionSingleConfig: (
+    TaskType.ion_channel_model_simulation_execution: (
         IonChannelModelSimulationExecutionTask,
-        TaskType.ion_channel_model_simulation_execution,
+        IonChannelModelSimulationExecutionSingleConfig,
         None,
     ),
-    IonChannelModelSimulationSingleConfig: (
-        GenerateSimulationTask,
-        None,
-        None,
-    ),
-    MEModelSimulationSingleConfig: (
-        GenerateSimulationTask,
-        None,
-        None,
-    ),
-    MEModelWithSynapsesCircuitSimulationSingleConfig: (
-        GenerateSimulationTask,
-        None,
-        None,
-    ),
-    MorphologyContainerizationSingleConfig: (
-        MorphologyContainerizationTask,
-        None,
-        None,
-    ),
-    MorphologyDecontainerizationSingleConfig: (
-        MorphologyDecontainerizationTask,
-        None,
-        None,
-    ),
-    MorphologyLocationsSingleConfig: (
-        MorphologyLocationsTask,
-        None,
-        None,
-    ),
-    MorphologyMetricsSingleConfig: (
-        MorphologyMetricsTask,
-        None,
-        None,
-    ),
-    SkeletonizationSingleConfig: (
+    TaskType.morphology_skeletonization: (
         SkeletonizationTask,
-        TaskType.morphology_skeletonization,
+        SkeletonizationSingleConfig,
         AssetLabel.task_config,
+    ),
+    # Local-only tasks (executed via scan generation / direct dispatch)
+    TaskType.basic_connectivity_plots: (
+        BasicConnectivityPlotsTask,
+        BasicConnectivityPlotsSingleConfig,
+        None,
+    ),
+    TaskType.brian2_circuit_simulation: (
+        GenerateSimulationTask,
+        Brian2CircuitSimulationSingleConfig,
+        None,
+    ),
+    TaskType.connectivity_matrix_extraction: (
+        ConnectivityMatrixExtractionTask,
+        ConnectivityMatrixExtractionSingleConfig,
+        None,
+    ),
+    TaskType.contribute_morphology: (
+        ContributeMorphologyTask,
+        ContributeMorphologySingleConfig,
+        None,
+    ),
+    TaskType.create_extracellular_recording_array: (
+        CreateExtracellularRecordingArrayTask,
+        CreateExtracellularRecordingArraySingleConfig,
+        None,
+    ),
+    TaskType.electrophysiology_metrics: (
+        ElectrophysiologyMetricsTask,
+        ElectrophysiologyMetricsSingleConfig,
+        None,
+    ),
+    TaskType.folder_compression: (
+        FolderCompressionTask,
+        FolderCompressionSingleConfig,
+        None,
+    ),
+    TaskType.ion_channel_fitting: (
+        IonChannelFittingTask,
+        IonChannelFittingSingleConfig,
+        None,
+    ),
+    TaskType.ion_channel_model_simulation: (
+        GenerateSimulationTask,
+        IonChannelModelSimulationSingleConfig,
+        None,
+    ),
+    TaskType.me_model_simulation: (
+        GenerateSimulationTask,
+        MEModelSimulationSingleConfig,
+        None,
+    ),
+    TaskType.me_model_with_synapses_circuit_simulation: (
+        GenerateSimulationTask,
+        MEModelWithSynapsesCircuitSimulationSingleConfig,
+        None,
+    ),
+    TaskType.morphology_containerization: (
+        MorphologyContainerizationTask,
+        MorphologyContainerizationSingleConfig,
+        None,
+    ),
+    TaskType.morphology_decontainerization: (
+        MorphologyDecontainerizationTask,
+        MorphologyDecontainerizationSingleConfig,
+        None,
+    ),
+    TaskType.morphology_locations: (
+        MorphologyLocationsTask,
+        MorphologyLocationsSingleConfig,
+        None,
+    ),
+    TaskType.morphology_metrics: (
+        MorphologyMetricsTask,
+        MorphologyMetricsSingleConfig,
+        None,
     ),
 }
 
 # Populate the registry from the static map
-for single_config_cls, (task_cls, task_type, asset_label) in TASK_MAP.items():
+for task_type, (task_cls, single_config_cls, asset_label) in TASK_MAP.items():
     task_registry.register_task(
+        task_type=task_type,
         task_cls=task_cls,
         single_config_cls=single_config_cls,
-        task_type=task_type,
         asset_label=asset_label,
     )
 
