@@ -87,6 +87,18 @@ class PropertyNeuronSet(NeuronSet):
         sets.
     """
 
+    population: str = Field(
+        min_length=1,
+        title="Population",
+        description="Name of the biophysical node population to select from.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
+            "filter_key": "property_filter",
+        },
+    )
+
     property_filter: NeuronPropertyFilter | Annotated[list[NeuronPropertyFilter], Field(min_length=1)] = Field(
         title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
@@ -94,6 +106,7 @@ class PropertyNeuronSet(NeuronSet):
             SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
+            "population_source_dropdown": "population",
         },
     )
 
