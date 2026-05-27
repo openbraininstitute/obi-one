@@ -121,6 +121,9 @@ def download_electrical_models(
         for pop in populations:
             hoc_dir = circuit.nodes[pop].config["biophysical_neuron_models_dir"]
             hoc_rel_path = str(Path(hoc_dir).relative_to(Path(tmp).resolve()))
+            if not hoc_rel_path or hoc_rel_path == ".":
+                L.info(f"No biophysical_neuron_models_dir for population '{pop}' - skipping.")
+                continue
             pop_hoc_dirs.append((pop, hoc_rel_path))
 
     # List files in the asset
@@ -190,7 +193,7 @@ def download_mechanisms(circuit_id: str, db_client: Client, dest_dir: Path) -> l
         mechanisms_dir = circuit.config.get("components", {}).get("mechanisms_dir")
         if mechanisms_dir:
             mechanisms_rel_path = str(Path(mechanisms_dir).relative_to(Path(tmp).resolve()))
-        else:
+        if not mechanisms_dir or mechanisms_rel_path == ".":
             mechanisms_rel_path = "mod"
 
     # List files in the asset and filter for .mod files in the mechanisms directory
