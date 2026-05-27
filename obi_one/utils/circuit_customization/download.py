@@ -124,6 +124,8 @@ def download_electrical_models(
         # Collect (population_name, relative_path_of_hoc_dir) pairs
         pop_hoc_dirs = []
         for pop in populations:
+            if circuit.nodes[pop].type == "virtual":
+                continue
             hoc_dir = circuit.nodes[pop].config["biophysical_neuron_models_dir"]
             hoc_rel_path = str(Path(hoc_dir).relative_to(Path(tmp).resolve()))
             if not hoc_rel_path or hoc_rel_path == ".":
