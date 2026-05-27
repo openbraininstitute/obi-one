@@ -26,11 +26,11 @@ CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="t
 class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
     """Circuit-specific simulation scan config (blocks, fields, and Initialize)."""
 
-    single_coord_class_name: ClassVar[str] = "BaseCircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
     """
+    Abstract class so shouldn't need this
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
@@ -49,12 +49,8 @@ class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
     }
     """
 
-    class Initialize(SimulationScanConfig.Initialize):
-        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit",
-            description="Circuit to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
-        )
+    class Initialize(SimulationScanConfig.Initialize, abc.ABC):
+        
         node_set: NeuronSetReference | None = Field(
             default=None,
             title="Neuron Set",
@@ -66,6 +62,7 @@ class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
         )
 
     """
+    Abstract class so shouldn't need this
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",

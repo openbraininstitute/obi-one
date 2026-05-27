@@ -12,7 +12,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
-    NeuronSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.base import (
+    BlockGroup,
+    SimulationSingleConfigMixin
 )
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,
@@ -96,5 +99,5 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     }
 
 
-class MEModelSimulationSingleConfig(MEModelSimulationScanConfig, NeuronSimulationSingleConfig):
+class MEModelSimulationSingleConfig(MEModelSimulationScanConfig, SimulationSingleConfigMixin):
     """Only allows single values."""

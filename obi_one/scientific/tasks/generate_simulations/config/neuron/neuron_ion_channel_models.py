@@ -21,9 +21,9 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
-    NeuronSimulationScanConfig,
-    NeuronSimulationSingleConfig,
+from obi_one.scientific.tasks.generate_simulations.config.base import (
+    BlockGroup,
+    SimulationSingleConfigMixin
 )
 from obi_one.scientific.unions.unions_ion_channel_model import (
     IonChannelModelReference,
@@ -40,6 +40,9 @@ from obi_one.scientific.unions.unions_stimuli import (
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
 )
 
 L = logging.getLogger(__name__)
@@ -235,6 +238,6 @@ class IonChannelModelSimulationScanConfig(NeuronSimulationScanConfig):
 
 
 class IonChannelModelSimulationSingleConfig(
-    IonChannelModelSimulationScanConfig, NeuronSimulationSingleConfig
+    IonChannelModelSimulationScanConfig, SimulationSingleConfigMixin
 ):
     """Only allows single values."""

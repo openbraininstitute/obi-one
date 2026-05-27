@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 import entitysdk
 from pydantic import Field, PositiveFloat
@@ -12,7 +12,6 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.core.units import Units
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -61,6 +60,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
 
     """
+    Abstract class so shouldn't need this
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
@@ -78,6 +78,15 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
     }
     """
 
+    class Initialize(Block):
+        circuit: None
+        simulation_length: None
+        _timestep: None
+
+        @property
+        def timestep(self) -> PositiveFloat | list[PositiveFloat]:
+            return self._timestep
+
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
         title="Timestamps",
@@ -90,15 +99,6 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
-
-    class Initialize(Block):
-        circuit: None
-        simulation_length: None
-        _timestep: None
-
-        @property
-        def timestep(self) -> PositiveFloat | list[PositiveFloat]:
-            return self._timestep
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""

@@ -1,3 +1,4 @@
+import abc
 from typing import Annotated, Literal
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
@@ -13,18 +14,6 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
     SimulationScanConfig,
-    SimulationSingleConfigMixin,
-)
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
-    BaseCircuitSimulationScanConfig,
-    CircuitDiscriminator,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
-    NeuronSimulationScanConfig,
-    NeuronSimulationSingleConfig,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -32,7 +21,7 @@ from obi_one.scientific.unions.unions_recordings import (
 )
 
 
-class NeuronSimulationScanConfig(SimulationScanConfig):
+class NeuronSimulationScanConfig(SimulationScanConfig, abc.ABC):
     """Abstract base class for neuron-based simulation scan configurations."""
 
     recordings: dict[str, RecordingUnion] = Field(
@@ -47,21 +36,7 @@ class NeuronSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    class Initialize(BaseCircuitSimulationScanConfig.Initialize):
-        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit",
-            description="Circuit to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
-        )
-        node_set: NeuronSetReference | None = Field(
-            default=None,
-            title="Neuron Set",
-            description="Neuron set to simulate.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            },
-        )
+    class Initialize(SimulationScanConfig.Initialize):
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
@@ -133,6 +108,3 @@ class NeuronSimulationScanConfig(SimulationScanConfig):
         def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
             return self._spike_location
 
-
-class NeuronSimulationSingleConfig(SimulationSingleConfigMixin):
-    """Mixin for neuron-based single simulation configurations."""
