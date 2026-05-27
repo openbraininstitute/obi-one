@@ -89,8 +89,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
-            path="scientific/library/simulation/brian2/simulate_brian2.py",
-            dependencies="scientific/library/simulation/brian2/requirements.txt",
+            path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
+            dependencies="obi_one/scientific/library/simulation/brian2/requirements.txt",
             staged_directories=[],
         ),
         resources=MachineResources(
