@@ -46,6 +46,8 @@ def _fetch_file(
     asset_id: UUID,
     rel_path: str,
     dest_dir: Path,
+    *,
+    output_filename: str | None = None,
 ) -> Path:
     """Fetch a single file from the sonata_circuit asset.
 
@@ -55,11 +57,14 @@ def _fetch_file(
         asset_id: The ID of the sonata_circuit asset.
         rel_path: Relative path within the asset.
         dest_dir: Destination directory.
+        output_filename: If provided, use this filename instead of the full rel_path
+            for the output file location.
 
     Returns:
         Path to the downloaded file.
     """
-    output_path = dest_dir / rel_path
+    local_path = output_filename or rel_path
+    output_path = dest_dir / local_path
     output_path.parent.mkdir(parents=True, exist_ok=True)
     db_client.fetch_file(
         entity_id=circuit_id,  # ty:ignore[invalid-argument-type]
@@ -154,7 +159,14 @@ def download_electrical_models(
         pop_dest_dir = dest_dir / pop if node_population is None else dest_dir
 
         downloaded.extend(
-            _fetch_file(db_client, circuit_id, asset.id, rel_path, pop_dest_dir)  # ty:ignore[invalid-argument-type]
+            _fetch_file(
+                db_client,
+                circuit_id,
+                asset.id,  # ty:ignore[invalid-argument-type]
+                rel_path,
+                pop_dest_dir,
+                output_filename=Path(rel_path).name,
+            )
             for rel_path in hoc_files
         )
 
@@ -214,7 +226,14 @@ def download_mechanisms(circuit_id: str, db_client: Client, dest_dir: Path) -> l
         raise FileNotFoundError(msg)
 
     downloaded = [
-        _fetch_file(db_client, circuit_id, asset.id, rel_path, dest_dir)  # ty:ignore[invalid-argument-type]
+        _fetch_file(
+            db_client,
+            circuit_id,
+            asset.id,  # ty:ignore[invalid-argument-type]
+            rel_path,
+            dest_dir,
+            output_filename=Path(rel_path).name,
+        )
         for rel_path in mod_files
     ]
 
