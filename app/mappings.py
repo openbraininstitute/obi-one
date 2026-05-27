@@ -176,7 +176,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
         ),
         resources=MachineResources(
             cores=1,
