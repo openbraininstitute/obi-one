@@ -65,6 +65,7 @@ class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
             },
         )
 
+    """
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
@@ -74,6 +75,7 @@ class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
+    """
 
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         default_factory=dict,

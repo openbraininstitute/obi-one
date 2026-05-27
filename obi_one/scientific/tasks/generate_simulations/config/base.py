@@ -94,33 +94,11 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
     class Initialize(Block):
         circuit: None
         simulation_length: None
-        v_init: float | list[float] = Field(
-            default=-80.0,
-            title="Initial Voltage",
-            description="Initial membrane potential in millivolts (mV).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: Units.MILLIVOLTS,
-            },
-        )
-        random_seed: int | list[int] = Field(
-            default=1,
-            title="Random Seed",
-            description="Random seed for the simulation.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-            },
-        )
-
         _timestep: None
 
         @property
         def timestep(self) -> PositiveFloat | list[PositiveFloat]:
             return self._timestep
-
-        @property
-        def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
-            return self._spike_location
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
