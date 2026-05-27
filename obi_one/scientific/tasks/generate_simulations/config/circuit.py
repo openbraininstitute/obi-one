@@ -40,7 +40,7 @@ L = logging.getLogger(__name__)
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
-class CircuitScanConfig(SimulationScanConfig):
+class CircuitSimulationScanConfig(SimulationScanConfig):
     """Circuit-specific simulation scan config (blocks, fields, and Initialize)."""
 
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"

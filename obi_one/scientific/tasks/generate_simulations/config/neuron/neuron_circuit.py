@@ -2,7 +2,7 @@ import logging
 
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitDiscriminator,
-    CircuitScanConfig,
+    CircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
@@ -18,7 +18,7 @@ __all__ = [
 L = logging.getLogger(__name__)
 
 
-class CircuitSimulationScanConfig(CircuitScanConfig, NeuronSimulationScanConfig):
+class CircuitSimulationScanConfig(CircuitSimulationScanConfig, NeuronSimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
 

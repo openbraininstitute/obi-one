@@ -34,15 +34,15 @@ under `neuron/`) so they can be reused by non-neuron contexts later. The pattern
 
 ```python
 # config/circuit.py
-class CircuitScanConfig(SimulationScanConfig):
+class CircuitSimulationScanConfig(SimulationScanConfig):
     """All circuit-specific fields: neuron_sets, stimuli, distributions, Initialize…"""
 
 # neuron/neuron_circuit.py
-class CircuitSimulationScanConfig(CircuitScanConfig, NeuronSimulationScanConfig):
+class CircuitSimulationScanConfig(CircuitSimulationScanConfig, NeuronSimulationScanConfig):
     """Concrete neuron-based circuit simulation campaign."""
 ```
 
-`CircuitScanConfig` is *named* like a standalone scan config (not "Mixin") because
+`CircuitSimulationScanConfig` is *named* like a standalone scan config (not "Mixin") because
 it inherits from `SimulationScanConfig` and is structurally a complete config — it
 is just not the one wired up for use. Combining it with `NeuronSimulationScanConfig`
 produces the concrete class.
@@ -66,13 +66,13 @@ MRO walks the scan-config chain first, then the single-config chain, joining at
 
 ## Why diamond inheritance is fine here
 
-`CircuitSimulationScanConfig(CircuitScanConfig, NeuronSimulationScanConfig)` is a
+`CircuitSimulationScanConfig(CircuitSimulationScanConfig, NeuronSimulationScanConfig)` is a
 diamond — both bases share `SimulationScanConfig` as an ancestor. Python's C3
 linearization deduplicates the shared base and visits it exactly once:
 
 ```
 CircuitSimulationScanConfig
- → CircuitScanConfig
+ → CircuitSimulationScanConfig
  → NeuronSimulationScanConfig
  → SimulationScanConfig          ← visited once, after both children
  → InfoScanConfig → ScanConfig → OBIBaseModel → BaseModel → ABC → object
@@ -80,13 +80,13 @@ CircuitSimulationScanConfig
 
 Pydantic's metaclass walks this MRO to collect fields. Each ancestor contributes
 its own annotated fields, producing the union on the concrete class
-(`neuron_sets`, `stimuli`, `distributions` from `CircuitScanConfig`; `timestamps`,
+(`neuron_sets`, `stimuli`, `distributions` from `CircuitSimulationScanConfig`; `timestamps`,
 `recordings` from `SimulationScanConfig`; `info` from `InfoScanConfig`; the
 discriminator `type` from `OBIBaseModel`).
 
-## Why `CircuitScanConfig` inherits from `SimulationScanConfig`, not nothing
+## Why `CircuitSimulationScanConfig` inherits from `SimulationScanConfig`, not nothing
 
-It would be tempting to make `CircuitScanConfig` a plain Python class (a "mixin")
+It would be tempting to make `CircuitSimulationScanConfig` a plain Python class (a "mixin")
 and rely on Pydantic harvesting its annotations through the MRO. That works
 functionally, but it triggers shadow warnings whenever a subclass overrides a
 field — for example `MEModelWithSynapsesCircuitSimulationScanConfig` re-declaring
@@ -104,13 +104,13 @@ attribute, not specializing a known field.
 
 Inheriting from `SimulationScanConfig` (so the class is itself a `BaseModel`)
 registers `neuron_sets`, `initialize`, etc. as first-class Pydantic fields on
-`CircuitScanConfig`. Subclass overrides are then recognized as field overrides
+`CircuitSimulationScanConfig`. Subclass overrides are then recognized as field overrides
 and the warnings disappear.
 
 ## Adding a new neuron-based simulation config
 
 1. If the new config introduces a domain bundle that could ever stand on its own
-   (analogue of `CircuitScanConfig`), put that in `config/<domain>.py`,
+   (analogue of `CircuitSimulationScanConfig`), put that in `config/<domain>.py`,
    inheriting from `SimulationScanConfig`.
 2. In `config/neuron/neuron_<domain>.py`, define:
    - `<Domain>SimulationScanConfig(<DomainScanConfig>, NeuronSimulationScanConfig)`
