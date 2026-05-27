@@ -133,9 +133,9 @@ def download_electrical_models(
     downloaded = []
     for pop, hoc_rel_path in pop_hoc_dirs:
         hoc_files = [
-            path
+            str(path)
             for path in file_list.files
-            if path.startswith(hoc_rel_path + "/") and path.endswith(".hoc")  # ty:ignore[unresolved-attribute]
+            if str(path).startswith(hoc_rel_path + "/") and str(path).endswith(".hoc")
         ]
 
         if not hoc_files:
@@ -200,9 +200,9 @@ def download_mechanisms(circuit_id: str, db_client: Client, dest_dir: Path) -> l
         asset_id=asset.id,  # ty:ignore[invalid-argument-type]
     )
     mod_files = [
-        path
+        str(path)
         for path in file_list.files
-        if path.startswith(mechanisms_rel_path + "/") and path.endswith(".mod")  # ty:ignore[unresolved-attribute]
+        if str(path).startswith(mechanisms_rel_path + "/") and str(path).endswith(".mod")
     ]
 
     if not mod_files:
