@@ -107,4 +107,3 @@ class NeuronSimulationScanConfig(SimulationScanConfig, abc.ABC):
         @property
         def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
             return self._spike_location
-

@@ -1,5 +1,4 @@
 import abc
-import logging
 from typing import Annotated, ClassVar
 
 from pydantic import Field
@@ -18,8 +17,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     SimulationNeuronSetUnion,
 )
 
-L = logging.getLogger(__name__)
-
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
@@ -29,28 +26,7 @@ class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    """
-    Abstract class so shouldn't need this
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [
-            BlockGroup.SETUP_BLOCK_GROUP,
-            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
-            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
-            BlockGroup.EVENTS_GROUP,
-        ],
-        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
-        },
-    }
-    """
-
     class Initialize(SimulationScanConfig.Initialize, abc.ABC):
-        
         node_set: NeuronSetReference | None = Field(
             default=None,
             title="Neuron Set",

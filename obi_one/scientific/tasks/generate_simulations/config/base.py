@@ -37,7 +37,7 @@ DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
 
 
 class BlockGroup(StrEnum):
-    """Authentication and authorization errors."""
+    """Enumeration of block groups for simulation configuration."""
 
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
@@ -45,9 +45,6 @@ class BlockGroup(StrEnum):
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
-
-
-SONATA_VERSION = 2.4
 
 
 class SimulationScanConfig(InfoScanConfig, abc.ABC):
@@ -59,27 +56,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
 
-    """
-    Abstract class so shouldn't need this
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [
-            BlockGroup.SETUP_BLOCK_GROUP,
-            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.EVENTS_GROUP,
-        ],
-        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-        },
-        SchemaKey.PROPERTY_ENDPOINTS: {
-            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
-        },
-    }
-    """
-
     class Initialize(Block):
-
         @property
         def timestep(self) -> PositiveFloat | list[PositiveFloat]:
             return self._timestep

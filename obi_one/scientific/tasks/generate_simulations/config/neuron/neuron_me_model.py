@@ -9,13 +9,10 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
+    SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.base import (
-    BlockGroup,
-    SimulationSingleConfigMixin
 )
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,

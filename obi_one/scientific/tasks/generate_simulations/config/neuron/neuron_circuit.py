@@ -1,11 +1,15 @@
 import logging
+from typing import ClassVar
 
 from pydantic import Field
-from typing import ClassVar
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_DISTRIBUTION_NAME,
+    DEFAULT_NODE_SET_NAME,
+    DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
+    SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     BaseCircuitSimulationScanConfig,
@@ -29,10 +33,7 @@ from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.tasks.generate_simulations.config.base import (
-    BlockGroup,
-    SimulationSingleConfigMixin,
-)
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 __all__ = [
     "CircuitDiscriminator",
@@ -48,8 +49,25 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig, BaseCircuitSimulat
 
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
+            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
+        },
+    }
+
     class Initialize(
-        NeuronSimulationScanConfig.Initialize, BaseCircuitSimulationScanConfig.Initialize 
+        NeuronSimulationScanConfig.Initialize, BaseCircuitSimulationScanConfig.Initialize
     ):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",

@@ -24,7 +24,6 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
-    SONATA_VERSION,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
     BRIAN2_TARGET_SIMULATOR,
@@ -57,6 +56,8 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllNeurons()
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
+
+SONATA_VERSION = 2.4
 
 
 class GenerateSimulationTask(Task):
