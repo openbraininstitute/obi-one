@@ -17,6 +17,9 @@ from obi_one.scientific.tasks.folder_compression import FolderCompressionScanCon
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationScanConfig,
 )
@@ -56,6 +59,7 @@ ScanConfigsUnion = Annotated[
     | IonChannelFittingScanConfig
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig
+    | Brian2CircuitSimulationScanConfig
     | CreateExtracellularRecordingArrayScanConfig
     | IonChannelModelSimulationScanConfig,
     Discriminator("type"),

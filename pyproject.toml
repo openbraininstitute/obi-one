@@ -32,7 +32,7 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.13.3",
+    "entitysdk>=0.16.0",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
@@ -82,7 +82,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.0",
+    "obp-accounting-sdk>=0.6.1",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -100,7 +100,7 @@ all = [
 # Requires MPI-enabled h5py and NEURON built from source.
 # Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
 bluerecording = [
-    "bluerecording",
+    "bluerecording>=0.4.5",
 ]
 
 [dependency-groups]

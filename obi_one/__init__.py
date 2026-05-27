@@ -29,6 +29,8 @@ __all__ = [
     "BasicConnectivityPlotsTask",
     "Block",
     "BlockReference",
+    "Brian2CircuitSimulationScanConfig",
+    "Brian2CircuitSimulationSingleConfig",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -100,7 +102,9 @@ __all__ = [
     "IonChannelModelSimulationScanConfig",
     "IonChannelModelSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
+    "LinearExtracellularLocations",
     "LoadAssetMethod",
+    "LogNormalDistribution",
     "MEModelCircuit",
     "MEModelFromID",
     "MEModelSimulationScanConfig",
@@ -130,8 +134,10 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
@@ -143,6 +149,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PoissonDistribution",
     "PoissonSpikeStimulus",
     "PositiveFloatRange",
     "PositiveIntRange",
@@ -241,12 +248,17 @@ from obi_one.scientific.blocks.distributions.constant import (
 )
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
-from obi_one.scientific.blocks.extracellular_locations import (
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    LinearExtracellularLocations,
+    Neuropixels1ExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (
@@ -395,6 +407,10 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
     FolderCompressionTask,
+)
+from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+    Brian2CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,

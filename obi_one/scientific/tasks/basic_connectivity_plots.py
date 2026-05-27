@@ -41,8 +41,8 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
-    from connalysis.network.topology import node_degree  # ty:ignore[unresolved-import]
-    from connalysis.randomization import ER_model  # ty:ignore[unresolved-import]
+    from connalysis.network.topology import node_degree
+    from connalysis.randomization import ER_model
 
 L = logging.getLogger(__name__)
 
@@ -382,7 +382,8 @@ class BasicConnectivityPlotsTask(Task):
         ):
             msg = (
                 "Connectivity plotting requires connectome-analysis (connalysis). "
-                "Install with: pip install obi-one[connectivity]"
+                "Install with: pip install obi-one[connectivity] or"
+                " make install-connectivity"
             )
             raise ValueError(msg)
 
