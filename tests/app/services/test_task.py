@@ -23,7 +23,9 @@ from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
 ASSET_ID = uuid4()
 
-TASK_TYPES = [task_type for task_type in TaskType if task_type != TaskType.circuit_simulation]
+TASK_TYPES = [
+    task_type for task_type in TASK_DEFINITIONS if task_type != TaskType.circuit_simulation
+]
 
 
 @pytest.fixture
