@@ -72,6 +72,11 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         },
     )
 
+    def get_xyz_locations(self) -> list[tuple[float, float, float]]:
+        """Calculate the XYZ locations of the electrodes based on the pattern parameters."""
+        msg = "Subclasses of must implement get_xyz_locations method."
+        raise NotImplementedError(msg)
+
     def xyz_locations_with_origin_and_direction_applied(self) -> list[tuple[float, float, float]]:
         """Calculate the XYZ locations of the electrodes based on the origin and direction."""
         initial_xyz_locations = self.get_xyz_locations()
@@ -79,15 +84,15 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
 
         unit_direction_x = (
             self.direction_x
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5
+            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # type:ignore[unsupported-operator]
         )
         unit_direction_y = (
             self.direction_y
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5
+            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # type:ignore[unsupported-operator]
         )
         unit_direction_z = (
             self.direction_z
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5
+            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # type:ignore[unsupported-operator]
         )
 
         for x, y, z in initial_xyz_locations:
@@ -123,10 +128,10 @@ class LinearExtracellularLocations(PatternedExtracellularLocations):
     def get_xyz_locations(self) -> list[tuple[float, float, float]]:
         """Calculate the XYZ locations of the electrodes based on electrode count and spacing."""
         xyz_locations = []
-        for electrode_i in range(self.n_electrodes):
-            x = self.origin_x + (electrode_i * self.spacing)
-            y = self.origin_y + (electrode_i * self.spacing)
-            z = self.origin_z + (electrode_i * self.spacing)
+        for electrode_i in range(self.n_electrodes):  # ty:ignore[invalid-argument-type]
+            x = self.origin_x + (electrode_i * self.spacing)  # ty:ignore[unsupported-operator]
+            y = self.origin_y + (electrode_i * self.spacing)  # ty:ignore[unsupported-operator]
+            z = self.origin_z + (electrode_i * self.spacing)  # ty:ignore[unsupported-operator]
             xyz_locations.append((x, y, z))
         return xyz_locations
 
@@ -153,14 +158,14 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
         alternate_horizontal_stride = horizontal_spacing
 
         xyz_locations = []
-        for electrode_i in range(self.n_electrodes):
+        for electrode_i in range(self.n_electrodes):  # ty:ignore[invalid-argument-type]
             horizontal_position = electrode_i % 2
-            x = self.origin_x + (horizontal_position * horizontal_spacing)
+            x = self.origin_x + (horizontal_position * horizontal_spacing)  # ty:ignore[unsupported-operator]
             # Every 2nd pair of electrodes, the horizontal position shifts by an additional stride
             if electrode_i % 4 in {2, 3}:
                 x += alternate_horizontal_stride
 
-            vertical_position = electrode_i % (self.n_electrodes // 2)
+            vertical_position = electrode_i % (self.n_electrodes // 2)  # ty:ignore[unsupported-operator]
             y = self.origin_y + (vertical_position * vertical_spacing)
 
             z = self.origin_z
