@@ -79,9 +79,6 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
     """
 
     class Initialize(Block):
-        circuit: None
-        simulation_length: None
-        _timestep: None
 
         @property
         def timestep(self) -> PositiveFloat | list[PositiveFloat]:
