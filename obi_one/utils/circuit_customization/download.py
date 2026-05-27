@@ -319,3 +319,75 @@ def download_id_mapping(circuit_id: str, db_client: Client, dest_dir: Path) -> P
             rel_path = "id_mapping.json"
 
     return _fetch_file(db_client, circuit_id, asset.id, rel_path, dest_dir)  # ty:ignore[invalid-argument-type]
+
+
+def download_node_populations(
+    circuit_id: str,
+    db_client: Client,
+    dest_dir: Path,
+    node_population: str | None = None,
+) -> list[Path]:
+    """Download node population files (h5) from a circuit.
+
+    If node_population is given, downloads the file for that population.
+    If None, downloads for all populations into subfolders named by population.
+
+    Args:
+        circuit_id: The ID of the circuit entity.
+        db_client: The entitycore SDK client.
+        dest_dir: Destination directory to download files into.
+        node_population: Name of the node population. If None, downloads for all.
+
+    Returns:
+        List of paths to the downloaded files.
+
+    Raises:
+        ValueError: If the specified node population does not exist.
+    """
+    _, asset = _get_sonata_asset(db_client, circuit_id)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        config_path = _fetch_file(
+            db_client,
+            circuit_id,
+            asset.id,  # ty:ignore[invalid-argument-type]
+            "circuit_config.json",
+            Path(tmp),
+        )
+        circuit = snap.Circuit(str(config_path))
+
+        if node_population is not None:
+            if node_population not in circuit.nodes.population_names:
+                msg = (
+                    f"Node population '{node_population}' not found in "
+                    f"circuit '{circuit_id}'. "
+                    f"Available populations: {circuit.nodes.population_names}"
+                )
+                raise ValueError(msg)
+            populations = [node_population]
+        else:
+            populations = circuit.nodes.population_names
+
+        # Collect (population_name, relative_path_of_nodes_file) pairs
+        pop_nodes = []
+        for pop in populations:
+            nodes_path = Path(circuit.nodes[pop].h5_filepath)
+            nodes_rel_path = str(nodes_path.relative_to(Path(tmp).resolve()))
+            pop_nodes.append((pop, nodes_rel_path))
+
+    downloaded = []
+    for pop, rel_path in pop_nodes:
+        pop_dest_dir = dest_dir / pop if node_population is None else dest_dir
+        downloaded.append(
+            _fetch_file(
+                db_client,
+                circuit_id,
+                asset.id,  # ty:ignore[invalid-argument-type]
+                rel_path,
+                pop_dest_dir,
+                output_filename=Path(rel_path).name,
+            )
+        )
+
+    L.info(f"Downloaded {len(downloaded)} node population file(s) for circuit '{circuit_id}'")
+    return downloaded
