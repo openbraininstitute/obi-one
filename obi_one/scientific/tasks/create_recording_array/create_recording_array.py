@@ -53,7 +53,7 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
 
     @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
-        return [self.initialize.circuit.entity(db_client=db_client)]
+        return [self.initialize.circuit.entity(db_client=db_client)]  # ty:ignore[unresolved-attribute]
 
     class Initialize(Block):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
@@ -224,12 +224,12 @@ class CreateExtracellularRecordingArrayTask(Task):
             description="Temp description.",
             electrode_type=ElectrodeType.custom,
             authorized_public=False,
-            circuit_id=self._circuit_entity.id,
+            circuit_id=self._circuit_entity.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
         )
         entity = db_client.register_entity(entity)
 
         _ = db_client.upload_file(
-            entity_id=entity.id,
+            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=weights_output_path,
             file_content_type=ContentType.application_x_hdf5,
