@@ -391,3 +391,75 @@ def download_node_populations(
 
     L.info(f"Downloaded {len(downloaded)} node population file(s) for circuit '{circuit_id}'")
     return downloaded
+
+
+def download_edge_populations(
+    circuit_id: str,
+    db_client: Client,
+    dest_dir: Path,
+    edge_population: str | None = None,
+) -> list[Path]:
+    """Download edge population files (h5) from a circuit.
+
+    If edge_population is given, downloads the file for that population.
+    If None, downloads for all populations into subfolders named by population.
+
+    Args:
+        circuit_id: The ID of the circuit entity.
+        db_client: The entitycore SDK client.
+        dest_dir: Destination directory to download files into.
+        edge_population: Name of the edge population. If None, downloads for all.
+
+    Returns:
+        List of paths to the downloaded files.
+
+    Raises:
+        ValueError: If the specified edge population does not exist.
+    """
+    _, asset = _get_sonata_asset(db_client, circuit_id)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        config_path = _fetch_file(
+            db_client,
+            circuit_id,
+            asset.id,  # ty:ignore[invalid-argument-type]
+            "circuit_config.json",
+            Path(tmp),
+        )
+        circuit = snap.Circuit(str(config_path))
+
+        if edge_population is not None:
+            if edge_population not in circuit.edges.population_names:
+                msg = (
+                    f"Edge population '{edge_population}' not found in "
+                    f"circuit '{circuit_id}'. "
+                    f"Available populations: {circuit.edges.population_names}"
+                )
+                raise ValueError(msg)
+            populations = [edge_population]
+        else:
+            populations = circuit.edges.population_names
+
+        # Collect (population_name, relative_path_of_edges_file) pairs
+        pop_edges = []
+        for pop in populations:
+            edges_path = Path(circuit.edges[pop].h5_filepath)
+            edges_rel_path = str(edges_path.relative_to(Path(tmp).resolve()))
+            pop_edges.append((pop, edges_rel_path))
+
+    downloaded = []
+    for pop, rel_path in pop_edges:
+        pop_dest_dir = dest_dir / pop if edge_population is None else dest_dir
+        downloaded.append(
+            _fetch_file(
+                db_client,
+                circuit_id,
+                asset.id,  # ty:ignore[invalid-argument-type]
+                rel_path,
+                pop_dest_dir,
+                output_filename=Path(rel_path).name,
+            )
+        )
+
+    L.info(f"Downloaded {len(downloaded)} edge population file(s) for circuit '{circuit_id}'")
+    return downloaded
