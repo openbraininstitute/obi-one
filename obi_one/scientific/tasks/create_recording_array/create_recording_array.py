@@ -255,7 +255,7 @@ class CreateExtracellularRecordingArrayTask(Task):
             authorized_public=False,
             circuit_id=self._circuit_entity.id,
         )
-        db_client.register_entity(entity)
+        entity = db_client.register_entity(entity)
 
         _ = db_client.upload_file(
             entity_id=entity.id,
