@@ -307,7 +307,11 @@ def download_id_mapping(circuit_id: str, db_client: Client, dest_dir: Path) -> P
         id_mapping_path = config.get("components", {}).get("provenance", {}).get("id_mapping")
 
         if id_mapping_path:
-            rel_path = str(Path(id_mapping_path).relative_to(Path(tmp).resolve()))
+            id_mapping_abs = Path(id_mapping_path)
+            if id_mapping_abs.is_absolute():
+                rel_path = str(id_mapping_abs.relative_to(Path(tmp).resolve()))
+            else:
+                rel_path = id_mapping_path
         else:
             # Fall back to id_mapping.json in root folder
             rel_path = "id_mapping.json"
