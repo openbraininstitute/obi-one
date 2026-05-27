@@ -3,10 +3,10 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import ClassVar, Literal
 
 import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import Field, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -20,20 +20,10 @@ from obi_one.scientific.from_id.circuit_from_id import (
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
-    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    _MIN_SIMULATION_LENGTH_MILLISECONDS,
     _SCAN_CONFIG_FILENAME,
-    _SIMULATION_TIMESTEP_MILLISECONDS,
-)
-from obi_one.scientific.library.entity_property_types import (
-    MappedPropertiesGroup,
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-)
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
@@ -70,6 +60,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
 
+    """
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
@@ -85,6 +76,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
     }
+    """
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
@@ -98,50 +90,10 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
+
     class Initialize(Block):
         circuit: None
-        simulation_length: (
-            Annotated[
-                NonNegativeFloat,
-                Field(
-                    ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS
-                ),
-            ]
-            | Annotated[
-                list[
-                    Annotated[
-                        NonNegativeFloat,
-                        Field(
-                            ge=_MIN_SIMULATION_LENGTH_MILLISECONDS,
-                            le=_MAX_SIMULATION_LENGTH_MILLISECONDS,
-                        ),
-                    ]
-                ],
-                Field(min_length=1),
-            ]
-        ) = Field(
-            default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-            title="Duration",
-            description="Simulation length in milliseconds (ms).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: Units.MILLISECONDS,
-            },
-        )
-        extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-            default=1.1,
-            title="Extracellular Calcium Concentration",
-            description=(
-                "Extracellular calcium concentration around the synapse in millimoles (mM). "
-                "Increasing this value increases the probability of synaptic vesicle release, "
-                "which in turn increases the level of network activity. In vivo values are "
-                "estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM."
-            ),
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: Units.MILLIMOLAR,
-            },
-        )
+        simulation_length: None
         v_init: float | list[float] = Field(
             default=-80.0,
             title="Initial Voltage",
@@ -160,12 +112,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
             },
         )
 
-        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(
-            default="soma"
-        )
-        _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(
-            default=_SIMULATION_TIMESTEP_MILLISECONDS
-        )
+        _timestep: None
 
         @property
         def timestep(self) -> PositiveFloat | list[PositiveFloat]:
