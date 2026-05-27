@@ -159,7 +159,8 @@ def download_electrical_models(
         )
 
     if not downloaded:
-        msg = f"No .hoc files found in any node population of circuit '{circuit_id}'."
+        pop_desc = "specified" if node_population else "any"
+        msg = f"No .hoc files found in {pop_desc} node population of circuit '{circuit_id}'."
         raise FileNotFoundError(msg)
 
     L.info(f"Downloaded {len(downloaded)} electrical model file(s) for circuit '{circuit_id}'")
