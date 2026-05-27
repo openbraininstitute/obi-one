@@ -1,1 +1,1 @@
-obi-one[bluerecording]
+obi-one[bluerecording] @ git+https://github.com/openbraininstitute/obi-one.git@create_extracellular_array_additions
