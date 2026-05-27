@@ -37,19 +37,6 @@ class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
             },
         )
 
-    """
-    Abstract class so shouldn't need this
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-    """
-
     neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",

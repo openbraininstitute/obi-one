@@ -21,6 +21,9 @@ from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
     _SCAN_CONFIG_FILENAME,
 )
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.unions.unions_timestamps import (
@@ -55,6 +58,12 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
+    }
 
     class Initialize(Block):
         @property
