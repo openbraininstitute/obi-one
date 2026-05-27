@@ -314,7 +314,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/e4/83/af976d39f7e690f3d
 
 [[package]]
 name = "bluerecording"
-version = "0.4.4"
+version = "0.4.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -326,9 +326,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/0a/fb3a9a777dda24d1c84de4e00e1dba3aaf017182bb8145a03b4c05c71373/bluerecording-0.4.4.tar.gz", hash = "sha256:ba72d81a0f32526f4436eae38f3190ed442838943a881c9999a2e8088d9bd002", size = 19918, upload-time = "2026-05-26T19:27:57.893Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/19/fe515a70be9b4306c4ea6f0c4c73f73009d46fd0e1d1187982d31eece54f/bluerecording-0.4.5.tar.gz", hash = "sha256:f5ae871b32e37547c1acf149498d0599b8cff682c79c6b6836228c6612d91cc1", size = 19939, upload-time = "2026-05-27T06:30:51.157Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/f2/923b55a7d94f13b7d1ca6cfb49e0ea7ee88a9f37b2cba214c0cd427d9706/bluerecording-0.4.4-py3-none-any.whl", hash = "sha256:dd176f5ff2d53bedd8819c2797ca7c5d30bada1cd8f6b563d2980577f93537c4", size = 21895, upload-time = "2026-05-26T19:27:56.627Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/7d/baf2925e4b2e059055f96df298f3f0f5ec7e24cb1181f6f6c03d122e1765/bluerecording-0.4.5-py3-none-any.whl", hash = "sha256:981e00b7c5ecadc2e4911fe701e76fa08a2c8f98a4a4157787408fb572063e0d", size = 21926, upload-time = "2026-05-27T06:30:49.81Z" },
 ]
 
 [[package]]
@@ -2239,7 +2239,7 @@ requires-dist = [
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.53" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.4" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.5" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
