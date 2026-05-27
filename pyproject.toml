@@ -32,13 +32,13 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.16.0",
+    "entitysdk>=0.16.1",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
-    "bluecellulab>=2.6.87",
+    "bluecellulab>=2.6.96",
     "blueetl",
-    "bluepyefe>=2.3.53",
+    "bluepyefe>=2.3.56",
     "bluepysnap>=3.0.2",
     "brainbuilder>=0.20.2",
     "caveclient>=7.11.0",
