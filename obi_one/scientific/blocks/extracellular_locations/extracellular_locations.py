@@ -84,15 +84,15 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
 
         unit_direction_x = (
             self.direction_x
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # type:ignore[unsupported-operator]
+            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # ty:ignore[unsupported-operator]
         )
         unit_direction_y = (
             self.direction_y
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # type:ignore[unsupported-operator]
+            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # ty:ignore[unsupported-operator]
         )
         unit_direction_z = (
             self.direction_z
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # type:ignore[unsupported-operator]
+            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # ty:ignore[unsupported-operator]
         )
 
         for x, y, z in initial_xyz_locations:

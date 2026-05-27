@@ -240,5 +240,5 @@ class CreateExtracellularRecordingArrayTask(Task):
         CreateExtracellularRecordingArrayTask._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
-            generated=[entity.id],
+            generated=[str(entity.id)],
         )
