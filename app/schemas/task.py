@@ -79,7 +79,7 @@ class TaskLaunchSubmit(Schema):
     @field_validator("task_type")
     @classmethod
     def task_type_must_be_launchable(cls, v: TaskType) -> TaskType:
-        from app.mappings import TASK_DEFINITIONS
+        from app.mappings import TASK_DEFINITIONS  # noqa: PLC0415
 
         if v not in TASK_DEFINITIONS:
             msg = f"Task type '{v}' is not launchable. Valid types: {list(TASK_DEFINITIONS.keys())}"
