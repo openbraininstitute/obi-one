@@ -16,7 +16,7 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.tasks.generate_simulations.config.base import (
+from obi_one.scientific.tasks.generate_simulations.config.base.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,

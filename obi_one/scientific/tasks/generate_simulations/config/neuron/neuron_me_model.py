@@ -4,12 +4,12 @@ from typing import ClassVar
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.generate_simulations.config.base import (
+from obi_one.scientific.tasks.generate_simulations.config.base.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.base.me_model import (
     MEModelBaseSimulationScanConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (

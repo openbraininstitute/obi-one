@@ -16,7 +16,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitDiscriminator
+from obi_one.scientific.tasks.generate_simulations.config.base.circuit import CircuitDiscriminator
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )

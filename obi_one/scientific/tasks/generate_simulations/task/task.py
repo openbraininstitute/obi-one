@@ -22,7 +22,7 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
-from obi_one.scientific.tasks.generate_simulations.config.base import (
+from obi_one.scientific.tasks.generate_simulations.config.base.base import (
     DEFAULT_NODE_SET_NAME,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
