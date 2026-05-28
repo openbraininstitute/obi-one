@@ -69,11 +69,6 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig, CircuitBaseSimulat
     class Initialize(
         NeuronSimulationScanConfig.Initialize, CircuitBaseSimulationScanConfig.Initialize
     ):
-        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit",
-            description="Circuit to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
-        )
         node_set: NeuronSetReference | None = Field(
             default=None,
             title="Neuron Set",

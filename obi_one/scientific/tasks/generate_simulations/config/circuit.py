@@ -28,7 +28,9 @@ class CircuitBaseSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
 
     class Initialize(BaseSimulationScanConfig.Initialize, abc.ABC):
 
-        """Important to keep circuit here, even if overriden, so that it keeps its position in the schema."""
+        """Important to define the circuit here, even if overriden,
+        so that it keeps its position in the schema.
+        """
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",

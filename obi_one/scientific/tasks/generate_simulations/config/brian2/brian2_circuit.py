@@ -18,6 +18,12 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
     SimulationSingleConfigMixin,
 )
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base import (
+    Brian2SimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+    CircuitBaseSimulationScanConfig,
+)
 from obi_one.scientific.unions.unions_brian2 import (
     Brian2CircuitStimulusUnion,
 )
@@ -28,13 +34,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 from obi_one.scientific.unions.unions_stimuli import StimulusReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
-    CircuitBaseSimulationScanConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base import (
-    Brian2SimulationScanConfig,
-)
-
 L = logging.getLogger(__name__)
 
 Brian2CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
@@ -42,7 +41,9 @@ Brian2CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discrimina
 BRIAN2_TARGET_SIMULATOR = "Brian2"  # must match libsonata.SimulatorType.Brian2
 
 
-class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig, CircuitBaseSimulationScanConfig):
+class Brian2CircuitSimulationScanConfig(
+    Brian2SimulationScanConfig, CircuitBaseSimulationScanConfig
+):
     """Configuration for generating Brian2-targeted SONATA simulation configs.
 
     Only exposes stimulus, recording, and neuron set types that are
@@ -80,7 +81,9 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig, CircuitBaseS
         },
     )
 
-    class Initialize(Brian2SimulationScanConfig.Initialize, CircuitBaseSimulationScanConfig.Initialize):
+    class Initialize(
+        Brian2SimulationScanConfig.Initialize, CircuitBaseSimulationScanConfig.Initialize
+    ):
         """Initialization parameters for a Brian2 circuit simulation."""
 
         circuit: Brian2CircuitDiscriminator | list[Brian2CircuitDiscriminator] = Field(

@@ -37,7 +37,6 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     )
 
     class Initialize(BaseSimulationScanConfig.Initialize):
-
         timestep: ClassVar[PositiveFloat] = _SIMULATION_TIMESTEP_MILLISECONDS
 
         simulation_length: (

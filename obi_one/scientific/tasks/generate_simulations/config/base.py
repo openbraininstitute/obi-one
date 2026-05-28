@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 import entitysdk
 from pydantic import Field
@@ -16,6 +16,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.constants import (
     _COORDINATE_CONFIG_FILENAME,
@@ -48,7 +49,6 @@ class BlockGroup(StrEnum):
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
-
 
 class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
