@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, ClassVar, Self
 
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
+from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -123,13 +123,6 @@ class IonChannelModelSimulationScanConfig(NeuronSimulationScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
             },
         )
-        _timestep: PositiveFloat | list[PositiveFloat] = PrivateAttr(
-            default=0.025
-        )  # Simulation time step in ms
-
-        @property
-        def timestep(self) -> PositiveFloat | list[PositiveFloat]:
-            return self._timestep
 
     initialize: Initialize = Field(
         title="Initialization",

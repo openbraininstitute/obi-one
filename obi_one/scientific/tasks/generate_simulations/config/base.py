@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
-from pydantic import Field, PositiveFloat
+from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -66,9 +66,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
     }
 
     class Initialize(Block):
-        @property
-        def timestep(self) -> PositiveFloat | list[PositiveFloat]:
-            return self._timestep
+        pass
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
