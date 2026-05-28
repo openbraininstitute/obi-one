@@ -113,6 +113,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     publications: dict | None = None,
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
+    overview_image_path: Path | None = None,
+    sim_designer_image_path: Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
@@ -148,8 +150,12 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
-        skip_additional_assets: If True, skip generation of additional assets
+        skip_additional_assets: If True, skip generation/registration of additional assets
             (compressed circuit, matrices, plots, figures).
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform a dry run without registering anything.
 
     Returns:
@@ -267,6 +273,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914
             circuit_path=circuit_path,
             edge_population=edge_pop,
             circuit_path_compressed=circuit_path_compressed,
+            overview_image_path=overview_image_path,
+            sim_designer_image_path=sim_designer_image_path,
             client=client,
             circuit_entity=registered_circuit,
         )
@@ -282,6 +290,8 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
+    overview_image_path: Path | None = None,
+    sim_designer_image_path: Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
@@ -297,13 +307,17 @@ def register_circuit_from_metadata(
             brain_region_hierarchy.
             Optional keys: root, parent, derivation_type, license, published_in,
             contact, experiment_date, target_simulator.
-        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json)
-            or directly to the circuit_config.json file.
+        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json),
+            directly to the circuit_config.json file, or a compressed .gz archive.
         contributions: Raw contributions dict (agent name -> {type, role}).
             Will be resolved via get_contributions(). Optional.
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
         authorized_public: Whether to make the circuit publicly accessible.
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform validation and dry run without registering.
 
     Returns:
@@ -350,5 +364,7 @@ def register_circuit_from_metadata(
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
+        overview_image_path=overview_image_path,
+        sim_designer_image_path=sim_designer_image_path,
         dry_run=dry_run,
     )

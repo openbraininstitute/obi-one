@@ -6,6 +6,8 @@ from pathlib import Path
 
 from entitysdk import Client, models
 
+from obi_one.utils.db_sdk import OVERVIEW_IMAGE_NAME, SIM_DESIGNER_IMAGE_NAME
+
 L = logging.getLogger(__name__)
 
 
@@ -109,15 +111,30 @@ def generate_connectivity_plot_assets(
 def generate_overview_image_asset(
     plot_dir: Path | None,
     output_dir: Path,
+    *,
+    image_path: Path | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
 ) -> None:
-    """Generate the circuit overview image and optionally register it as an asset."""
-    from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
+    """Generate the circuit overview image and optionally register it as an asset.
 
-    viz_path = circuit_utils.generate_overview_figure(
-        plot_dir, output_dir / "circuit_visualization.png"
-    )
+    If ``image_path`` is provided, it is used directly and generation is skipped.
+    Accepted formats: .png or .webp.
+    """
+    from obi_one.utils import db_sdk  # noqa: PLC0415
+
+    if image_path is not None:
+        L.info(f"Using provided overview image: {image_path}")
+        expected_name = OVERVIEW_IMAGE_NAME + image_path.suffix
+        viz_path = output_dir / expected_name
+        shutil.copy(image_path, viz_path)
+    else:
+        from obi_one.utils import circuit as circuit_utils  # noqa: PLC0415
+
+        viz_path = circuit_utils.generate_overview_figure(
+            plot_dir, output_dir / f"{OVERVIEW_IMAGE_NAME}.png"
+        )
+
     if client and circuit_entity:
         db_sdk.add_image_assets(
             client=client,
@@ -130,15 +147,30 @@ def generate_overview_image_asset(
 def generate_sim_designer_image_asset(
     plot_dir: Path | None,
     output_dir: Path,
+    *,
+    image_path: Path | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
 ) -> None:
-    """Generate the simulation designer image and optionally register it as an asset."""
-    from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
+    """Generate the simulation designer image and optionally register it as an asset.
 
-    viz_path = circuit_utils.generate_overview_figure(
-        plot_dir, output_dir / "simulation_designer_image.png"
-    )
+    If ``image_path`` is provided, it is used directly and generation is skipped.
+    Accepted format: .png.
+    """
+    from obi_one.utils import db_sdk  # noqa: PLC0415
+
+    if image_path is not None:
+        L.info(f"Using provided sim designer image: {image_path}")
+        expected_name = SIM_DESIGNER_IMAGE_NAME + image_path.suffix
+        viz_path = output_dir / expected_name
+        shutil.copy(image_path, viz_path)
+    else:
+        from obi_one.utils import circuit as circuit_utils  # noqa: PLC0415
+
+        viz_path = circuit_utils.generate_overview_figure(
+            plot_dir, output_dir / f"{SIM_DESIGNER_IMAGE_NAME}.png"
+        )
+
     if client and circuit_entity:
         db_sdk.add_image_assets(
             client=client,
@@ -152,6 +184,8 @@ def generate_additional_circuit_assets(
     circuit_path: Path,
     circuit_path_compressed: Path | None = None,
     edge_population: str | None = None,
+    overview_image_path: Path | None = None,
+    sim_designer_image_path: Path | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
 ) -> None:
@@ -170,6 +204,10 @@ def generate_additional_circuit_assets(
             If provided, compression is skipped and this file is used directly (optional).
         edge_population: Name of the edge population for matrix extraction
             and connectivity plots (optional).
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
         client: The entitycore SDK client (optional).
         circuit_entity: The registered circuit entity to attach assets to (optional).
     """
@@ -226,6 +264,7 @@ def generate_additional_circuit_assets(
         generate_overview_image_asset(
             plot_dir=plot_dir,
             output_dir=viz_dir,
+            image_path=overview_image_path,
             client=client,
             circuit_entity=circuit_entity,
         )
@@ -236,6 +275,7 @@ def generate_additional_circuit_assets(
         generate_sim_designer_image_asset(
             plot_dir=plot_dir,
             output_dir=viz_dir,
+            image_path=sim_designer_image_path,
             client=client,
             circuit_entity=circuit_entity,
         )
