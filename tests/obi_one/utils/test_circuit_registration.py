@@ -33,7 +33,11 @@ from obi_one.utils.circuit_registration.assets import (
     _check_matrix_folder,
     _check_required_contents,
 )
-from obi_one.utils.circuit_registration.generate import generate_compressed_circuit_asset
+from obi_one.utils.circuit_registration.generate import (
+    generate_compressed_circuit_asset,
+    generate_overview_image_asset,
+    generate_sim_designer_image_asset,
+)
 
 from tests.utils import CIRCUIT_DIR
 
@@ -1219,3 +1223,112 @@ def test_generate_compressed_circuit_asset_non_gz_requires_output_dir():
             circuit_path=Path("/some/circuit_config.json"),
             output_dir=None,
         )
+
+
+# --- overview / sim designer image path support ---
+
+
+def test_generate_overview_image_asset_with_provided_image(tmp_path):
+    """Test that generate_overview_image_asset uses provided image and skips generation."""
+    image_file = tmp_path / "my_overview.png"
+    image_file.write_bytes(b"fake png data")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+        generate_overview_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    # File should be copied with the expected name
+    assert (output_dir / "circuit_visualization.png").exists()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["circuit_visualization.png"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_sim_designer_image_asset_with_provided_image(tmp_path):
+    """Test that generate_sim_designer_image_asset uses provided image and skips generation."""
+    image_file = tmp_path / "my_sim_image.png"
+    image_file.write_bytes(b"fake png data")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+        generate_sim_designer_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    # File should be copied with the expected name
+    assert (output_dir / "simulation_designer_image.png").exists()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["simulation_designer_image.png"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_overview_image_asset_webp_format(tmp_path):
+    """Test that a .webp overview image is copied with the correct name."""
+    image_file = tmp_path / "overview.webp"
+    image_file.write_bytes(b"fake webp data")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+        generate_overview_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    assert (output_dir / "circuit_visualization.webp").exists()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["circuit_visualization.webp"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_overview_image_asset_no_registration_without_client(tmp_path):
+    """Test that no registration happens when client is None."""
+    image_file = tmp_path / "overview.png"
+    image_file.write_bytes(b"fake")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+        generate_overview_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=None,
+            circuit_entity=None,
+        )
+
+    mock_add.assert_not_called()
+    assert (output_dir / "circuit_visualization.png").exists()
