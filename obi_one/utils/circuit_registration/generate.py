@@ -125,6 +125,7 @@ def generate_overview_image_asset(
 
     if image_path is not None:
         L.info(f"Using provided overview image: {image_path}")
+        output_dir.mkdir(parents=True, exist_ok=True)
         expected_name = OVERVIEW_IMAGE_NAME + image_path.suffix
         viz_path = output_dir / expected_name
         shutil.copy(image_path, viz_path)
@@ -161,6 +162,7 @@ def generate_sim_designer_image_asset(
 
     if image_path is not None:
         L.info(f"Using provided sim designer image: {image_path}")
+        output_dir.mkdir(parents=True, exist_ok=True)
         expected_name = SIM_DESIGNER_IMAGE_NAME + image_path.suffix
         viz_path = output_dir / expected_name
         shutil.copy(image_path, viz_path)
@@ -180,7 +182,7 @@ def generate_sim_designer_image_asset(
         )
 
 
-def generate_additional_circuit_assets(
+def generate_additional_circuit_assets(  # noqa: C901
     circuit_path: Path,
     circuit_path_compressed: Path | None = None,
     edge_population: str | None = None,
@@ -225,6 +227,7 @@ def generate_additional_circuit_assets(
         if d.exists():
             shutil.rmtree(d)
 
+    # Run additional asset generation
     try:
         generate_compressed_circuit_asset(
             circuit_path=circuit_path_compressed or circuit_path,

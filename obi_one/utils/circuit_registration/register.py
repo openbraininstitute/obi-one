@@ -113,8 +113,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     publications: dict | None = None,
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
-    overview_image_path: Path | None = None,
-    sim_designer_image_path: Path | None = None,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
@@ -177,6 +177,16 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     # Resolve circuit_path to the circuit_config.json file
     circuit_path, circuit_path_compressed = _resolve_circuit_path(circuit_path)
     circuit_folder = circuit_path.parent
+
+    # Validate provided image paths
+    overview_image_path = Path(overview_image_path) if overview_image_path else None
+    sim_designer_image_path = Path(sim_designer_image_path) if sim_designer_image_path else None
+    if overview_image_path is not None and not overview_image_path.exists():
+        msg = f"Overview image file not found: '{overview_image_path}'"
+        raise FileNotFoundError(msg)
+    if sim_designer_image_path is not None and not sim_designer_image_path.exists():
+        msg = f"Sim designer image file not found: '{sim_designer_image_path}'"
+        raise FileNotFoundError(msg)
 
     # Validate SONATA circuit
     run_validation(circuit_path)
@@ -293,8 +303,8 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
-    overview_image_path: Path | None = None,
-    sim_designer_image_path: Path | None = None,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
