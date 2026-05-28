@@ -13,7 +13,7 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
-    SimulationScanConfig,
+    BaseSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -21,7 +21,7 @@ from obi_one.scientific.unions.unions_recordings import (
 )
 
 
-class NeuronSimulationScanConfig(SimulationScanConfig, abc.ABC):
+class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for neuron-based simulation scan configurations."""
 
     recordings: dict[str, RecordingUnion] = Field(
@@ -36,7 +36,7 @@ class NeuronSimulationScanConfig(SimulationScanConfig, abc.ABC):
         },
     )
 
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(BaseSimulationScanConfig.Initialize):
         spike_location: ClassVar[str] = "soma"
         timestep: ClassVar[PositiveFloat] = _SIMULATION_TIMESTEP_MILLISECONDS
 

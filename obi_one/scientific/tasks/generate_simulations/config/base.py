@@ -50,7 +50,7 @@ class BlockGroup(StrEnum):
     EVENTS_GROUP = "Events"
 
 
-class SimulationScanConfig(InfoScanConfig, abc.ABC):
+class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
     single_coord_class_name: ClassVar[str]

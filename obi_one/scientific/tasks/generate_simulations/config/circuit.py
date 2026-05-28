@@ -10,7 +10,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
-    SimulationScanConfig,
+    BaseSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -20,13 +20,13 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
-class BaseCircuitSimulationScanConfig(SimulationScanConfig, abc.ABC):
+class CircuitBaseSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Circuit-specific simulation scan config (blocks, fields, and Initialize)."""
 
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    class Initialize(SimulationScanConfig.Initialize, abc.ABC):
+    class Initialize(BaseSimulationScanConfig.Initialize, abc.ABC):
         node_set: NeuronSetReference | None = Field(
             default=None,
             title="Neuron Set",

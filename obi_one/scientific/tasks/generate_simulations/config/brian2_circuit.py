@@ -16,7 +16,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    SimulationScanConfig,
+    BaseSimulationScanConfig,
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.unions.unions_brian2 import (
@@ -36,7 +36,7 @@ Brian2CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discrimina
 BRIAN2_TARGET_SIMULATOR = "Brian2"  # must match libsonata.SimulatorType.Brian2
 
 
-class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
+class Brian2CircuitSimulationScanConfig(BaseSimulationScanConfig):
     """Configuration for generating Brian2-targeted SONATA simulation configs.
 
     Only exposes stimulus, recording, and neuron set types that are
@@ -74,7 +74,7 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(BaseSimulationScanConfig.Initialize):
         """Initialization parameters for a Brian2 circuit simulation."""
 
         circuit: Brian2CircuitDiscriminator | list[Brian2CircuitDiscriminator] = Field(

@@ -12,7 +12,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
-    BaseCircuitSimulationScanConfig,
+    CircuitBaseSimulationScanConfig,
     CircuitDiscriminator,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
@@ -44,7 +44,7 @@ __all__ = [
 L = logging.getLogger(__name__)
 
 
-class CircuitSimulationScanConfig(NeuronSimulationScanConfig, BaseCircuitSimulationScanConfig):
+class CircuitSimulationScanConfig(NeuronSimulationScanConfig, CircuitBaseSimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
@@ -67,7 +67,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig, BaseCircuitSimulat
     }
 
     class Initialize(
-        NeuronSimulationScanConfig.Initialize, BaseCircuitSimulationScanConfig.Initialize
+        NeuronSimulationScanConfig.Initialize, CircuitBaseSimulationScanConfig.Initialize
     ):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
