@@ -9,7 +9,7 @@ from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
-from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
+from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
 from obi_one.utils.circuit_registration.assets import register_asset
 from obi_one.utils.circuit_registration.generate import generate_additional_circuit_assets
 from obi_one.utils.circuit_registration.links import (
@@ -161,10 +161,6 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     Returns:
         The registered circuit entity, or None if dry_run is True.
     """
-    # Resolve circuit_path to the circuit_config.json file
-    circuit_path, circuit_path_compressed = _resolve_circuit_path(circuit_path)
-    circuit_folder = circuit_path.parent
-
     # Validate species consistency
     if (
         brain_region.species is not None
@@ -177,6 +173,13 @@ def register_circuit(  # noqa: PLR0913, PLR0914
             f" subject species '{subject.species.name}'!"
         )
         raise ValueError(msg)
+
+    # Resolve circuit_path to the circuit_config.json file
+    circuit_path, circuit_path_compressed = _resolve_circuit_path(circuit_path)
+    circuit_folder = circuit_path.parent
+
+    # Validate SONATA circuit
+    run_validation(circuit_path)
 
     # Assure target simulator consistency
     c = OBICircuit(name=name, path=str(circuit_path))

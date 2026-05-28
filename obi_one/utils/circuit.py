@@ -163,11 +163,13 @@ def copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None
         shutil.copytree(source_dir, dest_dir)
 
 
-def run_validation(circuit_path: str) -> None:
+def run_validation(circuit_path: str | Path) -> None:
     """Run SONATA circuit validation."""
-    errors = snap.circuit_validation.validate(circuit_path, skip_slow=True)
+    errors = snap.circuit_validation.validate(
+        str(circuit_path), skip_slow=False, only_errors=True, print_errors=False
+    )
     if len(errors) > 0:
-        msg = f"Circuit validation error(s) found: {errors}"
+        msg = f"Circuit validation error(s) found:\n{errors}"
         raise ValueError(msg)
     L.info("No validation errors found!")
 
