@@ -98,6 +98,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         EMSynapseMappingSingleConfig,
         AssetLabel.task_config,
     ),
+    TaskType.extracellular_recording_weights_calculation: (
+        CreateExtracellularRecordingArrayTask,
+        CreateExtracellularRecordingArraySingleConfig,
+        AssetLabel.task_config,
+    ),
     TaskType.ion_channel_model_simulation_execution: (
         IonChannelModelSimulationExecutionTask,
         IonChannelModelSimulationExecutionSingleConfig,
