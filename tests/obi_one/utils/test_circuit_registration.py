@@ -1084,6 +1084,8 @@ def test_register_circuit_skip_additional_assets():
 def test_register_circuit_invalid_path():
     """Test that non-existent circuit path raises."""
     client = MagicMock()
+    brain_region = MagicMock(species=None)
+    subject = MagicMock(species=None)
     with pytest.raises(ValueError, match="Circuit config not found"):
         register_circuit(
             client=client,
@@ -1091,8 +1093,8 @@ def test_register_circuit_invalid_path():
             name="test",
             description="test",
             build_category="computational_model",
-            brain_region=MagicMock(),
-            subject=MagicMock(),
+            brain_region=brain_region,
+            subject=subject,
             target_simulator="NEURON",
         )
 
