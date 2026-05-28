@@ -11,18 +11,34 @@ L = logging.getLogger(__name__)
 
 def generate_compressed_circuit_asset(
     circuit_path: Path,
-    output_dir: Path,
+    output_dir: Path | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
 ) -> None:
-    """Generate a compressed circuit archive and optionally register it as an asset."""
-    from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
+    """Generate a compressed circuit archive and optionally register it as an asset.
 
-    compressed_circuit = circuit_utils.run_circuit_folder_compression(
-        circuit_path=circuit_path,
-        circuit_name=circuit_entity.name if circuit_entity else "circuit",  # ty:ignore[invalid-argument-type]
-        output_root=output_dir,
-    )
+    If ``circuit_path`` has a .gz extension it is assumed to be an already-compressed
+    circuit and is used directly (no recompression).  Otherwise the standard
+    compression pipeline is executed.
+    """
+    from obi_one.utils import db_sdk  # noqa: PLC0415
+
+    if circuit_path.suffix == ".gz":
+        L.info("circuit_path is a .gz file; using it directly as compressed circuit.")
+        compressed_circuit = circuit_path
+    else:
+        if output_dir is None:
+            msg = "output_dir is required when circuit_path is not a compressed file."
+            raise ValueError(msg)
+
+        from obi_one.utils import circuit as circuit_utils  # noqa: PLC0415
+
+        compressed_circuit = circuit_utils.run_circuit_folder_compression(
+            circuit_path=circuit_path,
+            circuit_name=circuit_entity.name if circuit_entity else "circuit",  # ty:ignore[invalid-argument-type]
+            output_root=output_dir,
+        )
+
     if client and circuit_entity:
         db_sdk.add_compressed_circuit_asset(
             client=client,
@@ -134,6 +150,7 @@ def generate_sim_designer_image_asset(
 
 def generate_additional_circuit_assets(
     circuit_path: Path,
+    circuit_path_compressed: Path | None = None,
     edge_population: str | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
@@ -149,6 +166,8 @@ def generate_additional_circuit_assets(
 
     Args:
         circuit_path: Path to the circuit_config.json file.
+        circuit_path_compressed: Path to an already-compressed circuit file (.gz).
+            If provided, compression is skipped and this file is used directly (optional).
         edge_population: Name of the edge population for matrix extraction
             and connectivity plots (optional).
         client: The entitycore SDK client (optional).
@@ -170,7 +189,7 @@ def generate_additional_circuit_assets(
 
     try:
         generate_compressed_circuit_asset(
-            circuit_path=circuit_path,
+            circuit_path=circuit_path_compressed or circuit_path,
             output_dir=compressed_dir,
             client=client,
             circuit_entity=circuit_entity,

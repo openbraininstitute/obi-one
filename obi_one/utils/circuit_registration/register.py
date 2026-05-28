@@ -30,6 +30,7 @@ from obi_one.utils.circuit_registration.resolve import (
     get_root_circuit,
     get_subject,
 )
+from obi_one.utils.io import extract_tar_gz
 
 L = logging.getLogger(__name__)
 
@@ -55,6 +56,33 @@ def _resolve_target_simulator(
         else:
             target_simulator = cfg_target_simulator
     return target_simulator
+
+
+def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
+    """Resolve circuit_path to the circuit_config.json file.
+
+    If ``circuit_path`` is a .gz archive, it is extracted first and the original
+    compressed path is returned as the second element.  Otherwise the second
+    element is None.
+
+    Returns:
+        Tuple of (resolved circuit_config.json path, compressed path or None).
+    """
+    circuit_path = Path(circuit_path)
+    circuit_path_compressed: Path | None = None
+
+    if circuit_path.suffix == ".gz":
+        circuit_path_compressed = circuit_path
+        circuit_path = extract_tar_gz(circuit_path)
+        L.info(f"Extracted compressed circuit '{circuit_path_compressed}' to '{circuit_path}'")
+
+    if circuit_path.is_dir():
+        circuit_path /= "circuit_config.json"
+    if not circuit_path.exists():
+        msg = f"Circuit config not found at '{circuit_path}'!"
+        raise ValueError(msg)
+
+    return circuit_path, circuit_path_compressed
 
 
 def register_circuit(  # noqa: PLR0913, PLR0914
@@ -93,7 +121,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914
 
     Args:
         client: The entitycore SDK client.
-        circuit_path: Path to circuit_config.json (or the folder containing it).
+        circuit_path: Path to circuit_config.json (or the folder containing it,
+            or a compressed .gz archive of the circuit folder).
         name: Circuit name.
         description: Circuit description.
         build_category: Build category (computational_model, em_reconstruction).
@@ -121,12 +150,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         The registered circuit entity, or None if dry_run is True.
     """
     # Resolve circuit_path to the circuit_config.json file
-    circuit_path = Path(circuit_path)
-    if circuit_path.is_dir():
-        circuit_path /= "circuit_config.json"
-    if not circuit_path.exists():
-        msg = f"Circuit config not found at '{circuit_path}'!"
-        raise ValueError(msg)
+    circuit_path, circuit_path_compressed = _resolve_circuit_path(circuit_path)
     circuit_folder = circuit_path.parent
 
     # Validate species consistency
@@ -236,6 +260,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         generate_additional_circuit_assets(
             circuit_path=circuit_path,
             edge_population=edge_pop,
+            circuit_path_compressed=circuit_path_compressed,
             client=client,
             circuit_entity=registered_circuit,
         )
