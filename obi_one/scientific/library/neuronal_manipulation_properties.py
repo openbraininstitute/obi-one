@@ -5,7 +5,8 @@ Provides logic to:
 - Read model_template property for selected node IDs.
 - Match model_template values to emodel derivations.
 - Fetch mechanism variables for each unique emodel.
-- Return grouped response for the frontend.
+- Compute the intersection (common) of mechanism variables across all emodels.
+- Return a flat response matching the MEModel response shape.
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ from obi_one.scientific.library.circuit import Circuit as ObiCircuit
 from obi_one.scientific.library.circuit_metrics import TemporaryAsset
 from obi_one.scientific.library.emodel_parameters import get_mechanism_variables_for_emodel
 from obi_one.scientific.library.memodel_circuit import (
+    IonChannelVariables,
+    MechanismVariableDetail,
     _build_mechanism_variables_by_ion_channel_response,
 )
 
@@ -227,31 +230,105 @@ def _build_emodel_groups(
     return emodel_groups
 
 
-def get_circuit_manipulation_properties(
+def _compute_common_mechanism_variables(
+    emodel_groups: dict[str, dict],
+) -> dict[str, IonChannelVariables]:
+    """Compute the intersection of mechanism variables across all emodel groups.
+
+    Returns only channels and variables that are present in ALL emodel groups.
+    For limits, takes the most restrictive range (max of lower bounds, min of upper bounds).
+    For section_lists, takes the intersection across groups.
+
+    Special case: if there is only one emodel group, returns its full variable set
+    with original values preserved.
+    """
+    if not emodel_groups:
+        return {}
+
+    groups = list(emodel_groups.values())
+
+    # Filter out groups that failed to fetch mechanism variables
+    groups_with_vars = [g for g in groups if g["mechanism_variables_by_ion_channel"]]
+    if not groups_with_vars:
+        return {}
+
+    # Single emodel: return its variables directly (no intersection needed)
+    if len(groups_with_vars) == 1:
+        return groups_with_vars[0]["mechanism_variables_by_ion_channel"]
+
+    # Multiple emodels: compute intersection
+    all_channel_sets = [
+        set(g["mechanism_variables_by_ion_channel"].keys()) for g in groups_with_vars
+    ]
+    common_channels = set.intersection(*all_channel_sets)
+
+    if not common_channels:
+        return {}
+
+    result: dict[str, IonChannelVariables] = {}
+    for channel in sorted(common_channels):
+        # Intersect variables for this channel
+        all_var_sets = [
+            set(g["mechanism_variables_by_ion_channel"][channel].variables.keys())
+            for g in groups_with_vars
+        ]
+        common_vars = set.intersection(*all_var_sets)
+        if not common_vars:
+            continue
+
+        # Intersect section_lists for this channel
+        all_section_lists = [
+            set(g["mechanism_variables_by_ion_channel"][channel].section_lists)
+            for g in groups_with_vars
+        ]
+        common_section_lists = sorted(set.intersection(*all_section_lists))
+        if not common_section_lists:
+            continue
+
+        # Build variables with merged limits
+        variables: dict[str, MechanismVariableDetail] = {}
+        for var_name in sorted(common_vars):
+            all_details = [
+                g["mechanism_variables_by_ion_channel"][channel].variables[var_name]
+                for g in groups_with_vars
+            ]
+
+            # Most restrictive limits
+            all_limits = [d.limits for d in all_details if d.limits is not None]
+            if all_limits:
+                merged_limits: list[float] | None = [
+                    max(lim[0] for lim in all_limits),
+                    min(lim[1] for lim in all_limits),
+                ]
+            else:
+                merged_limits = None
+
+            variables[var_name] = MechanismVariableDetail(
+                units=all_details[0].units,
+                limits=merged_limits,
+                variable_type=all_details[0].variable_type,
+                section_lists_original_values=dict.fromkeys(common_section_lists),
+            )
+
+        result[channel] = IonChannelVariables(
+            section_lists=common_section_lists,
+            entity_id=None,
+            variables=variables,
+        )
+
+    return result
+
+
+def _resolve_population_and_node_ids(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-    neuron_set: AbstractNeuronSet | None = None,
-    node_ids: list[int] | None = None,
-    population: str | None = None,
-) -> dict:
-    """Get neuronal manipulation properties for a circuit + neuron set.
-
-    Accepts either neuron_set or node_ids (node_ids takes precedence).
-
-    Args:
-        db_client: entitysdk client.
-        circuit_id: Circuit entity ID.
-        neuron_set: Neuron set to resolve.
-        node_ids: Direct list of node IDs (for debugging/direct calls).
-        population: Node population name. Defaults to circuit's default.
-
-    Returns:
-        Dict with entity_type, population, node_ids, node_id_to_emodel,
-        emodel_groups, and optional warnings.
-    """
-    circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
-
-    # 1. Resolve node IDs
+    circuit_entity: Circuit,
+    asset_id: UUID,
+    neuron_set: AbstractNeuronSet | None,
+    node_ids: list[int] | None,
+    population: str | None,
+) -> tuple[str, list[int]]:
+    """Resolve population name and node IDs from inputs."""
     if node_ids is not None:
         if population is None:
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -268,14 +345,46 @@ def get_circuit_manipulation_properties(
                     name=circuit_entity.name or circuit_id, path=str(temp_config_path)
                 )
                 population = obi_circuit.default_population_name
-        resolved_population = population
-    else:
-        if neuron_set is None:
-            msg = "Either neuron_set or node_ids must be provided."
-            raise ValueError(msg)
-        resolved_population, node_ids = get_circuit_node_ids(
-            db_client, circuit_id, neuron_set, population
-        )
+        return population, node_ids
+
+    if neuron_set is None:
+        msg = "Either neuron_set or node_ids must be provided."
+        raise ValueError(msg)
+    return get_circuit_node_ids(db_client, circuit_id, neuron_set, population)
+
+
+def get_circuit_manipulation_properties(
+    db_client: entitysdk.client.Client,
+    circuit_id: str,
+    neuron_set: AbstractNeuronSet | None = None,
+    node_ids: list[int] | None = None,
+    population: str | None = None,
+) -> dict:
+    """Get neuronal manipulation properties for a circuit + neuron set.
+
+    Accepts either neuron_set or node_ids (node_ids takes precedence).
+
+    Returns the intersection (common) of mechanism variables across all emodels
+    in the selection. The response shape matches the MEModel response so the
+    frontend can render both identically.
+
+    Args:
+        db_client: entitysdk client.
+        circuit_id: Circuit entity ID.
+        neuron_set: Neuron set to resolve.
+        node_ids: Direct list of node IDs (for debugging/direct calls).
+        population: Node population name. Defaults to circuit's default.
+
+    Returns:
+        Dict with entity_type, population, mechanism_variables_by_ion_channel,
+        and optional warnings.
+    """
+    circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
+
+    # 1. Resolve node IDs
+    resolved_population, node_ids = _resolve_population_and_node_ids(
+        db_client, circuit_id, circuit_entity, asset_id, neuron_set, node_ids, population
+    )
 
     # 2. Read model_template per node
     node_to_template = get_model_template_for_nodes(
@@ -288,21 +397,32 @@ def get_circuit_manipulation_properties(
         node_to_template, label_to_emodel_id
     )
 
-    # 4. Build emodel groups with mechanism variables
+    # 4. Build per-emodel groups (internal step)
     emodel_groups = _build_emodel_groups(db_client, node_id_to_emodel, label_to_emodel_id)
 
-    # 5. Build response
-    warnings = None
+    # 5. Compute intersection of mechanism variables across all emodels
+    common_vars = _compute_common_mechanism_variables(emodel_groups)
+
+    # 6. Build response
+    warnings: list[str] | None = None
+    warning_messages: list[str] = []
+
     if unmatched_templates:
-        warnings = [
+        warning_messages.extend(
             f"No derivation found for model_template: {t}" for t in sorted(unmatched_templates)
-        ]
+        )
+
+    if not common_vars and emodel_groups:
+        warning_messages.append(
+            "No common mechanism variables found across the selected neurons' emodels."
+        )
+
+    if warning_messages:
+        warnings = warning_messages
 
     return {
         "entity_type": "circuit",
         "population": resolved_population,
-        "node_ids": sorted(node_ids),
-        "node_id_to_emodel": {str(k): v for k, v in node_id_to_emodel.items()},
-        "emodel_groups": emodel_groups,
+        "mechanism_variables_by_ion_channel": common_vars,
         "warnings": warnings,
     }
