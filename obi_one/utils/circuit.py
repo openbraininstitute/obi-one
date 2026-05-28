@@ -171,7 +171,7 @@ def run_validation(circuit_path: str | Path) -> None:
     if len(errors) > 0:
         msg = f"Circuit validation error(s) found:\n{errors}"
         raise ValueError(msg)
-    L.info("No validation errors found!")
+    L.info("No SONATA validation errors found!")
 
 
 def get_morph_dirs(
