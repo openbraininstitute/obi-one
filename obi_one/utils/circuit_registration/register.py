@@ -77,7 +77,13 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
         L.info(f"Extracted compressed circuit '{circuit_path_compressed}' to '{circuit_path}'")
 
     if circuit_path.is_dir():
-        circuit_path /= "circuit_config.json"
+        config_candidate = circuit_path / "circuit_config.json"
+        if not config_candidate.exists():
+            # Archive may contain a single top-level directory; look one level deeper
+            subdirs = [d for d in circuit_path.iterdir() if d.is_dir()]
+            if len(subdirs) == 1:
+                config_candidate = subdirs[0] / "circuit_config.json"
+        circuit_path = config_candidate
     if not circuit_path.exists():
         msg = f"Circuit config not found at '{circuit_path}'!"
         raise ValueError(msg)
