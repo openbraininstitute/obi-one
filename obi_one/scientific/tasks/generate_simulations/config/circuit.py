@@ -9,8 +9,8 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    BlockGroup,
     BaseSimulationScanConfig,
+    BlockGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -27,6 +27,14 @@ class CircuitBaseSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     class Initialize(BaseSimulationScanConfig.Initialize, abc.ABC):
+
+        """Important to keep circuit here, even if overriden, so that it keeps its position in the schema."""
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
+            title="Circuit",
+            description="Circuit to simulate.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+        )
+
         node_set: NeuronSetReference | None = Field(
             default=None,
             title="Neuron Set",

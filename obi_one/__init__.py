@@ -408,7 +408,7 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
     Brian2CircuitSimulationSingleConfig,
 )

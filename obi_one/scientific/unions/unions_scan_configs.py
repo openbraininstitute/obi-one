@@ -14,7 +14,7 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (

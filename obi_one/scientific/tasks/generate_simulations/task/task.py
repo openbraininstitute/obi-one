@@ -25,7 +25,7 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
 )
-from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     BRIAN2_TARGET_SIMULATOR,
     Brian2CircuitSimulationSingleConfig,
 )
