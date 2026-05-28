@@ -1,5 +1,5 @@
 import abc
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
@@ -97,13 +97,5 @@ class NeuronSimulationScanConfig(SimulationScanConfig, abc.ABC):
             },
         )
 
-        _spike_location: Literal["AIS", "soma"] | list[Literal["AIS", "soma"]] = PrivateAttr(
-            default="soma"
-        )
-        _timestep: list[PositiveFloat] | PositiveFloat = PrivateAttr(
-            default=_SIMULATION_TIMESTEP_MILLISECONDS
-        )
-
-        @property
-        def spike_location(self) -> Literal["AIS", "soma"] | list[Literal["AIS", "soma"]]:
-            return self._spike_location
+        spike_location: ClassVar[str] = "soma"
+        timestep: ClassVar[PositiveFloat] = _SIMULATION_TIMESTEP_MILLISECONDS
