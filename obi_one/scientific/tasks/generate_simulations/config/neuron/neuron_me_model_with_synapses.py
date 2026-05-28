@@ -16,7 +16,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base imp
     NeuronSimulationScanConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitSimulationScanConfig,
+    BaseCircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
@@ -31,7 +31,9 @@ MEModelWithSynapsesCircuitDiscriminator = Annotated[
 ]
 
 
-class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
+class MEModelWithSynapsesCircuitSimulationScanConfig(
+    NeuronSimulationScanConfig, BaseCircuitSimulationScanConfig
+):
     """MEModelWithSynapsesCircuitSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
@@ -50,7 +52,9 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         },
     )
 
-    class Initialize(NeuronSimulationScanConfig.Initialize):
+    class Initialize(
+        NeuronSimulationScanConfig.Initialize, BaseCircuitSimulationScanConfig.Initialize
+    ):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
         ) = Field(

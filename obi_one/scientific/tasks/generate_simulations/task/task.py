@@ -87,9 +87,9 @@ class GenerateSimulationTask(Task):
             self._sonata_config["target_simulator"] = BRIAN2_TARGET_SIMULATOR
 
         self._sonata_config["run"] = {}
-        self._sonata_config["run"]["dt"] = self.config.initialize.timestep
-        self._sonata_config["run"]["random_seed"] = self.config.initialize.random_seed
-        self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
+        self._sonata_config["run"]["dt"] = self.config.initialize.timestep  # ty:ignore[unresolved-attribute]
+        self._sonata_config["run"]["random_seed"] = self.config.initialize.random_seed  # ty:ignore[unresolved-attribute]
+        self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length  # ty:ignore[unresolved-attribute]
 
         self._sonata_config["conditions"] = {}
         if not is_brian2 and hasattr(self.config.initialize, "extracellular_calcium_concentration"):
@@ -98,7 +98,7 @@ class GenerateSimulationTask(Task):
             )
         if hasattr(self.config.initialize, "temperature"):
             self._sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
-        self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
+        self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init  # ty:ignore[unresolved-attribute]
         if not is_brian2 and hasattr(self.config.initialize, "spike_location"):
             self._sonata_config["conditions"]["spike_location"] = (
                 self.config.initialize.spike_location
@@ -169,13 +169,13 @@ class GenerateSimulationTask(Task):
 
     def _add_sonata_simulation_config_inputs(self) -> None:
         self._sonata_config["inputs"] = {}
-        for stimulus in self.config.stimuli.values():
+        for stimulus in self.config.stimuli.values():  # ty:ignore[unresolved-attribute]
             if isinstance(stimulus, SpikeStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
                         circuit=self._circuit,  # ty:ignore[invalid-argument-type]
                         sonata_simulation_config_directory=self.config.coordinate_output_root,
-                        simulation_length=self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type]
+                        simulation_length=self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type, unresolved-attribute]
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
                         source_node_population=self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                         target_node_population=self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
@@ -197,12 +197,12 @@ class GenerateSimulationTask(Task):
         self, db_client: entitysdk.client.Client | None
     ) -> None:
         self._sonata_config["reports"] = {}
-        for recording in self.config.recordings.values():
+        for recording in self.config.recordings.values():  # ty:ignore[unresolved-attribute]
             self._sonata_config["reports"].update(
                 recording.config(
                     self._circuit,  # ty:ignore[invalid-argument-type]
                     self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
-                    self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type]
+                    self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type, unresolved-attribute]
                     DEFAULT_NODE_SET_NAME,
                     db_client,
                 )
@@ -265,12 +265,12 @@ class GenerateSimulationTask(Task):
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
         if hasattr(self.config, "neuron_sets"):
-            for recording in self.config.recordings.values():
+            for recording in self.config.recordings.values():  # ty:ignore[unresolved-attribute]
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     recording
                 )
 
-            for stimulus in self.config.stimuli.values():
+            for stimulus in self.config.stimuli.values():  # ty:ignore[unresolved-attribute]
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     stimulus
                 )

@@ -1,7 +1,7 @@
 import abc
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -37,6 +37,9 @@ class NeuronSimulationScanConfig(SimulationScanConfig, abc.ABC):
     )
 
     class Initialize(SimulationScanConfig.Initialize):
+        spike_location: ClassVar[str] = "soma"
+        timestep: ClassVar[PositiveFloat] = _SIMULATION_TIMESTEP_MILLISECONDS
+
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
@@ -96,6 +99,3 @@ class NeuronSimulationScanConfig(SimulationScanConfig, abc.ABC):
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
             },
         )
-
-        spike_location: ClassVar[str] = "soma"
-        timestep: ClassVar[PositiveFloat] = _SIMULATION_TIMESTEP_MILLISECONDS

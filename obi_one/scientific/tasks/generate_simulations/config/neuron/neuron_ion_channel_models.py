@@ -3,7 +3,6 @@ from typing import Annotated, ClassVar, Self
 
 from pydantic import Field, NonNegativeFloat, model_validator
 
-from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
@@ -67,7 +66,7 @@ class IonChannelModelSimulationScanConfig(NeuronSimulationScanConfig):
         },
     }
 
-    class Initialize(Block):
+    class Initialize(NeuronSimulationScanConfig.Initialize):
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
