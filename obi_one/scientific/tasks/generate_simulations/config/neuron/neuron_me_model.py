@@ -1,15 +1,16 @@
 import logging
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
+)
+from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+    MEModelBaseSimulationScanConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
@@ -29,22 +30,17 @@ from obi_one.scientific.unions.unions_timestamps import (
 L = logging.getLogger(__name__)
 
 
-MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
-
-
-class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
+class MEModelSimulationScanConfig(NeuronSimulationScanConfig, MEModelBaseSimulationScanConfig):
     """MEModelSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    class Initialize(NeuronSimulationScanConfig.Initialize):
-        circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-            title="ME Model",
-            description="ME Model to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
-        )
+    class Initialize(
+        NeuronSimulationScanConfig.Initialize, MEModelBaseSimulationScanConfig.Initialize
+    ):
+        pass
 
     initialize: Initialize = Field(
         title="Initialization",
