@@ -19,12 +19,12 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.constants import (
-    COORDINATE_CONFIG_FILENAME,
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
-    SCAN_CONFIG_FILENAME,
     _SIMULATION_TIMESTEP_MILLISECONDS,
+    COORDINATE_CONFIG_FILENAME,
+    SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
