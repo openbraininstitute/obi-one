@@ -67,6 +67,69 @@ So `instance.timestep` resolves to the value set in
 `Initialize` that inherits from both parents' `Initialize` so the MRO of the
 inner class mirrors the outer one.
 
+## Schema field order — declare fields in the parent
+
+Pydantic builds `model_fields` by walking the MRO and merging each class's own
+annotations. The order of properties in the generated JSON schema (and from
+there the OpenAPI spec the UI renders) is the order of `model_fields`, and a
+field's position is **fixed at the point it is first declared in the
+inheritance chain**. Re-declaring a field in a subclass overrides its
+`FieldInfo` *in place* — it does not move it.
+
+That is why `CircuitBaseSimulationScanConfig.Initialize` declares `circuit`
+and `node_set` even though every concrete subclass overrides them:
+
+```python
+class CircuitBaseSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
+    class Initialize(BaseSimulationScanConfig.Initialize, abc.ABC):
+        """Important to define the circuit here, even if overridden,
+        so that it keeps its position in the schema."""
+
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(...)
+        node_set: NeuronSetReference | None = Field(...)
+```
+
+If `circuit` were only declared in
+`Brian2CircuitSimulationScanConfig.Initialize`, its first declaration in the
+MRO would be the concrete class — so it would land **after** every field
+contributed by the simulator parent (`Brian2SimulationScanConfig.Initialize`
+brings `simulation_length`, `v_init`, `random_seed`, …). Worse, its position
+would drift between concrete classes, since each composition mixes a different
+set of sibling fields, and the UI would see the same conceptual field at a
+different index per config.
+
+**Rule:** pick the lowest common ancestor that needs the field, declare it
+there with the most permissive type / `Field(...)` metadata, and let concrete
+classes override the type as needed. Apply the same to the `…SingleConfig`
+side via the `ScanConfig` it inherits from — a `SingleConfig` should not
+introduce new fields, only re-shape them.
+
+### What an override actually changes
+
+A subclass annotation that matches a parent field name replaces the parent's
+`FieldInfo` whole-hog:
+
+- **Type / discriminator** — the subclass annotation wins. E.g.
+  `Brian2CircuitSimulationScanConfig.Initialize.circuit` retypes the field to
+  `Brian2CircuitDiscriminator`, so the schema and validation only accept
+  Brian2-compatible circuit types. The slot in the schema is still the one
+  declared on `CircuitBaseSimulationScanConfig.Initialize`.
+- **Position** — preserved from the first declaration in the MRO.
+- **`Field(...)` metadata** — fully replaced, not merged. If you want to keep
+  the parent's `title` / `description` / `json_schema_extra` while only
+  changing the type, repeat them in the override; otherwise the schema entry
+  silently loses titles, group hints, UI element tags, etc.
+- **Compatibility** — Pydantic builds the model at class-definition time and
+  raises if the override is incompatible (e.g. removing a default while a
+  parent had one, swapping to a type the validators can't construct).
+  Covariant narrowing — a Union shrunk to one arm, `T` to a subtype of `T`,
+  tighter constraints — is safe; widening or unrelated type swaps will either
+  fail to build or, worse, accept inputs the parent contract forbade.
+
+In short: parent declarations pin **where** a field appears and **what
+metadata the UI sees by default**; subclass overrides choose **which concrete
+type** is accepted at that position.
+
 ## ClassVar vs. PrivateAttr — pick ClassVar
 
 For per-class constants (the simulator timestep, a soma marker string, a
