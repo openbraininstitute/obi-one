@@ -1,8 +1,8 @@
 from enum import StrEnum
 
 from obi_one.core.serialization_constants import (  # noqa: F401
-    _COORDINATE_CONFIG_FILENAME,
-    _SCAN_CONFIG_FILENAME,
+    COORDINATE_CONFIG_FILENAME,
+    SCAN_CONFIG_FILENAME,
 )
 
 _MIN_SIMULATION_LENGTH_MILLISECONDS = 1.0

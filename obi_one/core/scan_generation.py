@@ -16,7 +16,7 @@ from obi_one.core.deserializable_types import load_class
 from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.serialization_constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
+from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME, SCAN_CONFIG_FILENAME
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
 
@@ -238,7 +238,7 @@ class ScanGenerationTask(Task, abc.ABC):
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
-        self.serialize(self.output_root / _SCAN_CONFIG_FILENAME)
+        self.serialize(self.output_root / SCAN_CONFIG_FILENAME)
 
         # Create the campaign entity
         campaign = None
@@ -260,7 +260,7 @@ class ScanGenerationTask(Task, abc.ABC):
 
             # Serialize the coordinate instance
             single_coord_config.serialize(
-                single_coord_config.coordinate_output_root / _COORDINATE_CONFIG_FILENAME
+                single_coord_config.coordinate_output_root / COORDINATE_CONFIG_FILENAME
             )
 
             # Create the single coordinate entity

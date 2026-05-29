@@ -20,7 +20,7 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
 from obi_one.core.registry import block_ref_registry
 from obi_one.core.schema import SchemaKey
-from obi_one.core.serialization_constants import _SCAN_CONFIG_FILENAME
+from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                 "scan_parameters": multiple_value_parameters_dictionary
             },
             input_entities=self.input_entities(db_client=db_client),
-            task_config_file_path=output_root / _SCAN_CONFIG_FILENAME,
+            task_config_file_path=output_root / SCAN_CONFIG_FILENAME,
         )
 
         return self._campaign

@@ -13,7 +13,7 @@ from pydantic import Field, field_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
-from obi_one.core.serialization_constants import _COORDINATE_CONFIG_FILENAME
+from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
 from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ class SingleConfigMixin:
             task_config_type=self.single_task_config_type,
             multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
             input_entities=self.input_entities(db_client=db_client),  # ty:ignore[unresolved-attribute]
-            task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            task_config_file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             task_config_generator_id=campaign.id,
         )
 
