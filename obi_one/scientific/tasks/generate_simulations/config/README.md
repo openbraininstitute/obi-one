@@ -24,7 +24,7 @@ config/
     └── neuron_ion_channel_models.py
 ```
 
-`base/` knows nothing about a simulator. `brian2/` and `neuron/` know nothing
+`base/*` knows nothing about a simulator. `brian2/brian2_base.py` and `neuron/neuron_base.py` know nothing
 about the model kind. A concrete config picks one of each:
 
 ```
