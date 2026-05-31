@@ -1,18 +1,52 @@
 """Tests for _compute_common_mechanism_variables and related pure-logic functions."""
 
-from unittest.mock import MagicMock
+import shutil
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
+from obi_one.scientific.library.emodel_parameters import (
+    ChannelInfo,
+    ChannelSectionListMapping,
+    MechanismVariable,
+)
 from obi_one.scientific.library.memodel_circuit import (
     IonChannelVariables,
     MechanismVariableDetail,
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
+    _build_emodel_groups,
     _compute_common_mechanism_variables,
+    _fetch_emodel_derivation_mapping,
+    _get_circuit_asset,
     _match_templates_to_emodels,
     _resolve_population_and_node_ids,
+    get_circuit_manipulation_properties,
+    get_model_template_for_nodes,
 )
+
+TINY_CIRCUIT_DIR = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6")
+
+NATG_CHANNEL_MAPPING = ChannelSectionListMapping(
+    channel_to_section_lists={"NaTg": ChannelInfo(section_lists=["somatic"], entity_id=None)}
+)
+SK_E2_CHANNEL_MAPPING = ChannelSectionListMapping(
+    channel_to_section_lists={"SK_E2": ChannelInfo(section_lists=["somatic"], entity_id=None)}
+)
+
+
+def _make_fetch_file_side_effect(circuit_dir: Path):
+    """Return a side effect that copies files from circuit_dir to output_path."""
+
+    def _fetch_file(*, output_path, asset_path, **_kwargs):
+        src = circuit_dir / asset_path
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, output_path)
+
+    return _fetch_file
 
 
 def _make_emodel_group(
@@ -385,3 +419,367 @@ class TestResolvePopulationAndNodeIds:
         assert result == ("my_pop", [0, 1, 2])
         # No fetch_file call needed since population was provided
         db_client.fetch_file.assert_not_called()
+
+    def test_node_ids_without_population_loads_circuit(self):
+        """When node_ids provided but population is None, loads circuit to get default."""
+        db_client = MagicMock()
+        db_client.fetch_file.side_effect = _make_fetch_file_side_effect(TINY_CIRCUIT_DIR)
+        entity = MagicMock()
+        entity.name = "test_circuit"
+        asset_id = uuid4()
+
+        result = _resolve_population_and_node_ids(
+            db_client=db_client,
+            circuit_id=str(uuid4()),
+            circuit_entity=entity,
+            asset_id=asset_id,
+            neuron_set=None,
+            node_ids=[0, 1, 2],
+            population=None,
+        )
+
+        # Should resolve the default population from the circuit config
+        assert result[0] == "S1nonbarrel_neurons"
+        assert result[1] == [0, 1, 2]
+        db_client.fetch_file.assert_called_once()
+
+
+# --- Integration tests using tiny circuit data ---
+
+
+@pytest.fixture
+def mock_db_client():
+    """Mock db_client with tiny circuit data."""
+    client = MagicMock()
+    asset = MagicMock()
+    asset.is_directory = True
+    asset.label.value = "sonata_circuit"
+    asset.id = uuid4()
+    entity = MagicMock()
+    entity.name = "test_circuit"
+    entity.assets = [asset]
+    client.get_entity.return_value = entity
+    client.fetch_file.side_effect = _make_fetch_file_side_effect(TINY_CIRCUIT_DIR)
+    return client
+
+
+class TestGetCircuitAsset:
+    """Tests for _get_circuit_asset."""
+
+    def test_returns_entity_and_asset_id(self, mock_db_client):
+        """Returns circuit entity and asset ID."""
+        entity, asset_id = _get_circuit_asset(mock_db_client, str(uuid4()))
+        assert entity.name == "test_circuit"
+        assert asset_id is not None
+
+    def test_raises_when_no_sonata_asset(self):
+        """Raises ValueError when no sonata_circuit directory asset."""
+        client = MagicMock()
+        entity = MagicMock()
+        entity.assets = []  # no assets
+        client.get_entity.return_value = entity
+
+        with pytest.raises(ValueError, match="must have exactly one sonata_circuit"):
+            _get_circuit_asset(client, str(uuid4()))
+
+    def test_raises_when_asset_id_is_none(self):
+        """Raises ValueError when asset ID is None."""
+        client = MagicMock()
+        asset = MagicMock()
+        asset.is_directory = True
+        asset.label.value = "sonata_circuit"
+        asset.id = None
+        entity = MagicMock()
+        entity.assets = [asset]
+        client.get_entity.return_value = entity
+
+        with pytest.raises(ValueError, match="has no ID"):
+            _get_circuit_asset(client, str(uuid4()))
+
+
+class TestGetModelTemplateForNodes:
+    """Tests for get_model_template_for_nodes using real tiny circuit data."""
+
+    @pytest.mark.skipif(
+        Path("/private/var").exists(),
+        reason="macOS /var -> /private/var symlink breaks relative_to in tempdir",
+    )
+    def test_reads_model_template(self, mock_db_client):
+        """Reads model_template for specific node IDs."""
+        circuit_id = str(uuid4())
+        _, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+
+        result = get_model_template_for_nodes(
+            mock_db_client, circuit_id, "S1nonbarrel_neurons", [0, 1, 2], asset_id
+        )
+
+        assert len(result) == 3
+        assert result[0] == "hoc:cACint_L23MC"
+        assert result[1] == "hoc:cADpyr_L6BPC"
+        assert result[2] == "hoc:cADpyr_L6BPC"
+
+    @pytest.mark.skipif(
+        Path("/private/var").exists(),
+        reason="macOS /var -> /private/var symlink breaks relative_to in tempdir",
+    )
+    def test_raises_when_property_missing(self, mock_db_client):
+        """Raises ValueError for population without model_template."""
+        circuit_id = str(uuid4())
+        _, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+
+        # VPM is a virtual population — likely doesn't have model_template
+        with pytest.raises(ValueError, match=r"model_template.*not found"):
+            get_model_template_for_nodes(mock_db_client, circuit_id, "VPM", [0], asset_id)
+
+
+class TestFetchEmodelDerivationMapping:
+    """Tests for _fetch_emodel_derivation_mapping."""
+
+    def test_builds_label_to_emodel_map(self):
+        """Builds mapping from derivation labels."""
+        client = MagicMock()
+        deriv1 = MagicMock()
+        deriv1.label = "hoc:cADpyr_L5TPC"
+        deriv1.used.id = uuid4()
+        deriv2 = MagicMock()
+        deriv2.label = "hoc:bAC_L6BTC"
+        deriv2.used.id = uuid4()
+        client.search_entity.return_value.all.return_value = [deriv1, deriv2]
+
+        result = _fetch_emodel_derivation_mapping(client, str(uuid4()))
+
+        assert result["hoc:cADpyr_L5TPC"] == str(deriv1.used.id)
+        assert result["hoc:bAC_L6BTC"] == str(deriv2.used.id)
+
+    def test_skips_derivations_without_label(self):
+        """Derivations with no label are skipped."""
+        client = MagicMock()
+        deriv = MagicMock()
+        deriv.label = None
+        client.search_entity.return_value.all.return_value = [deriv]
+
+        result = _fetch_emodel_derivation_mapping(client, str(uuid4()))
+        assert result == {}
+
+    def test_empty_derivations(self):
+        """No derivations returns empty dict."""
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = []
+
+        result = _fetch_emodel_derivation_mapping(client, str(uuid4()))
+        assert result == {}
+
+
+class TestBuildEmodelGroups:
+    """Tests for _build_emodel_groups."""
+
+    def test_groups_nodes_by_emodel(self):
+        """Groups nodes correctly and fetches variables."""
+        client = MagicMock()
+        emodel_id = str(uuid4())
+        node_id_to_emodel = {0: emodel_id, 1: emodel_id, 2: emodel_id}
+        label_to_emodel_id = {"hoc:cADpyr_L5TPC": emodel_id}
+
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_mechanism_variables_for_emodel"
+        ) as mock_get_vars:
+            mock_get_vars.return_value = (
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            )
+
+            result = _build_emodel_groups(client, node_id_to_emodel, label_to_emodel_id)
+
+        assert emodel_id in result
+        assert result[emodel_id]["node_ids"] == [0, 1, 2]
+        assert result[emodel_id]["model_template"] == "hoc:cADpyr_L5TPC"
+        assert "mechanism_variables_by_ion_channel" in result[emodel_id]
+
+    def test_handles_fetch_failure(self):
+        """Groups with failed variable fetch get empty mechanism_variables."""
+        client = MagicMock()
+        emodel_id = str(uuid4())
+        node_id_to_emodel = {0: emodel_id}
+        label_to_emodel_id = {"hoc:cADpyr_L5TPC": emodel_id}
+
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_mechanism_variables_for_emodel",
+            side_effect=Exception("fetch failed"),
+        ):
+            result = _build_emodel_groups(client, node_id_to_emodel, label_to_emodel_id)
+
+        assert result[emodel_id]["mechanism_variables_by_ion_channel"] == {}
+
+
+class TestGetCircuitManipulationPropertiesIntegration:
+    """Integration test for get_circuit_manipulation_properties with mocked I/O."""
+
+    def test_full_flow_with_node_ids(self, mock_db_client):
+        """Full flow: node_ids → model_template → derivations → intersection."""
+        circuit_id = str(uuid4())
+        emodel_id_1 = str(uuid4())
+        emodel_id_2 = str(uuid4())
+
+        # Mock derivation search
+        deriv1 = MagicMock()
+        deriv1.label = "hoc:cACint_L23MC"
+        deriv1.used.id = emodel_id_1
+        deriv2 = MagicMock()
+        deriv2.label = "hoc:cADpyr_L6BPC"
+        deriv2.used.id = emodel_id_2
+        mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
+
+        # Mock get_model_template_for_nodes to avoid macOS path issues
+        mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC", 2: "hoc:cADpyr_L6BPC"}
+
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                ".get_model_template_for_nodes",
+                return_value=mock_templates,
+            ),
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                ".get_mechanism_variables_for_emodel"
+            ) as mock_get_vars,
+        ):
+            # Both emodels share NaTg channel
+            mock_get_vars.return_value = (
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            )
+
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                node_ids=[0, 1, 2],
+                population="S1nonbarrel_neurons",
+            )
+
+        assert result["entity_type"] == "circuit"
+        assert result["population"] == "S1nonbarrel_neurons"
+        assert "mechanism_variables_by_ion_channel" in result
+        # Both emodels have NaTg, so intersection should contain it
+        assert "NaTg" in result["mechanism_variables_by_ion_channel"]
+        assert result["warnings"] is None
+
+    def test_unmatched_templates_produce_warnings(self, mock_db_client):
+        """Unmatched model_template values appear in warnings."""
+        circuit_id = str(uuid4())
+
+        # No derivations at all
+        mock_db_client.search_entity.return_value.all.return_value = []
+
+        mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC"}
+
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_model_template_for_nodes",
+            return_value=mock_templates,
+        ):
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                node_ids=[0, 1],
+                population="S1nonbarrel_neurons",
+            )
+
+        assert result["entity_type"] == "circuit"
+        assert result["mechanism_variables_by_ion_channel"] == {}
+        assert result["warnings"] is not None
+        assert any("No derivation found" in w for w in result["warnings"])
+
+    def test_empty_intersection_produces_warning(self, mock_db_client):
+        """When emodels have no common channels, a warning is produced."""
+        circuit_id = str(uuid4())
+        emodel_id_1 = str(uuid4())
+        emodel_id_2 = str(uuid4())
+
+        deriv1 = MagicMock()
+        deriv1.label = "hoc:cACint_L23MC"
+        deriv1.used.id = emodel_id_1
+        deriv2 = MagicMock()
+        deriv2.label = "hoc:cADpyr_L6BPC"
+        deriv2.used.id = emodel_id_2
+        mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
+
+        mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC"}
+
+        call_count = [0]
+
+        def _mock_get_vars(_db_client, _emodel_id):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return (
+                    [
+                        MechanismVariable(
+                            neuron_variable="gNaTgbar_NaTg",
+                            section_list="somatic",
+                            value=0.04,
+                            units="S/cm2",
+                            limits=[0.0, 1.0],
+                            variable_type="RANGE",
+                            channel_name="NaTg",
+                        )
+                    ],
+                    NATG_CHANNEL_MAPPING,
+                )
+            return (
+                [
+                    MechanismVariable(
+                        neuron_variable="gSK_E2bar_SK_E2",
+                        section_list="somatic",
+                        value=0.01,
+                        units="S/cm2",
+                        limits=[0.0, 0.5],
+                        variable_type="RANGE",
+                        channel_name="SK_E2",
+                    )
+                ],
+                SK_E2_CHANNEL_MAPPING,
+            )
+
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                ".get_model_template_for_nodes",
+                return_value=mock_templates,
+            ),
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                ".get_mechanism_variables_for_emodel",
+                side_effect=_mock_get_vars,
+            ),
+        ):
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                node_ids=[0, 1],
+                population="S1nonbarrel_neurons",
+            )
+
+        assert result["mechanism_variables_by_ion_channel"] == {}
+        assert result["warnings"] is not None
+        assert any("No common mechanism variables" in w for w in result["warnings"])
