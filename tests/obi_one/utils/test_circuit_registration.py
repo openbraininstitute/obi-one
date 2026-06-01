@@ -1334,3 +1334,25 @@ def test_generate_overview_image_asset_no_registration_without_client(tmp_path):
 
     mock_add.assert_not_called()
     assert (output_dir / "circuit_visualization.png").exists()
+
+
+# --- authorized_public + license check ---
+
+
+def test_register_circuit_public_without_license():
+    """Test that registering a public circuit without a license raises."""
+    client = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with pytest.raises(ValueError, match="license is required"):
+        register_circuit(
+            client=client,
+            circuit_path="/nonexistent/path",
+            name="test",
+            description="test",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            authorized_public=True,
+            license=None,
+        )

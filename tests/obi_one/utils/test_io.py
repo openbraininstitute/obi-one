@@ -113,3 +113,25 @@ def test_extract_tar_gz_existing_example_data():
     with tempfile.TemporaryDirectory() as tmpdir:
         result = test_module.extract_tar_gz(archive_path, output_dir=Path(tmpdir) / "extracted")
         assert (result / "circuit" / "circuit_config.json").exists()
+
+
+def test_extract_tar_gz_clean_existing_dir(tmp_path):
+    """Test that clean=True removes existing output dir before extraction."""
+    src_dir = tmp_path / "source"
+    src_dir.mkdir()
+    (src_dir / "file.txt").write_text("new content")
+
+    archive_path = tmp_path / "archive.tar.gz"
+    with tarfile.open(archive_path, "w:gz") as tar:
+        tar.add(src_dir, arcname="data")
+
+    # Create a pre-existing output dir with stale content
+    output_dir = tmp_path / "archive"
+    output_dir.mkdir()
+    (output_dir / "stale.txt").write_text("old")
+
+    result = test_module.extract_tar_gz(archive_path, clean=True)
+
+    assert result == output_dir
+    assert (output_dir / "data" / "file.txt").read_text() == "new content"
+    assert not (output_dir / "stale.txt").exists()
