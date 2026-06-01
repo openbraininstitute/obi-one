@@ -73,7 +73,7 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
 
     if circuit_path.suffix == ".gz":
         circuit_path_compressed = circuit_path
-        circuit_path = extract_tar_gz(circuit_path)
+        circuit_path = extract_tar_gz(circuit_path, clean=True)
         L.info(f"Extracted compressed circuit '{circuit_path_compressed}' to '{circuit_path}'")
 
     if circuit_path.is_dir():
