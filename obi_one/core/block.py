@@ -1,3 +1,4 @@
+import logging
 from typing import TYPE_CHECKING
 
 from pydantic import PrivateAttr
@@ -11,6 +12,8 @@ if TYPE_CHECKING:
     from obi_one.core.block_reference import BlockReference
 
 
+L = logging.getLogger(__name__)
+
 class Block(OBIBaseModel, extra="forbid"):
     """Defines a component of a ScanConfig.
 
@@ -22,6 +25,26 @@ class Block(OBIBaseModel, extra="forbid"):
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
     _ref = None
     _block_name = None
+
+    @staticmethod
+    def order_schema_properties(schema: dict) -> None:
+        properties = schema.get("properties")
+        if not properties:
+            return
+
+        def priority(prop_schema: dict) -> float:
+            return prop_schema.get("order_priority", 0) or 0
+
+        schema["properties"] = dict(
+            sorted(properties.items(), key=lambda item: -priority(item[1]))
+        )
+    
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        json_schema = handler(core_schema)
+        json_schema = handler.resolve_ref_schema(json_schema)
+        cls.order_schema_properties(json_schema)  # mutates in place
+        return json_schema
 
     @property
     def block_name(self) -> str:
