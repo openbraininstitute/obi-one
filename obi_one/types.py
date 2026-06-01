@@ -12,8 +12,9 @@ class SimulationBackend(StrEnum):
 
 
 class TaskType(StrEnum):
-    """Task types supported for job submission."""
+    """Task type identifiers."""
 
+    # Task types supported for job submission (via the launch-system)
     circuit_extraction = auto()
     circuit_simulation = auto()
     circuit_simulation_inait_machine = auto()
@@ -24,3 +25,20 @@ class TaskType(StrEnum):
     ion_channel_model_simulation_execution = auto()
     em_synapse_mapping = auto()
     extracellular_recording_weights_calculation = auto()
+
+    # Task types supported for local-only execution (via scan generation / direct dispatch)
+    basic_connectivity_plots = auto()
+    brian2_circuit_simulation = auto()
+    connectivity_matrix_extraction = auto()
+    contribute_morphology = auto()
+    create_extracellular_recording_array = auto()
+    electrophysiology_metrics = auto()
+    folder_compression = auto()
+    ion_channel_fitting = auto()
+    ion_channel_model_simulation = auto()
+    me_model_simulation = auto()
+    me_model_with_synapses_circuit_simulation = auto()
+    morphology_containerization = auto()
+    morphology_decontainerization = auto()
+    morphology_locations = auto()
+    morphology_metrics = auto()
