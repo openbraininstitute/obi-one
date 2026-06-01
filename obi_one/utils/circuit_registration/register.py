@@ -91,7 +91,7 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
     return circuit_path, circuit_path_compressed
 
 
-def register_circuit(  # noqa: PLR0913, PLR0914
+def register_circuit(  # noqa: PLR0913, PLR0914, C901
     client: Client,
     circuit_path: str | Path,
     *,
@@ -161,6 +161,11 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     Returns:
         The registered circuit entity, or None if dry_run is True.
     """
+    # Validate that a license is provided for public circuits
+    if authorized_public and license is None:
+        msg = "A license is required when registering a public circuit (authorized_public=True)."
+        raise ValueError(msg)
+
     # Validate species consistency
     if (
         brain_region.species is not None
