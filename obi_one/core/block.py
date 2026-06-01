@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 L = logging.getLogger(__name__)
 
+
 class Block(OBIBaseModel, extra="forbid"):
     """Defines a component of a ScanConfig.
 
@@ -35,10 +36,8 @@ class Block(OBIBaseModel, extra="forbid"):
         def priority(prop_schema: dict) -> float:
             return prop_schema.get("order_priority", 0) or 0
 
-        schema["properties"] = dict(
-            sorted(properties.items(), key=lambda item: -priority(item[1]))
-        )
-    
+        schema["properties"] = dict(sorted(properties.items(), key=lambda item: -priority(item[1])))
+
     @classmethod
     def __get_pydantic_json_schema__(cls, core_schema, handler):
         json_schema = handler(core_schema)

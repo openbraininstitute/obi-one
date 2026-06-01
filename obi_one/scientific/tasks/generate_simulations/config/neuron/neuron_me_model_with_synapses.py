@@ -35,18 +35,6 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
-        default_factory=dict,
-        description="Neuron sets for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
     class Initialize(CircuitSimulationScanConfig.Initialize):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
@@ -63,6 +51,18 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
+        default_factory=dict,
+        description="Neuron sets for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
