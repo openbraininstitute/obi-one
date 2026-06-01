@@ -252,7 +252,8 @@ def _create_synapses(circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup) -
     return syn
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
+def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
+    """Returns the path to the spikes file, None if there were no spikes."""
     simulation = bluepysnap.Simulation(simulation_config_path)
     circuit = simulation.circuit
 
@@ -275,9 +276,12 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    node_ids, timestamps = zip(
-        *[(k, float(v)) for k, vs in spike_monitor.spike_trains().items() for v in vs], strict=True
-    )
+    spikes = [(k, float(v)) for k, vs in spike_monitor.spike_trains().items() for v in vs]
+    if not spikes:
+        L.info("No neurons spiked in the simulation")
+        return None
+
+    node_ids, timestamps = zip(*spikes, strict=True)
     L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
     spikes_path = _write_spikes(
         filepath=output_dir / simulation.output.spikes_file,
@@ -399,15 +403,16 @@ def sonata_main(
             simulation_id=simulation_id,
         )
     )
-    L.info("Uploading assets for simulation")
-    assert simulation_result.id
-    client.upload_file(
-        entity_id=simulation_result.id,
-        entity_type=models.SimulationResult,
-        file_path=spikes_report_filepath,
-        file_content_type=ContentType.application_x_hdf5,
-        asset_label=AssetLabel.spike_report,
-    )
+    if spikes_report_filepath:
+        L.info("Uploading assets for simulation")
+        assert simulation_result.id
+        client.upload_file(
+            entity_id=simulation_result.id,
+            entity_type=models.SimulationResult,
+            file_path=spikes_report_filepath,
+            file_content_type=ContentType.application_x_hdf5,
+            asset_label=AssetLabel.spike_report,
+        )
 
     L.info("Updating simulation execution")
     client.update_entity(
