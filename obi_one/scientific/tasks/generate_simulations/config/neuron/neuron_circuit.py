@@ -4,14 +4,14 @@ from typing import ClassVar
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.generate_simulations.config.base.base import (
+from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.tasks.generate_simulations.config.base.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitBaseSimulationScanConfig,
     CircuitDiscriminator,
 )

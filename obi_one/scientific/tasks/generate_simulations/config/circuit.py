@@ -8,7 +8,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
 )
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.tasks.generate_simulations.config.base.base import (
+from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
     BlockGroup,
 )

@@ -11,7 +11,7 @@ from obi_one.scientific.library.constants import (
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
     _SIMULATION_TIMESTEP_MILLISECONDS,
 )
-from obi_one.scientific.tasks.generate_simulations.config.base.base import (
+from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
     BlockGroup,
 )
@@ -19,6 +19,7 @@ from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
     RecordingUnion,
 )
+
 
 class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for neuron-based simulation scan configurations."""
