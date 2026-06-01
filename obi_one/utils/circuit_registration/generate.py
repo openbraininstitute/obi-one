@@ -182,7 +182,7 @@ def generate_sim_designer_image_asset(
         )
 
 
-def generate_additional_circuit_assets(  # noqa: C901
+def generate_additional_circuit_assets(
     circuit_path: Path,
     circuit_path_compressed: Path | None = None,
     edge_population: str | None = None,
