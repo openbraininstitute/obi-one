@@ -177,19 +177,6 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
         },
     )
 
-    timestamps: dict[str, TimestampsUnion] = Field(
-        default_factory=dict,
-        title="Timestamps",
-        description="Timestamps for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-            SchemaKey.SINGULAR_NAME: "Timestamps",
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
-        },
-    )
-
     @property
     def circuit(self) -> CircuitFromIonChannelModels:
         return CircuitFromIonChannelModels(self.ion_channel_models)
