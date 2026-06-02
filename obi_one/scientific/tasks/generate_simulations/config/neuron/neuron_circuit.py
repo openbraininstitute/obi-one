@@ -67,7 +67,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             description="Circuit to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-                "order_priority": 100,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
 
@@ -78,7 +78,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-                "order_priority": 99,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
             },
         )
 

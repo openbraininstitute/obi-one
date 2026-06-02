@@ -9,6 +9,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.param import MultiValueScanParam
 from obi_one.core.parametric_multi_values import ParametericMultiValue
+from obi_one.utils.pydantic import order_schema_properties
 
 if TYPE_CHECKING:
     from obi_one.core.block_reference import BlockReference
@@ -29,17 +30,6 @@ class Block(OBIBaseModel, extra="forbid"):
     _ref = None
     _block_name = None
 
-    @staticmethod
-    def order_schema_properties(schema: dict) -> None:
-        properties = schema.get("properties")
-        if not properties:
-            return
-
-        def priority(prop_schema: dict) -> float:
-            return prop_schema.get("order_priority", 0) or 0
-
-        schema["properties"] = dict(sorted(properties.items(), key=lambda item: -priority(item[1])))
-
     @classmethod
     def __get_pydantic_json_schema__(  # noqa: PLW3201
         cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
@@ -47,7 +37,7 @@ class Block(OBIBaseModel, extra="forbid"):
         """Order the schema properties by priority when generating the JSON schema."""
         json_schema = handler(core_schema)
         json_schema = handler.resolve_ref_schema(json_schema)
-        cls.order_schema_properties(json_schema)  # mutates in place
+        order_schema_properties(json_schema)  # mutates in place
         return json_schema
 
     @property

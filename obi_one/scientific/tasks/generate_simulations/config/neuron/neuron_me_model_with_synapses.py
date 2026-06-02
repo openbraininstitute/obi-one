@@ -43,7 +43,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(NeuronSimulationScanConfig)
             description="MEModel with synapses to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-                "order_priority": 100,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
 
