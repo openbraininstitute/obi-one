@@ -4,7 +4,10 @@ import json
 import shutil
 
 import pytest
+from pathlib import Path
 from PIL import Image
+from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
@@ -12,6 +15,7 @@ from obi_one.utils.circuit import (
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
+    get_mechanisms_suffixes,
     run_basic_connectivity_plots,
     run_circuit_folder_compression,
     run_connectivity_matrix_extraction,
@@ -22,6 +26,8 @@ from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
 EDGE_POPULATION = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical"
+DATA_FOLDER_PATH = Path(__file__).parent.parent.parent / "test_data"
+IC_MOD_FILE_PATH = DATA_FOLDER_PATH / "TC_iT_Des98.mod"
 
 
 def _copy_circuit(tmp_path, circuit_name=CIRCUIT_NAME):
@@ -304,3 +310,20 @@ def test_run_connectivity_matrix_extraction_custom_edge_population(tmp_path):
             output_root=tmp_path,
             edge_population="nonexistent_population",
         )
+
+
+@pytest.fixture
+def db_client():
+    return MagicMock()
+
+
+@patch("obi_one.utils.circuit.download_mechanisms")
+def test_get_mechanisms_suffixes(mock_download_mechanisms, db_client):
+    """Test that mechanism suffixes are correctly extracted from downloaded mechanisms.
+    
+    Most function is patched, but that is ok since download_mechanisms is tested elsewhere.
+    """
+    mock_download_mechanisms.return_value = [IC_MOD_FILE_PATH]
+    circuit_id = UUID("12345678-1234-5678-1234-567812345678")
+    suffixes = get_mechanisms_suffixes(circuit_id, db_client)
+    assert suffixes == {"TC_iT_Des98"}

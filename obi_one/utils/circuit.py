@@ -7,10 +7,11 @@ import logging
 import os
 import shutil
 from pathlib import Path
+import tempfile
 from typing import TYPE_CHECKING
+import uuid
 
 import bluepysnap as snap
-import bluepysnap.circuit_validation
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -18,10 +19,13 @@ import h5py
 import numpy as np
 from bluepysnap import BluepySnapError
 from entitysdk import types
+from entitysdk.client import Client
 
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MAX_SMALL_MICROCIRCUIT_SIZE, _NEURON_PAIR_SIZE
+from obi_one.utils.circuit_customization.download import download_mechanisms
 from obi_one.utils.filesystem import filter_extension
+from obi_one.utils.ion_channel import get_suffix_from_mod_file
 
 L = logging.getLogger(__name__)
 
@@ -609,3 +613,14 @@ def run_basic_connectivity_plots(
             raise OBIONEError(msg)
     L.info(f"Basic connectivity plots generated in {output_dir}: {output_files}")
     return output_dir, output_files
+
+
+def get_mechanisms_suffixes(circuit_id: str|uuid.UUID, db_client: Client) -> set[str]:
+    """Download the mechanisms from the circuit and return the set of suffixes."""
+    suffixes = set()
+    with tempfile.TemporaryDirectory() as tmp:
+        fpaths = download_mechanisms(circuit_id=circuit_id, db_client=db_client, dest_dir=tmp)
+        for fpath in fpaths:
+            suffixes.add(get_suffix_from_mod_file(fpath))
+    
+    return suffixes
