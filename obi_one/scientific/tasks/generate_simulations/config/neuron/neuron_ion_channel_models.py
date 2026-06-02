@@ -131,16 +131,6 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
         },
     )
 
-    info: Info = Field(
-        title="Info",
-        description="Information about the campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
     # contains models and their conductances
     ion_channel_models: dict[str, IonChannelModelUnion] = Field(
         default_factory=dict,
