@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated, ClassVar
 
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import CircuitSimulationScanConfig
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -28,14 +29,14 @@ MEModelWithSynapsesCircuitDiscriminator = Annotated[
 ]
 
 
-class MEModelWithSynapsesCircuitSimulationScanConfig(NeuronSimulationScanConfig):
+class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
     """MEModelWithSynapsesCircuitSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    class Initialize(NeuronSimulationScanConfig.Initialize):
+    class Initialize(CircuitSimulationScanConfig.Initialize):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
         ) = Field(
