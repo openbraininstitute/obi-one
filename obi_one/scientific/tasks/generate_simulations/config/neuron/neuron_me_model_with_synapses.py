@@ -1,7 +1,6 @@
 import logging
 from typing import Annotated, ClassVar
 
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import CircuitSimulationScanConfig
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -13,8 +12,8 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
-    NeuronSimulationScanConfig,
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
