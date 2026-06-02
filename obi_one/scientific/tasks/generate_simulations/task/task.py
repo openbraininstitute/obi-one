@@ -87,7 +87,7 @@ class GenerateSimulationTask(Task):
             self._sonata_config["target_simulator"] = BRIAN2_TARGET_SIMULATOR
 
         self._sonata_config["run"] = {}
-        self._sonata_config["run"]["dt"] = self.config.initialize.timestep
+        self._sonata_config["run"]["dt"] = self.config.initialize.timestep  # ty:ignore[unresolved-attribute]
         self._sonata_config["run"]["random_seed"] = self.config.initialize.random_seed
         self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
 
@@ -169,7 +169,7 @@ class GenerateSimulationTask(Task):
 
     def _add_sonata_simulation_config_inputs(self) -> None:
         self._sonata_config["inputs"] = {}
-        for stimulus in self.config.stimuli.values():
+        for stimulus in self.config.stimuli.values():  # ty:ignore[unresolved-attribute]
             if isinstance(stimulus, SpikeStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
@@ -270,7 +270,7 @@ class GenerateSimulationTask(Task):
                     recording
                 )
 
-            for stimulus in self.config.stimuli.values():
+            for stimulus in self.config.stimuli.values():  # ty:ignore[unresolved-attribute]
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     stimulus
                 )

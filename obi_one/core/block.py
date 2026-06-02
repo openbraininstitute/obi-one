@@ -1,7 +1,9 @@
 import logging
 from typing import TYPE_CHECKING
 
-from pydantic import PrivateAttr
+from pydantic import GetJsonSchemaHandler, PrivateAttr
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
@@ -39,7 +41,10 @@ class Block(OBIBaseModel, extra="forbid"):
         schema["properties"] = dict(sorted(properties.items(), key=lambda item: -priority(item[1])))
 
     @classmethod
-    def __get_pydantic_json_schema__(cls, core_schema, handler):
+    def __get_pydantic_json_schema__(  # noqa: PLW3201
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        """Order the schema properties by priority when generating the JSON schema."""
         json_schema = handler(core_schema)
         json_schema = handler.resolve_ref_schema(json_schema)
         cls.order_schema_properties(json_schema)  # mutates in place

@@ -12,8 +12,8 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitSimulationScanConfig,
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
@@ -28,20 +28,23 @@ MEModelWithSynapsesCircuitDiscriminator = Annotated[
 ]
 
 
-class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
+class MEModelWithSynapsesCircuitSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelWithSynapsesCircuitSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    class Initialize(CircuitSimulationScanConfig.Initialize):
+    class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
         ) = Field(
             title="MEModel With Synapses",
             description="MEModel with synapses to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+                "order_priority": 100,
+            },
         )
 
     initialize: Initialize = Field(

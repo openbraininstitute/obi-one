@@ -1,18 +1,17 @@
 import logging
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
+    CircuitFromID,
     SimulationSingleConfigMixin,
-)
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
-    CircuitDiscriminator,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
@@ -35,13 +34,9 @@ from obi_one.scientific.unions.unions_stimuli import (
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
-__all__ = [
-    "CircuitDiscriminator",
-    "CircuitSimulationScanConfig",
-    "CircuitSimulationSingleConfig",
-]
-
 L = logging.getLogger(__name__)
+
+CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
 class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
@@ -70,7 +65,10 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+                "order_priority": 100,
+            },
         )
 
         node_set: NeuronSetReference | None = Field(
@@ -80,6 +78,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+                "order_priority": 99,
             },
         )
 

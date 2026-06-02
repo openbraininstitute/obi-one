@@ -18,11 +18,9 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
+    BaseSimulationScanConfig,
     BlockGroup,
     SimulationSingleConfigMixin,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
-    NeuronSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_ion_channel_model import (
     IonChannelModelReference,
@@ -44,7 +42,7 @@ from obi_one.scientific.unions.unions_timestamps import (
 L = logging.getLogger(__name__)
 
 
-class IonChannelModelSimulationScanConfig(NeuronSimulationScanConfig):
+class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     """Form for simulating ion channel model(s)."""
 
     single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
@@ -66,7 +64,7 @@ class IonChannelModelSimulationScanConfig(NeuronSimulationScanConfig):
         },
     }
 
-    class Initialize(NeuronSimulationScanConfig.Initialize):
+    class Initialize(BaseSimulationScanConfig.Initialize):
         simulation_length: (
             Annotated[
                 NonNegativeFloat,

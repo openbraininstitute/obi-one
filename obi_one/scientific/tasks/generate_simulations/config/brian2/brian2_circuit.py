@@ -70,7 +70,10 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
         circuit: Brian2CircuitDiscriminator | list[Brian2CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+                "order_priority": 100,
+            },
         )
         node_set: NeuronSetReference | None = Field(
             default=None,
@@ -79,6 +82,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+                "order_priority": 99,
             },
         )
 

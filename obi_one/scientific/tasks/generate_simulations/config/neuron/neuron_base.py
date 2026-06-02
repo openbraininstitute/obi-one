@@ -66,7 +66,6 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
                 SchemaKey.UNITS: Units.MILLISECONDS,
-                "order_priority": 0,
             },
         )
         extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
