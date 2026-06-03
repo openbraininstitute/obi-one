@@ -46,7 +46,7 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
 
     single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
-    description: ClassVar[str] = "Ion Channal Model SONATA simulation campaign"
+    description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
