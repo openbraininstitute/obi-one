@@ -67,7 +67,11 @@ class Circuit(OBIBaseModel):
 
     @staticmethod
     def get_node_population_names(
-        c: snap.Circuit, *, incl_virtual: bool = True, incl_point: bool = True
+        c: snap.Circuit,
+        *,
+        incl_virtual: bool = True,
+        incl_point: bool = True,
+        incl_biophysical: bool = True,
     ) -> list:
         """Returns node population names."""
         popul_names = c.nodes.population_names
@@ -76,6 +80,8 @@ class Circuit(OBIBaseModel):
         if not incl_point:
             # Exclude "point_neuron", "point_process", etc. types
             popul_names = [pop for pop in popul_names if "point_" not in c.nodes[pop].type]
+        if not incl_biophysical:
+            popul_names = [pop for pop in popul_names if c.nodes[pop].type != "biophysical"]
         return popul_names
 
     @staticmethod
@@ -99,7 +105,11 @@ class Circuit(OBIBaseModel):
 
     @staticmethod
     def get_edge_population_names(
-        c: snap.Circuit, *, incl_virtual: bool = True, incl_point: bool = True
+        c: snap.Circuit,
+        *,
+        incl_virtual: bool = True,
+        incl_point: bool = True,
+        incl_biophysical: bool = True,
     ) -> list:
         """Returns edge population names."""
         popul_names = c.edges.population_names
@@ -112,6 +122,14 @@ class Circuit(OBIBaseModel):
                 for pop in popul_names
                 if "point_" not in c.edges[pop].source.type
                 and "point_" not in c.edges[pop].target.type
+            ]
+        if not incl_biophysical:
+            # Exclude biophysical source/target types
+            popul_names = [
+                pop
+                for pop in popul_names
+                if c.edges[pop].source.type != "biophysical"
+                and c.edges[pop].target.type != "biophysical"
             ]
         return popul_names
 

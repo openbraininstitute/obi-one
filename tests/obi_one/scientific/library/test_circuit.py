@@ -136,13 +136,14 @@ def test_get_node_population_names_filters(fake_snap_circuit):
     assert "virt" in fake_snap_circuit.Circuit.get_node_population_names(c)
     assert "virt" not in fake_snap_circuit.Circuit.get_node_population_names(c, incl_virtual=False)
     assert "point" not in fake_snap_circuit.Circuit.get_node_population_names(c, incl_point=False)
+    assert "bio" not in fake_snap_circuit.Circuit.get_node_population_names(c, incl_biophysical=False)
 
 
 def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_population_name(c) == "bio"
 
-    def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # noqa: ARG001
         if not incl_point:
             return []
         return []
@@ -154,7 +155,7 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
     )
     assert fake_snap_circuit.Circuit._default_population_name(c) is None
 
-    def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # noqa: ARG001
         return ["a", "b"]
 
     monkeypatch.setattr(
@@ -173,6 +174,7 @@ def test_get_edge_population_names_filters(fake_snap_circuit):
         c, incl_virtual=False
     )
     assert "e_point" not in fake_snap_circuit.Circuit.get_edge_population_names(c, incl_point=False)
+    assert "e_bio" not in fake_snap_circuit.Circuit.get_edge_population_names(c, incl_biophysical=False)
 
 
 def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
