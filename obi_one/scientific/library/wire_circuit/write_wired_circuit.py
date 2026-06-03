@@ -79,6 +79,6 @@ def write_wired_circuit(
         }
     }
     cfg["networks"]["edges"].append(edges_dict)
-    with open(circuit_root / "config.json", "w") as fid:
-        json.dump(cfg, fid, indend=2)
+    with open(circuit_root / "circuit_config.json", "w") as fid:
+        json.dump(cfg, fid, indent=2)
 
