@@ -1,15 +1,14 @@
 import abc
 import logging
-from enum import StrEnum
 from typing import Annotated, ClassVar
 
 import bluepysnap as snap
 import numpy as np
-from pydantic import Field, NonNegativeFloat, model_validator
+from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
@@ -22,35 +21,15 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 
 L = logging.getLogger(__name__)
 
-
-"""PopulationNeuronSet(NeuronSet) [NEW]
-- node_population
-- sample_percentage
-- sample_seed
-- _population_type
-
-- Allows a user to select a whole node population, i.e., restricted to a single node population
-- Supports sub-sampling
-- Is aware of the population type (i.e., biophysical, point, virtual)
-- Can be used for either biophysical, point, or virtual populations
-- Replaces: AllNeurons, nbS1VPMInputs, nbS1POmInputs, rCA1CA3Inputs, etc.
-"""
-
-
-class SonataPopulationType(StrEnum):
-    BIOPHYSICAL = "biophysical"
-    POINT = "point"
-    VIRTUAL = "virtual"
-
-
 _MAX_PERCENT = 100.0
 
 
-class PopulationNeuronSet(NeuronSet, abc.ABC):
-    """Abstract base class for neuron sets defined by node population and optional sub-sampling."""
+class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
+    """Abstract base class for neuron sets defined by a node population \
+        and optional sub-sampling.
+    """
 
-    population: None = None
-    _population_type: SonataPopulationType | None = None
+    population: str
 
     sample_percentage: (
         Annotated[NonNegativeFloat, Field(le=100)]
@@ -74,27 +53,13 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
         },
     )
 
-    @model_validator(mode="after")
-    def check_population_exists_in_circuit(self, circuit: Circuit) -> None:
-        """Check self.population exists in circuit."""
-        if self.population is None:
-            msg = "Sub-class of PopulationNeuronSet must specify a node population name!"
-            raise ValueError(msg)
-        if self.population not in (
-            populations := Circuit.get_node_population_names(circuit.sonata_circuit)
-        ):
-            msg = (
-                f"Node population '{self.population}' not found in circuit '{circuit.name}'. "
-                f"Available node populations: {', '.join(populations)}"
-            )
-            raise ValueError(msg)
+    def get_populations(self) -> list[str]:
+        """Returns population names included in the neuron set."""
+        return [self.population]
 
-    def population_type(self, circuit: Circuit) -> SonataPopulationType:
-        """Returns the population type (i.e. biophysical, point, virtual)."""
-        return circuit.sonata_circuit.nodes[self.population].type
-
-    def _get_expression(self, circuit: Circuit) -> dict:  # noqa: ARG002
+    def _get_expression(self, circuit: Circuit) -> dict:
         """Returns the SONATA node set expression (w/o subsampling)."""
+        self.check_populations_in_circuit(circuit=circuit)
         return {"population": self.population}
 
     def _resolve_ids(self, circuit: Circuit) -> list[int]:
@@ -112,8 +77,8 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
 
         return node_ids
 
-    def get_neuron_ids(self, circuit: Circuit) -> np.ndarray:
-        """Returns list of neuron IDs (with subsampling, if specified)."""
+    def get_neuron_ids(self, circuit: Circuit) -> dict[str, np.ndarray]:
+        """Returns list of neuron IDs per population (with subsampling, if specified)."""
         ids = np.array(self._resolve_ids(circuit))
 
         if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:
@@ -124,11 +89,15 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
         if len(ids) == 0:
             L.warning("Neuron set empty!")
 
-        return ids
+        return {self.population: ids}
 
-    def get_node_set_definition(self, circuit: Circuit, *, force_resolve_ids: bool = False) -> dict:
-        """Returns the SONATA node set definition, optionally forcing to resolve individual \
-            IDs.
+    def get_node_set_definition(
+        self, circuit: Circuit, *, force_resolve_ids: bool = False
+    ) -> tuple[dict | list, dict]:
+        """Returns the SONATA node set definition, optionally forcing to resolve individual IDs.
+
+        In case of a compound expression (list expression), any new definitions
+        to be combined are returned as dict.
         """
         if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved
@@ -137,18 +106,49 @@ class PopulationNeuronSet(NeuronSet, abc.ABC):
             # Individual IDs need to be resolved
             expression = {
                 "population": self.population,
-                "node_id": self.get_neuron_ids(circuit).tolist(),
+                "node_id": self.get_neuron_ids(circuit)[self.population].tolist(),
             }
 
-        return expression
+        return (expression, {})
 
 
-class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
-    """Sample a percentage of neurons in a biophysical population."""
+class PopulationNeuronSet(PopulationBaseNeuronSet):
+    """Sample a percentage of neurons from any population."""
 
-    title: ClassVar[str] = "Sample % (Biophysical)"
+    title: ClassVar[str] = "Population Sample % (Any)"
+    description: ClassVar[str] = "Sample a percentage of neurons from a population of any type."
 
-    _population_type: ClassVar[SonataPopulationType] = SonataPopulationType.BIOPHYSICAL
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no populations.",
+        },
+    }
+
+    population: str = Field(
+        min_length=1,
+        title="Population",
+        description="Name of the node population to select from.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.NEURONAL_POPULATION,
+        },
+    )
+
+
+class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet):
+    """Sample a percentage of neurons from a biophysical population."""
+
+    title: ClassVar[str] = "Population Sample % (Biophysical)"
+    description: ClassVar[str] = "Sample a percentage of neurons from a biophysical population."
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
+        NeuronSetPopulationType.BIOPHYSICAL
+    )
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {
@@ -170,13 +170,13 @@ class BiophysicalPopulationNeuronSet(PopulationNeuronSet):
     )
 
 
-class PointPopulationNeuronSet(PopulationNeuronSet):
-    """Sample a percentage of neurons in a point neuron population."""
+class PointPopulationNeuronSet(PopulationBaseNeuronSet):
+    """Sample a percentage of neurons from a point neuron population."""
 
-    title: ClassVar[str] = "Sample % (Point)"
-    description: ClassVar[str] = "..."
+    title: ClassVar[str] = "Population Sample % (Point)"
+    description: ClassVar[str] = "Sample a percentage of neurons from a point neuron population."
 
-    _population_type: ClassVar[SonataPopulationType] = SonataPopulationType.POINT
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.POINT
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {
@@ -198,13 +198,13 @@ class PointPopulationNeuronSet(PopulationNeuronSet):
     )
 
 
-class VirtualPopulationNeuronSet(PopulationNeuronSet):
-    """Sample a percentage of neurons in a virtual population."""
+class VirtualPopulationNeuronSet(PopulationBaseNeuronSet):
+    """Sample a percentage of neurons from a virtual population."""
 
-    title: ClassVar[str] = "Sample % (Virtual)"
-    description: ClassVar[str] = "..."
+    title: ClassVar[str] = "Population Sample % (Virtual)"
+    description: ClassVar[str] = "Sample a percentage of neurons from a virtual population."
 
-    _population_type: ClassVar[SonataPopulationType] = SonataPopulationType.VIRTUAL
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {
@@ -222,5 +222,35 @@ class VirtualPopulationNeuronSet(PopulationNeuronSet):
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.VIRTUAL_NEURONAL_POPULATION,
+        },
+    )
+
+
+class NonVirtualPopulationNeuronSet(PopulationBaseNeuronSet):
+    """Sample a percentage of neurons from a non-virtual population."""
+
+    title: ClassVar[str] = "Population Sample % (Non-Virtual)"
+    description: ClassVar[str] = "Sample a percentage of neurons from a non-virtual population."
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
+        NeuronSetPopulationType.NONVIRTUAL
+    )
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no non-virtual populations.",
+        },
+    }
+
+    population: str = Field(
+        min_length=1,
+        title="Population",
+        description="Name of the non-virtual node population to select from.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.NONVIRTUAL_NEURONAL_POPULATION,
         },
     )
