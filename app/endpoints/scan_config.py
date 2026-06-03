@@ -23,6 +23,9 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingS
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -129,6 +132,7 @@ def activate_scan_config_endpoints() -> None:
         (SchemaExampleScanConfig, "generate", "", False),
         (EMSynapseMappingScanConfig, "generate", "", False),
         (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
+        (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
     ]:
         create_endpoint_for_scan_config(
             form,

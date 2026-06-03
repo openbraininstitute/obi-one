@@ -94,6 +94,24 @@ IonChannelModelStimulusUnion = Annotated[
 ]
 
 
+"""Learning Engine-specific stimulus types."""
+
+_LE_ABSOLUTE_INJECTION_STIMULI = (
+    ConstantCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    # | HyperpolarizingCurrentClampSomaticStimulus
+)
+
+_LE_SPIKE_STIMULI = _SPIKE_STIMULI
+
+LearningEngineCircuitStimulusUnion = Annotated[
+    _LE_ABSOLUTE_INJECTION_STIMULI | _LE_SPIKE_STIMULI,
+    Discriminator("type"),
+]
+
+
 class StimulusReference(BlockReference):
     """A reference to a StimulusUnion block."""
 

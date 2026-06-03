@@ -46,6 +46,9 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
@@ -162,6 +165,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.me_model_simulation: (
         GenerateSimulationTask,
         MEModelSimulationSingleConfig,
+        None,
+    ),
+    TaskType.learning_engine_circuit_simulation: (
+        GenerateSimulationTask,
+        LearningEngineCircuitSimulationSingleConfig,
         None,
     ),
     TaskType.me_model_with_synapses_circuit_simulation: (
