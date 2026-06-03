@@ -37,8 +37,7 @@ class Block(OBIBaseModel, extra="forbid"):
         """Order the schema properties by priority when generating the JSON schema."""
         json_schema = handler(core_schema)
         json_schema = handler.resolve_ref_schema(json_schema)
-        order_schema_properties(json_schema)  # mutates in place
-        return json_schema
+        return order_schema_properties(json_schema)
 
     @property
     def block_name(self) -> str:

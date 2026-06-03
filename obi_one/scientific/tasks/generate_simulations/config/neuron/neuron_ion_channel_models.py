@@ -7,9 +7,9 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
-    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    _MIN_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
+    MIN_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
@@ -66,24 +66,22 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
-                Field(
-                    ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS
-                ),
+                Field(ge=MIN_SIMULATION_LENGTH_MILLISECONDS, le=MAX_SIMULATION_LENGTH_MILLISECONDS),
             ]
             | Annotated[
                 list[
                     Annotated[
                         NonNegativeFloat,
                         Field(
-                            ge=_MIN_SIMULATION_LENGTH_MILLISECONDS,
-                            le=_MAX_SIMULATION_LENGTH_MILLISECONDS,
+                            ge=MIN_SIMULATION_LENGTH_MILLISECONDS,
+                            le=MAX_SIMULATION_LENGTH_MILLISECONDS,
                         ),
                     ]
                 ],
                 Field(min_length=1),
             ]
         ) = Field(
-            default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+            default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             json_schema_extra={

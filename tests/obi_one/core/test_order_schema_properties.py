@@ -9,7 +9,7 @@ The ordering is implemented by ``order_schema_properties`` (utils.pydantic)
 and applied to every Block via ``Block.__get_pydantic_json_schema__``.
 """
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey
@@ -91,45 +91,60 @@ class TestBlockSchemaOrdering:
         prop = PriorityBlock.model_json_schema()["properties"]["high"]
         assert prop[PRIORITY] == 100
 
+    def test_nested_block_ordered_in_defs(self):
+        # In real schemas a Block sits behind a $ref (e.g. inside a ScanConfig), so the
+        # ordering must reach the copy that pydantic stores under $defs, not just a
+        # top-level schema. This guards the return-a-copy behaviour for nested blocks.
+        class Parent(BaseModel):
+            block: PriorityBlock
+
+        props = list(Parent.model_json_schema()["$defs"]["PriorityBlock"]["properties"].keys())
+        assert props[:3] == ["high", "mid", "low"]
+        assert props.index("no_priority") > props.index("low")
+
 
 class TestOrderSchemaProperties:
     """The order_schema_properties helper in isolation."""
 
     def test_orders_descending_by_priority(self):
         schema = {"properties": {"a": {PRIORITY: 1}, "b": {PRIORITY: 100}, "c": {PRIORITY: 50}}}
-        order_schema_properties(schema)
-        assert list(schema["properties"].keys()) == ["b", "c", "a"]
+        result = order_schema_properties(schema)
+        assert list(result["properties"].keys()) == ["b", "c", "a"]
 
-    def test_returns_none_and_mutates_in_place(self):
+    def test_returns_copy_without_mutating_input(self):
         schema = {"properties": {"a": {PRIORITY: 1}, "b": {PRIORITY: 9}}}
         result = order_schema_properties(schema)
-        assert result is None
-        assert list(schema["properties"].keys()) == ["b", "a"]
+        assert result is not schema
+        # The returned copy is reordered; the input keeps its original order.
+        assert list(result["properties"].keys()) == ["b", "a"]
+        assert list(schema["properties"].keys()) == ["a", "b"]
 
-    def test_missing_properties_key_is_noop(self):
+    def test_missing_properties_key_returns_copy(self):
         schema = {"type": "object"}
-        order_schema_properties(schema)  # must not raise
-        assert schema == {"type": "object"}
+        result = order_schema_properties(schema)  # must not raise
+        assert result == {"type": "object"}
+        assert result is not schema
 
-    def test_empty_properties_is_noop(self):
+    def test_empty_properties_returns_copy(self):
         schema = {"properties": {}}
-        order_schema_properties(schema)
-        assert schema == {"properties": {}}
+        result = order_schema_properties(schema)
+        assert result == {"properties": {}}
+        assert result is not schema
 
     def test_property_without_priority_defaults_to_zero(self):
         schema = {"properties": {"no_key": {}, "high": {PRIORITY: 10}}}
-        order_schema_properties(schema)
-        assert list(schema["properties"].keys()) == ["high", "no_key"]
+        result = order_schema_properties(schema)
+        assert list(result["properties"].keys()) == ["high", "no_key"]
 
     def test_equal_priority_is_stable(self):
         schema = {"properties": {"a": {PRIORITY: 5}, "b": {PRIORITY: 5}, "c": {PRIORITY: 9}}}
-        order_schema_properties(schema)
-        assert list(schema["properties"].keys()) == ["c", "a", "b"]
+        result = order_schema_properties(schema)
+        assert list(result["properties"].keys()) == ["c", "a", "b"]
 
     def test_negative_priority_sorts_last(self):
         schema = {"properties": {"neg": {PRIORITY: -5}, "zero": {}, "pos": {PRIORITY: 5}}}
-        order_schema_properties(schema)
-        assert list(schema["properties"].keys()) == ["pos", "zero", "neg"]
+        result = order_schema_properties(schema)
+        assert list(result["properties"].keys()) == ["pos", "zero", "neg"]
 
     def test_falsy_priority_treated_as_default(self):
         # `value or 0` means a falsy priority (explicit 0 or None) collapses to 0.
@@ -140,7 +155,7 @@ class TestOrderSchemaProperties:
                 "positive": {PRIORITY: 3},
             }
         }
-        order_schema_properties(schema)
-        props = list(schema["properties"].keys())
+        result = order_schema_properties(schema)
+        props = list(result["properties"].keys())
         assert props[0] == "positive"
         assert props.index("explicit_zero") < props.index("none_priority")
