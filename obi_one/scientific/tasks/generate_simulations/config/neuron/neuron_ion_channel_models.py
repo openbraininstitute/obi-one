@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, ClassVar, Self
 
-from pydantic import Field, NonNegativeFloat, model_validator
+from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
@@ -10,6 +10,7 @@ from obi_one.scientific.library.constants import (
     DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
     MIN_SIMULATION_LENGTH_MILLISECONDS,
+    SIMULATION_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
@@ -63,6 +64,8 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     }
 
     class Initialize(BaseSimulationScanConfig.Initialize):
+        timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
+
         simulation_length: (
             Annotated[
                 NonNegativeFloat,

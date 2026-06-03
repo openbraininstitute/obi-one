@@ -11,16 +11,16 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.serialization_constants import (
+    COORDINATE_CONFIG_FILENAME,
+    SCAN_CONFIG_FILENAME,
+)
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.constants import (
-    COORDINATE_CONFIG_FILENAME,
-    SCAN_CONFIG_FILENAME,
-)
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
