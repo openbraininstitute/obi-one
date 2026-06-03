@@ -232,10 +232,14 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
 class CircuitBySectionListMechanismVariableNeuronalManipulation(
     BySectionListMechanismVariableNeuronalManipulation,
 ):
-    """Circuit variant of Variable Modification by Section List.
+    """Set values for an ion channel variable in each section list where the ion channel exists.
 
-    The neuron_set field is visible so the user can select which neurons
-    the manipulation targets. All logic is inherited from the parent class.
+
+    Example section lists: axonal, apical, basal and somatic.
+
+
+    These correspond to `section lists` in the NEURON simulator nomenclature:
+    https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist.
     """
 
     title: ClassVar[str] = "Variable Modification by Section List"
@@ -254,11 +258,7 @@ class CircuitBySectionListMechanismVariableNeuronalManipulation(
 class CircuitByNeuronMechanismVariableNeuronalManipulation(
     ByNeuronMechanismVariableNeuronalManipulation,
 ):
-    """Circuit variant of Full Neuron Variable Modification.
-
-    The neuron_set field is visible so the user can select which neurons
-    the manipulation targets. All logic is inherited from the parent class.
-    """
+    """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
 
     title: ClassVar[str] = "Full Neuron Variable Modification"
 
