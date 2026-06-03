@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "description": "Reference schema for the circuit neuronal manipulation by section list UI element.",
+  "ui_element": "ion_channel_variable_modification_by_section_list",
+  "title": "Ion channel variable manipulations by section type",
+  "description_ui": "Circuit variant: ion channel RANGE variable modification by section list, with neuron set selection.",
+  "property_group": "NeuronalManipulation",
+  "property": "MechanismVariablesByIonChannel",
+  "neuron_set_field": {
+    "description": "The neuron_set field value is passed to the /neuronal-manipulation-properties endpoint to determine available variables.",
+    "ui_element": "reference",
+    "reference_type": "NeuronSetReference"
+  },
+  "data_model": {
+    "type": "object",
+    "description": "BySectionListModification (same as MEModel variant)",
+    "properties": {
+      "ion_channel_id": {
+        "type": ["string", "null"],
+        "format": "uuid",
+        "description": "Ion channel entity ID, when applicable."
+      },
+      "variable_name": {
+        "type": "string",
+        "description": "RANGE variable selected by the user."
+      },
+      "section_list_modifications": {
+        "type": "object",
+        "description": "Mapping of section list to replacement value.",
+        "additionalProperties": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "array", "items": { "type": "number" } }
+          ]
+        },
+        "examples": [
+          {
+            "somatic": 0.002,
+            "apical": 0.03,
+            "basal": 0.03,
+            "axonal": 0.06
+          }
+        ]
+      }
+    },
+    "required": ["ion_channel_id", "variable_name", "section_list_modifications"]
+  },
+  "sonata_output": {
+    "section_list_example": [
+      {
+        "name": "modify_gSK_E2bar_SK_E2_somatic",
+        "node_set": "Layer5_EXC",
+        "type": "section_list",
+        "section_configure": "somatic.gSK_E2bar_SK_E2 = 0.002"
+      }
+    ]
+  }
+}

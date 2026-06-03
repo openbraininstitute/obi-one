@@ -62,7 +62,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
-            "NeuronalManipulation": "/neuronal-manipulation-properties",
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: "/neuronal-manipulation-properties",
         },
     }
 

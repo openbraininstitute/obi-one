@@ -235,7 +235,7 @@ def mapped_circuit_properties_endpoint(
     summary="Resolve neuron set to node IDs",
     description="Returns the node IDs for a given neuron set selection in a circuit.",
 )
-def circuit_node_ids_endpoint(
+def neuron_set_node_ids(
     circuit_id: str,
     request: NodeIdsRequest,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
