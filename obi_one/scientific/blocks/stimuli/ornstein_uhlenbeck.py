@@ -254,4 +254,3 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
             "represents_physical_electrode": self._represents_physical_electrode,
         }
         return stim_dict
-

@@ -242,6 +242,7 @@ class GenerateSimulationTask(Task):
 
         This is only done if the config has a neuron_sets attribute.
         """
+
         def is_optional_neuronsetreference(attr_value: type) -> bool:
             args = get_args(attr_value)
             return args == (NeuronSetReference, type(None))
