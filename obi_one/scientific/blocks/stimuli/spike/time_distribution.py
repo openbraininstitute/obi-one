@@ -11,8 +11,8 @@ from obi_one.core.units import Units
 from obi_one.scientific.blocks.distributions.uniform import FloatUniformDistribution
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
 
@@ -26,10 +26,10 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
     title: ClassVar[str] = "Spike-Time Distribution Spike Replay (Efferent)"
 
     duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]]
     ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time window in milliseconds from which spike times are sampled.",
         json_schema_extra={
