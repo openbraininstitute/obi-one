@@ -64,6 +64,6 @@ def write_edges(
     adjust_edge_index_groups(grp_root, len(syn_pre_post))
 
     h5.close()
-    n_src = len(syn_pre_post[_STR_PRE_NODE].drop_duplicates())
-    n_tgt = len(syn_pre_post[_STR_POST_NODE].drop_duplicates())
+    n_src = syn_pre_post[_STR_PRE_NODE].max() + 1
+    n_tgt = syn_pre_post[_STR_POST_NODE].max() + 1 
     _write_indexes(str(fn_out), population_name, n_src, n_tgt)
