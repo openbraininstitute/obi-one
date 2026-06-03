@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import numpy as np
 import pytest
 
 from obi_one.scientific.library.emodel_parameters import (
@@ -24,6 +25,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _match_templates_to_emodels,
     _resolve_population_and_node_ids,
     get_circuit_manipulation_properties,
+    get_circuit_node_ids,
     get_model_template_for_nodes,
 )
 
@@ -783,3 +785,100 @@ class TestGetCircuitManipulationPropertiesIntegration:
         assert result["mechanism_variables_by_ion_channel"] == {}
         assert result["warnings"] is not None
         assert any("No common mechanism variables" in w for w in result["warnings"])
+
+
+class TestComputeCommonMechanismVariablesEdgeCases:
+    """Additional edge case tests for _compute_common_mechanism_variables."""
+
+    def test_all_groups_failed_fetch(self):
+        """All groups have empty mechanism_variables → returns empty dict."""
+        groups = {
+            "emodel-1": _make_emodel_group([0], "hoc:cADpyr_L5TPC", {}),
+            "emodel-2": _make_emodel_group([1], "hoc:bAC_L6BTC", {}),
+        }
+
+        result = _compute_common_mechanism_variables(groups)
+        assert result == {}
+
+    def test_common_channel_but_no_common_variables(self):
+        """Same channel in both groups but completely different variables → channel excluded."""
+        groups = {
+            "emodel-1": _make_emodel_group(
+                [0],
+                "hoc:cADpyr_L5TPC",
+                {"NaTg": _make_channel(["somatic"], {"gNaTgbar_NaTg": _make_var()})},
+            ),
+            "emodel-2": _make_emodel_group(
+                [1],
+                "hoc:bAC_L6BTC",
+                {"NaTg": _make_channel(["somatic"], {"vshiftm_NaTg": _make_var()})},
+            ),
+        }
+
+        result = _compute_common_mechanism_variables(groups)
+        # NaTg is a common channel but has no common variables → excluded
+        assert result == {}
+
+
+class TestGetCircuitNodeIds:
+    """Tests for get_circuit_node_ids with mocked neuron set."""
+
+    def test_resolves_neuron_set_to_node_ids(self, mock_db_client):
+        """Resolves a neuron set to node IDs using the circuit."""
+
+        circuit_id = str(uuid4())
+
+        # Mock neuron set that returns specific node IDs
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = np.array([0, 1, 2, 3])
+
+        population, node_ids = get_circuit_node_ids(
+            mock_db_client, circuit_id, neuron_set, population="S1nonbarrel_neurons"
+        )
+
+        assert population == "S1nonbarrel_neurons"
+        assert node_ids == [0, 1, 2, 3]
+        neuron_set.get_neuron_ids.assert_called_once()
+
+    def test_resolves_default_population_when_none(self, mock_db_client):
+        """When population is None, resolves the default from the circuit."""
+
+        circuit_id = str(uuid4())
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = np.array([5, 6])
+
+        population, node_ids = get_circuit_node_ids(
+            mock_db_client, circuit_id, neuron_set, population=None
+        )
+
+        # Default population for the tiny circuit is S1nonbarrel_neurons
+        assert population == "S1nonbarrel_neurons"
+        assert node_ids == [5, 6]
+
+
+class TestResolvePopulationAndNodeIdsNeuronSetBranch:
+    """Test the neuron_set branch of _resolve_population_and_node_ids."""
+
+    def test_neuron_set_branch_calls_get_circuit_node_ids(self, mock_db_client):
+        """When neuron_set is provided and node_ids is None, delegates to get_circuit_node_ids."""
+
+        circuit_id = str(uuid4())
+        _, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+        entity = mock_db_client.get_entity.return_value
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = np.array([0, 1])
+
+        population, node_ids = _resolve_population_and_node_ids(
+            db_client=mock_db_client,
+            circuit_id=circuit_id,
+            circuit_entity=entity,
+            asset_id=asset_id,
+            neuron_set=neuron_set,
+            node_ids=None,
+            population="S1nonbarrel_neurons",
+        )
+
+        assert population == "S1nonbarrel_neurons"
+        assert node_ids == [0, 1]
