@@ -10,7 +10,7 @@ def order_schema_properties(schema: dict) -> dict:
     """
     properties = schema.get("properties")
     if not properties:
-        return schema
+        return dict(schema)
 
     def priority(prop_schema: dict) -> float:
         return prop_schema.get(SchemaKey.PARAMETER_ORDER_PRIORITY, 0) or 0
