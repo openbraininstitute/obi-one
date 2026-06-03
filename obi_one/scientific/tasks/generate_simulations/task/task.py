@@ -255,15 +255,29 @@ class GenerateSimulationTask(Task):
                     if attr_value is None:
                         setattr(block, attr_name, self._default_neuron_set_ref())
 
+    def _ensure_morphology_locations_have_neuron_set_reference(self) -> None:
+        """Ensure morphology locations have a neuron-set target.
+
+        MEModel configs do not expose a neuron_sets dictionary because the staged circuit contains
+        a single real neuron. In that case, use the implicit default AllNeurons target.
+        """
+        if not hasattr(self.config, "morphology_locations"):
+            return
+
+        for locations_block in self.config.morphology_locations.values():
+            if getattr(locations_block, "neuron_set", None) is not None:
+                continue
+
+            if hasattr(self.config, "neuron_sets"):
+                locations_block.neuron_set = self._default_neuron_set_ref()
+            else:
+                locations_block.neuron_set = DEFAULT_NEURON_SET_BLOCK_REFERENCE
+
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
-        if hasattr(self.config, "neuron_sets"):
-            if hasattr(self.config, "morphology_locations"):
-                for locations_block in self.config.morphology_locations.values():
-                    self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
-                        locations_block
-                    )
+        self._ensure_morphology_locations_have_neuron_set_reference()
 
+        if hasattr(self.config, "neuron_sets"):
             for recording in self.config.recordings.values():
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     recording
