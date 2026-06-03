@@ -26,6 +26,8 @@ class CircuitUsability(StrEnum):
     SHOW_BIOPHYSICAL_NEURON_SETS = "ShowBiophysicalNeuronSets"
     SHOW_POINT_NEURON_SETS = "ShowPointNeuronSets"
     SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"
+    SHOW_NONVIRTUAL_NEURON_SETS = "ShowNonVirtualNeuronSets"
+    SHOW_NEURON_SETS = "ShowNeuronSets"
 
 
 class IonChannelPropertyType(StrEnum):

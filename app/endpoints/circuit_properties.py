@@ -1,3 +1,4 @@
+import logging
 from http import HTTPStatus
 from typing import Annotated
 
@@ -23,6 +24,8 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.memodel_circuit import (
     try_get_mechanism_variables,
 )
+
+L = logging.getLogger(__name__)
 
 INPUT_RESISTANCE_DYNAMIC_PARAM = "input_resistance"
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -161,8 +164,11 @@ def mapped_circuit_properties_endpoint(
     except (entitysdk.exception.EntitySDKError, ValueError):
         # Expected for MEModel entities or entities without proper circuit configuration
         # Continue to try mechanism variables
-        L.info(f"Could not retrieve circuit metrics for entity {circuit_id}. This may be expected if the entity is not a Circuit or is missing circuit configuration.")
-        pass
+        L.info(
+            f"Could not retrieve circuit metrics for entity {circuit_id}."
+            " This may be expected if the entity is not a Circuit"
+            " or is missing circuit configuration.",
+        )
 
     # Try fetching mechanism variables (succeeds for MEModel entities).
     mechanism_variables_response = try_get_mechanism_variables(
@@ -198,10 +204,20 @@ def mapped_circuit_properties_endpoint(
                     circuit_metrics.names_of_biophys_node_populations
                 )
                 > 0,
+                # TODO: Use point neuron populations from circuit_metrics
                 CircuitUsability.SHOW_POINT_NEURON_SETS: False,
                 CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: len(
                     circuit_metrics.names_of_virtual_node_populations
                 )
+                > 0,
+                CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS: (
+                    len(circuit_metrics.names_of_biophys_node_populations)
+                )  # TODO: Include point neuron populations
+                > 0,
+                CircuitUsability.SHOW_NEURON_SETS: (
+                    len(circuit_metrics.names_of_biophys_node_populations)
+                    + len(circuit_metrics.names_of_virtual_node_populations)
+                )  # TODO: Include point neuron populations
                 > 0,
             }
             mapped_circuit_properties["usability"] = simulation_options_usability
@@ -213,6 +229,8 @@ def mapped_circuit_properties_endpoint(
                 CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
                 CircuitUsability.SHOW_POINT_NEURON_SETS: False,
                 CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: False,
+                CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS: False,
+                CircuitUsability.SHOW_NEURON_SETS: False,
             }
     else:
         # For MEModel entities, set default usability
