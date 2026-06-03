@@ -13,7 +13,7 @@ from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetRefe
 
 def materialize_locations_to_compartment_sets(
     *,
-    form: Any,
+    single_config: Any,
     circuit: Circuit,
     node_population: str | None,
     population: str,
@@ -22,17 +22,28 @@ def materialize_locations_to_compartment_sets(
     """Convert stimulus.locations into generated CompartmentSet blocks."""
     materialized: dict[str, CompartmentSet] = {}
 
-    if not hasattr(form, "stimuli"):
+    if not hasattr(single_config, "stimuli"):
         return materialized
 
-    for stimulus in form.stimuli.values():
+    for stimulus in single_config.stimuli.values():
         locations_ref = getattr(stimulus, "locations", None)
         if locations_ref is None:
             continue
 
-        neuron_set_ref = getattr(stimulus, "neuron_set", None)
+        locations_block = locations_ref.block
+        if getattr(stimulus, "neuron_set", None) is not None:
+            msg = (
+                f"Stimulus '{stimulus.block_name}' specifies both locations and neuron_set. "
+                "Set neuron_set on the locations block instead."
+            )
+            raise ValueError(msg)
+
+        neuron_set_ref = getattr(locations_block, "neuron_set", None)
         if neuron_set_ref is None:
-            msg = f"Stimulus '{stimulus.block_name}' specifies locations but has no neuron_set."
+            msg = (
+                f"Locations block '{locations_block.block_name}' referenced by stimulus "
+                f"'{stimulus.block_name}' has no neuron_set."
+            )
             raise ValueError(msg)
 
         comp_set_name = f"{stimulus.block_name}__locations"
@@ -42,7 +53,7 @@ def materialize_locations_to_compartment_sets(
             node_population=node_population,
             population=population,
             neuron_set=neuron_set_ref,
-            locations_block=locations_ref.block,
+            locations_block=locations_block,
             morphology_loader=morphology_loader,
         )
         comp_set.set_block_name(comp_set_name)

@@ -11,7 +11,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 
 
-class OrnsteinUhlenbeckCurrentStimulus(ContinuousStimulus):
+class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
     """A current injection based on the Ornstein-Uhlenbeck process."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Absolute)"
@@ -64,7 +64,7 @@ class OrnsteinUhlenbeckCurrentStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class OrnsteinUhlenbeckConductanceStimulus(ContinuousStimulus):
+class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     """A conductance injection based on the Ornstein-Uhlenbeck process."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Absolute)"
@@ -128,7 +128,7 @@ class OrnsteinUhlenbeckConductanceStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeOrnsteinUhlenbeckCurrentStimulus(ContinuousStimulus):
+class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck current injection as a percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Relative)"
@@ -181,7 +181,7 @@ class RelativeOrnsteinUhlenbeckCurrentStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeOrnsteinUhlenbeckConductanceStimulus(ContinuousStimulus):
+class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck conductance injection as a percentage of each cell's input conductance."""
 
     title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
@@ -255,20 +255,3 @@ class RelativeOrnsteinUhlenbeckConductanceStimulus(ContinuousStimulus):
         }
         return stim_dict
 
-
-class OrnsteinUhlenbeckCurrentSomaticStimulus(OrnsteinUhlenbeckCurrentStimulus):
-    """Deprecated alias for OrnsteinUhlenbeckCurrentStimulus."""
-
-
-class OrnsteinUhlenbeckConductanceSomaticStimulus(OrnsteinUhlenbeckConductanceStimulus):
-    """Deprecated alias for OrnsteinUhlenbeckConductanceStimulus."""
-
-
-class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(RelativeOrnsteinUhlenbeckCurrentStimulus):
-    """Deprecated alias for RelativeOrnsteinUhlenbeckCurrentStimulus."""
-
-
-class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(
-    RelativeOrnsteinUhlenbeckConductanceStimulus
-):
-    """Deprecated alias for RelativeOrnsteinUhlenbeckConductanceStimulus."""

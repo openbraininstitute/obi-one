@@ -148,6 +148,10 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
 
     @model_validator(mode="after")
     def _validate_targeting(self) -> Self:
+        if self.locations is not None and self.neuron_set is not None:
+            msg = "If 'locations' is set, set 'neuron_set' on the locations block instead."
+            raise ValueError(msg)
+
         if self.compartment_set is not None and (
             self.neuron_set is not None or self.locations is not None
         ):
@@ -217,7 +221,7 @@ class ContinuousStimulus(
     pass
 
 
-class ConstantCurrentClampStimulus(ContinuousStimulus):
+class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
     title: ClassVar[str] = "Constant Current Clamp (Absolute)"
@@ -248,7 +252,7 @@ class ConstantCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeConstantCurrentClampStimulus(ContinuousStimulus):
+class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
     title: ClassVar[str] = "Constant Current Clamp (Relative)"
@@ -280,7 +284,7 @@ class RelativeConstantCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class LinearCurrentClampStimulus(ContinuousStimulus):
+class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
     title: ClassVar[str] = "Linear Current Clamp (Absolute)"
@@ -323,7 +327,7 @@ class LinearCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeLinearCurrentClampStimulus(ContinuousStimulus):
+class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly as a percentage of each cell's threshold current
     over time.
     """
@@ -368,7 +372,7 @@ class RelativeLinearCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class NormallyDistributedCurrentClampStimulus(ContinuousStimulus):
+class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
     title: ClassVar[str] = "Normally Distributed Current Clamp (Absolute)"
@@ -410,7 +414,7 @@ class NormallyDistributedCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class RelativeNormallyDistributedCurrentClampStimulus(ContinuousStimulus):
+class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
     """
@@ -455,7 +459,7 @@ class RelativeNormallyDistributedCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class MultiPulseCurrentClampStimulus(ContinuousStimulus):
+class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
     """A series of current pulses injected at a fixed frequency, with each pulse having a fixed
     absolute amplitude and temporal width.
     """
@@ -515,7 +519,7 @@ class MultiPulseCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class SinusoidalCurrentClampStimulus(ContinuousStimulus):
+class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
@@ -572,7 +576,7 @@ class SinusoidalCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class SubthresholdCurrentClampStimulus(ContinuousStimulus):
+class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
     title: ClassVar[str] = "Subthreshold Current Clamp (Relative)"
@@ -606,7 +610,7 @@ class SubthresholdCurrentClampStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class HyperpolarizingCurrentClampStimulus(ContinuousStimulus):
+class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
     """A hyperpolarizing current injection which brings a cell to base membrance voltage.
 
     The holding current is pre-defined for each cell.
@@ -757,45 +761,3 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "represents_physical_electrode": self._represents_physical_electrode,
         }
         return sonata_config
-
-
-class ConstantCurrentClampSomaticStimulus(ConstantCurrentClampStimulus):
-    """Deprecated alias for ConstantCurrentClampStimulus."""
-
-
-class RelativeConstantCurrentClampSomaticStimulus(RelativeConstantCurrentClampStimulus):
-    """Deprecated alias for RelativeConstantCurrentClampStimulus."""
-
-
-class LinearCurrentClampSomaticStimulus(LinearCurrentClampStimulus):
-    """Deprecated alias for LinearCurrentClampStimulus."""
-
-
-class RelativeLinearCurrentClampSomaticStimulus(RelativeLinearCurrentClampStimulus):
-    """Deprecated alias for RelativeLinearCurrentClampStimulus."""
-
-
-class NormallyDistributedCurrentClampSomaticStimulus(NormallyDistributedCurrentClampStimulus):
-    """Deprecated alias for NormallyDistributedCurrentClampStimulus."""
-
-
-class RelativeNormallyDistributedCurrentClampSomaticStimulus(
-    RelativeNormallyDistributedCurrentClampStimulus
-):
-    """Deprecated alias for RelativeNormallyDistributedCurrentClampStimulus."""
-
-
-class MultiPulseCurrentClampSomaticStimulus(MultiPulseCurrentClampStimulus):
-    """Deprecated alias for MultiPulseCurrentClampStimulus."""
-
-
-class SinusoidalCurrentClampSomaticStimulus(SinusoidalCurrentClampStimulus):
-    """Deprecated alias for SinusoidalCurrentClampStimulus."""
-
-
-class SubthresholdCurrentClampSomaticStimulus(SubthresholdCurrentClampStimulus):
-    """Deprecated alias for SubthresholdCurrentClampStimulus."""
-
-
-class HyperpolarizingCurrentClampSomaticStimulus(HyperpolarizingCurrentClampStimulus):
-    """Deprecated alias for HyperpolarizingCurrentClampStimulus."""

@@ -651,14 +651,14 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
         random_seed=0,
         number_of_locations=2,
         section_types=(3, 4),
+        neuron_set=sim_neuron_set.ref,
     )
     sim_conf.add(locations, name="ClampLocations")
 
-    clamp = obi.ConstantCurrentClampStimulus(
+    clamp = obi.ConstantCurrentClampSomaticStimulus(
         timestamps=timestamps.ref,
         duration=500.0,
         amplitude=0.5,
-        neuron_set=sim_neuron_set.ref,
         locations=locations.ref,
     )
     sim_conf.add(clamp, name="LocationCurrentClamp")
@@ -732,11 +732,11 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
         random_seed=0,
         number_of_locations=5,
         section_types=(3, 4),
+        neuron_set=neuron_set.ref,
     )
     form.add(locations, name="ClampLocations")
 
-    stimulus = obi.ConstantCurrentClampStimulus(
-        neuron_set=neuron_set.ref,
+    stimulus = obi.ConstantCurrentClampSomaticStimulus(
         locations=locations.ref,
     )
     form.add(stimulus, name="LocationCurrentClamp")
@@ -774,7 +774,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     expected_df = locations.points_on(morph)
 
     materialized = materialize_locations_to_compartment_sets(
-        form=form,
+        single_config=form,
         circuit=circuit,
         node_population=circuit.default_population_name,
         population=circuit.default_population_name,

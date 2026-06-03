@@ -242,7 +242,6 @@ class GenerateSimulationTask(Task):
 
         This is only done if the config has a neuron_sets attribute.
         """
-
         def is_optional_neuronsetreference(attr_value: type) -> bool:
             args = get_args(attr_value)
             return args == (NeuronSetReference, type(None))
@@ -259,12 +258,21 @@ class GenerateSimulationTask(Task):
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
         if hasattr(self.config, "neuron_sets"):
+            if hasattr(self.config, "morphology_locations"):
+                for locations_block in self.config.morphology_locations.values():
+                    self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
+                        locations_block
+                    )
+
             for recording in self.config.recordings.values():
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     recording
                 )
 
             for stimulus in self.config.stimuli.values():
+                if getattr(stimulus, "locations", None) is not None:
+                    continue
+
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     stimulus
                 )
@@ -279,7 +287,7 @@ class GenerateSimulationTask(Task):
 
         self._materialized_compartment_sets.update(
             materialize_locations_to_compartment_sets(
-                form=self.config,
+                single_config=self.config,
                 circuit=circuit,
                 node_population=population,
                 population=population,

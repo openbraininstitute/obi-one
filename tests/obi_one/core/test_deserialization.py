@@ -61,7 +61,7 @@ def test_deserialization(tmp_path):
     obi.run_tasks_for_generated_scan(grid_scan)
 
 
-def test_deserialization_legacy_somatic_stimulus_alias():
+def test_deserialization_somatic_stimulus_type():
     data = {
         "type": "CircuitSimulationScanConfig",
         "info": {
@@ -107,5 +107,5 @@ def test_deserialization_legacy_somatic_stimulus_alias():
 
     stimulus = config.stimuli["LegacyStimulus"]
 
-    assert isinstance(stimulus, obi.ConstantCurrentClampStimulus)
-    assert stimulus.type == "ConstantCurrentClampStimulus"
+    assert isinstance(stimulus, obi.ConstantCurrentClampSomaticStimulus)
+    assert stimulus.type == "ConstantCurrentClampSomaticStimulus"

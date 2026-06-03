@@ -7,10 +7,22 @@ from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
+
+    neuron_set: NeuronSetReference | None = Field(
+        default=None,
+        title="Neuron Set",
+        description="Neuron set whose morphologies the locations are generated on.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SUPPORTS_VIRTUAL: False,
+        },
+    )
 
     random_seed: int | list[int] = Field(
         default=0,
@@ -37,8 +49,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
             "Valid neurite section types to generate locations on: "
             "2: axon, 3: basal dendrite, 4: apical dendrite. "
             "Use a tuple for one selection, e.g. (3, 4), "
-            "or a list of tuples for parameter scans. "
-            "Leave stimulus.locations empty for soma/default targeting."
+            "or a list of tuples for parameter scans."
         ),
         json_schema_extra={
             SchemaKey.UI_HIDDEN: True,
