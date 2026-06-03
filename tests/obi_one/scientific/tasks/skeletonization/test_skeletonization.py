@@ -30,12 +30,12 @@ from entitysdk.types import (
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
-from obi_one.core.single import SingleCoordinateScanParams
-from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.core.serialization_constants import (
     COORDINATE_CONFIG_FILENAME,
     SCAN_CONFIG_FILENAME,
 )
+from obi_one.core.single import SingleCoordinateScanParams
+from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
 from obi_one.scientific.tasks.skeletonization.constants import (
     LICENSE_LABEL,
