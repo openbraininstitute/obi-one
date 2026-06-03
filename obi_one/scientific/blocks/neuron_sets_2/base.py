@@ -2,9 +2,12 @@ import abc
 import json
 import logging
 import os
+from enum import StrEnum
 from pathlib import Path
+from typing import ClassVar
 
 import bluepysnap as snap
+import numpy as np
 
 from obi_one.core.block import Block
 from obi_one.scientific.library.circuit import Circuit
@@ -15,41 +18,157 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 L = logging.getLogger(__name__)
 
 
+class NeuronSetPopulationType(StrEnum):
+    BIOPHYSICAL = "biophysical"
+    POINT = "point"
+    VIRTUAL = "virtual"
+    NONVIRTUAL = "nonvirtual"
+    ANY = "any"
+
+
+class SonataPopulationType(StrEnum):
+    BIOPHYSICAL = "biophysical"
+    POINT = "point"
+    VIRTUAL = "virtual"
+
+
 class NeuronSet(Block, abc.ABC):
-    """NeuronSet  [NEW - redefined].
-
-    - New (abstract) base class for all neuron sets
-    - No sampling
-    - No node population (i.e., supports multi-population neuron sets!)
-    """
-
     """Base class representing a neuron set which can be turned into a SONATA node set by either
     adding it to an existing SONATA circuit object (add_node_set_to_circuit) or writing it to a
     SONATA node set .json file (write_circuit_node_set_file).
+
+    Has a well-defined population type (including mixtures) and may span multiple node populations
+    which are consistent with the defined type.
     """
 
-    @abc.abstractmethod
-    def _get_expression(self, circuit: Circuit) -> dict:
-        """Returns the SONATA node set expression (w/o subsampling)."""
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType]
 
-    def add_node_set_definition_to_sonata_circuit(
-        self, circuit: Circuit, sonata_circuit: snap.Circuit
-    ) -> dict:
-        nset_def = self.get_node_set_definition(circuit, force_resolve_ids=True)
+    def get_neuron_set_population_type(self) -> NeuronSetPopulationType:
+        return self._neuron_set_population_type
 
-        add_node_set_to_circuit(
-            sonata_circuit, {self.block_name: nset_def}, overwrite_if_exists=False
+    def check_populations_in_circuit(self, circuit: Circuit) -> None:
+        """Check if neuron set populations exist in circuit."""
+        # Get neuron set populations
+        nset_popul_names = self.get_populations()
+
+        # Get circuit populations of the given type
+        match self._neuron_set_population_type:
+            case NeuronSetPopulationType.BIOPHYSICAL:
+                incl_biophysical = True
+                incl_point = incl_virtual = False
+            case NeuronSetPopulationType.POINT:
+                incl_point = True
+                incl_biophysical = incl_virtual = False
+            case NeuronSetPopulationType.VIRTUAL:
+                incl_virtual = True
+                incl_biophysical = incl_point = False
+            case NeuronSetPopulationType.NONVIRTUAL:
+                incl_biophysical = incl_point = True
+                incl_virtual = False
+            case NeuronSetPopulationType.ANY:
+                incl_biophysical = incl_point = incl_virtual = True
+            case _:
+                msg = f"Unknown neuron set population type '{self._neuron_set_population_type}'!"
+                raise ValueError(msg)
+        circuit_popul_names = Circuit.get_node_population_names(
+            circuit.sonata_circuit,
+            incl_biophysical=incl_biophysical,
+            incl_point=incl_point,
+            incl_virtual=incl_virtual,
         )
 
-        return nset_def
+        # Check circuit populations
+        if not circuit_popul_names:
+            msg = (
+                f"Circuit '{circuit.name}' does not have any node populations"
+                f" of type '{self._neuron_set_population_type}'!"
+            )
+            raise ValueError(msg)
+
+        # Check neuron set populations
+        missing = [f"'{p}'" for p in nset_popul_names if p not in circuit_popul_names]
+        if missing:
+            msg = (
+                f"Node population(s) {', '.join(missing)}"
+                f" of type '{self._neuron_set_population_type}'"
+                f" not found in circuit '{circuit.name}'!"
+                f" Available node populations: {', '.join(circuit_popul_names)}"
+            )
+            raise ValueError(msg)
+
+    def get_population_types(self, circuit: Circuit) -> dict[str, SonataPopulationType]:
+        """Returns population names and types included in the neuron set."""
+        self.check_populations_in_circuit(circuit=circuit)
+
+        popul_types = {}
+        for pname in self.get_populations():
+            if circuit.sonata_circuit.nodes[pname].type == "biophysical":
+                ptype = SonataPopulationType.BIOPHYSICAL
+            elif circuit.sonata_circuit.nodes[pname].type == "virtual":
+                ptype = SonataPopulationType.VIRTUAL
+            elif circuit.sonata_circuit.nodes[pname].type.startswith("point_"):
+                ptype = SonataPopulationType.POINT
+            else:
+                msg = f"Unknown SONATA population type for population '{pname}'!"
+                raise ValueError(msg)
+            popul_types[pname] = ptype
+        return popul_types
+
+    def has_biophysical_neurons(self, circuit: Circuit) -> bool:
+        """Returns if the neuron set includes biophysical populations."""
+        popul_types = self.get_population_types(circuit=circuit)
+        return any(ptype == SonataPopulationType.BIOPHYSICAL for ptype in popul_types.values())
+
+    def has_virtual_neurons(self, circuit: Circuit) -> bool:
+        """Returns if the neuron set includes virtual populations."""
+        popul_types = self.get_population_types(circuit=circuit)
+        return any(ptype == SonataPopulationType.VIRTUAL for ptype in popul_types.values())
+
+    def has_point_neurons(self, circuit: Circuit) -> bool:
+        """Returns if the neuron set includes point populations."""
+        popul_types = self.get_population_types(circuit=circuit)
+        return any(ptype == SonataPopulationType.POINT for ptype in popul_types.values())
+
+    @abc.abstractmethod
+    def get_populations(self) -> list[str]:
+        """Returns population names included in the neuron set."""
+
+    @abc.abstractmethod
+    def get_node_set_definition(
+        self, circuit: Circuit, *, force_resolve_ids: bool = False
+    ) -> tuple[dict | list, dict]:
+        """Returns the SONATA node set definition, optionally forcing to resolve individual IDs.
+
+        In case of a compound expression (list expression), any new definitions
+        to be combined are returned as dict.
+        """
+
+    @abc.abstractmethod
+    def get_neuron_ids(self, circuit: Circuit) -> dict[str, np.ndarray]:
+        """Returns list of neuron IDs per population."""
+
+    def add_node_set_definition_to_sonata_circuit(
+        self, circuit: Circuit, *, force_resolve_ids: bool = False
+    ) -> tuple[str, snap.Circuit]:
+        """Adds the node set definition to the corresponding SONATA circuit object."""
+        if not self.has_block_name():
+            msg = "Block name undefined. NeuronSet must be set through a Task."
+            raise ValueError(msg)
+        nset_def, compound_def = self.get_node_set_definition(
+            circuit, force_resolve_ids=force_resolve_ids
+        )
+        nset_dict = compound_def | {self.block_name: nset_def}
+        sonata_circuit = circuit.sonata_circuit
+        add_node_set_to_circuit(sonata_circuit, nset_dict, overwrite_if_exists=False)
+        return self.block_name, sonata_circuit
 
     @staticmethod
-    def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> str:
+    def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> Path:
         if file_name is None:
             # Use circuit's node set file name by default
             file_name = os.path.split(circuit.sonata_circuit.config["node_sets_file"])[1]
         else:
-            if not isinstance(file_name, str) or len(file_name) == 0:
+            if len(file_name) == 0:
                 msg = (
                     "File name must be a non-empty string! Can be omitted to use default file name."
                 )
@@ -60,6 +179,14 @@ class NeuronSet(Block, abc.ABC):
                 raise ValueError(msg)
         output_file = Path(output_path) / file_name
         return output_file
+
+    @staticmethod
+    def _check_existing(new_node_sets: dict, existing_node_sets: dict) -> None:
+        """Checks if new names already exist."""
+        existing = [f"'{n}'" for n in new_node_sets if n in existing_node_sets]
+        if existing:
+            msg = f"Node set(s) {', '.join(existing)} already existing!"
+            raise ValueError(msg)
 
     def to_node_set_file(
         self,
@@ -72,50 +199,40 @@ class NeuronSet(Block, abc.ABC):
         force_resolve_ids: bool = False,
         init_empty: bool = False,
         optional_node_set_name: str | None = None,
-    ) -> str:
+    ) -> Path:
         """Resolves the node set for a given circuit and writes it to a .json node set file."""
         if optional_node_set_name is not None:
             node_set_name = optional_node_set_name
         elif self.has_block_name():
             node_set_name = self.block_name
         else:
-            msg = (
-                "NeuronSet name must be set through the Simulation"
-                " or optional_node_set_name parameter!"
-            )
+            msg = "NeuronSet name must be set through a Task or optional_node_set_name parameter!"
             raise ValueError(msg)
 
-        output_file = self._get_output_file(circuit, file_name, output_path)
+        output_file = NeuronSet._get_output_file(circuit, file_name, output_path)
 
         if overwrite_if_exists and append_if_exists:
             msg = "Append and overwrite options are mutually exclusive!"
             raise ValueError(msg)
-        expression = self.get_node_set_definition(circuit, force_resolve_ids=force_resolve_ids)
-        if expression is None:
-            msg = "Node set already exists in circuit, nothing to be done!"
-            raise ValueError(msg)
 
-        if not Path.exists(output_file) or overwrite_if_exists:
+        nset_def, compound_def = self.get_node_set_definition(
+            circuit, force_resolve_ids=force_resolve_ids
+        )
+        nset_dict = compound_def | {node_set_name: nset_def}
+
+        if not output_file.exists() or overwrite_if_exists:
             # Create new node sets file, overwrite if existing
-            if init_empty:
+            if init_empty:  # noqa: SIM108
                 # Initialize empty
                 node_sets = {}
             else:
                 # Initialize with circuit object's node sets
                 node_sets = circuit.sonata_circuit.node_sets.content
-                if node_set_name in node_sets:
-                    msg = f"Node set '{node_set_name}' already exists in circuit '{circuit}'!"
-                    raise ValueError(msg)
-            node_sets.update({node_set_name: expression})
 
-        elif Path.exists(output_file) and append_if_exists:
+        elif output_file.exists() and append_if_exists:
             # Append to existing node sets file
-            with Path(output_file).open("r", encoding="utf-8") as f:
+            with output_file.open("r", encoding="utf-8") as f:
                 node_sets = json.load(f)
-                if node_set_name in node_sets:
-                    msg = f"Appending not possible, node set '{node_set_name}' already exists!"
-                    raise ValueError(msg)
-                node_sets.update({node_set_name: expression})
 
         else:  # File existing but no option chosen
             msg = (
@@ -124,7 +241,10 @@ class NeuronSet(Block, abc.ABC):
             )
             raise ValueError(msg)
 
-        with Path(output_file).open("w", encoding="utf-8") as f:
+        NeuronSet._check_existing(nset_dict, node_sets)
+        node_sets.update(nset_dict)
+
+        with output_file.open("w", encoding="utf-8") as f:
             json.dump(node_sets, f, indent=2)
 
         return output_file
