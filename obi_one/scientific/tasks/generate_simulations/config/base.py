@@ -124,8 +124,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
     initialize: Initialize
-    stimuli: dict
-    recordings: dict
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
