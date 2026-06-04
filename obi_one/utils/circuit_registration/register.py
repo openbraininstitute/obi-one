@@ -9,7 +9,7 @@ from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
-from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
+from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
 from obi_one.utils.circuit_registration.assets import register_asset
 from obi_one.utils.circuit_registration.generate import generate_additional_circuit_assets
 from obi_one.utils.circuit_registration.links import (
@@ -30,6 +30,7 @@ from obi_one.utils.circuit_registration.resolve import (
     get_root_circuit,
     get_subject,
 )
+from obi_one.utils.io import extract_tar_gz
 
 L = logging.getLogger(__name__)
 
@@ -57,7 +58,40 @@ def _resolve_target_simulator(
     return target_simulator
 
 
-def register_circuit(  # noqa: PLR0913, PLR0914
+def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
+    """Resolve circuit_path to the circuit_config.json file.
+
+    If ``circuit_path`` is a .gz archive, it is extracted first and the original
+    compressed path is returned as the second element.  Otherwise the second
+    element is None.
+
+    Returns:
+        Tuple of (resolved circuit_config.json path, compressed path or None).
+    """
+    circuit_path = Path(circuit_path)
+    circuit_path_compressed: Path | None = None
+
+    if circuit_path.suffix == ".gz":
+        circuit_path_compressed = circuit_path
+        circuit_path = extract_tar_gz(circuit_path, clean=True)
+        L.info(f"Extracted compressed circuit '{circuit_path_compressed}' to '{circuit_path}'")
+
+    if circuit_path.is_dir():
+        config_candidate = circuit_path / "circuit_config.json"
+        if not config_candidate.exists():
+            # Archive may contain a single top-level directory; look one level deeper
+            subdirs = [d for d in circuit_path.iterdir() if d.is_dir()]
+            if len(subdirs) == 1:
+                config_candidate = subdirs[0] / "circuit_config.json"
+        circuit_path = config_candidate
+    if not circuit_path.exists():
+        msg = f"Circuit config not found at '{circuit_path}'!"
+        raise ValueError(msg)
+
+    return circuit_path, circuit_path_compressed
+
+
+def register_circuit(  # noqa: PLR0913, PLR0914, C901
     client: Client,
     circuit_path: str | Path,
     *,
@@ -79,6 +113,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     publications: dict | None = None,
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
@@ -93,7 +129,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914
 
     Args:
         client: The entitycore SDK client.
-        circuit_path: Path to circuit_config.json (or the folder containing it).
+        circuit_path: Path to circuit_config.json (or the folder containing it,
+            or a compressed .gz archive of the circuit folder).
         name: Circuit name.
         description: Circuit description.
         build_category: Build category (computational_model, em_reconstruction).
@@ -113,21 +150,21 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
-        skip_additional_assets: If True, skip generation of additional assets
+        skip_additional_assets: If True, skip generation/registration of additional assets
             (compressed circuit, matrices, plots, figures).
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform a dry run without registering anything.
 
     Returns:
         The registered circuit entity, or None if dry_run is True.
     """
-    # Resolve circuit_path to the circuit_config.json file
-    circuit_path = Path(circuit_path)
-    if circuit_path.is_dir():
-        circuit_path /= "circuit_config.json"
-    if not circuit_path.exists():
-        msg = f"Circuit config not found at '{circuit_path}'!"
+    # Validate that a license is provided for public circuits
+    if authorized_public and license is None:
+        msg = "A license is required when registering a public circuit (authorized_public=True)."
         raise ValueError(msg)
-    circuit_folder = circuit_path.parent
 
     # Validate species consistency
     if (
@@ -141,6 +178,23 @@ def register_circuit(  # noqa: PLR0913, PLR0914
             f" subject species '{subject.species.name}'!"
         )
         raise ValueError(msg)
+
+    # Resolve circuit_path to the circuit_config.json file
+    circuit_path, circuit_path_compressed = _resolve_circuit_path(circuit_path)
+    circuit_folder = circuit_path.parent
+
+    # Validate provided image paths
+    overview_image_path = Path(overview_image_path) if overview_image_path else None
+    sim_designer_image_path = Path(sim_designer_image_path) if sim_designer_image_path else None
+    if overview_image_path is not None and not overview_image_path.exists():
+        msg = f"Overview image file not found: '{overview_image_path}'"
+        raise FileNotFoundError(msg)
+    if sim_designer_image_path is not None and not sim_designer_image_path.exists():
+        msg = f"Sim designer image file not found: '{sim_designer_image_path}'"
+        raise FileNotFoundError(msg)
+
+    # Validate SONATA circuit
+    run_validation(circuit_path)
 
     # Assure target simulator consistency
     c = OBICircuit(name=name, path=str(circuit_path))
@@ -236,6 +290,9 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         generate_additional_circuit_assets(
             circuit_path=circuit_path,
             edge_population=edge_pop,
+            circuit_path_compressed=circuit_path_compressed,
+            overview_image_path=overview_image_path,
+            sim_designer_image_path=sim_designer_image_path,
             client=client,
             circuit_entity=registered_circuit,
         )
@@ -251,6 +308,8 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
@@ -266,13 +325,17 @@ def register_circuit_from_metadata(
             brain_region_hierarchy.
             Optional keys: root, parent, derivation_type, license, published_in,
             contact, experiment_date, target_simulator.
-        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json)
-            or directly to the circuit_config.json file.
+        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json),
+            directly to the circuit_config.json file, or a compressed .gz archive.
         contributions: Raw contributions dict (agent name -> {type, role}).
             Will be resolved via get_contributions(). Optional.
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
         authorized_public: Whether to make the circuit publicly accessible.
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform validation and dry run without registering.
 
     Returns:
@@ -319,5 +382,7 @@ def register_circuit_from_metadata(
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
+        overview_image_path=overview_image_path,
+        sim_designer_image_path=sim_designer_image_path,
         dry_run=dry_run,
     )

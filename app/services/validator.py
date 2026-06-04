@@ -70,7 +70,7 @@ def run_grid_scan_validation(
 
         with tempfile.TemporaryDirectory() as tdir:
             grid_scan = GridScanGenerationTask(
-                form=config,  # ty:ignore[invalid-argument-type]
+                form=config,
                 output_root=tdir,  # ty:ignore[invalid-argument-type]
                 coordinate_directory_option="ZERO_INDEX",
             )
