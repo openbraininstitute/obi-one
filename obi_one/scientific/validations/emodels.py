@@ -44,9 +44,8 @@ def check_mechanisms(hoc_path:str|Path, expected_suffixes: set[str]) -> None:
     for suffix in declared_mechanisms:
         assert suffix in expected_suffixes or suffix in BUILTIN_NEURON_MECHANISMS, f"Declared mechanism '{suffix}' in {hoc_path} is not in expected suffixes {expected_suffixes}"
 
-# `v5`` expects template to be initialized with (gid, morph_path), `bluepyopt` expects (morph_dir, morph_fname) and `v6` expects (gid, morph_dir, morph_fname)
-# I think we should enforce v6 for consistency, at least for circuit customization, but I should check first if all our hoc files are already v6
-# -> maybe will need a discussion with darshan, ilkan, and other scientists
+# `v6` expects (gid, morph_dir, morph_fname), `v5` expects template to be initialized with (gid, morph_path), `bluepyopt` expects (morph_dir, morph_fname)
+# we are using v6 on the platform
 def bluecellulab_initializable(hoc_path: str|Path, morphology_path: str|Path, template_format="v6", holding_current=0.0, threshold_current=0.0) -> None:
     """Checks that the hoc file can be initialized in bluecellulab.
     

@@ -1,15 +1,16 @@
 """Circuit customization-related validations."""
 
 import uuid
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from pathlib import Path
 import shutil
 import subprocess
 
 from entitysdk import Client
+import libsonata
 
-from obi_one.scientific.validation.emodels import bluecellulab_initializable
-from obi_one.scientific.validation.emodels import check_mechanisms
+from obi_one.scientific.validations.emodels import bluecellulab_initializable
+from obi_one.scientific.validations.emodels import check_mechanisms
 from obi_one.utils.circuit import get_mechanisms_suffixes
 from obi_one.utils.circuit_customization.download import download_mechanisms
 
@@ -41,13 +42,18 @@ def compile_mechanisms(mechanisms_dir: str|Path) -> None:
     )
 
 
-def compile_mechs_and_load_hoc(circuit_id: str|uuid.UUID, hoc_path: str|Path, morphology_path: str|Path, db_client: Client, mech_dir: str|Path, result_queue: Queue) -> None:
+def compile_mechs_and_load_hoc(circuit_id: str|uuid.UUID, hoc_path: str|Path, morphology_path: str|Path, mech_dir: str|Path, proj_context, environment, access_token, result_queue: Queue) -> None:
     """Download and compile mechanisms and check if emodel can be initialized in bluecellulab.
     
     To be called in a subprocesss to avoid errors if we try to instiantiate different models.
     """
     try:
         # the hoc file has to only use the mechanisms from the circuit for this test to pass
+        db_client = Client(
+            project_context=proj_context,
+            environment=environment,
+            token_manager=access_token,
+        )
         _ = download_mechanisms(circuit_id=circuit_id, db_client=db_client, dest_dir=mech_dir)
         compile_mechanisms(mechanisms_dir=mech_dir)
 
@@ -57,7 +63,7 @@ def compile_mechs_and_load_hoc(circuit_id: str|uuid.UUID, hoc_path: str|Path, mo
         result_queue.put(False)
 
 
-def check_bluecellulab_initializable(paths: list[dict], circuit_id: str|uuid.UUID, db_client: Client) -> None:
+def check_bluecellulab_initializable(paths: list[dict], circuit_id: str|uuid.UUID, proj_context, environment: str, access_token) -> None:
     """Checks that the hoc file can be initialized in bluecellulab.
     
     Args:
@@ -80,7 +86,7 @@ def check_bluecellulab_initializable(paths: list[dict], circuit_id: str|uuid.UUI
         result_queue = Queue()
         p = Process(
             target=compile_mechs_and_load_hoc,
-            args=(circuit_id, path["hoc_path"], path["morphology_path"], db_client, mech_dir, result_queue,))
+            args=(circuit_id, path["hoc_path"], path["morphology_path"], mech_dir, proj_context, environment, access_token, result_queue,))
         p.start()
         p.join()
 
@@ -91,3 +97,47 @@ def check_bluecellulab_initializable(paths: list[dict], circuit_id: str|uuid.UUI
                 raise RuntimeError(f"Emodel instantiation check in bluecellulab failed for hoc {path['hoc_path']}")
         else:
             raise RuntimeError("No result returned from subprocess when running bluecellulab instantiation check")
+
+
+# see if should be moved to more general circuit utils
+def read_node_file(fpath):
+    nodes = libsonata.NodeStorage(fpath)
+    pop_name = next(iter(nodes.population_names))  # expects size 1
+    node_pop = nodes.open_population(pop_name)
+    return node_pop
+
+
+def check_new_node_columns(old_node_file_path, new_node_file_path):
+    """Checks that only the module template and the etype template columns have been changed.
+    
+    Raises an error if any other column has been changed, or if the attribute names are different between the two files, or if the IDs have been modified.
+    """
+    modifications_allowed_attrs = {"module_template", "etype_template"}
+
+    old_node_pop = read_node_file(old_node_file_path)
+    new_node_pop = read_node_file(new_node_file_path)
+
+    # make it so we can read dynamic attributes also
+    old_attribute_names = set(old_node_pop.attribute_names)
+    new_attribute_names = set(new_node_pop.attribute_names)
+    old_dynamic_attribute_names = set(old_node_pop.dynamics_attribute_names)
+    new_dynamic_attribute_names = set(new_node_pop.dynamics_attribute_names)
+
+    assert new_attribute_names == old_attribute_names, f"New node file has different attribute names than old node file. Old attribute names: {old_attribute_names}, New attribute names: {new_attribute_names}"
+    assert new_dynamic_attribute_names == old_dynamic_attribute_names, f"New node file has different dynamic attribute names than old node file. Old dynamic attribute names: {old_dynamic_attribute_names}, New dynamic attribute names: {new_dynamic_attribute_names}"
+
+    old_selection = node_pop.select_all()
+    new_selection = node_pop.select_all()
+    assert old_selection.flatten() == new_selection.flatten(), f"IDs have been modified in the new node file. Old IDs: {old_selection.flatten()}, New IDs: {new_selection.flatten()}"
+
+    for attr in old_attribute_names:
+        if attr not in modifications_allowed_attrs:
+            old_values = node_pop.get_attribute(attr, old_selection)
+            new_values = node_pop.get_attribute(attr, old_selection)
+            assert old_values == new_values, f"Values of attribute {attr} have been modified in the new node file. Old values: {old_values}, New values: {new_values}"
+
+    for dyn_attr in old_dynamic_attribute_names:
+        if dyn_attr not in modifications_allowed_attrs:
+            old_values = node_pop.get_dynamics_attribute(dyn_attr, old_selection)
+            new_values = node_pop.get_dynamics_attribute(dyn_attr, old_selection)
+            assert old_values == new_values, f"Values of dynamic attribute {dyn_attr} have been modified in the new node file. Old values: {old_values}, New values: {new_values}"
