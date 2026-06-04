@@ -28,22 +28,11 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
-    IonChannelModelSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
-    MEModelSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
-    MEModelWithSynapsesCircuitSimulationSingleConfig,
-)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
 from obi_one.utils.sonata import write_simulation_config
 
 L = logging.getLogger(__name__)
@@ -56,14 +45,9 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
 
+
 class GenerateSimulationTask(Task):
-    config: (
-        CircuitSimulationSingleConfig
-        | MEModelSimulationSingleConfig
-        | MEModelWithSynapsesCircuitSimulationSingleConfig
-        | IonChannelModelSimulationSingleConfig
-        | Brian2CircuitSimulationSingleConfig
-    )
+    config: SIMULATION_GENERATION_SINGLE_CONFIGS
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
@@ -75,7 +59,6 @@ class GenerateSimulationTask(Task):
 
     def _initialize_sonata_simulation_config(self) -> dict:  # ty:ignore[invalid-return-type]
         """Returns the default SONATA conditions dictionary."""
-        
         self._sonata_config = self.config.base_sonata_config({})
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:

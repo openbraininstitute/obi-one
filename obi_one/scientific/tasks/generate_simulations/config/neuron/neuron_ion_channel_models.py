@@ -179,7 +179,7 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
         sonata_config = super().base_sonata_config(sonata_config)
-        sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
+        sonata_config["conditions"]["celsius"] = self.initialize.temperature
 
         return sonata_config
 

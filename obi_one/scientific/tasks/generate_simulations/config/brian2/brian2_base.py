@@ -85,3 +85,8 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
             },
         )
+
+    def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        sonata_config = super().base_sonata_config(sonata_config)
+        return sonata_config

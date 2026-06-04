@@ -92,7 +92,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         """Returns the base SONATA configuration for the simulation campaign."""
         if sonata_config is None:
             sonata_config = {}
-        sonata_config = super().base_sonata_config(sonata_config)
 
         sonata_config["version"] = self._sonata_version
 
@@ -106,7 +105,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         sonata_config["output"] = {}
         sonata_config["output"]["output_dir"] = "output"
         sonata_config["output"]["spikes_file"] = "spikes.h5"
-        
+
         return sonata_config
 
     @property
@@ -116,8 +115,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             msg = "Target simulator not specified for simulation campaign."
             raise OBIONEError(msg)
         return self._target_simulator
-
-    
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""

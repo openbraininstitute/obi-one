@@ -106,6 +106,6 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
         sonata_config = super().base_sonata_config(sonata_config)
 
         sonata_config["conditions"]["spike_location"] = self._spike_location
-        sonata_config["conditions"]["v_init"] = self.initialize.v_init            
+        sonata_config["conditions"]["v_init"] = self.initialize.v_init
 
         return sonata_config

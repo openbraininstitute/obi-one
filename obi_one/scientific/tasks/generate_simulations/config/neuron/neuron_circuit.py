@@ -147,13 +147,13 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         sonata_config = super().base_sonata_config(sonata_config)
 
         sonata_config["conditions"]["extracellular_calcium"] = (
-                self.initialize.extracellular_calcium_concentration
-            )
+            self.initialize.extracellular_calcium_concentration
+        )
 
         sonata_config["conditions"]["mechanisms"] = {
-                "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-                "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            }
+            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+        }
 
         return sonata_config
 
