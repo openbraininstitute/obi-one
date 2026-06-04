@@ -10,7 +10,6 @@ from obi_one.scientific.library.constants import (
     DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
     MIN_SIMULATION_LENGTH_MILLISECONDS,
-    SIMULATION_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
@@ -23,7 +22,7 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     _target_simulator: ClassVar[SimulatorType] = SimulatorType.LearningEngine
 
     class Initialize(BaseSimulationScanConfig.Initialize):
-        timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
+        timestep: ClassVar[PositiveFloat] = 0.1
 
         simulation_length: (
             Annotated[
@@ -51,7 +50,6 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
                 SchemaKey.UNITS: Units.MILLISECONDS,
             },
         )
-        """
         v_init: float | list[float] = Field(
             default=-80.0,
             title="Initial Voltage",
@@ -67,9 +65,9 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
             description="Random seed for the simulation.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+                SchemaKey.UI_HIDDEN: True,
             },
         )
-        """
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""

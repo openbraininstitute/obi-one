@@ -101,6 +101,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         sonata_config["run"]["tstop"] = self.initialize.simulation_length
 
         sonata_config["conditions"] = {}
+        sonata_config["conditions"]["v_init"] = self.initialize.v_init
 
         sonata_config["output"] = {}
         sonata_config["output"]["output_dir"] = "output"
