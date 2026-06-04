@@ -177,16 +177,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             raise NotImplementedError(msg)
         return self._timestep
 
-    @property
-    def has_recordings_dictionary(self) -> bool:
-        """Returns whether the simulation campaign configuration has a recordings dictionary."""
-        return hasattr(self, "recordings") and isinstance(self.recordings, dict)
-
-    @property
-    def has_stimuli_dictionary(self) -> bool:
-        """Returns whether the simulation campaign configuration has a stimuli dictionary."""
-        return hasattr(self, "stimuli") and isinstance(self.stimuli, dict)
-
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
         if isinstance(self.initialize.circuit, list):  # ty:ignore[unresolved-attribute]
