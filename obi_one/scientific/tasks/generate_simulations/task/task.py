@@ -57,10 +57,6 @@ class GenerateSimulationTask(Task):
     _entity_cache: bool = PrivateAttr(default=False)
     _neuron_set_definitions: dict[str, dict] = PrivateAttr(default={})
 
-    def _initialize_sonata_simulation_config(self) -> dict:  # ty:ignore[invalid-return-type]
-        """Returns the default SONATA conditions dictionary."""
-        self._sonata_config = self.config.base_sonata_config({})
-
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
         if hasattr(self.config.initialize, "circuit"):
