@@ -92,7 +92,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             msg = "Target simulator not specified for simulation campaign."
             raise OBIONEError(msg)
         return self._target_simulator
-    
+
     def base_sonata_config(self) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
         sonata_config = super().base_sonata_config()
