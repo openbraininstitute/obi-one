@@ -92,14 +92,11 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             msg = "Target simulator not specified for simulation campaign."
             raise OBIONEError(msg)
         return self._target_simulator
-
-    @property
-    def has_neuron_sets(self) -> bool:
-        return hasattr(self, "neuron_sets")
-
-    @property
-    def has_target_node_set_property(self) -> bool:
-        return hasattr(self.initialize, "node_sets")
+    
+    def base_sonata_config(self) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        sonata_config = super().base_sonata_config()
+        return sonata_config
 
     @property
     def target_node_set_property_is_none(self) -> bool:

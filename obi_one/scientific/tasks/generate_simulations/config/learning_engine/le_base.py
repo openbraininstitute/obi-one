@@ -84,3 +84,8 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
             },
         )
         """
+
+    def base_sonata_config(self) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        sonata_config = super().base_sonata_config()
+        return sonata_config
