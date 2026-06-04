@@ -158,10 +158,6 @@ class TestEMSynapseMappingTask:
             patch(f"{_TASK_MODULE}.write_edges"),
             patch(f"{_TASK_MODULE}.sonata_config_for", return_value={"version": 2.3}),
             patch(
-                f"{_TASK_MODULE}.compress_output",
-                return_value=str(tmp_path / "out" / "sonata.tar.gz"),
-            ),
-            patch(
                 f"{_TASK_MODULE}.register_output",
                 return_value="circuit-id",
             ) as mock_register,
@@ -223,10 +219,6 @@ class TestEMSynapseMappingTask:
             patch(f"{_TASK_MODULE}.write_nodes"),
             patch(f"{_TASK_MODULE}.write_edges"),
             patch(f"{_TASK_MODULE}.sonata_config_for", return_value={}),
-            patch(
-                f"{_TASK_MODULE}.compress_output",
-                return_value=str(tmp_path / "out" / "sonata.tar.gz"),
-            ),
             patch(f"{_TASK_MODULE}.register_output", return_value="cid"),
             patch.object(EMSynapseMappingTask, "_update_execution_activity"),
         ):

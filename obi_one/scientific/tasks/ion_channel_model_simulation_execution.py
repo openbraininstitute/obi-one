@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import ClassVar
 
 import entitysdk
 from entitysdk import models
@@ -19,7 +19,7 @@ from obi_one.scientific.library.simulation.staging import (
     get_simulation_parameters,
     stage_ion_channel_models_as_circuit,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationSingleConfig,
 )
 from obi_one.types import SimulationBackend
@@ -27,9 +27,6 @@ from obi_one.utils import db_sdk
 from obi_one.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 
 class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
@@ -48,11 +45,14 @@ class IonChannelModelSimulationExecutionTask(Task):
             config=self.config.single_entity,
             asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
         )
+        if config_asset.id is None:
+            msg = "Config asset must have an id"
+            raise ValueError(msg)
 
         json_str = db_client.download_content(
             entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-            asset_id=cast("UUID", config_asset.id),
+            asset_id=config_asset.id,
         ).decode(encoding="utf-8")
 
         json_dict = json.loads(json_str)

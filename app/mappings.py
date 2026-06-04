@@ -15,7 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -69,7 +69,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location="https://github.com/openbraininstitute-partners/inait",
-            ref="commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            ref="commit:55428c970249d37d4d0f22f69a81ab07987dfa33",
             path="scripts/simulate-circuits/run.py",
             dependencies="scripts/simulate-circuits/requirements.txt",
             staged_directories=["wheels", "scripts/simulate-circuits/"],
@@ -79,6 +79,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_inait,
         ),
     ),
     TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
@@ -87,9 +88,9 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref="commit:b3e8670db32d26e9fa4c71d79d6f6de46b61cb16",
-            path="examples/J_drosophila/simulate-brian2.py",
-            dependencies="examples/J_drosophila/requirements.txt",
+            ref=APP_TAG,
+            path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
+            dependencies="obi_one/scientific/library/simulation/brian2/requirements.txt",
             staged_directories=[],
         ),
         resources=MachineResources(
@@ -165,6 +166,24 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
+        ),
+    ),
+    TaskType.extracellular_recording_weights_calculation: TaskDefinition(
+        task_type=TaskType.extracellular_recording_weights_calculation,
+        config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
+        activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
 }  # ty:ignore[invalid-assignment]

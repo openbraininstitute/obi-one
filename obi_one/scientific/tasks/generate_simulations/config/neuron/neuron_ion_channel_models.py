@@ -1,17 +1,16 @@
 import logging
 from typing import Annotated, ClassVar, Self
 
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
+from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
-from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
-    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    _MIN_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
+    MIN_SIMULATION_LENGTH_MILLISECONDS,
+    SIMULATION_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
@@ -19,8 +18,8 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
+    BaseSimulationScanConfig,
     BlockGroup,
-    SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.unions.unions_ion_channel_model import (
@@ -37,18 +36,17 @@ from obi_one.scientific.unions.unions_stimuli import (
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
-    TimestampsUnion,
 )
 
 L = logging.getLogger(__name__)
 
 
-class IonChannelModelSimulationScanConfig(SimulationScanConfig):
+class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     """Form for simulating ion channel model(s)."""
 
     single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
-    description: ClassVar[str] = "Ion Channal Model SONATA simulation campaign"
+    description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -66,28 +64,28 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         },
     }
 
-    class Initialize(Block):
+    class Initialize(BaseSimulationScanConfig.Initialize):
+        timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
+
         simulation_length: (
             Annotated[
                 NonNegativeFloat,
-                Field(
-                    ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS
-                ),
+                Field(ge=MIN_SIMULATION_LENGTH_MILLISECONDS, le=MAX_SIMULATION_LENGTH_MILLISECONDS),
             ]
             | Annotated[
                 list[
                     Annotated[
                         NonNegativeFloat,
                         Field(
-                            ge=_MIN_SIMULATION_LENGTH_MILLISECONDS,
-                            le=_MAX_SIMULATION_LENGTH_MILLISECONDS,
+                            ge=MIN_SIMULATION_LENGTH_MILLISECONDS,
+                            le=MAX_SIMULATION_LENGTH_MILLISECONDS,
                         ),
                     ]
                 ],
                 Field(min_length=1),
             ]
         ) = Field(
-            default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+            default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
             title="Duration",
             description="Simulation length in milliseconds (ms).",
             json_schema_extra={
@@ -122,13 +120,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
             },
         )
-        _timestep: PositiveFloat | list[PositiveFloat] = PrivateAttr(
-            default=0.025
-        )  # Simulation time step in ms
-
-        @property
-        def timestep(self) -> PositiveFloat | list[PositiveFloat]:
-            return self._timestep
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -137,16 +128,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 2,
-        },
-    )
-
-    info: Info = Field(
-        title="Info",
-        description="Information about the campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -193,19 +174,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
-        },
-    )
-
-    timestamps: dict[str, TimestampsUnion] = Field(
-        default_factory=dict,
-        title="Timestamps",
-        description="Timestamps for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-            SchemaKey.SINGULAR_NAME: "Timestamps",
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
         },
     )
 

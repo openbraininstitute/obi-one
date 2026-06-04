@@ -29,6 +29,8 @@ __all__ = [
     "BasicConnectivityPlotsTask",
     "Block",
     "BlockReference",
+    "Brian2CircuitSimulationScanConfig",
+    "Brian2CircuitSimulationSingleConfig",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -59,6 +61,9 @@ __all__ = [
     "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "CreateExtracellularRecordingArrayScanConfig",
+    "CreateExtracellularRecordingArraySingleConfig",
+    "CreateExtracellularRecordingArrayTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
@@ -99,7 +104,9 @@ __all__ = [
     "IonChannelModelSimulationScanConfig",
     "IonChannelModelSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
+    "LinearExtracellularLocations",
     "LoadAssetMethod",
+    "LogNormalDistribution",
     "MEModelCircuit",
     "MEModelFromID",
     "MEModelSimulationScanConfig",
@@ -130,8 +137,10 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
@@ -143,6 +152,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PoissonDistribution",
     "PoissonSpikeStimulus",
     "PositiveFloatRange",
     "PositiveIntRange",
@@ -242,12 +252,17 @@ from obi_one.scientific.blocks.distributions.constant import (
 )
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
-from obi_one.scientific.blocks.extracellular_locations import (
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    LinearExtracellularLocations,
+    Neuropixels1ExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (
@@ -378,6 +393,11 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
 )
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+    CreateExtracellularRecordingArraySingleConfig,
+    CreateExtracellularRecordingArrayTask,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.config import (
     EMSynapseMappingScanConfig,
     EMSynapseMappingSingleConfig,
@@ -392,19 +412,23 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+    Brian2CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationScanConfig,
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
@@ -441,7 +465,10 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
 )
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
-from obi_one.scientific.unions.config_task_map import get_configs_task_type
+from obi_one.scientific.unions.block_references import AllBlockReferenceTypes  # noqa: F401
+from obi_one.scientific.unions.config_task_map import (
+    get_configs_task_type,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,

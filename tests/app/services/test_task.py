@@ -13,7 +13,7 @@ from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
 from app.errors import ApiError, ApiErrorCode
-from app.mappings import TASK_DEFINITIONS
+from app.mappings import APP_TAG, TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
@@ -23,7 +23,9 @@ from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
 ASSET_ID = uuid4()
 
-TASK_TYPES = [task_type for task_type in TaskType if task_type != TaskType.circuit_simulation]
+TASK_TYPES = [
+    task_type for task_type in TASK_DEFINITIONS if task_type != TaskType.circuit_simulation
+]
 
 
 @pytest.fixture
@@ -323,7 +325,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute-partners/inait",
-            "ref": "commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            "ref": "commit:55428c970249d37d4d0f22f69a81ab07987dfa33",
             "path": "scripts/simulate-circuits/run.py",
             "dependencies": "scripts/simulate-circuits/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
@@ -335,6 +337,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "memory": 8,
             "compute_cell": "local",
             "timelimit": "02:00",
+            "image_type": "python_3_12_inait",
         },
         "inputs": [
             "sonata-simulation-task",
@@ -383,9 +386,9 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": task_definition.code.location,
-            "ref": "commit:b3e8670db32d26e9fa4c71d79d6f6de46b61cb16",
-            "path": "examples/J_drosophila/simulate-brian2.py",
-            "dependencies": "examples/J_drosophila/requirements.txt",
+            "ref": APP_TAG,
+            "path": "obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
+            "dependencies": "obi_one/scientific/library/simulation/brian2/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": [],
         },
@@ -395,6 +398,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "memory": 8,
             "compute_cell": "local",
             "timelimit": "02:00",
+            "image_type": "python_3_12_compiler",
         },
         "inputs": [
             "sonata-simulation-task",
@@ -501,6 +505,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "memory": 2,
             "timelimit": "00:10",
             "compute_cell": "local",
+            "image_type": "python_3_12_compiler",
         },
         "code": {
             "type": "python_repository",

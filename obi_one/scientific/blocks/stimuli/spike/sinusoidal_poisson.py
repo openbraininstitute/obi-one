@@ -13,9 +13,9 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MAX_POISSON_SPIKE_LIMIT,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_POISSON_SPIKE_LIMIT,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 
 
@@ -41,10 +41,10 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
     # --- timing ---
     duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]]
     ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration of the stimulus in milliseconds.",
         json_schema_extra={
@@ -155,10 +155,10 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
             * self.maximum_rate
             * len(source_gids)
         )
-        if total_expected > _MAX_POISSON_SPIKE_LIMIT:
+        if total_expected > MAX_POISSON_SPIKE_LIMIT:
             msg = (
                 f"Sinusoidal Poisson input exceeds maximum allowed number of spikes "
-                f"({_MAX_POISSON_SPIKE_LIMIT})!"
+                f"({MAX_POISSON_SPIKE_LIMIT})!"
             )
             raise ValueError(msg)
 

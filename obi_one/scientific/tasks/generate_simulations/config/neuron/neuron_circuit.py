@@ -4,17 +4,17 @@ from typing import Annotated, ClassVar
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.from_id.circuit_from_id import (
-    CircuitFromID,
-)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    SimulationScanConfig,
+    CircuitFromID,
     SimulationSingleConfigMixin,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
@@ -33,21 +33,17 @@ from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import (
-    TimestampsReference,
-)
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
 
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
-class CircuitSimulationScanConfig(SimulationScanConfig):
+class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
-    name: ClassVar[str] = "Simulation Campaign"
-    description: ClassVar[str] = "SONATA simulation campaign"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -68,35 +64,16 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         },
     }
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
-        description="Neuron sets for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
-        default_factory=dict,
-        description="Synaptic manipulations for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticManipulationsReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
-            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
+            },
         )
+
         node_set: NeuronSetReference | None = Field(
             default=None,
             title="Neuron Set",
@@ -104,6 +81,7 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
             },
         )
 
@@ -113,6 +91,18 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        default_factory=dict,
+        description="Synaptic manipulations for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: SynapticManipulationsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,
         },
     )
@@ -139,6 +129,18 @@ class CircuitSimulationScanConfig(SimulationScanConfig):
             SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Distribution",
             SchemaKey.GROUP: BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+        default_factory=dict,
+        description="Neuron sets for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )

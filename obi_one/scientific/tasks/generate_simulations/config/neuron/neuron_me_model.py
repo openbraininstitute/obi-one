@@ -9,8 +9,10 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    SimulationScanConfig,
     SimulationSingleConfigMixin,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+    NeuronSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
@@ -27,22 +29,24 @@ from obi_one.scientific.unions.unions_timestamps import (
 
 L = logging.getLogger(__name__)
 
-
 MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discriminator="type")]
 
 
-class MEModelSimulationScanConfig(SimulationScanConfig):
+class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelSimulationScanConfig."""
 
     single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
             title="ME Model",
             description="ME Model to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
+            },
         )
 
     initialize: Initialize = Field(

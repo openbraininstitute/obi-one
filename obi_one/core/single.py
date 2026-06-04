@@ -13,7 +13,7 @@ from pydantic import Field, field_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
-from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME
+from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
 from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ class SingleConfigMixin:
             task_config_type=self.single_task_config_type,
             multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
             input_entities=self.input_entities(db_client=db_client),  # ty:ignore[unresolved-attribute]
-            task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            task_config_file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             task_config_generator_id=campaign.id,
         )
 
@@ -165,10 +165,16 @@ class SingleConfigMixin:
             )
         elif self._coordinate_directory_option == "ZERO_INDEX":
             self.coordinate_output_root = self.scan_output_root / f"{self.idx}"
+        elif self._coordinate_directory_option == "NONE":
+            # Don't create any subfolder; only works w/o scan params
+            if self.single_coordinate_scan_params.scan_params:
+                msg = "Invalid coordinate_directory_option: NONE only valid w/o scan params."
+                raise ValueError(msg)
+            self.coordinate_output_root = self.scan_output_root
         else:
             msg = (
                 f"Invalid coordinate_directory_option: {self._coordinate_directory_option}. "
-                "Valid options are: NAME_EQUALS_VALUE, VALUE, ZERO_INDEX."
+                "Valid options are: NAME_EQUALS_VALUE, VALUE, ZERO_INDEX, NONE."
             )
             raise ValueError(msg)
 
