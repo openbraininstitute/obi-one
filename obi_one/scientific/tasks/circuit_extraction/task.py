@@ -217,7 +217,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(
+    def execute(  # noqa: C901, PLR0915
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
@@ -250,6 +250,11 @@ class CircuitExtractionTask(Task):
                 self._circuit,
                 self._circuit.default_population_name,
             )
+            if "node_id" in nset_def:
+                nset_info = f"{len(nset_def['node_id'])} neuron IDs"
+            else:
+                nset_info = f"{nset_def}"
+            L.info(f"Node set '{nset_name}': {nset_info}")
             sonata_circuit = self._circuit.sonata_circuit
             add_node_set_to_circuit(
                 sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
@@ -318,7 +323,7 @@ class CircuitExtractionTask(Task):
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
             with BenchmarkTracker.section("run_validation"):
-                circuit_utils.run_validation(new_circuit_path)  # ty:ignore[invalid-argument-type]
+                circuit_utils.run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
