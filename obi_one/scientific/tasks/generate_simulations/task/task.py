@@ -275,10 +275,11 @@ class GenerateSimulationTask(Task):
         MEModel configs do not expose a neuron_sets dictionary because the staged circuit contains
         a single real neuron. In that case, use the implicit default AllNeurons target.
         """
-        if not hasattr(self.config, "morphology_locations"):
+        morphology_locations = getattr(self.config, "morphology_locations", None)
+        if not isinstance(morphology_locations, dict):
             return
 
-        for locations_block in self.config.morphology_locations.values():
+        for locations_block in morphology_locations.values():
             if getattr(locations_block, "neuron_set", None) is not None:
                 continue
 

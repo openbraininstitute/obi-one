@@ -26,11 +26,6 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-)
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
@@ -66,18 +61,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
 
     json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [
-            BlockGroup.SETUP_BLOCK_GROUP,
-            BlockGroup.TARGETING_BLOCK_GROUP,
-            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.EVENTS_GROUP,
-        ],
-        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            MorphologyLocationsReference.__name__: "Default: None",
-        },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
@@ -95,19 +78,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
             SchemaKey.SINGULAR_NAME: "Timestamps",
             SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
-        default_factory=dict,
-        title="Morphology Locations",
-        description="Rules to generate locations on morphologies.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: MorphologyLocationsReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Morphology Locations",
-            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
