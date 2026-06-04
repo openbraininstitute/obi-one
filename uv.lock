@@ -2219,6 +2219,7 @@ service = [
 [package.dev-dependencies]
 dev = [
     { name = "coverage" },
+    { name = "h5py" },
     { name = "jsonschema" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2281,6 +2282,7 @@ provides-extras = ["connectivity", "meshing", "notebooks", "service", "all", "bl
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", extras = ["toml"] },
+    { name = "h5py" },
     { name = "jsonschema", specifier = ">=4.25.1" },
     { name = "pytest" },
     { name = "pytest-cov" },
