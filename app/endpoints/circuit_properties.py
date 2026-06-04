@@ -148,8 +148,20 @@ def mapped_circuit_properties_endpoint(
         mapped_circuit_properties[CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION] = (
             circuit_metrics.names_of_biophys_node_populations
         )
+        mapped_circuit_properties[CircuitMappedProperties.POINT_NEURONAL_POPULATION] = (
+            []  # TODO: Implement names_of_point_node_populations in circuit metrics
+        )
         mapped_circuit_properties[CircuitMappedProperties.VIRTUAL_NEURONAL_POPULATION] = (
             circuit_metrics.names_of_virtual_node_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.NONVIRTUAL_NEURONAL_POPULATION] = (
+            circuit_metrics.names_of_biophys_node_populations
+            + []  # TODO: Implement names_of_point_node_populations in circuit metrics
+        )
+        mapped_circuit_properties[CircuitMappedProperties.NEURONAL_POPULATION] = (
+            circuit_metrics.names_of_biophys_node_populations
+            + []  # TODO: Implement names_of_point_node_populations in circuit metrics
+            + circuit_metrics.names_of_virtual_node_populations
         )
         mapped_circuit_properties[
             CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION
