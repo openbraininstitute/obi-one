@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
+from libsonata import SimulatorType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -58,6 +59,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
+    _target_simulator: ClassVar[SimulatorType] = None
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
@@ -67,6 +69,8 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     class Initialize(Block):
         pass
+
+    initialize: Initialize
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
@@ -80,6 +84,29 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
+
+    @property
+    def target_simulator(self) -> SimulatorType:
+        """Returns the target simulator for the simulation campaign."""
+        if self._target_simulator is None:
+            msg = "Target simulator not specified for simulation campaign."
+            raise OBIONEError(msg)
+        return self._target_simulator
+
+    @property
+    def has_neuron_sets(self) -> bool:
+        return hasattr(self, "neuron_sets")
+
+    @property
+    def has_target_node_set_property(self) -> bool:
+        return hasattr(self.initialize, "node_sets")
+
+    @property
+    def target_node_set_property_is_none(self) -> bool:
+        if not self.has_target_node_set_property():
+            msg = "Config does not have a target node set property."
+            raise OBIONEError(msg)
+        return self.initialize.node_set is None
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""

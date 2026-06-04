@@ -126,5 +126,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
     )
 
 
-class LearningEngineCircuitSimulationSingleConfig(LearningEngineCircuitSimulationScanConfig, SimulationSingleConfigMixin):
+class LearningEngineCircuitSimulationSingleConfig(
+    LearningEngineCircuitSimulationScanConfig, SimulationSingleConfigMixin
+):
     """Only allows single values."""

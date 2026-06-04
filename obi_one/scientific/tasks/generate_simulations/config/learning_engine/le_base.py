@@ -1,6 +1,7 @@
 import abc
 from typing import Annotated, ClassVar
 
+from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -13,19 +14,15 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
-    BlockGroup,
-)
-from obi_one.scientific.unions.unions_recordings import (
-    RecordingReference,
-    RecordingUnion,
 )
 
 
 class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for learning engine-based simulation scan configurations."""
 
-    class Initialize(BaseSimulationScanConfig.Initialize):
+    _target_simulator: ClassVar[SimulatorType] = SimulatorType.LearningEngine
 
+    class Initialize(BaseSimulationScanConfig.Initialize):
         timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
 
         simulation_length: (
@@ -54,34 +51,36 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
                 SchemaKey.UNITS: Units.MILLISECONDS,
             },
         )
-        # extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        #     default=1.1,
-        #     title="Extracellular Calcium Concentration",
-        #     description=(
-        #         "Extracellular calcium concentration around the synapse in millimoles (mM). "
-        #         "Increasing this value increases the probability of synaptic vesicle release, "
-        #         "which in turn increases the level of network activity. In vivo values are "
-        #         "estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM."
-        #     ),
-        #     json_schema_extra={
-        #         SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        #         SchemaKey.UNITS: Units.MILLIMOLAR,
-        #     },
-        # )
-        # v_init: float | list[float] = Field(
-        #     default=-80.0,
-        #     title="Initial Voltage",
-        #     description="Initial membrane potential in millivolts (mV).",
-        #     json_schema_extra={
-        #         SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        #         SchemaKey.UNITS: Units.MILLIVOLTS,
-        #     },
-        # )
-        # random_seed: int | list[int] = Field(
-        #     default=1,
-        #     title="Random Seed",
-        #     description="Random seed for the simulation.",
-        #     json_schema_extra={
-        #         SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        #     },
-        # )
+        """
+        extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
+            default=1.1,
+            title="Extracellular Calcium Concentration",
+            description=(
+                "Extracellular calcium concentration around the synapse in millimoles (mM). "
+                "Increasing this value increases the probability of synaptic vesicle release, "
+                "which in turn increases the level of network activity. In vivo values are "
+                "estimated to be ~0.9-1.2mM, whilst in vitro values are on the order of 2mM."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLIMOLAR,
+            },
+        )
+        v_init: float | list[float] = Field(
+            default=-80.0,
+            title="Initial Voltage",
+            description="Initial membrane potential in millivolts (mV).",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLIVOLTS,
+            },
+        )
+        random_seed: int | list[int] = Field(
+            default=1,
+            title="Random Seed",
+            description="Random seed for the simulation.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+            },
+        )
+        """

@@ -26,7 +26,6 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
-    BRIAN2_TARGET_SIMULATOR,
     Brian2CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
@@ -83,8 +82,7 @@ class GenerateSimulationTask(Task):
 
         self._sonata_config = {}
         self._sonata_config["version"] = SONATA_VERSION
-        if is_brian2:
-            self._sonata_config["target_simulator"] = BRIAN2_TARGET_SIMULATOR
+        self._sonata_config["target_simulator"] = self.config.target_simulator
 
         self._sonata_config["run"] = {}
         self._sonata_config["run"]["dt"] = self.config.initialize.timestep
@@ -253,7 +251,7 @@ class GenerateSimulationTask(Task):
             args = get_args(attr_value)
             return args == (NeuronSetReference, type(None))
 
-        if hasattr(self.config, "neuron_sets"):
+        if self.config.has_neuron_sets:
             type_hints = get_type_hints(block.__class__)
 
             for attr_name, attr_type in type_hints.items():
@@ -264,7 +262,7 @@ class GenerateSimulationTask(Task):
 
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
-        if hasattr(self.config, "neuron_sets"):
+        if self.config.has_neuron_sets:
             for recording in self.config.recordings.values():
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     recording
@@ -300,9 +298,9 @@ class GenerateSimulationTask(Task):
 
         Infer default if needed. Assert biophysical.
         """
-        if hasattr(self.config, "neuron_sets"):
-            if hasattr(self.config.initialize, "node_set"):
-                if self.config.initialize.node_set is None:
+        if self.config.has_neuron_sets:
+            if self.config.has_target_node_set_property():
+                if self.config.target_node_set_property_is_none():
                     L.info("initialize.node_set is None — setting default node set.")
                     self.config.initialize.node_set = self._default_neuron_set_ref()  # ty:ignore[invalid-assignment]
 
@@ -344,7 +342,7 @@ class GenerateSimulationTask(Task):
                     self.config.initialize.node_set,  # ty:ignore[invalid-argument-type]
                     DEFAULT_NODE_SET_NAME,
                 )
-            elif not hasattr(self.config.initialize, "node_set"):
+            elif not self.config.has_target_node_set_property:
                 _ = self._default_neuron_set_ref()
                 self._sonata_config["node_set"] = DEFAULT_NODE_SET_NAME
 
@@ -370,7 +368,7 @@ class GenerateSimulationTask(Task):
         """
         sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
         self._neuron_set_definitions = {}
-        if hasattr(self.config, "neuron_sets"):
+        if self.config.has_neuron_sets:
             # circuit.sonata_circuit should be created once. Currently this would break other code.
 
             for neuron_set_key, neuron_set_ in self.config.neuron_sets.items():  # ty:ignore[unresolved-attribute]
@@ -405,7 +403,7 @@ class GenerateSimulationTask(Task):
 
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
         if db_client:
-            if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
+            if self.config.has_neuron_sets and self.config.has_target_node_set_property:
                 neuron_set_definition = self._neuron_set_definitions[
                     self.config.initialize.node_set.block_name  # ty:ignore[unresolved-attribute]
                 ]

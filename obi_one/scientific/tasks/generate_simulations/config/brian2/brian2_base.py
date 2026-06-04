@@ -1,6 +1,7 @@
 import abc
 from typing import Annotated, ClassVar
 
+from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -23,6 +24,8 @@ from obi_one.scientific.unions.unions_recordings import (
 
 class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for Brian2-based simulation scan configurations."""
+
+    _target_simulator: ClassVar[SimulatorType] = SimulatorType.Brian2
 
     recordings: dict[str, RecordingUnion] = Field(
         default_factory=dict,
