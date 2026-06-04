@@ -1,6 +1,7 @@
 import abc
 from typing import Annotated, ClassVar
 
+from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -24,6 +25,9 @@ from obi_one.scientific.unions.unions_recordings import (
 class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for neuron-based simulation scan configurations."""
 
+    _target_simulator: ClassVar[SimulatorType] = SimulatorType.NEURON
+    _spike_location: ClassVar[str] = "soma"
+
     recordings: dict[str, RecordingUnion] = Field(
         default_factory=dict,
         description="Recordings for the simulation.",
@@ -37,7 +41,6 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     )
 
     class Initialize(BaseSimulationScanConfig.Initialize):
-        spike_location: ClassVar[str] = "soma"
         timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
 
         simulation_length: (
@@ -97,3 +100,12 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
             },
         )
+
+    def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        sonata_config = super().base_sonata_config(sonata_config)
+
+        sonata_config["conditions"]["spike_location"] = self._spike_location
+        sonata_config["conditions"]["v_init"] = self.initialize.v_init            
+
+        return sonata_config

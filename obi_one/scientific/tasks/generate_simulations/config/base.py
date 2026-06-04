@@ -32,6 +32,8 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsUnion,
 )
 
+SONATA_VERSION = 2.4
+
 L = logging.getLogger(__name__)
 
 
@@ -60,6 +62,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
     _target_simulator: ClassVar[SimulatorType] = None
+    _sonata_version: ClassVar[float] = SONATA_VERSION
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
@@ -85,6 +88,27 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         },
     )
 
+    def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        if sonata_config is None:
+            sonata_config = {}
+        sonata_config = super().base_sonata_config(sonata_config)
+
+        sonata_config["version"] = self._sonata_version
+
+        sonata_config["run"] = {}
+        sonata_config["run"]["dt"] = self.initialize.timestep
+        sonata_config["run"]["random_seed"] = self.initialize.random_seed
+        sonata_config["run"]["tstop"] = self.initialize.simulation_length
+
+        sonata_config["conditions"] = {}
+
+        sonata_config["output"] = {}
+        sonata_config["output"]["output_dir"] = "output"
+        sonata_config["output"]["spikes_file"] = "spikes.h5"
+        
+        return sonata_config
+
     @property
     def target_simulator(self) -> SimulatorType:
         """Returns the target simulator for the simulation campaign."""
@@ -93,17 +117,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             raise OBIONEError(msg)
         return self._target_simulator
 
-    def base_sonata_config(self) -> dict:
-        """Returns the base SONATA configuration for the simulation campaign."""
-        sonata_config = super().base_sonata_config()
-        return sonata_config
-
-    @property
-    def target_node_set_property_is_none(self) -> bool:
-        if not self.has_target_node_set_property():
-            msg = "Config does not have a target node set property."
-            raise OBIONEError(msg)
-        return self.initialize.node_set is None
+    
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""

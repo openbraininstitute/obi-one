@@ -26,7 +26,6 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
-    BRIAN2_TARGET_SIMULATOR,
     Brian2CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
@@ -57,9 +56,6 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
 
-SONATA_VERSION = 2.4
-
-
 class GenerateSimulationTask(Task):
     config: (
         CircuitSimulationSingleConfig
@@ -79,43 +75,8 @@ class GenerateSimulationTask(Task):
 
     def _initialize_sonata_simulation_config(self) -> dict:  # ty:ignore[invalid-return-type]
         """Returns the default SONATA conditions dictionary."""
-        is_brian2 = isinstance(self.config, Brian2CircuitSimulationSingleConfig)
-
-        self._sonata_config = {}
-        self._sonata_config["version"] = SONATA_VERSION
-        if is_brian2:
-            self._sonata_config["target_simulator"] = self.config.target_simulator
-
-        self._sonata_config["run"] = {}
-        self._sonata_config["run"]["dt"] = self.config.initialize.timestep
-        self._sonata_config["run"]["random_seed"] = self.config.initialize.random_seed
-        self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
-
-        self._sonata_config["conditions"] = {}
-        if not is_brian2 and hasattr(self.config.initialize, "extracellular_calcium_concentration"):
-            self._sonata_config["conditions"]["extracellular_calcium"] = (
-                self.config.initialize.extracellular_calcium_concentration
-            )
-        if hasattr(self.config.initialize, "temperature"):
-            self._sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
-        self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
-        if not is_brian2 and hasattr(self.config.initialize, "spike_location"):
-            self._sonata_config["conditions"]["spike_location"] = (
-                self.config.initialize.spike_location
-            )
-
-        self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        if (
-            isinstance(
-                self.config,
-                (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig),
-            )
-            and not is_brian2
-        ):
-            self._sonata_config["conditions"]["mechanisms"] = {
-                "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-                "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            }
+        
+        self._sonata_config = self.config.base_sonata_config({})
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -469,7 +430,7 @@ class GenerateSimulationTask(Task):
     ) -> None:
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
-        self._initialize_sonata_simulation_config()
+        self._sonata_config = self.config.base_sonata_config()
         self._resolve_circuit(db_client)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
