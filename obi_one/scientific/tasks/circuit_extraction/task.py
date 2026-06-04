@@ -260,6 +260,10 @@ class CircuitExtractionTask(Task):
                 sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
             )
 
+        # STOP HERE
+        msg = "Stopping here!"
+        raise RuntimeError(msg)
+
         # Create subcircuit using "brainbuilder"
         L.info(f"Extracting subcircuit from '{self._circuit.name}'")
         with BenchmarkTracker.section("split_subcircuit"):
