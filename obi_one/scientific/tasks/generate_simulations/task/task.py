@@ -255,7 +255,7 @@ class GenerateSimulationTask(Task):
                             self._circuit,
                             self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                         )
-                        not in {"biophysical", "inait_point_neuron_lif"}
+                        not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
                     )
                 ):
                     # Get list of biophysical populations to help user
