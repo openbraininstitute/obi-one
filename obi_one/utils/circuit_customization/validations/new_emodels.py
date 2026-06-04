@@ -101,23 +101,25 @@ def check_bluecellulab_initializable(paths: list[dict], circuit_id: str|uuid.UUI
 
 # see if should be moved to more general circuit utils
 def read_node_file(fpath):
+    """Reads a node file and returns the node population."""
     nodes = libsonata.NodeStorage(fpath)
     pop_name = next(iter(nodes.population_names))  # expects size 1
     node_pop = nodes.open_population(pop_name)
     return node_pop
 
 
+# write a test for this
+# maybe use one good nodes file in test data, and copy+modify it in tmp folder to test function
 def check_new_node_columns(old_node_file_path, new_node_file_path):
     """Checks that only the module template and the etype template columns have been changed.
     
     Raises an error if any other column has been changed, or if the attribute names are different between the two files, or if the IDs have been modified.
     """
-    modifications_allowed_attrs = {"module_template", "etype_template"}
+    modifications_allowed_attrs = {"model_template", "etype"}
 
     old_node_pop = read_node_file(old_node_file_path)
     new_node_pop = read_node_file(new_node_file_path)
 
-    # make it so we can read dynamic attributes also
     old_attribute_names = set(old_node_pop.attribute_names)
     new_attribute_names = set(new_node_pop.attribute_names)
     old_dynamic_attribute_names = set(old_node_pop.dynamics_attribute_names)
@@ -126,18 +128,18 @@ def check_new_node_columns(old_node_file_path, new_node_file_path):
     assert new_attribute_names == old_attribute_names, f"New node file has different attribute names than old node file. Old attribute names: {old_attribute_names}, New attribute names: {new_attribute_names}"
     assert new_dynamic_attribute_names == old_dynamic_attribute_names, f"New node file has different dynamic attribute names than old node file. Old dynamic attribute names: {old_dynamic_attribute_names}, New dynamic attribute names: {new_dynamic_attribute_names}"
 
-    old_selection = node_pop.select_all()
-    new_selection = node_pop.select_all()
-    assert old_selection.flatten() == new_selection.flatten(), f"IDs have been modified in the new node file. Old IDs: {old_selection.flatten()}, New IDs: {new_selection.flatten()}"
+    old_selection = old_node_pop.select_all()
+    new_selection = new_node_pop.select_all()
+    assert (old_selection.flatten() == new_selection.flatten()).all(), f"IDs have been modified in the new node file. Old IDs: {old_selection.flatten()}, New IDs: {new_selection.flatten()}"
 
+    # does this raise an error when we delete one entry in model_template?
     for attr in old_attribute_names:
         if attr not in modifications_allowed_attrs:
-            old_values = node_pop.get_attribute(attr, old_selection)
-            new_values = node_pop.get_attribute(attr, old_selection)
-            assert old_values == new_values, f"Values of attribute {attr} have been modified in the new node file. Old values: {old_values}, New values: {new_values}"
+            old_values = old_node_pop.get_attribute(attr, old_selection)
+            new_values = new_node_pop.get_attribute(attr, old_selection)
+            assert (old_values == new_values).all(), f"Values of attribute {attr} have been modified in the new node file. Old values: {old_values}, New values: {new_values}"
 
     for dyn_attr in old_dynamic_attribute_names:
-        if dyn_attr not in modifications_allowed_attrs:
-            old_values = node_pop.get_dynamics_attribute(dyn_attr, old_selection)
-            new_values = node_pop.get_dynamics_attribute(dyn_attr, old_selection)
-            assert old_values == new_values, f"Values of dynamic attribute {dyn_attr} have been modified in the new node file. Old values: {old_values}, New values: {new_values}"
+        old_values = old_node_pop.get_dynamics_attribute(dyn_attr, old_selection)
+        new_values = new_node_pop.get_dynamics_attribute(dyn_attr, old_selection)
+        assert (old_values == new_values).all(), f"Values of dynamic attribute {dyn_attr} have been modified in the new node file. Old values: {old_values}, New values: {new_values}"
