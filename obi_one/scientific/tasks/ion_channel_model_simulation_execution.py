@@ -19,7 +19,7 @@ from obi_one.scientific.library.simulation.staging import (
     get_simulation_parameters,
     stage_ion_channel_models_as_circuit,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationSingleConfig,
 )
 from obi_one.types import SimulationBackend
