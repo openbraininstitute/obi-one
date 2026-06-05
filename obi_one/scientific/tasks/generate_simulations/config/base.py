@@ -144,6 +144,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             sonata_config = {}
 
         sonata_config["version"] = self._sonata_version
+        if self._target_simulator is None:
+            msg = "Target simulator not specified for simulation campaign."
+            raise NotImplementedError(msg)
         sonata_config["target_simulator"] = self._target_simulator.name
 
         sonata_config["run"] = {}
