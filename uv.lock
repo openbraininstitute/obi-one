@@ -277,7 +277,7 @@ wheels = [
 
 [[package]]
 name = "bluepyefe"
-version = "2.3.56"
+version = "2.3.57"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "efel" },
@@ -288,9 +288,9 @@ dependencies = [
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/a3/f6224a58b5fed204ac7a361307cc8fba7b42f643b9f2f4df6687ab05a8bd/bluepyefe-2.3.56.tar.gz", hash = "sha256:3c652a69c7b4332c06d37974dc407820e074ab92ac793d394aaaeb6253e7b5c3", size = 1031837, upload-time = "2026-04-17T14:39:22.54Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/89/1220cfa748a6ce0ac1d700c39ace694a0b82c4caea4b3c0f48e63c5579f9/bluepyefe-2.3.57.tar.gz", hash = "sha256:b88613b460938934573985cd9d019d33d7e95de676a684b585cbed19868a2a4a", size = 1033268, upload-time = "2026-06-03T14:53:47.782Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/e4/57581565b78851b206a110a45f661d96801a4925d31592671784619156d6/bluepyefe-2.3.56-py3-none-any.whl", hash = "sha256:fe0a7901ce73043680a504064711319299672121b9d201f82e92a3b4611b8977", size = 68084, upload-time = "2026-04-17T14:39:20.772Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/16/5d5ea42cc347bf1c188962a52264591a0ae2f4aa2eadd2d4f049e8985b90/bluepyefe-2.3.57-py3-none-any.whl", hash = "sha256:417841f140cbdb3a12e1984dafde2a46ee54fff3e6814efb169da14828a52249", size = 69315, upload-time = "2026-06-03T14:53:46.188Z" },
 ]
 
 [[package]]
@@ -2237,7 +2237,7 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "bluecellulab", specifier = ">=2.6.87" },
     { name = "blueetl" },
-    { name = "bluepyefe", specifier = ">=2.3.53" },
+    { name = "bluepyefe", specifier = ">=2.3.57" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.5" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
