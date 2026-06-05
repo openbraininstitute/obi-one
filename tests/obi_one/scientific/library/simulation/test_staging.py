@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -6,9 +6,19 @@ from obi_one.scientific.library.simulation import staging as test_module
 from obi_one.scientific.library.simulation.schemas import SimulationParameters
 
 
-@patch("obi_one.scientific.library.simulation.staging.MEModelCircuit")
-@patch("obi_one.scientific.library.simulation.staging.stage_sonata_from_config")
-def test_stage_ion_channel_models_as_circuit(mock_stage_sonata, mock_me_model, tmp_path):
+def test_stage_ion_channel_models_as_circuit(monkeypatch, tmp_path):
+    mock_stage_sonata = MagicMock()
+    mock_me_model = MagicMock()
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.staging.stage_sonata_from_config",
+        mock_stage_sonata,
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.staging.MEModelCircuit",
+        mock_me_model,
+    )
+
     mock_client = MagicMock()
     mock_output_dir = tmp_path / "output"
 
@@ -44,8 +54,8 @@ def test_stage_ion_channel_models_as_circuit(mock_stage_sonata, mock_me_model, t
     )
 
 
-@patch("obi_one.scientific.library.simulation.staging.load_json")
-def test_get_simulation_parameters_success(mock_load_json, tmp_path):
+def test_get_simulation_parameters_success(monkeypatch, tmp_path):
+    mock_load_json = MagicMock()
     simulation_config_file = tmp_path / "config.json"
     libnrnmech_path = tmp_path / "libnrnmech.so"
 
@@ -53,6 +63,7 @@ def test_get_simulation_parameters_success(mock_load_json, tmp_path):
         {"node_sets_file": "nodes.json", "node_set": "All", "run": {"tstop": 100}},
         {"All": {"node_id": [1, 2, 3]}},
     ]
+    monkeypatch.setattr("obi_one.scientific.library.simulation.staging.load_json", mock_load_json)
 
     params = test_module.get_simulation_parameters(simulation_config_file, libnrnmech_path)
 
@@ -63,8 +74,8 @@ def test_get_simulation_parameters_success(mock_load_json, tmp_path):
     assert params.libnrnmech_path == libnrnmech_path
 
 
-@patch("obi_one.scientific.library.simulation.staging.load_json")
-def test_get_simulation_parameters_missing_node_set(mock_load_json, tmp_path):
+def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
+    mock_load_json = MagicMock()
     simulation_config_file = tmp_path / "config.json"
     libnrnmech_path = tmp_path / "libnrnmech.so"
 
@@ -72,6 +83,7 @@ def test_get_simulation_parameters_missing_node_set(mock_load_json, tmp_path):
         {"node_sets_file": "nodes.json", "node_set": "Foo", "run": {"tstop": 100}},
         {"All": {"node_id": [1, 2, 3]}},
     ]
+    monkeypatch.setattr("obi_one.scientific.library.simulation.staging.load_json", mock_load_json)
 
     with pytest.raises(KeyError, match="Node set 'Foo' not found"):
         test_module.get_simulation_parameters(simulation_config_file, libnrnmech_path)

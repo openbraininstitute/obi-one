@@ -31,14 +31,14 @@ def create_or_resize_dataset(
 
 
 def adjust_edge_index_groups(grp_root: str, n_edges: int) -> None:
-    create_or_resize_dataset(grp_root, "edge_type_id", -numpy.ones(n_edges, dtype=int), dtype="i8")
-    create_or_resize_dataset(grp_root, "edge_group_id", numpy.zeros(n_edges, dtype=int), dtype="i8")
+    create_or_resize_dataset(grp_root, "edge_type_id", -numpy.ones(n_edges, dtype=int), dtype="i8")  # ty:ignore[invalid-argument-type]
+    create_or_resize_dataset(grp_root, "edge_group_id", numpy.zeros(n_edges, dtype=int), dtype="i8")  # ty:ignore[invalid-argument-type]
     start = 0
     if "edge_group_index" in grp_root:  # NOQA: SIM102
-        if len(grp_root["edge_group_index"]) > 0:
-            start = grp_root["edge_group_index"][-1] + 1
+        if len(grp_root["edge_group_index"]) > 0:  # ty:ignore[invalid-argument-type]
+            start = grp_root["edge_group_index"][-1] + 1  # ty:ignore[invalid-argument-type]
     edge_group_index = numpy.arange(start, start + n_edges, dtype=int)
-    create_or_resize_dataset(grp_root, "edge_group_index", edge_group_index, dtype="u8")
+    create_or_resize_dataset(grp_root, "edge_group_index", edge_group_index, dtype="u8")  # ty:ignore[invalid-argument-type]
 
 
 def write_edges(
@@ -59,8 +59,8 @@ def write_edges(
     create_or_resize_dataset(grp_root, "target_node_id", syn_pre_post[_STR_POST_NODE].values)
     grp_root["target_node_id"].attrs["node_population"] = tgt_pop_name
 
-    for _col in syn_data.columns:
-        create_or_resize_dataset(grp_0, _col, syn_data[_col].values)
+    for col in syn_data.columns:
+        create_or_resize_dataset(grp_0, col, syn_data[col].values)
     adjust_edge_index_groups(grp_root, len(syn_pre_post))
 
     h5.close()

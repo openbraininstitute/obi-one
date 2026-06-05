@@ -14,9 +14,18 @@ class ExponentialDistribution(Distribution):
     title: ClassVar[str] = "Exponential"
 
     scale: PositiveFloat | list[PositiveFloat] = Field(
-        default=1.0,
+        default=50.0,
         title="Scale",
         description="Scale parameter of the exponential distribution in milliseconds.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+    shift: float | list[float] = Field(
+        default=0.0,
+        title="Shift",
+        description="Constant value added to each sampled value.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -35,5 +44,5 @@ class ExponentialDistribution(Distribution):
         """Sample n values from the exponential distribution."""
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
-        samples = rng.exponential(scale=self.scale, size=n)
+        samples = rng.exponential(scale=self.scale, size=n) + self.shift
         return samples.tolist()

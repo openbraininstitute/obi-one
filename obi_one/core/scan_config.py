@@ -18,9 +18,9 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.registry import block_ref_registry
 from obi_one.core.schema import SchemaKey
-from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME
-from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
+from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
@@ -45,16 +45,16 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     description: ClassVar[str] = """Add a description to the class' description variable"""
     single_coord_class_name: ClassVar[str] = ""
 
-    _block_mapping: dict = None
+    _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 
-    _campaign: Entity = None
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
+    _campaign: Entity = None  # ty:ignore[invalid-assignment]
+    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
 
     @property
     def campaign(
         self,
-    ) -> entitysdk.models.Entity | None:
+    ) -> entitysdk.models.Entity | None:  # ty:ignore[possibly-missing-submodule]
         return self._campaign
 
     def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: PLR6301, ARG002
@@ -72,17 +72,17 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def campaign_task_config_type(self) -> None:
-        return self._campaign_task_config_type
+        return self._campaign_task_config_type  # ty:ignore[invalid-return-type]
 
     @property
     def campaign_generation_task_activity_type(self) -> None:
-        return self._campaign_generation_task_activity_type
+        return self._campaign_generation_task_activity_type  # ty:ignore[invalid-return-type]
 
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> TaskConfig:
         if self.campaign_task_config_type is None:
             msg = "campaign_task_config_type must be defined to create generic campaign TaskConfig."
@@ -97,7 +97,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                 "scan_parameters": multiple_value_parameters_dictionary
             },
             input_entities=self.input_entities(db_client=db_client),
-            task_config_file_path=output_root / _SCAN_CONFIG_FILENAME,
+            task_config_file_path=output_root / SCAN_CONFIG_FILENAME,
         )
 
         return self._campaign
@@ -241,7 +241,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         for attr_value in self.__dict__.values():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
-                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+                isinstance(dict_val, Block) for dict_val in attr_value.values()
             ):
                 category_blocks_dict = attr_value
 
@@ -272,17 +272,14 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
         reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPE]
 
-        if name in self.__dict__.get(block_dict_name):
+        if name in self.__dict__.get(block_dict_name):  # ty:ignore[unsupported-operator]
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 
-        # Find the class in AllReferenceTypes whose name matches reference_type_name
-        reference_type = next(
-            (cls for cls in AllBlockReferenceTypes if cls.__name__ == reference_type_name),
-            None,
-        )
+        # Find the class in the registry whose name matches reference_type_name
+        reference_type = block_ref_registry.get_by_name(reference_type_name)
         if reference_type is None:
-            msg = f"Reference type '{reference_type_name}' not found in AllReferenceTypes."
+            msg = f"Reference type '{reference_type_name}' not found in block reference registry."
             raise OBIONEError(msg)
 
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)

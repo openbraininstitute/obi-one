@@ -22,7 +22,6 @@ from obi_one.core.tuple import NamedTuple
 __all__ = [
     "AfferentSynapsesBlock",
     "AllDistributionsReference",
-    "AllDistributionsReference",
     "AllDistributionsUnion",
     "AllNeurons",
     "BasicConnectivityPlotsScanConfig",
@@ -30,6 +29,8 @@ __all__ = [
     "BasicConnectivityPlotsTask",
     "Block",
     "BlockReference",
+    "Brian2CircuitSimulationScanConfig",
+    "Brian2CircuitSimulationSingleConfig",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -59,6 +60,9 @@ __all__ = [
     "CorrelatedTsodyksMarkramSynapticModel",
     "CoupledScan",
     "CoupledScanGenerationTask",
+    "CreateExtracellularRecordingArrayScanConfig",
+    "CreateExtracellularRecordingArraySingleConfig",
+    "CreateExtracellularRecordingArrayTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "DistributionSpikeStimulus",
@@ -95,13 +99,16 @@ __all__ = [
     "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
     "InterNeuronSetSynapticModelAssigner",
+    "InterSpikeIntervalDistributionSpikeStimulus",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
     "IonChannelModelSimulationScanConfig",
     "IonChannelModelSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
+    "LinearExtracellularLocations",
     "LoadAssetMethod",
+    "LogNormalDistribution",
     "MEModelCircuit",
     "MEModelFromID",
     "MEModelSimulationScanConfig",
@@ -131,8 +138,10 @@ __all__ = [
     "NeuronSet",
     "NeuronSetReference",
     "NeuronSetUnion",
+    "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
@@ -144,6 +153,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PoissonDistribution",
     "PoissonSpikeStimulus",
     "PositiveFloatRange",
     "PositiveIntRange",
@@ -164,7 +174,6 @@ __all__ = [
     "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
     "ScanConfig",
-    "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
     "SimplexMembershipBasedNeuronSet",
@@ -173,7 +182,6 @@ __all__ = [
     "SimulationNeuronSetUnion",
     "SimulationsForm",
     "SingleConfigMixin",
-    "SingleConfigMixin",
     "SingleTimestamp",
     "SinusoidalCurrentClampSomaticStimulus",
     "SinusoidalPoissonSpikeStimulus",
@@ -181,6 +189,7 @@ __all__ = [
     "SkeletonizationSingleConfig",
     "SomaVoltageRecording",
     "SpatiallyUniformElectricFieldStimulus",
+    "SpikeTimeDistributionSpikeStimulus",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -249,12 +258,17 @@ from obi_one.scientific.blocks.distributions.constant import (
 )
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
 from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
-from obi_one.scientific.blocks.extracellular_locations import (
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    LinearExtracellularLocations,
+    Neuropixels1ExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (
@@ -311,7 +325,12 @@ from obi_one.scientific.blocks.stimuli.spike import (
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
 )
-from obi_one.scientific.blocks.stimuli.spike.distribution import DistributionSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
+    SpikeTimeDistributionSpikeStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
@@ -387,9 +406,16 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
     ContributeSubjectSingleConfig,
 )
-from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
-from obi_one.scientific.tasks.em_synapse_mapping.task import (
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+    CreateExtracellularRecordingArraySingleConfig,
+    CreateExtracellularRecordingArrayTask,
+)
+from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    EMSynapseMappingScanConfig,
     EMSynapseMappingSingleConfig,
+)
+from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
@@ -402,19 +428,23 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+    Brian2CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationScanConfig,
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
@@ -456,7 +486,10 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
 )
 from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
-from obi_one.scientific.unions.config_task_map import get_configs_task_type
+from obi_one.scientific.unions.block_references import AllBlockReferenceTypes  # noqa: F401
+from obi_one.scientific.unions.config_task_map import (
+    get_configs_task_type,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
@@ -485,13 +518,13 @@ from obi_one.scientific.unions.unions_synaptic_model_assigner import (
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
-LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"
-PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"
+LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # noqa: RUF067
+PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # noqa: RUF067
 
 
-class GridScan(GridScanGenerationTask):
+class GridScan(GridScanGenerationTask):  # noqa: RUF067
     pass
 
 
-class CoupledScan(CoupledScanGenerationTask):
+class CoupledScan(CoupledScanGenerationTask):  # noqa: RUF067
     pass

@@ -71,8 +71,8 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
         )
 
         neuron_voxel_size: (
-            Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]
-            | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
+            Annotated[PositiveFloat, Field(le=0.1, ge=0.005)]
+            | list[Annotated[PositiveFloat, Field(le=0.1, ge=0.005)]]
         ) = Field(
             default=0.1,
             title="Neuron Voxel Size",
@@ -97,7 +97,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
         )
 
         write_raw_spines: bool = Field(
-            default=False,
+            default=True,
             title="Include Full Resolution Spines",
             description=(
                 "By default a morphology h5 file is created with reconstructed spines. "

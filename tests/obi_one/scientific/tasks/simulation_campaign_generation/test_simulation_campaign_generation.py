@@ -127,8 +127,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
         with cfg_file.open("r") as f:
             cfg = json.load(f)
 
-        assert cfg.pop("version") == 2.4
-        assert cfg.pop("target_simulator") == "NEURON"
+        assert cfg.pop("version") == 2.4  # noqa: RUF069
         assert cfg.pop("run") == {"dt": 0.025, "random_seed": 1, "tstop": 3000.0}
         mech_dict = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
@@ -340,8 +339,8 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "matrix_path": None,
             "type": "Circuit",
         }
-        mg_scan_param = instance.single_coordinate_scan_params.scan_params[0]
-        circuit_scan_param = instance.single_coordinate_scan_params.scan_params[1]
+        circuit_scan_param = instance.single_coordinate_scan_params.scan_params[0]
+        mg_scan_param = instance.single_coordinate_scan_params.scan_params[1]
         scan_dict1 = {
             "location_list": [
                 "synaptic_manipulations",
@@ -359,7 +358,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "index_in_scan_dimension": circuit_scan_param.index_in_scan_dimension,
         }
         assert cfg.pop("single_coordinate_scan_params") == {
-            "scan_params": [scan_dict1, scan_dict2],
+            "scan_params": [scan_dict2, scan_dict1],
             "nested_coordinate_subpath_str": ".",
             "type": "SingleCoordinateScanParams",
         }
@@ -562,7 +561,7 @@ def test_simulation_campaign_generation(tmp_path):
 
 def test_circuit_simulation_scan_config_with_distribution_stimuli():
     """Test that CircuitSimulationScanConfig can include distribution blocks
-    and DistributionSpikeStimulus."""
+    and InterSpikeIntervalDistributionSpikeStimulus."""
     # Create config
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
     info = obi.Info(campaign_name="Test", campaign_description="Test description")
@@ -583,7 +582,7 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     sim_conf.add(timestamps, name="timestamps")
 
     # Add distribution-based stimulus that references the distribution
-    dist_stimulus = obi.DistributionSpikeStimulus(
+    dist_stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
         distribution=obi.AllDistributionsReference(
             block_dict_name="distributions", block_name="constant_dist"
         ),

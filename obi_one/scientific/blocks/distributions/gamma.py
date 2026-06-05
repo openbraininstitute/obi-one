@@ -22,9 +22,19 @@ class GammaDistribution(Distribution):
         },
     )
     scale: PositiveFloat | list[PositiveFloat] = Field(
-        default=1.0,
+        default=25.0,
         title="Scale",
-        description="Scale parameter of the gamma distribution in milliseconds.",
+        description="Scale parameter of the gamma distribution in milliseconds."
+        "Mean ISI = shape x scale.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+    shift: float | list[float] = Field(
+        default=0.0,
+        title="Shift",
+        description="Constant value added to each sampled value.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -43,5 +53,5 @@ class GammaDistribution(Distribution):
         """Sample n values from the gamma distribution."""
         if rng is None:
             rng = np.random.default_rng(self.random_seed)
-        samples = rng.gamma(shape=self.shape, scale=self.scale, size=n)
+        samples = rng.gamma(shape=self.shape, scale=self.scale, size=n) + self.shift
         return samples.tolist()
