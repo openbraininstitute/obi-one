@@ -244,7 +244,7 @@ class CircuitExtractionTask(Task):
 
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
-        with BenchmarkTracker.section("add_node_set"):
+        with BenchmarkTracker.section("add_node_set_and_print_info"):
             nset_name = self.config.neuron_set.__class__.__name__
             nset_def = self.config.neuron_set.get_node_set_definition(
                 self._circuit,
@@ -261,6 +261,7 @@ class CircuitExtractionTask(Task):
             )
 
         # STOP HERE
+        L.error("STOPPING HERE!")
         msg = "Stopping here!"
         raise RuntimeError(msg)
 
