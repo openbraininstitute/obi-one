@@ -8,6 +8,9 @@ from typing import ClassVar
 import entitysdk
 
 from obi_one.core.task import Task
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
+)
 from obi_one.scientific.tasks.emodel_optimization import _shared
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
     EModelEFeatureExtractionSingleConfig,
@@ -20,59 +23,18 @@ EXTRACTED_FEATURES_FILENAME = "extracted_features.json"
 
 def _build_files_metadata(
     *,
-    file_type: str,
-    ephys_data_path: Path,
+    nwb_paths: list[Path],
     ecodes_metadata_dict: dict,
-    voltage_pattern: str,
-    current_pattern: str,
-    voltage_unit: str,
-    current_unit: str,
-    time_unit: str,
 ) -> list[dict]:
-    """Replicate ``configure_targets()`` from the L5PC example pipeline.py.
-
-    https://github.com/openbraininstitute/BluePyEModel/blob/main/examples/L5PC/pipeline.py
-    """
-    files_metadata: list[dict] = []
-    if file_type == "ibw":
-        for path in sorted(Path(ephys_data_path).glob(f"*{voltage_pattern}*.ibw")):
-            fn = path.name
-            for ecode, ecode_meta in ecodes_metadata_dict.items():
-                if ecode in fn:
-                    files_metadata.append(
-                        {
-                            "cell_name": path.parent.name,
-                            "filename": path.stem,
-                            "ecodes": {ecode: ecode_meta},
-                            "other_metadata": {
-                                "v_file": str(path),
-                                "i_file": str(path).replace(voltage_pattern, current_pattern),
-                                "i_unit": current_unit,
-                                "v_unit": voltage_unit,
-                                "t_unit": time_unit,
-                            },
-                        }
-                    )
-    elif file_type == "nwb":
-        files_metadata.extend(
-            {
-                "cell_name": path.stem,
-                "filepath": str(path),
-                "ecodes": ecodes_metadata_dict,
-            }
-            for path in sorted(Path(ephys_data_path).glob("*.nwb"))
-        )
-    else:
-        msg = f"Unsupported file_type: {file_type}. Expected 'ibw' or 'nwb'."
-        raise ValueError(msg)
-
-    if not files_metadata:
-        msg = (
-            f"No experimental ephys files found under {ephys_data_path} for file_type"
-            f" '{file_type}'."
-        )
-        raise FileNotFoundError(msg)
-    return files_metadata
+    """Build files_metadata rows for NWB datasets (one file per cell)."""
+    return [
+        {
+            "cell_name": path.stem,
+            "filepath": str(path),
+            "ecodes": ecodes_metadata_dict,
+        }
+        for path in sorted(nwb_paths)
+    ]
 
 
 def _build_targets_formatted(targets_dict: dict) -> list[dict]:
@@ -104,7 +66,8 @@ class EModelEFeatureExtractionTask(Task):
 
     Steps performed in ``coordinate_output_root``:
 
-    1. Copy the ephys data into the working directory.
+    1. Download the NWB asset of every ``ElectricalCellRecording`` listed in
+       ``initialize.electrical_cell_recording`` into ``./ephys_data/<id>/``.
     2. Build ``files_metadata`` + ``targets`` rows from the user-provided blocks
        and re-shape them into the BPE2 input format via
        :class:`bluepyemodel.efeatures_extraction.targets_configuration.TargetsConfiguration`.
@@ -121,10 +84,24 @@ class EModelEFeatureExtractionTask(Task):
 
     config: EModelEFeatureExtractionSingleConfig
 
+    def _download_recordings(
+        self,
+        ephys_data_root: Path,
+        db_client: entitysdk.client.Client,
+    ) -> list[Path]:
+        downloaded: list[Path] = []
+        for recording in self.config.initialize.electrical_cell_recording:
+            if not isinstance(recording, ElectricalCellRecordingFromID):
+                msg = f"Expected ElectricalCellRecordingFromID, got {type(recording).__name__}."
+                raise TypeError(msg)
+            target_dir = ephys_data_root / recording.id_str
+            downloaded.append(recording.download_asset(dest_dir=target_dir, db_client=db_client))
+        return downloaded
+
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
@@ -136,15 +113,13 @@ class EModelEFeatureExtractionTask(Task):
             FitnessCalculatorConfiguration,
         )
 
-        init = self.config.initialize
         targets = self.config.targets
         extraction_settings = self.config.extraction_settings
-        efel_settings = self.config.efel_settings
         coord_root = Path(self.config.coordinate_output_root).resolve()
 
-        # 1. Copy the ephys data into the working directory.
-        ephys_data_target = coord_root / "ephys_data" / Path(init.ephys_data_path).name
-        _shared.copy_tree(Path(init.ephys_data_path).resolve(), ephys_data_target)
+        # 1. Download the NWB ephys assets from entitycore.
+        ephys_data_root = coord_root / "ephys_data"
+        downloaded_paths = self._download_recordings(ephys_data_root, db_client)
 
         # 2. Build bluepyefe inputs via TargetsConfiguration (handles the BPE1 ->
         #    BPE2 format conversion for us).
@@ -152,15 +127,13 @@ class EModelEFeatureExtractionTask(Task):
             ecode: meta.to_dict() for ecode, meta in targets.ecodes_metadata.items()
         }
         files = _build_files_metadata(
-            file_type=targets.file_type,
-            ephys_data_path=ephys_data_target,
+            nwb_paths=downloaded_paths,
             ecodes_metadata_dict=ecodes_metadata_dict,
-            voltage_pattern=targets.ibw_voltage_channel_pattern,
-            current_pattern=targets.ibw_current_channel_pattern,
-            voltage_unit=targets.ibw_voltage_unit,
-            current_unit=targets.ibw_current_unit,
-            time_unit=targets.ibw_time_unit,
         )
+        if not files:
+            msg = f"No NWB ephys files were downloaded under {ephys_data_root}."
+            raise FileNotFoundError(msg)
+
         targets_configuration = TargetsConfiguration(
             files=files,
             targets=_build_targets_formatted(targets.targets),
@@ -177,7 +150,7 @@ class EModelEFeatureExtractionTask(Task):
                 targets=targets_configuration.targets_BPE,
                 protocols_rheobase=targets_configuration.protocols_rheobase_BPE,
                 absolute_amplitude=extraction_settings.extract_absolute_amplitudes,
-                efel_settings=efel_settings.to_dict(),
+                efel_settings=self.config.efel_settings.to_dict(),
                 plot=extraction_settings.plot_extraction,
                 default_std_value=extraction_settings.default_std_value,
                 write_files=False,
@@ -196,7 +169,8 @@ class EModelEFeatureExtractionTask(Task):
             threshold_efeature_std=None,
         )
 
-        features_path = coord_root / EXTRACTED_FEATURES_FILENAME
-        features_path.write_text(json.dumps(fitness_calculator_config.as_dict(), indent=2))
+        (coord_root / EXTRACTED_FEATURES_FILENAME).write_text(
+            json.dumps(fitness_calculator_config.as_dict(), indent=2)
+        )
 
         return coord_root

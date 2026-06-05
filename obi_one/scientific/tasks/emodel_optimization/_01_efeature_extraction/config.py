@@ -49,8 +49,8 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
     _campaign_task_config_type: ClassVar[TaskConfigType] = None
     _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
 
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
-        return []
+    def input_entities(self, db_client: Client) -> list[Entity]:
+        return [r.entity(db_client=db_client) for r in self.initialize.electrical_cell_recording]
 
     initialize: ExtractionInitialize = Field(
         title="Initialize",
