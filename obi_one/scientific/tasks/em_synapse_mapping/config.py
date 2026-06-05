@@ -21,10 +21,12 @@ class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
     ADVANCED_BLOCK_GROUP = "Advanced"
 
+
 class AdvancedEMSynapseMappingOptions(Block):
     custom_physical_edge_population_name: str = Field(
         title="Custom physical edge population name",
-        description="Custom name for the population of connections between neurons in the circuit. 'physical_connections' is used if not specified.",
+        description="Custom name for the population of connections between neurons in the circuit."
+        " 'physical_connections' is used if not specified.",
         default="",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
@@ -32,7 +34,8 @@ class AdvancedEMSynapseMappingOptions(Block):
     )
     custom_virtual_edge_population_name: str = Field(
         title="Custom virtual edge population name",
-        description="Custom name for the population of connections from virtual neurons. 'virtual_afferents' is used if not specified.",
+        description="Custom name for the population of connections from virtual neurons."
+        " 'virtual_afferents' is used if not specified.",
         default="",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
@@ -40,7 +43,8 @@ class AdvancedEMSynapseMappingOptions(Block):
     )
     custom_biophysical_node_population: str = Field(
         title="Custom biophysical node population name",
-        description="Custom name for the population of physical neurons in the circuit. 'biophysical_neurons' is used if not specified.",
+        description="Custom name for the population of physical neurons in the circuit."
+        " 'biophysical_neurons' is used if not specified.",
         default="",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
@@ -48,7 +52,8 @@ class AdvancedEMSynapseMappingOptions(Block):
     )
     custom_virtual_node_population: str = Field(
         title="Custom virtual node population name",
-        description="Custom name for the population of external presynaptic neurons. 'virtual_afferent_neurons' is used if not specified.",
+        description="Custom name for the population of external presynaptic neurons."
+        " 'virtual_afferent_neurons' is used if not specified.",
         default="",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
