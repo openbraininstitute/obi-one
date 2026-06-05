@@ -74,6 +74,7 @@ __all__ = [
     "EModelOptimizationScanConfig",
     "EModelOptimizationSingleConfig",
     "EModelOptimizationTask",
+    "ElectricalCellRecordingFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -349,6 +350,9 @@ from obi_one.scientific.from_id.cell_morphology_from_id import (
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
+)
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
 )
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
