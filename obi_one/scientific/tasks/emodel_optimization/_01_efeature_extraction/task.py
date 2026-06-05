@@ -2,6 +2,7 @@
 
 import json
 import logging
+import operator
 from pathlib import Path
 from typing import ClassVar
 
@@ -23,17 +24,21 @@ EXTRACTED_FEATURES_FILENAME = "extracted_features.json"
 
 def _build_files_metadata(
     *,
-    nwb_paths: list[Path],
+    nwb_paths_with_ljp: list[tuple[Path, float]],
     ecodes_metadata_dict: dict,
 ) -> list[dict]:
-    """Build files_metadata rows for NWB datasets (one file per cell)."""
+    """Build files_metadata rows for NWB datasets (one file per cell).
+
+    Each recording carries its own LJP (read from the ``ElectricalCellRecording``
+    entity), so it's merged into the per-ecode metadata of that recording's row.
+    """
     return [
         {
             "cell_name": path.stem,
             "filepath": str(path),
-            "ecodes": ecodes_metadata_dict,
+            "ecodes": {ecode: {**meta, "ljp": ljp} for ecode, meta in ecodes_metadata_dict.items()},
         }
-        for path in sorted(nwb_paths)
+        for path, ljp in sorted(nwb_paths_with_ljp, key=operator.itemgetter(0))
     ]
 
 
@@ -88,14 +93,17 @@ class EModelEFeatureExtractionTask(Task):
         self,
         ephys_data_root: Path,
         db_client: entitysdk.client.Client,
-    ) -> list[Path]:
-        downloaded: list[Path] = []
+    ) -> list[tuple[Path, float]]:
+        """Download each recording's NWB asset and return ``(path, ljp)`` pairs."""
+        downloaded: list[tuple[Path, float]] = []
         for recording in self.config.initialize.electrical_cell_recording:
             if not isinstance(recording, ElectricalCellRecordingFromID):
                 msg = f"Expected ElectricalCellRecordingFromID, got {type(recording).__name__}."
                 raise TypeError(msg)
             target_dir = ephys_data_root / recording.id_str
-            downloaded.append(recording.download_asset(dest_dir=target_dir, db_client=db_client))
+            path = recording.download_asset(dest_dir=target_dir, db_client=db_client)
+            ljp = recording.entity(db_client=db_client).ljp
+            downloaded.append((path, ljp))
         return downloaded
 
     def execute(
@@ -117,9 +125,9 @@ class EModelEFeatureExtractionTask(Task):
         extraction_settings = self.config.extraction_settings
         coord_root = Path(self.config.coordinate_output_root).resolve()
 
-        # 1. Download the NWB ephys assets from entitycore.
+        # 1. Download the NWB ephys assets from entitycore (with per-recording LJP).
         ephys_data_root = coord_root / "ephys_data"
-        downloaded_paths = self._download_recordings(ephys_data_root, db_client)
+        downloaded = self._download_recordings(ephys_data_root, db_client)
 
         # 2. Build bluepyefe inputs via TargetsConfiguration (handles the BPE1 ->
         #    BPE2 format conversion for us).
@@ -127,7 +135,7 @@ class EModelEFeatureExtractionTask(Task):
             ecode: meta.to_dict() for ecode, meta in targets.ecodes_metadata.items()
         }
         files = _build_files_metadata(
-            nwb_paths=downloaded_paths,
+            nwb_paths_with_ljp=downloaded,
             ecodes_metadata_dict=ecodes_metadata_dict,
         )
         if not files:
