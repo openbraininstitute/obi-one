@@ -144,6 +144,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             sonata_config = {}
 
         sonata_config["version"] = self._sonata_version
+        sonata_config["target_simulator"] = self._target_simulator.name
 
         sonata_config["run"] = {}
         sonata_config["run"]["dt"] = self.timestep
