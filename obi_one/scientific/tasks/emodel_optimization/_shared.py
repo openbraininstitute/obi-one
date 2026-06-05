@@ -25,6 +25,8 @@ WORKING_DIR_SUBPATHS: tuple[str, ...] = (
     "morphologies",
     "mechanisms",
     "ephys_data",
+    "extraction",
+    "extracted_features.json",
     "checkpoints",
     "figures",
     "recordings",
