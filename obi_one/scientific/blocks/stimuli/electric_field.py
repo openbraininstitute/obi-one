@@ -6,9 +6,9 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MAX_EFIELD_FREQUENCY_HZ,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_EFIELD_FREQUENCY_HZ,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
@@ -60,10 +60,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     )
 
     duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]]
     ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time in milliseconds (ms) for how long the main stimulus is activated. "
         + _RAMP_QAULIFIER_DESCRIPTION,
@@ -136,14 +136,16 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
+            "module": self._module,
+            "input_type": self._input_type,
             "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "ramp_up_duration": self.ramp_up_duration,
             "ramp_down_duration": self.ramp_down_duration,
             "fields": [
                 {
-                    "E_x": self.E_x,
-                    "E_y": self.E_y,
-                    "E_z": self.E_z,
+                    "Ex": self.E_x,
+                    "Ey": self.E_y,
+                    "Ez": self.E_z,
                     "frequency": self._frequency,
                     "phase": np.deg2rad(self._phase_degrees),
                 }
@@ -168,7 +170,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         Annotated[
             NonNegativeFloat,
             Field(
-                lt=_MAX_EFIELD_FREQUENCY_HZ,
+                lt=MAX_EFIELD_FREQUENCY_HZ,
             ),
         ]
         | Annotated[
@@ -176,7 +178,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
                 Annotated[
                     NonNegativeFloat,
                     Field(
-                        lt=_MAX_EFIELD_FREQUENCY_HZ,
+                        lt=MAX_EFIELD_FREQUENCY_HZ,
                     ),
                 ]
             ],
@@ -246,6 +248,6 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
 
     @model_validator(mode="after")
     def _set_private_vars(self) -> Self:
-        self._frequency = self.frequency
-        self._phase_degrees = self.phase_degrees
+        self._frequency = self.frequency  # ty:ignore[invalid-assignment]
+        self._phase_degrees = self.phase_degrees  # ty:ignore[invalid-assignment]
         return self

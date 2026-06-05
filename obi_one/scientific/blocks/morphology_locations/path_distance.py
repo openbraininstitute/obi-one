@@ -26,14 +26,14 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.number_of_locations,
+            n_centers=self.number_of_locations,  # ty:ignore[invalid-argument-type]
             n_per_center=1,
             srcs_per_center=1,
-            center_path_distances_mean=self.path_dist_mean,
-            center_path_distances_sd=0.1 * self.path_dist_tolerance,
-            max_dist_from_center=0.9 * self.path_dist_tolerance,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
+            center_path_distances_sd=0.1 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
+            max_dist_from_center=0.9 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
         return locs
 

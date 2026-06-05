@@ -1,13 +1,21 @@
+import logging
 from typing import TYPE_CHECKING
 
-from pydantic import PrivateAttr
+from pydantic import GetJsonSchemaHandler, PrivateAttr
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.param import MultiValueScanParam
 from obi_one.core.parametric_multi_values import ParametericMultiValue
+from obi_one.utils.pydantic import order_schema_properties
 
 if TYPE_CHECKING:
     from obi_one.core.block_reference import BlockReference
+
+
+L = logging.getLogger(__name__)
 
 
 class Block(OBIBaseModel, extra="forbid"):
@@ -21,6 +29,15 @@ class Block(OBIBaseModel, extra="forbid"):
     _multiple_value_parameters: list[MultiValueScanParam] = PrivateAttr(default=[])
     _ref = None
     _block_name = None
+
+    @classmethod
+    def __get_pydantic_json_schema__(  # noqa: PLW3201
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        """Order the schema properties by priority when generating the JSON schema."""
+        json_schema = handler(core_schema)
+        json_schema = handler.resolve_ref_schema(json_schema)
+        return order_schema_properties(json_schema)
 
     @property
     def block_name(self) -> str:
@@ -56,10 +73,31 @@ class Block(OBIBaseModel, extra="forbid"):
         self._multiple_value_parameters = []
 
         for key, value in self.__dict__.items():
+            if isinstance(value, ComplexVariableHolder):
+                self._multiple_value_parameters.extend(
+                    value.multiple_value_parameters(
+                        base_location_list=[category_name, block_key, key]
+                        if block_key
+                        else [category_name, key]
+                    )
+                )
+                continue
+
             if isinstance(value, ParametericMultiValue):
                 multi_values = list(value)
 
             elif isinstance(value, list):
+                # list[ComplexVariableHolder] special case
+                if len(value) > 0 and isinstance(value[0], ComplexVariableHolder):
+                    for i, complex_variable_holder in enumerate(value):
+                        self._multiple_value_parameters.extend(
+                            complex_variable_holder.multiple_value_parameters(  # ty:ignore[unresolved-attribute]
+                                base_location_list=[category_name, block_key, key, i]
+                                if block_key
+                                else [category_name, key, i]
+                            )
+                        )
+                    continue
                 multi_values = value
 
             else:

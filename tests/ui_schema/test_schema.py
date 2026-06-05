@@ -18,7 +18,7 @@ L = logging.getLogger()
 
 def validate_array(schema: dict, prop: str, array_type: type, ref: str) -> list[Any]:
     value = schema.get(prop, [])
-    for item in value:  # type:ignore reportOptionalIterable
+    for item in value:
         if type(item) is not array_type:
             msg = (
                 f"Validation error at {ref}: Array items must be of type {array_type}."

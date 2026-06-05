@@ -30,12 +30,12 @@ from entitysdk.types import (
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
+from obi_one.core.serialization_constants import (
+    COORDINATE_CONFIG_FILENAME,
+    SCAN_CONFIG_FILENAME,
+)
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
-from obi_one.scientific.library.constants import (
-    _COORDINATE_CONFIG_FILENAME,
-    _SCAN_CONFIG_FILENAME,
-)
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
 from obi_one.scientific.tasks.skeletonization.constants import (
     LICENSE_LABEL,
@@ -335,8 +335,11 @@ def test_register_output_resource_creates_protocol_when_missing(
     license_entity,
     agent,
     metadata_with_protocol,
+    protocol_created,
 ):
     morphology_id = uuid4()
+    protocol_id = uuid4()
+    protocol_json = _serialize(protocol_created)
     role_json = _serialize(role)
     license_json = _serialize(license_entity)
     agent_json = _serialize(agent)
@@ -357,7 +360,7 @@ def test_register_output_resource_creates_protocol_when_missing(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(uuid4())},
+            json=json.loads(r.content) | {"id": str(protocol_id)},
         ),
         url=f"{API_URL}/cell-morphology-protocol",
         method="POST",
@@ -365,7 +368,12 @@ def test_register_output_resource_creates_protocol_when_missing(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(morphology_id), "created_by": agent_json},
+            json=json.loads(r.content)
+            | {
+                "id": str(morphology_id),
+                "created_by": agent_json,
+                "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
+            },
         ),
         url=f"{API_URL}/cell-morphology",
         method="POST",
@@ -405,6 +413,7 @@ def test_register_output_resource_reuses_existing_protocol(
     protocol_created,
 ):
     morphology_id = uuid4()
+    protocol_id = uuid4()
     role_json = _serialize(role)
     license_json = _serialize(license_entity)
     agent_json = _serialize(agent)
@@ -426,7 +435,12 @@ def test_register_output_resource_reuses_existing_protocol(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(morphology_id), "created_by": agent_json},
+            json=json.loads(r.content)
+            | {
+                "id": str(morphology_id),
+                "created_by": agent_json,
+                "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
+            },
         ),
         url=f"{API_URL}/cell-morphology",
         method="POST",
@@ -473,7 +487,7 @@ def test_create_campaign_entity_with_config_single_mesh(
     campaign_id = uuid4()
     output_root = tmp_path / "scan"
     output_root.mkdir()
-    (output_root / _SCAN_CONFIG_FILENAME).write_text("{}")
+    (output_root / SCAN_CONFIG_FILENAME).write_text("{}")
 
     httpx_mock.add_response(
         url=f"{API_URL}/em-cell-mesh/{single_cell_mesh_id}",
@@ -494,7 +508,7 @@ def test_create_campaign_entity_with_config_single_mesh(
         json=_asset_json()
         | {
             "label": "task_config",
-            "path": _SCAN_CONFIG_FILENAME,
+            "path": SCAN_CONFIG_FILENAME,
         },
     )
 
@@ -515,7 +529,7 @@ def test_create_campaign_generation_entity(
     config_id_1, config_id_2 = uuid4(), uuid4()
     output_root = tmp_path / "scan"
     output_root.mkdir()
-    (output_root / _SCAN_CONFIG_FILENAME).write_text("{}")
+    (output_root / SCAN_CONFIG_FILENAME).write_text("{}")
 
     httpx_mock.add_response(
         url=f"{API_URL}/em-cell-mesh/{single_cell_mesh_id}",
@@ -536,7 +550,7 @@ def test_create_campaign_generation_entity(
         json=_asset_json()
         | {
             "label": "task_config",
-            "path": _SCAN_CONFIG_FILENAME,
+            "path": SCAN_CONFIG_FILENAME,
         },
     )
 
@@ -584,8 +598,8 @@ def test_create_single_entity_with_config(
     config_id = uuid4()
     output_root = tmp_path / "scan"
     output_root.mkdir()
-    (output_root / _SCAN_CONFIG_FILENAME).write_text("{}")
-    coord_path = tmp_path / _COORDINATE_CONFIG_FILENAME
+    (output_root / SCAN_CONFIG_FILENAME).write_text("{}")
+    coord_path = tmp_path / COORDINATE_CONFIG_FILENAME
     coord_path.write_text("{}")
 
     httpx_mock.add_response(
@@ -607,7 +621,7 @@ def test_create_single_entity_with_config(
         json=_asset_json()
         | {
             "label": "task_config",
-            "path": _SCAN_CONFIG_FILENAME,
+            "path": SCAN_CONFIG_FILENAME,
             "inputs": [],
         },
     )
@@ -632,7 +646,7 @@ def test_create_single_entity_with_config(
         | {
             "id": str(uuid4()),
             "label": "task_config",
-            "path": _COORDINATE_CONFIG_FILENAME,
+            "path": COORDINATE_CONFIG_FILENAME,
         },
     )
 

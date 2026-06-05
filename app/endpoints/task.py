@@ -2,17 +2,19 @@ from http import HTTPStatus
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
+from starlette.responses import StreamingResponse
 
 from app.config import settings
 from app.dependencies.accounting import AccountingSessionFactoryDep
-from app.dependencies.auth import UserContextWithProjectIdDep, user_verified
+from app.dependencies.auth import UserContextDep, UserContextWithProjectIdDep, user_verified
 from app.dependencies.callback import CallBackUrlDep
 from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import DatabaseClientDep
-from app.dependencies.launch_system import LaunchSystemClientDep
+from app.dependencies.launch_system import LaunchSystemAsyncClientDep, LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.mappings import TASK_DEFINITIONS
+from app.schemas.job import JobRead
 from app.schemas.task import (
     TaskAccountingCreate,
     TaskAccountingInfo,
@@ -20,7 +22,7 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
-from app.services import accounting as accounting_service, task as task_service
+from app.services import accounting as accounting_service, job as job_service, task as task_service
 from app.types import TaskType
 
 router = APIRouter(
@@ -48,23 +50,36 @@ def task_launch_endpoint(
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskLaunchInfo:
     project_context = db_client.project_context
+
+    # circuit_simulation maps to a group of tasks. Select the correct one based on circuit
+    # metadata and config contents. For example circuit_simulation -> circuit_simulation_neuron
+    if json_model.task_type == TaskType.circuit_simulation:
+        task_type = task_service.select_simulation_task(
+            db_client=db_client,
+            config_id=json_model.config_id,
+            config_type=TASK_DEFINITIONS[json_model.task_type].config_type,  # ty:ignore[invalid-argument-type]
+        )
+        json_model = json_model.model_copy(update={"task_type": task_type})
+        msg = f"Mapped circuit_simulation -> {task_type}"
+        L.info(msg)
+
     task_definition = TASK_DEFINITIONS[json_model.task_type]
 
     accounting_info = accounting_service.estimate_task_cost(
         db_client=db_client,
         config_id=json_model.config_id,
-        project_context=project_context,
+        project_context=project_context,  # ty:ignore[invalid-argument-type]
         task_definition=task_definition,
         accounting_factory=accounting_factory,
     )
     accounting_session = accounting_service.make_task_reservation(
-        user_context=user_context,
+        user_context=user_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
         accounting_parameters=accounting_info.parameters,
     )
     accounting_callbacks = accounting_service.generate_accounting_callbacks(
         task_type=json_model.task_type,
-        accounting_job_id=accounting_session.job_id,
+        accounting_job_id=accounting_session.job_id,  # ty:ignore[invalid-argument-type]
         accounting_parameters=accounting_info.parameters,
         project_id=user_context.project_id,
         virtual_lab_id=user_context.virtual_lab_id,
@@ -84,7 +99,7 @@ def task_launch_endpoint(
             ls_client=ls_client,
             callback_url=callback_url,
             config_id=json_model.config_id,
-            project_context=project_context,
+            project_context=project_context,  # ty:ignore[invalid-argument-type]
             task_definition=task_definition,
             callbacks=accounting_callbacks,
         )
@@ -118,10 +133,22 @@ def estimate_endpoint(
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskAccountingInfo:
     """Estimates the cost for launching a task."""
+    # circuit_simulation maps to a group of tasks. Select the correct one based on circuit
+    # metadata and config contents. For example circuit_simulation -> circuit_simulation_neuron
+    if json_model.task_type == TaskType.circuit_simulation:
+        task_type = task_service.select_simulation_task(
+            db_client=db_client,
+            config_id=json_model.config_id,
+            config_type=TASK_DEFINITIONS[json_model.task_type].config_type,  # ty:ignore[invalid-argument-type]
+        )
+        json_model = json_model.model_copy(update={"task_type": task_type})
+        msg = f"Mapped circuit_simulation -> {task_type}"
+        L.info(msg)
+
     return accounting_service.estimate_task_cost(
         db_client=db_client,
         config_id=json_model.config_id,
-        project_context=db_client.project_context,
+        project_context=db_client.project_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
         task_definition=TASK_DEFINITIONS[json_model.task_type],
     )
@@ -146,7 +173,7 @@ def task_failure_endpoint(
         activity_id=activity_id,
         task_definition=TASK_DEFINITIONS[task_type],
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)
+    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
 
 
 @router.post(
@@ -164,6 +191,38 @@ def task_success_endpoint(
         service_subtype=json_model.accounting_service_subtype,
         count=json_model.count,
         project_id=user_context.project_id,
-        http_client=accounting_factory._http_client,  # noqa: SLF001
+        http_client=accounting_factory._http_client,  # noqa: SLF001  # ty:ignore[invalid-argument-type]
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)
+    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
+
+
+@router.get(
+    "/{job_id}",
+    summary="Read a job.",
+    description="Proxy job data from the launch-system.",
+)
+def read_job(
+    job_id: UUID,
+    user_context: UserContextDep,  # noqa: ARG001
+    ls_client: LaunchSystemClientDep,
+) -> JobRead:
+    """Proxy GET /{job_id} to the launch-system."""
+    return job_service.read_job(job_id, ls_client)
+
+
+@router.get(
+    "/{job_id}/stream",
+    summary="Stream job output.",
+    description="Proxy NDJSON stream from the launch-system.",
+)
+async def stream_job(
+    job_id: UUID,
+    user_context: UserContextDep,  # noqa: ARG001
+    ls_async_client: LaunchSystemAsyncClientDep,
+) -> StreamingResponse:
+    """Proxy GET /{job_id}/stream from the launch-system as NDJSON."""
+    line_iterator = await job_service.stream_job(job_id, ls_async_client)
+    return StreamingResponse(
+        content=line_iterator,
+        media_type="application/x-ndjson",
+    )

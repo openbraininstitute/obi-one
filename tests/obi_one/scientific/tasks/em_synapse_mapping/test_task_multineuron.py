@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
 from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingTask,
 )
@@ -67,7 +69,13 @@ def _mapped_df(n):
 def _make_task(tmp_path):
     config = Mock()
     config.coordinate_output_root = tmp_path / "out"
-    config.initialize.neurons = (Mock(), Mock())
+    config.initialize.neurons = EMSynapseMappingInputNamedTuple(
+        name="test",
+        elements=(
+            CellMorphologyFromID(id_str="test1"),
+            CellMorphologyFromID(id_str="test2"),
+        ),
+    )
     config.initialize.biophysical_node_population = "bio"
     config.initialize.virtual_node_population = "virt"
     config.initialize.physical_edge_population_name = "phys"
@@ -158,10 +166,6 @@ class TestEMSynapseMappingTask:
             patch(f"{_TASK_MODULE}.write_edges"),
             patch(f"{_TASK_MODULE}.sonata_config_for", return_value={"version": 2.3}),
             patch(
-                f"{_TASK_MODULE}.compress_output",
-                return_value=str(tmp_path / "out" / "sonata.tar.gz"),
-            ),
-            patch(
                 f"{_TASK_MODULE}.register_output",
                 return_value="circuit-id",
             ) as mock_register,
@@ -223,10 +227,6 @@ class TestEMSynapseMappingTask:
             patch(f"{_TASK_MODULE}.write_nodes"),
             patch(f"{_TASK_MODULE}.write_edges"),
             patch(f"{_TASK_MODULE}.sonata_config_for", return_value={}),
-            patch(
-                f"{_TASK_MODULE}.compress_output",
-                return_value=str(tmp_path / "out" / "sonata.tar.gz"),
-            ),
             patch(f"{_TASK_MODULE}.register_output", return_value="cid"),
             patch.object(EMSynapseMappingTask, "_update_execution_activity"),
         ):
