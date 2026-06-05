@@ -8,6 +8,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
     SIMULATION_TIMESTEP_MILLISECONDS,
+    SONATA,
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
@@ -23,7 +24,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for neuron-based simulation scan configurations."""
 
     _target_simulator: ClassVar[SimulatorType] = SimulatorType.NEURON
-    _spike_location: ClassVar[str] = "soma"
+    _spike_location: ClassVar[str] = SONATA.SPIKE_LOCATION_SOMA
     _timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
 
     recordings: dict[str, RecordingUnion] = Field(

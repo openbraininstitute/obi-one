@@ -30,3 +30,4 @@ class SONATA(StrEnum):
     MODULE = "module"
     INPUT_TYPE = "input_type"
     SPIKE_FILE = "spike_file"
+    SPIKE_LOCATION_SOMA = "soma"
