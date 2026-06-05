@@ -122,17 +122,13 @@ class ExtractionSettings(Block):
 
 
 class ECodeMetadata(Block):
-    """Per-protocol timing + LJP metadata (single ``ecodes_metadata`` entry)."""
+    """Per-protocol timing metadata (single ``ecodes_metadata`` entry).
 
-    ljp: float | list[float] = Field(
-        default=14.0,
-        title="Liquid junction potential",
-        description="LJP correction in mV applied to recordings of this protocol.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIVOLTS,
-        },
-    )
+    The liquid junction potential (``ljp``) is read from each
+    ``ElectricalCellRecording`` entity at run time and merged into every
+    ecode's metadata, so it isn't exposed here.
+    """
+
     ton: NonNegativeFloat | list[NonNegativeFloat] | None = Field(
         default=None,
         title="ton",
@@ -159,7 +155,7 @@ class ECodeMetadata(Block):
     )
 
     def to_dict(self) -> dict:
-        d: dict[str, float] = {"ljp": self.ljp}
+        d: dict[str, float] = {}
         for key in ("ton", "toff", "tmid", "tmid2"):
             value = getattr(self, key)
             if value is not None:
