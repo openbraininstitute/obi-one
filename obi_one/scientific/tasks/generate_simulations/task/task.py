@@ -24,22 +24,21 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
-    SONATA_VERSION,
 )
-from obi_one.scientific.tasks.generate_simulations.config.brian2_circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     BRIAN2_TARGET_SIMULATOR,
     Brian2CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -57,6 +56,8 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllNeurons()
 DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
+
+SONATA_VERSION = 2.4
 
 
 class GenerateSimulationTask(Task):

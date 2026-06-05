@@ -3,7 +3,7 @@ from typing import ClassVar
 from pydantic import ConfigDict
 
 from obi_one.core.schema import SchemaKey
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
 )
