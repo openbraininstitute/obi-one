@@ -36,8 +36,8 @@ coord 0 is always at `<output_root>/0/`; sweep dimensions add `1/`, `2/`, … al
 | # | Notebook | What it does | Reads from | Writes to |
 |---|---|---|---|---|
 | 00 | [`00_setup_download_l5pc_data.ipynb`](00_setup_download_l5pc_data.ipynb) | Installs `bluepyemodel`; fetches the L5PC ephys data, recipe, params, morphology, and mod files. *No task — pure data setup.* | — | `obi-output/L_emodel_optimization_inputs/` |
-| 01 | [`01_efeature_extraction.ipynb`](01_efeature_extraction.ipynb) | Materialises a BluePyEModel working directory, runs `configure_targets()` + `pipeline.extract_efeatures()`. | `obi-output/L_emodel_optimization_inputs/` | `obi-output/01_efeature_extraction/grid_scan/0/` |
-| 02 | [`02_emodel_optimization.ipynb`](02_emodel_optimization.ipynb) | Seeds the working dir from stage 01, runs `pipeline.optimise(seed=...)` with `optimiser='SO-CMA'`, `max_ngen=2`, `offspring_size=4`. | `obi-output/01_efeature_extraction/grid_scan/0/` | `obi-output/02_emodel_optimization/grid_scan/0/` |
+| 01 | [`01_efeature_extraction.ipynb`](01_efeature_extraction.ipynb) | Runs `bluepyefe.extract.extract_efeatures` directly on the ephys traces; writes `extracted_features.json`. | `obi-output/L_emodel_optimization_inputs/ephys_data/` | `obi-output/01_efeature_extraction/grid_scan/0/` |
+| 02 | [`02_emodel_optimization.ipynb`](02_emodel_optimization.ipynb) | Seeds ephys + extracted features from stage 01, copies the recipes / morphology / mechanisms / params from the inputs root, runs `pipeline.optimise(seed=...)` with `optimiser='SO-CMA'`, `max_ngen=2`, `offspring_size=4`. | `obi-output/01_efeature_extraction/grid_scan/0/` + `obi-output/L_emodel_optimization_inputs/` (recipes, morphology, mechanisms, params) | `obi-output/02_emodel_optimization/grid_scan/0/` |
 | 03 | [`03_analysis_and_validation.ipynb`](03_analysis_and_validation.ipynb) | Seeds from stage 02, runs `store_optimisation_results` → `validation` → `plot`. | `obi-output/02_emodel_optimization/grid_scan/0/` | `obi-output/03_analysis_and_validation/grid_scan/0/` |
 | 04 | [`04_export_final_model.ipynb`](04_export_final_model.ipynb) | Seeds from stage 03, runs `export_emodels_hoc` and `export_emodels_sonata`. | `obi-output/03_analysis_and_validation/grid_scan/0/` | `obi-output/04_export_final_model/grid_scan/0/` |
 
@@ -50,7 +50,7 @@ obi-output/
 │   ├── morphologies/C060114A5.asc
 │   ├── mechanisms/*.mod
 │   └── config/{params/pyr.json, recipes.json}
-├── 01_efeature_extraction/grid_scan/0/            # working dir + features/L5PC.json + figures/
+├── 01_efeature_extraction/grid_scan/0/            # ephys_data + extraction/ + extracted_features.json
 ├── 02_emodel_optimization/grid_scan/0/            # working dir + checkpoints/ + run/
 ├── 03_analysis_and_validation/grid_scan/0/        # working dir + final.json + figures/
 └── 04_export_final_model/grid_scan/0/             # working dir + export_emodels_hoc/ + export_emodels_sonata/

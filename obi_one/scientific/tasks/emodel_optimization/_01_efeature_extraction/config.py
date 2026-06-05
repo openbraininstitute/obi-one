@@ -1,4 +1,4 @@
-"""ScanConfig and SingleConfig for the 00_efeature_extraction stage."""
+"""ScanConfig and SingleConfig for the 01_efeature_extraction stage."""
 
 from enum import StrEnum
 from pathlib import Path
@@ -29,18 +29,17 @@ class BlockGroup(StrEnum):
 
 
 class EModelEFeatureExtractionScanConfig(ScanConfig):
-    """ScanConfig for the BluePyEModel feature-extraction step.
+    """ScanConfig for the experimental e-feature extraction step.
 
-    Mirrors ``python pipeline.py --step=extract --emodel=<EMODEL>`` from the
-    BluePyEModel L5PC example: the task copies the user-provided ephys data,
-    morphologies, mechanisms, params and recipes into the coord output, runs
-    ``configure_targets()`` followed by ``pipeline.extract_efeatures()``, and
-    leaves a self-contained working directory ready for the optimisation stage.
+    Runs ``bluepyefe.extract.extract_efeatures`` on the experimental ephys
+    traces and writes the resulting fitness-calculator configuration to
+    ``./extracted_features.json``, ready to be picked up by the optimisation
+    stage. No model assets are needed at this point.
     """
 
     single_coord_class_name: ClassVar[str] = "EModelEFeatureExtractionSingleConfig"
     name: ClassVar[str] = "EModel EFeature Extraction"
-    description: ClassVar[str] = "Run BluePyEModel feature extraction on experimental ephys traces."
+    description: ClassVar[str] = "Extract experimental e-features from ephys traces via bluepyefe."
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: False,
@@ -55,7 +54,7 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
 
     initialize: ExtractionInitialize = Field(
         title="Initialize",
-        description="Filesystem inputs and ``EModel_pipeline`` constructor arguments.",
+        description="Filesystem inputs for feature extraction.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
@@ -66,7 +65,7 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
     extraction_settings: ExtractionSettings = Field(
         default_factory=ExtractionSettings,
         title="Extraction settings",
-        description="Top-level ``pipeline_settings`` keys controlling extraction.",
+        description="Top-level ``bluepyefe.extract`` parameters.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.EXTRACTION,
@@ -88,7 +87,7 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
     targets: ExtractionTargets = Field(
         default_factory=ExtractionTargets,
         title="Extraction targets",
-        description="Targets, protocols and ecodes metadata that drive ``configure_targets()``.",
+        description="Targets, protocols and ecodes metadata for ``bluepyefe.extract``.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.TARGETS,

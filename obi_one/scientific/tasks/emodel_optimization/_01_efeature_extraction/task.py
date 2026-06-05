@@ -1,5 +1,6 @@
-"""Task wrapper for the BluePyEModel feature-extraction step."""
+"""Task wrapper for the experimental e-feature extraction step."""
 
+import json
 import logging
 from pathlib import Path
 from typing import ClassVar
@@ -13,6 +14,8 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config
 )
 
 L = logging.getLogger(__name__)
+
+EXTRACTED_FEATURES_FILENAME = "extracted_features.json"
 
 
 def _build_files_metadata(
@@ -73,7 +76,7 @@ def _build_files_metadata(
 
 
 def _build_targets_formatted(targets_dict: dict) -> list[dict]:
-    """Flatten the per-protocol targets dict into ``configure_targets`` rows."""
+    """Flatten the per-protocol targets dict into ``bluepyefe.extract`` rows."""
     rows: list[dict] = []
     for ecode, protocol in targets_dict.items():
         for amplitude in protocol.amplitudes:
@@ -97,24 +100,24 @@ def _build_targets_formatted(targets_dict: dict) -> list[dict]:
 
 
 class EModelEFeatureExtractionTask(Task):
-    """Set up the BluePyEModel working directory and run feature extraction.
+    """Extract experimental e-features from raw ephys traces via ``bluepyefe``.
 
     Steps performed in ``coordinate_output_root``:
 
-    1. Copy the ephys data, morphologies, mechanisms, params, and recipes into
-       a self-contained working directory.
-    2. Compile the mod files via ``nrnivmodl`` (skipped if already compiled).
-    3. Merge the extraction-related ``pipeline_settings`` overrides into
-       ``./config/recipes.json``.
-    4. Build ``files_metadata`` + ``targets_formated`` + ``protocols_rheobase``
-       from the user-provided blocks (no separate ``targets.py`` required).
-    5. ``chdir`` into the working directory and run
-       ``configure_targets(pipeline.access_point)`` followed by
-       ``pipeline.extract_efeatures()``.
+    1. Copy the ephys data into the working directory.
+    2. Build ``files_metadata`` + ``targets`` rows from the user-provided blocks
+       and re-shape them into the BPE2 input format via
+       :class:`bluepyemodel.efeatures_extraction.targets_configuration.TargetsConfiguration`.
+    3. Run ``bluepyefe.extract.extract_efeatures`` directly — no
+       ``EModel_pipeline``, recipes or model assets are needed.
+    4. Wrap the bluepyefe output in a
+       :class:`bluepyemodel.evaluation.fitness_calculator_configuration.FitnessCalculatorConfiguration`
+       and serialise it to ``./extracted_features.json`` so the optimisation
+       stage can slot it into ``config/features/<emodel>.json``.
     """
 
     name: ClassVar[str] = "EModel EFeature Extraction"
-    description: ClassVar[str] = "Run BluePyEModel feature extraction on experimental ephys traces."
+    description: ClassVar[str] = "Extract experimental e-features from ephys traces via bluepyefe."
 
     config: EModelEFeatureExtractionSingleConfig
 
@@ -125,43 +128,30 @@ class EModelEFeatureExtractionTask(Task):
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
-        from bluepyemodel.efeatures_extraction.targets_configurator import (  # noqa: PLC0415
-            TargetsConfigurator,
+        from bluepyefe.extract import extract_efeatures  # noqa: PLC0415
+        from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
+            TargetsConfiguration,
         )
-        from bluepyemodel.emodel_pipeline.emodel_pipeline import (  # noqa: PLC0415
-            EModel_pipeline,
+        from bluepyemodel.evaluation.fitness_calculator_configuration import (  # noqa: PLC0415
+            FitnessCalculatorConfiguration,
         )
 
         init = self.config.initialize
         targets = self.config.targets
+        extraction_settings = self.config.extraction_settings
+        efel_settings = self.config.efel_settings
         coord_root = Path(self.config.coordinate_output_root).resolve()
 
-        # 1. Materialise the working directory.
+        # 1. Copy the ephys data into the working directory.
         ephys_data_target = coord_root / "ephys_data" / Path(init.ephys_data_path).name
         _shared.copy_tree(Path(init.ephys_data_path).resolve(), ephys_data_target)
-        _shared.copy_tree(Path(init.morphology_path).resolve(), coord_root / "morphologies")
-        _shared.copy_tree(Path(init.mechanisms_path).resolve(), coord_root / "mechanisms")
-        params_target = coord_root / "config" / "params" / Path(init.params_path).name
-        _shared.copy_tree(Path(init.params_path).resolve(), params_target)
 
-        # 2. Compile the mechanisms.
-        _shared.compile_mechanisms(coord_root / "mechanisms")
-
-        # 3. Recipes + pipeline_settings overrides.
-        recipes = _shared.load_recipes(Path(init.recipes_path).resolve())
-        recipes = _shared.update_pipeline_settings(
-            recipes,
-            emodel=init.emodel,
-            overrides=self.config.extraction_settings.to_dict(self.config.efel_settings),
-        )
-        recipes_target = coord_root / "config" / "recipes.json"
-        _shared.write_recipes(recipes, recipes_target)
-
-        # 4. Build configure_targets() inputs from the blocks.
+        # 2. Build bluepyefe inputs via TargetsConfiguration (handles the BPE1 ->
+        #    BPE2 format conversion for us).
         ecodes_metadata_dict = {
             ecode: meta.to_dict() for ecode, meta in targets.ecodes_metadata.items()
         }
-        files_metadata = _build_files_metadata(
+        files = _build_files_metadata(
             file_type=targets.file_type,
             ephys_data_path=ephys_data_target,
             ecodes_metadata_dict=ecodes_metadata_dict,
@@ -171,30 +161,42 @@ class EModelEFeatureExtractionTask(Task):
             current_unit=targets.ibw_current_unit,
             time_unit=targets.ibw_time_unit,
         )
-        targets_formatted = _build_targets_formatted(targets.targets)
+        targets_configuration = TargetsConfiguration(
+            files=files,
+            targets=_build_targets_formatted(targets.targets),
+            protocols_rheobase=list(targets.protocols_rheobase),
+        )
 
-        # 5. chdir into the working directory and let BluePyEModel resolve relative paths.
+        # 3. chdir so bluepyefe's plot outputs are anchored to the working dir.
+        extraction_dir = coord_root / "extraction"
+        extraction_dir.mkdir(parents=True, exist_ok=True)
         with _shared.chdir(coord_root):
-            pipeline = EModel_pipeline(
-                emodel=init.emodel,
-                etype=init.etype,
-                mtype=init.mtype,
-                ttype=init.ttype,
-                species=init.species,
-                brain_region=init.brain_region,
-                recipes_path="./config/recipes.json",
-                use_ipyparallel=init.use_ipyparallel,
-                use_multiprocessing=init.use_multiprocessing,
+            efeatures, protocols, currents = extract_efeatures(
+                output_directory=str(extraction_dir),
+                files_metadata=targets_configuration.files_metadata_BPE,
+                targets=targets_configuration.targets_BPE,
+                protocols_rheobase=targets_configuration.protocols_rheobase_BPE,
+                absolute_amplitude=extraction_settings.extract_absolute_amplitudes,
+                efel_settings=efel_settings.to_dict(),
+                plot=extraction_settings.plot_extraction,
+                default_std_value=extraction_settings.default_std_value,
+                write_files=False,
             )
 
-            configurator = TargetsConfigurator(pipeline.access_point)
-            configurator.new_configuration(
-                files=files_metadata,
-                targets=targets_formatted,
-                protocols_rheobase=list(targets.protocols_rheobase),
-            )
-            configurator.save_configuration()
+        # 4. Serialise the fitness-calculator configuration for the next stage.
+        fitness_calculator_config = FitnessCalculatorConfiguration(
+            name_rmp_protocol=extraction_settings.name_rmp_protocol,
+            name_rin_protocol=extraction_settings.name_rin_protocol,
+            default_std_value=extraction_settings.default_std_value,
+        )
+        fitness_calculator_config.init_from_bluepyefe(
+            efeatures,
+            protocols,
+            currents,
+            threshold_efeature_std=None,
+        )
 
-            pipeline.extract_efeatures()
+        features_path = coord_root / EXTRACTED_FEATURES_FILENAME
+        features_path.write_text(json.dumps(fitness_calculator_config.as_dict(), indent=2))
 
         return coord_root

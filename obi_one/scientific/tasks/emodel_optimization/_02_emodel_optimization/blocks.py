@@ -1,4 +1,4 @@
-"""Blocks for the 01_emodel_optimization stage."""
+"""Blocks for the 02_emodel_optimization stage."""
 
 from pathlib import Path
 from typing import Any, Literal
@@ -16,32 +16,89 @@ class OptimizationInitialize(Block):
     previous_stage_output_path: Path = Field(
         title="Previous stage output path",
         description=(
-            "Path to the working directory produced by the 00_efeature_extraction stage"
-            " (typically ``obi-output/00_efeature_extraction/grid_scan/0/``). The stage"
-            " copies ``config/``, ``morphologies/``, ``mechanisms/``, the compiled"
-            " ``x86_64``/``arm64`` directory, and ``ephys_data/`` from this path."
+            "Path to the working directory produced by the 01_efeature_extraction stage"
+            " (typically ``obi-output/01_efeature_extraction/grid_scan/0/``). The stage"
+            " copies ``ephys_data/`` and the ``extracted_features.json`` file from this"
+            " path; everything else is supplied below."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
+    recipes_path: Path = Field(
+        title="Recipes JSON path",
+        description=(
+            "Path to a BluePyEModel ``recipes.json`` file. Copied to"
+            " ``./config/recipes.json`` after the optimisation-related"
+            " ``pipeline_settings`` overrides have been merged in. The extracted"
+            " features from the previous stage are written into the path indicated"
+            " by ``recipes[<emodel>]['features']``."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
+    morphology_path: Path = Field(
+        title="Morphologies path",
+        description=(
+            "Directory containing the morphology asc/swc/h5 files referenced from the"
+            " recipe. Copied into the working directory at ``./morphologies/``."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
+    mechanisms_path: Path = Field(
+        title="Mechanisms path",
+        description=(
+            "Directory containing the NEURON ``.mod`` files. Copied to ``./mechanisms/``"
+            " and compiled via ``nrnivmodl``."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
+    params_path: Path = Field(
+        title="Parameters JSON path",
+        description=(
+            "Path to the BluePyEModel parameters file (e.g. ``config/params/pyr.json``)."
+            " Copied to ``./config/params/<basename>``; the path inside ``recipes.json``"
+            " is preserved."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
     emodel: str = Field(
         title="E-Model name",
-        description="Top-level key in ``recipes.json`` to operate on (must match stage 00).",
+        description="Top-level key in ``recipes.json`` to operate on (e.g. ``L5PC``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     species: str = Field(
         default="rat",
         title="Species",
+        description="Species tag passed to ``EModel_pipeline``.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     brain_region: str = Field(
         default="SSCX",
         title="Brain region",
+        description="Brain region tag passed to ``EModel_pipeline``.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    etype: str | None = Field(default=None, json_schema_extra={SchemaKey.UI_HIDDEN: True})
-    mtype: str | None = Field(default=None, json_schema_extra={SchemaKey.UI_HIDDEN: True})
-    ttype: str | None = Field(default=None, json_schema_extra={SchemaKey.UI_HIDDEN: True})
+    etype: str | None = Field(
+        default=None,
+        title="E-type",
+        description="Optional electrical type tag.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    mtype: str | None = Field(
+        default=None,
+        title="M-type",
+        description="Optional morphological type tag.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    ttype: str | None = Field(
+        default=None,
+        title="T-type",
+        description="Optional transcriptomic type tag.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
 
     iteration_tag: str | None = Field(
         default=None,
@@ -56,11 +113,13 @@ class OptimizationInitialize(Block):
     use_multiprocessing: bool = Field(
         default=False,
         title="Use multiprocessing",
+        description="Pass ``use_multiprocessing=True`` to ``EModel_pipeline``.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     use_ipyparallel: bool = Field(
         default=False,
         title="Use ipyparallel",
+        description="Pass ``use_ipyparallel=True`` to ``EModel_pipeline``.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
 
