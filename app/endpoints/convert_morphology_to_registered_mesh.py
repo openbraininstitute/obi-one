@@ -16,8 +16,8 @@ from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 
 try:
-    from nmm.common import NEURON_COLORS
-    from nmm.morphology import NeuronMorphology
+    from nmm.common import NEURON_COLORS  # ty:ignore[unresolved-import]
+    from nmm.morphology import NeuronMorphology  # ty:ignore[unresolved-import]
 
     HAS_MESHING = True
 except ImportError:
@@ -100,11 +100,12 @@ def _validate_mesh_output(glb_path: Path, glb_path_str: str) -> None:
         raise RuntimeError(msg)
 
 
-def _mesh_and_register(
+def mesh_and_register(
     db_client: entitysdk.client.Client,
     cell_morphology_id: uuid.UUID,
     swc_bytes: bytes,
 ) -> Asset:
+    """Convert SWC bytes to a GLB mesh and upload it as an asset on the given morphology."""
     L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -198,7 +199,7 @@ def register_morphology_mesh(
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
-    asset = _mesh_and_register(db_client, cell_morphology_id, swc_bytes)
+    asset = mesh_and_register(db_client, cell_morphology_id, swc_bytes)
 
     L.info(f"register_morphology_mesh: done, asset id={asset.id}")
     return {"asset_id": str(asset.id), "status": "success"}

@@ -557,7 +557,7 @@ def test_task_launch_success__circuit_simulation(
                 "resources": {
                     "type": "cluster",
                     "instances": 1,
-                    "instance_type": "large",
+                    "instance_type": "small",
                     "compute_cell": "cell_a",
                     "timelimit": None,
                 },
@@ -714,7 +714,7 @@ def test_task_estimate__circuit_simulation(client, target_simulator, circuit_sca
     assert data["cost"] == 1000
 
 
-@pytest.mark.parametrize("task_type", TaskType)
+@pytest.mark.parametrize("task_type", TASK_DEFINITIONS.keys())
 def test_task_failure_endpoint(client, task_type):
     activity_id = uuid4()
 
@@ -728,7 +728,7 @@ def test_task_failure_endpoint(client, task_type):
         ).raise_for_status()
 
 
-@pytest.mark.parametrize("task_type", TaskType)
+@pytest.mark.parametrize("task_type", TASK_DEFINITIONS.keys())
 def test_task_success_endpoint(client, task_type):
     job_id = uuid4()
 

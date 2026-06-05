@@ -12,6 +12,14 @@ class SchemaKey(StrEnum):
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
     LATEX_EQUATION = "latex_equation"
+    PARAMETER_ORDER_PRIORITY = "parameter_order_priority"
+    # Note: PARAMETER_ORDER_PRIORITY is not used by the UI,
+    # rather the Block class uses this to order the properties in the generated openapi.json schema,
+    # which in turn affects the order of properties in the UI.
+    # No value maintains the default ordering, higher values appear earlier in the block (UI),
+    # lower values appear later in the block (UI).
+    # This is useful when we would like a parameter of a child class to
+    # appear before parameters of the parent class in the UI, for example.
     PROPERTY = "property"
     PROPERTY_ENDPOINTS = "property_endpoints"
     PROPERTY_GROUP = "property_group"

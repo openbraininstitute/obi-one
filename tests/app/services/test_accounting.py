@@ -204,6 +204,7 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
         TaskType.circuit_simulation_inait_machine,
         TaskType.circuit_simulation_neuron,
         TaskType.circuit_simulation_neurodamus_cluster,
+        TaskType.circuit_simulation_brian2_machine,
         TaskType.morphology_skeletonization,
         TaskType.ion_channel_model_simulation_execution,
         TaskType.em_synapse_mapping,
@@ -214,10 +215,11 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     task_definition = TASK_DEFINITIONS[task_type]
 
     expected_subtype = {
-        TaskType.circuit_extraction: ServiceSubtype.SMALL_CIRCUIT_SIM,
+        TaskType.circuit_extraction: ServiceSubtype.CIRCUIT_EXTRACTION,
         TaskType.circuit_simulation_neurodamus_cluster: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_inait_machine: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_neuron: ServiceSubtype.SMALL_SIM,
+        TaskType.circuit_simulation_brian2_machine: ServiceSubtype.SMALL_SIM,
         TaskType.ion_channel_model_simulation_execution: ServiceSubtype.ION_CHANNEL_SIM,
         TaskType.morphology_skeletonization: ServiceSubtype.NEURON_MESH_SKELETONIZATION,
         TaskType.em_synapse_mapping: ServiceSubtype.SMALL_CIRCUIT_SIM,
@@ -227,6 +229,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.circuit_simulation_neurodamus_cluster: 10,
         TaskType.circuit_simulation_inait_machine: 10,
         TaskType.circuit_simulation_neuron: 10,
+        TaskType.circuit_simulation_brian2_machine: 10,
         TaskType.ion_channel_model_simulation_execution: 1,
         TaskType.morphology_skeletonization: 800,
         TaskType.em_synapse_mapping: 1,
@@ -241,6 +244,10 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         patch(
             "app.services.accounting.estimate_skeletonization_count",
             return_value=expected_count[TaskType.morphology_skeletonization],
+        ),
+        patch(
+            "app.services.accounting.estimate_circuit_extraction_count",
+            return_value=expected_count[TaskType.circuit_extraction],
         ),
     ):
         res = test_module._evaluate_accounting_parameters(

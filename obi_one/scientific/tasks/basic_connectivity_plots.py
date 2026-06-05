@@ -382,7 +382,8 @@ class BasicConnectivityPlotsTask(Task):
         ):
             msg = (
                 "Connectivity plotting requires connectome-analysis (connalysis). "
-                "Install with: pip install obi-one[connectivity]"
+                "Install with: pip install obi-one[connectivity] or"
+                " make install-connectivity"
             )
             raise ValueError(msg)
 
