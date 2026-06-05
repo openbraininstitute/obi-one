@@ -36,13 +36,15 @@ def test_check_new_node_columns(tmp_path):
         check_new_node_columns(NODES_FILE_PATH, new_node_fpath)
 
     # missing attribute name: fail
-    # shutil.copy(NODES_FILE_PATH, new_node_fpath)
-    # with h5py.File(new_node_fpath, 'r+') as new_node:
-    #     group = new_node["nodes/S1nonbarrel_neurons/0/"]
-    #     del group["model_template"]
-    # with pytest.raises(AssertionError):
-    #     check_new_node_columns(NODES_FILE_PATH, new_node_fpath)
-
-    # missing id: fail (don't know if easy to create such a node file)
+    shutil.copy(NODES_FILE_PATH, new_node_fpath)
+    with h5py.File(new_node_fpath, 'r+') as new_node:
+        del new_node["nodes/S1nonbarrel_neurons/0/model_template"]
+    with pytest.raises(AssertionError):
+        check_new_node_columns(NODES_FILE_PATH, new_node_fpath)
 
     # unallowed modification: fail
+    shutil.copy(NODES_FILE_PATH, new_node_fpath)
+    with h5py.File(new_node_fpath, 'r+') as new_node:
+        new_node["nodes/S1nonbarrel_neurons/0/mtype"][0] = b"hoc:new_mtype"
+    with pytest.raises(AssertionError):
+        check_new_node_columns(NODES_FILE_PATH, new_node_fpath)
