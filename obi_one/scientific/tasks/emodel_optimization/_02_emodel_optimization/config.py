@@ -1,4 +1,4 @@
-"""ScanConfig and SingleConfig for the 01_emodel_optimization stage."""
+"""ScanConfig and SingleConfig for the 02_emodel_optimization stage."""
 
 from enum import StrEnum
 from pathlib import Path
@@ -30,9 +30,11 @@ class EModelOptimizationScanConfig(ScanConfig):
     """ScanConfig for the BluePyEModel optimisation step.
 
     Mirrors ``python pipeline.py --step=optimise --emodel=<EMODEL>`` from the
-    L5PC example. The task seeds its working directory from the previous
-    stage's output, merges the optimisation-related ``pipeline_settings``
-    overrides into ``recipes.json``, and runs ``pipeline.optimise(seed=...)``.
+    L5PC example. The task seeds ephys data + extracted features from the
+    previous stage, copies the user-provided morphologies / mechanisms / params
+    / recipes into the working directory, merges optimisation ``pipeline_settings``
+    overrides, places the extracted features at the path referenced by the
+    recipes' ``features`` key, and runs ``pipeline.optimise(seed=...)``.
     """
 
     single_coord_class_name: ClassVar[str] = "EModelOptimizationSingleConfig"
