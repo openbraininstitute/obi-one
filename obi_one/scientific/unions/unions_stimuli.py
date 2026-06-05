@@ -106,10 +106,8 @@ _LE_ABSOLUTE_INJECTION_STIMULI = (
     | SubthresholdCurrentClampSomaticStimulus
 )
 
-_LE_SPIKE_STIMULI = _SPIKE_STIMULI
-
 LearningEngineCircuitStimulusUnion = Annotated[
-    _LE_ABSOLUTE_INJECTION_STIMULI | _LE_SPIKE_STIMULI,
+    _LE_ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
 
