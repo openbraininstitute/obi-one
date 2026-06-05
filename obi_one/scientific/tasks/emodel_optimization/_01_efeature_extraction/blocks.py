@@ -1,13 +1,14 @@
-"""Blocks for the 00_efeature_extraction stage.
+"""Blocks for the 01_efeature_extraction stage.
 
-Each block exposes a subset of the BluePyEModel ``pipeline_settings`` keys
-that influence experimental e-feature extraction (see
-https://github.com/openbraininstitute/BluePyEModel/blob/main/examples/L5PC/config/recipes.json).
-The defaults match the L5PC example.
+The extraction stage runs ``bluepyefe.extract.extract_efeatures`` directly on
+the experimental traces, so the only required input is the path to the ephys
+data — model assets (recipes, morphologies, mechanisms, params) all belong to
+the optimisation stage. The remaining blocks expose the bluepyefe parameters
+that influence experimental e-feature extraction.
 """
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
@@ -19,9 +20,9 @@ from obi_one.core.units import Units
 class ExtractionInitialize(Block):
     """Filesystem inputs for the extraction stage.
 
-    All paths can be absolute or relative to the notebook's cwd; the task
-    resolves them and copies the contents into the coord output's working
-    directory before invoking BluePyEModel.
+    The extraction stage runs ``bluepyefe.extract.extract_efeatures`` directly on
+    the experimental traces — no model metadata, recipes, morphologies, or
+    mechanisms are needed here. Those belong to the optimisation stage.
     """
 
     ephys_data_path: Path = Field(
@@ -32,96 +33,6 @@ class ExtractionInitialize(Block):
             " ``download_ephys_data.sh`` to ``./ephys_data/C060109A1-SR-C1/``."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    morphology_path: Path = Field(
-        title="Morphologies path",
-        description=(
-            "Directory containing the morphology asc/swc/h5 files referenced from the"
-            " recipe. Copied into the working directory at ``./morphologies/`` so it can"
-            " be reused by the optimisation stage."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    mechanisms_path: Path = Field(
-        title="Mechanisms path",
-        description=(
-            "Directory containing the NEURON ``.mod`` files. Copied to ``./mechanisms/``"
-            " and compiled via ``nrnivmodl`` so the optimisation stage can run."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    params_path: Path = Field(
-        title="Parameters JSON path",
-        description=(
-            "Path to the BluePyEModel parameters file (e.g. ``config/params/pyr.json``)."
-            " Copied to ``./config/params/<basename>``; the path inside ``recipes.json``"
-            " is preserved."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    recipes_path: Path = Field(
-        title="Recipes JSON path",
-        description=(
-            "Path to a BluePyEModel ``recipes.json`` file. Copied to"
-            " ``./config/recipes.json`` after the extraction-related"
-            " ``pipeline_settings`` overrides have been merged in."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    emodel: str = Field(
-        title="E-Model name",
-        description="Top-level key in ``recipes.json`` to operate on (e.g. ``L5PC``).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    species: str = Field(
-        default="rat",
-        title="Species",
-        description="Species tag passed to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    brain_region: str = Field(
-        default="SSCX",
-        title="Brain region",
-        description="Brain region tag passed to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    etype: str | None = Field(
-        default=None,
-        title="E-type",
-        description="Optional electrical type tag.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    mtype: str | None = Field(
-        default=None,
-        title="M-type",
-        description="Optional morphological type tag.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    ttype: str | None = Field(
-        default=None,
-        title="T-type",
-        description="Optional transcriptomic type tag.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-
-    use_multiprocessing: bool = Field(
-        default=False,
-        title="Use multiprocessing",
-        description="Pass ``use_multiprocessing=True`` to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    use_ipyparallel: bool = Field(
-        default=False,
-        title="Use ipyparallel",
-        description="Pass ``use_ipyparallel=True`` to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
 
 
@@ -162,7 +73,7 @@ class EFELSettings(Block):
 
 
 class ExtractionSettings(Block):
-    """Top-level ``pipeline_settings`` keys that drive feature extraction."""
+    """Top-level parameters forwarded to ``bluepyefe.extract.extract_efeatures``."""
 
     plot_extraction: bool = Field(
         default=True,
@@ -186,35 +97,21 @@ class ExtractionSettings(Block):
     name_rin_protocol: str | None = Field(
         default="IV_-20",
         title="Rin protocol name",
-        description="Protocol used to compute input resistance.",
+        description=(
+            "Protocol used to compute input resistance. Stored alongside the extracted"
+            " features so the optimisation stage uses the same protocol."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     name_rmp_protocol: str | None = Field(
         default="IV_0",
         title="RMP protocol name",
-        description="Protocol used to compute resting membrane potential.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    path_extract_config: str = Field(
-        default="config/extract_config/L5PC_config.json",
-        title="Extract config path",
         description=(
-            "Relative path (under the working directory) where ``configure_targets``"
-            " writes the auto-generated extraction config."
+            "Protocol used to compute resting membrane potential. Stored alongside the"
+            " extracted features so the optimisation stage uses the same protocol."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-
-    def to_dict(self, efel: EFELSettings) -> dict[str, Any]:
-        return {
-            "plot_extraction": self.plot_extraction,
-            "default_std_value": self.default_std_value,
-            "extract_absolute_amplitudes": self.extract_absolute_amplitudes,
-            "name_Rin_protocol": self.name_rin_protocol,
-            "name_rmp_protocol": self.name_rmp_protocol,
-            "path_extract_config": self.path_extract_config,
-            "efel_settings": efel.to_dict(),
-        }
 
 
 class ECodeMetadata(Block):
@@ -368,16 +265,17 @@ class ExtractionTargets(Block):
     )
 
     ibw_voltage_channel_pattern: str = Field(
-        default="ch0",
+        default="ch1",
         title="IBW voltage channel substring",
         description=(
-            "Substring matching the voltage-channel filename in IBW datasets"
-            " (BluePyEModel pairs `chN` voltage with `chN+1` current)."
+            "Substring matching the voltage-channel filename in IBW datasets."
+            " Defaults to `ch1` to match the SSCx C060109A1-SR-C1 dataset"
+            " (where `ch0` is current and `ch1` is voltage)."
         ),
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     ibw_current_channel_pattern: str = Field(
-        default="ch1",
+        default="ch0",
         title="IBW current channel substring",
         description="Substring used to derive the matching current trace from the voltage path.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
