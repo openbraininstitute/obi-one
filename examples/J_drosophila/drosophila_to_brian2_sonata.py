@@ -201,7 +201,8 @@ def _create_nodesets(output: Path, nodes: pd.DataFrame, sugar_nodes: list[int]) 
         },
     }
 
-    ignored_columns = {"model_type", "model_template"}
+    # see: https://github.com/openbraininstitute/prod-circuit-simulation/issues/174#issuecomment-4621972177
+    ignored_columns = {"model_type", "model_template", "cell_type", "ito_lee_hemilineage"}
     for k in set(nodes.select_dtypes(include=["object", "string"]).columns) - ignored_columns:
         for v in nodes[k].unique():
             node_sets[v] = {k: v}
@@ -284,62 +285,43 @@ if __name__ == "__main__":
     output = Path("output")
     output.mkdir(exist_ok=True)
     DROSOPHILA_REPO = Path("Drosophila_brain_model")
-    ANNOTATIONS = DROSOPHILA_REPO / "Supplemental_file1_neuron_annotations.tsv"
+
+    SUGAR_NODES = [
+            720575940611875570,
+            720575940612670570,
+            720575940616885538,
+            720575940617000768,
+            720575940617937543,
+            720575940620900446,
+            720575940621502051,
+            720575940621754367,
+            720575940624963786,
+            720575940628853239,
+            720575940629176663,
+            720575940630233916,
+            720575940630797113,
+            720575940632425919,
+            720575940632889389,
+            720575940633143833,
+            720575940637568838,
+            720575940638202345,
+            720575940639198653,
+            720575940639332736,
+            720575940640649691,
+        ]
 
     if 0: # 630
         PATH_COMP = DROSOPHILA_REPO / "2023_03_23_completeness_630_final.csv"
         PATH_CON = DROSOPHILA_REPO / "2023_03_23_connectivity_630_final.parquet"
+        # from version v1.0.0
+        # https://github.com/flyconnectome/flywire_annotations/raw/847a711ce3b6e3cc675cf9ef9c843ba564bba1b5/supplemental_files/Supplemental_file1_annotations.tsv
         ANNOTATIONS = DROSOPHILA_REPO / "Supplemental_file1_neuron_annotations_630.tsv"
-
-        SUGAR_NODES = [
-                720575940611875570,
-                720575940612670570,
-                720575940616885538,
-                720575940617000768,
-                720575940617937543,
-                720575940620900446,
-                720575940621502051,
-                720575940621754367,
-                720575940624963786,
-                720575940628853239,
-                720575940629176663,
-                720575940630233916,
-                720575940630797113,
-                720575940632425919,
-                720575940632889389,
-                720575940633143833,
-                720575940637568838,
-                720575940638202345,
-                720575940639198653,
-                720575940639332736,
-                720575940640649691,
-            ]
     else:
         PATH_COMP = DROSOPHILA_REPO / "Completeness_783.csv"
         PATH_CON = DROSOPHILA_REPO / "Connectivity_783.parquet"
-        SUGAR_NODES = [
-                720575940611875570,
-                720575940612670570,
-                720575940616885538,
-                720575940617000768,
-                720575940617937543,
-                720575940620900446,
-                720575940621502051,
-                720575940621754367,
-                720575940624963786,
-                720575940628853239,
-                720575940629176663,
-                720575940630233916,
-                720575940630797113,
-                720575940632425919,
-                720575940632889389,
-                720575940633143833,
-                720575940637568838,
-                720575940638202345,
-                720575940639198653,
-                720575940639332736,
-                720575940640649691,
-            ]
+        # from version v3.0.0
+        # https://github.com/flyconnectome/flywire_annotations/raw/a92610ef4cb86653aaf2b337eaf466b22f3ebd23/supplemental_files/Supplemental_file1_neuron_annotations.tsv
+        ANNOTATIONS = DROSOPHILA_REPO / "Supplemental_file1_neuron_annotations.tsv"
 
     default_params = {
         # trials
