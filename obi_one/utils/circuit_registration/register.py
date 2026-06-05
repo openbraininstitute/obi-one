@@ -228,7 +228,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         has_spines=has_spines,
         scale=scale,
         build_category=build_category,
-        target_simulator=target_simulator if target_simulator else types.TargetSimulator.NEURON,
+        target_simulator=target_simulator or types.TargetSimulator.NEURON,
         root_circuit_id=root.id if isinstance(root, models.Circuit) else root,
         atlas_id=atlas.id if atlas is not None else None,
         contact_email=contact_email,
