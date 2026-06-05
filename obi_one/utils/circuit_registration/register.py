@@ -36,25 +36,21 @@ L = logging.getLogger(__name__)
 
 
 def _resolve_target_simulator(
-    target_simulator: types.TargetSimulator | None,
+    target_simulator: types.TargetSimulator,
     circuit: OBICircuit,
-) -> types.TargetSimulator | None:
+) -> types.TargetSimulator:
     """Resolve target simulator from user input and circuit config.
 
-    If both are specified, checks consistency. If only the config specifies it,
-    uses the config value.
+    Checks consistency between the provided target_simulator and the value
+    specified in the circuit config (if any).
     """
     cfg_target_simulator = circuit.sonata_circuit.config.get("target_simulator")
-    if cfg_target_simulator:
-        if target_simulator:
-            if target_simulator != cfg_target_simulator:
-                msg = (
-                    f"Specified target simulator '{target_simulator}' does not match"
-                    f" '{cfg_target_simulator}' in circuit config!"
-                )
-                raise ValueError(msg)
-        else:
-            target_simulator = cfg_target_simulator
+    if cfg_target_simulator and target_simulator != cfg_target_simulator:
+        msg = (
+            f"Specified target simulator '{target_simulator}' does not match"
+            f" '{cfg_target_simulator}' in circuit config!"
+        )
+        raise ValueError(msg)
     return target_simulator
 
 
@@ -100,7 +96,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
     build_category: types.CircuitBuildCategory,
     brain_region: models.BrainRegion,
     subject: models.Subject,
-    target_simulator: types.TargetSimulator | None = None,
+    target_simulator: types.TargetSimulator,
     contact_email: str | None = None,
     published_in: str | None = None,
     experiment_date: datetime | None = None,
@@ -136,8 +132,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         build_category: Build category (computational_model, em_reconstruction).
         brain_region: Resolved brain region entity.
         subject: Resolved subject entity.
-        target_simulator: Target simulator for the circuit (optional,
-            defaults to NEURON if not provided).
+        target_simulator: Target simulator for the circuit.
         contact_email: Contact email address (optional).
         published_in: Human-readable publication string (optional).
         experiment_date: Experiment/build date (optional).
@@ -228,7 +223,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         has_spines=has_spines,
         scale=scale,
         build_category=build_category,
-        target_simulator=target_simulator,  # ty:ignore[invalid-argument-type]
+        target_simulator=target_simulator,
         root_circuit_id=root.id if isinstance(root, models.Circuit) else root,
         atlas_id=atlas.id if atlas is not None else None,
         contact_email=contact_email,
@@ -322,9 +317,9 @@ def register_circuit_from_metadata(
         client: The entitycore SDK client.
         circuit_metadata: Dictionary with circuit properties. Required keys:
             name, description, build_category, species, subject, brain_region,
-            brain_region_hierarchy.
+            brain_region_hierarchy, target_simulator.
             Optional keys: root, parent, derivation_type, license, published_in,
-            contact, experiment_date, target_simulator.
+            contact, experiment_date.
         circuit_path: Path to the SONATA circuit folder (containing circuit_config.json),
             directly to the circuit_config.json file, or a compressed .gz archive.
         contributions: Raw contributions dict (agent name -> {type, role}).
@@ -371,7 +366,7 @@ def register_circuit_from_metadata(
         build_category=circuit_metadata["build_category"],
         brain_region=brain_region,
         subject=subject,
-        target_simulator=circuit_metadata.get("target_simulator"),
+        target_simulator=circuit_metadata["target_simulator"],
         contact_email=circuit_metadata.get("contact"),
         published_in=circuit_metadata.get("published_in"),
         experiment_date=exp_date,
