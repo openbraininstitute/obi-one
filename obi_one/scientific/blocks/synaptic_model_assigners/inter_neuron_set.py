@@ -40,6 +40,11 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         },
     )
 
+    edge_population_name: str = Field(
+        title="EdgePopulation name",
+        description="Name of an EdgePopulation of the SONATA circuit that is to be parameterized"
+    )
+
     synaptic_model: SynapticModelReference = Field(
         title="Synaptic Model",
         description="Synaptic model to assign to the synapses between the source and target"
@@ -49,6 +54,11 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
             SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
         },
     )
+
+    def _validate_node_populations(self, circ):
+        # Ensures that `source_neuron_set` and `targeted_neuron_set` are
+        # defined in node populations that are compatible with `edge_population_name`.
+        pass
 
     def _wrap_get_model_output(
         self, cls_src: pd.Series, cls_tgt: pd.Series, row: pd.Series
