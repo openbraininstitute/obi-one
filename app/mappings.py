@@ -18,7 +18,8 @@ from app.schemas.task import (
 from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
-APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
+# APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"  # noqa: ERA001
+APP_TAG = "commit:ab9963566cecf3b823a0056ef90861f7da5a109e"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
@@ -115,6 +116,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:10",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
     TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
@@ -146,6 +148,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=2,
             timelimit="00:10",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
     TaskType.em_synapse_mapping: TaskDefinition(

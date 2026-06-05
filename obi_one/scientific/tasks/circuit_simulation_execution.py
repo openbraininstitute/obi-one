@@ -1,27 +1,20 @@
-import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, cast
+from uuid import UUID
 
 import entitysdk
 from entitysdk import models
 from entitysdk.models.activity import Activity
 from entitysdk.staging.simulation import stage_simulation
 
-from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.simulation.process import compile_mechanisms, run_simulation
 from obi_one.scientific.library.simulation.registration import register_simulation_results
 from obi_one.scientific.library.simulation.schemas import SimulationMetadata
-from obi_one.scientific.library.simulation.staging import (
-    get_simulation_parameters,
-    stage_ion_channel_models_as_circuit,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
-    IonChannelModelSimulationSingleConfig,
-)
+from obi_one.scientific.library.simulation.staging import get_simulation_parameters, stage_circuit
 from obi_one.types import SimulationBackend
 from obi_one.utils import db_sdk
 from obi_one.utils.filesystem import create_dir
@@ -29,42 +22,20 @@ from obi_one.utils.filesystem import create_dir
 L = logging.getLogger(__name__)
 
 
-class IonChannelModelSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
+class CircuitSimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
     pass
 
 
-class IonChannelModelSimulationExecutionTask(Task):
-    config: IonChannelModelSimulationExecutionSingleConfig
+class CircuitSimulationExecutionTask(Task):
+    config: CircuitSimulationExecutionSingleConfig
     activity_type: ClassVar[type[Activity]] = models.SimulationExecution
-
-    def get_generation_single_config(
-        self, db_client: entitysdk.client.Client
-    ) -> IonChannelModelSimulationSingleConfig:
-        config_asset = db_sdk.get_entity_asset_by_label(
-            client=db_client,
-            config=self.config.single_entity,
-            asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
-        )
-        if config_asset.id is None:
-            msg = "Config asset must have an id"
-            raise ValueError(msg)
-
-        json_str = db_client.download_content(
-            entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
-            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-            asset_id=config_asset.id,
-        ).decode(encoding="utf-8")
-
-        json_dict = json.loads(json_str)
-        single_config = deserialize_obi_object_from_json_data(json_dict)
-        return single_config  # ty:ignore[invalid-return-type]
 
     def execute(
         self,
         *,
         db_client: entitysdk.client.Client,
         entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None,
+        execution_activity_id: UUID | None,
     ) -> None:
         """Execute the ion channel model simulation task.
 
@@ -90,66 +61,83 @@ class IonChannelModelSimulationExecutionTask(Task):
             locally and does **not** register any generated resources in
             the database.
         """
-        simulation_backend = SimulationBackend.neurodamus
+        simulation_backend = SimulationBackend.neurodamus  # TODO: Add in config perhaps?
         output_dir = Path(self.config.coordinate_output_root).resolve()
         data_dir = create_dir(output_dir / "data")
         results_dir = create_dir(output_dir / "outputs")
 
-        simulation_entity = self.config.single_entity
-
         if execution_activity_id is not None:
             execution_activity = db_client.get_entity(
-                entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
+                entity_id=execution_activity_id,
                 entity_type=self.activity_type,
             )
 
-        generation_single_config = self.get_generation_single_config(db_client)
-
-        staged_circuit = stage_ion_channel_models_as_circuit(
+        simulation_entity = db_sdk.get_identifiable(
             client=db_client,
-            ion_channel_models=generation_single_config.ion_channel_models,
+            identifiable_id=cast("UUID", self.config.single_entity.id),
+            identifiable_type=models.Simulation,
+        )
+        simulation_metadata = SimulationMetadata(
+            simulation_id=cast("UUID", simulation_entity.id),
+        )
+        circuit_entity = db_client.get_entity(
+            entity_id=simulation_entity.entity_id,
+            entity_type=models.Circuit,
+        )
+        staged_circuit = stage_circuit(
+            client=db_client,
+            model=circuit_entity,
             output_dir=create_dir(data_dir / "circuit"),
         )
+        L.info("Staged Circuit %s config at %s", circuit_entity.id, staged_circuit.path)
+        staged_simulation_config_path = stage_simulation(
+            client=db_client,
+            model=simulation_entity,
+            circuit_config_path=Path(staged_circuit.path),
+            output_dir=data_dir,
+            override_results_dir=results_dir,
+        )
+        L.info(
+            "Staged Simulation %s config at %s. Extracted metadata: %s",
+            simulation_entity.id,
+            staged_simulation_config_path,
+            simulation_metadata,
+        )
+        L.info("Compiling mechanisms in %s...", staged_circuit.mechanisms_dir)
         mechanism_build = compile_mechanisms(
             mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
             output_dir=staged_circuit.directory.resolve(),
             simulation_backend=simulation_backend,
         )
-        simulation_entity = self.config.single_entity
+        L.info("Mechanisms compiled successfully.")
 
-        simulation_metadata = SimulationMetadata(
-            simulation_id=simulation_entity.id,  # ty:ignore[invalid-argument-type]
-        )
-        staged_simulation_config_path = stage_simulation(
-            client=db_client,
-            model=simulation_entity,  # ty:ignore[invalid-argument-type]
-            circuit_config_path=staged_circuit.path,  # ty:ignore[invalid-argument-type]
-            output_dir=data_dir,
-            override_results_dir=results_dir,
-        )
         simulation_parameters = get_simulation_parameters(
             simulation_backend=simulation_backend,
             simulation_config_file=staged_simulation_config_path,
             mechanism_build=mechanism_build,
         )
+        L.info("Simulation parameters: %s", simulation_parameters)
 
+        L.info("Running circuit simulation...")
         simulation_results = run_simulation(
             parameters=simulation_parameters,
             results_dir=results_dir,
-            simulation_backend=SimulationBackend.neurodamus,
+            simulation_backend=simulation_backend,
         )
+        L.info("Simulation results: %s", simulation_results)
 
         if execution_activity_id is not None:
-            L.info("Registering entities...")
+            L.info("Registering simulation results...")
             generated_entity = register_simulation_results(
                 client=db_client,
                 simulation_results=simulation_results,
                 simulation_metadata=simulation_metadata,
             )
+            L.info("Generated SimulationResult %s", generated_entity.id)
             db_client.update_entity(
-                entity_id=execution_activity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=cast("UUID", execution_activity.id),
                 entity_type=self.activity_type,
                 attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
             )
 
-        L.info("Simulation completed")
+        L.info("Simulation completed.")

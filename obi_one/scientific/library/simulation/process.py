@@ -1,9 +1,18 @@
 import logging
 import math
+import os
 from pathlib import Path
+from typing import cast
 
-from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.library.simulation.schemas import SimulationParameters, SimulationResults
+from obi_one.scientific.library.simulation.schemas import (
+    BluecellulabSimulationParameters,
+    MechanismBuild,
+    NeurodamusMechanismBuild,
+    NeurodamusSimulationParameters,
+    NeuronMechanismBuild,
+    SimulationParameters,
+    SimulationResults,
+)
 from obi_one.types import SimulationBackend
 from obi_one.utils.process import run_and_log
 
@@ -20,17 +29,21 @@ def run_simulation(
 ) -> SimulationResults:
     """Run simulation and collect outputs."""
     L.info("Running executable process...")
-    _run_simulation_executable(
-        parameters=parameters,
-        simulation_backend=simulation_backend,
-        simulation_entrypoint_path=ENTRYPOINT_PATH,
-    )
+    match simulation_backend:
+        case SimulationBackend.bluecellulab:
+            _run_bluecellulab_simulation(
+                parameters=cast("BluecellulabSimulationParameters", parameters),
+                simulation_entrypoint_path=ENTRYPOINT_PATH,
+            )
+        case SimulationBackend.neurodamus:
+            _run_neurodamus_simulation(
+                parameters=cast("NeurodamusSimulationParameters", parameters),
+            )
     return _collect_simulation_outputs(results_dir=results_dir)
 
 
-def _run_simulation_executable(
-    parameters: SimulationParameters,
-    simulation_backend: SimulationBackend,
+def _run_bluecellulab_simulation(
+    parameters: BluecellulabSimulationParameters,
     simulation_entrypoint_path: Path,
 ) -> None:
     number_of_mpi_processes = _get_number_of_mpi_processes(parameters.number_of_cells)
@@ -45,11 +58,38 @@ def _run_simulation_executable(
             "--config",
             str(parameters.config_file),
             "--libnrnmech-path",
-            str(parameters.libnrnmech_path),
+            str(parameters.mechanism_build.libnrnmech_path),
             "--simulation-backend",
-            str(simulation_backend),
+            str(SimulationBackend.bluecellulab),
             "--save-nwb",
         ]
+    )
+
+
+def _run_neurodamus_simulation(
+    parameters: NeurodamusSimulationParameters,
+) -> None:
+    number_of_mpi_processes = _get_number_of_mpi_processes(parameters.number_of_cells)
+
+    neurodamus_python = os.environ["NEURODAMUS_PYTHON"]
+
+    run_and_log(
+        [
+            "mpirun",
+            "--use-hwthread-cpus",
+            "-np",
+            str(number_of_mpi_processes),
+            str(parameters.mechanism_build.special_binary_path),
+            "-mpi",
+            "-python",
+            f"{neurodamus_python}/init.py",
+            f"--configFile={parameters.config_file}",
+        ],
+        env=os.environ
+        | {
+            "NRNMECH_LIB_PATH": str(parameters.mechanism_build.libnrnmech_path),
+            "CORENEURONLIB": str(parameters.mechanism_build.libcorenrnmech_path),
+        },
     )
 
 
@@ -77,24 +117,82 @@ def _collect_simulation_outputs(results_dir: Path) -> SimulationResults:
     )
 
 
-def compile_mechanisms(circuit: MEModelCircuit) -> Path:
+def compile_mechanisms(
+    *,
+    output_dir: Path,
+    mechanisms_dir: Path,
+    simulation_backend: SimulationBackend,
+) -> MechanismBuild:
+
+    match simulation_backend:
+        case SimulationBackend.bluecellulab:
+            return _compile_neuron_mechanisms(
+                output_dir=output_dir,
+                mechanisms_dir=mechanisms_dir,
+            )
+        case SimulationBackend.neurodamus:
+            return _compile_neurodamus_mechanisms(
+                output_dir=output_dir,
+                mechanisms_dir=mechanisms_dir,
+            )
+        case _:
+            msg = f"Unsupported simulation backend {simulation_backend}."
+            raise RuntimeError(msg)
+
+
+def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> NeuronMechanismBuild:
     command = [
         "nrnivmodl",
         "-incflags",
         "-DDISABLE_REPORTINGLIB",
-        circuit.mechanisms_dir.name,
+        str(mechanisms_dir),
     ]
 
-    circuit_dir = circuit.directory.resolve()
-
-    compilation_output = run_and_log(command, cwd=str(circuit_dir)).stdout  # ty:ignore[invalid-argument-type]
+    compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
 
     L.debug(compilation_output)
 
     try:
-        libnrnmech_path = next(circuit_dir.rglob("*nrnmech.so"))
+        libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
     except StopIteration as e:
-        msg = "Compiled mechanisms shared object *nrnmech.so was not found."
+        msg = "Compiled mechanisms shared object libnrnmech.so was not found."
         raise RuntimeError(msg) from e
 
-    return libnrnmech_path
+    return NeuronMechanismBuild(libnrnmech_path=libnrnmech_path)
+
+
+def _compile_neurodamus_mechanisms(
+    *, output_dir: Path, mechanisms_dir: Path
+) -> NeurodamusMechanismBuild:
+    command = [
+        "nrnivmodl",
+        "-coreneuron",
+        str(mechanisms_dir),
+    ]
+
+    compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
+
+    L.debug(compilation_output)
+    try:
+        special_binary_path = next(output_dir.rglob("special"))
+    except StopIteration as e:
+        msg = "Special binary path was not found."
+        raise RuntimeError(msg) from e
+
+    try:
+        libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
+    except StopIteration as e:
+        msg = "Compiled mechanisms shared object libnrnmech.so was not found."
+        raise RuntimeError(msg) from e
+
+    try:
+        libcorenrnmech_path = next(output_dir.rglob("libcorenrnmech.so"))
+    except StopIteration as e:
+        msg = "Compiled mechanisms shared object libcorenrnmech.so was not found."
+        raise RuntimeError(msg) from e
+
+    return NeurodamusMechanismBuild(
+        libnrnmech_path=libnrnmech_path,
+        libcorenrnmech_path=libcorenrnmech_path,
+        special_binary_path=special_binary_path,
+    )
