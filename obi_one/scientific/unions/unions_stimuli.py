@@ -99,9 +99,11 @@ IonChannelModelStimulusUnion = Annotated[
 _LE_ABSOLUTE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | RelativeLinearCurrentClampSomaticStimulus
     | MultiPulseCurrentClampSomaticStimulus
     | SinusoidalCurrentClampSomaticStimulus
-    # | HyperpolarizingCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
 )
 
 _LE_SPIKE_STIMULI = _SPIKE_STIMULI
