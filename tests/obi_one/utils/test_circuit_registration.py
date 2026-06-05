@@ -1353,6 +1353,7 @@ def test_register_circuit_public_without_license():
             build_category="computational_model",
             brain_region=brain_region,
             subject=subject,
+            target_simulator="NEURON",
             authorized_public=True,
             license=None,
         )
