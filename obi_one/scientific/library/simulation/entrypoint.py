@@ -49,19 +49,21 @@ class MPIProcess:
 def neuron_mpi_process(libnrnmech_path: str) -> Iterator[MPIProcess]:
     h.nrn_load_dll(libnrnmech_path)
     h.nrnmpi_init()
-    pc = h.ParallelContext()
-    process = MPIProcess(pc)
+    parallel_context = h.ParallelContext()
+    process = MPIProcess(parallel_context)
+
     _setup_mpi_logging(rank=process.rank)
 
     try:
         yield process
     except Exception:
         logger.exception("Rank %d failed", process.rank)
-        # do a true MPI-wide abort here if available
-        raise
-    else:
-        logger.info("Rank %d: Cleaning up...", process.rank)
-        pc.done()
+        h.quit()
+        return
+
+    logger.info("Rank %d: Cleaning up...", process.rank)
+    parallel_context.barrier()
+    h.quit()
 
 
 def _setup_mpi_logging(rank: int) -> None:
