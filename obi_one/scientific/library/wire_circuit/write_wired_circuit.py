@@ -85,12 +85,25 @@ def write_wired_circuit(
         circuit_root: Path,
         node_pop_name: str = "default",
         edge_pop_name: str = "default"
-    ):
+    ) -> Path:
     if COL_ME_MODEL_ID_ not in M.vertex_properties:
         raise ValueError("Input ConnectivityMatrix does not specify MEModel ids!")
     
+    os.makedirs(str(circuit_root), exist_ok=True)
+    node_sets_fn = circuit_root / "node_sets.json"
+    with open(node_sets_fn, "w") as fid:
+        json.dump({}, fid)
     cfg = {
-        "components": {},
+        "components": {
+            "biophysical_neuron_models_dir": "",
+            "mechanisms_dir": "",
+            "morphologies_dir": "",
+            "point_neuron_models_dir": "",
+            "synaptic_models_dir": "",
+            "templates_dir": ""
+        },
+        "node_sets_file": "$BASE_DIR/node_sets.json",
+        "version": 2.3,
         "networks": {
             "edges": [],
             "nodes": []
@@ -155,4 +168,6 @@ def write_wired_circuit(
     cfg["networks"]["edges"].append(edges_dict)
     with open(circuit_root / "circuit_config.json", "w") as fid:
         json.dump(cfg, fid, indent=2)
+
+    return circuit_root / "circuit_config.json"
 

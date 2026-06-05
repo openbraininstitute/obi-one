@@ -8,48 +8,50 @@ from voxcell.cell_collection import CellCollection
 
 COL_ME_MODEL_ID_ = "me_model_id"
 
-def from_calibration(calibration: models.MEModelCalibrationResult) -> pandas.Series:
-    return pandas.Series({
-        "@dynamics:holding_current": calibration.holding_current,
-        "@dynamics:input_resistance": calibration.rin,
-        "@dynamics:threshold_current": calibration.threshold_current,
+def from_calibration(calibration: models.MEModelCalibrationResult) -> dict:
+    return {
+        "@dynamics:holding_current": calibration.holding_current or 0.0,
+        "@dynamics:input_resistance": calibration.rin or 100.0,
+        "@dynamics:threshold_current": calibration.threshold_current or 1.0,
         "@dynamics:resting_potential": -80.0  # TODO!
-    })
+    }
 
-def from_etype(etype: models.ETypeClass) -> pandas.Series:
-    return pandas.Series({
+def from_etype(etype: models.ETypeClass) -> dict:
+    return {
         "etype": etype.pref_label
-    })
+    }
 
-def from_brain_region(region: models.BrainRegion) -> pandas.Series:
-    return pandas.Series({
+def from_brain_region(region: models.BrainRegion) -> dict:
+    return {
         "region": region.acronym
-    })
+    }
 
-def from_emodel(emodel: models.EModel) -> pandas.Series:
+def from_emodel(emodel: models.EModel) -> dict:
     asset_dict = {
         asset.label: asset
         for asset in emodel.assets
     }
     hoc_paths = os.path.splitext(asset_dict[types.AssetLabel.neuron_hoc].path)
     hoc_str = ":".join([hoc_paths[1].replace(".", ""), hoc_paths[0]])
-    return pandas.Series({
+    return {
         "me_combo": emodel.name,
         "model_template": hoc_str
-    })
+    }
 
-def from_mtype(mtype: models.MTypeClass) -> pandas.Series:
-    return pandas.Series({
-        "mtype": mtype.pref_label
-    })
+def from_mtype(mtype: models.MTypeClass) -> dict:
+    return {
+        "mtype": mtype.pref_label,
+        "layer": "0",
+        "synapse_class": "EXC"  # TODO: Do this properly
+    }
 
-def from_morphology(morph: models.CellMorphology) -> pandas.Series:
-    return pandas.Series({
+def from_morphology(morph: models.CellMorphology) -> dict:
+    return {
         "morphology": morph.name
-    })
+    }
 
-def constants() -> pandas.Series:
-    return pandas.Series({
+def constants() -> dict:
+    return {
         "x": 0.0,
         "y": 0.0,
         "z": 0.0,
@@ -57,7 +59,7 @@ def constants() -> pandas.Series:
         'orientation_x': 0.0,
         'orientation_y': 0.0,
         'orientation_z': 0.0
-    })
+    }
 
 def node_population_dataframe(
         M: ConnectivityMatrix,
@@ -71,34 +73,27 @@ def node_population_dataframe(
         for id_str in memodel_ids
     }
     additional_node_props = pandas.concat([
-        pandas.concat(
-            [from_calibration(memodels[k].calibration_result) for k in memodel_ids],
-            axis=1
-        ).transpose(),
-        pandas.concat(
-            [from_brain_region(memodels[k].brain_region) for k in memodel_ids],
-            axis=1
-        ).transpose(),
-        pandas.concat(
-            [from_etype(memodels[k].etypes[0]) for k in memodel_ids],
-            axis=1
-        ).transpose(),
-        pandas.concat(
-            [from_emodel(memodels[k].emodel) for k in memodel_ids],
-            axis=1
-        ).transpose(),
-        pandas.concat(
-            [from_mtype(memodels[k].mtypes[0]) for k in memodel_ids],
-            axis=1
-        ).transpose(),
-        pandas.concat(
-            [from_morphology(memodels[k].morphology) for k in memodel_ids],
-            axis=1
-        ).transpose(),
-        pandas.concat(
-            [constants() for _ in memodel_ids],
-            axis=1
-        ).transpose()
+        pandas.DataFrame(
+            [from_calibration(memodels[k].calibration_result) for k in memodel_ids]
+        ),
+        pandas.DataFrame(
+            [from_brain_region(memodels[k].brain_region) for k in memodel_ids]
+        ),
+        pandas.DataFrame(
+            [from_etype(memodels[k].etypes[0]) for k in memodel_ids]
+        ),
+        pandas.DataFrame(
+            [from_emodel(memodels[k].emodel) for k in memodel_ids]
+        ),
+        pandas.DataFrame(
+            [from_mtype(memodels[k].mtypes[0]) for k in memodel_ids]
+        ),
+        pandas.DataFrame(
+            [from_morphology(memodels[k].morphology) for k in memodel_ids]
+        ),
+        pandas.DataFrame(
+            [constants() for _ in memodel_ids]
+        )
     ], axis=1)
     return additional_node_props
 

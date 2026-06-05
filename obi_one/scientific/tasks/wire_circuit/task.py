@@ -8,6 +8,8 @@ from conntility import ConnectivityMatrix
 from obi_one.core.task import Task
 from obi_one.scientific.library.wire_circuit import write_wired_circuit
 from obi_one.scientific.tasks.wire_circuit.config import WireStructuralCircuitSingleConfig
+from obi_one.utils.circuit_registration.register import register_asset
+from obi_one.utils.circuit_registration.generate import generate_additional_circuit_assets
 
 def circuit_matrix_object(entity_client: Client, circ: models.Circuit, root: Path):
     asset_dict = {
@@ -59,16 +61,24 @@ class WireStructuralCircuitTask(Task):
             raise ValueError(err_str)
         
         circ = self.config.initialize.circuit.entity(db_client=db_client)
-        circuit_root = Path(self.config.coordinate_output_root)
+        circ_name = circ.name or "custom_circuit"
+        circuit_root = Path(self.config.coordinate_output_root) / circ_name / "SONATA"
 
-        M = circuit_matrix_object(db_client, circ, circuit_root)
+        M = circuit_matrix_object(db_client, circ,
+                                  Path(self.config.coordinate_output_root) / circ_name)
 
-        write_wired_circuit(
+        circuit_config_path = write_wired_circuit(
             M,
             db_client,
             circuit_root,
             self.config.initialize.node_population_name,
             self.config.initialize.edge_population_name
+        )
+        print("Register SONATA!")
+        register_asset(db_client, circuit_root, "sonata_circuit", circ, dry_run=False)
+        print("Create and register additional assets!")
+        generate_additional_circuit_assets(
+            circuit_config_path, self.config.initialize.edge_population_name, db_client, circ
         )
         
 
