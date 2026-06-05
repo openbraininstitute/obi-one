@@ -433,13 +433,6 @@ def validate_model_identifier_multiple(schema: dict, param: str, ref: str) -> No
 
     obj = {"id_str": "model_id"}
 
-    if schema.get("type") != "array":
-        msg = (
-            f"Validation error at {ref}: 'model_identifier_multiple' param {param} must be an "
-            f"array type"
-        )
-        raise ValidationError(msg)
-
     items_schema = schema.get("items", {})
     validator = Draft7Validator(items_schema, resolver=resolver)
 
