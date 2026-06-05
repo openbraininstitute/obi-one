@@ -1409,9 +1409,7 @@ def test_register_circuit_from_metadata_missing_target_simulator():
     }
 
     with (
-        patch(
-            "obi_one.utils.circuit_registration.register.check_if_circuit_exists"
-        ),
+        patch("obi_one.utils.circuit_registration.register.check_if_circuit_exists"),
         patch("obi_one.utils.circuit_registration.register.get_subject"),
         patch("obi_one.utils.circuit_registration.register.get_brain_region_hierarchy"),
         patch("obi_one.utils.circuit_registration.register.check_hierarchy_species"),
