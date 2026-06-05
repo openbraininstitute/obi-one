@@ -1,2 +1,2 @@
 brainbuilder==0.20.2
-obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@840874d3294d924e1bef22fba84f6b99c2b21113
+obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@668e3143deb7e7e7282a2f021a596fac2c8867cd
