@@ -471,9 +471,11 @@ class CircuitMetricsOutput(BaseModel, Mapping):
 
     def __iter__(self) -> Iterator[CircuitMetricsNodePopulation | None]:  # ty:ignore[invalid-method-override]
         """Provides iterator over all populations (node + edge)."""
-        yield from (self.biophysical_node_populations +
-                    self.virtual_node_populations +
-                    self.point_node_populations) # ty:ignore[invalid-yield]
+        yield from (
+            self.biophysical_node_populations
+            + self.virtual_node_populations
+            + self.point_node_populations
+        )
 
     def __getitem__(
         self, key: str
@@ -484,9 +486,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
                 self.names_of_biophys_node_populations.index(key)
             ]
         if key in self.names_of_point_node_populations:
-            return self.point_node_populations[
-                self.names_of_point_node_populations.index(key)
-            ]
+            return self.point_node_populations[self.names_of_point_node_populations.index(key)]
         if key in self.names_of_virtual_node_populations:
             return self.virtual_node_populations[self.names_of_virtual_node_populations.index(key)]
         if key in self.names_of_chemical_edge_populations:
@@ -505,7 +505,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
         return self.number_of_biophys_node_populations + self.number_of_virtual_node_populations
 
 
-def get_circuit_metrics(  # noqa: PLR0914
+def get_circuit_metrics(  # noqa: PLR0914, C901
     circuit_id: str,
     db_client: Client,
     level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None = None,
