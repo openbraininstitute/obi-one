@@ -42,6 +42,7 @@ class UIElement(StrEnum):
     MODEL_SELECTOR_SINGLE = "model_selector_single"
     NEURON_IDS = "neuron_ids"
     REFERENCE = "reference"
+    SELECT_EFEATURES_BY_PROTOCOL = "select_efeatures_by_protocol"
     SELECT_RECORDABLE_ION_CHANNEL_VARIABLE = "select_recordable_ion_channel_variable"
     STRING_CONSTANT = "string_constant"
     STRING_CONSTANT_ENHANCED = "string_constant_enhanced"

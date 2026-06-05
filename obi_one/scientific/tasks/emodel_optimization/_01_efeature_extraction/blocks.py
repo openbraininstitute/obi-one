@@ -262,3 +262,129 @@ class ExtractionTargets(Block):
         description="Per-protocol amplitudes + efeatures to extract.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
     )
+
+
+# Catalogue of eFEL features typically extracted per BluePyEModel protocol type.
+# Mirrors the L5PC example's ``targets.py`` and the ``AUTO_TARGET_DICT`` presets
+# in ``bluepyemodel/efeatures_extraction/auto_targets.py``. Exposed to the
+# frontend via the ``available_efeatures_by_protocol`` key of the
+# ``select_efeatures_by_protocol`` UI element so it can render a feature picker
+# for whichever protocols the
+# ``/declared/electrical-cell-recording-protocols`` endpoint returns.
+EFEATURE_CATALOGUE_BY_PROTOCOL: dict[str, tuple[str, ...]] = {
+    "IDrest": (
+        "Spikecount",
+        "depol_block_bool",
+        "voltage_base",
+        "voltage_after_stim",
+        "mean_frequency",
+        "time_to_first_spike",
+        "time_to_last_spike",
+        "inv_time_to_first_spike",
+        "inv_first_ISI",
+        "inv_second_ISI",
+        "inv_third_ISI",
+        "inv_last_ISI",
+        "ISI_CV",
+        "ISI_log_slope",
+        "doublet_ISI",
+        "AHP_depth",
+        "AHP_time_from_peak",
+        "min_AHP_values",
+        "strict_burst_number",
+        "strict_burst_mean_freq",
+        "number_initial_spikes",
+        "irregularity_index",
+        "adaptation_index",
+    ),
+    "IDthresh": (
+        "Spikecount",
+        "mean_frequency",
+        "voltage_base",
+        "voltage_after_stim",
+        "AHP_depth",
+    ),
+    "IV": (
+        "voltage_base",
+        "ohmic_input_resistance_vb_ssse",
+        "sag_amplitude",
+        "sag_ratio1",
+        "sag_ratio2",
+        "decay_time_constant_after_stim",
+    ),
+    "APWaveform": (
+        "AP_amplitude",
+        "AP1_amp",
+        "AP_duration_half_width",
+        "AHP_depth",
+        "AP_begin_voltage",
+        "AP_begin_width",
+    ),
+    "sAHP": (
+        "mean_frequency",
+        "voltage_base",
+        "depol_block_bool",
+        "AHP_depth",
+        "AHP_time_from_peak",
+    ),
+    "IDhyperpol": (
+        "mean_frequency",
+        "voltage_base",
+        "depol_block_bool",
+    ),
+}
+
+
+class EFeatureParams(Block):
+    """Per-feature tuning parameters inside ``SelectEFeaturesByProtocol``."""
+
+    weight: PositiveFloat = Field(
+        default=1.0,
+        title="Weight",
+        description=(
+            "Relative weight of this efeature in the fitness function (passed to"
+            " ``bluepyefe``'s Target ``weight`` parameter)."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    tolerance: PositiveFloat = Field(
+        default=20.0,
+        title="Tolerance",
+        description=(
+            "Amplitude tolerance (in % of rheobase, or pA when"
+            " ``extract_absolute_amplitudes=True``) used to match recordings to"
+            " the requested target amplitude."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+
+
+class SelectEFeaturesByProtocol(Block):
+    """E-feature picker grouped by protocol.
+
+    Wraps a single object whose keys are protocol (ecode) names and whose
+    values are ``{efeature_name: EFeatureParams}`` mappings. The catalogue of
+    features known per protocol is hardcoded in
+    :data:`EFEATURE_CATALOGUE_BY_PROTOCOL` and advertised to the frontend via
+    the ``available_efeatures_by_protocol`` key on the field's
+    ``json_schema_extra``. The user-selected subset is persisted in ``selected``.
+    """
+
+    selected: dict[str, dict[str, EFeatureParams]] = Field(
+        default_factory=dict,
+        title="EFeatures by protocol",
+        description=(
+            "Subset of eFEL features the user picked for each protocol, with"
+            " per-feature ``weight`` / ``tolerance`` overrides. Empty by"
+            " default — the frontend pre-populates this from the catalogue"
+            " and the protocols returned by"
+            " ``/declared/electrical-cell-recording-protocols``."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,
+            "available_efeatures_by_protocol": {
+                protocol: list(features)
+                for protocol, features in EFEATURE_CATALOGUE_BY_PROTOCOL.items()
+            },
+        },
+    )
