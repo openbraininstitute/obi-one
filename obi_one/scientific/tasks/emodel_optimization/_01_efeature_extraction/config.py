@@ -17,6 +17,7 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks
     ExtractionInitialize,
     ExtractionSettings,
     ExtractionTargets,
+    SelectEFeaturesByProtocol,
 )
 
 
@@ -92,6 +93,23 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.TARGETS,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    efeatures_by_protocol: SelectEFeaturesByProtocol = Field(
+        default_factory=SelectEFeaturesByProtocol,
+        title="EFeatures by protocol",
+        description=(
+            "Per-protocol e-feature selection. The frontend renders a"
+            " ``select_efeatures_by_protocol`` picker, restricted to the"
+            " protocols returned by"
+            " ``/declared/electrical-cell-recording-protocols`` for the chosen"
+            " recordings."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.TARGETS,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
