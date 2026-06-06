@@ -13,11 +13,9 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
-    EFELSettings,
     ExtractionInitialize,
-    ExtractionSettings,
-    ExtractionTargets,
     SelectEFeaturesByProtocol,
+    Settings,
 )
 
 
@@ -63,35 +61,13 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
         },
     )
 
-    extraction_settings: ExtractionSettings = Field(
-        default_factory=ExtractionSettings,
-        title="Extraction settings",
-        description="Top-level ``bluepyefe.extract`` parameters.",
+    settings: Settings = Field(
+        default_factory=Settings,
+        title="Settings",
+        description="Combined eFEL and ``bluepyefe.extract`` parameters.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.EXTRACTION,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    efel_settings: EFELSettings = Field(
-        default_factory=EFELSettings,
-        title="eFEL settings",
-        description="``efel_settings`` block (threshold, interp_step, strict_stiminterval).",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.EXTRACTION,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-
-    targets: ExtractionTargets = Field(
-        default_factory=ExtractionTargets,
-        title="Extraction targets",
-        description="Targets, protocols and ecodes metadata for ``bluepyefe.extract``.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.TARGETS,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
@@ -100,16 +76,16 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
         default_factory=SelectEFeaturesByProtocol,
         title="EFeatures by protocol",
         description=(
-            "Per-protocol e-feature selection. The frontend renders a"
-            " ``select_efeatures_by_protocol`` picker, restricted to the"
-            " protocols returned by"
+            "Per-protocol timing, amplitudes and e-feature selection. The"
+            " frontend renders a ``select_efeatures_by_protocol`` picker,"
+            " restricted to the protocols returned by"
             " ``/declared/electrical-cell-recording-protocols`` for the chosen"
             " recordings."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.TARGETS,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 

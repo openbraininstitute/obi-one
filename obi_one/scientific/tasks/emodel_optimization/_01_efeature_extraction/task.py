@@ -42,25 +42,25 @@ def _build_files_metadata(
     ]
 
 
-def _build_targets_formatted(targets_dict: dict) -> list[dict]:
-    """Flatten the per-protocol targets dict into ``bluepyefe.extract`` rows."""
+def _build_targets_formatted(selected: dict) -> list[dict]:
+    """Flatten the per-protocol selection into ``bluepyefe.extract`` rows."""
     rows: list[dict] = []
-    for ecode, protocol in targets_dict.items():
-        for amplitude in protocol.amplitudes:
-            for efeature in protocol.efeatures:
+    for ecode, selection in selected.items():
+        for amplitude in selection.amplitudes:
+            for efeature_name, params in selection.efeatures.items():
                 # Same exclusion as the L5PC pipeline: skip ohmic_input_resistance for IV_0.
                 if (
                     ecode == "IV"
                     and amplitude == 0
-                    and efeature == "ohmic_input_resistance_vb_ssse"
+                    and efeature_name == "ohmic_input_resistance_vb_ssse"
                 ):
                     continue
                 rows.append(
                     {
-                        "efeature": efeature,
+                        "efeature": efeature_name,
                         "protocol": ecode,
                         "amplitude": amplitude,
-                        "tolerance": protocol.tolerance,
+                        "tolerance": params.tolerance,
                     }
                 )
     return rows
@@ -121,8 +121,8 @@ class EModelEFeatureExtractionTask(Task):
             FitnessCalculatorConfiguration,
         )
 
-        targets = self.config.targets
-        extraction_settings = self.config.extraction_settings
+        settings = self.config.settings
+        selected = self.config.efeatures_by_protocol.selected
         coord_root = Path(self.config.coordinate_output_root).resolve()
 
         # 1. Download the NWB ephys assets from entitycore (with per-recording LJP).
@@ -132,7 +132,7 @@ class EModelEFeatureExtractionTask(Task):
         # 2. Build bluepyefe inputs via TargetsConfiguration (handles the BPE1 ->
         #    BPE2 format conversion for us).
         ecodes_metadata_dict = {
-            ecode: meta.to_dict() for ecode, meta in targets.ecodes_metadata.items()
+            ecode: selection.ecode_metadata_dict() for ecode, selection in selected.items()
         }
         files = _build_files_metadata(
             nwb_paths_with_ljp=downloaded,
@@ -144,8 +144,8 @@ class EModelEFeatureExtractionTask(Task):
 
         targets_configuration = TargetsConfiguration(
             files=files,
-            targets=_build_targets_formatted(targets.targets),
-            protocols_rheobase=list(targets.protocols_rheobase),
+            targets=_build_targets_formatted(selected),
+            protocols_rheobase=list(settings.protocols_rheobase),
         )
 
         # 3. chdir so bluepyefe's plot outputs are anchored to the working dir.
@@ -157,18 +157,18 @@ class EModelEFeatureExtractionTask(Task):
                 files_metadata=targets_configuration.files_metadata_BPE,
                 targets=targets_configuration.targets_BPE,
                 protocols_rheobase=targets_configuration.protocols_rheobase_BPE,
-                absolute_amplitude=extraction_settings.extract_absolute_amplitudes,
-                efel_settings=self.config.efel_settings.to_dict(),
-                plot=extraction_settings.plot_extraction,
-                default_std_value=extraction_settings.default_std_value,
+                absolute_amplitude=settings.extract_absolute_amplitudes,
+                efel_settings=settings.efel_to_dict(),
+                plot=settings.plot_extraction,
+                default_std_value=settings.default_std_value,
                 write_files=False,
             )
 
         # 4. Serialise the fitness-calculator configuration for the next stage.
         fitness_calculator_config = FitnessCalculatorConfiguration(
-            name_rmp_protocol=extraction_settings.name_rmp_protocol,
-            name_rin_protocol=extraction_settings.name_rin_protocol,
-            default_std_value=extraction_settings.default_std_value,
+            name_rmp_protocol=settings.name_rmp_protocol,
+            name_rin_protocol=settings.name_rin_protocol,
+            default_std_value=settings.default_std_value,
         )
         fitness_calculator_config.init_from_bluepyefe(
             efeatures,
