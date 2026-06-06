@@ -1,8 +1,9 @@
 """Helpers for inspecting ``ElectricalCellRecording`` entities.
 
-Currently exposes the set of protocol names present in each recording's NWB
-asset, which the e-feature extraction stage uses to drive
-``SelectEFeaturesByProtocol``.
+Exposes the set of protocol names present in each recording's NWB asset and
+the per-protocol step amplitudes (in nA) — both consumed by the e-feature
+extraction stage so the user never has to type protocol metadata that's
+already in the file.
 """
 
 import logging
@@ -11,6 +12,7 @@ from pathlib import Path
 
 import entitysdk.client
 import h5py
+import numpy
 from entitysdk.models import ElectricalCellRecording
 from entitysdk.types import ContentType
 
@@ -36,6 +38,69 @@ def _read_protocols_from_nwb(nwb_path: Path) -> list[str]:
                 if len(parts) >= min_parts_for_protocol:
                     protocols.add(parts[1])
     return sorted(protocols)
+
+
+def _stim_key_for_trace(trace_name: str) -> str | None:
+    """Map a BBP voltage trace name to its sibling current trace key in ``stimulus/presentation``."""
+    if "ccs_" in trace_name:
+        return trace_name.replace("ccs_", "ccss_")
+    if "ic_" in trace_name:
+        return trace_name.replace("ic_", "ics_")
+    return None
+
+
+def _step_amplitude_na(current_a: numpy.ndarray) -> float:
+    """Estimate the step amplitude (nA) of a current trace.
+
+    Baseline = median of the first 5%, step = median of the middle 40%, amp
+    is their difference converted from amperes to nanoamperes. Mirrors what
+    ``bluepyefe.ecode.step.Step`` extracts when ``ton``/``toff`` are absent.
+    """
+    n = len(current_a)
+    if n == 0:
+        return 0.0
+    baseline = float(numpy.median(current_a[: max(1, n // 20)]))
+    step = float(numpy.median(current_a[int(n * 0.3) : int(n * 0.7)]))
+    return (step - baseline) * 1e9
+
+
+def _read_amplitudes_from_nwb(
+    nwb_path: Path,
+    protocol_names: list[str],
+    *,
+    round_decimals: int = 3,
+) -> dict[str, list[float]]:
+    """Return ``{protocol_name: [step_amplitude_nA, ...]}`` for the requested protocols.
+
+    Inspects every sweep under each ``data_organization/<cell>/<protocol>``
+    group (BBP layout), reads its sibling current trace from
+    ``stimulus/presentation``, estimates the step amplitude with
+    :func:`_step_amplitude_na`, rounds to ``round_decimals`` decimal places
+    (default 3 → 1 pA precision) and dedupes.
+    """
+    requested = set(protocol_names)
+    amps: dict[str, set[float]] = {p: set() for p in protocol_names}
+    with h5py.File(str(nwb_path), "r") as f:
+        if "data_organization" not in f or "stimulus" not in f:
+            return {p: [] for p in protocol_names}
+        stim_pres = f["stimulus"]["presentation"]
+        for cell_id in f["data_organization"]:
+            cell = f["data_organization"][cell_id]
+            for protocol_name in cell:
+                if protocol_name not in requested:
+                    continue
+                for rep in cell[protocol_name]:
+                    for sweep in cell[protocol_name][rep]:
+                        for trace_name in cell[protocol_name][rep][sweep]:
+                            key_current = _stim_key_for_trace(trace_name)
+                            if key_current is None or key_current not in stim_pres:
+                                continue
+                            data = stim_pres[key_current]["data"]
+                            conversion = data.attrs.get("conversion", 1.0)
+                            current_a = numpy.asarray(data[()]) * conversion
+                            amp_na = _step_amplitude_na(current_a)
+                            amps[protocol_name].add(round(amp_na, round_decimals))
+    return {p: sorted(v) for p, v in amps.items()}
 
 
 def get_recording_protocols(
