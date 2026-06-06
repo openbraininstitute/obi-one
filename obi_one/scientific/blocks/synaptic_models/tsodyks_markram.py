@@ -3,18 +3,19 @@ from typing import Annotated
 
 import numpy as np
 from pydantic import Field
+from pandas import DataFrame
 
-from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
+from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
 
 L = logging.getLogger(__name__)
+            
 
-
-class TsodyksMarkramSynapticModel(Block):
+class TsodyksMarkramSynapticModel(SynapticModelBase):
     u_hill_coefficient_distribution: AllDistributionsReference = Field(
         title="U Hill Coefficient Distribution",
         description="Distribution of the Hill coefficient for the steady-state utilization"
@@ -240,49 +241,87 @@ class TsodyksMarkramSynapticModel(Block):
             "usyn": self.usyn_dict(),
             "synapse_type_id": self.synapse_type_id,
         }
-
-
-CORRELATION_COEFFICIENT_FIELD = (
-    Annotated[
-        float,
-        Field(ge=-1.0, le=1.0),
-    ]
-    | Annotated[
-        list[
-            Annotated[
-                float,
-                Field(
-                    ge=-1.0,
-                    le=1.0,
-                ),
+    
+    @classmethod
+    def synapse_model_family(cls):
+        return "TM_model"
+    
+    @classmethod
+    def parameter_names(cls) -> list[str]:
+        return [
+            "u_hill_coefficient",
+            "conductance",
+            "conductance_scale_factor",
+            "facilitation_time",
+            "depression_time",
+            "n_rrp_vesicles",
+            "decay_time",
+            "usyn",
+            "synapse_type_id"
             ]
-        ],
-        Field(min_length=1),
-    ]
-)
+    
+    def sample(self, indices: DataFrame) -> DataFrame:
+        n = len(indices)
+        # TODO: 'shared_within' is currently ignored
+        return DataFrame({
+            "u_hill_coefficient": self.u_hill_coefficient_distribution.block.sample(n),
+            "conductance": self.conductance_distribution.block.sample(n),
+            "conductance_scale_factor": self.conductance_scale_factor_distribution.block.sample(n),
+            "facilitation_time": self.fascilitation_time.block.sample(n),
+            "depression_time": self.depression_time.block.sample(n),
+            "n_rrp_vesicles": self.n_rrp_vesicles_distribution.block.sample(n),
+            "decay_time": self.decay_time.block.sample(n),
+            "usyn": self.usyn.block.sample(n),
+            "synapse_type_id": [self.synapse_type_id] * n
+        }, index=indices.index)
 
 
-class CorrelatedTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
-    u_hill_coefficient_and_gsyn_correlation: CORRELATION_COEFFICIENT_FIELD = Field(
-        title="Correlation between U Hill Coefficient and g_syn",
-        description="Correlation coefficient between the Hill coefficient and g_syn",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        },
-    )
-
+class TsodyksMarkramInhibitorySynapticModel(TsodyksMarkramSynapticModel):
     @property
-    def cov_mat(self) -> dict:
-        return np.array(
-            [
-                [1.0, self.u_hill_coefficient_and_gsyn_correlation],
-                [self.u_hill_coefficient_and_gsyn_correlation, 1.0],
-            ]
-        )
+    def synapse_type_id(self) -> int:
+        return -100  # TODO: Placeholder. Find out actual number!
 
-    @property
-    def cov_dict(self) -> dict:
-        return {
-            "props": ["u_hill_coefficient", "gsyn"],
-            "cov_mat": {self.source_neuron_set: {self.target_neuron_set: self.cov_mat}},
-        }
+# CORRELATION_COEFFICIENT_FIELD = (
+#     Annotated[
+#         float,
+#         Field(ge=-1.0, le=1.0),
+#     ]
+#     | Annotated[
+#         list[
+#             Annotated[
+#                 float,
+#                 Field(
+#                     ge=-1.0,
+#                     le=1.0,
+#                 ),
+#             ]
+#         ],
+#         Field(min_length=1),
+#     ]
+# )
+
+
+# class CorrelatedTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
+#     u_hill_coefficient_and_gsyn_correlation: CORRELATION_COEFFICIENT_FIELD = Field(
+#         title="Correlation between U Hill Coefficient and g_syn",
+#         description="Correlation coefficient between the Hill coefficient and g_syn",
+#         json_schema_extra={
+#             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+#         },
+#     )
+
+#     @property
+#     def cov_mat(self) -> dict:
+#         return np.array(
+#             [
+#                 [1.0, self.u_hill_coefficient_and_gsyn_correlation],
+#                 [self.u_hill_coefficient_and_gsyn_correlation, 1.0],
+#             ]
+#         )
+
+#     @property
+#     def cov_dict(self) -> dict:
+#         return {
+#             "props": ["u_hill_coefficient", "gsyn"],
+#             "cov_mat": {self.source_neuron_set: {self.target_neuron_set: self.cov_mat}},
+#         }

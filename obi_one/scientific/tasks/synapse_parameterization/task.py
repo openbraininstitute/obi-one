@@ -1,5 +1,7 @@
 import logging
 import shutil
+import pandas as pd
+
 from pathlib import Path
 
 from connectome_manipulator.model_building import model_types
@@ -8,6 +10,7 @@ from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.synaptome_helpers import (
     compress_output,
     register_synaptome,
@@ -17,6 +20,14 @@ from obi_one.scientific.library.synaptome_helpers import (
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerUnion,
+)
+from obi_one.scientific.tasks.synapse_parameterization.utils import (
+    check_consistent_synapse_models,
+    get_default_for,
+    write_back_to_edge_file
+)
 
 L = logging.getLogger(__name__)
 
@@ -24,7 +35,7 @@ L = logging.getLogger(__name__)
 class SynapseParameterizationTask(Task):
     config: SynapseParameterizationSingleConfig
 
-    _synaptome: MEModelWithSynapsesCircuit | None = PrivateAttr(default=None)
+    _synaptome: Circuit | None = PrivateAttr(default=None)
     _synaptome_entity: models.Circuit | None = PrivateAttr(default=None)
     _pathway_model: model_types.ConnPropsModel | None = PrivateAttr(default=None)
 
@@ -50,7 +61,7 @@ class SynapseParameterizationTask(Task):
         if output_dir != stage_dir:
             # Copy staged circuit into output directory
             shutil.copytree(stage_dir, output_dir, dirs_exist_ok=False)
-            synaptome = MEModelWithSynapsesCircuit(
+            synaptome = Circuit(
                 name=synaptome.name, path=str(output_dir / "circuit_config.json")
             )
 
@@ -68,6 +79,15 @@ class SynapseParameterizationTask(Task):
         )
         registered_derivation = db_client.register_entity(derivation_model)
         return registered_derivation
+    
+    def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
+        """
+        Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use.
+        """
+        per_edge_population = {}
+        for _, assigner in self.config.synapse_model_assigners.items():
+            per_edge_population.setdefault(assigner.edge_population_name, []).append(assigner)
+        return per_edge_population
 
     def execute(self, *, db_client: Client = None, entity_cache: bool = False) -> None:
         if db_client is None:
@@ -79,12 +99,16 @@ class SynapseParameterizationTask(Task):
 
         # Check parameters
         circ = self._synaptome.sonata_circuit
+        per_edge_population = self._assemble_per_edge_population()
+        for assigners_for_ep in per_edge_population.values():
+            check_consistent_synapse_models(assigners_for_ep)
 
-        for syn_model_assigner in self.config.synapse_model_assigners.values():
-            syn_model_assigner.assign_synaptic_model(circ=circ)
+        for ep_name, assigners_for_ep in per_edge_population.items():
+            df = get_default_for(assigners_for_ep, ep_name, self._synaptome)
+            for assigner in assigners_for_ep:
+                assigner.assign_parameters(self._synaptome, df)
+            write_back_to_edge_file(df, circ.edges[ep_name])
 
-        for syn_parameterization in self.config.synapse_parameterizations.values():
-            syn_parameterization.go_for_it(circ=circ)
 
         # Register (re-)parameterized synaptome
         L.info("Registering the output...")
@@ -95,20 +119,20 @@ class SynapseParameterizationTask(Task):
         }
         compressed_path = compress_output(output_dir)
 
-        registered_synaptome = register_synaptome(
-            db_client=db_client,
-            name=synaptome_name_with_physiology(self._synaptome_entity.name),
-            description=synaptome_description_with_physiology(
-                self._synaptome_entity.description, self._pathway_model.prop_names
-            ),
-            number_synapses=self._synaptome_entity.number_synapses,
-            number_connections=self._synaptome_entity.number_connections,
-            source_dataset=self._synaptome_entity,
-            em_dataset=self._synaptome_entity,
-            lst_notices=[],
-            file_paths=file_paths,
-            compressed_path=compressed_path,
-        )
+        # registered_synaptome = register_synaptome(
+        #     db_client=db_client,
+        #     name=synaptome_name_with_physiology(self._synaptome_entity.name),
+        #     description=synaptome_description_with_physiology(
+        #         self._synaptome_entity.description, self._pathway_model.prop_names
+        #     ),
+        #     number_synapses=self._synaptome_entity.number_synapses,
+        #     number_connections=self._synaptome_entity.number_connections,
+        #     source_dataset=self._synaptome_entity,
+        #     em_dataset=self._synaptome_entity,
+        #     lst_notices=[],
+        #     file_paths=file_paths,
+        #     compressed_path=compressed_path,
+        # )
 
-        # Register derivation link
-        self._register_derivation(db_client=db_client, registered_synaptome=registered_synaptome)
+        # # Register derivation link
+        # self._register_derivation(db_client=db_client, registered_synaptome=registered_synaptome)

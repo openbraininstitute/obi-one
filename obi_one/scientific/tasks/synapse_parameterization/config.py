@@ -9,7 +9,7 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
@@ -51,7 +51,7 @@ class SynapseParameterizationScanConfig(ScanConfig, SingleConfigMixin):
     }
 
     class Initialize(Block):
-        synaptome: MEModelWithSynapsesCircuitFromID = Field(
+        synaptome: CircuitFromID = Field(
             title="Synaptome",
             description="Synaptome (i.e., circuit of scale single) to (re-)parameterize.",
         )

@@ -362,7 +362,7 @@ from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import 
     InterNeuronSetSynapticModelAssigner,
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
-    CorrelatedTsodyksMarkramSynapticModel,
+    # CorrelatedTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
@@ -511,6 +511,10 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusUnion,
 )
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_synaptic_models import (
+    SynapticModelReference,
+    SynapticModelUnion
+)
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
     SynapticModelAssignerReference,
     SynapticModelAssignerUnion,
