@@ -14,7 +14,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
     ExtractionInitialize,
-    SelectEFeaturesByProtocol,
+    ProtocolAndFeatureSelection,
     Settings,
 )
 
@@ -72,8 +72,8 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
         },
     )
 
-    efeatures_by_protocol: SelectEFeaturesByProtocol = Field(
-        default_factory=SelectEFeaturesByProtocol,
+    efeatures_by_protocol: ProtocolAndFeatureSelection = Field(
+        default_factory=ProtocolAndFeatureSelection,
         title="EFeatures by protocol",
         description=(
             "Per-protocol timing, amplitudes and e-feature selection. The"
