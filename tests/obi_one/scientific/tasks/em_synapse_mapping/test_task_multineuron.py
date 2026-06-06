@@ -76,10 +76,10 @@ def _make_task(tmp_path):
             CellMorphologyFromID(id_str="test2"),
         ),
     )
-    config.initialize.biophysical_node_population = "bio"
-    config.initialize.virtual_node_population = "virt"
-    config.initialize.physical_edge_population_name = "phys"
-    config.initialize.virtual_edge_population_name = "virt_edges"
+    config.advanced_options.custom_physical_edge_population_name = ""
+    config.advanced_options.custom_virtual_edge_population_name = ""
+    config.advanced_options.custom_biophysical_node_population = ""
+    config.advanced_options.custom_virtual_node_population = ""
     return EMSynapseMappingTask.model_construct(config=config)
 
 

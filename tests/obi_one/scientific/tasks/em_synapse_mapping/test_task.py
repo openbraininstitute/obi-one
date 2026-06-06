@@ -54,10 +54,10 @@ def _make_task(tmp_path):
     config.initialize.neurons = EMSynapseMappingInputNamedTuple(
         name="test", elements=(CellMorphologyFromID(id_str="test"),)
     )
-    config.initialize.biophysical_node_population = "post_pop"
-    config.initialize.virtual_node_population = "pre_pop"
-    config.initialize.physical_edge_population_name = "physical_connections"
-    config.initialize.virtual_edge_population_name = "afferent_synapses"
+    config.advanced_options.custom_physical_edge_population_name = ""
+    config.advanced_options.custom_virtual_edge_population_name = ""
+    config.advanced_options.custom_biophysical_node_population = ""
+    config.advanced_options.custom_virtual_node_population = ""
     return EMSynapseMappingTask.model_construct(config=config)
 
 
