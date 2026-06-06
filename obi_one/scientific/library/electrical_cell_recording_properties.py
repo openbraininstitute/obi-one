@@ -1,7 +1,8 @@
 """Helpers for inspecting ``ElectricalCellRecording`` entities.
 
 Currently exposes the set of protocol names present in each recording's NWB
-asset, which the e-feature extraction stage uses to drive ``ExtractionTargets``.
+asset, which the e-feature extraction stage uses to drive
+``SelectEFeaturesByProtocol``.
 """
 
 import logging
