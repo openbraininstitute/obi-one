@@ -19,7 +19,7 @@ def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssig
 
 
 def get_default_for(lst_model_assigners: list[SynapticModelAssignerUnion],
-                     edge_population_name: str, circ: Circuit) -> DataFrame:
+                    edge_population_name: str, circ: Circuit) -> DataFrame:
     reference = lst_model_assigners[0].synaptic_model.block
     default_model = reference.default()
     ep = circ.sonata_circuit.edges[edge_population_name]
@@ -34,12 +34,14 @@ def get_default_for(lst_model_assigners: list[SynapticModelAssignerUnion],
         df, to_fill[to_be_filled]
     ], axis=1)
 
-def write_back_to_edge_file(df: DataFrame, ep: EdgePopulation):
-    with h5py.File(ep.h5_filepath, "a") as h5:  # TODO: Support write in chunks
+def write_back_to_edge_file(df: DataFrame,
+                            ep: EdgePopulation) -> None:
+    n_edges = len(df)
+    with h5py.File(ep.h5_filepath, "a") as h5:
         grp = h5["edges"][ep.name]["0"]  # TODO: Support multiple edge_group_ids
         for col in df.columns:
             if col in grp.keys():
-                assert grp[col].shape[0] == len(df)
+                assert grp[col].shape[0] == n_edges
                 grp[col][:] = df[col].to_numpy()
             else:
                 grp.create_dataset(col, data=df[col].to_numpy())

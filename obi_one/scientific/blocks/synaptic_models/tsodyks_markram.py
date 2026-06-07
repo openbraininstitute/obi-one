@@ -95,6 +95,16 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
         },
     )
 
+    delay_distribution: AllDistributionsReference = Field(
+        title="Delay distribution",
+        description="Distribution for the synaptic delay (from the presyn spike).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+
     u_hill_coefficient_shared_within: bool = Field(
         default=False,
         title="U Hill Coefficient Shared Within",
@@ -176,6 +186,16 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
+    
+    delay_shared_within: bool = Field(
+        default=False,
+        title="Delay Distribution Shared Within",
+        description="Whether the synaptic delay is shared within the synapses between the source "
+        "and target neuron sets.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
 
     @property
     def cov_mat(self) -> dict:
@@ -228,18 +248,24 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
         d = self.usyn.resolve()
         d["shared_within"] = self.usyn_shared_within
         return d
+    
+    def delay_dict(self) -> dict:
+        d = self.delay_distribution.resolve()
+        d["shared_within"] = self.delay_shared_within
+        return d
 
     def parameter_dictionaries(self) -> dict:
         return {
             "u_hill_coefficient": self.u_hill_coefficient_dict(),
             "conductance": self.conductance_distribution_dict(),
             "conductance_scale_factor": self.conductance_scale_factor_distribution_dict(),
-            "fascilitation_time": self.fascilitation_time_dict(),
+            "facilitation_time": self.fascilitation_time_dict(),
             "depression_time": self.depression_time_dict(),
             "n_rrp_vesicles": self.n_rrp_vesicles_dict(),
             "decay_time": self.decay_time_dict(),
             "usyn": self.usyn_dict(),
-            "synapse_type_id": self.synapse_type_id,
+            "delay": self.delay_dict(),
+            "syn_type_id": self.synapse_type_id,
         }
     
     @classmethod
@@ -257,6 +283,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
             "n_rrp_vesicles",
             "decay_time",
             "usyn",
+            "delay",
             "synapse_type_id"
             ]
     
@@ -272,6 +299,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
             "n_rrp_vesicles": self.n_rrp_vesicles_distribution.block.sample(n),
             "decay_time": self.decay_time.block.sample(n),
             "usyn": self.usyn.block.sample(n),
+            "delay": self.delay_distribution.block.sample(n),
             "synapse_type_id": [self.synapse_type_id] * n
         }, index=indices.index)
 

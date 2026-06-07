@@ -6,10 +6,11 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     #CorrelatedTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
+    TsodyksMarkramInhibitorySynapticModel,
 )
 
 SynapticModelUnion = Annotated[
-    TsodyksMarkramSynapticModel, # | CorrelatedTsodyksMarkramSynapticModel,
+    TsodyksMarkramSynapticModel | TsodyksMarkramInhibitorySynapticModel, # | CorrelatedTsodyksMarkramSynapticModel,
     Discriminator("type"),
 ]
 

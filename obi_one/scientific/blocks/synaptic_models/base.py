@@ -15,6 +15,7 @@ def _default_tm():
         "depression_time",
         "n_rrp_vesicles_distribution",
         "decay_time",
+        "delay_distribution",
         "usyn",
         ]
     params_dict = {}

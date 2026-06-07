@@ -57,7 +57,6 @@ __all__ = [
     "ContributeMorphologySingleConfig",
     "ContributeSubjectScanConfig",
     "ContributeSubjectSingleConfig",
-    "CorrelatedTsodyksMarkramSynapticModel",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "CreateExtracellularRecordingArrayScanConfig",
@@ -158,6 +157,7 @@ __all__ = [
     "PositiveFloatRange",
     "PositiveIntRange",
     "PredefinedNeuronSet",
+    "PresynapticNeuronSetSynapticModelAssigner",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
     "RandomMorphologyLocations",
@@ -207,6 +207,7 @@ __all__ = [
     "TimestampsReference",
     "TimestampsUnion",
     "TsodyksMarkramSynapticModel",
+    "TsodyksMarkramInhibitorySynapticModel",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
@@ -361,9 +362,13 @@ from obi_one.scientific.blocks.synaptic_manipulations.demo import (
 from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
     InterNeuronSetSynapticModelAssigner,
 )
+from obi_one.scientific.blocks.synaptic_model_assigners.presyn_neuron_set import (
+    PresynapticNeuronSetSynapticModelAssigner
+)
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     # CorrelatedTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
+    TsodyksMarkramInhibitorySynapticModel,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp

@@ -1,3 +1,4 @@
+import numpy as np
 from pydantic import Field
 from pandas import DataFrame
 
@@ -43,11 +44,30 @@ class SynapseModelAssigner(Block):
     def validate(self, circuit: Circuit) -> None:
         raise NotImplementedError("This is implemented in derived classes!")
 
-    def edge_indices(self, circuit: Circuit) -> DataFrame:
+    def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         raise NotImplementedError("This is implemented in derived classes!")
     
-    def assign_parameters(self, circuit: Circuit, params: DataFrame) -> None:
-        indices_df = self.edge_indices(circuit)
+    def edge_indices(self,
+                     circuit: Circuit,
+                     min_edge_id: int | None = None,
+                     max_edge_id: int | None = None) -> DataFrame:
+        circ = circuit.sonata_circuit
+        ep = circ.edges[self.edge_population_name]
+        indices = self._edge_indices(circuit)
+        if min_edge_id is not None:
+            indices = indices[indices >= min_edge_id]
+        if max_edge_id is not None:
+            indices = indices[indices < max_edge_id]
+        return ep.get(indices, properties=["@source_node", "@target_node"])
+    
+    def assign_parameters(self,
+                          circuit: Circuit,
+                          params: DataFrame,
+                          min_edge_id: int | None = None,
+                          max_edge_id: int | None = None) -> None:
+        indices_df = self.edge_indices(circuit,
+                                       min_edge_id=min_edge_id,
+                                       max_edge_id=max_edge_id)
         param_model = self.synaptic_model.block
         new_params = param_model.sample(indices_df)
         params.update(new_params)
