@@ -60,14 +60,25 @@ class SynapseModelAssigner(Block):
             indices = indices[indices < max_edge_id]
         return ep.get(indices, properties=["@source_node", "@target_node"])
     
-    def assign_parameters(self,
+    def create_parameters(self,
                           circuit: Circuit,
-                          params: DataFrame,
                           min_edge_id: int | None = None,
-                          max_edge_id: int | None = None) -> None:
+                          max_edge_id: int | None = None) -> DataFrame:
         indices_df = self.edge_indices(circuit,
                                        min_edge_id=min_edge_id,
                                        max_edge_id=max_edge_id)
         param_model = self.synaptic_model.block
         new_params = param_model.sample(indices_df)
+        return new_params
+    
+    def assign_parameters(self,
+                          circuit: Circuit,
+                          params: DataFrame,
+                          min_edge_id: int | None = None,
+                          max_edge_id: int | None = None) -> None:
+        new_params = self.create_parameters(
+            circuit,
+            min_edge_id=min_edge_id,
+            max_edge_id=max_edge_id
+        )
         params.update(new_params)

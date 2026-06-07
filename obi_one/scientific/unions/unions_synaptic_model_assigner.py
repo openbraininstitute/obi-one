@@ -9,9 +9,14 @@ from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import 
 from obi_one.scientific.blocks.synaptic_model_assigners.presyn_neuron_set import (
     PresynapticNeuronSetSynapticModelAssigner
 )
+from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import(
+    AllPairsSynapticModelAssigner
+)
 
 SynapticModelAssignerUnion = Annotated[
-    InterNeuronSetSynapticModelAssigner | PresynapticNeuronSetSynapticModelAssigner, 
+    InterNeuronSetSynapticModelAssigner |
+    PresynapticNeuronSetSynapticModelAssigner |
+    AllPairsSynapticModelAssigner, 
     Discriminator("type"),
 ]
 

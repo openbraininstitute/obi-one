@@ -24,6 +24,7 @@ __all__ = [
     "AllDistributionsReference",
     "AllDistributionsUnion",
     "AllNeurons",
+    "AllPairsSynapticModelAssigner",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
@@ -364,6 +365,9 @@ from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import 
 )
 from obi_one.scientific.blocks.synaptic_model_assigners.presyn_neuron_set import (
     PresynapticNeuronSetSynapticModelAssigner
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
+    AllPairsSynapticModelAssigner
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     # CorrelatedTsodyksMarkramSynapticModel,
