@@ -15,7 +15,10 @@ from obi_one.scientific.library.electrical_cell_recording_properties import (
     _read_amplitudes_from_nwb,
 )
 from obi_one.scientific.tasks.emodel_optimization import _shared
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import Settings
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
+    RheobaseStrategy,
+    Settings,
+)
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
     EModelEFeatureExtractionSingleConfig,
 )
@@ -75,6 +78,9 @@ def _build_targets_formatted(
     rows: list[dict] = []
     for protocol in protocols:
         ecode = protocol.name
+        # eFEL overrides cascade global (Settings) -> protocol -> feature; the
+        # most specific level wins, so feature overrides are merged on top.
+        protocol_efel = protocol.efel_settings_override()
         for amplitude in amplitudes_per_protocol.get(ecode, ()):
             for feature in protocol.selected_efeatures():
                 # Same exclusion as the L5PC pipeline: skip ohmic_input_resistance for IV_0.
@@ -84,19 +90,21 @@ def _build_targets_formatted(
                     and feature.efel_name == "ohmic_input_resistance_vb_ssse"
                 ):
                     continue
-                rows.append(
-                    {
-                        "efeature": feature.efel_name,
-                        "protocol": ecode,
-                        "amplitude": amplitude,
-                        "tolerance": feature.tolerance,
-                        "efel_settings": feature.efel_settings_override(),
-                    }
-                )
+                row = {
+                    "efeature": feature.efel_name,
+                    "protocol": ecode,
+                    "amplitude": amplitude,
+                    "tolerance": feature.tolerance,
+                    "weight": feature.weight,
+                    "efel_settings": {**protocol_efel, **feature.efel_settings_override()},
+                }
+                if feature.efeature_name is not None:
+                    row["efeature_name"] = feature.efeature_name
+                rows.append(row)
     return rows
 
 
-def _build_extraction_recipes(settings: Settings) -> dict:
+def _build_extraction_recipes(settings: Settings, rheobase: RheobaseStrategy) -> dict:
     """Build a minimal BluePyEModel ``recipes.json`` for the extraction step.
 
     Only the ``pipeline_settings`` consumed by ``extract_save_features_protocols``
@@ -121,6 +129,14 @@ def _build_extraction_recipes(settings: Settings) -> dict:
                 "efel_settings": settings.efel_to_dict(),
                 "name_rmp_protocol": settings.name_rmp_protocol,
                 "name_Rin_protocol": settings.name_rin_protocol,
+                "extraction_threshold_value_save": settings.threshold_nvalue_save,
+                "rheobase_strategy_extraction": rheobase.strategy,
+                "rheobase_settings_extraction": rheobase.to_dict(),
+                "pickle_cells_extraction": settings.pickle_cells,
+                "bound_max_std": settings.bound_max_std,
+                "interpolate_RMP_extraction": settings.interpolate_rmp,
+                "threshold_efeature_std": settings.threshold_efeature_std,
+                "minimum_protocol_delay": settings.minimum_protocol_delay,
             },
         },
     }
@@ -193,6 +209,7 @@ class EModelEFeatureExtractionTask(Task):
         )
 
         settings = self.config.settings
+        rheobase = self.config.rheobase
         protocols_cfg = self.config.efeatures_by_protocol.protocols
         coord_root = Path(self.config.coordinate_output_root).resolve()
 
@@ -223,12 +240,14 @@ class EModelEFeatureExtractionTask(Task):
         targets_configuration = TargetsConfiguration(
             files=files,
             targets=_build_targets_formatted(protocols_cfg, amplitudes_per_protocol),
-            protocols_rheobase=list(settings.protocols_rheobase),
+            protocols_rheobase=list(rheobase.protocols),
         )
 
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
-        _shared.write_recipes(_build_extraction_recipes(settings), coord_root / RECIPES_RELPATH)
+        _shared.write_recipes(
+            _build_extraction_recipes(settings, rheobase), coord_root / RECIPES_RELPATH
+        )
 
         # 4. Run BluePyEModel's extraction. chdir so the local access point anchors
         #    its relative paths (recipes, targets config, figures, extracted
