@@ -86,7 +86,7 @@ class EMSynapseMappingTask(Task):
         # Resolve all neurons: morphology, provenance, ME model
         L.info("Resolving neurons...")
         resolved_neurons = []
-        all_pt_root_ids = set()
+        pt_root_id_names: dict[int, str] = {}
 
         for neuron_entry in init.neurons.elements:
             resolved_neuron = resolve_neuron(
@@ -94,8 +94,16 @@ class EMSynapseMappingTask(Task):
                 db_client,
                 out_root,
             )
+            if resolved_neuron.pt_root_id in pt_root_id_names:
+                err_str = (
+                    f"Duplicate pt_root_id {resolved_neuron.pt_root_id}: "
+                    f"'{resolved_neuron.morph_entity.name or resolved_neuron.pt_root_id}' "  # ty:ignore[unresolved-attribute]
+                    f"resolves to the same physical neuron as "
+                    f"'{pt_root_id_names[resolved_neuron.pt_root_id]}'."
+                )
+                raise ValueError(err_str)
             resolved_neurons.append(resolved_neuron)
-            all_pt_root_ids.add(resolved_neuron.pt_root_id)
+            pt_root_id_names[resolved_neuron.pt_root_id] = str(resolved_neuron.morph_entity.name)  # ty:ignore[unresolved-attribute]
 
         n_neurons = len(resolved_neurons)
         is_multi = n_neurons > 1
@@ -153,7 +161,7 @@ class EMSynapseMappingTask(Task):
             plt.close("all")
 
             # Split synapses: internal (pre is in the set) vs external
-            is_internal = syns["pre_pt_root_id"].isin(all_pt_root_ids)
+            is_internal = syns["pre_pt_root_id"].isin(pt_root_id_names)
 
             for is_int, edge_list, pre_post_list in [
                 (True, all_internal_edges, all_internal_pre_post),
