@@ -222,11 +222,175 @@ class IDhyperpol(Protocol):
     depol_block_bool: DepolBlockBool = Field(default_factory=DepolBlockBool)
 
 
+# ---------------------------------------------------------------------------
+# Additional protocols giving obi-one a Protocol class for every eCode in
+# bluepyefe's ``eCodes`` registry (full bluepyefe coverage). Each subclasses the
+# canonical protocol whose curated feature set best fits it and only overrides
+# ``name`` (the canonical bluepyefe name), so no fields are duplicated. The
+# feature sets are sensible defaults mirroring the analogous protocol -- override
+# the fields on a subclass if a protocol needs a different selection, and adjust
+# ``name`` if a dataset spells a protocol differently (bluepyefe itself matches
+# protocol names case-insensitively). Protocols with no bluepyefe eCode -- noise
+# stimuli, ADHP*, APDrop, C1HP, HighResThResp, VacuumPulses -- are not added:
+# bluepyefe cannot extract from them.
+#
+# NOTE on stimulus timing: most eCodes auto-detect their timing, but a few don't.
+# ``APThreshold``/``Ramp`` (Ramp eCode) need a stimulus onset (``ton``), which the
+# extraction task reads from the NWB current and supplies. ``DeHyperPol`` also
+# needs mid-transition points we can't recover, so the task skips it with a
+# warning (see ``_TON_ONLY_ECODES`` / ``_TIMING_UNSUPPORTED_ECODES`` in
+# ``task.py``).
+# ---------------------------------------------------------------------------
+
+
+# Depolarising step / spiking protocols -> full IDrest feature set.
+class IDRest(IDrest):
+    name: ClassVar[str] = "IDRest"
+
+
+class GenericStep(IDrest):
+    name: ClassVar[str] = "GenericStep"
+
+
+class C1step(IDrest):
+    name: ClassVar[str] = "C1step"
+
+
+class Delta(IDrest):
+    name: ClassVar[str] = "Delta"
+
+
+class IDdepol(IDrest):
+    name: ClassVar[str] = "IDdepol"
+
+
+class IRdepol(IDrest):
+    name: ClassVar[str] = "IRdepol"
+
+
+class SponAPs(IDrest):
+    name: ClassVar[str] = "SponAPs"
+
+
+class SpikeRec(IDrest):
+    name: ClassVar[str] = "SpikeRec"
+
+
+# Threshold-search / sparse-spiking protocols -> minimal IDthresh feature set.
+class IDThreshold(IDthresh):
+    name: ClassVar[str] = "IDThreshold"
+
+
+class Spontaneous(IDthresh):
+    name: ClassVar[str] = "Spontaneous"
+
+
+class SineSpec(IDthresh):
+    name: ClassVar[str] = "SineSpec"
+
+
+# Hyperpolarising protocol -> IDhyperpol feature set.
+class IRhyperpol(IDhyperpol):
+    name: ClassVar[str] = "IRhyperpol"
+
+
+# Ramp / AP-threshold protocols (bluepyefe ``Ramp`` eCode) -> APWaveform set.
+class APThreshold(APWaveform):
+    name: ClassVar[str] = "APThreshold"
+
+
+class Ramp(APWaveform):
+    name: ClassVar[str] = "Ramp"
+
+
+# Further step-family protocols (bluepyefe ``Step`` eCode) -> full IDrest set.
+class FirePattern(IDrest):
+    name: ClassVar[str] = "FirePattern"
+
+
+class StartHold(IDrest):
+    name: ClassVar[str] = "StartHold"
+
+
+class StartNoHold(IDrest):
+    name: ClassVar[str] = "StartNoHold"
+
+
+# Spontaneous-activity step variants -> minimal IDthresh set.
+class SpontaneousNoHold(IDthresh):
+    name: ClassVar[str] = "SpontaneousNoHold"
+
+
+class SponHold30(IDthresh):
+    name: ClassVar[str] = "SponHold30"
+
+
+class SponNoHold30(IDthresh):
+    name: ClassVar[str] = "SponNoHold30"
+
+
+class SpontHold30(IDthresh):
+    name: ClassVar[str] = "SpontHold30"
+
+
+class SpontNoHold30(IDthresh):
+    name: ClassVar[str] = "SpontNoHold30"
+
+
+# Two-step (HyperDePol/DeHyperPol) and Cheops eCodes -> full IDrest set
+# (their depolarising phases elicit spikes).
+class HyperDePol(IDrest):
+    name: ClassVar[str] = "HyperDePol"
+
+
+class DeHyperPol(IDrest):
+    name: ClassVar[str] = "DeHyperPol"
+
+
+class PosCheops(IDrest):
+    name: ClassVar[str] = "PosCheops"
+
+
+class NegCheops(IDrest):
+    name: ClassVar[str] = "NegCheops"
+
+
 # Discriminated union over every concrete Protocol so pydantic can round-trip
 # ``ProtocolAndFeatureSelection.protocols`` (a ``list[ProtocolUnion]``) by the
 # ``type`` literal stamped on each subclass by :class:`OBIBaseModel`.
 ProtocolUnion = Annotated[
-    IDrest | IDthresh | IV | APWaveform | SAHP | IDhyperpol,
+    IDrest
+    | IDthresh
+    | IV
+    | APWaveform
+    | SAHP
+    | IDhyperpol
+    | IDRest
+    | GenericStep
+    | C1step
+    | Delta
+    | IDdepol
+    | IRdepol
+    | SponAPs
+    | SpikeRec
+    | IDThreshold
+    | Spontaneous
+    | SineSpec
+    | IRhyperpol
+    | APThreshold
+    | Ramp
+    | FirePattern
+    | StartHold
+    | StartNoHold
+    | SpontaneousNoHold
+    | SponHold30
+    | SponNoHold30
+    | SpontHold30
+    | SpontNoHold30
+    | HyperDePol
+    | DeHyperPol
+    | PosCheops
+    | NegCheops,
     Discriminator("type"),
 ]
 
@@ -238,6 +402,32 @@ PROTOCOL_CATALOGUE: tuple[type[Protocol], ...] = (
     APWaveform,
     SAHP,
     IDhyperpol,
+    IDRest,
+    GenericStep,
+    C1step,
+    Delta,
+    IDdepol,
+    IRdepol,
+    SponAPs,
+    SpikeRec,
+    IDThreshold,
+    Spontaneous,
+    SineSpec,
+    IRhyperpol,
+    APThreshold,
+    Ramp,
+    FirePattern,
+    StartHold,
+    StartNoHold,
+    SpontaneousNoHold,
+    SponHold30,
+    SponNoHold30,
+    SpontHold30,
+    SpontNoHold30,
+    HyperDePol,
+    DeHyperPol,
+    PosCheops,
+    NegCheops,
 )
 
 

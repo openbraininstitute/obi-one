@@ -3,7 +3,8 @@
 import logging
 import operator
 from pathlib import Path
-from typing import ClassVar
+from statistics import median
+from typing import Any, ClassVar
 
 import entitysdk
 
@@ -13,6 +14,7 @@ from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
 )
 from obi_one.scientific.library.electrical_cell_recording_properties import (
     _read_amplitudes_from_nwb,
+    _read_timing_from_nwb,
 )
 from obi_one.scientific.tasks.emodel_optimization import _shared
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
@@ -31,6 +33,72 @@ EXTRACTED_FEATURES_FILENAME = "extracted_features.json"
 EMODEL_NAME = "emodel"
 RECIPES_RELPATH = "config/recipes.json"
 TARGETS_CONFIG_RELPATH = "config/extract_config/targets.json"
+
+# bluepyefe eCodes that don't auto-detect their stimulus timing. ``Ramp`` needs
+# only ``ton``, which this stage reads from the NWB current (``_read_timing_from_nwb``)
+# and supplies. ``DeHyperPol`` also needs mid-transition points we can't recover
+# from the current alone, so protocols routing to it are skipped at extraction
+# (with a warning) rather than crashing the whole run.
+_TON_ONLY_ECODES = frozenset({"Ramp"})
+_TIMING_UNSUPPORTED_ECODES = frozenset({"DeHyperPol"})
+
+
+def _ecode_class_name(protocol_name: str, ecodes: dict) -> str | None:
+    """Return the bluepyefe eCode class name matching ``protocol_name`` (or None).
+
+    Mirrors bluepyefe's own lookup (``cell.Cell.read_recordings``): the first
+    registry key that is a case-insensitive substring of the protocol name wins.
+    """
+    for key, ecode_cls in ecodes.items():
+        if key.lower() in protocol_name.lower():
+            return ecode_cls.__name__
+    return None
+
+
+def _discover_timing(
+    nwb_paths: list[Path],
+    protocol_names: list[str],
+) -> dict[str, float]:
+    """Median stimulus onset (``ton``, ms) per protocol across the NWBs.
+
+    Protocols with no detectable onset in any NWB are omitted.
+    """
+    collected: dict[str, list[float]] = {p: [] for p in protocol_names}
+    for path in nwb_paths:
+        for protocol_name, ton in _read_timing_from_nwb(path, protocol_names).items():
+            collected[protocol_name].append(ton)
+    return {p: median(v) for p, v in collected.items() if v}
+
+
+def _partition_protocols(
+    protocols: tuple,
+    ecodes: dict,
+    ton_by_protocol: dict[str, float],
+) -> tuple[list, dict[str, dict], list[str]]:
+    """Split protocols into ``(extractable, ecode_metadata, skipped)``.
+
+    ``ecode_metadata`` maps each extractable protocol to the per-protocol config
+    passed to bluepyefe (``{"ton": ms}`` for ``Ramp``, else ``{}``). Protocols
+    whose eCode needs timing we can't supply are returned in ``skipped``.
+    """
+    extractable: list = []
+    ecode_metadata: dict[str, dict] = {}
+    skipped: list[str] = []
+    for protocol in protocols:
+        ecode = _ecode_class_name(protocol.name, ecodes)
+        if ecode in _TON_ONLY_ECODES:
+            ton = ton_by_protocol.get(protocol.name)
+            if ton is None:
+                skipped.append(protocol.name)
+                continue
+            ecode_metadata[protocol.name] = {"ton": ton}
+        elif ecode in _TIMING_UNSUPPORTED_ECODES:
+            skipped.append(protocol.name)
+            continue
+        else:
+            ecode_metadata[protocol.name] = {}
+        extractable.append(protocol)
+    return extractable, ecode_metadata, skipped
 
 
 def _build_files_metadata(
@@ -193,6 +261,57 @@ class EModelEFeatureExtractionTask(Task):
             downloaded.append((path, ljp))
         return downloaded
 
+    def _build_targets_configuration(self, downloaded: list[tuple[Path, float]]) -> Any:
+        """Assemble the BluePyEModel ``TargetsConfiguration`` from the NWBs.
+
+        Reads per-protocol step amplitudes and, for eCodes that need it, the
+        stimulus onset (``ton``) from the NWB currents; drops protocols whose
+        timing can't be recovered (with a warning); and builds files_metadata +
+        targets. Per-protocol ecode metadata carries each recording's LJP plus
+        the detected ``ton`` for Ramp protocols.
+        """
+        from bluepyefe.ecode import eCodes  # noqa: PLC0415
+        from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
+            TargetsConfiguration,
+        )
+
+        nwb_paths = [path for path, _ in downloaded]
+        all_protocols = self.config.efeatures_by_protocol.protocols
+
+        # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
+        # auto-detect it; the rest auto-detect their timing or use defaults.
+        ton_names = [
+            p.name for p in all_protocols if _ecode_class_name(p.name, eCodes) in _TON_ONLY_ECODES
+        ]
+        ton_per_protocol = _discover_timing(nwb_paths, ton_names) if ton_names else {}
+
+        protocols_cfg, ecodes_metadata_dict, skipped = _partition_protocols(
+            all_protocols, eCodes, ton_per_protocol
+        )
+        if skipped:
+            L.warning(
+                "Skipping protocols whose bluepyefe eCode needs stimulus timing not "
+                "recoverable from the NWB: %s",
+                skipped,
+            )
+
+        amplitudes_per_protocol = _discover_amplitudes(nwb_paths, [p.name for p in protocols_cfg])
+        L.info("Discovered amplitudes per protocol (nA): %s", amplitudes_per_protocol)
+
+        files = _build_files_metadata(
+            nwb_paths_with_ljp=downloaded,
+            ecodes_metadata_dict=ecodes_metadata_dict,
+        )
+        if not files:
+            msg = "No NWB ephys files were downloaded for extraction."
+            raise FileNotFoundError(msg)
+
+        return TargetsConfiguration(
+            files=files,
+            targets=_build_targets_formatted(protocols_cfg, amplitudes_per_protocol),
+            protocols_rheobase=list(self.config.rheobase.protocols),
+        )
+
     def execute(
         self,
         *,
@@ -204,49 +323,20 @@ class EModelEFeatureExtractionTask(Task):
         from bluepyemodel.efeatures_extraction.efeatures_extraction import (  # noqa: PLC0415
             extract_save_features_protocols,
         )
-        from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
-            TargetsConfiguration,
-        )
 
-        settings = self.config.settings
-        rheobase = self.config.rheobase
-        protocols_cfg = self.config.efeatures_by_protocol.protocols
         coord_root = Path(self.config.coordinate_output_root).resolve()
 
         # 1. Download the NWB ephys assets from entitycore (with per-recording LJP).
-        ephys_data_root = coord_root / "ephys_data"
-        downloaded = self._download_recordings(ephys_data_root, db_client)
+        downloaded = self._download_recordings(coord_root / "ephys_data", db_client)
 
-        # 2. Inspect each NWB to discover per-protocol step amplitudes (in nA);
-        #    leave ecode timing metadata empty so bluepyefe auto-detects it from
-        #    the current waveform. All protocol-level metadata that lives in the
-        #    NWB stays out of the user-facing schema.
-        protocol_names = [p.name for p in protocols_cfg]
-        amplitudes_per_protocol = _discover_amplitudes(
-            [path for path, _ in downloaded],
-            protocol_names,
-        )
-        L.info("Discovered amplitudes per protocol (nA): %s", amplitudes_per_protocol)
-
-        ecodes_metadata_dict = {name: {} for name in protocol_names}
-        files = _build_files_metadata(
-            nwb_paths_with_ljp=downloaded,
-            ecodes_metadata_dict=ecodes_metadata_dict,
-        )
-        if not files:
-            msg = f"No NWB ephys files were downloaded under {ephys_data_root}."
-            raise FileNotFoundError(msg)
-
-        targets_configuration = TargetsConfiguration(
-            files=files,
-            targets=_build_targets_formatted(protocols_cfg, amplitudes_per_protocol),
-            protocols_rheobase=list(rheobase.protocols),
-        )
+        # 2. Build the targets configuration (amplitudes + timing read from the NWB).
+        targets_configuration = self._build_targets_configuration(downloaded)
 
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
         _shared.write_recipes(
-            _build_extraction_recipes(settings, rheobase), coord_root / RECIPES_RELPATH
+            _build_extraction_recipes(self.config.settings, self.config.rheobase),
+            coord_root / RECIPES_RELPATH,
         )
 
         # 4. Run BluePyEModel's extraction. chdir so the local access point anchors

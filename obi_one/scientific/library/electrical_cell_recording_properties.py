@@ -15,8 +15,18 @@ import h5py
 import numpy
 from entitysdk.models import ElectricalCellRecording
 from entitysdk.types import ContentType
+from scipy.ndimage import median_filter
 
 L = logging.getLogger(__name__)
+
+# Stimulus-onset detection constants, mirroring ``bluepyefe.ecode.step``.
+_ONSET_SMOOTH_WIDTH = 85
+_ONSET_NOISE_SAMPLES = 50
+_ONSET_THRESHOLD_FACTOR = 4.5
+_ONSET_THRESHOLD_FLOOR_NA = 1e-5
+_ONSET_BUFFER_MS = 2.0
+_BASELINE_WINDOW = 300
+_MIN_ONSET_SAMPLES = 100
 
 
 def _read_protocols_from_nwb(nwb_path: Path) -> list[str]:
@@ -101,6 +111,86 @@ def _read_amplitudes_from_nwb(
                             amp_na = _step_amplitude_na(current_a)
                             amps[protocol_name].add(round(amp_na, round_decimals))
     return {p: sorted(v) for p, v in amps.items()}
+
+
+def _detect_ton_ms(current_na: numpy.ndarray, dt_ms: float) -> float | None:
+    """Stimulus onset (ms) à la ``bluepyefe.ecode.step``.
+
+    Returns the time of the first sample where the smoothed current departs the
+    pre-stimulus baseline by more than a noise-scaled threshold, or ``None`` if
+    the trace is too short or no onset is detectable.
+    """
+    n = len(current_na)
+    if n < _MIN_ONSET_SAMPLES or dt_ms <= 0:
+        return None
+    smooth = median_filter(current_na, size=_ONSET_SMOOTH_WIDTH)
+    edges = numpy.concatenate(
+        (current_na[:_ONSET_NOISE_SAMPLES], current_na[-_ONSET_NOISE_SAMPLES:]),
+    )
+    threshold = max(_ONSET_THRESHOLD_FACTOR * float(numpy.std(edges)), _ONSET_THRESHOLD_FLOOR_NA)
+    buffer_idx = max(1, int(_ONSET_BUFFER_MS / dt_ms))
+    baseline = float(
+        numpy.median(
+            median_filter(current_na[: min(_BASELINE_WINDOW, n)], size=_ONSET_SMOOTH_WIDTH)
+        ),
+    )
+    above = numpy.abs(numpy.asarray(smooth[buffer_idx:]) - baseline) > threshold
+    if not above.any():
+        return None
+    return (buffer_idx + int(numpy.argmax(above))) * dt_ms
+
+
+def _detect_protocol_ton_ms(protocol_group: h5py.Group, stim_pres: h5py.Group) -> float | None:
+    """Detect ``ton`` (ms) from the first usable current trace under a
+    ``data_organization`` protocol group, or ``None`` if not detectable.
+    """
+    for rep in protocol_group:
+        for sweep in protocol_group[rep]:
+            for trace_name in protocol_group[rep][sweep]:
+                key_current = _stim_key_for_trace(trace_name)
+                if key_current is None or key_current not in stim_pres:
+                    continue
+                series = stim_pres[key_current]
+                rate = (
+                    series["starting_time"].attrs.get("rate") if "starting_time" in series else None
+                )
+                if not rate:
+                    continue
+                data = series["data"]
+                conversion = data.attrs.get("conversion", 1.0)
+                current_na = numpy.asarray(data[()]) * conversion * 1e9
+                ton = _detect_ton_ms(current_na, 1000.0 / float(rate))
+                if ton is not None:
+                    return ton
+    return None
+
+
+def _read_timing_from_nwb(
+    nwb_path: Path,
+    protocol_names: list[str],
+) -> dict[str, float]:
+    """Return ``{protocol_name: ton_ms}`` for the requested protocols.
+
+    ``ton`` is the stimulus onset detected from the current waveform the same way
+    bluepyefe's ``Step`` eCode detects it. Used to supply ``ton`` to eCodes (e.g.
+    ``Ramp``) that require it instead of auto-detecting it. Protocols with no
+    detectable onset are omitted.
+    """
+    requested = set(protocol_names)
+    timing: dict[str, float] = {}
+    with h5py.File(str(nwb_path), "r") as f:
+        if "data_organization" not in f or "stimulus" not in f:
+            return {}
+        stim_pres = f["stimulus"]["presentation"]
+        for cell_id in f["data_organization"]:
+            cell = f["data_organization"][cell_id]
+            for protocol_name in cell:
+                if protocol_name not in requested or protocol_name in timing:
+                    continue
+                ton = _detect_protocol_ton_ms(cell[protocol_name], stim_pres)
+                if ton is not None:
+                    timing[protocol_name] = ton
+    return timing
 
 
 def get_recording_protocols(
