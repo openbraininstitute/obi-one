@@ -1,31 +1,25 @@
-"""PropertyNeuronSet(PopulationNeuronSet).
-
-- property_filter (may be refined)
-- Has a filter by node properties only
-- Available node properties dependent on the node population
-- No node sets any more (can be combined separately, see below)
-"""
-
+import abc
 import logging
 from typing import Annotated, ClassVar, Self
 
-import numpy as np
 import pandas as pd
 from pydantic import Field, model_validator
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.neuron_sets_2.population import (
+    BiophysicalPopulationNeuronSet,
+    NonVirtualPopulationNeuronSet,
+    PointPopulationNeuronSet,
+    PopulationBaseNeuronSet,
+    PopulationNeuronSet,
+    VirtualPopulationNeuronSet,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.blocks.neuron_sets_2.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
-    VirtualPopulationNeuronSet,
-)
-from obi_one.core.schema import SchemaKey, UIElement
 
 L = logging.getLogger("obi-one")
 
@@ -33,9 +27,12 @@ L = logging.getLogger("obi-one")
 class NeuronPropertyFilter(OBIBaseModel):
     filter_dict: dict[str, list[str] | list[int]] = Field(
         title="Filter",
-        description="Filter dictionary. Note as this is NOT a Block and the list here is \
-                    not to support multi-dimensional parameters but to support a key-value pair \
-                    with multiple values i.e. {'layer': ['2', '3']}}")
+        description=(
+            "Filter dictionary. Note: this is NOT a Block and the list here is not to"
+            " support multi-dimensional parameters but to support a key-value pair with"
+            " multiple values i.e. {'layer': ['2', '3']}"
+        ),
+    )
 
     @model_validator(mode="after")
     def check_filter_dict_values(self) -> Self:
@@ -55,9 +52,9 @@ class NeuronPropertyFilter(OBIBaseModel):
 
     def filter(self, df_in: pd.DataFrame, *, reindex: bool = True) -> pd.DataFrame:
         ret = df_in
-        for filter_key, _filter_value in self.filter_dict.items():
-            filter_value = [str(_entry) for _entry in _filter_value]
-            vld = ret[filter_key].astype(str).isin(filter_value)
+        for filter_key, filter_values in self.filter_dict.items():
+            str_values = [str(entry) for entry in filter_values]
+            vld = ret[filter_key].astype(str).isin(str_values)
             ret = ret.loc[vld]
             if reindex:
                 ret = ret.reset_index(drop=True)
@@ -66,7 +63,7 @@ class NeuronPropertyFilter(OBIBaseModel):
     def test_validity(self, circuit: Circuit, node_population: str) -> None:
         circuit_prop_names = circuit.sonata_circuit.nodes[node_population].property_names
 
-        if not all(_prop in circuit_prop_names for _prop in self.filter_keys):
+        if not all(prop in circuit_prop_names for prop in self.filter_keys):
             msg = f"Invalid neuron properties! Available properties: {circuit_prop_names}"
             raise ValueError(msg)
 
@@ -82,93 +79,103 @@ class NeuronPropertyFilter(OBIBaseModel):
         return string_rep[:-1]  # Remove trailing comma and space
 
 
-class PropertyNeuronSet(NeuronSet):
-    """Neuron set definition based on neuron properties, optionally combined with (named) node \
-        sets.
+class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
+    """Abstract base class for a neuron set definition based on neuron properties
+    in a given node population.
     """
 
-    population: str = Field(
-        min_length=1,
-        title="Population",
-        description="Name of the biophysical node population to select from.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
-            "property_filter_key": "property_filter",
-        },
-    )
-
-    property_filter: NeuronPropertyFilter | Annotated[list[NeuronPropertyFilter], Field(min_length=1)] = Field(
-        title="Neuron property filter",
-        description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
+    property_filter: (
+        NeuronPropertyFilter | Annotated[list[NeuronPropertyFilter], Field(min_length=1)]
+    ) = Field(
+        title="Neuron Property Filter",
+        description="Neuron property values to use for filtering neuron IDs.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
-            "population_source_dropdown_key": "population",
         },
     )
 
-    def check_properties(self, circuit: Circuit, population: str | None = None) -> None:
-        population = self._population(population)
-        self.property_filter.test_validity(circuit, population)
+    def check_properties(self, circuit: Circuit) -> None:
+        self.property_filter.test_validity(circuit, self.population)  # ty:ignore[unresolved-attribute]
 
-    def _get_resolved_expression(self, circuit: Circuit, population: str | None = None) -> dict:
-        """A helper function used to make subclasses work."""
+    def _resolve_ids(self, circuit: Circuit) -> list[int]:
+        """Returns the full list of neuron IDs (w/o subsampling)."""
+        self.check_populations_in_circuit(circuit=circuit)
+        self.check_properties(circuit)
+
         c = circuit.sonata_circuit
-        population = self._population(population)
-
-        df = c.nodes[population].get(properties=self.property_filter.filter_keys).reset_index()
-        df = self.property_filter.filter(df)
-
+        df = c.nodes[self.population].get(properties=self.property_filter.filter_keys).reset_index()  # ty:ignore[unresolved-attribute]
+        df = self.property_filter.filter(df)  # ty:ignore[unresolved-attribute]
         node_ids = df["node_ids"].to_numpy()
 
-        if len(self.node_sets) > 0:
-            node_ids_nset = np.array([]).astype(int)
-            for _nset in self.node_sets:
-                node_ids_nset = np.union1d(node_ids_nset, c.nodes[population].ids(_nset))
-            node_ids = np.intersect1d(node_ids, node_ids_nset)
+        return list(node_ids)
 
-        expression = {"population": population, "node_id": node_ids.tolist()}
-        return expression
+    def _get_expression(self, circuit: Circuit) -> dict:
+        """Returns the SONATA node set resolved in one population (w/o subsampling).
 
-    def _get_expression(self, circuit: Circuit, population: str) -> dict:
-        """Returns the SONATA node set expression (w/o subsampling)."""
-        population = self._population(population)
-        self.check_properties(circuit, population)
-        self.check_node_sets(circuit, population)
+        Always resolves IDs since snap doesn't support compound population +
+        property expressions.
+        """
+        node_ids = self._resolve_ids(circuit)
+        return {"population": self.population, "node_id": node_ids}
 
-        def __resolve_sngl(prop_vals: list) -> list:
-            if len(prop_vals) == 1:
-                return prop_vals[0]
-            return list(prop_vals)
 
-        if len(self.node_sets) == 0:
-            # Symbolic expression can be preserved
-            expression = {
-                property_key: __resolve_sngl(property_value)
-                for property_key, property_value in self.property_filter.filter_dict.items()
-            }
-        else:
-            # Individual IDs need to be resolved
-            return self._get_resolved_expression(circuit, population)
+class PropertyNeuronSet(PropertyBaseNeuronSet, PopulationNeuronSet):
+    """Neuron set definition based on neuron properties.
 
-        return expression
-    
-class BiophysicalPropertyNeuronSet(PropertyNeuronSet, BiophysicalPopulationNeuronSet):
-    """Only biophysical neuron node populations are selectable."""
+    Resolved in one selected node population of any type.
+    """
+
+    title: ClassVar[str] = "By Properties (Any)"
+    description: ClassVar[str] = (
+        "Use neurons based on properties, resolved in a single population of any type."
+    )
+
+
+class BiophysicalPropertyNeuronSet(PropertyBaseNeuronSet, BiophysicalPopulationNeuronSet):
+    """Neuron set definition based on neuron properties.
+
+    Resolved in one selected biophysical node population.
+    """
 
     title: ClassVar[str] = "By Properties (Biophysical)"
+    description: ClassVar[str] = (
+        "Use neurons based on properties, resolved in a single biophysical population."
+    )
 
 
-class VirtualPropertyNeuronSet(PropertyNeuronSet, VirtualPopulationNeuronSet):
-    """Only virtual neuron node populations are selectable."""
+class VirtualPropertyNeuronSet(PropertyBaseNeuronSet, VirtualPopulationNeuronSet):
+    """Neuron set definition based on neuron properties.
+
+    Resolved in one selected virtual node population.
+    """
 
     title: ClassVar[str] = "By Properties (Virtual)"
+    description: ClassVar[str] = (
+        "Use neurons based on properties, resolved in a single virtual population."
+    )
 
 
-class PointPropertyNeuronSet(PropertyNeuronSet, PointPopulationNeuronSet):
-    """Only point neuron node populations are selectable."""
+class NonVirtualPropertyNeuronSet(PropertyBaseNeuronSet, NonVirtualPopulationNeuronSet):
+    """Neuron set definition based on neuron properties.
+
+    Resolved in one selected non-virtual node population.
+    """
+
+    title: ClassVar[str] = "By Properties (Non-Virtual)"
+    description: ClassVar[str] = (
+        "Use neurons based on properties, resolved in a single non-virtual population."
+    )
+
+
+class PointPropertyNeuronSet(PropertyBaseNeuronSet, PointPopulationNeuronSet):
+    """Neuron set definition based on neuron properties.
+
+    Resolved in one selected point neuron population.
+    """
 
     title: ClassVar[str] = "By Properties (Point)"
+    description: ClassVar[str] = (
+        "Use neurons based on properties, resolved in a single point neuron population."
+    )
