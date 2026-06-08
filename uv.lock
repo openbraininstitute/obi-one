@@ -2184,6 +2184,7 @@ all = [
     { name = "pyjwt" },
     { name = "python-multipart" },
     { name = "starlette" },
+    { name = "ultraliser" },
     { name = "uvicorn" },
 ]
 bluerecording = [
@@ -2195,6 +2196,7 @@ connectivity = [
 ]
 meshing = [
     { name = "neuromorphomesh" },
+    { name = "ultraliser" },
 ]
 notebooks = [
     { name = "ipykernel" },
@@ -2274,6 +2276,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "starlette", marker = "extra == 'service'" },
+    { name = "ultraliser", marker = "extra == 'meshing'", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
 provides-extras = ["connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
@@ -3391,6 +3394,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ba/19/1b9b0e29f30c6d35cb345486df41110984ea67ae69dddbc0e8a100999493/tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10", size = 198254, upload-time = "2026-04-24T15:22:08.651Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/e4/dccd7f47c4b64213ac01ef921a1337ee6e30e8c6466046018326977efd95/tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7", size = 349321, upload-time = "2026-04-24T15:22:05.876Z" },
+]
+
+[[package]]
+name = "ultraliser"
+version = "2.1.5"
+source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
+dependencies = [
+    { name = "connectome-utilities" },
+    { name = "h5py" },
+    { name = "matplotlib" },
+    { name = "morphio" },
+    { name = "neurom" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+wheels = [
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.1.5/ultraliser-2.1.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4b7a757cb97ee78829febcaeaac6d35c12f9544c7967a4d18a5716378489c3b3" },
 ]
 
 [[package]]
