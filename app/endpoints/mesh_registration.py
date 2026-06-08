@@ -40,71 +40,15 @@ from app.types import TaskType
 
 router = APIRouter(
     prefix="/declared",
-    tags=["declared"],
-    dependencies=[Depends(get_client)],
+    tags=["mesh-registration"],
 )
 
 
 class MeshRegistrationResponse(BaseModel):
-    """Schema returned after a successful mesh registration."""
-
     entity_id: str
     obj_asset_id: str
     task_job_id: str
     status: str
-
-
-def _validate_entity_id(entity_id_str: str) -> UUID:
-    """Parse and return a UUID, raising 400 on malformed input."""
-    try:
-        return UUID(entity_id_str)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Invalid entity_id '{entity_id_str}': not a valid UUID.",
-            },
-        ) from exc
-
-
-def _validate_obj_extension(filename: str | None) -> None:
-    """Raise 400 if the uploaded file is not an .obj."""
-    ext = pathlib.Path(filename).suffix.lower() if filename else ""
-    if ext != ".obj":
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Invalid file extension. Must be .obj",
-            },
-        )
-
-
-def _preflight_size_check(file: UploadFile) -> None:
-    """Fast-path size guard using the Content-Length header when available."""
-    max_mb = MAX_FILE_SIZE / (1024 * 1024)
-    if file.size is not None and file.size > MAX_FILE_SIZE:
-        L.error(f"Mesh upload rejected: file too large (reported size {file.size} B).")
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Uploaded file is too large. Max size: {max_mb:.0f} MB.",
-            },
-        )
-
-
-def _validate_temp_file_not_empty(temp_obj_path: str) -> None:
-    """Verify that the temporary file is not empty."""
-    if pathlib.Path(temp_obj_path).stat().st_size == 0:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Uploaded file is empty.",
-            },
-        )
 
 
 def _register_obj_asset(
@@ -112,27 +56,31 @@ def _register_obj_asset(
     entity_id: UUID,
     obj_path: pathlib.Path,
 ) -> str:
-    """Upload the raw OBJ file as an asset on the given EMCellMesh entity."""
-    L.info(f"Uploading original OBJ asset for entity {entity_id} …")
+    """Upload raw OBJ file as an asset on the EMCellMesh entity."""
+    L.info(f"Uploading OBJ asset for entity {entity_id} …")
     try:
-        asset = client.upload_file(
+        with obj_path.open("rb") as f:
+            file_content = f.read()
+
+        asset = client.upload_content(
             entity_id=entity_id,
             entity_type=EMCellMesh,
-            file_path=obj_path,
-            file_content_type=ContentType.application_obj,
-            asset_label=AssetLabel.cell_surface_mesh,
+            file_content=file_content,
+            file_name=obj_path.name,
+            file_content_type=ContentType.application_octet_stream,
+            asset_label=AssetLabel.mesh_lod_generation__input_mesh,
         )
+        L.info(f"OBJ asset uploaded successfully: {asset.path}")
     except EntitySDKError as exc:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
                 "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
-                "detail": f"OBJ asset registration failed: {exc}",
+                "detail": f"Failed to upload OBJ asset to entitysdk: {exc}",
             },
         ) from exc
-
-    L.info(f"OBJ asset registered: {asset.id}")
-    return str(asset.id)
+    else:
+        return asset.path
 
 
 def _create_lod_task_config(
@@ -150,9 +98,15 @@ def _create_lod_task_config(
     ).encode()
 
     try:
-        # Create an instance of TaskConfig first, then pass it positionally
-        task_config_instance = TaskConfig()
+        task_config_instance = TaskConfig(
+            task_config_type=TaskConfigType.mesh_lod_generation__config,
+            meta={},
+        )
         config_entity = client.register_entity(task_config_instance)
+
+        if config_entity.id is None:
+            msg = "Registered TaskConfig entity has no valid ID."
+            raise ValueError(msg)
 
         client.upload_content(
             entity_id=config_entity.id,
@@ -160,7 +114,7 @@ def _create_lod_task_config(
             file_content=config_payload,
             file_name="config.json",
             file_content_type=ContentType.application_json,
-            asset_label=TaskConfigType.mesh_lod_generation__config,
+            asset_label=AssetLabel.mesh_lod_generation__config,
         )
     except EntitySDKError as exc:
         raise HTTPException(
@@ -175,40 +129,57 @@ def _create_lod_task_config(
     return config_entity.id
 
 
+def _ensure_project_context(client: entitysdk.client.Client) -> None:
+    """Check that the project context exists, abstracting the raise statement."""
+    if client.project_context is None:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="Client project context is missing.",
+        )
+
+
 @router.post(
-    "/register-mesh",
-    summary="Register an EM-cell OBJ mesh and dispatch LOD generation as a task.",
-    description=(
-        "Accepts an .obj file and the ID of an existing EMCellMesh entity. "
-        "Registers the OBJ as the primary surface-mesh asset, then submits an "
-        "asynchronous mesh_lod_generation task..."
-    ),
+    "/{entity_id}/register-mesh",
+    status_code=HTTPStatus.ACCEPTED,
 )
-async def mesh_registration(
-    file: Annotated[UploadFile, File(description="OBJ mesh file to upload (.obj)")],
+async def register_mesh_and_generate_lods(
+    entity_id: str,
+    file: Annotated[UploadFile, File(...)],
+    callback_url: CallBackUrlDep,
     client: Annotated[entitysdk.client.Client, Depends(get_client)],
     ls_client: LaunchSystemClientDep,
-    callback_url: CallBackUrlDep,
     background_tasks: BackgroundTasks,
-    entity_id: Annotated[
-        str, Form(description="UUID of the existing EMCellMesh entity to attach assets to")
-    ],
+    entity_type: Annotated[str, Form(...)] = "EMCellMesh",
 ) -> MeshRegistrationResponse:
-    """Register an OBJ mesh and submit an async LOD generation task."""
-    _validate_obj_extension(file.filename)
-    _preflight_size_check(file)
-    entity_uuid = _validate_entity_id(entity_id)
+    if entity_type != "EMCellMesh":
+        msg_type = f"Unsupported entity type: '{entity_type}'. Only 'EMCellMesh' is allowed."
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": msg_type,
+            },
+        )
 
-    temp_obj_path = ""
     try:
-        temp_obj_path = await run_in_threadpool(_save_upload_to_tempfile, file, suffix=".obj")
+        entity_uuid = UUID(entity_id)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Invalid entity_id format: '{entity_id}'. Must be a valid UUID.",
+            },
+        ) from err
 
-        await run_in_threadpool(_validate_temp_file_not_empty, temp_obj_path)
+    temp_obj_path = None
+    try:
+        temp_obj_path = await _save_upload_to_tempfile(file, max_size=MAX_FILE_SIZE)
 
         await run_in_threadpool(validate_mesh_reader, temp_obj_path)
 
         obj_asset_id = await run_in_threadpool(
-            _register_obj_asset, client, entity_uuid, temp_obj_path
+            _register_obj_asset, client, entity_uuid, pathlib.Path(temp_obj_path)
         )
 
         config_id = await run_in_threadpool(
@@ -216,6 +187,8 @@ async def mesh_registration(
         )
 
         task_definition = TASK_DEFINITIONS[TaskType.mesh_lod_generation]
+
+        _ensure_project_context(client)
 
         task_info = await run_in_threadpool(
             task_service.submit_task_job,
@@ -241,14 +214,14 @@ async def mesh_registration(
         if temp_obj_path:
             _cleanup_temp_file(temp_obj_path)
         raise
-    except Exception as exc:
+    except BaseException as exc:
         L.error(f"Unexpected error during mesh registration: {exc!s}")
         if temp_obj_path:
             _cleanup_temp_file(temp_obj_path)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
-                "code": "INTERNAL_ERROR",
-                "detail": f"Internal server error: {exc!s}",
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"An unexpected error occurred: {exc!s}",
             },
         ) from exc
