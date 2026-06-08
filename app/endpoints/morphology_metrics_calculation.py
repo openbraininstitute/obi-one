@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Annotated, Any, Final, TypeVar, cast
 from uuid import UUID
 
 import entitysdk
-import neurom as nm
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import (
@@ -25,7 +24,7 @@ from entitysdk.models import (
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
 from entitysdk.models.measurement_annotation import MeasurementKind
-from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
+from entitysdk.types import ContentType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -43,6 +42,12 @@ from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
     MorphologyFiles,
     validate_and_convert_morphology,
+)
+from app.services.morphology_registration import (
+    compute_morphometrics,
+    register_morphometrics,
+    upload_morphology_content,
+    upload_morphology_file,
 )
 
 if TYPE_CHECKING:
@@ -131,16 +136,7 @@ def _get_analysis_dict() -> dict:
 
 def run_morphology_analysis(morphology_path: str) -> list[MeasurementKind]:
     try:
-        neuron = nm.load_morphology(morphology_path)
-        results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
-        filled = uf.fill_json(_get_template(), results_dict, entity_id="temp_id")
-        measurement_kinds = filled["data"][0]["measurement_kinds"]
-        filled["data"][0]["measurement_kinds"] = [
-            mk
-            for mk in measurement_kinds
-            if any(mi.get("value") is not None for mi in mk.get("measurement_items", []))
-        ]
-        return filled["data"][0]["measurement_kinds"]
+        return compute_morphometrics(morphology_path)
     except Exception as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -296,16 +292,12 @@ def register_asset_from_content(
     morphology_name: str,
     content: bytes,
 ) -> Asset:
-    file_extension = pathlib.Path(morphology_name).suffix
-    content_type = _get_content_type(file_extension)
     try:
-        asset = client.upload_content(
+        asset = upload_morphology_content(
+            client=client,
             entity_id=entity_id,
-            entity_type=CellMorphology,
-            file_content=content,
             file_name=morphology_name,
-            file_content_type=content_type,
-            asset_label=AssetLabel.morphology,
+            content=content,
         )
     except EntitySDKError as e:
         raise HTTPException(
@@ -331,15 +323,11 @@ def register_assets(
         error_msg = f"Asset file not found at path: {file_path}"
         raise FileNotFoundError(error_msg)
 
-    content_type = _get_content_type(file_path.suffix)
-
     try:
-        asset1 = client.upload_file(
+        asset1 = upload_morphology_file(
+            client=client,
             entity_id=entity_id,
-            entity_type=CellMorphology,
             file_path=file_path,
-            file_content_type=content_type,
-            asset_label=AssetLabel.morphology,
         )
     except EntitySDKError as e:
         raise HTTPException(
@@ -359,12 +347,7 @@ def register_measurements(
     measurements: list[MeasurementKind],
 ) -> MeasurementAnnotation:
     try:
-        measurement_annotation = MeasurementAnnotation(
-            entity_id=entity_id,
-            entity_type=MeasurableEntity.cell_morphology,
-            measurement_kinds=measurements,
-        )
-        registered = client.register_entity(entity=measurement_annotation)
+        registered = register_morphometrics(client, entity_id, measurements)
     except EntitySDKError as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
