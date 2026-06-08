@@ -66,6 +66,7 @@ connectivity = [
 # MESHING - optional, private dependency needed to create meshes from morphologies
 meshing = [
     "neuromorphomesh",
+    "ultraliser"
 ]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
@@ -149,6 +150,7 @@ explicit = true
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
 neuromorphomesh = { index = "obi-codeartifact" }
+ultraliser = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100
