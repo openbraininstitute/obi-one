@@ -84,6 +84,26 @@ class SynapticModelBase(Block):
             raise NotImplementedError("This is an abstract class!")
         return _DEFAULTS[cls.synapse_model_family()]()
     
+    @classmethod
+    def from_dict(cls, serialized_dict):
+        from obi_one.scientific.blocks import distributions
+        from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
+        def dist_ref(name: str) -> AllDistributionsReference:
+            """Helper to create a distribution reference."""
+            return AllDistributionsReference(
+                block_dict_name="distributions", block_name=name
+            )
+
+        assert serialized_dict["class"] == cls.__name__
+        distr_obj_dict = {}
+        distr_ref_dict = {}
+        for param_name, distr_dict in serialized_dict["distributions"].items():
+            distr_cls = distr_dict.pop("type")
+            distr_obj_dict[param_name] = distributions.__dict__[distr_cls](**distr_dict)
+            distr_ref_dict[param_name] = dist_ref(param_name)
+            distr_ref_dict[param_name].block = distr_obj_dict[param_name]
+        return cls(**distr_ref_dict), distr_obj_dict
+    
     def sample(self, indices: DataFrame) -> DataFrame:
         """
         The main functionality of this class. Returns synapse parameters as
