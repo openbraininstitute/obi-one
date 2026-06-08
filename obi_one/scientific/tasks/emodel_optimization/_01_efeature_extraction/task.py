@@ -1,6 +1,5 @@
 """Task wrapper for the experimental e-feature extraction step."""
 
-import json
 import logging
 import operator
 from pathlib import Path
@@ -16,6 +15,7 @@ from obi_one.scientific.library.electrical_cell_recording_properties import (
     _read_amplitudes_from_nwb,
 )
 from obi_one.scientific.tasks.emodel_optimization import _shared
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import Settings
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
     EModelEFeatureExtractionSingleConfig,
 )
@@ -23,6 +23,11 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config
 L = logging.getLogger(__name__)
 
 EXTRACTED_FEATURES_FILENAME = "extracted_features.json"
+
+# BluePyEModel local access-point layout, relative to ``coordinate_output_root``.
+EMODEL_NAME = "emodel"
+RECIPES_RELPATH = "config/recipes.json"
+TARGETS_CONFIG_RELPATH = "config/extract_config/targets.json"
 
 
 def _build_files_metadata(
@@ -91,26 +96,67 @@ def _build_targets_formatted(
     return rows
 
 
+def _build_extraction_recipes(settings: Settings) -> dict:
+    """Build a minimal BluePyEModel ``recipes.json`` for the extraction step.
+
+    Only the ``pipeline_settings`` consumed by ``extract_save_features_protocols``
+    are populated — extracting experimental e-features needs no morphology,
+    mechanisms or model parameters. ``features`` points at the file that the
+    optimisation stage consumes; ``path_extract_config`` at the targets
+    configuration stored through the access point at execution time.
+
+    ``extract_absolute_amplitudes`` is forced on because the amplitudes are read
+    from the NWB in absolute units (nA). Note that BluePyEModel nulls
+    ``name_rmp_protocol``/``name_Rin_protocol`` (with a warning) when absolute
+    amplitudes are used, as the threshold-based RMP/Rin protocols do not apply.
+    """
+    return {
+        EMODEL_NAME: {
+            "features": EXTRACTED_FEATURES_FILENAME,
+            "pipeline_settings": {
+                "path_extract_config": TARGETS_CONFIG_RELPATH,
+                "extract_absolute_amplitudes": True,
+                "plot_extraction": settings.plot_extraction,
+                "default_std_value": settings.default_std_value,
+                "efel_settings": settings.efel_to_dict(),
+                "name_rmp_protocol": settings.name_rmp_protocol,
+                "name_Rin_protocol": settings.name_rin_protocol,
+            },
+        },
+    }
+
+
 class EModelEFeatureExtractionTask(Task):
-    """Extract experimental e-features from raw ephys traces via ``bluepyefe``.
+    """Extract experimental e-features from raw ephys traces via BluePyEModel.
+
+    Extraction is routed through BluePyEModel's
+    :func:`bluepyemodel.efeatures_extraction.efeatures_extraction.extract_save_features_protocols`
+    (the entry point that also backs ``EModel_pipeline.extract_efeatures``) rather
+    than calling ``bluepyefe.extract.extract_efeatures`` directly, so the targets,
+    pipeline settings and fitness-calculator output all flow through the
+    BluePyEModel local access point. The function is invoked directly (instead of
+    via ``EModel_pipeline``) to avoid importing the Nexus access point and its
+    optional dependencies.
 
     Steps performed in ``coordinate_output_root``:
 
     1. Download the NWB asset of every ``ElectricalCellRecording`` listed in
        ``initialize.electrical_cell_recording`` into ``./ephys_data/<id>/``.
     2. Build ``files_metadata`` + ``targets`` rows from the user-provided blocks
-       and re-shape them into the BPE2 input format via
+       into a
        :class:`bluepyemodel.efeatures_extraction.targets_configuration.TargetsConfiguration`.
-    3. Run ``bluepyefe.extract.extract_efeatures`` directly — no
-       ``EModel_pipeline``, recipes or model assets are needed.
-    4. Wrap the bluepyefe output in a
-       :class:`bluepyemodel.evaluation.fitness_calculator_configuration.FitnessCalculatorConfiguration`
-       and serialise it to ``./extracted_features.json`` so the optimisation
-       stage can slot it into ``config/features/<emodel>.json``.
+    3. Write a minimal ``./config/recipes.json`` (extraction ``pipeline_settings``
+       only) and store the targets configuration through the local access point.
+    4. Run ``extract_save_features_protocols`` on that access point, which extracts
+       the e-features and writes the fitness-calculator configuration to
+       ``./extracted_features.json`` for the optimisation stage to slot into
+       ``config/features/<emodel>.json``.
     """
 
     name: ClassVar[str] = "EModel EFeature Extraction"
-    description: ClassVar[str] = "Extract experimental e-features from ephys traces via bluepyefe."
+    description: ClassVar[str] = (
+        "Extract experimental e-features from ephys traces via BluePyEModel."
+    )
 
     config: EModelEFeatureExtractionSingleConfig
 
@@ -138,12 +184,12 @@ class EModelEFeatureExtractionTask(Task):
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
-        from bluepyefe.extract import extract_efeatures  # noqa: PLC0415
+        from bluepyemodel.access_point import get_access_point  # noqa: PLC0415
+        from bluepyemodel.efeatures_extraction.efeatures_extraction import (  # noqa: PLC0415
+            extract_save_features_protocols,
+        )
         from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
             TargetsConfiguration,
-        )
-        from bluepyemodel.evaluation.fitness_calculator_configuration import (  # noqa: PLC0415
-            FitnessCalculatorConfiguration,
         )
 
         settings = self.config.settings
@@ -160,7 +206,8 @@ class EModelEFeatureExtractionTask(Task):
         #    NWB stays out of the user-facing schema.
         protocol_names = [p.name for p in protocols_cfg]
         amplitudes_per_protocol = _discover_amplitudes(
-            [path for path, _ in downloaded], protocol_names,
+            [path for path, _ in downloaded],
+            protocol_names,
         )
         L.info("Discovered amplitudes per protocol (nA): %s", amplitudes_per_protocol)
 
@@ -179,38 +226,21 @@ class EModelEFeatureExtractionTask(Task):
             protocols_rheobase=list(settings.protocols_rheobase),
         )
 
-        # 3. chdir so bluepyefe's plot outputs are anchored to the working dir.
-        #    NWB-derived amplitudes are absolute (nA), so force absolute mode.
-        extraction_dir = coord_root / "extraction"
-        extraction_dir.mkdir(parents=True, exist_ok=True)
+        # 3. Write a minimal BluePyEModel recipe so extraction runs through the
+        #    local access point rather than calling bluepyefe directly.
+        _shared.write_recipes(_build_extraction_recipes(settings), coord_root / RECIPES_RELPATH)
+
+        # 4. Run BluePyEModel's extraction. chdir so the local access point anchors
+        #    its relative paths (recipes, targets config, figures, extracted
+        #    features) to the coordinate working directory.
         with _shared.chdir(coord_root):
-            efeatures, protocols, currents = extract_efeatures(
-                output_directory=str(extraction_dir),
-                files_metadata=targets_configuration.files_metadata_BPE,
-                targets=targets_configuration.targets_BPE,
-                protocols_rheobase=targets_configuration.protocols_rheobase_BPE,
-                absolute_amplitude=True,
-                efel_settings=settings.efel_to_dict(),
-                plot=settings.plot_extraction,
-                default_std_value=settings.default_std_value,
-                write_files=False,
+            access_point = get_access_point(
+                access_point="local",
+                emodel=EMODEL_NAME,
+                recipes_path=f"./{RECIPES_RELPATH}",
+                final_path="final.json",
             )
-
-        # 4. Serialise the fitness-calculator configuration for the next stage.
-        fitness_calculator_config = FitnessCalculatorConfiguration(
-            name_rmp_protocol=settings.name_rmp_protocol,
-            name_rin_protocol=settings.name_rin_protocol,
-            default_std_value=settings.default_std_value,
-        )
-        fitness_calculator_config.init_from_bluepyefe(
-            efeatures,
-            protocols,
-            currents,
-            threshold_efeature_std=None,
-        )
-
-        (coord_root / EXTRACTED_FEATURES_FILENAME).write_text(
-            json.dumps(fitness_calculator_config.as_dict(), indent=2)
-        )
+            access_point.store_targets_configuration(targets_configuration)
+            extract_save_features_protocols(access_point=access_point, mapper=map)
 
         return coord_root
