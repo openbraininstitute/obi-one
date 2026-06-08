@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -47,17 +48,28 @@ def mapped_synapses_df():
     return pd.DataFrame({"distance": [0.1, 0.2, 0.3], "competing_distance": [0.5, 0.6, 0.7]})
 
 
-def _make_task(tmp_path):
+def _make_task(
+    tmp_path,
+    *,
+    custom_physical_edge_population_name="",
+    custom_virtual_edge_population_name="",
+    custom_biophysical_node_population="",
+    custom_virtual_node_population="",
+):
     """Build a single-neuron task using the unified config shape."""
     config = Mock()
     config.coordinate_output_root = tmp_path / "out"
     config.initialize.neurons = EMSynapseMappingInputNamedTuple(
         name="test", elements=(CellMorphologyFromID(id_str="test"),)
     )
-    config.advanced_options.custom_physical_edge_population_name = ""
-    config.advanced_options.custom_virtual_edge_population_name = ""
-    config.advanced_options.custom_biophysical_node_population = ""
-    config.advanced_options.custom_virtual_node_population = ""
+    config.advanced_options.custom_physical_edge_population_name = (
+        custom_physical_edge_population_name
+    )
+    config.advanced_options.custom_virtual_edge_population_name = (
+        custom_virtual_edge_population_name
+    )
+    config.advanced_options.custom_biophysical_node_population = custom_biophysical_node_population
+    config.advanced_options.custom_virtual_node_population = custom_virtual_node_population
     return EMSynapseMappingTask.model_construct(config=config)
 
 
@@ -127,3 +139,91 @@ class TestEMSynapseMappingTask:
             task.execute(db_client=mock_db_client)
 
         mock_register.assert_called_once()
+
+    def test_execute_uses_custom_population_names(
+        self, tmp_path, mock_db_client, resolved_neuron, synapses_df, mapped_synapses_df
+    ):
+        """Custom population names propagate to the SONATA writers and config."""
+        task = _make_task(
+            tmp_path,
+            custom_physical_edge_population_name="my_physical_edges",
+            custom_virtual_edge_population_name="my_virtual_edges",
+            custom_biophysical_node_population="my_bio_nodes",
+            custom_virtual_node_population="my_virt_nodes",
+        )
+
+        coll_bio = SimpleNamespace(properties={})
+        coll_virt = SimpleNamespace(properties={})
+
+        def fake_assemble(*_args, **_kwargs):
+            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping")
+            if len(mapping) == 1:
+                return coll_bio, []
+            return coll_virt, []
+
+        with (
+            patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
+            patch.object(
+                EMSynapseMappingTask,
+                "_get_execution_activity",
+                return_value=None,
+            ),
+            patch(
+                f"{_TASK_MODULE}.resolve_neuron",
+                return_value=resolved_neuron,
+            ),
+            patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
+            patch(
+                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
+                return_value=(synapses_df, Mock(), Mock(), ["notice"]),
+            ),
+            patch(
+                f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
+                return_value=(mapped_synapses_df, 0.5),
+            ),
+            patch(
+                f"{_TASK_MODULE}.plot_mapping_stats",
+                return_value=Mock(savefig=Mock()),
+            ),
+            patch(f"{_TASK_MODULE}.plt"),
+            patch(f"{_TASK_MODULE}.default_node_spec_for", return_value={}),
+            patch(
+                f"{_TASK_MODULE}.assemble_collection_from_specs",
+                side_effect=fake_assemble,
+            ),
+            patch(f"{_TASK_MODULE}.write_nodes") as mock_write_nodes,
+            patch(f"{_TASK_MODULE}.write_edges") as mock_write_edges,
+            patch(
+                f"{_TASK_MODULE}.sonata_config_for",
+                return_value={"version": 2.3},
+            ) as mock_sonata,
+            patch(
+                f"{_TASK_MODULE}.register_output",
+                return_value="circuit-id-123",
+            ),
+            patch.object(EMSynapseMappingTask, "_update_execution_activity"),
+        ):
+            mock_em_ds.return_value = Mock()
+            task.execute(db_client=mock_db_client)
+
+        # Node populations use the custom biophysical / virtual names.
+        node_pop_names = [call.args[1] for call in mock_write_nodes.call_args_list]
+        assert "my_bio_nodes" in node_pop_names
+        assert "my_virt_nodes" in node_pop_names
+
+        # Single neuron => only external (virtual) edges are written.
+        assert mock_write_edges.call_count == 1
+        ext_call = mock_write_edges.call_args_list[0]
+        assert ext_call.args[1] == "my_virtual_edges"  # edge population name
+        assert ext_call.args[4] == "my_virt_nodes"  # source (virtual) node population
+        assert ext_call.args[5] == "my_bio_nodes"  # target (biophysical) node population
+
+        # The SONATA config is built with the custom names.
+        sonata_kwargs = mock_sonata.call_args.kwargs
+        assert sonata_kwargs["biophysical_population"] == "my_bio_nodes"
+        assert sonata_kwargs["virtual_population"] == "my_virt_nodes"
+        assert set(sonata_kwargs["edge_populations"]) == {"my_virtual_edges"}
+
+        # node_sets.json references the custom biophysical population.
+        node_sets = json.loads((tmp_path / "out" / "node_sets.json").read_text())
+        assert node_sets["All"]["population"] == "my_bio_nodes"
