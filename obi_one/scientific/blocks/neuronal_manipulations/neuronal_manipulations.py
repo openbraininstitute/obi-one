@@ -115,7 +115,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
     )
 
     modification: BySectionListModification = Field(
-        title="Ion channel variable manipulations by section type",
+        title="Ion channel variable manipulations by section list",
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
@@ -254,6 +254,17 @@ class CircuitBySectionListMechanismVariableNeuronalManipulation(
         },
     )
 
+    modification: BySectionListModification = Field(
+        title="Ion channel variable manipulations by section list",
+        description="Ion channel RANGE variable modification by section list.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.NEURONAL_MANIPULATION,
+            SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
+            SchemaKey.PROPERTY_SOURCE_FIELD: "neuron_set",
+        },
+    )
+
 
 class CircuitByNeuronMechanismVariableNeuronalManipulation(
     ByNeuronMechanismVariableNeuronalManipulation,
@@ -269,5 +280,16 @@ class CircuitByNeuronMechanismVariableNeuronalManipulation(
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+        },
+    )
+
+    modification: ByNeuronModification = Field(
+        title="Ion channel variable manipulations by neuron",
+        description="Ion channel variable modification (RANGE or GLOBAL) by neuron.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.NEURONAL_MANIPULATION,
+            SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
+            SchemaKey.PROPERTY_SOURCE_FIELD: "neuron_set",
         },
     )
