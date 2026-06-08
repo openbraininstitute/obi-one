@@ -151,9 +151,9 @@ def _create_lod_task_config(
 
     try:
         # Create an instance of TaskConfig first, then pass it positionally
-        task_config_instance = TaskConfig() 
+        task_config_instance = TaskConfig()
         config_entity = client.register_entity(task_config_instance)
-        
+
         client.upload_content(
             entity_id=config_entity.id,
             entity_type=TaskConfig,

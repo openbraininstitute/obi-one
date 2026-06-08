@@ -36,6 +36,7 @@ class ApiErrorCode(StrEnum):
     INVALID_CONFIG_FORMAT = "INVALID_CONFIG_FORMAT"
     ENTITYSDK_API_FAILURE = "ENTITYSDK_API_FAILURE"
 
+
 @dataclasses.dataclass(kw_only=True)
 class ApiError(Exception):
     """API Error."""
