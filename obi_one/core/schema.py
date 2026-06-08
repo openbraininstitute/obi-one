@@ -49,7 +49,6 @@ class UIElement(StrEnum):
     MODEL_IDENTIFIER = "model_identifier"
     MODEL_IDENTIFIER_SCAN = "model_identifier_scan"
     MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"
-    MODEL_IDENTIFIER_MULTIPLE_SCAN = "model_identifier_multiple_scan"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
     NEURON_IDS = "neuron_ids"
     REFERENCE = "reference"
