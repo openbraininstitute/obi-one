@@ -30,15 +30,17 @@ class BlockGroup(StrEnum):
 class EModelEFeatureExtractionScanConfig(ScanConfig):
     """ScanConfig for the experimental e-feature extraction step.
 
-    Runs ``bluepyefe.extract.extract_efeatures`` on the experimental ephys
-    traces and writes the resulting fitness-calculator configuration to
+    Runs BluePyEModel's ``extract_save_features_protocols`` on the experimental
+    ephys traces and writes the resulting fitness-calculator configuration to
     ``./extracted_features.json``, ready to be picked up by the optimisation
     stage. No model assets are needed at this point.
     """
 
     single_coord_class_name: ClassVar[str] = "EModelEFeatureExtractionSingleConfig"
     name: ClassVar[str] = "EModel EFeature Extraction"
-    description: ClassVar[str] = "Extract experimental e-features from ephys traces via bluepyefe."
+    description: ClassVar[str] = (
+        "Extract experimental e-features from ephys traces via BluePyEModel."
+    )
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: False,
