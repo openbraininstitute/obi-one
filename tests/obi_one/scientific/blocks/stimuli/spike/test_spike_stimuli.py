@@ -421,8 +421,8 @@ class TestSimulationCampaignWithAllSpikeTypes:
                 stim_cfg = cfg["inputs"][stim_name]
                 assert stim_cfg["module"] == "synapse_replay"
                 assert stim_cfg["input_type"] == "spikes"
-                assert stim_cfg["delay"] == 0.0
-                assert stim_cfg["duration"] == 3000.0
+                assert stim_cfg["delay"] == 0.0  # noqa: RUF069
+                assert stim_cfg["duration"] == 3000.0  # noqa: RUF069
                 assert stim_cfg["node_set"] == "SimNeurons"
 
             pop = instance.initialize.circuit.default_population_name

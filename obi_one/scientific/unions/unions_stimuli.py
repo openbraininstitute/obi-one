@@ -18,10 +18,17 @@ from obi_one.scientific.blocks.stimuli.spike import (
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
+    SpikeTimeDistributionSpikeStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
+    MultiLevelSEClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
     NormallyDistributedCurrentClampSomaticStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
@@ -55,7 +62,11 @@ _RELATIVE_INJECTION_STIMULI = (
 _INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
-    PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
+    PoissonSpikeStimulus
+    | FullySynchronousSpikeStimulus
+    | SinusoidalPoissonSpikeStimulus
+    | InterSpikeIntervalDistributionSpikeStimulus
+    | SpikeTimeDistributionSpikeStimulus
 )
 
 _FIELD_STIMULI = (
@@ -78,7 +89,7 @@ MEModelStimulusUnion = Annotated[
 ]
 
 IonChannelModelStimulusUnion = Annotated[
-    SEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
+    SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
 

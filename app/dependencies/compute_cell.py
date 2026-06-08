@@ -33,8 +33,8 @@ def get_compute_cell(
             http_status_code=HTTPStatus.BAD_REQUEST,
         )
 
-    vlab_url = settings.get_virtual_lab_url(user_context.virtual_lab_id)
-    token = user_context.token.credentials
+    vlab_url = settings.get_virtual_lab_url(user_context.virtual_lab_id)  # ty:ignore[invalid-argument-type]
+    token = user_context.token.credentials  # ty:ignore[unresolved-attribute]
     http_client = request.state.http_client
     response = make_http_request(
         vlab_url,
@@ -43,7 +43,7 @@ def get_compute_cell(
         http_client=http_client,
     )
     data = response.json()
-    compute_cell = data["data"]["virtual_lab"]["compute_cell"]
+    compute_cell = data["compute_cell"]
     L.info("Retrieved compute_cell %s", compute_cell)
     return compute_cell
 

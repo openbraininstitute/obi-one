@@ -10,6 +10,8 @@ services:
       - APP_NAME
       - APP_VERSION
       - COMMIT_SHA
+      secrets:
+      - CODEARTIFACT_TOKEN
       tags:
       - "${IMAGE_NAME}:${IMAGE_TAG_ALIAS}"
     ports:
@@ -22,3 +24,7 @@ services:
         target: /code/app
       - action: rebuild
         path: uv.lock
+
+secrets:
+  CODEARTIFACT_TOKEN:
+    environment: CODEARTIFACT_TOKEN

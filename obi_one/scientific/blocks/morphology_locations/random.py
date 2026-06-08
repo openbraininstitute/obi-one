@@ -18,13 +18,13 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
-            n_per_center=self.number_of_locations,
+            n_per_center=self.number_of_locations,  # ty:ignore[invalid-argument-type]
             srcs_per_center=1,
             center_path_distances_mean=0.0,
             center_path_distances_sd=0.0,
-            max_dist_from_center=None,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            max_dist_from_center=None,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -50,13 +50,13 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
-            n_per_center=self.number_of_locations,
-            srcs_per_center=self.n_groups,
+            n_per_center=self.number_of_locations,  # ty:ignore[invalid-argument-type]
+            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=0.0,
             center_path_distances_sd=0.0,
-            max_dist_from_center=None,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            max_dist_from_center=None,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
         return locs
 

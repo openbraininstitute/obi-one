@@ -29,17 +29,17 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)
+        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,
+            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
             n_per_center=n_per_cluster,
             srcs_per_center=1,
             center_path_distances_mean=0.0,
             center_path_distances_sd=1e20,
-            max_dist_from_center=self.cluster_max_distance,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -64,17 +64,17 @@ class ClusteredGroupedMorphologyLocations(
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)
+        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,
+            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
             n_per_center=n_per_cluster,
-            srcs_per_center=self.n_groups,
+            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=0.0,
             center_path_distances_sd=1e20,
-            max_dist_from_center=self.cluster_max_distance,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
         return locs
 
@@ -107,17 +107,17 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)
+        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,
+            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
             n_per_center=n_per_cluster,
-            srcs_per_center=self.n_groups_per_cluster,
-            center_path_distances_mean=self.path_dist_mean,
-            center_path_distances_sd=self.path_dist_sd,
-            max_dist_from_center=self.cluster_max_distance,
-            lst_section_types=self.section_types,
-            seed=self.random_seed,
+            srcs_per_center=self.n_groups_per_cluster,  # ty:ignore[invalid-argument-type]
+            center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
+            center_path_distances_sd=self.path_dist_sd,  # ty:ignore[invalid-argument-type]
+            max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
+            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
+            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         )
         return locs
 

@@ -10,7 +10,7 @@ class OBIBaseModel(BaseModel):
     Sets encoder for EntitySDK Entities
     """
 
-    model_config = ConfigDict(discriminator="type", extra="forbid", json_schema_extra={})
+    model_config = ConfigDict(discriminator="type", extra="forbid", json_schema_extra={})  # ty:ignore[invalid-key]
 
     title: ClassVar[str | None] = None  # Optional: subclasses can override
     json_schema_extra_additions: ClassVar[dict] = {}
@@ -26,7 +26,7 @@ class OBIBaseModel(BaseModel):
     def __init_subclass__(cls, **kwargs) -> None:
         """Dynamically set the `type` field to the class name."""
         super().__init_subclass__(**kwargs)
-        cls.__annotations__["type"] = Literal[cls.__qualname__]
+        cls.__annotations__["type"] = Literal[cls.__qualname__]  # ty:ignore[invalid-type-form]
         cls.type = cls.__qualname__
 
         cls.model_config = copy.deepcopy(cls.model_config)
@@ -34,7 +34,7 @@ class OBIBaseModel(BaseModel):
         # Use the subclass-provided title, or fall back to the class name
         cls.model_config.update({"title": cls.title or cls.__name__})
 
-        cls.model_config["json_schema_extra"].update(cls.json_schema_extra_additions)
+        cls.model_config["json_schema_extra"].update(cls.json_schema_extra_additions)  # ty:ignore[unresolved-attribute]
 
     def __str__(self) -> str:
         """Return a string representation of the OBIBaseModel object."""
