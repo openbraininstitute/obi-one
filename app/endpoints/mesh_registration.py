@@ -18,6 +18,7 @@ from uuid import UUID
 import entitysdk.client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import EMCellMesh, TaskConfig
+from entitysdk.types import AssetLabel, ContentType
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -65,8 +66,8 @@ def _register_obj_asset(
             entity_type=EMCellMesh,
             file_content=file_content,
             file_name=obj_path.name,
-            file_content_type="application/octet-stream",
-            asset_label="mesh_lod_generation__input_mesh",
+            file_content_type=ContentType.application_octet_stream,
+            asset_label=AssetLabel.mesh_lod_generation__input_mesh,
         )
         L.info(f"OBJ asset uploaded successfully: {asset.path}")
     except EntitySDKError as exc:
@@ -111,8 +112,8 @@ def _create_lod_task_config(
             entity_type=TaskConfig,
             file_content=config_payload,
             file_name="config.json",
-            file_content_type="application/json",
-            asset_label="mesh_lod_generation__config",
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.mesh_lod_generation__config,
         )
     except EntitySDKError as exc:
         raise HTTPException(
@@ -190,13 +191,13 @@ async def register_mesh_and_generate_lods(
 
         task_info = await run_in_threadpool(
             task_service.submit_task_job,
-            db_client=client,
-            ls_client=ls_client,
-            callback_url=callback_url,
-            config_id=config_id,
-            project_context=client.project_context,
-            task_definition=task_definition,
-            callbacks=[],
+            client,
+            ls_client,
+            callback_url,
+            config_id,
+            client.project_context,
+            task_definition,
+            [],
         )
 
         background_tasks.add_task(_cleanup_temp_file, temp_obj_path)
