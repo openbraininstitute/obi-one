@@ -4,13 +4,22 @@ from pathlib import Path
 from textwrap import dedent
 
 import h5py
+import libsonata
 import numpy as np
 import pandas as pd
-from brainbuilder.utils.sonata.split_population import _write_indexes  # noqa: PLC2701
 from brian2 import Hz, ms, mV
 from voxcell import CellCollection
 
 POPULATION = "drosophila"
+
+
+def _write_indexes(
+    edge_file_name: str | Path, new_pop_name: str, source_node_count: int, target_node_count: int
+) -> None:
+    """Ibid."""
+    libsonata.EdgePopulation.write_indices(
+        str(edge_file_name), new_pop_name, source_node_count, target_node_count
+    )
 
 
 def _create_nodes(output: Path, path_comp: Path) -> tuple[Path, pd.DataFrame]:
