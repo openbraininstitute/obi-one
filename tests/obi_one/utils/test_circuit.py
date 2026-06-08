@@ -159,17 +159,23 @@ def test_get_circuit_size_single_neuron_circuit():
     assert num_nrn == 1
 
 
-def test_run_validation_circuit_with_errors():
-    """Test that validation raises for a circuit with known datatype issues."""
+def test_run_validation_valid_circuit():
+    """Test that validation passes for a valid circuit."""
     circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
-    with pytest.raises(ValueError, match="Circuit validation error"):
-        run_validation(circuit_path)
+    run_validation(circuit_path)  # Should not raise
 
 
 def test_run_validation_invalid_path(tmp_path):
     """Test that validation raises for a non-existent circuit."""
     with pytest.raises((FileNotFoundError, ValueError)):
         run_validation(str(tmp_path / "nonexistent" / "circuit_config.json"))
+
+
+def test_run_validation_invalid_circuit():
+    """Test that validation raises for a circuit with missing data files."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6__config_only" / "circuit_config.json")
+    with pytest.raises(ValueError, match="Circuit validation error"):
+        run_validation(circuit_path)
 
 
 def test_generate_overview_figure_fallback_template(tmp_path):

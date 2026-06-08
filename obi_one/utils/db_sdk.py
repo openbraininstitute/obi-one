@@ -19,6 +19,9 @@ from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
 
+OVERVIEW_IMAGE_NAME = "circuit_visualization"
+SIM_DESIGNER_IMAGE_NAME = "simulation_designer_image"
+
 
 def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: AssetLabel) -> Asset:
     """Determines the asset ID of the JSON config asset."""
@@ -394,8 +397,8 @@ def add_image_assets(
         "small_network_in_2D": ("network_stats_b", "webp"),
         "network_global_stats": ("network_stats_a", "webp"),
         "network_pathway_stats": ("network_stats_b", "webp"),
-        "circuit_visualization": ("circuit_visualization", "webp"),
-        "simulation_designer_image": ("simulation_designer_image", "png"),
+        OVERVIEW_IMAGE_NAME: ("circuit_visualization", "webp"),
+        SIM_DESIGNER_IMAGE_NAME: ("simulation_designer_image", "png"),
     }
     if not plot_dir.is_dir():
         msg = f"Connectivity plots directory '{plot_dir}' does not exist!"

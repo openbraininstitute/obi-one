@@ -1,5 +1,7 @@
 import json
 import os
+import shutil
+import tarfile
 from pathlib import Path
 
 PathLike = str | os.PathLike[str]
@@ -13,6 +15,38 @@ def write_json(data: dict, path: PathLike, **json_kwargs) -> None:
 def load_json(path: PathLike) -> dict:
     """Load JSON file to dict."""
     return json.loads(Path(path).read_bytes())
+
+
+def extract_tar_gz(
+    archive_path: Path, output_dir: Path | None = None, *, clean: bool = False
+) -> Path:
+    """Extract a gzip-compressed tar archive (.tar.gz or .gz).
+
+    Supports both ``.tar.gz`` and ``.gz`` file names — in both cases the file
+    is expected to be a gzip-compressed tar archive (as produced by the
+    folder compression task).
+
+    Args:
+        archive_path: Path to the compressed archive file.
+        output_dir: Directory to extract into. Defaults to a sibling directory
+            named after the archive stem (stripping .gz and .tar suffixes).
+        clean: If True, delete the output directory before extraction (if it exists).
+
+    Returns:
+        Path to the extraction directory.
+    """
+    if output_dir is None:
+        stem = archive_path.stem  # removes .gz
+        stem = stem.removesuffix(".tar")
+        output_dir = archive_path.parent / stem
+
+    if clean and output_dir.exists():
+        shutil.rmtree(output_dir)
+
+    with tarfile.open(archive_path, "r:gz") as tar:
+        tar.extractall(path=output_dir)  # noqa: S202
+
+    return output_dir
 
 
 def convert_image_to_webp(

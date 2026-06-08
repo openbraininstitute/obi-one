@@ -290,7 +290,7 @@ def test_task_launch_success__circuit_simulation(
     httpx_mock.add_response(
         url=settings.get_virtual_lab_url(VIRTUAL_LAB_ID),
         method="GET",
-        json={"data": {"virtual_lab": {"compute_cell": "cell_a"}}},
+        json={"compute_cell": "cell_a"},
     )
     # mock simulation metadata response fetched to toggle between simulation task types
     httpx_mock.add_response(
@@ -714,7 +714,7 @@ def test_task_estimate__circuit_simulation(client, target_simulator, circuit_sca
     assert data["cost"] == 1000
 
 
-@pytest.mark.parametrize("task_type", TaskType)
+@pytest.mark.parametrize("task_type", TASK_DEFINITIONS.keys())
 def test_task_failure_endpoint(client, task_type):
     activity_id = uuid4()
 
@@ -728,7 +728,7 @@ def test_task_failure_endpoint(client, task_type):
         ).raise_for_status()
 
 
-@pytest.mark.parametrize("task_type", TaskType)
+@pytest.mark.parametrize("task_type", TASK_DEFINITIONS.keys())
 def test_task_success_endpoint(client, task_type):
     job_id = uuid4()
 

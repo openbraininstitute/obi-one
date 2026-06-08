@@ -20,7 +20,7 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.constants import _MAX_SMALL_MICROCIRCUIT_SIZE, _NEURON_PAIR_SIZE
+from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
 L = logging.getLogger(__name__)
@@ -96,9 +96,9 @@ def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
     # Determine scale
     if num_nrn == 1:
         scale = types.CircuitScale.single
-    elif num_nrn == _NEURON_PAIR_SIZE:
+    elif num_nrn == NEURON_PAIR_SIZE:
         scale = types.CircuitScale.pair
-    elif num_nrn <= _MAX_SMALL_MICROCIRCUIT_SIZE:
+    elif num_nrn <= MAX_SMALL_MICROCIRCUIT_SIZE:
         scale = types.CircuitScale.small
     else:
         scale = types.CircuitScale.microcircuit
@@ -163,13 +163,15 @@ def copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None
         shutil.copytree(source_dir, dest_dir)
 
 
-def run_validation(circuit_path: str) -> None:
+def run_validation(circuit_path: str | Path) -> None:
     """Run SONATA circuit validation."""
-    errors = snap.circuit_validation.validate(circuit_path, skip_slow=True)
+    errors = snap.circuit_validation.validate(
+        str(circuit_path), skip_slow=False, only_errors=True, print_errors=False
+    )
     if len(errors) > 0:
-        msg = f"Circuit validation error(s) found: {errors}"
+        msg = f"Circuit validation error(s) found:\n{errors}"
         raise ValueError(msg)
-    L.info("No validation errors found!")
+    L.info("No SONATA validation errors found!")
 
 
 def get_morph_dirs(
@@ -545,7 +547,7 @@ def run_basic_connectivity_plots(
     from obi_one.core.path import NamedPath  # noqa: PLC0415
     from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
     from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.library.constants import _MAX_SMALL_MICROCIRCUIT_SIZE  # noqa: PLC0415
+    from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE  # noqa: PLC0415
     from obi_one.scientific.tasks.basic_connectivity_plots import (  # noqa: PLC0415
         BasicConnectivityPlotsScanConfig,
     )
@@ -566,7 +568,7 @@ def run_basic_connectivity_plots(
         path=str(matrix_file),
     )
     cmat = ConnectivityMatrix.from_h5(matrix_path.path)
-    if cmat.vertices.shape[0] <= _MAX_SMALL_MICROCIRCUIT_SIZE:
+    if cmat.vertices.shape[0] <= MAX_SMALL_MICROCIRCUIT_SIZE:
         plot_types = (
             "nodes",
             "small_adj_and_stats",
