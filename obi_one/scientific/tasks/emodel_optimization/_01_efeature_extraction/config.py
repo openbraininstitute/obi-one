@@ -13,8 +13,10 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
+    AbsoluteRheobase,
     ExtractionInitialize,
     ProtocolAndFeatureSelection,
+    RheobaseStrategyUnion,
     Settings,
 )
 
@@ -66,11 +68,22 @@ class EModelEFeatureExtractionScanConfig(ScanConfig):
     settings: Settings = Field(
         default_factory=Settings,
         title="Settings",
-        description="Combined eFEL and ``bluepyefe.extract`` parameters.",
+        description="Global eFEL and ``bluepyefe.extract`` parameters.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.EXTRACTION,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    rheobase: RheobaseStrategyUnion = Field(
+        default_factory=AbsoluteRheobase,
+        title="Rheobase",
+        description="Strategy and parameters used to estimate each cell's rheobase.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.GROUP: BlockGroup.EXTRACTION,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

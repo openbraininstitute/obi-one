@@ -54,6 +54,19 @@ class EFeature(OBIBaseModel):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
+    efeature_name: str | None = Field(
+        default=None,
+        title="Feature name",
+        description=(
+            "Custom name for this target (bluepyefe ``efeature_name``). Lets the"
+            " same eFEL feature be extracted under a distinct label, e.g."
+            " ``Spikecount_phase1``. Leave ``None`` to use the eFEL feature name."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
+    # Per-feature eFEL overrides. ``None`` inherits the protocol- then global-level
+    # value; a set value wins over both (global -> protocol -> feature).
     threshold: float | None = Field(
         default=None,
         title="Threshold",
@@ -72,17 +85,45 @@ class EFeature(OBIBaseModel):
         description="Per-feature override of eFEL's ``stim_end`` (ms).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
+    strict_stiminterval: bool | None = Field(
+        default=None,
+        title="Strict stim interval",
+        description="Per-feature override of eFEL's ``strict_stiminterval``.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    interp_step: PositiveFloat | None = Field(
+        default=None,
+        title="Interpolation step",
+        description="Per-feature override of eFEL's ``interp_step`` (ms).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    derivative_threshold: float | None = Field(
+        default=None,
+        title="Derivative threshold",
+        description="Per-feature override of eFEL's ``DerivativeThreshold`` (mV/ms).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
 
     def efel_settings_override(self) -> dict:
-        """Build the ``efel_settings`` dict for this feature's bluepyefe target row."""
-        d: dict[str, float] = {}
+        """Build the per-feature ``efel_settings`` overrides for this target row.
+
+        Only fields the user explicitly set (non-``None``) are emitted; each one
+        overrides the protocol- and global-level eFEL setting for this feature.
+        """
+        overrides: dict[str, float | bool] = {}
         if self.threshold is not None:
-            d["Threshold"] = self.threshold
+            overrides["Threshold"] = self.threshold
         if self.stim_start is not None:
-            d["stim_start"] = self.stim_start
+            overrides["stim_start"] = self.stim_start
         if self.stim_end is not None:
-            d["stim_end"] = self.stim_end
-        return d
+            overrides["stim_end"] = self.stim_end
+        if self.strict_stiminterval is not None:
+            overrides["strict_stiminterval"] = self.strict_stiminterval
+        if self.interp_step is not None:
+            overrides["interp_step"] = self.interp_step
+        if self.derivative_threshold is not None:
+            overrides["DerivativeThreshold"] = self.derivative_threshold
+        return overrides
 
 
 class Spikecount(EFeature):

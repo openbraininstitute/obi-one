@@ -12,10 +12,12 @@ by its own ``extract`` flag, surfaced through :meth:`Protocol.selected_efeatures
 
 from typing import Annotated, ClassVar
 
-from pydantic import Discriminator, Field
+from pydantic import Discriminator, Field, PositiveFloat
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (
+    ISICV,
     AdaptationIndex,
     AHPDepth,
     AHPTimeFromPeak,
@@ -34,7 +36,6 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protoc
     InvThirdISI,
     InvTimeToFirstSpike,
     IrregularityIndex,
-    ISICV,
     ISILogSlope,
     MeanFrequency,
     MinAHPValues,
@@ -66,7 +67,48 @@ class Protocol(OBIBaseModel):
 
     name: ClassVar[str]
 
-    def selected_efeatures(self) -> list[EFeature]:
+    # Per-protocol eFEL overrides applied to every feature extracted from this
+    # protocol. ``None`` inherits the global :class:`Settings` value; a set value
+    # is overridden in turn by a feature that sets the same field
+    # (global -> protocol -> feature).
+    threshold: float | None = Field(
+        default=None,
+        title="Threshold",
+        description="Per-protocol override of eFEL's ``Threshold`` (spike detection, mV).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    stim_start: float | None = Field(
+        default=None,
+        title="Stim start",
+        description="Per-protocol override of eFEL's ``stim_start`` (ms).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    stim_end: float | None = Field(
+        default=None,
+        title="Stim end",
+        description="Per-protocol override of eFEL's ``stim_end`` (ms).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    strict_stiminterval: bool | None = Field(
+        default=None,
+        title="Strict stim interval",
+        description="Per-protocol override of eFEL's ``strict_stiminterval``.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    interp_step: PositiveFloat | None = Field(
+        default=None,
+        title="Interpolation step",
+        description="Per-protocol override of eFEL's ``interp_step`` (ms).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    derivative_threshold: float | None = Field(
+        default=None,
+        title="Derivative threshold",
+        description="Per-protocol override of eFEL's ``DerivativeThreshold`` (mV/ms).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+
+    def selected_efeatures(self) -> list["EFeature"]:
         """Return every :class:`EFeature` field whose ``extract`` flag is set."""
         out: list[EFeature] = []
         for field_name in type(self).model_fields:
@@ -74,6 +116,28 @@ class Protocol(OBIBaseModel):
             if isinstance(value, EFeature) and value.extract:
                 out.append(value)
         return out
+
+    def efel_settings_override(self) -> dict:
+        """Build the per-protocol ``efel_settings`` overrides.
+
+        Only fields the user explicitly set (non-``None``) are emitted; each one
+        overrides the global eFEL setting for every feature of this protocol, and
+        is itself overridden by a feature that sets the same field.
+        """
+        overrides: dict[str, float | bool] = {}
+        if self.threshold is not None:
+            overrides["Threshold"] = self.threshold
+        if self.stim_start is not None:
+            overrides["stim_start"] = self.stim_start
+        if self.stim_end is not None:
+            overrides["stim_end"] = self.stim_end
+        if self.strict_stiminterval is not None:
+            overrides["strict_stiminterval"] = self.strict_stiminterval
+        if self.interp_step is not None:
+            overrides["interp_step"] = self.interp_step
+        if self.derivative_threshold is not None:
+            overrides["DerivativeThreshold"] = self.derivative_threshold
+        return overrides
 
 
 class IDrest(Protocol):
