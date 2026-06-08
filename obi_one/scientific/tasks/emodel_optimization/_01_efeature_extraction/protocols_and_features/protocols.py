@@ -272,10 +272,6 @@ class SponAPs(IDrest):
     name: ClassVar[str] = "SponAPs"
 
 
-class SpikeRec(IDrest):
-    name: ClassVar[str] = "SpikeRec"
-
-
 # Threshold-search / sparse-spiking protocols -> minimal IDthresh feature set.
 class IDThreshold(IDthresh):
     name: ClassVar[str] = "IDThreshold"
@@ -287,6 +283,14 @@ class Spontaneous(IDthresh):
 
 class SineSpec(IDthresh):
     name: ClassVar[str] = "SineSpec"
+
+
+# SpikeRec's eCode sets ``toff`` at the very end of the trace, which breaks
+# step-only features such as ``depol_block_bool`` (their stim-end window is
+# empty). Give it the minimal IDthresh set -- whose features degrade gracefully
+# -- rather than the full IDrest set.
+class SpikeRec(IDthresh):
+    name: ClassVar[str] = "SpikeRec"
 
 
 # Hyperpolarising protocol -> IDhyperpol feature set.
