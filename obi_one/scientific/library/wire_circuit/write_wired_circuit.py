@@ -36,6 +36,13 @@ def segments_dataframe_for(morphology_filename: Path) -> pandas.DataFrame:
     segments = pandas.DataFrame(segment_dict)
     segments["afferent_segment_offset"] = 0.0
 
+    sec_len = segments.groupby("afferent_section_id")["segment_length"].sum()
+    seg_cum = segments.groupby("afferent_section_id").apply(lambda df_: df_.set_index("afferent_segment_id")["segment_length"].sort_index().cumsum(),
+                                                            include_groups=False)
+    idx_ = pandas.MultiIndex.from_frame(segments[["afferent_section_id", "afferent_segment_id"]])
+    segments["seg_cumulative_len"] = seg_cum[idx_].to_numpy() - segments["segment_length"].to_numpy()
+    segments["section_length"] = sec_len[segments["afferent_section_id"]].to_numpy()
+
     soma = pandas.DataFrame({
         "afferent_section_id": [0],
         "afferent_segment_id": [0],
@@ -54,8 +61,11 @@ def create_morphology_locations(specs_df: pandas.DataFrame, segments: pandas.Dat
         p *= segments["segment_length"].to_numpy()
         p *= row[segments["afferent_section_type"]].astype(float).to_numpy()
         picked_indices.append(numpy.random.choice(segments.index, p=p/numpy.nansum(p)))
-    picked = segments.loc[picked_indices, ["afferent_section_id", "afferent_segment_id", "afferent_section_type"]]
+    picked = segments.loc[picked_indices]
     picked["afferent_segment_offset"] = numpy.random.rand(len(picked)) * segments.loc[picked_indices, "segment_length"]
+    picked["afferent_section_pos"] = (picked["seg_cumulative_len"] + 
+                                      picked["afferent_segment_offset"]) / picked["section_length"]
+    assert picked["afferent_section_pos"].max() <= 1.0
     picked.index = specs_df.index
     return picked
 
@@ -150,7 +160,8 @@ def write_wired_circuit(
     os.makedirs(str(circuit_root / "intrinsic_connections"), exist_ok=True)
     structural_props = structural_edge_properties(M, morph_file_dict)
     assert (structural_props.index == M._edges.index).all()
-    relevant_cols = ["afferent_section_id", "afferent_segment_id", "afferent_section_type", "afferent_segment_offset"]
+    relevant_cols = ["afferent_section_id", "afferent_segment_id", "afferent_section_type",
+                     "afferent_segment_offset", "afferent_section_pos"]
     write_edges(
         circuit_root / "intrinsic_connections" / "edges.h5",
         edge_pop_name,
