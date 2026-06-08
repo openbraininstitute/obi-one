@@ -108,6 +108,21 @@ class TestEMSynapseMappingTask:
         ):
             task.execute(db_client=mock_db_client)
 
+    def test_execute_rejects_duplicate_pt_root_ids(self, tmp_path, mock_db_client):
+        task = _make_task(tmp_path)
+        rn1 = _resolved_neuron(111, "neuron_A")
+        rn2 = _resolved_neuron(111, "neuron_B")  # same pt_root_id
+
+        with (
+            patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
+            patch(
+                f"{_TASK_MODULE}.resolve_neuron",
+                side_effect=[rn1, rn2],
+            ),
+            pytest.raises(ValueError, match=r"Duplicate pt_root_id 111.*neuron_B.*neuron_A"),
+        ):
+            task.execute(db_client=mock_db_client)
+
     def test_execute_happy_path(self, tmp_path, mock_db_client):
         task = _make_task(tmp_path)
         resolved = _make_resolved_pair()
