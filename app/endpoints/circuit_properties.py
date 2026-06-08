@@ -149,18 +149,18 @@ def mapped_circuit_properties_endpoint(
             circuit_metrics.names_of_biophys_node_populations
         )
         mapped_circuit_properties[CircuitMappedProperties.POINT_NEURONAL_POPULATION] = (
-            []  # TODO: Implement names_of_point_node_populations in circuit metrics
+            circuit_metrics.names_of_point_node_populations
         )
         mapped_circuit_properties[CircuitMappedProperties.VIRTUAL_NEURONAL_POPULATION] = (
             circuit_metrics.names_of_virtual_node_populations
         )
         mapped_circuit_properties[CircuitMappedProperties.NONVIRTUAL_NEURONAL_POPULATION] = (
             circuit_metrics.names_of_biophys_node_populations
-            + []  # TODO: Implement names_of_point_node_populations in circuit metrics
+            + circuit_metrics.names_of_point_node_populations
         )
         mapped_circuit_properties[CircuitMappedProperties.NEURONAL_POPULATION] = (
             circuit_metrics.names_of_biophys_node_populations
-            + []  # TODO: Implement names_of_point_node_populations in circuit metrics
+            + circuit_metrics.names_of_point_node_populations
             + circuit_metrics.names_of_virtual_node_populations
         )
         mapped_circuit_properties[
@@ -169,6 +169,7 @@ def mapped_circuit_properties_endpoint(
             pop.name: pop.property_unique_values
             for pop in (
                 *circuit_metrics.biophysical_node_populations,
+                *circuit_metrics.point_node_populations,
                 *circuit_metrics.virtual_node_populations,
             )
             if pop is not None
@@ -216,20 +217,24 @@ def mapped_circuit_properties_endpoint(
                     circuit_metrics.names_of_biophys_node_populations
                 )
                 > 0,
-                # TODO: Use point neuron populations from circuit_metrics
-                CircuitUsability.SHOW_POINT_NEURON_SETS: False,
+                CircuitUsability.SHOW_POINT_NEURON_SETS: len(
+                    circuit_metrics.names_of_point_node_populations
+                )
+                > 0,
                 CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: len(
                     circuit_metrics.names_of_virtual_node_populations
                 )
                 > 0,
                 CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS: (
                     len(circuit_metrics.names_of_biophys_node_populations)
-                )  # TODO: Include point neuron populations
+                    + len(circuit_metrics.names_of_point_node_populations)
+                )
                 > 0,
                 CircuitUsability.SHOW_NEURON_SETS: (
                     len(circuit_metrics.names_of_biophys_node_populations)
+                    + len(circuit_metrics.names_of_point_node_populations)
                     + len(circuit_metrics.names_of_virtual_node_populations)
-                )  # TODO: Include point neuron populations
+                )
                 > 0,
             }
             mapped_circuit_properties["usability"] = simulation_options_usability
@@ -252,6 +257,8 @@ def mapped_circuit_properties_endpoint(
             CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
             CircuitUsability.SHOW_POINT_NEURON_SETS: False,
             CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: False,
+            CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS: False,
+            CircuitUsability.SHOW_NEURON_SETS: False,
         }
 
     return mapped_circuit_properties
