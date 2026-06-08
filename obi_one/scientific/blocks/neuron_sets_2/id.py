@@ -23,7 +23,7 @@ class IDBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
     """Abstract base class for neuron sets provided by a list of neuron IDs."""
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)] = Field(
-        title="ID Neuronset",
+        title="Neuron IDs",
         description="List of neuron IDs to include in the neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_IDS,
