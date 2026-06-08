@@ -14,6 +14,7 @@ import tempfile
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import os
     from uuid import UUID
 
     import entitysdk
@@ -42,14 +43,16 @@ def _download_obj(
 def _generate_lods(
     obj_path: pathlib.Path,
     output_dir: pathlib.Path,
-) -> dict[str, str]:
+) -> dict[os.PathLike, os.PathLike]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)
     generator = ultraliser.LODGenerator(mesh)
     generator.generate_web_lods(str(output_dir))
 
-    lod_files = {p.name: str(p) for p in output_dir.iterdir() if p.is_file()}
+    lod_files: dict[os.PathLike, os.PathLike] = {
+        pathlib.Path(p.name): p for p in output_dir.iterdir() if p.is_file()
+    }
 
     if not lod_files:
         msg = "ultraliser produced no LOD output files"
@@ -61,7 +64,7 @@ def _generate_lods(
 def _upload_lod_directory(
     client: entitysdk.Client,
     entity_id: UUID,
-    lod_files: dict[str, str],
+    lod_files: dict[os.PathLike, os.PathLike],
 ) -> str:
     result = client.upload_directory(
         entity_id=entity_id,
@@ -88,8 +91,8 @@ def run_mesh_lod_generation(
 
     with tempfile.TemporaryDirectory(prefix="mesh_lod_") as tmp:
         tmp_path = pathlib.Path(tmp)
-        obj_path = tmp_path / "source.obj"
-        output_dir = tmp_path / "output"
+        obj_path = tmp_path / "input.obj"
+        output_dir = tmp_path / "output_lods"
 
         _download_obj(client, entity_id, obj_asset_id, obj_path)
         lod_files = _generate_lods(obj_path, output_dir)
