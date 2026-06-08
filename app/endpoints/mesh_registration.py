@@ -191,13 +191,13 @@ async def register_mesh_and_generate_lods(
 
         task_info = await run_in_threadpool(
             task_service.submit_task_job,
-            client,
-            ls_client,
-            callback_url,
-            config_id,
-            client.project_context,
-            task_definition,
-            [],
+            db_client=client,
+            ls_client=ls_client,
+            callback_url=callback_url,
+            config_id=config_id,
+            project_context=client.project_context,
+            task_definition=task_definition,
+            callbacks=[],
         )
 
         background_tasks.add_task(_cleanup_temp_file, temp_obj_path)
