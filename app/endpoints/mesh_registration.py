@@ -16,6 +16,7 @@ from typing import Annotated
 from uuid import UUID
 
 import entitysdk.client
+from entitysdk.common import ProjectContext
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import EMCellMesh, TaskConfig
 from entitysdk.types import AssetLabel, ContentType
@@ -128,13 +129,14 @@ def _create_lod_task_config(
     return config_entity.id
 
 
-def _ensure_project_context(client: entitysdk.client.Client) -> None:
+def _ensure_project_context(client: entitysdk.client.Client) -> ProjectContext:
     """Check that the project context exists, abstracting the raise statement."""
     if client.project_context is None:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail="Client project context is missing.",
         )
+    return client.project_context
 
 
 @router.post(
@@ -187,7 +189,7 @@ async def register_mesh_and_generate_lods(
 
         task_definition = TASK_DEFINITIONS[TaskType.mesh_lod_generation]
 
-        _ensure_project_context(client)
+        project_context = _ensure_project_context(client)
 
         task_info = await run_in_threadpool(
             task_service.submit_task_job,
@@ -195,7 +197,7 @@ async def register_mesh_and_generate_lods(
             ls_client=ls_client,
             callback_url=callback_url,
             config_id=config_id,
-            project_context=client.project_context,
+            project_context=project_context,
             task_definition=task_definition,
             callbacks=[],
         )
