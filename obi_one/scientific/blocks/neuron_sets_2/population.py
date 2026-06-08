@@ -53,11 +53,11 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         },
     )
 
-    def get_populations(self) -> list[str]:
+    def get_populations(self, circuit: Circuit) -> list[str]:
         """Returns population names included in the neuron set."""
         return [self.population]
 
-    def _get_expression(self, circuit: Circuit) -> dict:
+    def _get_expression(self, circuit: Circuit) -> dict | list:
         """Returns the SONATA node set expression (w/o subsampling)."""
         self.check_populations_in_circuit(circuit=circuit)
         return {"population": self.population}
@@ -71,7 +71,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         try:
             node_ids = circuit.sonata_circuit.nodes[self.population].ids(name)
         except snap.BluepySnapError as e:
-            # In case of an error, return empty list
+            # In case of an error (e.g., "No such attribute"), return empty list
             L.warning(e)
             node_ids = []
 

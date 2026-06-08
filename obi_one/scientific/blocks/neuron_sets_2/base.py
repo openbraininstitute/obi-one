@@ -49,7 +49,7 @@ class NeuronSet(Block, abc.ABC):
     def check_populations_in_circuit(self, circuit: Circuit) -> None:
         """Check if neuron set populations exist in circuit."""
         # Get neuron set populations
-        nset_popul_names = self.get_populations()
+        nset_popul_names = self.get_populations(circuit)
 
         # Get circuit populations of the given type
         match self._neuron_set_population_type:
@@ -101,7 +101,7 @@ class NeuronSet(Block, abc.ABC):
         self.check_populations_in_circuit(circuit=circuit)
 
         popul_types = {}
-        for pname in self.get_populations():
+        for pname in self.get_populations(circuit):
             if circuit.sonata_circuit.nodes[pname].type == "biophysical":
                 ptype = SonataPopulationType.BIOPHYSICAL
             elif circuit.sonata_circuit.nodes[pname].type == "virtual":
@@ -130,7 +130,7 @@ class NeuronSet(Block, abc.ABC):
         return any(ptype == SonataPopulationType.POINT for ptype in popul_types.values())
 
     @abc.abstractmethod
-    def get_populations(self) -> list[str]:
+    def get_populations(self, circuit: Circuit) -> list[str]:
         """Returns population names included in the neuron set."""
 
     @abc.abstractmethod
@@ -142,6 +142,10 @@ class NeuronSet(Block, abc.ABC):
         In case of a compound expression (list expression), any new definitions
         to be combined are returned as dict.
         """
+
+    @abc.abstractmethod
+    def _get_expression(self, circuit: Circuit) -> dict | list:
+        """Returns the SONATA node set expression."""
 
     @abc.abstractmethod
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, np.ndarray]:
