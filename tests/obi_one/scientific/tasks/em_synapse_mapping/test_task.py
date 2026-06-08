@@ -7,6 +7,8 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
 from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
 
 _TASK_MODULE = "obi_one.scientific.tasks.em_synapse_mapping.task"
@@ -49,7 +51,9 @@ def _make_task(tmp_path):
     """Build a single-neuron task using the unified config shape."""
     config = Mock()
     config.coordinate_output_root = tmp_path / "out"
-    config.initialize.neurons = (Mock(),)
+    config.initialize.neurons = EMSynapseMappingInputNamedTuple(
+        name="test", elements=(CellMorphologyFromID(id_str="test"),)
+    )
     config.initialize.biophysical_node_population = "post_pop"
     config.initialize.virtual_node_population = "pre_pop"
     config.initialize.physical_edge_population_name = "physical_connections"

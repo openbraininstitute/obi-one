@@ -57,8 +57,10 @@ def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
     return CircuitMetricsOutput(
         number_of_biophys_node_populations=1,
         number_of_virtual_node_populations=1,
+        number_of_point_node_populations=0,
         names_of_biophys_node_populations=["bio_pop"],
         names_of_virtual_node_populations=["virt_pop"],
+        names_of_point_node_populations=[],
         names_of_nodesets=[],
         biophysical_node_populations=[
             CircuitMetricsNodePopulation(
@@ -82,6 +84,7 @@ def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
                 node_location_info=None,
             ),
         ],
+        point_node_populations=[],
         number_of_chemical_edge_populations=2,
         number_of_electrical_edge_populations=0,
         names_of_chemical_edge_populations=["bio_edges", "virt_edges"],

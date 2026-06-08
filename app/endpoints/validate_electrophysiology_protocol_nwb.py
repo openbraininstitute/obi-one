@@ -1,12 +1,17 @@
 import pathlib
 import tempfile
 from http import HTTPStatus
-from typing import Annotated, NoReturn
+from typing import Annotated, Any, NoReturn
+from uuid import UUID
 
+import entitysdk.client
+import numpy as np
+from entitysdk.models import ElectricalCellRecording
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.dependencies.auth import user_verified
+from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
 from app.logger import L
 
@@ -22,178 +27,16 @@ class FileTooLargeError(Exception):
     """Raised when an uploaded file exceeds the maximum allowed size."""
 
 
-# --- NWB Validation Protocols and Reader Function ---
+def inspect_nwb_file_contents(nwb_file_path: str) -> dict[str, Any]:
+    """Inspect an NWB file using BluePyEfe's automatic reader detection."""
+    from bluepyefe.reader import inspect_nwb  # noqa: PLC0415
 
-TEST_PROTOCOLS = [
-    "APThreshold",
-    "SAPThres1",
-    "SAPThres2",
-    "SAPThres3",
-    "SAPTres1",
-    "SAPTres2",
-    "SAPTres3",
-    "Step_150",
-    "Step_200",
-    "Step_250",
-    "Step_150_hyp",
-    "Step_200_hyp",
-    "Step_250_hyp",
-    "C1HP1sec",
-    "C1_HP_1sec",
-    "IRrest",
-    "SDelta",
-    "SIDRest",
-    "SIDThres",
-    "SIDTres",
-    "SRac",
-    "pulser",
-    "A",
-    "maria-STEP",
-    "APDrop",
-    "APResh",
-    "C1_HP_0.5sec",
-    "C1step_1sec",
-    "C1step_ag",
-    "C1step_highres",
-    "HighResThResp",
-    "IDRestTest",
-    "LoOffset1",
-    "LoOffset3",
-    "Rin",
-    "STesteCode",
-    "SSponAPs",
-    "SponAPs",
-    "SpontAPs",
-    "Test_eCode",
-    "TesteCode",
-    "step_1",
-    "step_2",
-    "step_3",
-    "IV_Test",
-    "SIV",
-    "APWaveform",
-    "SAPWaveform",
-    "Delta",
-    "FirePattern",
-    "H10S8",
-    "H20S8",
-    "H40S8",
-    "IDRest",
-    "IDThres",
-    "IDThresh",
-    "IDrest",
-    "IDthresh",
-    "IV",
-    "IV2",
-    "IV_-120",
-    "IV_-120_hyp",
-    "IV_-140",
-    "Rac",
-    "RMP",
-    "SetAmpl",
-    "SetISI",
-    "SetISITest",
-    "TestAmpl",
-    "TestRheo",
-    "TestSpikeRec",
-    "SpikeRec",
-    "ADHPdepol",
-    "ADHPhyperpol",
-    "ADHPrest",
-    "SSpikeRec",
-    "SpikeRec_Ih",
-    "SpikeRec_Kv1.1",
-    "scope",
-    "spuls",
-    "RPip",
-    "RSealClose",
-    "RSealOpen",
-    "CalOU01",
-    "CalOU04",
-    "ElecCal",
-    "NoiseOU3",
-    "NoisePP",
-    "SNoisePP",
-    "SNoiseSpiking",
-    "OU10Hi01",
-    "OU10Lo01",
-    "OU10Me01",
-    "SResetITC",
-    "STrueNoise",
-    "SubWhiteNoise",
-    "Truenoise",
-    "WhiteNoise",
-    "ResetITC",
-    "SponHold25",
-    "SponHold3",
-    "SponHold30",
-    "SSponHold",
-    "SponNoHold20",
-    "SponNoHold30",
-    "SSponNoHold",
-    "Spontaneous",
-    "hold_dep",
-    "hold_hyp",
-    "StartHold",
-    "StartNoHold",
-    "StartStandeCode",
-    "VacuumPulses",
-    "sAHP",
-    "IRdepol",
-    "IRhyperpol",
-    "IDdepol",
-    "IDhyperpol",
-    "SsAHP",
-    "HyperDePol",
-    "DeHyperPol",
-    "NegCheops",
-    "NegCheops1",
-    "NegCheops2",
-    "NegCheops3",
-    "NegCheops4",
-    "NegCheops5",
-    "PosCheops",
-    "Rin_dep",
-    "Rin_hyp",
-    "SineSpec",
-    "SSineSpec",
-    "Pulse",
-    "S2",
-    "s2",
-    "S30",
-    "SIne20Hz",
-    "A___.ibw",
-]
+    return inspect_nwb(nwb_file_path)
 
 
 def validate_all_nwb_readers(nwb_file_path: str) -> None:
-    """Try all NWB readers. Succeed if at least one works."""
-    from bluepyefe.reader import (  # noqa: PLC0415
-        AIBSNWBReader,
-        BBPNWBReader,
-        ScalaNWBReader,
-        TRTNWBReader,
-    )
-
-    readers = [AIBSNWBReader, BBPNWBReader, ScalaNWBReader, TRTNWBReader]
-
-    all_failed = "All NWB readers failed."
-
-    for readerclass in readers:
-        try:
-            reader = readerclass(nwb_file_path, TEST_PROTOCOLS)
-            data = reader.read()
-            if data is not None:
-                return
-        except Exception as e:  # noqa: BLE001
-            L.warning(
-                "Reader %s failed for file %s: %s",
-                readerclass.__name__,
-                nwb_file_path,
-                str(e),
-            )
-            continue
-    raise RuntimeError(all_failed)
+    """Validate an NWB file using BluePyEfe's automatic reader detection."""
+    inspect_nwb_file_contents(nwb_file_path)
 
 
 class NWBValidationResponse(BaseModel):
@@ -201,6 +44,16 @@ class NWBValidationResponse(BaseModel):
 
     status: str
     message: str
+
+
+class NWBInspectionResponse(BaseModel):
+    """Schema for the NWB file inspection response."""
+
+    reader: str
+    protocols: list[str]
+    trace_count: int
+    traces: list[dict[str, Any]]
+    metadata: dict[str, Any]
 
 
 # -------------------------------------------------------------------------------------------------
@@ -269,11 +122,8 @@ def _cleanup_temp_file(temp_path: str) -> None:
             L.warning(f"Failed to delete temp NWB file: {e}")
 
 
-def validate_nwb_file(
-    file: Annotated[UploadFile, File(description="NWB file to upload (.nwb)")],
-    background_tasks: BackgroundTasks,
-) -> NWBValidationResponse:
-    """Validates an uploaded .nwb file using registered readers."""
+def _validate_nwb_upload(file: UploadFile) -> None:
+    """Validate the NWB filename and declared file size."""
     file_extension = pathlib.Path(file.filename).suffix.lower() if file.filename else ""
     if file_extension != ".nwb":
         raise HTTPException(
@@ -284,8 +134,6 @@ def validate_nwb_file(
             },
         )
 
-    # --- FAIL-FAST FILE SIZE CHECK ---
-    # Check if file size is available and exceeds the maximum limit (150 MB)
     max_mb = MAX_FILE_SIZE / (1024 * 1024)
     if file.size is not None and file.size > MAX_FILE_SIZE:
         L.error(f"NWB upload failed: File too large (Max: {max_mb:.0f} MB) based on file.size.")
@@ -296,7 +144,27 @@ def validate_nwb_file(
                 "detail": f"Uploaded file is too large. Max size: {max_mb:.0f} MB.",
             },
         )
-    # ---------------------------------
+
+
+def _make_json_compatible(value: Any) -> Any:
+    """Convert NumPy-backed BluePyEfe results to JSON-compatible values."""
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {key: _make_json_compatible(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_make_json_compatible(item) for item in value]
+    return value
+
+
+def validate_nwb_file(
+    file: Annotated[UploadFile, File(description="NWB file to upload (.nwb)")],
+    background_tasks: BackgroundTasks,
+) -> NWBValidationResponse:
+    """Validates an uploaded .nwb file using registered readers."""
+    _validate_nwb_upload(file)
 
     temp_file_path = ""
 
@@ -353,6 +221,71 @@ def validate_nwb_file(
         ) from e
 
 
+def inspect_electrophysiologyrecording(
+    recording_id: UUID,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> NWBInspectionResponse:
+    """Parse the NWB asset of an electrical cell recording entity."""
+    recording = db_client.get_entity(
+        entity_id=recording_id,
+        entity_type=ElectricalCellRecording,
+    )
+    asset = next(
+        (asset for asset in recording.assets if asset.content_type == "application/nwb"),
+        None,
+    )
+    if asset is None:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": (
+                    f"No asset with content type 'application/nwb' found "
+                    f"for recording {recording_id}."
+                ),
+            },
+        )
+    if asset.id is None:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": "NWB asset is missing an id",
+            },
+        )
+
+    content = db_client.download_content(
+        entity_id=recording_id,
+        entity_type=ElectricalCellRecording,
+        asset_id=asset.id,
+    )
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".nwb") as temp_file:
+            temp_file.write(content)
+            temp_file.flush()
+            result = _make_json_compatible(inspect_nwb_file_contents(temp_file.name))
+        return NWBInspectionResponse(
+            reader=result["reader"],
+            protocols=result["protocols"],
+            trace_count=len(result["traces"]),
+            traces=result["traces"],
+            metadata=result["metadata"],
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"NWB inspection failed: {e!s}",
+            },
+        ) from e
+    except OSError as e:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={"code": "INTERNAL_ERROR", "detail": f"Internal Server Error: {e!s}"},
+        ) from e
+
+
 def activate_test_nwb_endpoint(router: APIRouter) -> None:
     """Define NWB file validation endpoint."""
     router.post(
@@ -362,9 +295,22 @@ def activate_test_nwb_endpoint(router: APIRouter) -> None:
     )(validate_nwb_file)
 
 
+def activate_inspect_nwb_endpoint(router: APIRouter) -> None:
+    """Define NWB file inspection endpoint."""
+    router.get(
+        "/electrophysiologyrecording-inspection/{recording_id}",
+        summary="Inspect electrical cell recording NWB traces and metadata.",
+        description=(
+            "Downloads and parses the NWB asset of an electrical cell recording entity "
+            "using BluePyEfe automatic reader detection."
+        ),
+    )(inspect_electrophysiologyrecording)
+
+
 def activate_declared_endpoints(router: APIRouter) -> APIRouter:
     """Activate all declared endpoints for the router."""
     activate_test_nwb_endpoint(router)
+    activate_inspect_nwb_endpoint(router)
     return router
 
 
