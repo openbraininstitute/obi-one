@@ -118,15 +118,11 @@ def _evaluate_accounting_parameters(
     """
     match task_definition.task_type:
         case TaskType.mesh_lod_generation:
-            return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,  # reuse or add a new subtype
-            )
+            count = 1
+            service_subtype = ServiceSubtype.NEURON_MESH_SKELETONIZATION
         case TaskType.circuit_extraction:
-            return AccountingParameters(
-                count=estimate_circuit_extraction_count(db_client=db_client, config_id=config_id),
-                service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
-            )
+            count = estimate_circuit_extraction_count(db_client=db_client, config_id=config_id)
+            service_subtype = ServiceSubtype.CIRCUIT_EXTRACTION
         case (
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_cluster
@@ -138,26 +134,23 @@ def _evaluate_accounting_parameters(
                 simulation_id=config_id,
             )
         case TaskType.em_synapse_mapping:
-            return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
-            )
+            count = 1
+            service_subtype = ServiceSubtype.SMALL_CIRCUIT_SIM
         case TaskType.ion_channel_model_simulation_execution:
-            return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.ION_CHANNEL_SIM,
-            )
+            count = 1
+            service_subtype = ServiceSubtype.ION_CHANNEL_SIM
         case TaskType.morphology_skeletonization:
-            return AccountingParameters(
-                count=estimate_skeletonization_count(db_client=db_client, config_id=config_id),
-                service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
-            )
+            count = estimate_skeletonization_count(db_client=db_client, config_id=config_id)
+            service_subtype = ServiceSubtype.NEURON_MESH_SKELETONIZATION
         case _:
             # For other task types, use the default mapping
-            return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.SMALL_SIM,
-            )
+            count = 1
+            service_subtype = ServiceSubtype.SMALL_SIM
+
+    return AccountingParameters(
+        count=count,
+        service_subtype=service_subtype,
+    )
 
 
 def _evaluate_circuit_simulation_parameters(

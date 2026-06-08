@@ -11,31 +11,23 @@ Pipeline
 
 import json
 import pathlib
-import tempfile
 from http import HTTPStatus
 from typing import Annotated
 from uuid import UUID
 
-import entitysdk
 import entitysdk.client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import EMCellMesh, TaskConfig
 from entitysdk.types import AssetLabel, ContentType, TaskConfigType
-
-# FIX: Added BackgroundTasks to imports
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from app.dependencies.accounting import AccountingSessionFactoryDep
-from app.dependencies.auth import UserContextWithProjectIdDep
 from app.dependencies.callback import CallBackUrlDep
-from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.mesh_validation import (
     MAX_FILE_SIZE,
-    FileTooLargeError,
     _cleanup_temp_file,
     _save_upload_to_tempfile,
     validate_mesh_reader,
@@ -43,7 +35,7 @@ from app.endpoints.mesh_validation import (
 from app.errors import ApiErrorCode
 from app.logger import L
 from app.mappings import TASK_DEFINITIONS
-from app.services import accounting as accounting_service, task as task_service
+from app.services import task as task_service
 from app.types import TaskType
 
 router = APIRouter(
@@ -99,6 +91,18 @@ def _preflight_size_check(file: UploadFile) -> None:
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
                 "detail": f"Uploaded file is too large. Max size: {max_mb:.0f} MB.",
+            },
+        )
+
+
+def _validate_temp_file_not_empty(temp_obj_path: str) -> None:
+    """Verify that the temporary file is not empty."""
+    if pathlib.Path(temp_obj_path).stat().st_size == 0:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": "Uploaded file is empty.",
             },
         )
 
@@ -182,9 +186,6 @@ async def mesh_registration(
     client: Annotated[entitysdk.client.Client, Depends(get_client)],
     ls_client: LaunchSystemClientDep,
     callback_url: CallBackUrlDep,
-    user_context: UserContextWithProjectIdDep,
-    compute_cell: ComputeCellDep,
-    accounting_factory: AccountingSessionFactoryDep,
     background_tasks: BackgroundTasks,
     entity_id: Annotated[
         str, Form(description="UUID of the existing EMCellMesh entity to attach assets to")
@@ -199,14 +200,7 @@ async def mesh_registration(
     try:
         temp_obj_path = await run_in_threadpool(_save_upload_to_tempfile, file, suffix=".obj")
 
-        if pathlib.Path(temp_obj_path).stat().st_size == 0:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail={
-                    "code": ApiErrorCode.INVALID_REQUEST,
-                    "detail": "Uploaded file is empty.",
-                },
-            )
+        await run_in_threadpool(_validate_temp_file_not_empty, temp_obj_path)
 
         await run_in_threadpool(validate_mesh_reader, temp_obj_path)
 
