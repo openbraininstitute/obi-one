@@ -25,7 +25,9 @@ def _write_indexes(
     )
 
 
-def _create_nodes(output: Path, path_comp: Path) -> tuple[Path, pd.DataFrame]:
+def _create_nodes(
+    output: Path, path_comp: Path, annotations_path: Path | None
+) -> tuple[Path, pd.DataFrame]:
     df_comp = pd.read_csv(path_comp, index_col=0)
     assert df_comp.Completed.all()
 
@@ -82,7 +84,7 @@ def _create_nodes(output: Path, path_comp: Path) -> tuple[Path, pd.DataFrame]:
         nodes = nodes.drop(columns=to_drop)
 
         for col in string_cols:
-            nodes[col].fillna("unknown")
+            nodes[col] = nodes[col].fillna("unknown")
 
     cc = CellCollection.from_dataframe(nodes, index_offset=0)
     cc.population_name = POPULATION
