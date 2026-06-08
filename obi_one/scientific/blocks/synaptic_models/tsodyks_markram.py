@@ -307,7 +307,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
 class TsodyksMarkramInhibitorySynapticModel(TsodyksMarkramSynapticModel):
     @property
     def synapse_type_id(self) -> int:
-        return -100  # TODO: Placeholder. Find out actual number!
+        return 7  # smaller than 100
 
 # CORRELATION_COEFFICIENT_FIELD = (
 #     Annotated[
