@@ -15,6 +15,8 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
     BlockGroup,
 )
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
     RecordingUnion,
@@ -33,6 +35,19 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology Locations",
+        description="Rules to generate locations on morphologies.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: MorphologyLocationsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Morphology Locations",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 

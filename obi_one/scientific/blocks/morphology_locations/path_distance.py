@@ -2,6 +2,7 @@ import morphio
 import pandas  # noqa: ICN001
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
@@ -16,11 +17,17 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
         title="Path distance mean",
         description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
     path_dist_tolerance: float | list[float] = Field(
         title="Path distance tolerance",
         description="Amount of deviation in um from mean path distance that is tolerated. Must be \
             > 1.0",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:

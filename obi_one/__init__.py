@@ -48,6 +48,8 @@ __all__ = [
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
+    "CompartmentLocation",
+    "CompartmentSet",
     "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
@@ -120,6 +122,7 @@ __all__ = [
     "MorphologyDecontainerizationScanConfig",
     "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
+    "MorphologyLocationsReference",
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
     "MorphologyLocationsTask",
@@ -242,6 +245,7 @@ from obi_one.scientific.blocks.afferent_synapses import (
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
+from obi_one.scientific.blocks.compartment_sets import CompartmentLocation, CompartmentSet
 from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
@@ -472,6 +476,7 @@ from obi_one.scientific.unions.unions_distributions import (
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     NeuronSetUnion,

@@ -14,6 +14,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
@@ -88,12 +89,14 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            MorphologyLocationsReference.__name__: "Default: None",
         },
     }
 
