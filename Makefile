@@ -27,6 +27,9 @@ help:  ## Show this help
 install:  ## Default installation (for running tasks and local scripts)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
 
+install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing
+
 install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
 
@@ -35,6 +38,9 @@ install-notebooks:  ## Install with notebooks dependencies (for running notebook
 
 install-service:  ## Install with service dependencies (for running as a service)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service
+
+install-service-meshing: ## Install both service and meshing dependencies
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service --extra meshing
 
 install-all:  ## Install all dependencies (for production/deployment)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all

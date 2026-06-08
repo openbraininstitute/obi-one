@@ -32,28 +32,28 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.13.3",
+    "entitysdk>=0.16.0",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
     "bluecellulab>=2.6.87",
     "blueetl",
-    "bluepyefe>=2.3.53",
+    "bluepyefe>=2.3.57",
     "bluepysnap>=3.0.2",
     "brainbuilder>=0.20.2",
     "caveclient>=7.11.0",
-    "connectome-utilities>=0.4.11",
+    "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
     "morph_spines",
     "morph-tool",
     "neurom",
-    "libsonata>=0.1.33",
+    "libsonata>=0.1.36",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
     "obp-accounting-sdk>=0.6.0",
-    "numpy<2.4", # Needs https://github.com/openbraininstitute/ConnectomeUtilities/pull/5
+    "numpy",
 ]
 
 [project.optional-dependencies]
@@ -61,6 +61,11 @@ dependencies = [
 connectivity = [
     "connectome-analysis>=1.0.1",
     "networkx>=3.4.2",
+]
+
+# MESHING - optional, private dependency needed to create meshes from morphologies
+meshing = [
+    "neuromorphomesh",
 ]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
@@ -77,7 +82,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.0",
+    "obp-accounting-sdk>=0.6.1",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -88,7 +93,14 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service]",
+    "obi-one[connectivity,meshing,notebooks,service]",
+]
+
+# BLUERECORDING - optional, needed for extracellular recording array tasks.
+# Requires MPI-enabled h5py and NEURON built from source.
+# Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
+bluerecording = [
+    "bluerecording>=0.4.5",
 ]
 
 [dependency-groups]
@@ -129,8 +141,14 @@ local_scheme = "no-local-version"
 [tool.uv]
 required-version = ">=0.9.22"
 
+[[tool.uv.index]]
+name = "obi-codeartifact"
+url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/"
+explicit = true
+
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+neuromorphomesh = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100

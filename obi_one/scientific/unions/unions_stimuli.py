@@ -21,6 +21,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
 )
+from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
+    SpikeTimeDistributionSpikeStimulus,
+)
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
@@ -63,6 +66,7 @@ _SPIKE_STIMULI = (
     | FullySynchronousSpikeStimulus
     | SinusoidalPoissonSpikeStimulus
     | InterSpikeIntervalDistributionSpikeStimulus
+    | SpikeTimeDistributionSpikeStimulus
 )
 
 _FIELD_STIMULI = (

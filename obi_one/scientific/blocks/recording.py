@@ -13,7 +13,7 @@ from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
+from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -104,9 +104,9 @@ class Recording(Block, ABC):
     _end_time: PositiveFloat = 100.0
 
     dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
-        | Annotated[NonNegativeFloatRange, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
+        Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
+        | Annotated[NonNegativeFloatRange, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
     ) = Field(
         default=0.1,
         title="Timestep",
@@ -130,7 +130,8 @@ class Recording(Block, ABC):
         self._default_node_set = default_node_set
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population) != "biophysical"  # ty:ignore[unresolved-attribute]
+            self.neuron_set.block.population_type(circuit, population)  # ty:ignore[unresolved-attribute]
+            not in {"biophysical", "inait_point_neuron_lif"}
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "

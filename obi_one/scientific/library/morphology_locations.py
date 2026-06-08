@@ -298,7 +298,7 @@ def add_normalized_section_offset(
     sec_lengths = np.array(
         [np.linalg.norm(np.diff(sec.points, axis=0), axis=1).sum() for sec in m.sections]
     )
-    sec_o = path_distance_calculator.O[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
+    sec_o = path_distance_calculator.offset[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
     sec_l = sec_lengths[dataframe[_SEC_ID] - 1]
     dataframe[_SEC_LOC] = sec_o / sec_l
 

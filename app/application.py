@@ -20,6 +20,7 @@ from app.endpoints import (
     circuit_properties,
     circuit_visualization,
     config_validation,
+    convert_morphology_to_registered_mesh,
     count_scan_coordinates,
     ephys_metrics,
     ion_channel_properties,
@@ -167,6 +168,7 @@ app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
+app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(ephys_metrics.router)
 app.include_router(ion_channel_properties.router)

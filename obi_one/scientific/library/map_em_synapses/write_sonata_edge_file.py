@@ -1,13 +1,23 @@
 import os
+from pathlib import Path
 
 import h5py
+import libsonata
 import numpy  # NOQA: ICN001
 import pandas  # NOQA: ICN001
-from brainbuilder.utils.sonata.split_population import _write_indexes  # NOQA: PLC2701
 from h5py._hl.group import Group as H5Group
 
 _STR_PRE_NODE = "pre_node_id"
 _STR_POST_NODE = "post_node_id"
+
+
+def _write_indexes(
+    edge_file_name: str | Path, new_pop_name: str, source_node_count: int, target_node_count: int
+) -> None:
+    """Ibid."""
+    libsonata.EdgePopulation.write_indices(
+        str(edge_file_name), new_pop_name, source_node_count, target_node_count
+    )
 
 
 def create_or_resize_dataset(

@@ -13,9 +13,14 @@ from entitysdk.models.asset import Asset
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
+
+OVERVIEW_IMAGE_NAME = "circuit_visualization"
+SIM_DESIGNER_IMAGE_NAME = "simulation_designer_image"
 
 
 def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: AssetLabel) -> Asset:
@@ -392,8 +397,8 @@ def add_image_assets(
         "small_network_in_2D": ("network_stats_b", "webp"),
         "network_global_stats": ("network_stats_a", "webp"),
         "network_pathway_stats": ("network_stats_b", "webp"),
-        "circuit_visualization": ("circuit_visualization", "webp"),
-        "simulation_designer_image": ("simulation_designer_image", "png"),
+        OVERVIEW_IMAGE_NAME: ("circuit_visualization", "webp"),
+        SIM_DESIGNER_IMAGE_NAME: ("simulation_designer_image", "png"),
     }
     if not plot_dir.is_dir():
         msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
@@ -426,3 +431,51 @@ def add_image_assets(
         L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
         plot_assets.append(plot_asset)
     return plot_assets
+
+
+def resolve_circuit(
+    circuit: Circuit | CircuitFromID,
+    *,
+    db_client: Client,
+    entity_cache: bool,
+    cache_root: Path,
+    temp_dir: Path,
+) -> tuple[Circuit, models.Circuit | None]:
+    """Resolve a circuit object into a staged local circuit.
+
+    Handles both local Circuit instances and CircuitFromID references that
+    need to be staged from entitycore.
+
+    Args:
+        circuit: A Circuit instance (local) or CircuitFromID (remote).
+        db_client: The entitycore SDK client.
+        entity_cache: If True, stage into a persistent cache directory under
+            cache_root; otherwise stage into temp_dir.
+        cache_root: Root path for the entity cache (e.g., scan_output_root).
+        temp_dir: Temporary directory path to use when entity_cache is False.
+
+    Returns:
+        Tuple of (resolved Circuit, circuit entity or None).
+    """
+    if isinstance(circuit, Circuit):
+        L.info("Circuit is a local Circuit instance.")
+        return circuit, None
+
+    if isinstance(circuit, CircuitFromID):
+        L.info("Circuit is a CircuitFromID instance.")
+        circuit_id = circuit.id_str
+
+        if entity_cache:
+            L.info("Use entity cache")
+            dest_dir = cache_root / "entity_cache" / "sonata_circuit" / circuit_id
+        else:
+            dest_dir = temp_dir / "sonata_circuit"
+
+        staged_circuit = circuit.stage_circuit(
+            db_client=db_client, dest_dir=dest_dir, entity_cache=entity_cache
+        )
+        circuit_entity = circuit.entity(db_client=db_client)
+        return staged_circuit, circuit_entity  # ty:ignore[invalid-return-type]
+
+    msg = f"Unsupported circuit type: {type(circuit)}"
+    raise OBIONEError(msg)
