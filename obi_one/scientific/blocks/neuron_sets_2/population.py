@@ -53,7 +53,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         },
     )
 
-    def get_populations(self, circuit: Circuit) -> list[str]:
+    def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: ARG002
         """Returns population names included in the neuron set."""
         return [self.population]
 
@@ -75,21 +75,21 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
             L.warning(e)
             node_ids = []
 
-        return node_ids
+        return list(node_ids)
 
-    def get_neuron_ids(self, circuit: Circuit) -> dict[str, np.ndarray]:
+    def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population (with subsampling, if specified)."""
         ids = np.array(self._resolve_ids(circuit))
 
-        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:
+        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:  # ty:ignore[unsupported-operator]
             rng = np.random.default_rng(self.sample_seed)
-            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)
+            num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)  # ty:ignore[unsupported-operator]
             ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
 
         if len(ids) == 0:
             L.warning("Neuron set empty!")
 
-        return {self.population: ids}
+        return {self.population: list(ids)}
 
     def get_node_set_definition(
         self, circuit: Circuit, *, force_resolve_ids: bool = False
@@ -106,7 +106,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
             # Individual IDs need to be resolved
             expression = {
                 "population": self.population,
-                "node_id": self.get_neuron_ids(circuit)[self.population].tolist(),
+                "node_id": self.get_neuron_ids(circuit)[self.population],
             }
 
         return (expression, {})

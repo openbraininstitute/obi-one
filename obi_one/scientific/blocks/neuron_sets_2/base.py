@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import ClassVar
 
 import bluepysnap as snap
-import numpy as np
 
 from obi_one.core.block import Block
 from obi_one.scientific.library.circuit import Circuit
@@ -148,7 +147,7 @@ class NeuronSet(Block, abc.ABC):
         """Returns the SONATA node set expression."""
 
     @abc.abstractmethod
-    def get_neuron_ids(self, circuit: Circuit) -> dict[str, np.ndarray]:
+    def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population."""
 
     def add_node_set_definition_to_sonata_circuit(

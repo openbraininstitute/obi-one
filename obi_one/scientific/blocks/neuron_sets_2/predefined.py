@@ -3,7 +3,6 @@ import logging
 from typing import Annotated, ClassVar
 
 import bluepysnap as snap
-import numpy as np
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -124,7 +123,7 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
                 comb_key = f"{self.node_set}__{idx}__"
                 combined[comb_key] = {
                     "population": npop,
-                    "node_id": ids.tolist(),
+                    "node_id": ids,
                 }
                 expression.append(comb_key)
             if len(expression) == 1:
@@ -138,12 +137,12 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
 
         return (expression, combined)
 
-    def get_neuron_ids(self, circuit: Circuit) -> dict[str, np.ndarray]:
+    def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population."""
         node_populations = self.get_populations(circuit)
         ids_dict = {}
         for npop in node_populations:
-            ids_dict[npop] = circuit.sonata_circuit.nodes[npop].ids(self.node_set)
+            ids_dict[npop] = list(circuit.sonata_circuit.nodes[npop].ids(self.node_set))
         return ids_dict
 
 
@@ -156,7 +155,8 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
         """Returns the full list of neuron IDs (w/o subsampling)."""
         self.check_node_set(circuit)
         self.check_populations_in_circuit(circuit=circuit)
-        return circuit.sonata_circuit.nodes[self.population].ids(self.node_set)
+        node_ids = circuit.sonata_circuit.nodes[self.population].ids(self.node_set)
+        return list(node_ids)
 
     def _get_expression(self, circuit: Circuit) -> dict | list:
         """Returns the SONATA node set resolved in one population (w/o subsampling).
@@ -165,7 +165,7 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
         population + node_set expressions.
         """
         node_ids = self._resolve_ids(circuit)
-        return {"population": self.population, "node_id": list(node_ids)}
+        return {"population": self.population, "node_id": node_ids}
 
 
 class PredefinedPopulationNeuronSet(PredefinedPopulationBaseNeuronSet, PopulationNeuronSet):
