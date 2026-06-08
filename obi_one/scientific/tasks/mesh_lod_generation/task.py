@@ -49,11 +49,7 @@ def _generate_lods(
     generator = ultraliser.LODGenerator(mesh)
     generator.generate_web_lods(str(output_dir))
 
-    lod_files = {
-        p.name: str(p)
-        for p in output_dir.iterdir()
-        if p.is_file()
-    }
+    lod_files = {p.name: str(p) for p in output_dir.iterdir() if p.is_file()}
 
     if not lod_files:
         msg = "ultraliser produced no LOD output files"

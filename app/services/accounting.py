@@ -119,9 +119,9 @@ def _evaluate_accounting_parameters(
     match task_definition.task_type:
         case TaskType.mesh_lod_generation:
             return AccountingParameters(
-            count=1,
-            service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,  # reuse or add a new subtype
-        )
+                count=1,
+                service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,  # reuse or add a new subtype
+            )
         case TaskType.circuit_extraction:
             return AccountingParameters(
                 count=estimate_circuit_extraction_count(db_client=db_client, config_id=config_id),

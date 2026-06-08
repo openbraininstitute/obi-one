@@ -21,6 +21,7 @@ import entitysdk.client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import EMCellMesh, TaskConfig
 from entitysdk.types import AssetLabel, ContentType, TaskConfigType
+
 # FIX: Added BackgroundTasks to imports
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -197,7 +198,7 @@ async def mesh_registration(
     temp_obj_path = ""
     try:
         temp_obj_path = await run_in_threadpool(_save_upload_to_tempfile, file, suffix=".obj")
-        
+
         if pathlib.Path(temp_obj_path).stat().st_size == 0:
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
@@ -218,7 +219,7 @@ async def mesh_registration(
         )
 
         task_definition = TASK_DEFINITIONS[TaskType.mesh_lod_generation]
-        
+
         task_info = await run_in_threadpool(
             task_service.submit_task_job,
             db_client=client,
