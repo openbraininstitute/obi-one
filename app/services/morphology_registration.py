@@ -232,6 +232,9 @@ def register_morphology_with_assets_and_metrics(
     # 1. Register the entity
     registered_morphology = client.register_entity(entity=morphology)
     entity_id = registered_morphology.id
+    if entity_id is None:
+        msg = "Registered morphology entity has no id"
+        raise RuntimeError(msg)
 
     # 2. Upload standard morphology files
     for file_path in morphology_files.values():
