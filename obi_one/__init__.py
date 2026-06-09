@@ -202,14 +202,16 @@ __all__ = [
     "SynapticMgManipulation",
     "SynapticModelAssignerReference",
     "SynapticModelAssignerUnion",
+    "SynapticModelReference",
+    "SynapticModelUnion",
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
-    "TsodyksMarkramSynapticModel",
     "TsodyksMarkramInhibitorySynapticModel",
+    "TsodyksMarkramSynapticModel",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
@@ -259,6 +261,7 @@ from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
 )
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
@@ -268,7 +271,6 @@ from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
-from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
     LinearExtracellularLocations,
@@ -362,19 +364,19 @@ from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )
+from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
+    AllPairsSynapticModelAssigner,
+)
 from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
     InterNeuronSetSynapticModelAssigner,
 )
 from obi_one.scientific.blocks.synaptic_model_assigners.presyn_neuron_set import (
-    PresynapticNeuronSetSynapticModelAssigner
-)
-from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
-    AllPairsSynapticModelAssigner
+    PresynapticNeuronSetSynapticModelAssigner,
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+    TsodyksMarkramInhibitorySynapticModel,
     # CorrelatedTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
-    TsodyksMarkramInhibitorySynapticModel,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -522,13 +524,13 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusUnion,
 )
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.scientific.unions.unions_synaptic_models import (
-    SynapticModelReference,
-    SynapticModelUnion
-)
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
     SynapticModelAssignerReference,
     SynapticModelAssignerUnion,
+)
+from obi_one.scientific.unions.unions_synaptic_models import (
+    SynapticModelReference,
+    SynapticModelUnion,
 )
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion

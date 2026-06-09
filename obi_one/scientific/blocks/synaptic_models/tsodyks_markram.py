@@ -1,19 +1,17 @@
 import logging
-from typing import Annotated
 
-import numpy as np
-from pydantic import Field
 from pandas import DataFrame
+from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
-from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
 
 L = logging.getLogger(__name__)
-            
+
 
 class TsodyksMarkramSynapticModel(SynapticModelBase):
     u_hill_coefficient_distribution: AllDistributionsReference = Field(
@@ -186,7 +184,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
-    
+
     delay_shared_within: bool = Field(
         default=False,
         title="Delay Distribution Shared Within",
@@ -248,7 +246,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
         d = self.usyn.resolve()
         d["shared_within"] = self.usyn_shared_within
         return d
-    
+
     def delay_dict(self) -> dict:
         d = self.delay_distribution.resolve()
         d["shared_within"] = self.delay_shared_within
@@ -267,11 +265,11 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
             "delay": self.delay_dict(),
             "syn_type_id": self.synapse_type_id,
         }
-    
+
     @classmethod
     def synapse_model_family(cls):
         return "TM_model"
-    
+
     @classmethod
     def parameter_names(cls) -> list[str]:
         return [
@@ -284,30 +282,38 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
             "decay_time",
             "usyn",
             "delay",
-            "synapse_type_id"
-            ]
-    
+            "synapse_type_id",
+        ]
+
     def sample(self, indices: DataFrame) -> DataFrame:
         n = len(indices)
         # TODO: 'shared_within' is currently ignored
-        return DataFrame({
-            "u_hill_coefficient": self.u_hill_coefficient_distribution.block.sample_with_constraints(n),
-            "conductance": self.conductance_distribution.block.sample_with_constraints(n),
-            "conductance_scale_factor": self.conductance_scale_factor_distribution.block.sample_with_constraints(n),
-            "facilitation_time": self.fascilitation_time.block.sample_with_constraints(n),
-            "depression_time": self.depression_time.block.sample_with_constraints(n),
-            "n_rrp_vesicles": self.n_rrp_vesicles_distribution.block.sample_with_constraints(n),
-            "decay_time": self.decay_time.block.sample_with_constraints(n),
-            "usyn": self.usyn.block.sample_with_constraints(n),
-            "delay": self.delay_distribution.block.sample_with_constraints(n),
-            "synapse_type_id": [self.synapse_type_id] * n
-        }, index=indices.index)
+        return DataFrame(
+            {
+                "u_hill_coefficient": self.u_hill_coefficient_distribution.block.sample_with_constraints(
+                    n
+                ),
+                "conductance": self.conductance_distribution.block.sample_with_constraints(n),
+                "conductance_scale_factor": self.conductance_scale_factor_distribution.block.sample_with_constraints(
+                    n
+                ),
+                "facilitation_time": self.fascilitation_time.block.sample_with_constraints(n),
+                "depression_time": self.depression_time.block.sample_with_constraints(n),
+                "n_rrp_vesicles": self.n_rrp_vesicles_distribution.block.sample_with_constraints(n),
+                "decay_time": self.decay_time.block.sample_with_constraints(n),
+                "usyn": self.usyn.block.sample_with_constraints(n),
+                "delay": self.delay_distribution.block.sample_with_constraints(n),
+                "synapse_type_id": [self.synapse_type_id] * n,
+            },
+            index=indices.index,
+        )
 
 
 class TsodyksMarkramInhibitorySynapticModel(TsodyksMarkramSynapticModel):
     @property
     def synapse_type_id(self) -> int:
         return 7  # smaller than 100
+
 
 # CORRELATION_COEFFICIENT_FIELD = (
 #     Annotated[

@@ -4,13 +4,14 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
-    #CorrelatedTsodyksMarkramSynapticModel,
-    TsodyksMarkramSynapticModel,
     TsodyksMarkramInhibitorySynapticModel,
+    # CorrelatedTsodyksMarkramSynapticModel,
+    TsodyksMarkramSynapticModel,
 )
 
 SynapticModelUnion = Annotated[
-    TsodyksMarkramSynapticModel | TsodyksMarkramInhibitorySynapticModel, # | CorrelatedTsodyksMarkramSynapticModel,
+    TsodyksMarkramSynapticModel
+    | TsodyksMarkramInhibitorySynapticModel,  # | CorrelatedTsodyksMarkramSynapticModel,
     Discriminator("type"),
 ]
 

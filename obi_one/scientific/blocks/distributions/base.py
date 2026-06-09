@@ -10,25 +10,37 @@ from obi_one.core.schema import SchemaKey, UIElement
 class Distribution(Block, abc.ABC):
     """Distribution base class."""
 
-    min: float | None | list[float] = Field(
+    min: float | list[float] | None = Field(
         default=None,
         title="Minimum",
-        description="Minimum value below which we truncate."
+        description="Minimum value below which we truncate.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
-    max: float | None | list[float] = Field(
+    max: float | list[float] | None = Field(
         default=None,
         title="Maximum",
-        description="Maximum value above which we truncate."
+        description="Maximum value above which we truncate.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
     include_min: bool = Field(
         default=True,
         title="Include minimum",
-        description="Include minimum value (if specified)."
+        description="Include minimum value (if specified).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
     )
     include_max: bool = Field(
         default=False,
         title="Include maximum",
-        description="Include maximum value (if specified)."
+        description="Include maximum value (if specified).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
     )
 
     @staticmethod
@@ -72,12 +84,8 @@ class Distribution(Block, abc.ABC):
         initial_samples = self._sample_generator(n, rng=rng)
         final_samples = self._apply_constraints(initial_samples, ge=ge, le=le, gt=gt, lt=lt)
         return final_samples
-    
-    def sample_with_constraints(
-        self,
-        n: int = 1,
-        rng: np.random.Generator | None = None  
-    ):
+
+    def sample_with_constraints(self, n: int = 1, rng: np.random.Generator | None = None):
         kwargs = {}
         if self.include_min:
             kwargs["ge"] = self.min

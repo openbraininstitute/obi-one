@@ -1,7 +1,5 @@
 import logging
 import shutil
-import pandas as pd
-
 from pathlib import Path
 
 from connectome_manipulator.model_building import model_types
@@ -9,18 +7,17 @@ from entitysdk import Client, models, types
 from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
-from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
-from obi_one.scientific.unions.unions_synaptic_model_assigner import (
-    SynapticModelAssignerUnion,
-)
 from obi_one.scientific.tasks.synapse_parameterization.utils import (
     check_consistent_synapse_models,
     get_default_for,
-    write_back_to_edge_file
+    write_back_to_edge_file,
+)
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerUnion,
 )
 
 L = logging.getLogger(__name__)
@@ -55,9 +52,7 @@ class SynapseParameterizationTask(Task):
         if output_dir != stage_dir:
             # Copy staged circuit into output directory
             shutil.copytree(stage_dir, output_dir, dirs_exist_ok=False)
-            synaptome = Circuit(
-                name=synaptome.name, path=str(output_dir / "circuit_config.json")
-            )
+            synaptome = Circuit(name=synaptome.name, path=str(output_dir / "circuit_config.json"))
 
         self._synaptome = synaptome
 
@@ -73,10 +68,9 @@ class SynapseParameterizationTask(Task):
         )
         registered_derivation = db_client.register_entity(derivation_model)
         return registered_derivation
-    
+
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
-        """
-        Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use.
+        """Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use.
         """
         per_edge_population = {}
         for _, assigner in self.config.synapse_model_assigners.items():
@@ -102,7 +96,6 @@ class SynapseParameterizationTask(Task):
             for assigner in assigners_for_ep:
                 assigner.assign_parameters(self._synaptome, df)
             write_back_to_edge_file(df, circ.edges[ep_name])
-
 
         # Register (re-)parameterized synaptome
         L.info("Registering the output...")

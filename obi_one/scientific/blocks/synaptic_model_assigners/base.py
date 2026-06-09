@@ -1,13 +1,13 @@
 import numpy as np
-from pydantic import Field
 from pandas import DataFrame
+from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_synaptic_models import (
     SynapticModelReference,
 )
-from obi_one.scientific.library.circuit import Circuit
 
 
 class SynapseModelAssigner(Block):
@@ -28,7 +28,7 @@ class SynapseModelAssigner(Block):
 
     edge_population_name: str = Field(
         title="EdgePopulation name",
-        description="Name of an EdgePopulation of the SONATA circuit that is to be parameterized"
+        description="Name of an EdgePopulation of the SONATA circuit that is to be parameterized",
     )
 
     synaptic_model: SynapticModelReference = Field(
@@ -46,11 +46,10 @@ class SynapseModelAssigner(Block):
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         raise NotImplementedError("This is implemented in derived classes!")
-    
-    def edge_indices(self,
-                     circuit: Circuit,
-                     min_edge_id: int | None = None,
-                     max_edge_id: int | None = None) -> DataFrame:
+
+    def edge_indices(
+        self, circuit: Circuit, min_edge_id: int | None = None, max_edge_id: int | None = None
+    ) -> DataFrame:
         circ = circuit.sonata_circuit
         ep = circ.edges[self.edge_population_name]
         indices = self._edge_indices(circuit)
@@ -59,26 +58,23 @@ class SynapseModelAssigner(Block):
         if max_edge_id is not None:
             indices = indices[indices < max_edge_id]
         return ep.get(indices, properties=["@source_node", "@target_node"])
-    
-    def create_parameters(self,
-                          circuit: Circuit,
-                          min_edge_id: int | None = None,
-                          max_edge_id: int | None = None) -> DataFrame:
-        indices_df = self.edge_indices(circuit,
-                                       min_edge_id=min_edge_id,
-                                       max_edge_id=max_edge_id)
+
+    def create_parameters(
+        self, circuit: Circuit, min_edge_id: int | None = None, max_edge_id: int | None = None
+    ) -> DataFrame:
+        indices_df = self.edge_indices(circuit, min_edge_id=min_edge_id, max_edge_id=max_edge_id)
         param_model = self.synaptic_model.block
         new_params = param_model.sample(indices_df)
         return new_params
-    
-    def assign_parameters(self,
-                          circuit: Circuit,
-                          params: DataFrame,
-                          min_edge_id: int | None = None,
-                          max_edge_id: int | None = None) -> None:
+
+    def assign_parameters(
+        self,
+        circuit: Circuit,
+        params: DataFrame,
+        min_edge_id: int | None = None,
+        max_edge_id: int | None = None,
+    ) -> None:
         new_params = self.create_parameters(
-            circuit,
-            min_edge_id=min_edge_id,
-            max_edge_id=max_edge_id
+            circuit, min_edge_id=min_edge_id, max_edge_id=max_edge_id
         )
         params.update(new_params)
