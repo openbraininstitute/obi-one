@@ -1,5 +1,6 @@
 import logging
 import shutil
+import tempfile
 from pathlib import Path
 
 from connectome_manipulator.model_building import model_types
@@ -19,6 +20,7 @@ from obi_one.scientific.tasks.synapse_parameterization.utils import (
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
     SynapticModelAssignerUnion,
 )
+from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -29,32 +31,23 @@ class SynapseParameterizationTask(Task):
     _circuit: Circuit | None = PrivateAttr(default=None)
     _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
     _pathway_model: model_types.ConnPropsModel | None = PrivateAttr(default=None)
+    _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
-    def _stage_circuit(self, *, db_client: Client, entity_cache: bool) -> Path:
-        self._circuit_entity = self.config.initialize.circuit.entity(db_client=db_client)
-        root_dir = self.config.scan_output_root.resolve()
-        output_dir = self.config.coordinate_output_root.resolve()
+    def __del__(self) -> None:
+        """Destructor for automatic clean-up (if something goes wrong)."""
+        self._cleanup_temp_dir()
 
-        if entity_cache:
-            # Use a cache directory at the campaign root --> Won't be deleted after extraction!
-            L.info("Using entity cache")
-            stage_dir = root_dir / "entity_cache" / "sonata_circuit" / str(self._circuit_entity.id)
-        else:
-            # Stage circuit directly in output directory --> Modify in-place!
-            stage_dir = output_dir
+    def _create_temp_dir(self) -> Path:
+        """Creation of a new temporary directory."""
+        self._cleanup_temp_dir()  # In case it exists already
+        self._temp_dir = tempfile.TemporaryDirectory()
+        return Path(self._temp_dir.name).resolve()
 
-        circuit = self.config.initialize.circuit.stage_circuit(
-            db_client=db_client, dest_dir=stage_dir, entity_cache=entity_cache
-        )
-
-        if output_dir != stage_dir:
-            # Copy staged circuit into output directory
-            shutil.copytree(stage_dir, output_dir, dirs_exist_ok=False)
-            circuit = Circuit(name=circuit.name, path=str(output_dir / "circuit_config.json"))
-
-        self._circuit = circuit
-
-        return output_dir
+    def _cleanup_temp_dir(self) -> None:
+        """Clean-up of temporary directory, if any."""
+        if self._temp_dir is not None:
+            self._temp_dir.cleanup()
+            self._temp_dir = None
 
     def _register_parameterized_circuit(
         self, *, db_client: Client, circuit_path: Path
@@ -107,8 +100,20 @@ class SynapseParameterizationTask(Task):
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)
 
-        # Stage circuit
-        output_dir = self._stage_circuit(db_client=db_client, entity_cache=entity_cache)
+        # Resolve the circuit (local path or staging from ID), then copy it into the output
+        # directory so that its synapse parameters can be modified in place.
+        staged_circuit, self._circuit_entity = db_sdk.resolve_circuit(
+            self.config.initialize.circuit,
+            db_client=db_client,
+            entity_cache=entity_cache,
+            cache_root=self.config.scan_output_root,
+            temp_dir=self._create_temp_dir(),
+        )
+        output_dir = self.config.coordinate_output_root.resolve()
+        shutil.copytree(Path(staged_circuit.path).parent, output_dir, dirs_exist_ok=False)
+        self._circuit = Circuit(
+            name=staged_circuit.name, path=str(output_dir / "circuit_config.json")
+        )
 
         # Check parameters
         circ = self._circuit.sonata_circuit
