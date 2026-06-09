@@ -5,7 +5,10 @@ from obi_one.core.info import Info
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
-from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
+from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    AdvancedEMSynapseMappingOptions,
+    EMSynapseMappingSingleConfig,
+)
 
 _INFO = Info(campaign_name="test", campaign_description="test")
 
@@ -29,6 +32,7 @@ class TestEMSynapseMappingConfig:
                     elements=(_morph(),),
                 ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
         assert len(cfg.initialize.neurons) == 1
 
@@ -42,6 +46,7 @@ class TestEMSynapseMappingConfig:
                     elements=(_morph(), _morph("00003")),
                 ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
         assert len(cfg.initialize.neurons) == 2
 
@@ -55,6 +60,7 @@ class TestEMSynapseMappingConfig:
                     elements=(_morph(), _memodel()),
                 ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
         assert isinstance(cfg.initialize.neurons[0], CellMorphologyFromID)
         assert isinstance(cfg.initialize.neurons[1], MEModelFromID)
@@ -72,6 +78,7 @@ class TestEMSynapseMappingConfig:
                         elements=(),
                     ),
                 ),
+                advanced_options=AdvancedEMSynapseMappingOptions(),
             )
 
     def test_defaults(self, tmp_path):
@@ -84,9 +91,10 @@ class TestEMSynapseMappingConfig:
                     elements=(_morph(), _memodel()),
                 ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
-        init = cfg.initialize
-        assert init.physical_edge_population_name == "physical_connections"
-        assert init.virtual_edge_population_name == "virtual_afferents"
-        assert init.biophysical_node_population == "biophysical_neurons"
-        assert init.virtual_node_population == "virtual_afferent_neurons"
+        advanced = cfg.advanced_options
+        assert not advanced.custom_physical_edge_population_name
+        assert not advanced.custom_virtual_edge_population_name
+        assert not advanced.custom_biophysical_node_population
+        assert not advanced.custom_virtual_node_population
