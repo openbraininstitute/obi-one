@@ -67,15 +67,18 @@ def _create_nodes(
         nodes["y"] *= 4 / 1000
         nodes["z"] *= 40 / 1000
 
-        to_drop = [
+        nodes = nodes.drop(columns=[
             "root_id",
-            "pos_x", "pos_y", "pos_z",
-            "soma_x", "soma_y", "soma_z",
-            ]
-        nodes = nodes.drop(columns=to_drop)
+            "pos_x",
+            "pos_y",
+            "pos_z",
+            "soma_x",
+            "soma_y",
+            "soma_z",
+        ])
 
         for col in string_cols:
-            nodes[col].fillna("unknown")
+            nodes[col] = nodes[col].fillna("unknown")
 
     cc = CellCollection.from_dataframe(nodes, index_offset=0)
     cc.population_name = POPULATION
