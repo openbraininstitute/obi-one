@@ -116,20 +116,12 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
         """
         if force_resolve_ids:
             # Resolve individual IDs per population and use in compound expression
-            expression = []
-            combined = {}
             ids_per_npop = self.get_neuron_ids(circuit)
-            for idx, (npop, ids) in enumerate(ids_per_npop.items()):
-                comb_key = f"{self.node_set}__{idx}__"
-                combined[comb_key] = {
-                    "population": npop,
-                    "node_id": ids,
-                }
-                expression.append(comb_key)
-            if len(expression) == 1:
-                # Simplify to single expression
-                expression = combined[expression[0]]
-                combined = {}
+            expression, combined = NeuronSet.ids_to_node_set_definition(
+                ids_per_npop,
+                prefix=self.node_set,  # ty:ignore[invalid-argument-type]
+                simplified=True,
+            )
         else:
             # Symbolic expression can be preserved
             expression = self._get_expression(circuit)

@@ -143,12 +143,34 @@ class NeuronSet(Block, abc.ABC):
         """
 
     @abc.abstractmethod
-    def _get_expression(self, circuit: Circuit) -> dict | list:
-        """Returns the SONATA node set expression."""
-
-    @abc.abstractmethod
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population."""
+
+    @staticmethod
+    def ids_to_node_set_definition(
+        ids_per_npop: dict[str, list[int]],
+        *,
+        prefix: str = "nset",
+        simplified: bool = True,
+    ) -> tuple[dict | list, dict]:
+        """Turns a dict of ID per population into a (compound) node set definition.
+
+        May be simplified to a single expression, if possible.
+        """
+        expression = []
+        combined = {}
+        for idx, (npop, ids) in enumerate(ids_per_npop.items()):
+            comb_key = f"{prefix}__{idx}__"
+            combined[comb_key] = {
+                "population": npop,
+                "node_id": ids,
+            }
+            expression.append(comb_key)
+        if simplified and len(expression) == 1:
+            # Simplify to single expression
+            expression = combined[expression[0]]
+            combined = {}
+        return expression, combined
 
     def add_node_set_definition_to_sonata_circuit(
         self, circuit: Circuit, *, force_resolve_ids: bool = False
