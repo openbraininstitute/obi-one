@@ -5,15 +5,24 @@ from pathlib import Path
 from textwrap import dedent
 
 import h5py
+import libsonata
 import numpy as np
 import pandas as pd
-from brainbuilder.utils.sonata.split_population import _write_indexes  # noqa: PLC2701
 from brian2 import Hz, ms, mV
 from voxcell import CellCollection
 
 L = logging.getLogger(__name__)
 
 POPULATION = "drosophila"
+
+
+def _write_indexes(
+    edge_file_name: str | Path, new_pop_name: str, source_node_count: int, target_node_count: int
+) -> None:
+    """Ibid."""
+    libsonata.EdgePopulation.write_indices(
+        str(edge_file_name), new_pop_name, source_node_count, target_node_count
+    )
 
 
 def _create_nodes(
@@ -63,9 +72,9 @@ def _create_nodes(
             nodes[axis] = nodes[f"soma_{axis}"].fillna(pos)
 
         # voxel space (4, 4, 40) nm -> micrometres
-        nodes["x"] *= 4 / 1000
-        nodes["y"] *= 4 / 1000
-        nodes["z"] *= 40 / 1000
+        nodes["x"] = nodes["x"].to_numpy(dtype=np.float32) * 4 / 1000
+        nodes["y"] = nodes["y"].to_numpy(dtype=np.float32) * 4 / 1000
+        nodes["z"] = nodes["z"].to_numpy(dtype=np.float32) * 40 / 1000
 
         nodes = nodes.drop(columns=[
             "root_id",
@@ -285,8 +294,6 @@ def convert(
 
 
 if __name__ == "__main__":
-    output = Path("output")
-    output.mkdir(exist_ok=True)
     DROSOPHILA_REPO = Path("Drosophila_brain_model")
 
     SUGAR_NODES = [
@@ -313,13 +320,17 @@ if __name__ == "__main__":
             720575940640649691,
         ]
 
-    if 0: # 630
+    if True:  # 630
+        output = Path("output-630")
+        output.mkdir(exist_ok=True)
         PATH_COMP = DROSOPHILA_REPO / "2023_03_23_completeness_630_final.csv"
         PATH_CON = DROSOPHILA_REPO / "2023_03_23_connectivity_630_final.parquet"
         # from version v1.0.0
         # https://github.com/flyconnectome/flywire_annotations/raw/847a711ce3b6e3cc675cf9ef9c843ba564bba1b5/supplemental_files/Supplemental_file1_annotations.tsv
         ANNOTATIONS = DROSOPHILA_REPO / "Supplemental_file1_neuron_annotations_630.tsv"
     else:
+        output = Path("output-783")
+        output.mkdir(exist_ok=True)
         PATH_COMP = DROSOPHILA_REPO / "Completeness_783.csv"
         PATH_CON = DROSOPHILA_REPO / "Connectivity_783.parquet"
         # from version v3.0.0

@@ -27,7 +27,7 @@ def test_get_compute_cell_success(monkeypatch):
 
     # Mock make_http_request
     mock_response = MagicMock()
-    mock_response.json.return_value = {"data": {"virtual_lab": {"compute_cell": "cell_a"}}}
+    mock_response.json.return_value = {"compute_cell": "cell_a"}
 
     monkeypatch.setattr(
         "app.dependencies.compute_cell.make_http_request",

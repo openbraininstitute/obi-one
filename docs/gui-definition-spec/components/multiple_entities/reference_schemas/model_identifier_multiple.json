@@ -1,0 +1,18 @@
+{
+  "model_identifier_multiple": {
+    "oneOf": [
+        {
+            "type": "#/components/schemas/EMSynapseMappingInputNamedTuple"
+        },
+        {
+            "type": "array",
+            "minLength": 1,
+            "items": {
+                "type": "#/components/schemas/EMSynapseMappingInputNamedTuple"
+            }
+        }
+    ],
+  "title": "Neurons",
+  "description": "Neurons to include in the circuit (>= 1).",
+  "ui_element": "model_identifier_multiple"
+}

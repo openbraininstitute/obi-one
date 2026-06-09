@@ -25,6 +25,7 @@ from obi_one.utils.circuit_registration import (
     get_subject,
     register_asset,
     register_circuit,
+    register_circuit_from_metadata,
     register_contributions,
     register_derivation,
     register_publication_links,
@@ -38,6 +39,7 @@ from obi_one.utils.circuit_registration.generate import (
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
 )
+from obi_one.utils.circuit_registration.register import _resolve_target_simulator
 
 from tests.utils import CIRCUIT_DIR
 
@@ -1353,6 +1355,73 @@ def test_register_circuit_public_without_license():
             build_category="computational_model",
             brain_region=brain_region,
             subject=subject,
+            target_simulator="NEURON",
             authorized_public=True,
             license=None,
+        )
+
+
+# --- _resolve_target_simulator ---
+
+
+def test_resolve_target_simulator_no_config():
+    """Test that target_simulator is returned as-is when config has no target_simulator."""
+    circuit = MagicMock()
+    circuit.sonata_circuit.config.get.return_value = None
+
+    result = _resolve_target_simulator("NEURON", circuit)
+    assert result == "NEURON"
+
+
+def test_resolve_target_simulator_config_matches():
+    """Test that target_simulator is returned when config matches the provided value."""
+    circuit = MagicMock()
+    circuit.sonata_circuit.config.get.return_value = "NEURON"
+
+    result = _resolve_target_simulator("NEURON", circuit)
+    assert result == "NEURON"
+
+
+def test_resolve_target_simulator_config_mismatch():
+    """Test that a mismatch between provided and config target_simulator raises."""
+    circuit = MagicMock()
+    circuit.sonata_circuit.config.get.return_value = "CORENEURON"
+
+    with pytest.raises(ValueError, match="does not match"):
+        _resolve_target_simulator("NEURON", circuit)
+
+
+# --- register_circuit_from_metadata (target_simulator required) ---
+
+
+def test_register_circuit_from_metadata_missing_target_simulator():
+    """Test that missing target_simulator key in metadata raises a KeyError."""
+    client = MagicMock()
+    metadata = {
+        "name": "test",
+        "description": "test",
+        "build_category": "computational_model",
+        "species": "Mus musculus",
+        "subject": "mouse-subject",
+        "brain_region": "SSp",
+        "brain_region_hierarchy": "test-hierarchy",
+        # "target_simulator" intentionally missing
+    }
+
+    with (
+        patch("obi_one.utils.circuit_registration.register.check_if_circuit_exists"),
+        patch("obi_one.utils.circuit_registration.register.get_subject"),
+        patch("obi_one.utils.circuit_registration.register.get_brain_region_hierarchy"),
+        patch("obi_one.utils.circuit_registration.register.check_hierarchy_species"),
+        patch("obi_one.utils.circuit_registration.register.get_brain_region"),
+        patch("obi_one.utils.circuit_registration.register.get_license"),
+        patch("obi_one.utils.circuit_registration.register.get_root_circuit"),
+        patch("obi_one.utils.circuit_registration.register.get_parent_circuit"),
+        patch("obi_one.utils.circuit_registration.register.get_exp_date"),
+        pytest.raises(KeyError, match="target_simulator"),
+    ):
+        register_circuit_from_metadata(
+            client=client,
+            circuit_metadata=metadata,
+            circuit_path="/some/path",
         )
