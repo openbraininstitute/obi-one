@@ -3,10 +3,11 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 import entitysdk
-from pydantic import Field
+from libsonata import SimulatorType
+from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -16,11 +17,17 @@ from obi_one.core.serialization_constants import (
     SCAN_CONFIG_FILENAME,
 )
 from obi_one.core.single import SingleConfigMixin
+from obi_one.core.units import Units
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.constants import (
+    DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
+    MIN_SIMULATION_LENGTH_MILLISECONDS,
+)
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
@@ -30,6 +37,8 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
+
+SONATA_VERSION = 2.4
 
 L = logging.getLogger(__name__)
 
@@ -58,6 +67,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     description: ClassVar[str] = "SONATA simulation campaign"
 
     _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
+    _sonata_version: ClassVar[float] = SONATA_VERSION
+    _target_simulator: ClassVar[SimulatorType] = None
+    _timestep: ClassVar[None] = None
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
@@ -66,7 +78,52 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     }
 
     class Initialize(Block):
-        pass
+        simulation_length: (
+            Annotated[
+                NonNegativeFloat,
+                Field(ge=MIN_SIMULATION_LENGTH_MILLISECONDS, le=MAX_SIMULATION_LENGTH_MILLISECONDS),
+            ]
+            | Annotated[
+                list[
+                    Annotated[
+                        NonNegativeFloat,
+                        Field(
+                            ge=MIN_SIMULATION_LENGTH_MILLISECONDS,
+                            le=MAX_SIMULATION_LENGTH_MILLISECONDS,
+                        ),
+                    ]
+                ],
+                Field(min_length=1),
+            ]
+        ) = Field(
+            default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+            title="Duration",
+            description="Simulation length in milliseconds (ms).",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLISECONDS,
+            },
+        )
+
+        v_init: float | list[float] = Field(
+            default=-80.0,
+            title="Initial Voltage",
+            description="Initial membrane potential in millivolts (mV).",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MILLIVOLTS,
+            },
+        )
+        random_seed: int | list[int] = Field(
+            default=1,
+            title="Random Seed",
+            description="Random seed for the simulation.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+            },
+        )
+
+    initialize: Initialize
 
     timestamps: dict[str, TimestampsUnion] = Field(
         default_factory=dict,
@@ -80,6 +137,47 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
+
+    def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        if sonata_config is None:
+            sonata_config = {}
+
+        sonata_config["version"] = self._sonata_version
+        if self._target_simulator is None:
+            msg = "Target simulator not specified for simulation campaign."
+            raise NotImplementedError(msg)
+        sonata_config["target_simulator"] = self._target_simulator.name
+
+        sonata_config["run"] = {}
+        sonata_config["run"]["dt"] = self.timestep
+        sonata_config["run"]["random_seed"] = self.initialize.random_seed
+        sonata_config["run"]["tstop"] = self.initialize.simulation_length
+
+        sonata_config["conditions"] = {}
+        sonata_config["conditions"]["v_init"] = self.initialize.v_init
+
+        sonata_config["output"] = {}
+        sonata_config["output"]["output_dir"] = "output"
+        sonata_config["output"]["spikes_file"] = "spikes.h5"
+
+        return sonata_config
+
+    @property
+    def target_simulator(self) -> SimulatorType:
+        """Returns the target simulator for the simulation campaign."""
+        if self._target_simulator is None:
+            msg = "Target simulator not specified for simulation campaign."
+            raise NotImplementedError(msg)
+        return self._target_simulator
+
+    @property
+    def timestep(self) -> PositiveFloat:
+        """Returns the simulation timestep."""
+        if self._timestep is None:
+            msg = "Timestep not specified for simulation campaign."
+            raise NotImplementedError(msg)
+        return self._timestep
 
     def entity_id_for_campaign_entity_generation(self) -> str:
         """Determines the entity ID for the simulation campaign based on the circuit."""
