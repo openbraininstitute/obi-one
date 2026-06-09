@@ -26,52 +26,77 @@ L = logging.getLogger(__name__)
 class SynapseParameterizationTask(Task):
     config: SynapseParameterizationSingleConfig
 
-    _synaptome: Circuit | None = PrivateAttr(default=None)
-    _synaptome_entity: models.Circuit | None = PrivateAttr(default=None)
+    _circuit: Circuit | None = PrivateAttr(default=None)
+    _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
     _pathway_model: model_types.ConnPropsModel | None = PrivateAttr(default=None)
 
-    def _stage_synaptome(self, *, db_client: Client, entity_cache: bool) -> Path:
-        self._synaptome_entity = self.config.initialize.synaptome.entity(db_client=db_client)
+    def _stage_circuit(self, *, db_client: Client, entity_cache: bool) -> Path:
+        self._circuit_entity = self.config.initialize.circuit.entity(db_client=db_client)
         root_dir = self.config.scan_output_root.resolve()
         output_dir = self.config.coordinate_output_root.resolve()
 
         if entity_cache:
             # Use a cache directory at the campaign root --> Won't be deleted after extraction!
             L.info("Using entity cache")
-            stage_dir = (
-                root_dir / "entity_cache" / "sonata_circuit" / str(self._synaptome_entity.id)
-            )
+            stage_dir = root_dir / "entity_cache" / "sonata_circuit" / str(self._circuit_entity.id)
         else:
             # Stage circuit directly in output directory --> Modify in-place!
             stage_dir = output_dir
 
-        synaptome = self.config.initialize.synaptome.stage_circuit(
+        circuit = self.config.initialize.circuit.stage_circuit(
             db_client=db_client, dest_dir=stage_dir, entity_cache=entity_cache
         )
 
         if output_dir != stage_dir:
             # Copy staged circuit into output directory
             shutil.copytree(stage_dir, output_dir, dirs_exist_ok=False)
-            synaptome = Circuit(name=synaptome.name, path=str(output_dir / "circuit_config.json"))
+            circuit = Circuit(name=circuit.name, path=str(output_dir / "circuit_config.json"))
 
-        self._synaptome = synaptome
+        self._circuit = circuit
 
         return output_dir
 
-    def _register_derivation(
-        self, db_client: Client, registered_synaptome: models.Circuit
-    ) -> models.Derivation:
-        derivation_model = models.Derivation(
-            used=self._synaptome_entity,
-            generated=registered_synaptome,
-            derivation_type=types.DerivationType.circuit_rewiring,
+    def _register_parameterized_circuit(
+        self, *, db_client: Client, circuit_path: Path
+    ) -> models.Circuit | None:
+        """Register the parameterized circuit as a derivation of the original (dry run).
+
+        Metadata is inherited from the original circuit so that all entity references
+        (subject, species, brain region, hierarchy, parent) resolve cleanly.
+        """
+        # Deferred import: pulls in heavy circuit/asset tooling only when registering.
+        from obi_one.utils.circuit_registration.register import (  # noqa: PLC0415
+            register_circuit_from_metadata,
         )
-        registered_derivation = db_client.register_entity(derivation_model)
-        return registered_derivation
+
+        parent = self._circuit_entity
+        hierarchy = db_client.get_entity(
+            entity_id=parent.brain_region.hierarchy_id,
+            entity_type=models.BrainRegionHierarchy,
+        )
+        circuit_metadata = {
+            "name": f"{parent.name} (synapse-parameterized)",
+            "description": (
+                f"Synapse-parameterized derivation of circuit '{parent.name}' ({parent.id})."
+            ),
+            "build_category": parent.build_category,
+            "species": parent.subject.species.name,
+            "subject": parent.subject.name,
+            "brain_region": parent.brain_region.name,
+            "brain_region_hierarchy": hierarchy.name,
+            "target_simulator": parent.target_simulator or types.TargetSimulator.NEURON,
+            "parent": parent.name,
+            "derivation_type": types.DerivationType.circuit_rewiring,
+        }
+        return register_circuit_from_metadata(
+            client=db_client,
+            circuit_metadata=circuit_metadata,
+            circuit_path=circuit_path,
+            dry_run=True,
+        )
 
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
-        """Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use.
-        """
+        """Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use."""
         per_edge_population = {}
         for _, assigner in self.config.synapse_model_assigners.items():
             per_edge_population.setdefault(assigner.edge_population_name, []).append(assigner)
@@ -82,44 +107,21 @@ class SynapseParameterizationTask(Task):
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)
 
-        # Stage synaptome
-        output_dir = self._stage_synaptome(db_client=db_client, entity_cache=entity_cache)
+        # Stage circuit
+        output_dir = self._stage_circuit(db_client=db_client, entity_cache=entity_cache)
 
         # Check parameters
-        circ = self._synaptome.sonata_circuit
+        circ = self._circuit.sonata_circuit
         per_edge_population = self._assemble_per_edge_population()
         for assigners_for_ep in per_edge_population.values():
             check_consistent_synapse_models(assigners_for_ep)
 
         for ep_name, assigners_for_ep in per_edge_population.items():
-            df = get_default_for(assigners_for_ep, ep_name, self._synaptome)
+            df = get_default_for(assigners_for_ep, ep_name, self._circuit)
             for assigner in assigners_for_ep:
-                assigner.assign_parameters(self._synaptome, df)
+                assigner.assign_parameters(self._circuit, df)
             write_back_to_edge_file(df, circ.edges[ep_name])
 
-        # Register (re-)parameterized synaptome
+        # Register the (re-)parameterized circuit as a derivation of the original (dry run)
         L.info("Registering the output...")
-        file_paths = {
-            str(path.relative_to(output_dir)): path
-            for path in output_dir.rglob("*")
-            if path.is_file()
-        }
-        # compressed_path = compress_output(output_dir)
-
-        # registered_synaptome = register_synaptome(
-        #     db_client=db_client,
-        #     name=synaptome_name_with_physiology(self._synaptome_entity.name),
-        #     description=synaptome_description_with_physiology(
-        #         self._synaptome_entity.description, self._pathway_model.prop_names
-        #     ),
-        #     number_synapses=self._synaptome_entity.number_synapses,
-        #     number_connections=self._synaptome_entity.number_connections,
-        #     source_dataset=self._synaptome_entity,
-        #     em_dataset=self._synaptome_entity,
-        #     lst_notices=[],
-        #     file_paths=file_paths,
-        #     compressed_path=compressed_path,
-        # )
-
-        # # Register derivation link
-        # self._register_derivation(db_client=db_client, registered_synaptome=registered_synaptome)
+        self._register_parameterized_circuit(db_client=db_client, circuit_path=output_dir)

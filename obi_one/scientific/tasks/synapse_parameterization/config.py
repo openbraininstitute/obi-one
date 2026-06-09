@@ -41,7 +41,7 @@ class BlockGroup(StrEnum):
 class SynapseParameterizationScanConfig(ScanConfig, SingleConfigMixin):
     name: ClassVar[str] = "Synapse parameterization"
     description: ClassVar[str] = (
-        "Generates a physiological parameterization of an anatomical synaptome or replaces an"
+        "Generates a physiological parameterization of an anatomical circuit or replaces an"
         " existing paramterization."
     )
 
@@ -51,9 +51,9 @@ class SynapseParameterizationScanConfig(ScanConfig, SingleConfigMixin):
     }
 
     class Initialize(Block):
-        synaptome: CircuitFromID = Field(
-            title="Synaptome",
-            description="Synaptome (i.e., circuit of scale single) to (re-)parameterize.",
+        circuit: CircuitFromID = Field(
+            title="Circuit",
+            description="Circuit to (re-)parameterize.",
         )
 
     info: Info = Field(
