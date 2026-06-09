@@ -12,8 +12,8 @@ from pathlib import Path
 
 import bluepysnap
 import bluepysnap.input
-import brian2  # ty:ignore[unresolved-import]
-import brian2.units  # ty:ignore[unresolved-import]
+import brian2
+import brian2.units
 import click
 import h5py
 import libsonata
@@ -263,6 +263,9 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
     brian2.start_scope()
 
     neurons = _create_neurons(circuit)
+    # Override the initial membrane potential with `v_init` (mV) from the simulation config,
+    # taking precedence over the value set by the neuron template.
+    neurons.v = simulation.conditions.v_init * brian2.units.mV
     synapses = _create_synapses(circuit, neurons)
 
     spike_monitor = brian2.SpikeMonitor(neurons)

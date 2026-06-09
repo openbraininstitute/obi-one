@@ -119,20 +119,6 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
         },
     )
 
-    """
-    recordings: dict[str, Brian2RecordingUnion] = Field(
-        default_factory=dict,
-        description="Brian2-compatible recordings for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Recording",
-            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-    """
-
 
 class Brian2CircuitSimulationSingleConfig(
     Brian2CircuitSimulationScanConfig, SimulationSingleConfigMixin
