@@ -28,8 +28,6 @@ from obi_auth import get_token
 from obi_auth.typedef import AuthMode, DeploymentEnvironment
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-POPULATION = "drosophila"
-
 REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_path=True)
 L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
@@ -288,7 +286,7 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
     L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
     spikes_path = _write_spikes(
         filepath=output_dir / simulation.output.spikes_file,
-        population_name=POPULATION,
+        population_name=circuit.nodes.population_names[0],
         timestamps=timestamps,
         node_ids=node_ids,
     )
