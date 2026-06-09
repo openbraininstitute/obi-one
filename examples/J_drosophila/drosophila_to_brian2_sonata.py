@@ -14,6 +14,7 @@ from voxcell import CellCollection
 L = logging.getLogger(__name__)
 
 POPULATION = "drosophila"
+UNKNOWN_STRING = "[unknown]"
 
 
 def _write_indexes(
@@ -26,9 +27,20 @@ def _write_indexes(
 
 
 def _create_nodes(
-    output: Path, path_comp: Path, annotations_path: Path | None
+    output: Path, path_comp: Path, annotations_path: Path | None, connections: pd.DataFrame
 ) -> tuple[Path, pd.DataFrame]:
-    df_comp = pd.read_csv(path_comp, index_col=0)
+    excitatory_df = (
+        connections[["Presynaptic_ID", "Excitatory"]].drop_duplicates().set_index("Presynaptic_ID")
+    )
+    excitatory_df["synapse_class"] = (
+        excitatory_df["Excitatory"].map({-1: "INH", 1: "EXC"}).astype("string")
+    ).drop(columns="Excitatory")
+    df_comp = (
+        pd.read_csv(path_comp, index_col=0)
+        .merge(excitatory_df, left_index=True, right_index=True, how="left")
+        .fillna(UNKNOWN_STRING)
+    )
+
     assert df_comp.Completed.all()
 
     nodes = pd.DataFrame(
@@ -37,6 +49,7 @@ def _create_nodes(
             "model_type": "brian2_point",
             "model_template": "json:drosophila",
             "flywire_id": df_comp.index,
+            "synapse_class": df_comp.synapse_class.to_numpy()
         },
     )
 
@@ -87,7 +100,7 @@ def _create_nodes(
         ])
 
         for col in string_cols:
-            nodes[col] = nodes[col].fillna("unknown")
+            nodes[col] = nodes[col].fillna(UNKNOWN_STRING)
 
     cc = CellCollection.from_dataframe(nodes, index_offset=0)
     cc.population_name = POPULATION
@@ -98,13 +111,13 @@ def _create_nodes(
 
 def _create_edges(
     output: Path,
-    path_connnections: Path,
+    connections: pd.DataFrame,
     nodes: pd.DataFrame,
     default_params: dict,
     *,
     repack_indices: bool = False
 ) -> Path:
-    df_con = pd.read_parquet(path_connnections).sort_values("Postsynaptic_ID")
+    df_con = connections.copy().sort_values("Postsynaptic_ID")
 
     fly_wire_idx = nodes.reset_index(names=["id"]).set_index("flywire_id").id
     src = np.asarray(
@@ -287,8 +300,9 @@ def convert(
     output.mkdir(parents=True, exist_ok=True)
 
     models_path = _create_models(output, default_params)
-    nodes_path, nodes = _create_nodes(output, path_comp, annotations_path)
-    edges_path = _create_edges(output, path_connnections, nodes, default_params)
+    connections = pd.read_parquet(path_connnections)
+    nodes_path, nodes = _create_nodes(output, path_comp, annotations_path, connections)
+    edges_path = _create_edges(output, connections, nodes, default_params)
     node_sets_path = _create_nodesets(output, nodes, sugar_nodes)
     return _create_config(output, models_path, nodes_path, edges_path, node_sets_path)
 
@@ -320,7 +334,7 @@ if __name__ == "__main__":
             720575940640649691,
         ]
 
-    if True:  # 630
+    if False:  # 630
         output = Path("output-630")
         output.mkdir(exist_ok=True)
         PATH_COMP = DROSOPHILA_REPO / "2023_03_23_completeness_630_final.csv"
