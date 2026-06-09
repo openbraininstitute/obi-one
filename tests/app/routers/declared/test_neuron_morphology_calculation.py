@@ -690,7 +690,7 @@ def test_try_mesh_and_register_unexpected_error(monkeypatch):
 def test_run_morphology_analysis_success(monkeypatch):
     fake_neuron = MagicMock()
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        "neurom.load_morphology",
         MagicMock(return_value=fake_neuron),
     )
     monkeypatch.setattr(
@@ -721,7 +721,7 @@ def test_run_morphology_analysis_success(monkeypatch):
 def test_run_morphology_analysis_filters_none_values(monkeypatch):
     fake_neuron = MagicMock()
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        "neurom.load_morphology",
         MagicMock(return_value=fake_neuron),
     )
     monkeypatch.setattr(
@@ -757,7 +757,7 @@ def test_run_morphology_analysis_filters_none_values(monkeypatch):
 
 def test_run_morphology_analysis_exception(monkeypatch):
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.nm.load_morphology",
+        "neurom.load_morphology",
         MagicMock(side_effect=RuntimeError("neurom crash")),
     )
     monkeypatch.setattr(
