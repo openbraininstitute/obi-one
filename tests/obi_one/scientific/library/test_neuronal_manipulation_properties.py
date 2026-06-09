@@ -8,6 +8,8 @@ from uuid import uuid4
 import numpy as np
 import pytest
 
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
 from obi_one.scientific.library.emodel_parameters import (
     ChannelInfo,
     ChannelSectionListMapping,
@@ -839,6 +841,27 @@ class TestGetCircuitNodeIds:
         # Default population for the tiny circuit is S1nonbarrel_neurons
         assert population == "S1nonbarrel_neurons"
         assert node_ids == [5, 6]
+
+    def test_fetches_node_h5_before_resolving_real_id_neuron_set(self, mock_db_client):
+        """Real IDNeuronSet resolution needs the population nodes.h5 beside the temp config."""
+
+        circuit_id = str(uuid4())
+        neuron_set = IDNeuronSet(
+            neuron_ids=NamedTuple(name="IDNeuronSet", elements=(0, 1)),
+        )
+
+        population, node_ids = get_circuit_node_ids(
+            mock_db_client, circuit_id, neuron_set, population="S1nonbarrel_neurons"
+        )
+
+        fetched_asset_paths = [
+            call.kwargs["asset_path"] for call in mock_db_client.fetch_file.mock_calls
+        ]
+        assert population == "S1nonbarrel_neurons"
+        assert node_ids == [0, 1]
+        assert Path("circuit_config.json") in fetched_asset_paths
+        assert Path("node_sets.json") in fetched_asset_paths
+        assert Path("S1nonbarrel_neurons/nodes.h5") in fetched_asset_paths
 
 
 class TestResolvePopulationAndNodeIdsNeuronSetBranch:

@@ -1,20 +1,13 @@
-import tempfile
-from pathlib import Path
 from typing import Annotated
 
-import bluepysnap as snap
-import numpy as np
 import pandas as pd
 from connectome_manipulator.connectome_comparison import connectivity
 from entitysdk.client import Client
-from entitysdk.models import Asset
-from entitysdk.models.circuit import Circuit
-from entitysdk.types import FetchFileStrategy
-from httpx import HTTPStatusError
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
 
 import obi_one as obi
+from obi_one.scientific.library.sonata_circuit_assets import TemporarySonataCircuit
 
 
 class ConnectivityMetricsRequest(BaseModel):
@@ -69,105 +62,6 @@ class ConnectivityMetricsOutput(BaseModel):
     ) = None
 
 
-class TemporaryPartialCircuit:
-    """Access partial circuit through symlinks or download circuit to temporary folder.
-
-    To avoid unnecessary data download, only the following circuit components are included:
-    Circuit config, node sets, selected edges, src/tgt nodes of selected edges
-    """
-
-    def __init__(self, db_client: Client, circuit_id: str, edge_population: str) -> None:
-        """Initialize TemporaryPartialCircuit."""
-        self._db_client = db_client
-        self._circuit_id = circuit_id
-        self._edge_population = edge_population
-
-    def _fetch_file(self, rel_path: str) -> Path:
-        temp_file_path = Path(self.temp_dir.name) / rel_path
-        if self.asset.id is None:
-            msg = "Asset must have an id"
-            raise ValueError(msg)
-        self._db_client.fetch_file(
-            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
-            entity_type=Circuit,
-            asset_id=self.asset.id,
-            output_path=temp_file_path,
-            asset_path=rel_path,  # ty:ignore[invalid-argument-type]
-            strategy=FetchFileStrategy.link_or_download,
-        )
-        return temp_file_path
-
-    def _get_sonata_asset(self) -> Asset:
-        circuit = self._db_client.get_entity(
-            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
-            entity_type=Circuit,
-        )
-        sonata_assets = [
-            a for a in circuit.assets if a.is_directory and a.label.value == "sonata_circuit"
-        ]
-        if len(sonata_assets) != 1:
-            msg = "Circuit must have exactly one SONATA circuit directory asset!"
-            raise ValueError(msg)
-        return sonata_assets[0]
-
-    def _get_edges_path(self, c: snap.Circuit) -> str:
-        edges_list = c.config["networks"]["edges"]
-        edges = [e for e in edges_list if self._edge_population in e["populations"]]
-        if len(edges) != 1:
-            msg = f"Edge population '{self._edge_population}' not found in the circuit!"
-            raise ValueError(msg)
-        return edges[0]["edges_file"]
-
-    @staticmethod
-    def _get_nodes_path(c: snap.Circuit, node_population: str) -> str:
-        nodes_list = c.config["networks"]["nodes"]
-        nodes = [n for n in nodes_list if node_population in n["populations"]]
-        if len(nodes) != 1:
-            msg = f"Node population '{node_population}' not found in the circuit!"
-            raise ValueError(msg)
-        return nodes[0]["nodes_file"]
-
-    def __enter__(self) -> Path:
-        """Enter."""
-        self.asset = self._get_sonata_asset()
-
-        # Fetch circuit files in temp directory
-        self.temp_dir = tempfile.TemporaryDirectory()
-        try:
-            # Fetch circuit config
-            circuit_config_file = self._fetch_file("circuit_config.json")
-            circuit = obi.Circuit(name=str(self._circuit_id), path=str(circuit_config_file))
-            c = circuit.sonata_circuit
-
-            # Fetch node sets file
-            rel_path = Path(c.config["node_sets_file"]).relative_to(
-                Path(self.temp_dir.name).resolve()
-            )
-            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
-
-            # Fetch edge population
-            edges_path = self._get_edges_path(c)
-            rel_path = Path(edges_path).relative_to(Path(self.temp_dir.name).resolve())
-            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
-
-            # Fetch src/tgt node populations
-            src_nodes = c.edges[self._edge_population].source.name
-            tgt_nodes = c.edges[self._edge_population].target.name
-            for npop in np.unique([src_nodes, tgt_nodes]):
-                nodes_path = self._get_nodes_path(c, npop)
-                rel_path = Path(nodes_path).relative_to(Path(self.temp_dir.name).resolve())
-                self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
-        except HTTPStatusError:
-            self.temp_dir.__exit__(None, None, None)
-            raise
-        return circuit_config_file
-
-    def __exit__(self, *args) -> None:
-        """Exit."""
-        if self.temp_dir is not None:
-            self.temp_dir.__exit__(*args)
-
-
 def _get_stacked_dataframe(conn_dict: dict, data_sel: str) -> pd.DataFrame:
     df = pd.DataFrame(conn_dict[data_sel]["data"], columns=conn_dict["common"]["tgt_group_values"])
     df["pre"] = conn_dict["common"]["src_group_values"]
@@ -188,7 +82,9 @@ def get_connectivity_metrics(
 ) -> ConnectivityMetricsOutput:
     # Acces mounted circuit if possible, or download partial circuit otherwise
     # (incl. config, node sets, selected edges, src/tgt nodes of selected edges)
-    with TemporaryPartialCircuit(db_client, circuit_id, edge_population) as cfg_path:
+    with TemporarySonataCircuit(
+        db_client, circuit_id, edge_population=edge_population
+    ) as cfg_path:
         # Load circuit
         circuit = obi.Circuit(name=circuit_id, path=str(cfg_path))
         c = circuit.sonata_circuit
