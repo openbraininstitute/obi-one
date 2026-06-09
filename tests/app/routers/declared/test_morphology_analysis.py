@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import app.endpoints.useful_functions.useful_functions as uf
 from app.endpoints.morphology_metrics_calculation import run_morphology_analysis
 
 from tests.utils import DATA_DIR
@@ -42,3 +43,13 @@ def test_real_morphology_metrics_match_golden_values():
 
     for key, expected_value in expected.items():
         assert actual[key] == pytest.approx(expected_value), key
+
+
+def test_metric_with_nan_values_is_skipped(monkeypatch, caplog):
+    monkeypatch.setattr(uf.nm, "get", lambda *_args, **_kwargs: [1.0, float("nan"), 3.0])
+
+    result = uf._process_measurement("section_tortuosity", "dimensionless", object())
+
+    assert result == ["section_tortuosity", None, "dimensionless"]
+    assert "1 of 3 values are NaN" in caplog.text
+    json.dumps(result, allow_nan=False)
