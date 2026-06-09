@@ -101,6 +101,8 @@ __all__ = [
     "IonChannelFittingTask",
     "IonChannelModelSimulationScanConfig",
     "IonChannelModelSimulationSingleConfig",
+    "LearningEngineCircuitSimulationScanConfig",
+    "LearningEngineCircuitSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
     "LinearExtracellularLocations",
     "LoadAssetMethod",
@@ -411,6 +413,10 @@ from obi_one.scientific.tasks.folder_compression import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
     Brian2CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationScanConfig,
+    LearningEngineCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
