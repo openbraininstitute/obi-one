@@ -46,8 +46,8 @@ def _generate_lods(
 ) -> dict[os.PathLike, os.PathLike]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)
-    generator = ultraliser.LODGenerator(mesh)
+    mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)  # ty:ignore[unresolved-attribute]
+    generator = ultraliser.LODGenerator(mesh)  # ty:ignore[unresolved-attribute]
     generator.generate_web_lods(str(output_dir))
 
     lod_files: dict[os.PathLike, os.PathLike] = {
