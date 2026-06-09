@@ -2273,7 +2273,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "starlette", marker = "extra == 'service'" },
-    { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.8", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
+    { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
 provides-extras = ["connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
@@ -3395,7 +3395,7 @@ wheels = [
 
 [[package]]
 name = "ultraliser"
-version = "2.1.8"
+version = "2.1.9"
 source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
 dependencies = [
     { name = "connectome-utilities" },
@@ -3410,7 +3410,7 @@ dependencies = [
     { name = "tqdm" },
 ]
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.1.8/ultraliser-2.1.8-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f45b9e3d4a0e501dd1f82734291ad9599004d5ae02e64c7a3bf2415896be7c54" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.1.9/ultraliser-2.1.9-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0427b25a35811f249ac94dace4c769f72e7402d975d9689515cda32e81a0dd4f" },
 ]
 
 [[package]]
