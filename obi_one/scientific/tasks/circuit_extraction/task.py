@@ -318,7 +318,7 @@ class CircuitExtractionTask(Task):
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
             with BenchmarkTracker.section("run_validation"):
-                circuit_utils.run_validation(new_circuit_path)  # ty:ignore[invalid-argument-type]
+                circuit_utils.run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
