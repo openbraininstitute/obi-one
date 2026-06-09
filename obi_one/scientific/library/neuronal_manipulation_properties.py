@@ -12,15 +12,10 @@ Provides logic to:
 from __future__ import annotations
 
 import logging
-import tempfile
-from pathlib import Path
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from bluepysnap import Circuit as SnapCircuit
 from entitysdk.models import Derivation as DerivationModel
-from entitysdk.models.circuit import Circuit
-from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage
 
 from obi_one.scientific.library.circuit import Circuit as ObiCircuit
@@ -31,9 +26,17 @@ from obi_one.scientific.library.memodel_circuit import (
     MechanismVariableDetail,
     _build_mechanism_variables_by_ion_channel_response,
 )
+from obi_one.scientific.library.sonata_circuit_assets import (
+    TemporarySonataCircuit,
+    asset_path_relative_to,
+    get_sonata_circuit_asset,
+)
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     import entitysdk.client
+    from entitysdk.models.circuit import Circuit
 
     from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 
@@ -45,19 +48,8 @@ def _get_circuit_asset(
     circuit_id: str,
 ) -> tuple[Circuit, UUID]:
     """Get circuit entity and its sonata_circuit directory asset ID."""
-    circuit_entity = db_client.get_entity(
-        entity_id=UUID(circuit_id),
-        entity_type=Circuit,
-    )
-
-    directory_assets = [
-        a for a in circuit_entity.assets if a.is_directory and a.label.value == "sonata_circuit"
-    ]
-    if len(directory_assets) != 1:
-        msg = f"Circuit {circuit_id} must have exactly one sonata_circuit directory asset."
-        raise ValueError(msg)
-
-    asset_id = directory_assets[0].id
+    circuit_entity, asset = get_sonata_circuit_asset(db_client, circuit_id)
+    asset_id = asset.id
     if asset_id is None:
         msg = f"Circuit {circuit_id} sonata_circuit asset has no ID."
         raise ValueError(msg)
@@ -84,22 +76,14 @@ def get_circuit_node_ids(
     """
     circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_config_path = Path(temp_dir) / "circuit_config.json"
-        db_client.fetch_file(
-            entity_id=UUID(circuit_id),
-            entity_type=Circuit,
-            asset_id=asset_id,
-            output_path=temp_config_path,
-            asset_path=Path("circuit_config.json"),
-            strategy=FetchFileStrategy.link_or_download,
-        )
-
+    staged_circuit = TemporarySonataCircuit(db_client, circuit_id, asset_id=asset_id)
+    with staged_circuit as temp_config_path:
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(temp_config_path))
 
         if population is None:
             population = obi_circuit.default_population_name
 
+        staged_circuit.fetch_node_population(obi_circuit.sonata_circuit, population)
         node_ids = neuron_set.get_neuron_ids(obi_circuit, population).tolist()
 
     return population, node_ids
@@ -127,20 +111,13 @@ def get_model_template_for_nodes(
     Raises:
         ValueError: If model_template property is not available.
     """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_config_path = Path(temp_dir) / "circuit_config.json"
-        db_client.fetch_file(
-            entity_id=UUID(circuit_id),
-            entity_type=Circuit,
-            asset_id=asset_id,
-            output_path=temp_config_path,
-            asset_path=Path("circuit_config.json"),
-            strategy=FetchFileStrategy.link_or_download,
-        )
-
+    staged_circuit = TemporarySonataCircuit(
+        db_client, circuit_id, asset_id=asset_id, include_node_sets=False
+    )
+    with staged_circuit as temp_config_path:
         snap_circuit = SnapCircuit(temp_config_path)
         nodes_h5_path = snap_circuit.nodes[population].h5_filepath
-        remote_path = Path(nodes_h5_path).relative_to(temp_dir)
+        remote_path = asset_path_relative_to(nodes_h5_path, staged_circuit.temp_dir_path)
 
         with TemporaryAsset(remote_path, db_client, circuit_id, str(asset_id)) as nodes_file:
             pop_obj = NodeStorage(nodes_file).open_population(population)
@@ -331,16 +308,10 @@ def _resolve_population_and_node_ids(
     """Resolve population name and node IDs from inputs."""
     if node_ids is not None:
         if population is None:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_config_path = Path(temp_dir) / "circuit_config.json"
-                db_client.fetch_file(
-                    entity_id=UUID(circuit_id),
-                    entity_type=Circuit,
-                    asset_id=asset_id,
-                    output_path=temp_config_path,
-                    asset_path=Path("circuit_config.json"),
-                    strategy=FetchFileStrategy.link_or_download,
-                )
+            staged_circuit = TemporarySonataCircuit(
+                db_client, circuit_id, asset_id=asset_id, include_node_sets=False
+            )
+            with staged_circuit as temp_config_path:
                 obi_circuit = ObiCircuit(
                     name=circuit_entity.name or circuit_id, path=str(temp_config_path)
                 )
