@@ -1083,6 +1083,69 @@ def test_register_circuit_skip_additional_assets():
     mock_gen.assert_not_called()
 
 
+def test_register_circuit_skip_validation():
+    """Test that skip_validation=True skips run_validation."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.run_validation") as mock_validation,
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            dry_run=False,
+        )
+
+    mock_validation.assert_not_called()
+
+
+def test_register_circuit_runs_validation_by_default():
+    """Test that run_validation is called when skip_validation is not set."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.run_validation") as mock_validation,
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            dry_run=False,
+        )
+
+    mock_validation.assert_called_once()
+
+
 def test_register_circuit_invalid_path():
     """Test that non-existent circuit path raises."""
     client = MagicMock()
