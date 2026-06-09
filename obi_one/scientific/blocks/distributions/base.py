@@ -1,12 +1,35 @@
 import abc
 
 import numpy as np
+from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 
 
 class Distribution(Block, abc.ABC):
     """Distribution base class."""
+
+    min: float | None | list[float] = Field(
+        default=None,
+        title="Minimum",
+        description="Minimum value below which we truncate."
+    )
+    max: float | None | list[float] = Field(
+        default=None,
+        title="Maximum",
+        description="Maximum value above which we truncate."
+    )
+    include_min: bool = Field(
+        default=True,
+        title="Include minimum",
+        description="Include minimum value (if specified)."
+    )
+    include_max: bool = Field(
+        default=False,
+        title="Include maximum",
+        description="Include maximum value (if specified)."
+    )
 
     @staticmethod
     def _check_constraints(
@@ -49,6 +72,22 @@ class Distribution(Block, abc.ABC):
         initial_samples = self._sample_generator(n, rng=rng)
         final_samples = self._apply_constraints(initial_samples, ge=ge, le=le, gt=gt, lt=lt)
         return final_samples
+    
+    def sample_with_constraints(
+        self,
+        n: int = 1,
+        rng: np.random.Generator | None = None  
+    ):
+        kwargs = {}
+        if self.include_min:
+            kwargs["ge"] = self.min
+        else:
+            kwargs["gt"] = self.min
+        if self.include_max:
+            kwargs["le"] = self.max
+        else:
+            kwargs["lt"] = self.max
+        return self.sample(n=n, rng=rng, **kwargs)
 
     @abc.abstractmethod
     def _sample_generator(self, n: int = 1, rng: np.random.Generator | None = None) -> list[float]:

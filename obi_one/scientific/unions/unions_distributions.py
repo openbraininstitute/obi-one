@@ -16,6 +16,7 @@ from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 
 _ALL_FLOAT_DISTRIBUTIONS = (
     FloatConstantDistribution
@@ -27,7 +28,7 @@ _ALL_FLOAT_DISTRIBUTIONS = (
     | PoissonDistribution
 )
 
-_ALL_INT_DISTRIBUTIONS = IntConstantDistribution | IntUniformDistribution
+_ALL_INT_DISTRIBUTIONS = IntConstantDistribution | IntUniformDistribution | IntDiscreteDistribution
 
 _ALL_DISTRIBUTIONS = _ALL_FLOAT_DISTRIBUTIONS | _ALL_INT_DISTRIBUTIONS
 

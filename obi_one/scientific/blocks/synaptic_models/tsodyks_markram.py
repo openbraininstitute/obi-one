@@ -291,15 +291,15 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
         n = len(indices)
         # TODO: 'shared_within' is currently ignored
         return DataFrame({
-            "u_hill_coefficient": self.u_hill_coefficient_distribution.block.sample(n),
-            "conductance": self.conductance_distribution.block.sample(n),
-            "conductance_scale_factor": self.conductance_scale_factor_distribution.block.sample(n),
-            "facilitation_time": self.fascilitation_time.block.sample(n),
-            "depression_time": self.depression_time.block.sample(n),
-            "n_rrp_vesicles": self.n_rrp_vesicles_distribution.block.sample(n),
-            "decay_time": self.decay_time.block.sample(n),
-            "usyn": self.usyn.block.sample(n),
-            "delay": self.delay_distribution.block.sample(n),
+            "u_hill_coefficient": self.u_hill_coefficient_distribution.block.sample_with_constraints(n),
+            "conductance": self.conductance_distribution.block.sample_with_constraints(n),
+            "conductance_scale_factor": self.conductance_scale_factor_distribution.block.sample_with_constraints(n),
+            "facilitation_time": self.fascilitation_time.block.sample_with_constraints(n),
+            "depression_time": self.depression_time.block.sample_with_constraints(n),
+            "n_rrp_vesicles": self.n_rrp_vesicles_distribution.block.sample_with_constraints(n),
+            "decay_time": self.decay_time.block.sample_with_constraints(n),
+            "usyn": self.usyn.block.sample_with_constraints(n),
+            "delay": self.delay_distribution.block.sample_with_constraints(n),
             "synapse_type_id": [self.synapse_type_id] * n
         }, index=indices.index)
 

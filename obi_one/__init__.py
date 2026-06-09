@@ -95,6 +95,7 @@ __all__ = [
     "Info",
     "InhibitoryNeurons",
     "IntConstantDistribution",
+    "IntDiscreteDistribution",
     "IntRange",
     "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
@@ -267,6 +268,7 @@ from obi_one.scientific.blocks.distributions.uniform import (
     FloatUniformDistribution,
     IntUniformDistribution,
 )
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
     LinearExtracellularLocations,

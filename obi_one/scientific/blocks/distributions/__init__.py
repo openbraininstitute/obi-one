@@ -5,3 +5,4 @@ from .lognormal import LogNormalDistribution
 from .normal import NormalDistribution
 from .poisson import PoissonDistribution
 from .uniform import IntUniformDistribution, FloatUniformDistribution
+from .discrete import IntDiscreteDistribution
