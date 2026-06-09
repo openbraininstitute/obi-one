@@ -863,14 +863,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.17.0"
+version = "0.17.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/4d/b76e76a3c427610110d6a24562cfb9628282ea0c6b16e8a114103dc3b096/entitysdk-0.17.0.tar.gz", hash = "sha256:1e7b0365f92403d295ea63530ef73a4ca3265f2ea8b5bdf2b61ca376817b5b3c", size = 89639, upload-time = "2026-05-28T08:52:15.314Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/e7/396a78fe0710bd1635c857ca106e727b523aa7063805aeba705ca44e87f3/entitysdk-0.17.1.tar.gz", hash = "sha256:4039ac73f196976ce5d858419a3b9e40444a9fddc726cbdb38477a8185a4a597", size = 89696, upload-time = "2026-06-08T15:19:31.777Z" }
 
 [[package]]
 name = "executing"
@@ -1764,7 +1764,7 @@ wheels = [
 
 [[package]]
 name = "morph-spines"
-version = "0.7.0"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -1772,15 +1772,12 @@ dependencies = [
     { name = "neurom" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
     { name = "scipy" },
-    { name = "tables" },
     { name = "trimesh" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/ce/3ba6c9b3ef987d02dbab339099ce36a7d2d3600ced2c0f3a815bba3cf63c/morph_spines-0.7.0.tar.gz", hash = "sha256:9844188aad7d4cceaedc4bba8bee250f86a533e4cdd9e3439e4440d373d40b12", size = 1124723, upload-time = "2026-02-06T10:39:15.129Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/67/70841506f9c3880e05d22490a6b867addaa3202432b5eb828b85c37f7f5c/morph_spines-1.0.0.tar.gz", hash = "sha256:bab671305a72696fadf4f19c12e67bc0426fd113cfeb3e1e852788f28bc258de", size = 1373719, upload-time = "2026-05-19T13:54:26.31Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5e/8c/a1827944c648566028b7ece21af7d9cdf7e4da42d95506e5cad86a1cbc79/morph_spines-0.7.0-py3-none-any.whl", hash = "sha256:8af2a9170b4eeccfea02c97bd82635639e22a57690e3911f85c165880a58827f", size = 16155, upload-time = "2026-02-06T10:39:13.576Z" },
+    { url = "https://files.pythonhosted.org/packages/42/ea/0c5cad94ec78dbafc5a657d5a623a13653b9e227bfcafc2a3eb7a2372f42/morph_spines-1.0.0-py3-none-any.whl", hash = "sha256:6f206628edae0e951df012be64cf614916f401f1675a845b5ed60f3c1980516f", size = 24716, upload-time = "2026-05-19T13:54:24.865Z" },
 ]
 
 [[package]]
@@ -2276,7 +2273,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "starlette", marker = "extra == 'service'" },
-    { name = "ultraliser", marker = "extra == 'meshing'", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
+    { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.8", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
 provides-extras = ["connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
@@ -3398,12 +3395,13 @@ wheels = [
 
 [[package]]
 name = "ultraliser"
-version = "2.1.5"
+version = "2.1.8"
 source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
 dependencies = [
     { name = "connectome-utilities" },
     { name = "h5py" },
     { name = "matplotlib" },
+    { name = "morph-spines" },
     { name = "morphio" },
     { name = "neurom" },
     { name = "numpy" },
@@ -3412,7 +3410,7 @@ dependencies = [
     { name = "tqdm" },
 ]
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.1.5/ultraliser-2.1.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4b7a757cb97ee78829febcaeaac6d35c12f9544c7967a4d18a5716378489c3b3" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.1.8/ultraliser-2.1.8-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f45b9e3d4a0e501dd1f82734291ad9599004d5ae02e64c7a3bf2415896be7c54" },
 ]
 
 [[package]]
