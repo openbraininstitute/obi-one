@@ -11,12 +11,6 @@ from pydantic import PrivateAttr
 from obi_one.core.task import Task
 from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.synaptome_helpers import (
-    compress_output,
-    register_synaptome,
-    synaptome_description_with_physiology,
-    synaptome_name_with_physiology,
-)
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
@@ -117,7 +111,7 @@ class SynapseParameterizationTask(Task):
             for path in output_dir.rglob("*")
             if path.is_file()
         }
-        compressed_path = compress_output(output_dir)
+        # compressed_path = compress_output(output_dir)
 
         # registered_synaptome = register_synaptome(
         #     db_client=db_client,
