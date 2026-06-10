@@ -53,3 +53,13 @@ def test_metric_with_nan_values_is_skipped(monkeypatch, caplog):
     assert result == ["section_tortuosity", None, "dimensionless"]
     assert "1 of 3 values are NaN" in caplog.text
     json.dumps(result, allow_nan=False)
+
+
+def test_scalar_nan_metric_is_skipped(monkeypatch, caplog):
+    monkeypatch.setattr(uf.nm, "get", lambda *_args, **_kwargs: float("nan"))
+
+    result = uf._process_measurement("soma_radius", "um", object())
+
+    assert result == ["soma_radius", None, "um"]
+    assert "Skipping NaN value for morphology metric soma_radius" in caplog.text
+    json.dumps(result, allow_nan=False)
