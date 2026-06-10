@@ -16,14 +16,16 @@ from obi_one.scientific.library.morphology_locations import (
     _SOM_PAD,
 )
 
-_LOCATION_COLUMNS = (
-    _SEG_ID,
-    _SEC_ID,
-    _SEC_TYP,
-    _SEG_OFF,
-    _SOM_PAD,
-    _PRE_IDX,
-    _SEC_LOC,
+_LOCATION_COLUMNS = pandas.Index(
+    [
+        _SEG_ID,
+        _SEC_ID,
+        _SEC_TYP,
+        _SEG_OFF,
+        _SOM_PAD,
+        _PRE_IDX,
+        _SEC_LOC,
+    ]
 )
 
 _SectionID = Annotated[
