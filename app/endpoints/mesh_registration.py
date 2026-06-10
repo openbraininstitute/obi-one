@@ -67,7 +67,7 @@ def _register_obj_asset(
             entity_type=EMCellMesh,
             file_content=file_content,
             file_name=obj_path.name,
-            file_content_type=ContentType.obj,
+            file_content_type=ContentType.application_obj,
             asset_label=AssetLabel.cell_surface_mesh,
         )
         L.info(f"OBJ asset uploaded successfully: {asset.path}")
