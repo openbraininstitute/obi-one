@@ -29,12 +29,14 @@ ALL_POPULATIONS = "_ALL_"
 TYPES_OF_CHEMICAL_SYNS = ["chemical", "Exp2Syn_synapse", "point_process"]
 TYPES_OF_ELECTRICAL_SYNS = ["electrical"]
 TYPES_OF_BIOPHYS_NODES = ["biophysical"]
-TYPES_OF_VIRTUAL_NODES = ["point_process", "virtual"]
+TYPES_OF_VIRTUAL_NODES = ["virtual"]
+TYPES_OF_POINT_NODES = ["point_process", "point_neuron", "brian2_point", "inait_point_neuron_lif"]
 
 
 class NodePopulationType(StrEnum):
     biophysical = auto()
     virtual = auto()
+    point = auto()
 
 
 class EdgePopulationType(StrEnum):
@@ -169,6 +171,9 @@ def properties_from_config(config: CircuitConfig) -> dict:
         "number_of_virtual_node_populations": get_number_of_typed_node_populations(
             config, TYPES_OF_VIRTUAL_NODES
         ),
+        "number_of_point_node_populations": get_number_of_typed_node_populations(
+            config, TYPES_OF_POINT_NODES
+        ),
         "number_of_chemical_edge_populations": get_number_of_typed_edge_populations(
             config, TYPES_OF_CHEMICAL_SYNS
         ),
@@ -180,6 +185,9 @@ def properties_from_config(config: CircuitConfig) -> dict:
         ),
         "names_of_virtual_node_populations": get_names_of_typed_node_populations(
             config, TYPES_OF_VIRTUAL_NODES
+        ),
+        "names_of_point_node_populations": get_names_of_typed_node_populations(
+            config, TYPES_OF_POINT_NODES
         ),
         "names_of_chemical_edge_populations": get_names_of_typed_edge_populations(
             config, TYPES_OF_CHEMICAL_SYNS
@@ -341,7 +349,7 @@ def properties_from_nodes_files(
     properties_dict = {}
     config = circ.to_libsonata
     for nodepop in get_names_of_typed_node_populations(
-        config, TYPES_OF_VIRTUAL_NODES + TYPES_OF_BIOPHYS_NODES
+        config, TYPES_OF_VIRTUAL_NODES + TYPES_OF_BIOPHYS_NODES + TYPES_OF_POINT_NODES
     ):
         lod = level_of_detail_specs.get(nodepop, default_lod)
         if lod > CircuitStatsLevelOfDetail.none:
@@ -446,11 +454,14 @@ class CircuitNodesetsResponse(BaseModel):
 class CircuitMetricsOutput(BaseModel, Mapping):
     number_of_biophys_node_populations: int
     number_of_virtual_node_populations: int
+    number_of_point_node_populations: int
     names_of_biophys_node_populations: list[str]
     names_of_virtual_node_populations: list[str]
+    names_of_point_node_populations: list[str]
     names_of_nodesets: list[str]
     biophysical_node_populations: list[CircuitMetricsNodePopulation | None]
     virtual_node_populations: list[CircuitMetricsNodePopulation | None]
+    point_node_populations: list[CircuitMetricsNodePopulation | None]
     number_of_chemical_edge_populations: int
     number_of_electrical_edge_populations: int
     names_of_chemical_edge_populations: list[str]
@@ -458,9 +469,13 @@ class CircuitMetricsOutput(BaseModel, Mapping):
     chemical_edge_populations: list[CircuitMetricsEdgePopulation | None]
     electrical_edge_populations: list[CircuitMetricsEdgePopulation | None]
 
-    def __iter__(self) -> Iterator[CircuitMetricsEdgePopulation | None]:  # ty:ignore[invalid-method-override]
+    def __iter__(self) -> Iterator[CircuitMetricsNodePopulation | None]:  # ty:ignore[invalid-method-override]
         """Provides iterator over all populations (node + edge)."""
-        yield from self.biophysical_node_populations + self.virtual_node_populations  # ty:ignore[invalid-yield]
+        yield from (
+            self.biophysical_node_populations
+            + self.virtual_node_populations
+            + self.point_node_populations
+        )
 
     def __getitem__(
         self, key: str
@@ -470,6 +485,8 @@ class CircuitMetricsOutput(BaseModel, Mapping):
             return self.biophysical_node_populations[
                 self.names_of_biophys_node_populations.index(key)
             ]
+        if key in self.names_of_point_node_populations:
+            return self.point_node_populations[self.names_of_point_node_populations.index(key)]
         if key in self.names_of_virtual_node_populations:
             return self.virtual_node_populations[self.names_of_virtual_node_populations.index(key)]
         if key in self.names_of_chemical_edge_populations:
@@ -488,7 +505,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
         return self.number_of_biophys_node_populations + self.number_of_virtual_node_populations
 
 
-def get_circuit_metrics(  # noqa: PLR0914
+def get_circuit_metrics(  # noqa: PLR0914, C901
     circuit_id: str,
     db_client: Client,
     level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None = None,
@@ -555,6 +572,21 @@ def get_circuit_metrics(  # noqa: PLR0914
                 node_location_info=node_props[nodepop].get("node_location_info"),
             )
         biophys_pops.append(pop)
+    point_pops = []
+    for nodepop in dict_props["names_of_point_node_populations"]:
+        pop = None
+        if nodepop in node_props:
+            pop = CircuitMetricsNodePopulation(
+                number_of_nodes=node_props[nodepop]["population_length"],
+                name=nodepop,
+                population_type=NodePopulationType.point,
+                property_names=node_props[nodepop]["property_list"],
+                property_unique_values=node_props[nodepop]["property_unique_values"],
+                property_value_counts=node_props[nodepop]["property_value_counts"],
+                # Use .get() because node_location_info is only added when level_of_detail > basic
+                node_location_info=node_props[nodepop].get("node_location_info"),
+            )
+        point_pops.append(pop)
     virtual_pops = []
     for nodepop in dict_props["names_of_virtual_node_populations"]:
         pop = None
@@ -604,15 +636,18 @@ def get_circuit_metrics(  # noqa: PLR0914
     return CircuitMetricsOutput(
         number_of_biophys_node_populations=dict_props["number_of_biophys_node_populations"],
         number_of_virtual_node_populations=dict_props["number_of_virtual_node_populations"],
+        number_of_point_node_populations=dict_props["number_of_point_node_populations"],
         number_of_chemical_edge_populations=dict_props["number_of_chemical_edge_populations"],
         number_of_electrical_edge_populations=dict_props["number_of_electrical_edge_populations"],
         names_of_biophys_node_populations=dict_props["names_of_biophys_node_populations"],
         names_of_virtual_node_populations=dict_props["names_of_virtual_node_populations"],
+        names_of_point_node_populations=dict_props["names_of_point_node_populations"],
         names_of_chemical_edge_populations=dict_props["names_of_chemical_edge_populations"],
         names_of_electrical_edge_populations=dict_props["names_of_electrical_edge_populations"],
         names_of_nodesets=nodesets,
         biophysical_node_populations=biophys_pops,
         virtual_node_populations=virtual_pops,
+        point_node_populations=point_pops,
         chemical_edge_populations=chemical_pops,
         electrical_edge_populations=electrical_pops,
     )

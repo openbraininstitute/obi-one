@@ -108,7 +108,7 @@ def _make_poisson(
 ) -> tuple[brian2.NeuronGroup, list]:
     L.info("Making Poisson Stimulus: rate: %f Hz, weight: %f mV", config.rate, config.weight)
     exc_node_ids = simulation.circuit.node_sets.to_libsonata.materialize(
-        "sugar", simulation.circuit.nodes["drosophila"].to_libsonata
+        config.node_set, simulation.circuit.nodes["drosophila"].to_libsonata
     ).flatten()
 
     poisson_inputs = []
@@ -283,6 +283,7 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
 
     node_ids, timestamps = zip(*spikes, strict=True)
     L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
+    (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     spikes_path = _write_spikes(
         filepath=output_dir / simulation.output.spikes_file,
         population_name=POPULATION,

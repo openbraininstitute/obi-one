@@ -145,7 +145,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
 
         if (self.neuron_set is not None) and (
             self.neuron_set.block.population_type(circuit, population)  # ty:ignore[unresolved-attribute]
-            not in {"biophysical", "inait_point_neuron_lif"}
+            not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "

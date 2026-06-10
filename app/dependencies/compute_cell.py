@@ -43,7 +43,7 @@ def get_compute_cell(
         http_client=http_client,
     )
     data = response.json()
-    compute_cell = data["data"]["virtual_lab"]["compute_cell"]
+    compute_cell = data["compute_cell"]
     L.info("Retrieved compute_cell %s", compute_cell)
     return compute_cell
 
