@@ -213,7 +213,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     )
 
     @property
-    def cov_mat(self) -> dict:
+    def cov_mat(self) -> list:
         return []
 
     @property
@@ -235,12 +235,18 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             "syn_type_id",
         ]
 
+    @property
+    @abc.abstractmethod
+    def syn_type_id(self) -> int:
+        """SONATA ``syn_type_id`` assigned to these synapses (distinguishes E/I models)."""
+
     def sample(self, indices: DataFrame) -> DataFrame:
 
         n = len(indices)
 
-        def resolve(attr: Distribution | None, default: Distribution) -> list[float]:
-            return (default if attr is None else attr.block).sample_with_constraints(n)
+        def resolve(attr: AllDistributionsReference | None, default: Distribution) -> list[float]:
+            distribution = default if attr is None else attr.block
+            return distribution.sample_with_constraints(n)
 
         # TODO: 'shared_within' is currently ignored
         return DataFrame(

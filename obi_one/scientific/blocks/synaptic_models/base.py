@@ -2,11 +2,12 @@ from pandas import DataFrame
 
 from obi_one.core.block import Block
 from obi_one.scientific.blocks import distributions
+from obi_one.scientific.blocks.distributions.base import Distribution
 from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
 
 
 class SynapticModelBase(Block):
-    _synapse_model_family: str = None
+    _synapse_model_family: str | None = None
 
     @classmethod
     def synapse_model_family(cls) -> str:
@@ -34,7 +35,7 @@ class SynapticModelBase(Block):
     @classmethod
     def from_dict(
         cls, serialized_dict: dict
-    ) -> tuple["SynapticModelBase", dict[str, distributions.DistributionBase]]:
+    ) -> tuple["SynapticModelBase", dict[str, Distribution]]:
 
         def dist_ref(name: str) -> AllDistributionsReference:
             """Helper to create a distribution reference."""

@@ -41,8 +41,11 @@ class SynapseModelAssigner(Block):
         },
     )
 
-    def validate(self, circuit: Circuit) -> None:
-        msg = "Concrete subclasses of SynapseModelAssigner MUST implement the .validate() method."
+    def validate_for_circuit(self, circuit: Circuit) -> None:
+        msg = (
+            "Concrete subclasses of SynapseModelAssigner MUST implement "
+            "the .validate_for_circuit() method."
+        )
         raise NotImplementedError(msg)
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:

@@ -1,8 +1,9 @@
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.distributions.base import Distribution
 from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
@@ -42,3 +43,12 @@ class AllDistributionsReference(BlockReference):
     """A reference to a Distribution block."""
 
     allowed_block_types: ClassVar[Any] = AllDistributionsUnion
+
+    @property
+    def block(self) -> Distribution:
+        """Returns the Distribution block associated with this reference."""
+        return cast("Distribution", super().block)
+
+    @block.setter
+    def block(self, value: Distribution) -> None:
+        BlockReference.block.fset(self, value)

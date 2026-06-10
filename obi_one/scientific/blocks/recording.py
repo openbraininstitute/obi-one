@@ -130,7 +130,7 @@ class Recording(Block, ABC):
         self._default_node_set = default_node_set
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population)  # ty:ignore[unresolved-attribute]
+            self.neuron_set.block.population_type(circuit, population)
             not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
         ):
             msg = (
