@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "bluepysnap"
-version = "3.0.4"
+version = "3.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -310,7 +310,7 @@ dependencies = [
     { name = "pandas" },
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/83/af976d39f7e690f3d749e3b35a01360cbf3a953544111f2bedad692c9339/bluepysnap-3.0.4.tar.gz", hash = "sha256:ac7c397ecc56554ce508e25a07b420c76668417bb97daeac26349b5bfa4bc451", size = 1053044, upload-time = "2026-05-05T13:09:54.804Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/08/7e02f9e347c6a9b22f7bdb000c9abcdad9e5828b018dcb5999bf84c0d528/bluepysnap-3.0.5.tar.gz", hash = "sha256:e818e76e2a62fc8ddb844066fc462d6c715fab3c8fca500ea47b699b383a4adb", size = 1053136, upload-time = "2026-06-09T12:43:26.733Z" }
 
 [[package]]
 name = "bluerecording"
@@ -2238,7 +2238,7 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.87" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepysnap", specifier = ">=3.0.2" },
+    { name = "bluepysnap", specifier = ">=3.0.5" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.5" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
