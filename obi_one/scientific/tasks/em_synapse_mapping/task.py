@@ -307,7 +307,7 @@ class EMSynapseMappingTask(Task):
             virtual_population=pop_virt if coll_virtual is not None else None,
             morphologies_dir="morphologies",
             alternate_morphologies_h5=(
-                str(resolved_neurons[0].fn_morph_h5) if not is_multi else None
+                str(resolved_neurons[0].fn_morph_h5) if not is_multi else fn_merged_h5
             ),
         )
         circuit_config_path = out_root / "circuit_config.json"
