@@ -109,7 +109,7 @@ class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         df = self.property_filter.filter(df)  # ty:ignore[unresolved-attribute]
         node_ids = df["node_ids"].to_numpy()
 
-        return list(node_ids)
+        return node_ids.tolist()
 
     def _get_expression(self, circuit: Circuit) -> dict:
         """Returns the SONATA node set resolved in one population (w/o subsampling).

@@ -70,13 +70,13 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         add_node_set_to_circuit(c, {name: expression})
 
         try:
-            node_ids = c.nodes[self.population].ids(name)
+            node_ids = c.nodes[self.population].ids(name).tolist()
         except snap.BluepySnapError as e:
             # In case of an error (e.g., "No such attribute"), return empty list
             L.warning(e)
             node_ids = []
 
-        return list(node_ids)
+        return node_ids
 
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population (with subsampling, if specified)."""
@@ -90,7 +90,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         if len(ids) == 0:
             L.warning("Neuron set empty!")
 
-        return {self.population: list(ids)}
+        return {self.population: ids.tolist()}
 
     def get_node_set_definition(
         self, circuit: Circuit, *, force_resolve_ids: bool = False
