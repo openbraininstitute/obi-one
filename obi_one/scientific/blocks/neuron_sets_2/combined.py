@@ -1,34 +1,34 @@
 import abc
 import logging
-import numpy as np
-from typing import Annotated, ClassVar
+from enum import StrEnum
+from typing import ClassVar, Literal
 
+import numpy as np
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.tuple import NamedTuple
-from obi_one.scientific.blocks.neuron_sets_2.population import (
-    BiophysicalPopulationNeuronSet,
-    NeuronSet,
-    PointPopulationNeuronSet,
-    PopulationNeuronSet,
-    VirtualPopulationNeuronSet,
-)
+from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     BiophysicalNeuronSetReference,
-    VirtualNeuronSetReference,
     PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 
 L = logging.getLogger("obi-one")
 
 _MAX_COMBINED_DEPTH = 10
 
+
 class SetOperation(StrEnum):
     UNION = "union"
     INTERSECT = "intersect"
     DIFF = "diff"
+
 
 _OPERATION_MAP = {
     SetOperation.UNION: np.union1d,
@@ -36,12 +36,37 @@ _OPERATION_MAP = {
     SetOperation.DIFF: np.setdiff1d,
 }
 
+
 class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     """Abstract base class for combining neuron sets within and across node populations."""
 
-    base_neuron_set: NeuronSet 
+    base_neuron_set: NeuronSet
     combined_with: NeuronSet
-    operation: ClassVar[SetOperation]
+    operation: Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF] = Field(
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
+            },
+            title="Operation",
+            description="Set option for combining the IDs in the neuron sets.",
+            default=SetOperation.UNION,
+        )
+
+    def _resolve_refs(self) -> tuple[NeuronSet, NeuronSet]:
+        """Resolve neuron set references to actual NeuronSet objects."""
+        if self.base_neuron_set is None or self.combined_with is None:
+            msg = "Both neuron set references must be set for combining."
+            raise ValueError(msg)
+        base_nset = (
+            self.base_neuron_set.block
+            if hasattr(self.base_neuron_set, "block")
+            else self.base_neuron_set
+        )
+        with_nset = (
+            self.combined_with.block
+            if hasattr(self.combined_with, "block")
+            else self.combined_with
+        )
+        return base_nset, with_nset
 
     def check_combined_depth(
         self, visited: set[str] | None = None, depth: int = _MAX_COMBINED_DEPTH
@@ -58,23 +83,27 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
             msg = "Too many nested combined neuron sets!"
             raise ValueError(msg)
         visited.add(self.block_name)
-        all_nsets = [self.base_neuron_set, self.combined_with]
-        for nset in all_nsets:
+        base_nset, with_nset = self._resolve_refs()
+        for nset in [base_nset, with_nset]:
             if isinstance(nset, CombinedBaseNeuronSet):
                 nset.check_combined_depth(visited, depth - 1)
 
     def get_populations(self, circuit: Circuit) -> list[str]:
         """Returns population names included in the neuron set."""
+        base_nset, with_nset = self._resolve_refs()
         all_pops = []
-        all_nsets = [self.base_neuron_set, self.combined_with]
-        for nset in all_nsets:
+        for nset in [base_nset, with_nset]:
             for pop in nset.get_populations(circuit):
                 if pop not in all_pops:
                     all_pops.append(pop)
         return all_pops
 
     @staticmethod
-    def _combine_ids(neuron_ids1: dict[str, list[int]], neuron_ids2: dict[str, list[int]], operation: SetOperation) -> dict[str, list[int]]:
+    def _combine_ids(
+        neuron_ids1: dict[str, list[int]],
+        neuron_ids2: dict[str, list[int]],
+        operation: SetOperation,
+    ) -> dict[str, list[int]]:
         op_fct = _OPERATION_MAP[operation]
         npop_names = set(list(neuron_ids1) + list(neuron_ids2))
         combined = {}
@@ -84,8 +113,10 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         return combined
 
     @staticmethod
-    def _make_union_expression(circuit: Circuit, neuron_sets: list[NeuronSet]) -> tuple[dict | list, dict]:
-        """Make union expression preserving symbolic notation, if possible"""
+    def _make_union_expression(
+        circuit: Circuit, neuron_sets: list[NeuronSet]
+    ) -> tuple[dict | list, dict]:
+        """Make union expression preserving symbolic notation, if possible."""
         expression = []
         combined = {}
         for nset in neuron_sets:
@@ -99,8 +130,9 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population."""
         self.check_combined_depth()
-        base_ids = self.base_neuron_set.get_neuron_ids(circuit)
-        with_ids = self.combined_with.get_neuron_ids(circuit)
+        base_nset, with_nset = self._resolve_refs()
+        base_ids = base_nset.get_neuron_ids(circuit)
+        with_ids = with_nset.get_neuron_ids(circuit)
         comb_ids = CombinedBaseNeuronSet._combine_ids(base_ids, with_ids, self.operation)
         return comb_ids
 
@@ -116,18 +148,22 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         if force_resolve_ids or not is_union:
             # Resolve and combine individual IDs per population and use in compound expression
             ids_per_npop = self.get_neuron_ids(circuit)
-            expression, combined = NeuronSet.ids_to_node_set_definition(ids_per_npop, prefix=self.block_name, simplified=True)
+            expression, combined = NeuronSet.ids_to_node_set_definition(
+                ids_per_npop, prefix=self.block_name, simplified=True
+            )
         else:
             # Symbolic expression may be preserved
             self.check_combined_depth()
-            all_nsets = [self.base_neuron_set, self.combined_with]
-            expression, combined = CombinedBaseNeuronSet._make_union_expression(circuit, all_nsets)
+            base_nset, with_nset = self._resolve_refs()
+            expression, combined = CombinedBaseNeuronSet._make_union_expression(
+                circuit, [base_nset, with_nset]
+            )
         return (expression, combined)
 
 
 # class CombinedNeuronSet(PopulationNeuronSet, abc.ABC):
 #     """Neuron set definition by providing a list of neuron IDs."""
-    
+
 
 # class BiophysicalCombinedNeuronSet(CombinedNeuronSet, BiophysicalPopulationNeuronSet):
 #     """Only biophysical neuron node populations are selectable."""
