@@ -63,30 +63,32 @@ class SynapseParameterizationTask(Task):
         )
 
         parent = self._circuit_entity
-        hierarchy = db_client.get_entity(
-            entity_id=parent.brain_region.hierarchy_id,
-            entity_type=models.BrainRegionHierarchy,
-        )
-        circuit_metadata = {
-            "name": f"{parent.name} (synapse-parameterized)",
-            "description": (
-                f"Synapse-parameterized derivation of circuit '{parent.name}' ({parent.id})."
-            ),
-            "build_category": parent.build_category,
-            "species": parent.subject.species.name,
-            "subject": parent.subject.name,
-            "brain_region": parent.brain_region.name,
-            "brain_region_hierarchy": hierarchy.name,
-            "target_simulator": parent.target_simulator or types.TargetSimulator.NEURON,
-            "parent": parent.name,
-            "derivation_type": types.DerivationType.circuit_rewiring,
-        }
-        return register_circuit_from_metadata(
-            client=db_client,
-            circuit_metadata=circuit_metadata,
-            circuit_path=circuit_path,
-            dry_run=True,
-        )
+        if parent is not None:
+            hierarchy = db_client.get_entity(
+                entity_id=parent.brain_region.hierarchy_id,
+                entity_type=models.BrainRegionHierarchy,
+            )
+            circuit_metadata = {
+                "name": f"{parent.name} (synapse-parameterized)",
+                "description": (
+                    f"Synapse-parameterized derivation of circuit '{parent.name}' ({parent.id})."
+                ),
+                "build_category": parent.build_category,
+                "species": parent.subject.species.name,
+                "subject": parent.subject.name,
+                "brain_region": parent.brain_region.name,
+                "brain_region_hierarchy": hierarchy.name,
+                "target_simulator": parent.target_simulator or types.TargetSimulator.NEURON,
+                "parent": parent.name,
+                "derivation_type": types.DerivationType.circuit_rewiring,
+            }
+            return register_circuit_from_metadata(
+                client=db_client,
+                circuit_metadata=circuit_metadata,
+                circuit_path=circuit_path,
+                dry_run=True,
+            )
+        return None
 
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
         """Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use."""
