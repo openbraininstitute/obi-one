@@ -34,21 +34,6 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         },
     )
 
-    # edge_population_name: str = Field(
-    #     title="EdgePopulation name",
-    #     description="Name of an EdgePopulation of the SONATA circuit that is to be parameterized"
-    # )
-
-    # synaptic_model: SynapticModelReference = Field(
-    #     title="Synaptic Model",
-    #     description="Synaptic model to assign to the synapses between the source and target"
-    #     " neuron sets.",
-    #     json_schema_extra={
-    #         SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-    #         SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
-    #     },
-    # )
-
     def validate(self, circuit: Circuit) -> None:
         circ = circuit.sonata_circuit
         ep = circ.edges[self.edge_population_name]
