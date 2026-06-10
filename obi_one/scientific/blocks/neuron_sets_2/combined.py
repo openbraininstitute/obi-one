@@ -115,7 +115,9 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         combined = {}
         for npop in npop_names:
             comb_ids = op_fct(neuron_ids1.get(npop, []), neuron_ids2.get(npop, []))
-            combined[npop] = comb_ids.tolist()
+            if len(comb_ids) > 0:
+                # Only keep non-empty populations
+                combined[npop] = comb_ids.tolist()
         return combined
 
     @staticmethod
