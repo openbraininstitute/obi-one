@@ -313,49 +313,70 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
         if u_hill_coefficient_distribution is None:
             u_hill_coefficient_distribution = FloatConstantDistribution(value=1.94)
+        else:
+            u_hill_coefficient_distribution = self.u_hill_coefficient_distribution.block
 
         if conductance_distribution is None:
             conductance_distribution = GammaDistribution(shape=4.0, scale=0.25)
+        else:
+            conductance_distribution = self.conductance_distribution.block
 
         if conductance_scale_factor_distribution is None:
             conductance_scale_factor_distribution = FloatConstantDistribution(value=0.7)
+        else:
+            conductance_scale_factor_distribution = self.conductance_scale_factor_distribution.block
 
         if fascilitation_time is None:
             fascilitation_time = GammaDistribution(shape=11.56, scale=1.4706)
+        else:
+            fascilitation_time = self.fascilitation_time.block
 
         if depression_time is None:
             depression_time = GammaDistribution(shape=1995.11, scale=0.3358)
+        else:
+            depression_time = self.depression_time.block
 
         if n_rrp_vesicles_distribution is None:
             n_rrp_vesicles_distribution = IntDiscreteDistribution(
                 values=(1, 2, 3, 4, 5), probabilities=(0.3, 0.3, 0.2, 0.1, 0.1)
             )
+        else:
+            n_rrp_vesicles_distribution = self.n_rrp_vesicles_distribution.block
+
         if decay_time is None:
             decay_time = NormalDistribution(min=1.7, max=1.9, mean=1.7, standard_deviation=0.1)
+        else:
+            decay_time = self.decay_time.block
+
         if delay_distribution is None:
             delay_distribution = NormalDistribution(
                 min=0.1, max=5.0, mean=2.0, standard_deviation=1.0
             )
+        else:
+            delay_distribution = self.delay_distribution.block
+        
         if usyn is None:
             usyn = NormalDistribution(min=0.2, max=0.7, mean=0.5, standard_deviation=0.25)
+        else:
+            usyn = self.usyn.block
 
         n = len(indices)
         # TODO: 'shared_within' is currently ignored
         return DataFrame(
             {
-                "u_hill_coefficient": self.u_hill_coefficient_distribution.block.sample_with_constraints(
+                "u_hill_coefficient": u_hill_coefficient_distribution.sample_with_constraints(
                     n
                 ),
-                "conductance": self.conductance_distribution.block.sample_with_constraints(n),
-                "conductance_scale_factor": self.conductance_scale_factor_distribution.block.sample_with_constraints(
+                "conductance": conductance_distribution.sample_with_constraints(n),
+                "conductance_scale_factor": conductance_scale_factor_distribution.sample_with_constraints(
                     n
                 ),
-                "facilitation_time": self.fascilitation_time.block.sample_with_constraints(n),
-                "depression_time": self.depression_time.block.sample_with_constraints(n),
-                "n_rrp_vesicles": self.n_rrp_vesicles_distribution.block.sample_with_constraints(n),
-                "decay_time": self.decay_time.block.sample_with_constraints(n),
-                "usyn": self.usyn.block.sample_with_constraints(n),
-                "delay": self.delay_distribution.block.sample_with_constraints(n),
+                "facilitation_time": fascilitation_time.sample_with_constraints(n),
+                "depression_time": depression_time.sample_with_constraints(n),
+                "n_rrp_vesicles": n_rrp_vesicles_distribution.sample_with_constraints(n),
+                "decay_time": decay_time.sample_with_constraints(n),
+                "usyn": usyn.sample_with_constraints(n),
+                "delay": delay_distribution.sample_with_constraints(n),
                 "synapse_type_id": [self.synapse_type_id] * n,
             },
             index=indices.index,
