@@ -6,6 +6,10 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
 from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
@@ -15,7 +19,8 @@ L = logging.getLogger(__name__)
 
 
 class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
-    u_hill_coefficient_distribution: AllDistributionsReference = Field(
+    u_hill_coefficient_distribution: AllDistributionsReference | None = Field(
+        default=None,
         title="U Hill Coefficient Distribution",
         description="Distribution of the Hill coefficient for the steady-state utilization"
         " of synaptic efficacy (u).",
@@ -25,7 +30,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    conductance_distribution: AllDistributionsReference = Field(
+    conductance_distribution: AllDistributionsReference | None = Field(
+        default=None,
         title="Conductance (g_syn) Distribution",
         description="Distribution of synaptic conductance (g_syn).",
         json_schema_extra={
@@ -34,7 +40,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    conductance_scale_factor_distribution: AllDistributionsReference = Field(
+    conductance_scale_factor_distribution: AllDistributionsReference | None = Field(
+        default=None,
         title="Conductance Scale Factor Distribution",
         description="Distribution of the conductance scale factor that multiplies the synaptic "
         "conductance (g_syn) to allow for fitting of synaptic conductance values that are "
@@ -45,7 +52,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    fascilitation_time: AllDistributionsReference = Field(
+    fascilitation_time: AllDistributionsReference | None = Field(
+        default=None,
         title="Fascilitation Time Distribution",
         description="Fascilitation Time Distribution",
         json_schema_extra={
@@ -55,7 +63,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    depression_time: AllDistributionsReference = Field(
+    depression_time: AllDistributionsReference | None = Field(
+        default=None,
         title="Depression Time Distribution",
         description="Depression Time Distribution",
         json_schema_extra={
@@ -65,7 +74,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    n_rrp_vesicles_distribution: AllDistributionsReference = Field(
+    n_rrp_vesicles_distribution: AllDistributionsReference | None = Field(
+        default=None,
         title="Number of RRP Vesicles Distribution",
         description="Distribution of the number of readily releasable pool (RRP) vesicles.",
         json_schema_extra={
@@ -74,7 +84,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    decay_time: AllDistributionsReference = Field(
+    decay_time: AllDistributionsReference | None = Field(
+        default=None,
         title="Decay Time Distribution",
         description="Decay Time Distribution",
         json_schema_extra={
@@ -84,7 +95,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    usyn: AllDistributionsReference = Field(
+    usyn: AllDistributionsReference | None = Field(
+        default=None,
         title="Usyn Distribution",
         description="Distribution of the utilization of synaptic efficacy (usyn) for "
         "the first spike in a spike train.",
@@ -94,7 +106,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    delay_distribution: AllDistributionsReference = Field(
+    delay_distribution: AllDistributionsReference | None = Field(
+        default=None,
         title="Delay distribution",
         description="Distribution for the synaptic delay (from the presyn spike).",
         json_schema_extra={
@@ -287,6 +300,45 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         ]
 
     def sample(self, indices: DataFrame) -> DataFrame:
+
+        u_hill_coefficient_distribution = self.u_hill_coefficient_distribution
+        conductance_distribution = self.conductance_distribution
+        conductance_scale_factor_distribution = self.conductance_scale_factor_distribution
+        fascilitation_time = self.fascilitation_time
+        depression_time = self.depression_time
+        n_rrp_vesicles_distribution = self.n_rrp_vesicles_distribution
+        decay_time = self.decay_time
+        usyn = self.usyn
+        delay_distribution = self.delay_distribution
+
+        if u_hill_coefficient_distribution is None:
+            u_hill_coefficient_distribution = FloatConstantDistribution(value=1.94)
+
+        if conductance_distribution is None:
+            conductance_distribution = GammaDistribution(shape=4.0, scale=0.25)
+
+        if conductance_scale_factor_distribution is None:
+            conductance_scale_factor_distribution = FloatConstantDistribution(value=0.7)
+
+        if fascilitation_time is None:
+            fascilitation_time = GammaDistribution(shape=11.56, scale=1.4706)
+
+        if depression_time is None:
+            depression_time = GammaDistribution(shape=1995.11, scale=0.3358)
+
+        if n_rrp_vesicles_distribution is None:
+            n_rrp_vesicles_distribution = IntDiscreteDistribution(
+                values=(1, 2, 3, 4, 5), probabilities=(0.3, 0.3, 0.2, 0.1, 0.1)
+            )
+        if decay_time is None:
+            decay_time = NormalDistribution(min=1.7, max=1.9, mean=1.7, standard_deviation=0.1)
+        if delay_distribution is None:
+            delay_distribution = NormalDistribution(
+                min=0.1, max=5.0, mean=2.0, standard_deviation=1.0
+            )
+        if usyn is None:
+            usyn = NormalDistribution(min=0.2, max=0.7, mean=0.5, standard_deviation=0.25)
+
         n = len(indices)
         # TODO: 'shared_within' is currently ignored
         return DataFrame(
