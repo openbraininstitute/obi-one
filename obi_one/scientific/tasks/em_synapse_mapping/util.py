@@ -34,10 +34,11 @@ def merge_spiny_morphologies(
     if include_meshes:
         spine_library_groups.append("spines/meshes")
     if len(source_files) != len(neuron_id_strings):
-        raise ValueError("Must provide an identifier for each input.")
+        err_str = "Must provide an identifier for each input."
+        raise ValueError(err_str)
 
     with h5py.File(output_path, "w") as h5_out:
-        for src_path, dest_str in zip(source_files, neuron_id_strings):
+        for src_path, dest_str in zip(source_files, neuron_id_strings, strict=True):
             with h5py.File(src_path, "r") as h5_in:
                 _merge_one_source(
                     h5_in, h5_out, src_path, dest_str, neuron_keyed_groups, spine_library_groups

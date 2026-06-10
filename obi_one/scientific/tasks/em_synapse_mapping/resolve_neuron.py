@@ -54,7 +54,7 @@ def resolve_provenance(
     return pt_root_id, source_mesh_entity, source_dataset
 
 
-def resolve_neuron(
+def resolve_neuron(  # NOQA: PLR0914
     neuron_ref: CellMorphologyFromID | MEModelFromID,
     db_client: Client,
     out_root: Path,
@@ -77,7 +77,7 @@ def resolve_neuron(
     else:
         morph_entity = neuron_ref.entity(db_client)
         morph_from_id = neuron_ref
-    
+
     entity_id_str = str(morph_entity.id)
     # Place and load morphologies
     L.info("Placing morphologies...")
@@ -86,7 +86,7 @@ def resolve_neuron(
     if fn_morphology_out_swc.exists():
         err_str = f"Duplicate entity in input: {entity_id_str}"
         raise ValueError(err_str)
-    
+
     morph_from_id.write_spiny_neuron_h5(out_root / fn_morphology_out_h5, db_client=db_client)
     smooth_morph = morph_from_id.neurom_morphology(db_client)
     smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
