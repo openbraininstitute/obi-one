@@ -91,7 +91,7 @@ class SynapseParameterizationTask(Task):
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
         """Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use."""
         per_edge_population = {}
-        for _, assigner in self.config.synapse_model_assigners.items():
+        for assigner in self.config.synapse_model_assigners.values():
             per_edge_population.setdefault(assigner.edge_population_name, []).append(assigner)
         return per_edge_population
 

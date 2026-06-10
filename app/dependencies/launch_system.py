@@ -33,7 +33,7 @@ async def get_async_client(
         verify=not settings.LAUNCH_SYSTEM_DISABLE_SSL_VERIFY,
         timeout=httpx.Timeout(connect=10.0, read=None, write=10.0, pool=10.0),
     ) as client:
-        yield client
+        yield client  # noqa: ASYNC119
 
 
 LaunchSystemAsyncClientDep = Annotated[httpx.AsyncClient, Depends(get_async_client)]

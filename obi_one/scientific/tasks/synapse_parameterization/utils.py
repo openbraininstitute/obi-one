@@ -3,10 +3,34 @@ import pandas as pd
 from bluepysnap.edges import EdgePopulation
 from pandas import DataFrame
 
+from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
     SynapticModelAssignerUnion,
 )
+
+
+def compatible_with(cls_a: SynapticModelBase, cls_b: SynapticModelBase) -> None:
+    """Tests whether this subclass of SynapticModelBase is compatible
+    with another. A required but not sufficient condition is that
+    they provide the same list of synapse parameters.
+    More generally, compatibility means that the .default of one
+    class is functionally identical to the one of the other.
+    """
+    if cls_a.synapse_model_family() != cls_b.synapse_model_family():
+        msg = "Synapse models incompatible! They belong to different synapse model families."
+        raise ValueError(msg)
+    # Below should not be needed. Just to be safe...
+    param_names = cls_a.parameter_names()
+    other_names = cls_b.parameter_names()
+    for k in param_names:
+        if k not in other_names:
+            msg = "Synapse models incompatible! Parameter name mismatch."
+            raise ValueError(msg)
+    for k in other_names:
+        if k not in param_names:
+            msg = "Synapse models incompatible! Parameter name mismatch."
+            raise ValueError(msg)
 
 
 def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssignerUnion]) -> None:
@@ -15,7 +39,7 @@ def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssig
     reference_model = reference.synaptic_model.block
     for check in lst_model_assigners[1:]:
         check_model = check.synaptic_model.block
-        reference_model.compatible_with(check_model)
+        compatible_with(reference_model, check_model)
 
 
 def get_default_for(

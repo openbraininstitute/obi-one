@@ -20,29 +20,6 @@ class SynapticModelBase(Block):
         return cls._synapse_model_family
 
     @classmethod
-    def compatible_with(cls, other) -> None:
-        """Tests whether this subclass of SynapticModelBase is compatible
-        with another. A required but not sufficient condition is that
-        they provide the same list of synapse parameters.
-        More generally, compatibility means that the .default of one
-        class is functionally identical to the one of the other.
-        """
-        if cls.synapse_model_family() != other.synapse_model_family():
-            msg = "Synapse models incompatible! They belong to different synapse model families."
-            raise ValueError(msg)
-        # Below should not be needed. Just to be safe...
-        param_names = cls.parameter_names()
-        other_names = other.parameter_names()
-        for k in param_names:
-            if k not in other_names:
-                msg = "Synapse models incompatible! Parameter name mismatch."
-                raise ValueError(msg)
-        for k in other_names:
-            if k not in param_names:
-                msg = "Synapse models incompatible! Parameter name mismatch."
-                raise ValueError(msg)
-
-    @classmethod
     def parameter_names(cls) -> list[str]:
         """Returns the names of the synapse parameters provided by this class.
         Important: `SynapticModelBase` classes that share the same
@@ -63,7 +40,12 @@ class SynapticModelBase(Block):
             """Helper to create a distribution reference."""
             return AllDistributionsReference(block_dict_name="distributions", block_name=name)
 
-        assert serialized_dict["class"] == cls.__name__
+        if serialized_dict["class"] != cls.__name__:
+            msg = (
+                f"Expected class name {cls.__name__!r} in serialized dict",
+                f"got {serialized_dict['class']!r}",
+            )
+            raise ValueError(msg)
         distr_obj_dict = {}
         distr_ref_dict = {}
         for param_name, distr_dict in serialized_dict["distributions"].items():
@@ -81,7 +63,7 @@ class SynapticModelBase(Block):
         as the input.
         """
         msg = (
-            "Concrete subclasses of SynapticModelBase MUST implement the .sample() method to return "
-            "a DataFrame of synapse parameters given a DataFrame of indices."
+            "Concrete subclasses of SynapticModelBase MUST implement the .sample() method to "
+            "return a DataFrame of synapse parameters given a DataFrame of indices."
         )
         raise NotImplementedError(msg)
