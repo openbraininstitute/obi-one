@@ -21,6 +21,8 @@ ENTITY_ID = str(uuid4())
 TARGET_MODULE = "app.endpoints.mesh_registration"
 ROUTE = f"/declared/{ENTITY_ID}/register-mesh"
 FAKE_TEMP_PATH = "fake-temp-mesh.obj"
+FAKE_OBJ_ASSET_ID = str(uuid4())
+FAKE_CONFIG_ID = uuid4()
 
 
 # ---------------------------------------------------------------------------
@@ -48,26 +50,42 @@ def mock_task_info():
     return info
 
 
+@pytest.fixture
+def _patch_pipeline():
+    """Patch the full upload/config pipeline so endpoint tests focus on routing."""
+    with (
+        patch(
+            f"{TARGET_MODULE}._save_upload_to_tempfile",
+            return_value=FAKE_TEMP_PATH,
+        ),
+        patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
+        patch(f"{TARGET_MODULE}._cleanup_temp_file"),
+        patch(
+            f"{TARGET_MODULE}._register_obj_asset",
+            return_value=FAKE_OBJ_ASSET_ID,
+        ),
+        patch(
+            f"{TARGET_MODULE}._create_lod_task_config",
+            return_value=FAKE_CONFIG_ID,
+        ),
+    ):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # Endpoint integration tests
 # ---------------------------------------------------------------------------
 
 
 def test_register_mesh_success(client, mock_db_client, valid_obj_file, mock_task_info):
-    uploaded_asset = MagicMock()
-    uploaded_asset.path = str(uuid4())
-    mock_db_client.upload_content.return_value = uploaded_asset
-
-    config_entity = MagicMock()
-    config_entity.id = uuid4()
-    mock_db_client.register_entity.return_value = config_entity
-
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
+        patch(f"{TARGET_MODULE}._register_obj_asset", return_value=FAKE_OBJ_ASSET_ID),
+        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
         patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
@@ -78,8 +96,8 @@ def test_register_mesh_success(client, mock_db_client, valid_obj_file, mock_task
     body = response.json()
     assert body["entity_id"] == ENTITY_ID
     assert body["status"] == "pending"
-    assert "task_job_id" in body
-    assert "obj_asset_id" in body
+    assert body["obj_asset_id"] == FAKE_OBJ_ASSET_ID
+    assert body["task_job_id"] == str(mock_task_info.job_id)
 
 
 def test_register_mesh_invalid_entity_id(client, valid_obj_file):
@@ -105,7 +123,8 @@ def test_register_mesh_invalid_extension(client, mock_db_client):
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
     bad_file = {"file": ("mesh.txt", BytesIO(b"data"), "text/plain")}
 
-    response = client.post(ROUTE, files=bad_file)
+    with patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH):
+        response = client.post(ROUTE, files=bad_file)
 
     client.app.dependency_overrides.pop(get_client, None)
 
@@ -113,13 +132,22 @@ def test_register_mesh_invalid_extension(client, mock_db_client):
 
 
 def test_register_mesh_obj_upload_fails(client, mock_db_client, valid_obj_file):
-    mock_db_client.upload_content.side_effect = EntitySDKError("upload failed")
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
+        patch(
+            f"{TARGET_MODULE}._register_obj_asset",
+            side_effect=HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+                    "detail": "upload failed",
+                },
+            ),
+        ),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
 
@@ -130,16 +158,23 @@ def test_register_mesh_obj_upload_fails(client, mock_db_client, valid_obj_file):
 
 
 def test_register_mesh_task_config_creation_fails(client, mock_db_client, valid_obj_file):
-    uploaded_asset = MagicMock()
-    uploaded_asset.path = str(uuid4())
-    mock_db_client.upload_content.return_value = uploaded_asset
-    mock_db_client.register_entity.side_effect = EntitySDKError("register failed")
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
+        patch(f"{TARGET_MODULE}._register_obj_asset", return_value=FAKE_OBJ_ASSET_ID),
+        patch(
+            f"{TARGET_MODULE}._create_lod_task_config",
+            side_effect=HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+                    "detail": "register failed",
+                },
+            ),
+        ),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
 
@@ -150,19 +185,14 @@ def test_register_mesh_task_config_creation_fails(client, mock_db_client, valid_
 
 
 def test_register_mesh_task_submit_fails(client, mock_db_client, valid_obj_file):
-    uploaded_asset = MagicMock()
-    uploaded_asset.path = str(uuid4())
-    mock_db_client.upload_content.return_value = uploaded_asset
-
-    config_entity = MagicMock()
-    config_entity.id = uuid4()
-    mock_db_client.register_entity.return_value = config_entity
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
+        patch(f"{TARGET_MODULE}._register_obj_asset", return_value=FAKE_OBJ_ASSET_ID),
+        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
         patch(
             f"{TARGET_MODULE}.task_service.submit_task_job",
             side_effect=RuntimeError("ls down"),
@@ -177,19 +207,14 @@ def test_register_mesh_task_submit_fails(client, mock_db_client, valid_obj_file)
 
 def test_register_mesh_missing_project_context(client, mock_db_client, valid_obj_file):
     mock_db_client.project_context = None
-    uploaded_asset = MagicMock()
-    uploaded_asset.path = str(uuid4())
-    mock_db_client.upload_content.return_value = uploaded_asset
-
-    config_entity = MagicMock()
-    config_entity.id = uuid4()
-    mock_db_client.register_entity.return_value = config_entity
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
+        patch(f"{TARGET_MODULE}._register_obj_asset", return_value=FAKE_OBJ_ASSET_ID),
+        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
 
@@ -201,21 +226,15 @@ def test_register_mesh_missing_project_context(client, mock_db_client, valid_obj
 def test_register_mesh_cleanup_called_on_success(
     client, mock_db_client, valid_obj_file, mock_task_info
 ):
-    uploaded_asset = MagicMock()
-    uploaded_asset.path = str(uuid4())
-    mock_db_client.upload_content.return_value = uploaded_asset
-
-    config_entity = MagicMock()
-    config_entity.id = uuid4()
-    mock_db_client.register_entity.return_value = config_entity
-
-    mock_cleanup = MagicMock()
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
+    mock_cleanup = MagicMock()
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
         patch(f"{TARGET_MODULE}._cleanup_temp_file", side_effect=mock_cleanup),
+        patch(f"{TARGET_MODULE}._register_obj_asset", return_value=FAKE_OBJ_ASSET_ID),
+        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
         patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
@@ -227,12 +246,15 @@ def test_register_mesh_cleanup_called_on_success(
 
 
 def test_register_mesh_cleanup_called_on_exception(client, mock_db_client, valid_obj_file):
-    mock_cleanup = MagicMock()
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
+    mock_cleanup = MagicMock()
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
-        patch(f"{TARGET_MODULE}.validate_mesh_reader", side_effect=ValueError("bad mesh")),
+        patch(
+            f"{TARGET_MODULE}.validate_mesh_reader",
+            side_effect=RuntimeError("bad mesh"),
+        ),
         patch(f"{TARGET_MODULE}._cleanup_temp_file", side_effect=mock_cleanup),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
