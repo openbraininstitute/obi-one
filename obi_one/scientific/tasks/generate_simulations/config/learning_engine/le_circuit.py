@@ -13,23 +13,19 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     CircuitFromID,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
-    NeuronSimulationScanConfig,
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_base import (
+    LearningEngineSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
-)
-from obi_one.scientific.unions.unions_manipulations import (
-    SynapticManipulationsReference,
-    SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_stimuli import (
-    CircuitStimulusUnion,
+    LearningEngineCircuitStimulusUnion,
     StimulusReference,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
@@ -39,10 +35,10 @@ L = logging.getLogger(__name__)
 CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
-class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
-    """CircuitSimulationScanConfig."""
+class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConfig):
+    """LearningEngineCircuitSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
+    single_coord_class_name: ClassVar[str] = "LearningEngineCircuitSimulationSingleConfig"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -51,7 +47,6 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
@@ -61,7 +56,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     }
 
-    class Initialize(NeuronSimulationScanConfig.Initialize):
+    class Initialize(LearningEngineSimulationScanConfig.Initialize):
         circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",
@@ -92,19 +87,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
-    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
-        default_factory=dict,
-        description="Synaptic manipulations for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticManipulationsReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
-            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-
-    stimuli: dict[str, CircuitStimulusUnion] = Field(
+    stimuli: dict[str, LearningEngineCircuitStimulusUnion] = Field(
         default_factory=dict,
         title="Stimuli",
         description="Stimuli for the simulation.",
@@ -142,21 +125,8 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
-    def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
-        """Returns the base SONATA configuration for the simulation campaign."""
-        sonata_config = super().base_sonata_config(sonata_config)
 
-        sonata_config["conditions"]["extracellular_calcium"] = (
-            self.initialize.extracellular_calcium_concentration
-        )
-
-        sonata_config["conditions"]["mechanisms"] = {
-            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-        }
-
-        return sonata_config
-
-
-class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SimulationSingleConfigMixin):
+class LearningEngineCircuitSimulationSingleConfig(
+    LearningEngineCircuitSimulationScanConfig, SimulationSingleConfigMixin
+):
     """Only allows single values."""

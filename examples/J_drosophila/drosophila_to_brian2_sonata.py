@@ -14,6 +14,7 @@ from voxcell import CellCollection
 L = logging.getLogger(__name__)
 
 POPULATION = "drosophila"
+UNKNOWN_STRING = "[unknown]"
 
 
 def _write_indexes(
@@ -26,9 +27,20 @@ def _write_indexes(
 
 
 def _create_nodes(
-    output: Path, path_comp: Path, annotations_path: Path | None
+    output: Path, path_comp: Path, annotations_path: Path | None, connections: pd.DataFrame
 ) -> tuple[Path, pd.DataFrame]:
-    df_comp = pd.read_csv(path_comp, index_col=0)
+    excitatory_df = (
+        connections[["Presynaptic_ID", "Excitatory"]].drop_duplicates().set_index("Presynaptic_ID")
+    )
+    excitatory_df["synapse_class"] = (
+        excitatory_df["Excitatory"].map({-1: "INH", 1: "EXC"}).astype("string")
+    ).drop(columns="Excitatory")
+    df_comp = (
+        pd.read_csv(path_comp, index_col=0)
+        .merge(excitatory_df, left_index=True, right_index=True, how="left")
+        .fillna(UNKNOWN_STRING)
+    )
+
     assert df_comp.Completed.all()
 
     nodes = pd.DataFrame(
@@ -37,6 +49,7 @@ def _create_nodes(
             "model_type": "brian2_point",
             "model_template": "json:drosophila",
             "flywire_id": df_comp.index,
+            "synapse_class": df_comp.synapse_class.to_numpy()
         },
     )
 
@@ -72,6 +85,7 @@ def _create_nodes(
             nodes[axis] = nodes[f"soma_{axis}"].fillna(pos)
 
         # voxel space (4, 4, 40) nm -> micrometres
+<<<<<<< HEAD
         nodes["x"] *= 4 / 1000
         nodes["y"] *= 4 / 1000
         nodes["z"] *= 40 / 1000
@@ -85,6 +99,24 @@ def _create_nodes(
 
         for col in string_cols:
             nodes[col] = nodes[col].fillna("unknown")
+=======
+        nodes["x"] = nodes["x"].to_numpy(dtype=np.float32) * 4 / 1000
+        nodes["y"] = nodes["y"].to_numpy(dtype=np.float32) * 4 / 1000
+        nodes["z"] = nodes["z"].to_numpy(dtype=np.float32) * 40 / 1000
+
+        nodes = nodes.drop(columns=[
+            "root_id",
+            "pos_x",
+            "pos_y",
+            "pos_z",
+            "soma_x",
+            "soma_y",
+            "soma_z",
+        ])
+
+        for col in string_cols:
+            nodes[col] = nodes[col].fillna(UNKNOWN_STRING)
+>>>>>>> main
 
     cc = CellCollection.from_dataframe(nodes, index_offset=0)
     cc.population_name = POPULATION
@@ -95,13 +127,13 @@ def _create_nodes(
 
 def _create_edges(
     output: Path,
-    path_connnections: Path,
+    connections: pd.DataFrame,
     nodes: pd.DataFrame,
     default_params: dict,
     *,
     repack_indices: bool = False
 ) -> Path:
-    df_con = pd.read_parquet(path_connnections).sort_values("Postsynaptic_ID")
+    df_con = connections.copy().sort_values("Postsynaptic_ID")
 
     fly_wire_idx = nodes.reset_index(names=["id"]).set_index("flywire_id").id
     src = np.asarray(
@@ -284,15 +316,24 @@ def convert(
     output.mkdir(parents=True, exist_ok=True)
 
     models_path = _create_models(output, default_params)
+<<<<<<< HEAD
     nodes_path, nodes = _create_nodes(output, path_comp, annotations_path)
     edges_path = _create_edges(output, path_connnections, nodes, default_params)
+=======
+    connections = pd.read_parquet(path_connnections)
+    nodes_path, nodes = _create_nodes(output, path_comp, annotations_path, connections)
+    edges_path = _create_edges(output, connections, nodes, default_params)
+>>>>>>> main
     node_sets_path = _create_nodesets(output, nodes, sugar_nodes)
     return _create_config(output, models_path, nodes_path, edges_path, node_sets_path)
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     output = Path("output")
     output.mkdir(exist_ok=True)
+=======
+>>>>>>> main
     DROSOPHILA_REPO = Path("Drosophila_brain_model")
 
     SUGAR_NODES = [
@@ -319,13 +360,24 @@ if __name__ == "__main__":
             720575940640649691,
         ]
 
+<<<<<<< HEAD
     if 0: # 630
+=======
+    if False:  # 630
+        output = Path("output-630")
+        output.mkdir(exist_ok=True)
+>>>>>>> main
         PATH_COMP = DROSOPHILA_REPO / "2023_03_23_completeness_630_final.csv"
         PATH_CON = DROSOPHILA_REPO / "2023_03_23_connectivity_630_final.parquet"
         # from version v1.0.0
         # https://github.com/flyconnectome/flywire_annotations/raw/847a711ce3b6e3cc675cf9ef9c843ba564bba1b5/supplemental_files/Supplemental_file1_annotations.tsv
         ANNOTATIONS = DROSOPHILA_REPO / "Supplemental_file1_neuron_annotations_630.tsv"
     else:
+<<<<<<< HEAD
+=======
+        output = Path("output-783")
+        output.mkdir(exist_ok=True)
+>>>>>>> main
         PATH_COMP = DROSOPHILA_REPO / "Completeness_783.csv"
         PATH_CON = DROSOPHILA_REPO / "Connectivity_783.parquet"
         # from version v3.0.0

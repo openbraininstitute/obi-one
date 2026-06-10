@@ -45,6 +45,8 @@ TYPE_MAP: dict[str, str] = {
     "IonChannelFittingSingleConfig": "obi_one.scientific.tasks.ion_channel_modeling",
     "IonChannelModelSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models",
     "IonChannelModelSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models",
+    "LearningEngineCircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit",
+    "LearningEngineCircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit",
     "MEModelSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model",
     "MEModelSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model",
     "MEModelWithSynapsesCircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses",
