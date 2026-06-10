@@ -43,13 +43,13 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     base_neuron_set: NeuronSet
     combined_with: NeuronSet
     operation: Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF] = Field(
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
-            },
-            title="Operation",
-            description="Set option for combining the IDs in the neuron sets.",
-            default=SetOperation.UNION,
-        )
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
+        },
+        title="Operation",
+        description="Set option for combining the IDs in the neuron sets.",
+        default=SetOperation.UNION,
+    )
 
     def _resolve_refs(self) -> tuple[NeuronSet, NeuronSet]:
         """Resolve neuron set references to actual NeuronSet objects."""
@@ -62,9 +62,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
             else self.base_neuron_set
         )
         with_nset = (
-            self.combined_with.block
-            if hasattr(self.combined_with, "block")
-            else self.combined_with
+            self.combined_with.block if hasattr(self.combined_with, "block") else self.combined_with
         )
         return base_nset, with_nset
 
@@ -161,50 +159,190 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         return (expression, combined)
 
 
-# class CombinedNeuronSet(PopulationNeuronSet, abc.ABC):
-#     """Neuron set definition by providing a list of neuron IDs."""
+class CombinedNeuronSet(CombinedBaseNeuronSet):
+    """Combine neuron sets of any type."""
+
+    title: ClassVar[str] = "Combined (Any)"
+    description: ClassVar[str] = "Use neuron sets of any type combined with set operations."
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no populations.",
+        },
+    }
+
+    base_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="First Neuron Set",
+        description="Base neuron set to be combined.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    combined_with: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Second Neuron Set",
+        description="Neuron set to combine with.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
 
 
-# class BiophysicalCombinedNeuronSet(CombinedNeuronSet, BiophysicalPopulationNeuronSet):
-#     """Only biophysical neuron node populations are selectable."""
+class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
+    """Combine biophysical neuron sets."""
 
-#     title: ClassVar[str] = "Combined (Biophysical)"
+    title: ClassVar[str] = "Combined (Biophysical)"
+    description: ClassVar[str] = "Use biophysical neuron sets combined with set operations."
 
-#     neuron_sets: BiophysicalCombinedNeuronSetNamedTuple = Field(
-#         title="Neuron Sets to Combine",
-#         description="List of neuron IDs to include in the neuron set.",
-#         json_schema_extra={
-#             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
-#             SchemaKey.REFERENCE_TYPES: [BiophysicalNeuronSetReference.__name__],
-#         },
-#     )
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
+        NeuronSetPopulationType.BIOPHYSICAL
+    )
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no biophysical populations.",
+        },
+    }
+
+    base_neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="First Neuron Set",
+        description="Base neuron set to be combined.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    combined_with: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Second Neuron Set",
+        description="Neuron set to combine with.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
 
 
-# class VirtualCombinedNeuronSet(CombinedNeuronSet, VirtualPopulationNeuronSet):
-#     """Only virtual neuron node populations are selectable."""
+class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
+    """Combine virtual neuron sets."""
 
-#     title: ClassVar[str] = "Combined (Virtual)"
+    title: ClassVar[str] = "Combined (Virtual)"
+    description: ClassVar[str] = "Use virtual neuron sets combined with set operations."
 
-#     neuron_sets: VirtualCombinedNeuronSetNamedTuple = Field(
-#         title="Neuron Sets to Combine",
-#         description="...",
-#         json_schema_extra={
-#             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
-#             SchemaKey.REFERENCE_TYPES: [VirtualNeuronSetReference.__name__],
-#         },
-#     )
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_VIRTUAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no virtual populations.",
+        },
+    }
+
+    base_neuron_set: VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="First Neuron Set",
+        description="Base neuron set to be combined.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    combined_with: VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Second Neuron Set",
+        description="Neuron set to combine with.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
 
 
-# class PointCombinedNeuronSet(CombinedNeuronSet, PointPopulationNeuronSet):
-#     """Only point neuron node populations are selectable."""
+class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
+    """Combine non-virtual neuron sets."""
 
-#     title: ClassVar[str] = "Combined (Point)"
+    title: ClassVar[str] = "Combined (Non-Virtual)"
+    description: ClassVar[str] = "Use non-virtual neuron sets combined with set operations."
 
-#     neuron_sets: PointCombinedNeuronSetNamedTuple = Field(
-#         title="Neuron Sets to Combine",
-#         description="...",
-#         json_schema_extra={
-#             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
-#             SchemaKey.REFERENCE_TYPES: [PointNeuronSetReference.__name__],
-#         },
-#     )
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
+        NeuronSetPopulationType.NONVIRTUAL
+    )
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no non-virtual populations.",
+        },
+    }
+
+    base_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="First Neuron Set",
+        description="Base neuron set to be combined.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    combined_with: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Second Neuron Set",
+        description="Neuron set to combine with.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+
+class PointCombinedNeuronSet(CombinedBaseNeuronSet):
+    """Combine point neuron sets."""
+
+    title: ClassVar[str] = "Combined (Point)"
+    description: ClassVar[str] = "Use point neuron sets combined with set operations."
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.POINT
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_POINT_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no point neuron populations.",
+        },
+    }
+
+    base_neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="First Neuron Set",
+        description="Base neuron set to be combined.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    combined_with: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Second Neuron Set",
+        description="Neuron set to combine with.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
