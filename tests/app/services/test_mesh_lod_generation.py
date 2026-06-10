@@ -91,23 +91,20 @@ def test_generate_lods_success(tmp_path):
     obj_path.write_bytes(b"data")
 
     output_dir = tmp_path / "output_lods"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Avoid targeting underlying C-bindings by patching the reference directly
-    # inside the execution task namespace as an open MagicMock object.
+    # Pre-populate the directory to guarantee files exist when scanned by iterdir()
+    dummy_lod = output_dir / "lod_1.gltf"
+    dummy_lod.write_bytes(b"gltf-content")
+
     with patch("obi_one.scientific.tasks.mesh_lod_generation.task.ultraliser") as mock_ultra:
         mock_mesh_instance = MagicMock()
         mock_ultra.Mesh.return_value = mock_mesh_instance
 
-        def side_effect_create_file(out_dir_str):
-            p = pathlib.Path(out_dir_str) / "lod_1.gltf"
-            p.write_bytes(b"gltf-content")
-
-        mock_mesh_instance.generate_web_lods.side_effect = side_effect_create_file
-
         result = _generate_lods(obj_path, output_dir)
 
         assert pathlib.Path("lod_1.gltf") in result
-        assert result[pathlib.Path("lod_1.gltf")] == output_dir / "lod_1.gltf"
+        assert result[pathlib.Path("lod_1.gltf")] == dummy_lod
 
 
 def test_generate_lods_empty_failure(tmp_path):
@@ -118,7 +115,6 @@ def test_generate_lods_empty_failure(tmp_path):
 
     with patch("obi_one.scientific.tasks.mesh_lod_generation.task.ultraliser") as mock_ultra:
         mock_mesh_instance = MagicMock()
-        mock_mesh_instance.generate_web_lods.return_value = None
         mock_ultra.Mesh.return_value = mock_mesh_instance
 
         with pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"):
