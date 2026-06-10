@@ -21,14 +21,14 @@ def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssig
 def get_default_for(
     lst_model_assigners: list[SynapticModelAssignerUnion], edge_population_name: str, circ: Circuit
 ) -> DataFrame:
-    reference = lst_model_assigners[0].synaptic_model.block
-    default_model = reference.default()
+    synaptic_model_block = lst_model_assigners[0].synaptic_model.block
+    default_model = type(synaptic_model_block)()
     ep = circ.sonata_circuit.edges[edge_population_name]
     already_parameterized = [
-        prop_ for prop_ in ep.property_names if prop_ in reference.parameter_names()
+        prop_ for prop_ in ep.property_names if prop_ in synaptic_model_block.parameter_names()
     ]
     to_be_filled = [
-        prop_ for prop_ in reference.parameter_names() if prop_ not in already_parameterized
+        prop_ for prop_ in synaptic_model_block.parameter_names() if prop_ not in already_parameterized
     ]
     df = ep.get(ep.ids(), properties=already_parameterized)  # Confirmed to work for empty list
     indices = ep.get(ep.ids(), properties=["@source_node", "@target_node"])

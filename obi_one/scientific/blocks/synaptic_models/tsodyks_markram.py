@@ -95,10 +95,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    usyn: AllDistributionsReference | None = Field(
+    u_syn: AllDistributionsReference | None = Field(
         default=None,
-        title="Usyn Distribution",
-        description="Distribution of the utilization of synaptic efficacy (usyn) for "
+        title="U_syn Distribution",
+        description="Distribution of the utilization of synaptic efficacy (u_syn) for "
         "the first spike in a spike train.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -188,10 +188,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    usyn_shared_within: bool = Field(
+    u_syn_shared_within: bool = Field(
         default=False,
-        title="Usyn Distribution Shared Within",
-        description="Whether the utilization of synaptic efficacy (usyn) for the first spike "
+        title="U_syn Distribution Shared Within",
+        description="Whether the utilization of synaptic efficacy (u_syn) for the first spike "
         "in a spike train is shared within the synapses between the source "
         "and target neuron sets.",
         json_schema_extra={
@@ -217,68 +217,67 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     def cov_dict(self) -> dict:
         return {}
 
-    @property
-    def synapse_type_id(self) -> int:
-        raise NotImplementedError("synapse_type_id must be implemented by subclasses")
+    """
+    # def u_hill_coefficient_dict(self) -> dict:
+    #     d = self.u_hill_coefficient_distribution.resolve()
+    #     d["shared_within"] = self.u_hill_coefficient_shared_within
+    #     return d
 
-    def u_hill_coefficient_dict(self) -> dict:
-        d = self.u_hill_coefficient_distribution.resolve()
-        d["shared_within"] = self.u_hill_coefficient_shared_within
-        return d
+    # def conductance_distribution_dict(self) -> dict:
+    #     d = self.conductance_distribution.resolve()
+    #     d["shared_within"] = self.conductance_distribution_shared_within
+    #     return d
 
-    def conductance_distribution_dict(self) -> dict:
-        d = self.conductance_distribution.resolve()
-        d["shared_within"] = self.conductance_distribution_shared_within
-        return d
+    # def conductance_scale_factor_distribution_dict(self) -> dict:
+    #     d = self.conductance_scale_factor_distribution.resolve()
+    #     d["shared_within"] = self.conductance_scale_factor_distribution_shared_within
+    #     return d
 
-    def conductance_scale_factor_distribution_dict(self) -> dict:
-        d = self.conductance_scale_factor_distribution.resolve()
-        d["shared_within"] = self.conductance_scale_factor_distribution_shared_within
-        return d
+    # def fascilitation_time_dict(self) -> dict:
+    #     d = self.fascilitation_time.resolve()
+    #     d["shared_within"] = self.fascilitation_time_shared_within
+    #     return d
 
-    def fascilitation_time_dict(self) -> dict:
-        d = self.fascilitation_time.resolve()
-        d["shared_within"] = self.fascilitation_time_shared_within
-        return d
+    # def depression_time_dict(self) -> dict:
+    #     d = self.depression_time.resolve()
+    #     d["shared_within"] = self.depression_time_shared_within
+    #     return d
 
-    def depression_time_dict(self) -> dict:
-        d = self.depression_time.resolve()
-        d["shared_within"] = self.depression_time_shared_within
-        return d
+    # def n_rrp_vesicles_dict(self) -> dict:
+    #     d = self.n_rrp_vesicles_distribution.resolve()
+    #     d["shared_within"] = self.n_rrp_vesicles_shared_within
+    #     return d
 
-    def n_rrp_vesicles_dict(self) -> dict:
-        d = self.n_rrp_vesicles_distribution.resolve()
-        d["shared_within"] = self.n_rrp_vesicles_shared_within
-        return d
+    # def decay_time_dict(self) -> dict:
+    #     d = self.decay_time.resolve()
+    #     d["shared_within"] = self.decay_time_shared_within
+    #     return d
 
-    def decay_time_dict(self) -> dict:
-        d = self.decay_time.resolve()
-        d["shared_within"] = self.decay_time_shared_within
-        return d
+    # def u_syn_dict(self) -> dict:
+    #     d = self.u_syn.resolve()
+    #     d["shared_within"] = self.u_syn_shared_within
+    #     return d
 
-    def usyn_dict(self) -> dict:
-        d = self.usyn.resolve()
-        d["shared_within"] = self.usyn_shared_within
-        return d
+    # def delay_dict(self) -> dict:
+    #     d = self.delay_distribution.resolve()
+    #     d["shared_within"] = self.delay_shared_within
+    #     return d
 
-    def delay_dict(self) -> dict:
-        d = self.delay_distribution.resolve()
-        d["shared_within"] = self.delay_shared_within
-        return d
-
-    def parameter_dictionaries(self) -> dict:
-        return {
-            "u_hill_coefficient": self.u_hill_coefficient_dict(),
-            "conductance": self.conductance_distribution_dict(),
-            "conductance_scale_factor": self.conductance_scale_factor_distribution_dict(),
-            "facilitation_time": self.fascilitation_time_dict(),
-            "depression_time": self.depression_time_dict(),
-            "n_rrp_vesicles": self.n_rrp_vesicles_dict(),
-            "decay_time": self.decay_time_dict(),
-            "usyn": self.usyn_dict(),
-            "delay": self.delay_dict(),
-            "syn_type_id": self.synapse_type_id,
-        }
+    
+    # def parameter_dictionaries(self) -> dict:
+    #     return {
+    #         "u_hill_coefficient": self.u_hill_coefficient_dict(),
+    #         "conductance": self.conductance_distribution_dict(),
+    #         "conductance_scale_factor": self.conductance_scale_factor_distribution_dict(),
+    #         "facilitation_time": self.fascilitation_time_dict(),
+    #         "depression_time": self.depression_time_dict(),
+    #         "n_rrp_vesicles": self.n_rrp_vesicles_dict(),
+    #         "decay_time": self.decay_time_dict(),
+    #         "u_syn": self.u_syn_dict(),
+    #         "delay": self.delay_dict(),
+    #         "syn_type_id": self.syn_type_id,
+    #     }
+    """
 
     @classmethod
     def synapse_model_family(cls):
@@ -294,9 +293,9 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             "depression_time",
             "n_rrp_vesicles",
             "decay_time",
-            "usyn",
+            "u_syn",
             "delay",
-            "synapse_type_id",
+            "syn_type_id",
         ]
 
     def sample(self, indices: DataFrame) -> DataFrame:
@@ -340,15 +339,15 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
                     self.decay_time,
                     NormalDistribution(min=1.7, max=1.9, mean=1.7, standard_deviation=0.1),
                 ),
-                "usyn": resolve(
-                    self.usyn,
+                "u_syn": resolve(
+                    self.u_syn,
                     NormalDistribution(min=0.2, max=0.7, mean=0.5, standard_deviation=0.25),
                 ),
                 "delay": resolve(
                     self.delay_distribution,
                     NormalDistribution(min=0.1, max=5.0, mean=2.0, standard_deviation=1.0),
                 ),
-                "synapse_type_id": [self.synapse_type_id] * n,
+                "syn_type_id": [self.syn_type_id] * n,
             },
             index=indices.index,
         )
@@ -356,13 +355,13 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
 class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     @property
-    def synapse_type_id(self) -> int:
+    def syn_type_id(self) -> int:
         return 113  # 128, 130, 114, 123 are other values in edges files
 
 
 class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     @property
-    def synapse_type_id(self) -> int:
+    def syn_type_id(self) -> int:
         return 7  # smaller than 100
 
 
