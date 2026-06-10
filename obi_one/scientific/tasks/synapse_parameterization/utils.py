@@ -9,7 +9,7 @@ from obi_one.scientific.unions.unions_synaptic_model_assigner import (
 )
 
 
-def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssignerUnion]):
+def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssignerUnion]) -> None:
     # Due to the way lst_model_assigners is created, this is guaranteed to have len >= 1
     reference = lst_model_assigners[0]
     reference_model = reference.synaptic_model.block

@@ -85,7 +85,9 @@ class Distribution(Block, abc.ABC):
         final_samples = self._apply_constraints(initial_samples, ge=ge, le=le, gt=gt, lt=lt)
         return final_samples
 
-    def sample_with_constraints(self, n: int = 1, rng: np.random.Generator | None = None):
+    def sample_with_constraints(
+        self, n: int = 1, rng: np.random.Generator | None = None
+    ) -> list[float]:
         kwargs = {}
         if self.include_min:
             kwargs["ge"] = self.min

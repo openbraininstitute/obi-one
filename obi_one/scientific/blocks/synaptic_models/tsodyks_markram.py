@@ -19,6 +19,8 @@ L = logging.getLogger(__name__)
 
 
 class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
+    _synapse_model_family = "TM_model"
+
     u_hill_coefficient_distribution: AllDistributionsReference | None = Field(
         default=None,
         title="U Hill Coefficient Distribution",
@@ -218,10 +220,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         return {}
 
     @classmethod
-    def synapse_model_family(cls):
-        return "TM_model"
-
-    @classmethod
     def parameter_names(cls) -> list[str]:
         return [
             "u_hill_coefficient",
@@ -240,7 +238,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
         n = len(indices)
 
-        def resolve(attr, default):
+        def resolve(attr, default) -> list[float]:
             return (default if attr is None else attr.block).sample_with_constraints(n)
 
         # TODO: 'shared_within' is currently ignored

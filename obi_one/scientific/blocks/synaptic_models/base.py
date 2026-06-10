@@ -2,20 +2,22 @@ from pandas import DataFrame
 
 from obi_one.core.block import Block
 from obi_one.scientific.blocks import distributions
+from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
 
 
 class SynapticModelBase(Block):
-    """# def parameter_dictionaries(self) -> dict:
-    #     raise NotImplementedError("This is an abstract class!")
-    """
+    _synapse_model_family: str = None
 
     @classmethod
     def synapse_model_family(cls):
-        msg = (
-            "Concrete subclasses of SynapticModelBase MUST implement the .synapse_model_family() "
-            "class method to return a string that identifies the family of synapse models to which they belong."
-        )
-        raise NotImplementedError(msg)
+        if cls._synapse_model_family is None:
+            msg = (
+                "Concrete subclasses of SynapticModelBase MUST set the class variable "
+                "_synapse_model_family to a string that identifies the synapse model family. "
+                "This is used to check compatibility of different SynapticModelBase subclasses."
+            )
+            raise NotImplementedError(msg)
+        return cls._synapse_model_family
 
     @classmethod
     def compatible_with(cls, other) -> None:
@@ -26,16 +28,19 @@ class SynapticModelBase(Block):
         class is functionally identical to the one of the other.
         """
         if cls.synapse_model_family() != other.synapse_model_family():
-            raise ValueError("Synapse models incompatible!")
+            msg = "Synapse models incompatible! They belong to different synapse model families."
+            raise ValueError(msg)
         # Below should not be needed. Just to be safe...
         param_names = cls.parameter_names()
         other_names = other.parameter_names()
         for k in param_names:
             if k not in other_names:
-                raise ValueError("Internal OBI-ONE error!")
+                msg = "Synapse models incompatible! Parameter name mismatch."
+                raise ValueError(msg)
         for k in other_names:
             if k not in param_names:
-                raise ValueError("Internal OBI-ONE error!")
+                msg = "Synapse models incompatible! Parameter name mismatch."
+                raise ValueError(msg)
 
     @classmethod
     def parameter_names(cls) -> list[str]:
@@ -50,8 +55,9 @@ class SynapticModelBase(Block):
         raise NotImplementedError(msg)
 
     @classmethod
-    def from_dict(cls, serialized_dict):
-        from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
+    def from_dict(
+        cls, serialized_dict: dict
+    ) -> tuple["SynapticModelBase", dict[str, distributions.DistributionBase]]:
 
         def dist_ref(name: str) -> AllDistributionsReference:
             """Helper to create a distribution reference."""
@@ -74,4 +80,8 @@ class SynapticModelBase(Block):
         Returns DataFrame with one named column per parameter and the same index
         as the input.
         """
-        raise NotImplementedError("This is an abstract class!")
+        msg = (
+            "Concrete subclasses of SynapticModelBase MUST implement the .sample() method to return "
+            "a DataFrame of synapse parameters given a DataFrame of indices."
+        )
+        raise NotImplementedError(msg)
