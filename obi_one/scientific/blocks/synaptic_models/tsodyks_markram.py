@@ -301,6 +301,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     def sample(self, indices: DataFrame) -> DataFrame:
 
+        n = len(indices)
+
         def resolve(attr, default):
             return (default if attr is None else attr.block).sample_with_constraints(n)
 
