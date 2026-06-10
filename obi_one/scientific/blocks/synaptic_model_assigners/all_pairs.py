@@ -9,7 +9,7 @@ L = logging.getLogger(__name__)
 
 
 class AllPairsSynapticModelAssigner(SynapseModelAssigner):
-    def validate(self, circuit: Circuit) -> None:
+    def validate_for_circuit(self, circuit: Circuit) -> None:
         pass
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:

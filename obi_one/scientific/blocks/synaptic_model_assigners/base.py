@@ -41,6 +41,7 @@ class SynapseModelAssigner(Block):
         },
     )
 
+    # This doesn't seem to be called from anywhere
     def validate_for_circuit(self, circuit: Circuit) -> None:
         msg = (
             "Concrete subclasses of SynapseModelAssigner MUST implement "

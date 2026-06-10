@@ -64,9 +64,17 @@ class SynapseParameterizationTask(Task):
 
         parent = self._circuit_entity
         if parent is not None:
-            hierarchy = db_client.get_entity(
-                entity_id=parent.brain_region.hierarchy_id,
-                entity_type=models.BrainRegionHierarchy,
+            parent_brain_region = parent.brain_region.hierarchy_id if parent.brain_region else None
+            if parent_brain_region is not None:
+                hierarchy = db_client.get_entity(
+                    entity_id=parent_brain_region,
+                    entity_type=models.BrainRegionHierarchy,
+                )
+            subject_name = parent.subject.name if parent.subject else None
+            brain_region_name = parent.brain_region.name if parent.brain_region else None
+            hierarchy_name = hierarchy.name if hierarchy else None
+            species_name = (
+                parent.subject.species.name if parent.subject and parent.subject.species else None
             )
             circuit_metadata = {
                 "name": f"{parent.name} (synapse-parameterized)",
@@ -74,10 +82,10 @@ class SynapseParameterizationTask(Task):
                     f"Synapse-parameterized derivation of circuit '{parent.name}' ({parent.id})."
                 ),
                 "build_category": parent.build_category,
-                "species": parent.subject.species.name,
-                "subject": parent.subject.name,
-                "brain_region": parent.brain_region.name,
-                "brain_region_hierarchy": hierarchy.name,
+                "species": species_name,
+                "subject": subject_name,
+                "brain_region": brain_region_name,
+                "brain_region_hierarchy": hierarchy_name,
                 "target_simulator": parent.target_simulator or types.TargetSimulator.NEURON,
                 "parent": parent.name,
                 "derivation_type": types.DerivationType.circuit_rewiring,
@@ -97,7 +105,7 @@ class SynapseParameterizationTask(Task):
             per_edge_population.setdefault(assigner.edge_population_name, []).append(assigner)
         return per_edge_population
 
-    def execute(self, *, db_client: Client = None, entity_cache: bool = False) -> None:
+    def execute(self, *, db_client: Client | None = None, entity_cache: bool = False) -> None:
         if db_client is None:
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)

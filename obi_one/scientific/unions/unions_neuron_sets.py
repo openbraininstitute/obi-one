@@ -3,7 +3,7 @@ from typing import Annotated, Any, ClassVar, cast
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
 from obi_one.scientific.blocks.neuron_sets.pair import PairMotifNeuronSet
@@ -86,12 +86,12 @@ class NeuronSetReference(BlockReference):
     allowed_block_types: ClassVar[Any] = NeuronSetUnion
 
     @property
-    def block(self) -> NeuronSet:
+    def block(self) -> AbstractNeuronSet:
         """Returns the NeuronSet block associated with this reference."""
-        return cast("NeuronSet", super().block)  # Ensure block is resolved and cached
+        return cast("AbstractNeuronSet", super().block)  # Ensure block is resolved and cached
 
     @block.setter
-    def block(self, value: NeuronSet) -> None:
+    def block(self, value: AbstractNeuronSet) -> None:
         BlockReference.block.fset(self, value)
 
 

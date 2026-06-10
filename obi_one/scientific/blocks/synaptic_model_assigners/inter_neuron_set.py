@@ -34,7 +34,8 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         },
     )
 
-    def validate(self, circuit: Circuit) -> None:
+    # This doesn't seem to be called from anywhere
+    def validate_for_circuit(self, circuit: Circuit) -> None:
         circ = circuit.sonata_circuit
         ep = circ.edges[self.edge_population_name]
         specified_source = self.source_neuron_set.block.node_population
