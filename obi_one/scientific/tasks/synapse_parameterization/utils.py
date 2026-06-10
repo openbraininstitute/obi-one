@@ -28,7 +28,9 @@ def get_default_for(
         prop_ for prop_ in ep.property_names if prop_ in synaptic_model_block.parameter_names()
     ]
     to_be_filled = [
-        prop_ for prop_ in synaptic_model_block.parameter_names() if prop_ not in already_parameterized
+        prop_
+        for prop_ in synaptic_model_block.parameter_names()
+        if prop_ not in already_parameterized
     ]
     df = ep.get(ep.ids(), properties=already_parameterized)  # Confirmed to work for empty list
     indices = ep.get(ep.ids(), properties=["@source_node", "@target_node"])

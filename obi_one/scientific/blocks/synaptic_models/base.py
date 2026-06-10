@@ -3,7 +3,6 @@ from pandas import DataFrame
 from obi_one.core.block import Block
 from obi_one.scientific.blocks import distributions
 
-
 # def _default_tm():
 #     from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
 #         ExcitatoryTsodyksMarkramSynapticModel,
@@ -58,15 +57,16 @@ from obi_one.scientific.blocks import distributions
 
 
 class SynapticModelBase(Block):
-    """
-    # def parameter_dictionaries(self) -> dict:
+    """# def parameter_dictionaries(self) -> dict:
     #     raise NotImplementedError("This is an abstract class!")
     """
 
     @classmethod
     def synapse_model_family(cls):
-        msg = "Concrete subclasses of SynapticModelBase MUST implement the .synapse_model_family() " \
+        msg = (
+            "Concrete subclasses of SynapticModelBase MUST implement the .synapse_model_family() "
             "class method to return a string that identifies the family of synapse models to which they belong."
+        )
         raise NotImplementedError(msg)
 
     @classmethod
@@ -95,13 +95,14 @@ class SynapticModelBase(Block):
         Important: `SynapticModelBase` classes that share the same
         _synapse_model_family MUST return the same list of parameter names!
         """
-        msg = "Concrete subclasses of SynapticModelBase MUST implement the .parameter_names() " \
+        msg = (
+            "Concrete subclasses of SynapticModelBase MUST implement the .parameter_names() "
             "class method to return a list of synapse parameter names."
+        )
         raise NotImplementedError(msg)
 
     @classmethod
     def from_dict(cls, serialized_dict):
-        from obi_one.scientific.blocks import distributions
         from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
 
         def dist_ref(name: str) -> AllDistributionsReference:
