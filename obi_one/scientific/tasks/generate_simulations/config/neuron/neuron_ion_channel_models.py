@@ -1,6 +1,7 @@
 import logging
 from typing import ClassVar, Self
 
+from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.exception import OBIONEError
@@ -44,6 +45,7 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
     description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"
 
+    _target_simulator: ClassVar[SimulatorType] = SimulatorType.NEURON
     _timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
 
     json_schema_extra_additions: ClassVar[dict] = {
