@@ -222,7 +222,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.circuit_simulation_brian2_machine: ServiceSubtype.SMALL_SIM,
         TaskType.ion_channel_model_simulation_execution: ServiceSubtype.ION_CHANNEL_SIM,
         TaskType.morphology_skeletonization: ServiceSubtype.NEURON_MESH_SKELETONIZATION,
-        TaskType.em_synapse_mapping: ServiceSubtype.SMALL_CIRCUIT_SIM,
+        TaskType.em_synapse_mapping: ServiceSubtype.EM_SYNAPSE_MAPPING,
     }
     expected_count = {
         TaskType.circuit_extraction: 1,
