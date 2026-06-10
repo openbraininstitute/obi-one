@@ -8,17 +8,12 @@ from uuid import uuid4
 
 import pytest
 from entitysdk.exception import EntitySDKError
-from fastapi import FastAPI, HTTPException
-from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
-from app.dependencies.auth import user_verified
-from app.dependencies.callback import CallBackUrlDep
 from app.dependencies.entitysdk import get_client
-from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.mesh_registration import (
     _create_lod_task_config,
     _register_obj_asset,
-    router as mesh_registration_router,
 )
 from app.errors import ApiErrorCode
 
@@ -38,24 +33,6 @@ def mock_db_client():
     client = MagicMock()
     client.project_context = MagicMock()
     return client
-
-
-@pytest.fixture
-def mock_ls_client():
-    return MagicMock()
-
-
-@pytest.fixture
-def client(mock_db_client, mock_ls_client):
-    app = FastAPI()
-    app.include_router(mesh_registration_router)
-
-    app.dependency_overrides[get_client] = lambda: mock_db_client
-    app.dependency_overrides[user_verified] = lambda: True
-    app.dependency_overrides[LaunchSystemClientDep] = lambda: mock_ls_client
-    app.dependency_overrides[CallBackUrlDep] = lambda: "http://callback"
-
-    return TestClient(app)
 
 
 @pytest.fixture
@@ -85,6 +62,8 @@ def test_register_mesh_success(client, mock_db_client, valid_obj_file, mock_task
     config_entity.id = uuid4()
     mock_db_client.register_entity.return_value = config_entity
 
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
@@ -92,6 +71,8 @@ def test_register_mesh_success(client, mock_db_client, valid_obj_file, mock_task
         patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
+
+    client.app.dependency_overrides.pop(get_client, None)
 
     assert response.status_code == HTTPStatus.ACCEPTED
     body = response.json()
@@ -108,25 +89,32 @@ def test_register_mesh_invalid_entity_id(client, valid_obj_file):
     assert "UUID" in response.json()["detail"]["detail"]
 
 
-def test_register_mesh_wrong_entity_type(client, valid_obj_file):
-    response = client.post(
-        ROUTE,
-        files=valid_obj_file,
-        data={"entity_type": "Circuit"},
-    )
+def test_register_mesh_wrong_entity_type(client, mock_db_client, valid_obj_file):
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+
+    response = client.post(ROUTE, files=valid_obj_file, data={"entity_type": "Circuit"})
+
+    client.app.dependency_overrides.pop(get_client, None)
+
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json()["detail"]["code"] == ApiErrorCode.INVALID_REQUEST
     assert "EMCellMesh" in response.json()["detail"]["detail"]
 
 
-def test_register_mesh_invalid_extension(client):
+def test_register_mesh_invalid_extension(client, mock_db_client):
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
     bad_file = {"file": ("mesh.txt", BytesIO(b"data"), "text/plain")}
+
     response = client.post(ROUTE, files=bad_file)
+
+    client.app.dependency_overrides.pop(get_client, None)
+
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_register_mesh_obj_upload_fails(client, mock_db_client, valid_obj_file):
     mock_db_client.upload_content.side_effect = EntitySDKError("upload failed")
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
@@ -134,6 +122,8 @@ def test_register_mesh_obj_upload_fails(client, mock_db_client, valid_obj_file):
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
+
+    client.app.dependency_overrides.pop(get_client, None)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.ENTITYSDK_API_FAILURE
@@ -144,6 +134,7 @@ def test_register_mesh_task_config_creation_fails(client, mock_db_client, valid_
     uploaded_asset.path = str(uuid4())
     mock_db_client.upload_content.return_value = uploaded_asset
     mock_db_client.register_entity.side_effect = EntitySDKError("register failed")
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
@@ -151,6 +142,8 @@ def test_register_mesh_task_config_creation_fails(client, mock_db_client, valid_
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
+
+    client.app.dependency_overrides.pop(get_client, None)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert response.json()["detail"]["code"] == ApiErrorCode.ENTITYSDK_API_FAILURE
@@ -164,21 +157,26 @@ def test_register_mesh_task_submit_fails(client, mock_db_client, valid_obj_file)
     config_entity = MagicMock()
     config_entity.id = uuid4()
     mock_db_client.register_entity.return_value = config_entity
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
         patch(f"{TARGET_MODULE}.validate_mesh_reader", return_value=None),
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
-        patch(f"{TARGET_MODULE}.task_service.submit_task_job", side_effect=RuntimeError("ls down")),
+        patch(
+            f"{TARGET_MODULE}.task_service.submit_task_job",
+            side_effect=RuntimeError("ls down"),
+        ),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
+
+    client.app.dependency_overrides.pop(get_client, None)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 def test_register_mesh_missing_project_context(client, mock_db_client, valid_obj_file):
     mock_db_client.project_context = None
-
     uploaded_asset = MagicMock()
     uploaded_asset.path = str(uuid4())
     mock_db_client.upload_content.return_value = uploaded_asset
@@ -186,6 +184,7 @@ def test_register_mesh_missing_project_context(client, mock_db_client, valid_obj
     config_entity = MagicMock()
     config_entity.id = uuid4()
     mock_db_client.register_entity.return_value = config_entity
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
@@ -193,6 +192,8 @@ def test_register_mesh_missing_project_context(client, mock_db_client, valid_obj
         patch(f"{TARGET_MODULE}._cleanup_temp_file"),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
+
+    client.app.dependency_overrides.pop(get_client, None)
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
@@ -209,6 +210,7 @@ def test_register_mesh_cleanup_called_on_success(
     mock_db_client.register_entity.return_value = config_entity
 
     mock_cleanup = MagicMock()
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
@@ -218,12 +220,15 @@ def test_register_mesh_cleanup_called_on_success(
     ):
         response = client.post(ROUTE, files=valid_obj_file)
 
+    client.app.dependency_overrides.pop(get_client, None)
+
     assert response.status_code == HTTPStatus.ACCEPTED
     mock_cleanup.assert_called_once_with(FAKE_TEMP_PATH)
 
 
-def test_register_mesh_cleanup_called_on_exception(client, valid_obj_file):
+def test_register_mesh_cleanup_called_on_exception(client, mock_db_client, valid_obj_file):
     mock_cleanup = MagicMock()
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
@@ -231,6 +236,8 @@ def test_register_mesh_cleanup_called_on_exception(client, valid_obj_file):
         patch(f"{TARGET_MODULE}._cleanup_temp_file", side_effect=mock_cleanup),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
+
+    client.app.dependency_overrides.pop(get_client, None)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     mock_cleanup.assert_called_once_with(FAKE_TEMP_PATH)
