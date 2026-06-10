@@ -14,9 +14,16 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
-    VirtualNeuronSetReference,
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    ALL_NEURON_SETS_REFERENCE_UNION,
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    POINT_NEURON_SETS_REFERENCE_TYPES,
+    POINT_NEURON_SETS_REFERENCE_UNION,
+    VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    VIRTUAL_NEURON_SETS_REFERENCE_UNION,
 )
 
 L = logging.getLogger("obi-one")
@@ -64,7 +71,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         with_nset = (
             self.combined_with.block if hasattr(self.combined_with, "block") else self.combined_with
         )
-        return base_nset, with_nset
+        return base_nset, with_nset  # ty:ignore[invalid-return-type]
 
     def check_combined_depth(
         self, visited: set[str] | None = None, depth: int = _MAX_COMBINED_DEPTH
