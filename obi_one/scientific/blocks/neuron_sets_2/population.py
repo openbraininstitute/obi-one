@@ -64,12 +64,13 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
 
     def _resolve_ids(self, circuit: Circuit) -> list[int]:
         """Returns the full list of neuron IDs (w/o subsampling)."""
+        c = circuit.sonata_circuit
         expression = self._get_expression(circuit)
         name = "__TMP_NODE_SET__"
-        add_node_set_to_circuit(circuit.sonata_circuit, {name: expression})
+        add_node_set_to_circuit(c, {name: expression})
 
         try:
-            node_ids = circuit.sonata_circuit.nodes[self.population].ids(name)
+            node_ids = c.nodes[self.population].ids(name)
         except snap.BluepySnapError as e:
             # In case of an error (e.g., "No such attribute"), return empty list
             L.warning(e)
