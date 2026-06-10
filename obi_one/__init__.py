@@ -65,7 +65,6 @@ __all__ = [
     "CreateExtracellularRecordingArrayTask",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
-    "DistributionSpikeStimulus",
     "EMCellMeshFromID",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",

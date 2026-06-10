@@ -42,10 +42,15 @@ class SynapseModelAssigner(Block):
     )
 
     def validate(self, circuit: Circuit) -> None:
-        raise NotImplementedError("This is implemented in derived classes!")
+        msg = "Concrete subclasses of SynapseModelAssigner MUST implement the .validate() method."
+        raise NotImplementedError(msg)
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
-        raise NotImplementedError("This is implemented in derived classes!")
+        msg = (
+            "Concrete subclasses of SynapseModelAssigner MUST implement the ._edge_indices() "
+            "method to return the edge indices to which the synaptic model should be assigned."
+        )
+        raise NotImplementedError(msg)
 
     def edge_indices(
         self, circuit: Circuit, min_edge_id: int | None = None, max_edge_id: int | None = None

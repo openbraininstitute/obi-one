@@ -1,4 +1,4 @@
-"""import logging
+"""import logging.
 
 import bluepysnap as snap
 import h5py

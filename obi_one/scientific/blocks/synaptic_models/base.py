@@ -9,7 +9,7 @@ class SynapticModelBase(Block):
     _synapse_model_family: str = None
 
     @classmethod
-    def synapse_model_family(cls):
+    def synapse_model_family(cls) -> str:
         if cls._synapse_model_family is None:
             msg = (
                 "Concrete subclasses of SynapticModelBase MUST set the class variable "

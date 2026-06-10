@@ -43,8 +43,10 @@ def write_back_to_edge_file(df: DataFrame, ep: EdgePopulation) -> None:
     with h5py.File(ep.h5_filepath, "a") as h5:
         grp = h5["edges"][ep.name]["0"]  # TODO: Support multiple edge_group_ids
         for col in df.columns:
-            if col in grp.keys():
-                assert grp[col].shape[0] == n_edges
+            if col in grp:
+                if grp[col].shape[0] != n_edges:
+                    msg = f"Column {col!r} has {grp[col].shape[0]} rows, expected {n_edges}"
+                    raise ValueError(msg)
                 grp[col][:] = df[col].to_numpy()
             else:
                 grp.create_dataset(col, data=df[col].to_numpy())

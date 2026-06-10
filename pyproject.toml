@@ -182,6 +182,7 @@ ignore = [
     "TD002",   # Missing author in TODO
     "TD003",   # Missing issue link for this TODO
     "D205",    # 1 blank line required between summary line and description
+    "PLW0717", # Try clause contains too many statements
 ]
 
 [tool.ruff.lint.isort]

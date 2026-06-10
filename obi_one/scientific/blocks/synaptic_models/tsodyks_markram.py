@@ -6,6 +6,7 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.distributions.base import Distribution
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
 from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
@@ -238,7 +239,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
         n = len(indices)
 
-        def resolve(attr, default) -> list[float]:
+        def resolve(attr: Distribution | None, default: Distribution) -> list[float]:
             return (default if attr is None else attr.block).sample_with_constraints(n)
 
         # TODO: 'shared_within' is currently ignored
