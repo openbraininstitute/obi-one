@@ -1,6 +1,7 @@
+# app/tests/scientific/tasks/test_mesh_lod_generation.py
 import pathlib
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from entitysdk.models import EMCellMesh
@@ -17,6 +18,10 @@ from obi_one.scientific.tasks.mesh_lod_generation.task import (
     _upload_lod_directory,
     run_mesh_lod_generation,
 )
+
+# Explicitly rebuild the Pydantic schema using the runtime UUID type
+# to fix the 'class-not-fully-defined' forward reference error.
+MeshLodGenerationScanConfig.model_rebuild(_types_namespace={"UUID": UUID})
 
 
 # ==========================================
@@ -80,41 +85,44 @@ def test_download_obj(tmp_path):
     )
 
 
-@patch("ultraliser.Mesh")
-def test_generate_lods_success(mock_ultraliser_mesh, tmp_path):
+def test_generate_lods_success(tmp_path):
     """Verify proper directory reading when ultraliser produces output files."""
     obj_path = tmp_path / "input.obj"
     obj_path.write_bytes(b"data")
 
     output_dir = tmp_path / "output_lods"
 
-    def side_effect_create_file(out_dir_str):
-        p = pathlib.Path(out_dir_str) / "lod_1.gltf"
-        p.write_bytes(b"gltf-content")
+    # Avoid targeting underlying C-bindings by patching the reference directly
+    # inside the execution task namespace as an open MagicMock object.
+    with patch("obi_one.scientific.tasks.mesh_lod_generation.task.ultraliser") as mock_ultra:
+        mock_mesh_instance = MagicMock()
+        mock_ultra.Mesh.return_value = mock_mesh_instance
 
-    mock_mesh_instance = MagicMock()
-    mock_mesh_instance.generate_web_lods.side_effect = side_effect_create_file
-    mock_ultraliser_mesh.return_value = mock_mesh_instance
+        def side_effect_create_file(out_dir_str):
+            p = pathlib.Path(out_dir_str) / "lod_1.gltf"
+            p.write_bytes(b"gltf-content")
 
-    result = _generate_lods(obj_path, output_dir)
+        mock_mesh_instance.generate_web_lods.side_effect = side_effect_create_file
 
-    assert pathlib.Path("lod_1.gltf") in result
-    assert result[pathlib.Path("lod_1.gltf")] == output_dir / "lod_1.gltf"
+        result = _generate_lods(obj_path, output_dir)
+
+        assert pathlib.Path("lod_1.gltf") in result
+        assert result[pathlib.Path("lod_1.gltf")] == output_dir / "lod_1.gltf"
 
 
-@patch("ultraliser.Mesh")
-def test_generate_lods_empty_failure(mock_ultraliser_mesh, tmp_path):
+def test_generate_lods_empty_failure(tmp_path):
     """Ensure an explicit RuntimeError boundary is hit if no files are generated."""
     obj_path = tmp_path / "input.obj"
     obj_path.write_bytes(b"data")
     output_dir = tmp_path / "output_lods"
 
-    mock_mesh_instance = MagicMock()
-    mock_mesh_instance.generate_web_lods.return_value = None
-    mock_ultraliser_mesh.return_value = mock_mesh_instance
+    with patch("obi_one.scientific.tasks.mesh_lod_generation.task.ultraliser") as mock_ultra:
+        mock_mesh_instance = MagicMock()
+        mock_mesh_instance.generate_web_lods.return_value = None
+        mock_ultra.Mesh.return_value = mock_mesh_instance
 
-    with pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"):
-        _generate_lods(obj_path, output_dir)
+        with pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"):
+            _generate_lods(obj_path, output_dir)
 
 
 def test_upload_lod_directory_with_id_attribute(tmp_path):
