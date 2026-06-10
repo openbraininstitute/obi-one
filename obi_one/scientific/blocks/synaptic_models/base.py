@@ -3,58 +3,6 @@ from pandas import DataFrame
 from obi_one.core.block import Block
 from obi_one.scientific.blocks import distributions
 
-# def _default_tm():
-#     from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
-#         ExcitatoryTsodyksMarkramSynapticModel,
-#     )
-#     from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
-
-#     params_dict = {}
-
-#     def make_reference_and_add(param, distribution_obj):
-#         tmp_ref = AllDistributionsReference(block_dict_name="Distribution", block_name=param)
-#         tmp_ref.block = distribution_obj
-#         params_dict[param] = tmp_ref
-
-#     make_reference_and_add(
-#         "u_hill_coefficient_distribution", distributions.FloatConstantDistribution(value=1.94)
-#     )
-#     make_reference_and_add(
-#         "conductance_distribution", distributions.GammaDistribution(shape=4.0, scale=0.25)
-#     )
-#     make_reference_and_add(
-#         "conductance_scale_factor_distribution", distributions.FloatConstantDistribution(value=0.7)
-#     )
-#     make_reference_and_add(
-#         "fascilitation_time", distributions.GammaDistribution(shape=11.56, scale=1.4706)
-#     )
-#     make_reference_and_add(
-#         "depression_time", distributions.GammaDistribution(shape=1995.11, scale=0.3358)
-#     )
-#     make_reference_and_add(
-#         "n_rrp_vesicles_distribution",
-#         distributions.IntDiscreteDistribution(
-#             values=(1, 2, 3, 4, 5), probabilities=(0.3, 0.3, 0.2, 0.1, 0.1)
-#         ),
-#     )
-#     make_reference_and_add(
-#         "decay_time",
-#         distributions.NormalDistribution(min=1.7, max=1.9, mean=1.7, standard_deviation=0.1),
-#     )
-#     make_reference_and_add(
-#         "delay_distribution",
-#         distributions.NormalDistribution(min=0.1, max=5.0, mean=2.0, standard_deviation=1.0),
-#     )
-#     make_reference_and_add(
-#         "u_syn",
-#         distributions.NormalDistribution(min=0.2, max=0.7, mean=0.5, standard_deviation=0.25),
-#     )
-
-#     return ExcitatoryTsodyksMarkramSynapticModel(**params_dict)
-
-
-# _DEFAULTS = {"TM_model": _default_tm}
-
 
 class SynapticModelBase(Block):
     """# def parameter_dictionaries(self) -> dict:

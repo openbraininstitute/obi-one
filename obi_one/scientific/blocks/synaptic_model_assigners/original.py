@@ -1,4 +1,4 @@
-import logging
+"""import logging
 
 import bluepysnap as snap
 import h5py
@@ -51,7 +51,8 @@ class OriginalSynapseParameterization(SynapseParameterization):
                 f" Skipping edge population '{edge.name}'!"
             )
             L.warning(msg)
-            return
+
+Return:
         if pathway_property not in edge.target.property_names:
             msg = (
                 f"Pathway property '{pathway_property}' not found in target nodes:"
@@ -127,3 +128,4 @@ class OriginalSynapseParameterization(SynapseParameterization):
         for edge_pop in edge_pop_names:
             edge = circ.edges[edge_pop]
             self._parameterize_edge_file(edge)
+"""
