@@ -19,7 +19,7 @@ import entitysdk.client
 from entitysdk.common import ProjectContext
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import EMCellMesh, TaskConfig
-from entitysdk.types import AssetLabel, ContentType
+from entitysdk.types import AssetLabel, ContentType, TaskConfigType
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -67,8 +67,8 @@ def _register_obj_asset(
             entity_type=EMCellMesh,
             file_content=file_content,
             file_name=obj_path.name,
-            file_content_type=ContentType.application_octet_stream,
-            asset_label=AssetLabel.mesh_lod_generation__input_mesh,
+            file_content_type=ContentType.obj,
+            asset_label=AssetLabel.cell_surface_mesh,
         )
         L.info(f"OBJ asset uploaded successfully: {asset.path}")
     except EntitySDKError as exc:
@@ -99,7 +99,7 @@ def _create_lod_task_config(
 
     try:
         task_config_instance = TaskConfig(
-            task_config_type="mesh_lod_generation__config",
+            task_config_type=TaskConfigType.mesh_lod_generation__config,
             meta={},
         )
         config_entity = client.register_entity(task_config_instance)
@@ -114,7 +114,7 @@ def _create_lod_task_config(
             file_content=config_payload,
             file_name="config.json",
             file_content_type=ContentType.application_json,
-            asset_label=AssetLabel.mesh_lod_generation__config,
+            asset_label=AssetLabel.task_config,
         )
     except EntitySDKError as exc:
         raise HTTPException(
