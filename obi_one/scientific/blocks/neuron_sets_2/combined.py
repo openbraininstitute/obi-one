@@ -9,6 +9,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
+    NeuronSet,
     PointPopulationNeuronSet,
     PopulationNeuronSet,
     VirtualPopulationNeuronSet,
@@ -39,7 +40,8 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     """Abstract base class for combining neuron sets within and across node populations."""
 
     base_neuron_set: NeuronSet 
-    combined_with: list[tuple[NeuronSet, SetOperation]]
+    combined_with: NeuronSet
+    operation: ClassVar[SetOperation]
 
     def check_combined_depth(
         self, visited: set[str] | None = None, depth: int = _MAX_COMBINED_DEPTH
@@ -56,7 +58,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
             msg = "Too many nested combined neuron sets!"
             raise ValueError(msg)
         visited.add(self.block_name)
-        all_nsets = [self.base_neuron_set] + [nset for nset, _ in self.combined_with]
+        all_nsets = [self.base_neuron_set, self.combined_with]
         for nset in all_nsets:
             if isinstance(nset, CombinedBaseNeuronSet):
                 nset.check_combined_depth(visited, depth - 1)
@@ -64,7 +66,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     def get_populations(self, circuit: Circuit) -> list[str]:
         """Returns population names included in the neuron set."""
         all_pops = []
-        all_nsets = [self.base_neuron_set] + [nset for nset, _ in self.combined_with]
+        all_nsets = [self.base_neuron_set, self.combined_with]
         for nset in all_nsets:
             for pop in nset.get_populations(circuit):
                 if pop not in all_pops:
@@ -97,10 +99,9 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population."""
         self.check_combined_depth()
-        comb_ids = self.base_neuron_set.get_neuron_ids(circuit)
-        for nset, op in self.combined_with:
-            with_ids = nset.get_neuron_ids(circuit)
-            comb_ids = CombinedBaseNeuronSet._combine_ids(comb_ids, with_ids, op)
+        base_ids = self.base_neuron_set.get_neuron_ids(circuit)
+        with_ids = self.combined_with.get_neuron_ids(circuit)
+        comb_ids = CombinedBaseNeuronSet._combine_ids(base_ids, with_ids, self.operation)
         return comb_ids
 
     def get_node_set_definition(
@@ -111,41 +112,17 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         In case of a compound expression (list expression), any new definitions
         to be combined are returned as dict.
         """
-        unions_only = all(op == SetOperation.UNION for _, op in self.combined_with)
-        if force_resolve_ids or not unions_only:
+        is_union = self.operation == SetOperation.UNION
+        if force_resolve_ids or not is_union:
             # Resolve and combine individual IDs per population and use in compound expression
             ids_per_npop = self.get_neuron_ids(circuit)
             expression, combined = NeuronSet.ids_to_node_set_definition(ids_per_npop, prefix=self.block_name, simplified=True)
         else:
             # Symbolic expression may be preserved
             self.check_combined_depth()
-            all_nsets = [self.base_neuron_set] + [nset for nset, _ in self.combined_with]
+            all_nsets = [self.base_neuron_set, self.combined_with]
             expression, combined = CombinedBaseNeuronSet._make_union_expression(circuit, all_nsets)
         return (expression, combined)
-
-
-    # def _get_combined(self) -> list[str]:
-
-
-    # def _get_expression(self, circuit: Circuit) -> dict | list:
-    #     """Returns the SONATA node set expression."""
-    #     self.check_combined_depth()
-    #     return self._get_combined()
-
-
-    # @staticmethod
-    # def get_node_set_populations(node_set: str, circuit: Circuit) -> list[str]:
-    #     """Returns a list of all node populations a node set resolves in."""
-    #     node_populations = []
-    #     for npop in circuit.sonata_circuit.nodes.population_names:
-    #         try:
-    #             node_ids = circuit.sonata_circuit.nodes[npop].ids(node_set)
-    #         except snap.BluepySnapError:
-    #             # In case of an error (e.g., "No such attribute"), return empty list
-    #             node_ids = []
-    #         if node_ids:
-    #             node_populations.append(npop)
-    #     return node_populations
 
 
 # class CombinedNeuronSet(PopulationNeuronSet, abc.ABC):
