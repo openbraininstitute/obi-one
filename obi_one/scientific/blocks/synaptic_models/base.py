@@ -6,7 +6,7 @@ from obi_one.scientific.blocks import distributions
 
 def _default_tm():
     from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
-        TsodyksMarkramSynapticModel,
+        ExcitatoryTsodyksMarkramSynapticModel,
     )
     from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
 
@@ -51,7 +51,7 @@ def _default_tm():
         distributions.NormalDistribution(min=0.2, max=0.7, mean=0.5, standard_deviation=0.25),
     )
 
-    return TsodyksMarkramSynapticModel(**params_dict)
+    return ExcitatoryTsodyksMarkramSynapticModel(**params_dict)
 
 
 _DEFAULTS = {"TM_model": _default_tm}

@@ -1,3 +1,4 @@
+import abc
 import logging
 
 from pandas import DataFrame
@@ -13,7 +14,7 @@ from obi_one.scientific.unions.unions_distributions import (
 L = logging.getLogger(__name__)
 
 
-class TsodyksMarkramSynapticModel(SynapticModelBase):
+class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     u_hill_coefficient_distribution: AllDistributionsReference = Field(
         title="U Hill Coefficient Distribution",
         description="Distribution of the Hill coefficient for the steady-state utilization"
@@ -205,7 +206,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
 
     @property
     def synapse_type_id(self) -> int:
-        return 113  # 128, 130, 114, 123 are other values in edges files
+        raise NotImplementedError("synapse_type_id must be implemented by subclasses")
 
     def u_hill_coefficient_dict(self) -> dict:
         d = self.u_hill_coefficient_distribution.resolve()
@@ -309,7 +310,13 @@ class TsodyksMarkramSynapticModel(SynapticModelBase):
         )
 
 
-class TsodyksMarkramInhibitorySynapticModel(TsodyksMarkramSynapticModel):
+class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
+    @property
+    def synapse_type_id(self) -> int:
+        return 113  # 128, 130, 114, 123 are other values in edges files
+
+
+class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     @property
     def synapse_type_id(self) -> int:
         return 7  # smaller than 100
@@ -336,7 +343,7 @@ class TsodyksMarkramInhibitorySynapticModel(TsodyksMarkramSynapticModel):
 # )
 
 
-# class CorrelatedTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
+# class CorrelatedExcitatoryTsodyksMarkramSynapticModel(ExcitatoryTsodyksMarkramSynapticModel):
 #     u_hill_coefficient_and_gsyn_correlation: CORRELATION_COEFFICIENT_FIELD = Field(
 #         title="Correlation between U Hill Coefficient and g_syn",
 #         description="Correlation coefficient between the Hill coefficient and g_syn",

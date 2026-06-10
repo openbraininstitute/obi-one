@@ -75,6 +75,7 @@ __all__ = [
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
+    "ExcitatoryTsodyksMarkramSynapticModel",
     "ExponentialDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
@@ -94,6 +95,7 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "InhibitoryTsodyksMarkramSynapticModel",
     "IntConstantDistribution",
     "IntDiscreteDistribution",
     "IntRange",
@@ -210,8 +212,6 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
-    "TsodyksMarkramInhibitorySynapticModel",
-    "TsodyksMarkramSynapticModel",
     "VolumetricCountNeuronSet",
     "VolumetricRadiusNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
@@ -374,9 +374,9 @@ from obi_one.scientific.blocks.synaptic_model_assigners.presyn_neuron_set import
     PresynapticNeuronSetSynapticModelAssigner,
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
-    TsodyksMarkramInhibitorySynapticModel,
-    # CorrelatedTsodyksMarkramSynapticModel,
-    TsodyksMarkramSynapticModel,
+    # CorrelatedExcitatoryTsodyksMarkramSynapticModel,
+    ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
