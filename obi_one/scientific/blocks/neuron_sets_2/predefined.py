@@ -157,9 +157,18 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
     def _get_expression(self, circuit: Circuit) -> dict | list:
         """Returns the SONATA node set resolved in one population (w/o subsampling).
 
-        Always resolves IDs since snap doesn't support compound
+        If the node set only resolves in self.population, keeps it symbolic.
+        Otherwise resolves IDs since snap doesn't support compound
         population + node_set expressions.
         """
+        nset_populations = PredefinedBaseNeuronSet.get_node_set_populations(
+            self.node_set,  # ty:ignore[invalid-argument-type]
+            circuit,
+        )
+        if nset_populations == [self.population]:
+            # Node set only resolves in this population — keep symbolic
+            return [self.node_set]
+        # Resolves in multiple populations — must resolve IDs for this population
         node_ids = self._resolve_ids(circuit)
         return {"population": self.population, "node_id": node_ids}
 
