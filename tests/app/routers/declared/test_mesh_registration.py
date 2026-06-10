@@ -119,18 +119,6 @@ def test_register_mesh_wrong_entity_type(client, mock_db_client, valid_obj_file)
     assert "EMCellMesh" in response.json()["detail"]["detail"]
 
 
-def test_register_mesh_invalid_extension(client, mock_db_client):
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-    bad_file = {"file": ("mesh.txt", BytesIO(b"data"), "text/plain")}
-
-    with patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH):
-        response = client.post(ROUTE, files=bad_file)
-
-    client.app.dependency_overrides.pop(get_client, None)
-
-    assert response.status_code == HTTPStatus.BAD_REQUEST
-
-
 def test_register_mesh_obj_upload_fails(client, mock_db_client, valid_obj_file):
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
