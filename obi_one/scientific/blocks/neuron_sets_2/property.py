@@ -99,25 +99,51 @@ class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
     def check_properties(self, circuit: Circuit) -> None:
         self.property_filter.test_validity(circuit, self.population)  # ty:ignore[unresolved-attribute]
 
+    def _resolve_in_population(self, circuit: Circuit, population: str) -> list[int]:
+        """Resolve property filter in a given population, returning matching neuron IDs."""
+        c = circuit.sonata_circuit
+        try:
+            df = (
+                c.nodes[population]
+                .get(
+                    properties=self.property_filter.filter_keys  # ty:ignore[unresolved-attribute]
+                )
+                .reset_index()
+            )
+            df = self.property_filter.filter(df)  # ty:ignore[unresolved-attribute]
+        except Exception:  # noqa: BLE001
+            return []
+        return df["node_ids"].to_numpy().tolist()
+
     def _resolve_ids(self, circuit: Circuit) -> list[int]:
         """Returns the full list of neuron IDs (w/o subsampling)."""
         self.check_populations_in_circuit(circuit=circuit)
         self.check_properties(circuit)
-
-        c = circuit.sonata_circuit
-        df = c.nodes[self.population].get(properties=self.property_filter.filter_keys).reset_index()  # ty:ignore[unresolved-attribute]
-        df = self.property_filter.filter(df)  # ty:ignore[unresolved-attribute]
-        node_ids = df["node_ids"].to_numpy()
-
-        return node_ids.tolist()
+        return self._resolve_in_population(circuit, self.population)
 
     def _get_expression(self, circuit: Circuit) -> dict:
-        """Returns the SONATA node set resolved in one population (w/o subsampling).
+        """Returns the SONATA node set expression (w/o subsampling).
 
-        Always resolves IDs since snap doesn't support compound population +
-        property expressions.
+        If the property filter only matches neurons in self.population, keeps
+        it symbolic (without population key). Otherwise resolves IDs.
         """
         node_ids = self._resolve_ids(circuit)
+
+        # Check if properties also resolve in other populations
+        resolves_elsewhere = any(
+            len(self._resolve_in_population(circuit, npop)) > 0
+            for npop in circuit.sonata_circuit.nodes.population_names
+            if npop != self.population
+        )
+
+        if not resolves_elsewhere:
+            # Only resolves in self.population — keep symbolic (no population key)
+            expression = {}
+            for key, values in self.property_filter.filter_dict.items():  # ty:ignore[unresolved-attribute]
+                expression[key] = values[0] if len(values) == 1 else list(values)
+            return expression
+
+        # Resolves in multiple populations — must use explicit IDs
         return {"population": self.population, "node_id": node_ids}
 
 
