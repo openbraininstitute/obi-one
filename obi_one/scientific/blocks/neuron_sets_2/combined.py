@@ -115,7 +115,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         combined = {}
         for npop in npop_names:
             comb_ids = op_fct(neuron_ids1.get(npop, []), neuron_ids2.get(npop, []))
-            combined[npop] = list(comb_ids)
+            combined[npop] = comb_ids.tolist()
         return combined
 
     @staticmethod
@@ -140,6 +140,10 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         base_ids = base_nset.get_neuron_ids(circuit)
         with_ids = with_nset.get_neuron_ids(circuit)
         comb_ids = CombinedBaseNeuronSet._combine_ids(base_ids, with_ids, self.operation)
+
+        if all(len(ids) == 0 for ids in comb_ids.values()):
+            L.warning("Combined neuron set empty!")
+
         return comb_ids
 
     def get_node_set_definition(

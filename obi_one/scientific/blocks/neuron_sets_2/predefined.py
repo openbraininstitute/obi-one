@@ -135,6 +135,10 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
         ids_dict = {}
         for npop in node_populations:
             ids_dict[npop] = circuit.sonata_circuit.nodes[npop].ids(self.node_set).tolist()
+
+        if all(len(ids) == 0 for ids in ids_dict.values()):
+            L.warning("Neuron set empty!")
+
         return ids_dict
 
 
