@@ -35,8 +35,6 @@ L = logging.getLogger(__name__)
 
 Brian2CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
-BRIAN2_TARGET_SIMULATOR = "Brian2"  # must match libsonata.SimulatorType.Brian2
-
 
 class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
     """Configuration for generating Brian2-targeted SONATA simulation configs.

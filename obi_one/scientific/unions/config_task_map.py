@@ -34,6 +34,9 @@ from obi_one.scientific.tasks.folder_compression import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -162,6 +165,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.me_model_simulation: (
         GenerateSimulationTask,
         MEModelSimulationSingleConfig,
+        None,
+    ),
+    TaskType.learning_engine_circuit_simulation: (
+        GenerateSimulationTask,
+        LearningEngineCircuitSimulationSingleConfig,
         None,
     ),
     TaskType.me_model_with_synapses_circuit_simulation: (
