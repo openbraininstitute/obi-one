@@ -37,6 +37,7 @@ class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         src_ids = self.source_neuron_set.block.get_neuron_ids(circuit, population=ep.source.name)
         return ep.efferent_edges(src_ids)
 
+    """
     # def _wrap_get_model_output(
     #     self, cls_src: pd.Series, cls_tgt: pd.Series, row: pd.Series
     # ) -> pd.DataFrame:
@@ -131,3 +132,4 @@ class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
     #     for edge_pop in edge_pop_names:
     #         edge = circ.edges[edge_pop]
     #         self._parameterize_edge_file(edge)
+    """

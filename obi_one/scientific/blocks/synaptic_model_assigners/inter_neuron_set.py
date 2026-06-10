@@ -68,6 +68,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         tgt_ids = self.targeted_neuron_set.block.get_neuron_ids(circuit, population=ep.target.name)
         return ep.pathway_edges(source=src_ids, target=tgt_ids)
 
+    """
     # def _wrap_get_model_output(
     #     self, cls_src: pd.Series, cls_tgt: pd.Series, row: pd.Series
     # ) -> pd.DataFrame:
@@ -162,3 +163,4 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
     #     for edge_pop in edge_pop_names:
     #         edge = circ.edges[edge_pop]
     #         self._parameterize_edge_file(edge)
+    """

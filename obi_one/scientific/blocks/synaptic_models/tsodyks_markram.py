@@ -315,6 +315,7 @@ class TsodyksMarkramInhibitorySynapticModel(TsodyksMarkramSynapticModel):
         return 7  # smaller than 100
 
 
+"""
 # CORRELATION_COEFFICIENT_FIELD = (
 #     Annotated[
 #         float,
@@ -359,3 +360,4 @@ class TsodyksMarkramInhibitorySynapticModel(TsodyksMarkramSynapticModel):
 #             "props": ["u_hill_coefficient", "gsyn"],
 #             "cov_mat": {self.source_neuron_set: {self.target_neuron_set: self.cov_mat}},
 #         }
+"""
