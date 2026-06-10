@@ -81,8 +81,8 @@ def resolve_neuron(  # NOQA: PLR0914
     entity_id_str = str(morph_entity.id)
     # Place and load morphologies
     L.info("Placing morphologies...")
-    fn_morphology_out_h5 = Path("morphologies") / (entity_id_str + ".h5")  # ty:ignore[unsupported-operator]
-    fn_morphology_out_swc = Path("morphologies/morphology") / (entity_id_str + ".swc")  # ty:ignore[unsupported-operator]
+    fn_morphology_out_h5 = Path("morphologies") / (entity_id_str + ".h5")
+    fn_morphology_out_swc = Path("morphologies/morphology") / (entity_id_str + ".swc")
     if fn_morphology_out_swc.exists():
         err_str = f"Duplicate entity in input: {entity_id_str}"
         raise ValueError(err_str)

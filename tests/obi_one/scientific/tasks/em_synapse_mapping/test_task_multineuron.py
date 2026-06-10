@@ -32,6 +32,7 @@ def _resolved_neuron(pt_root_id, name, *, use_me_model=False):
         source_mesh_entity=Mock(),
         source_dataset=SimpleNamespace(id=dataset_id, name="ds"),
         cave_version=3,
+        name_in_circuit="1234",
         use_me_model=use_me_model,
         phys_node_props={},
         fn_morph_h5=Path(f"morphologies/{name}.h5"),
