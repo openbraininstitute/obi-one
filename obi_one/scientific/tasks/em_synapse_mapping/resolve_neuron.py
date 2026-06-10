@@ -36,6 +36,7 @@ class ResolvedNeuron:
     source_dataset: EMDenseReconstructionDataset
     cave_version: int
     use_me_model: bool
+    name_in_circuit: str
     phys_node_props: dict = field(default_factory=dict)
     fn_morph_h5: Path | None = None
     fn_morph_swc: Path | None = None
@@ -76,11 +77,16 @@ def resolve_neuron(
     else:
         morph_entity = neuron_ref.entity(db_client)
         morph_from_id = neuron_ref
-
+    
+    entity_id_str = str(morph_entity.id)
     # Place and load morphologies
     L.info("Placing morphologies...")
-    fn_morphology_out_h5 = Path("morphologies") / (morph_entity.name + ".h5")  # ty:ignore[unsupported-operator]
-    fn_morphology_out_swc = Path("morphologies/morphology") / (morph_entity.name + ".swc")  # ty:ignore[unsupported-operator]
+    fn_morphology_out_h5 = Path("morphologies") / (entity_id_str + ".h5")  # ty:ignore[unsupported-operator]
+    fn_morphology_out_swc = Path("morphologies/morphology") / (entity_id_str + ".swc")  # ty:ignore[unsupported-operator]
+    if fn_morphology_out_swc.exists():
+        err_str = f"Duplicate entity in input: {entity_id_str}"
+        raise ValueError(err_str)
+    
     morph_from_id.write_spiny_neuron_h5(out_root / fn_morphology_out_h5, db_client=db_client)
     smooth_morph = morph_from_id.neurom_morphology(db_client)
     smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
@@ -120,6 +126,7 @@ def resolve_neuron(
         smooth_morph=smooth_morph,
         source_mesh_entity=source_mesh_entity,
         source_dataset=source_dataset,
+        name_in_circuit=entity_id_str,
         cave_version=source_mesh_entity.release_version,
         use_me_model=use_me_model,
         phys_node_props=phys_node_props,

@@ -128,6 +128,7 @@ class EMSynapseMappingTask(Task):
             merge_spiny_morphologies(
                 source_files=[out_root / rn.fn_morph_h5 for rn in resolved_neurons],
                 output_path=out_root / fn_merged_h5,  # ty:ignore[unsupported-operator]
+                neuron_id_strings=[rn.name_in_circuit for rn in resolved_neurons],
                 include_meshes=False,
             )
 
@@ -211,7 +212,7 @@ class EMSynapseMappingTask(Task):
             em_dataset, db_client, cave_version, node_spec, bio_pt_root_mapping
         )  # ty:ignore[not-iterable]
 
-        morph_names = [f"morphology/{rn.morph_entity.name}" for rn in resolved_neurons]
+        morph_names = [f"morphology/{rn.name_in_circuit}" for rn in resolved_neurons]
         coll_bio.properties["morphology"] = numpy.array(morph_names)
 
         for bio_idx, rn in enumerate(resolved_neurons):
