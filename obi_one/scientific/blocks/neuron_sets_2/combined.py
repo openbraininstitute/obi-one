@@ -6,6 +6,7 @@ from typing import ClassVar, Literal
 import numpy as np
 from pydantic import Field
 
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit
@@ -13,20 +14,20 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    ALL_NEURON_SETS_REFERENCE_TYPES,
-    ALL_NEURON_SETS_REFERENCE_UNION,
-    BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
-    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
-    POINT_NEURON_SETS_REFERENCE_TYPES,
-    POINT_NEURON_SETS_REFERENCE_UNION,
-    VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    VIRTUAL_NEURON_SETS_REFERENCE_UNION,
-)
 
 L = logging.getLogger("obi-one")
+
+# Reference type names as strings to avoid circular imports with unions module.
+# These must match the class names defined in unions_neuron_sets_2.py.
+_BIOPHYSICAL_REF = "BiophysicalNeuronSetReference"
+_VIRTUAL_REF = "VirtualNeuronSetReference"
+_POINT_REF = "PointNeuronSetReference"
+
+_ALL_REFERENCE_TYPES = [_BIOPHYSICAL_REF, _VIRTUAL_REF, _POINT_REF]
+_NON_VIRTUAL_REFERENCE_TYPES = [_BIOPHYSICAL_REF, _POINT_REF]
+_BIOPHYSICAL_REFERENCE_TYPES = [_BIOPHYSICAL_REF]
+_VIRTUAL_REFERENCE_TYPES = [_VIRTUAL_REF]
+_POINT_REFERENCE_TYPES = [_POINT_REF]
 
 _MAX_COMBINED_DEPTH = 10
 
@@ -47,8 +48,8 @@ _OPERATION_MAP = {
 class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     """Abstract base class for combining neuron sets within and across node populations."""
 
-    base_neuron_set: NeuronSet
-    combined_with: NeuronSet
+    base_neuron_set: BlockReference | None
+    combined_with: BlockReference | None
     operation: Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF] = Field(
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
@@ -182,23 +183,23 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: BlockReference | None = Field(
         default=None,
         title="First Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _ALL_REFERENCE_TYPES,
         },
     )
 
-    combined_with: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    combined_with: BlockReference | None = Field(
         default=None,
         title="Second Neuron Set",
         description="Neuron set to combine with.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _ALL_REFERENCE_TYPES,
         },
     )
 
@@ -221,23 +222,23 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: BlockReference | None = Field(
         default=None,
         title="First Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _BIOPHYSICAL_REFERENCE_TYPES,
         },
     )
 
-    combined_with: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    combined_with: BlockReference | None = Field(
         default=None,
         title="Second Neuron Set",
         description="Neuron set to combine with.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _BIOPHYSICAL_REFERENCE_TYPES,
         },
     )
 
@@ -258,23 +259,23 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: BlockReference | None = Field(
         default=None,
         title="First Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _VIRTUAL_REFERENCE_TYPES,
         },
     )
 
-    combined_with: VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    combined_with: BlockReference | None = Field(
         default=None,
         title="Second Neuron Set",
         description="Neuron set to combine with.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _VIRTUAL_REFERENCE_TYPES,
         },
     )
 
@@ -297,23 +298,23 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: BlockReference | None = Field(
         default=None,
         title="First Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _NON_VIRTUAL_REFERENCE_TYPES,
         },
     )
 
-    combined_with: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    combined_with: BlockReference | None = Field(
         default=None,
         title="Second Neuron Set",
         description="Neuron set to combine with.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _NON_VIRTUAL_REFERENCE_TYPES,
         },
     )
 
@@ -334,22 +335,22 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: BlockReference | None = Field(
         default=None,
         title="First Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _POINT_REFERENCE_TYPES,
         },
     )
 
-    combined_with: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
+    combined_with: BlockReference | None = Field(
         default=None,
         title="Second Neuron Set",
         description="Neuron set to combine with.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: _POINT_REFERENCE_TYPES,
         },
     )
