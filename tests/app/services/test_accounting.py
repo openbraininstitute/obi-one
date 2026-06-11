@@ -29,7 +29,7 @@ def db_client():
 
 @pytest.fixture
 def accounting_parameters():
-    return AccountingParameters(count=10, service_subtype=ServiceSubtype.SMALL_SIM)
+    return AccountingParameters(count=1, service_subtype=ServiceSubtype.SMALL_SIM)
 
 
 @pytest.fixture
@@ -215,7 +215,7 @@ def test_evaluate_circuit_simulation_parameters__small_scale_ignores_duration(
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
-            "number_neurons": 100,
+            "number_neurons": 10,
             "scan_parameters": {"initialize.duration": 5000},
         },
     )
@@ -224,7 +224,7 @@ def test_evaluate_circuit_simulation_parameters__small_scale_ignores_duration(
         method="GET",
         json={
             "id": str(entity_id),
-            "number_neurons": 100,
+            "number_neurons": 10,
             "number_synapses": 10,
             "number_connections": 12,
             "scale": "small",
@@ -238,8 +238,7 @@ def test_evaluate_circuit_simulation_parameters__small_scale_ignores_duration(
     )
 
     assert res.service_subtype == ServiceSubtype.SMALL_SIM
-    # Small scale: count is just number_neurons, duration not factored in
-    assert res.count == 100
+    assert res.count == 1
 
 
 def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
@@ -307,10 +306,10 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     }
     expected_count = {
         TaskType.circuit_extraction: 1,
-        TaskType.circuit_simulation_neurodamus_cluster: 10,
-        TaskType.circuit_simulation_inait_machine: 10,
-        TaskType.circuit_simulation_neuron: 10,
-        TaskType.circuit_simulation_brian2_machine: 10,
+        TaskType.circuit_simulation_neurodamus_cluster: 1,
+        TaskType.circuit_simulation_inait_machine: 1,
+        TaskType.circuit_simulation_neuron: 1,
+        TaskType.circuit_simulation_brian2_machine: 1,
         TaskType.ion_channel_model_simulation_execution: 1,
         TaskType.morphology_skeletonization: 800,
         TaskType.em_synapse_mapping: 1,
