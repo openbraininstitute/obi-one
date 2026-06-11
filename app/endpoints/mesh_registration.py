@@ -102,7 +102,7 @@ def _create_lod_task_config(
             task_config_type=TaskConfigType.mesh_lod_generation__config,
             name=f"Mesh LOD generation config for {entity_id}",
             description="Auto-generated config for mesh LOD generation task.",
-            inputs=[{"id": str(entity_id)}],
+            inputs=[EMCellMesh(id=entity_id)],
             meta={},
         )
         config_entity = client.register_entity(task_config_instance)
