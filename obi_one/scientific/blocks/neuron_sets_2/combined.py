@@ -138,6 +138,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
         """Returns list of neuron IDs per population."""
         self.check_combined_depth()
+        self.check_populations_in_circuit(circuit=circuit)
         base_nset, with_nset = self._resolve_refs()
         base_ids = base_nset.get_neuron_ids(circuit)
         with_ids = with_nset.get_neuron_ids(circuit)
@@ -170,6 +171,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         else:
             # Symbolic expression may be preserved
             self.check_combined_depth()
+            self.check_populations_in_circuit(circuit=circuit)
             base_nset, with_nset = self._resolve_refs()
             prefix = f"__{self.__class__.__name__}__"
             expression, combined = CombinedBaseNeuronSet._make_union_expression(
