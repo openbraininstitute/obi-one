@@ -340,3 +340,5 @@ class EMSynapseMappingTask(Task):
             execution_activity=execution_activity,
             generated=[registered_circuit_id],
         )
+
+        L.info(f"EM synapse mapping completed. Output Circuit ID: {registered_circuit_id}")
