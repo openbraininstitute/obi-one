@@ -249,17 +249,18 @@ class GenerateSimulationTask(Task):
                 if (
                     not isinstance(self.config, Brian2CircuitSimulationSingleConfig)
                     and isinstance(self.config.initialize.node_set, NeuronSetReference)
+                    and self._circuit is not None
                     and (
-                        self.config.initialize.node_set.block.population_type(  # ty:ignore[unresolved-attribute]
+                        self.config.initialize.node_set.block.population_type(
                             self._circuit,
-                            self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
+                            self._circuit.default_population_name,
                         )
                         not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
                     )
                 ):
                     # Get list of biophysical populations to help user
                     biophysical_populations = Circuit.get_node_population_names(
-                        self._circuit.sonata_circuit,  # ty:ignore[unresolved-attribute]
+                        self._circuit.sonata_circuit,
                         incl_virtual=False,
                         incl_point=False,
                     )

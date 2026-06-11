@@ -6,6 +6,10 @@ from obi_one.scientific.unions.unions_manipulations import SynapticManipulations
 from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
 from obi_one.scientific.unions.unions_recordings import RecordingReference
 from obi_one.scientific.unions.unions_stimuli import StimulusReference
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerReference,
+)
+from obi_one.scientific.unions.unions_synaptic_models import SynapticModelReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 AllBlockReferenceTypes = [
@@ -15,6 +19,8 @@ AllBlockReferenceTypes = [
     RecordingReference,
     TimestampsReference,
     AllDistributionsReference,
+    SynapticModelReference,
+    SynapticModelAssignerReference,
 ]
 
 
