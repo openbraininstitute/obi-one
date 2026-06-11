@@ -122,7 +122,9 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
 
     @staticmethod
     def _make_union_expression(
-        circuit: Circuit, neuron_sets: list[NeuronSet], prefix: str = "",
+        circuit: Circuit,
+        neuron_sets: list[NeuronSet],
+        prefix: str = "",
     ) -> tuple[dict | list, dict]:
         """Make union expression preserving symbolic notation, if possible."""
         expression = []

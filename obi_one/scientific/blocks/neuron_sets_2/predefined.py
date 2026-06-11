@@ -123,7 +123,7 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
             ids_per_npop = self.get_neuron_ids(circuit)
             expression, combined = NeuronSet.ids_to_node_set_definition(
                 ids_per_npop,
-                prefix=prefix,  # ty:ignore[invalid-argument-type]
+                prefix=prefix,
                 simplified=True,
             )
         else:
@@ -140,7 +140,7 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
         for npop in node_populations:
             try:
                 node_ids = circuit.sonata_circuit.nodes[npop].ids(self.node_set).tolist()
-            except snap.BluepySnapError as e:
+            except snap.BluepySnapError:
                 # In case of an error (e.g., "No such attribute"), return empty list
                 node_ids = []
             ids_dict[npop] = node_ids
@@ -162,12 +162,12 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
         self.check_populations_in_circuit(circuit)
         try:
             node_ids = circuit.sonata_circuit.nodes[self.population].ids(self.node_set)
-        except snap.BluepySnapError as e:
+        except snap.BluepySnapError:
             # In case of an error (e.g., "No such attribute"), return empty list
             L.warning("Neuron set empty!")
             return []
         return node_ids.tolist()
-    
+
     def _get_expression(self, circuit: Circuit) -> dict | list:
         """Returns the SONATA node set resolved in one population (w/o subsampling).
 

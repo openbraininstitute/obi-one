@@ -184,7 +184,7 @@ class NeuronSet(Block, abc.ABC):
         )
         nset_name = f"__{self.__class__.__name__}__{self.block_name}"
         nset_dict = compound_def | {nset_name: nset_def}
-        
+
         sonata_circuit = circuit.sonata_circuit
         add_node_set_to_circuit(sonata_circuit, nset_dict, overwrite_if_exists=False)
         return nset_name, sonata_circuit
