@@ -39,6 +39,13 @@ from obi_one.scientific.blocks.neuron_sets_2.property import (
     PropertyNeuronSet,
     VirtualPropertyNeuronSet,
 )
+from obi_one.scientific.blocks.neuron_sets_2.specific import (
+    AllBiophysicalNeurons,
+    AllNeurons,
+    AllNonVirtualNeurons,
+    AllPointNeurons,
+    AllVirtualNeurons,
+)
 
 _BIOPHYSICAL_NEURON_SETS = (
     BiophysicalPopulationNeuronSet
@@ -46,6 +53,7 @@ _BIOPHYSICAL_NEURON_SETS = (
     | BiophysicalPropertyNeuronSet
     | PredefinedBiophysicalPopulationNeuronSet
     | BiophysicalCombinedNeuronSet
+    | AllBiophysicalNeurons
 )
 _VIRTUAL_NEURON_SETS = (
     VirtualPopulationNeuronSet
@@ -53,6 +61,7 @@ _VIRTUAL_NEURON_SETS = (
     | VirtualPropertyNeuronSet
     | PredefinedVirtualPopulationNeuronSet
     | VirtualCombinedNeuronSet
+    | AllVirtualNeurons
 )
 _POINT_NEURON_SETS = (
     PointPopulationNeuronSet
@@ -60,6 +69,7 @@ _POINT_NEURON_SETS = (
     | PointPropertyNeuronSet
     | PredefinedPointPopulationNeuronSet
     | PointCombinedNeuronSet
+    | AllPointNeurons
 )
 _NONVIRTUAL_NEURON_SETS = (
     NonVirtualPopulationNeuronSet
@@ -67,6 +77,7 @@ _NONVIRTUAL_NEURON_SETS = (
     | NonVirtualPropertyNeuronSet
     | PredefinedNonVirtualPopulationNeuronSet
     | NonVirtualCombinedNeuronSet
+    | AllNonVirtualNeurons
 )
 _ALL_NEURON_SETS = (
     _BIOPHYSICAL_NEURON_SETS
@@ -79,6 +90,7 @@ _ALL_NEURON_SETS = (
     | PredefinedNeuronSet
     | PredefinedPopulationNeuronSet
     | CombinedNeuronSet
+    | AllNeurons
 )
 
 
