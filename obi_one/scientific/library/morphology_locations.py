@@ -250,9 +250,9 @@ def select_places_from_candidate_list(
             selected[_SEG_MAX] - selected[_SEG_MIN]
         )
 
-        output = locs.loc[selected.index].sort_index().drop(columns=[_SEG_OFF])
+        output = locs.loc[selected.index].drop(columns=[_SEG_OFF])
         output[_SEG_OFF] = selected.to_numpy()
-        return output
+        return output.sort_index()
 
     p = cands.diff(axis=1).to_numpy()[:, 1]
     p[np.isnan(p)] = 0
@@ -298,7 +298,10 @@ def add_normalized_section_offset(
     sec_lengths = np.array(
         [np.linalg.norm(np.diff(sec.points, axis=0), axis=1).sum() for sec in m.sections]
     )
-    sec_o = path_distance_calculator.offset[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
+    sec_o = (
+        path_distance_calculator.offset[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
+        + dataframe[_SEG_OFF].to_numpy()
+    )
     sec_l = sec_lengths[dataframe[_SEC_ID] - 1]
     dataframe[_SEC_LOC] = sec_o / sec_l
 
@@ -406,6 +409,13 @@ def generate_neurite_locations_on(
         )
 
     all_clusters = select_places_from_candidate_list(n_per_center, lst_candidates_per_center, locs)
+    all_clusters[_SOM_PAD] = path_distance_calculator.path_distances(
+        soma,
+        all_clusters,
+        str_section_id=_SEC_ID,
+        str_segment_id=_SEG_ID,
+        str_offset=_SEG_OFF,
+    )[0]
 
     # Which columns do you want in the output?
     relevant_cols = [_SEG_ID, _SEC_ID, _SEC_TYP, _SEG_OFF, _SOM_PAD]
