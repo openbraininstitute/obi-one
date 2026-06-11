@@ -255,3 +255,54 @@ def test_combined_biophysical_type_mismatch_resolved(circuit):
     # Should fail in resolved path — virtual population not valid for biophysical type
     with pytest.raises(ValueError, match="not found in circuit"):
         combined.get_node_set_definition(circuit)
+
+
+# --- Nested combined ---
+
+
+def test_nested_combined(circuit):
+    """Test combining a combined set with another set (depth > 1)."""
+    # Create base sets
+    nset_a = PredefinedPopulationNeuronSet(node_set="L6_BPC", population="S1nonbarrel_neurons")
+    nset_a.set_block_name("nested_a")
+
+    nset_b = PredefinedPopulationNeuronSet(node_set="L6_TPC:A", population="S1nonbarrel_neurons")
+    nset_b.set_block_name("nested_b")
+
+    nset_c = PredefinedPopulationNeuronSet(node_set="Layer6", population="S1nonbarrel_neurons")
+    nset_c.set_block_name("nested_c")
+
+    # Create references
+    ref_a = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="nested_a")
+    ref_a.block = nset_a
+    ref_b = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="nested_b")
+    ref_b.block = nset_b
+    ref_c = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="nested_c")
+    ref_c.block = nset_c
+
+    # Create inner combined (A union B)
+    inner = BiophysicalCombinedNeuronSet(
+        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+    )
+    inner.set_block_name("inner_combined")
+
+    # Create reference to inner
+    ref_inner = BiophysicalNeuronSetReference(
+        block_dict_name="neuron_sets", block_name="inner_combined"
+    )
+    ref_inner.block = inner
+
+    # Create outer combined (inner intersect C)
+    outer = BiophysicalCombinedNeuronSet(
+        base_neuron_set=ref_inner, combined_with=ref_c, operation=SetOperation.INTERSECT
+    )
+    outer.set_block_name("outer_combined")
+
+    # (A union B) intersect C = [1, 2, 6, 7, 8, 9]
+    ids_a = set(nset_a.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    ids_b = set(nset_b.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    ids_c = set(nset_c.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    expected = sorted((ids_a | ids_b) & ids_c)
+
+    result = outer.get_neuron_ids(circuit)
+    assert sorted(result["S1nonbarrel_neurons"]) == expected
