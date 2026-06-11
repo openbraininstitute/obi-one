@@ -1,4 +1,4 @@
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import Discriminator
 
@@ -25,8 +25,8 @@ class SynapticModelReference(BlockReference):
     @property
     def block(self) -> SynapticModelBase:
         """Returns the block associated with this reference."""
-        if super().block is SynapticModelBase:
-            return super().block
+        if isinstance(super().block, SynapticModelBase):
+            return cast("SynapticModelBase", super().block)
         msg = f"Expected block of type SynapticModelBase, but got {type(super().block)}"
         raise TypeError(msg)
 
