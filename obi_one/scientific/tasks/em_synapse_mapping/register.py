@@ -70,6 +70,7 @@ def register_output(
         experiment_date=source_dataset.experiment_date,
         license=em_entity.license,  # ty:ignore[unresolved-attribute]
         publications=publications,
+        skip_additional_assets=True,
         skip_validation=True,
     )
 
