@@ -12,6 +12,8 @@ L = logging.getLogger(__name__)
 
 
 class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
+    """Assign a synaptic model to synapses between a source and target neuron set."""
+
     source_neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Source)",

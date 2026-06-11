@@ -15,9 +15,12 @@ class SynapseModelAssigner(Block):
         title="Overwrite",
         description="Overwrite if a parameterization exists already.",
         default=False,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
     )
 
-    random_seed: int = Field(
+    random_seed: int | list[int] = Field(
         default=1,
         title="Random seed",
         description="Seed for drawing random values from physiological parameter distributions.",
@@ -29,9 +32,13 @@ class SynapseModelAssigner(Block):
     edge_population_name: str = Field(
         title="EdgePopulation name",
         description="Name of an EdgePopulation of the SONATA circuit that is to be parameterized",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
     )
 
-    synaptic_model: SynapticModelReference = Field(
+    synaptic_model: SynapticModelReference | None = Field(
+        default=None,
         title="Synaptic Model",
         description="Synaptic model to assign to the synapses between the source and target"
         " neuron sets.",
@@ -72,7 +79,7 @@ class SynapseModelAssigner(Block):
         self, circuit: Circuit, min_edge_id: int | None = None, max_edge_id: int | None = None
     ) -> DataFrame:
         indices_df = self.edge_indices(circuit, min_edge_id=min_edge_id, max_edge_id=max_edge_id)
-        param_model = self.synaptic_model.block
+        param_model = self.synaptic_model.block  # ty:ignore[unresolved-attribute]
         new_params = param_model.sample(indices_df)
         return new_params
 

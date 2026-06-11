@@ -12,6 +12,8 @@ L = logging.getLogger(__name__)
 
 
 class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
+    """Assign a synaptic model to the efferent synapses of a presynaptic neuron set."""
+
     source_neuron_set: NeuronSetReference | None = Field(
         default=None,
         title="Neuron Set (Source)",

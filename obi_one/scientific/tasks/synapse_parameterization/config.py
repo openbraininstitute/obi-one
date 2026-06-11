@@ -16,7 +16,7 @@ from obi_one.scientific.unions.unions_distributions import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
-    NeuronSetUnion,
+    SynapseParameterizationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
     SynapticModelAssignerReference,
@@ -38,22 +38,32 @@ class BlockGroup(StrEnum):
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
 
 
-class SynapseParameterizationScanConfig(ScanConfig, SingleConfigMixin):
+class SynapseParameterizationScanConfig(ScanConfig):
+    """Generate or replace a physiological parameterization of an anatomical circuit."""
+
     name: ClassVar[str] = "Synapse parameterization"
     description: ClassVar[str] = (
         "Generates a physiological parameterization of an anatomical circuit or replaces an"
-        " existing paramterization."
+        " existing parameterization."
     )
+    single_coord_class_name: ClassVar[str] = "SynapseParameterizationSingleConfig"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP],
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP,
+            BlockGroup.SYNAPSE_PARAMETERS,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+        ],
     }
 
     class Initialize(Block):
         circuit: CircuitFromID = Field(
             title="Circuit",
             description="Circuit to (re-)parameterize.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            },
         )
 
     info: Info = Field(
@@ -111,7 +121,7 @@ class SynapseParameterizationScanConfig(ScanConfig, SingleConfigMixin):
         },
     )
 
-    neuron_sets: dict[str, NeuronSetUnion] = Field(
+    neuron_sets: dict[str, SynapseParameterizationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

@@ -36,16 +36,16 @@ def compatible_with(cls_a: SynapticModelBase, cls_b: SynapticModelBase) -> None:
 def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssignerUnion]) -> None:
     # Due to the way lst_model_assigners is created, this is guaranteed to have len >= 1
     reference = lst_model_assigners[0]
-    reference_model = reference.synaptic_model.block
+    reference_model = reference.synaptic_model.block  # ty:ignore[unresolved-attribute]
     for check in lst_model_assigners[1:]:
-        check_model = check.synaptic_model.block
+        check_model = check.synaptic_model.block  # ty:ignore[unresolved-attribute]
         compatible_with(reference_model, check_model)
 
 
 def get_default_for(
     lst_model_assigners: list[SynapticModelAssignerUnion], edge_population_name: str, circ: Circuit
 ) -> DataFrame:
-    synaptic_model_block = lst_model_assigners[0].synaptic_model.block
+    synaptic_model_block = lst_model_assigners[0].synaptic_model.block  # ty:ignore[unresolved-attribute]
     default_model = type(synaptic_model_block)()
     ep = circ.sonata_circuit.edges[edge_population_name]
     already_parameterized = [

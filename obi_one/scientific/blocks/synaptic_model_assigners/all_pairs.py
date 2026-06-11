@@ -9,6 +9,8 @@ L = logging.getLogger(__name__)
 
 
 class AllPairsSynapticModelAssigner(SynapseModelAssigner):
+    """Assign a synaptic model to all synapses in the edge population."""
+
     def validate_for_circuit(self, circuit: Circuit) -> None:
         pass
 

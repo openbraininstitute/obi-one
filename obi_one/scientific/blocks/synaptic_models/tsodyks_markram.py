@@ -297,12 +297,16 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
 
 class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
+    """Excitatory Tsodyks-Markram synaptic model."""
+
     @property
     def syn_type_id(self) -> int:
         return 113  # 128, 130, 114, 123 are other values in edges files
 
 
 class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
+    """Inhibitory Tsodyks-Markram synaptic model."""
+
     @property
     def syn_type_id(self) -> int:
         return 7  # smaller than 100
