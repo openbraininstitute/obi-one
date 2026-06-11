@@ -78,7 +78,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         self, visited: set[str] | None = None, depth: int = _MAX_COMBINED_DEPTH
     ) -> None:
         if not self.has_block_name():
-            msg = "Block name must be set before checking combined depth."
+            msg = "Block name must be set."
             raise ValueError(msg)
         if visited is None:
             visited = set()
@@ -122,13 +122,13 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
 
     @staticmethod
     def _make_union_expression(
-        circuit: Circuit, neuron_sets: list[NeuronSet]
+        circuit: Circuit, neuron_sets: list[NeuronSet], prefix: str = "",
     ) -> tuple[dict | list, dict]:
         """Make union expression preserving symbolic notation, if possible."""
         expression = []
         combined = {}
         for nset in neuron_sets:
-            nset_name = nset.block_name
+            nset_name = prefix + nset.block_name
             nset_def, nset_combined = nset.get_node_set_definition(circuit)
             combined.update(nset_combined)
             combined[nset_name] = nset_def
@@ -156,19 +156,24 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         In case of a compound expression (list expression), any new definitions
         to be combined are returned as dict.
         """
+        if not self.has_block_name():
+            msg = "Block name must be set."
+            raise ValueError(msg)
         is_union = self.operation == SetOperation.UNION
         if force_resolve_ids or not is_union:
             # Resolve and combine individual IDs per population and use in compound expression
             ids_per_npop = self.get_neuron_ids(circuit)
+            prefix = f"__{self.__class__.__name__}__{self.block_name}"
             expression, combined = NeuronSet.ids_to_node_set_definition(
-                ids_per_npop, prefix=self.block_name, simplified=True
+                ids_per_npop, prefix=prefix, simplified=True
             )
         else:
             # Symbolic expression may be preserved
             self.check_combined_depth()
             base_nset, with_nset = self._resolve_refs()
+            prefix = f"__{self.__class__.__name__}__"
             expression, combined = CombinedBaseNeuronSet._make_union_expression(
-                circuit, [base_nset, with_nset]
+                circuit, [base_nset, with_nset], prefix
             )
         return (expression, combined)
 

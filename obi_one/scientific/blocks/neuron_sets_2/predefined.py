@@ -116,10 +116,14 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
         """
         if force_resolve_ids:
             # Resolve individual IDs per population and use in compound expression
+            if not self.has_block_name():
+                msg = "Block name must be set."
+                raise ValueError(msg)
+            prefix = f"__{self.__class__.__name__}__{self.block_name}"
             ids_per_npop = self.get_neuron_ids(circuit)
             expression, combined = NeuronSet.ids_to_node_set_definition(
                 ids_per_npop,
-                prefix=self.node_set,  # ty:ignore[invalid-argument-type]
+                prefix=prefix,  # ty:ignore[invalid-argument-type]
                 simplified=True,
             )
         else:

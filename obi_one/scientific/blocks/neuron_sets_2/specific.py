@@ -22,10 +22,14 @@ class AllNeuronsBase(NeuronSet, abc.ABC):
         self, circuit: Circuit, *, force_resolve_ids: bool = False
     ) -> tuple[dict | list, dict]:
         """Returns node set definition combining all matching populations."""
+        if not self.has_block_name():
+            msg = "Block name must be set."
+            raise ValueError(msg)
         if force_resolve_ids:
             ids_per_npop = self.get_neuron_ids(circuit)
+            prefix = f"__{self.__class__.__name__}__{self.block_name}"
             return NeuronSet.ids_to_node_set_definition(
-                ids_per_npop, prefix=self.block_name, simplified=True
+                ids_per_npop, prefix=prefix, simplified=True
             )
         # Symbolic: list all population node sets
         populations = self.get_populations(circuit)
@@ -34,7 +38,7 @@ class AllNeuronsBase(NeuronSet, abc.ABC):
         expression = []
         combined = {}
         for idx, npop in enumerate(populations):
-            key = f"{self.block_name}__{idx}__"
+            key = f"__{self.__class__.__name__}__{self.block_name}__{idx}__"
             combined[key] = {"population": npop}
             expression.append(key)
         return expression, combined
