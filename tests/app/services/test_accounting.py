@@ -158,7 +158,7 @@ def test_evaluate_circuit_simulation_parameters(db_client, httpx_mock):
     )
 
     assert res.service_subtype == ServiceSubtype.SMALL_SIM
-    assert res.count == 3
+    assert res.count == 1
 
 
 def test_evaluate_circuit_simulation_parameters__with_duration(db_client, httpx_mock):
