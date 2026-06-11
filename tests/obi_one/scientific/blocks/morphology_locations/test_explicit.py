@@ -1,5 +1,6 @@
 import morphio
 import numpy as np
+import pandas as pd
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
@@ -7,6 +8,7 @@ from obi_one.scientific.blocks.morphology_locations.explicit import (
     ExplicitMorphologyLocations,
     MorphologyLocationPoint,
 )
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
 from tests.utils import DATA_DIR
@@ -94,6 +96,30 @@ def test_explicit_morphology_locations_returns_expected_rows(morphology):
     assert dataframe["section_id"].tolist() == [0, 2]
     assert dataframe["normalized_section_offset"].tolist() == [0.0, 1.0]
     assert dataframe.loc[1, "section_type"] == int(morphology.section(1).type)
+
+
+def test_explicit_locations_reconstruct_random_locations(morphology):
+    random_locations = RandomMorphologyLocations(
+        random_seed=17,
+        number_of_locations=20,
+    ).points_on(morphology)
+    explicit_locations = ExplicitMorphologyLocations(
+        locations=[
+            {
+                "section_id": int(row.section_id),
+                "offset": float(row.normalized_section_offset),
+            }
+            for row in random_locations.itertuples()
+        ]
+    ).points_on(morphology)
+
+    pd.testing.assert_frame_equal(
+        explicit_locations,
+        random_locations,
+        check_exact=False,
+        atol=1e-4,
+        rtol=1e-7,
+    )
 
 
 def test_segment_offset_is_absolute_distance(morphology):
