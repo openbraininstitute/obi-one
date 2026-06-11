@@ -7,6 +7,7 @@ import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
     PopulationNeuronSet,
+    VirtualPopulationNeuronSet,
 )
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
@@ -115,3 +116,25 @@ def test_population_neuron_set_different_seeds(circuit):
     ids2 = nset2.get_neuron_ids(circuit)
     # With 10 neurons and 50% sampling, different seeds should (very likely) give different results
     assert ids1["S1nonbarrel_neurons"] != ids2["S1nonbarrel_neurons"]
+
+
+# --- Population type matching ---
+
+
+def test_biophysical_population_matching(circuit):
+    """Test that a biophysical population neuron set works with a biophysical population."""
+    nset = BiophysicalPopulationNeuronSet(population="S1nonbarrel_neurons")
+    nset.set_block_name("bio_match")
+
+    ids = nset.get_neuron_ids(circuit)
+    assert len(ids["S1nonbarrel_neurons"]) == 10
+
+
+def test_virtual_population_mismatch(circuit):
+    """Test that a virtual population neuron set fails with a biophysical population."""
+    # S1nonbarrel_neurons is biophysical, not virtual -> should raise
+    nset = VirtualPopulationNeuronSet(population="S1nonbarrel_neurons")
+    nset.set_block_name("virt_mismatch")
+
+    with pytest.raises(ValueError, match="not found in circuit"):
+        nset.get_neuron_ids(circuit)
