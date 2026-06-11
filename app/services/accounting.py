@@ -164,8 +164,9 @@ def _evaluate_circuit_simulation_parameters(
         entity_id=simulation_id,
         entity_type=models.Simulation,
     )
-    # TODO: actually use the circuit and simulation files to determine the count
-    count = simulation.number_neurons
+    duration_ms = simulation.scan_parameters.get("initialize.duration", 1000)
+    duration_s = duration_ms / 1000.0
+    count = int(simulation.number_neurons * duration_s)
 
     circuit = db_client.get_entity(entity_id=simulation.entity_id, entity_type=models.Circuit)
 
