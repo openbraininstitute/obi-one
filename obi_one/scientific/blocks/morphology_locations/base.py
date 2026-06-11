@@ -6,6 +6,11 @@ import pandas  # noqa: ICN001
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+    MorphologySourceMappedProperties,
+)
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
@@ -23,6 +28,11 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         default=None,
         title="Section types",
         description="Types of sections to generate locations on. 2: axon, 3: basal, 4: apical",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY_SOURCE,
+            SchemaKey.PROPERTY: MorphologySourceMappedProperties.SECTION_TYPES,
+        },
     )
 
     @abc.abstractmethod
