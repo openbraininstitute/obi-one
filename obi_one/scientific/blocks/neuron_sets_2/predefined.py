@@ -134,7 +134,12 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
         node_populations = self.get_populations(circuit)
         ids_dict = {}
         for npop in node_populations:
-            ids_dict[npop] = circuit.sonata_circuit.nodes[npop].ids(self.node_set).tolist()
+            try:
+                node_ids = circuit.sonata_circuit.nodes[npop].ids(self.node_set).tolist()
+            except snap.BluepySnapError as e:
+                # In case of an error (e.g., "No such attribute"), return empty list
+                node_ids = []
+            ids_dict[npop] = node_ids
 
         if all(len(ids) == 0 for ids in ids_dict.values()):
             L.warning("Neuron set empty!")
@@ -150,10 +155,15 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
     def _resolve_ids(self, circuit: Circuit) -> list[int]:
         """Returns the full list of neuron IDs (w/o subsampling)."""
         self.check_node_set(circuit)
-        self.check_populations_in_circuit(circuit=circuit)
-        node_ids = circuit.sonata_circuit.nodes[self.population].ids(self.node_set)
+        self.check_populations_in_circuit(circuit)
+        try:
+            node_ids = circuit.sonata_circuit.nodes[self.population].ids(self.node_set)
+        except snap.BluepySnapError as e:
+            # In case of an error (e.g., "No such attribute"), return empty list
+            L.warning("Neuron set empty!")
+            return []
         return node_ids.tolist()
-
+    
     def _get_expression(self, circuit: Circuit) -> dict | list:
         """Returns the SONATA node set resolved in one population (w/o subsampling).
 
@@ -167,8 +177,9 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
         )
         if nset_populations == [self.population]:
             # Node set only resolves in this population — keep symbolic
+            self.check_populations_in_circuit(circuit)
             return [self.node_set]
-        # Resolves in multiple populations — must resolve IDs for this population
+        # Resolves in multiple (or none) populations — must resolve IDs for this population
         node_ids = self._resolve_ids(circuit)
         return {"population": self.population, "node_id": node_ids}
 
