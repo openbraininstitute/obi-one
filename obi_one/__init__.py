@@ -24,6 +24,7 @@ __all__ = [
     "AllDistributionsReference",
     "AllDistributionsUnion",
     "AllNeurons",
+    "AllPairsSynapticModelAssigner",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
@@ -67,11 +68,13 @@ __all__ = [
     "EMCellMeshFromID",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
+    "EMSynapseMappingTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
+    "ExcitatoryTsodyksMarkramSynapticModel",
     "ExponentialDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsUnion",
@@ -91,10 +94,13 @@ __all__ = [
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "InhibitoryTsodyksMarkramSynapticModel",
     "IntConstantDistribution",
+    "IntDiscreteDistribution",
     "IntRange",
     "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
+    "InterNeuronSetSynapticModelAssigner",
     "InterSpikeIntervalDistributionSpikeStimulus",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
@@ -156,6 +162,7 @@ __all__ = [
     "PositiveFloatRange",
     "PositiveIntRange",
     "PredefinedNeuronSet",
+    "PresynapticNeuronSetSynapticModelAssigner",
     "PropertyNeuronSet",
     "RandomGroupedMorphologyLocations",
     "RandomMorphologyLocations",
@@ -191,8 +198,15 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "SynapseParameterizationScanConfig",
+    "SynapseParameterizationSingleConfig",
+    "SynapseParameterizationTask",
     "SynapseSetUnion",
     "SynapticMgManipulation",
+    "SynapticModelAssignerReference",
+    "SynapticModelAssignerUnion",
+    "SynapticModelReference",
+    "SynapticModelUnion",
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
@@ -248,6 +262,7 @@ from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
 )
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
@@ -350,6 +365,20 @@ from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )
+from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
+    AllPairsSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
+    InterNeuronSetSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.presyn_neuron_set import (
+    PresynapticNeuronSetSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+    # CorrelatedExcitatoryTsodyksMarkramSynapticModel,
+    ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
+)
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.cell_morphology_from_id import (
@@ -399,6 +428,9 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
 from obi_one.scientific.tasks.em_synapse_mapping.config import (
     EMSynapseMappingScanConfig,
     EMSynapseMappingSingleConfig,
+)
+from obi_one.scientific.tasks.em_synapse_mapping.task import (
+    EMSynapseMappingTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
@@ -466,6 +498,11 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
 )
+from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationScanConfig,
+    SynapseParameterizationSingleConfig,
+)
+from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.block_references import AllBlockReferenceTypes  # noqa: F401
 from obi_one.scientific.unions.config_task_map import (
@@ -492,6 +529,14 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusUnion,
 )
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerReference,
+    SynapticModelAssignerUnion,
+)
+from obi_one.scientific.unions.unions_synaptic_models import (
+    SynapticModelReference,
+    SynapticModelUnion,
+)
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
