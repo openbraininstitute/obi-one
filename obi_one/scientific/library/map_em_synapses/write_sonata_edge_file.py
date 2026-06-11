@@ -58,6 +58,8 @@ def write_edges(
     syn_data: pandas.DataFrame,
     source_pop_name: str,
     tgt_pop_name: str,
+    n_src: int | None = None,
+    n_tgt: int | None = None
 ) -> None:
     h5 = h5py.File(fn_out, "a")
 
@@ -74,6 +76,8 @@ def write_edges(
     adjust_edge_index_groups(grp_root, len(syn_pre_post))
 
     h5.close()
-    n_src = len(syn_pre_post[_STR_PRE_NODE].drop_duplicates())
-    n_tgt = len(syn_pre_post[_STR_POST_NODE].drop_duplicates())
+    if n_src is None:
+        n_src = int(syn_pre_post[_STR_PRE_NODE].max() + 1)
+    if n_tgt is None:
+        n_tgt = int(syn_pre_post[_STR_POST_NODE].max() + 1)
     _write_indexes(str(fn_out), population_name, n_src, n_tgt)
