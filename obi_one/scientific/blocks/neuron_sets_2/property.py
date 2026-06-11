@@ -127,7 +127,8 @@ class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         If the property filter only matches neurons in self.population, keeps
         it symbolic (without population key). Otherwise resolves IDs.
         """
-        node_ids = self._resolve_ids(circuit)
+        self.check_populations_in_circuit(circuit=circuit)
+        self.check_properties(circuit)
 
         # Check if properties also resolve in other populations
         resolves_elsewhere = any(
@@ -144,6 +145,7 @@ class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
             return expression
 
         # Resolves in multiple populations — must use explicit IDs
+        node_ids = self._resolve_in_population(circuit, self.population)
         return {"population": self.population, "node_id": node_ids}
 
 
