@@ -135,7 +135,7 @@ def _evaluate_accounting_parameters(
         case TaskType.em_synapse_mapping:
             return AccountingParameters(
                 count=1,
-                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
+                service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
             )
         case TaskType.ion_channel_model_simulation_execution:
             return AccountingParameters(
