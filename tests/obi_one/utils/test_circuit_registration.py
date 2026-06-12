@@ -32,6 +32,7 @@ from obi_one.utils.circuit_registration.assets import (
     _check_matrix_folder,
     _check_required_contents,
 )
+from obi_one.utils.circuit_registration.links import CustomizationType
 
 from tests.utils import CIRCUIT_DIR
 
@@ -540,6 +541,7 @@ def test_register_derivation_none_parent():
         client=client,
         from_entity=None,
         derivation_type="circuit_extraction",
+        derivation_label=None,
         registered_circuit=circuit,
         dry_run=False,
     )
@@ -555,6 +557,7 @@ def test_register_derivation_invalid_type():
             client=client,
             from_entity=MagicMock(),
             derivation_type=None,
+            derivation_label=None,
             registered_circuit=MagicMock(),
             dry_run=False,
         )
@@ -567,6 +570,7 @@ def test_register_derivation_dry_run():
         client=client,
         from_entity=MagicMock(),
         derivation_type="circuit_extraction",
+        derivation_label=None,
         registered_circuit=MagicMock(),
         dry_run=True,
     )
@@ -588,11 +592,80 @@ def test_register_derivation_success():
             client=client,
             from_entity=parent,
             derivation_type="circuit_extraction",
+            derivation_label=None,
             registered_circuit=circuit,
             dry_run=False,
         )
     assert result is registered_derivation
     client.register_entity.assert_called_once()
+
+
+def test_register_derivation_label_wrong_type():
+    """Test that derivation_label raises when used with non-customization type."""
+    client = MagicMock()
+    with pytest.raises(
+        ValueError, match="derivation_label can only be used with 'circuit_customization'"
+    ):
+        register_derivation(
+            client=client,
+            from_entity=MagicMock(),
+            derivation_type="circuit_extraction",
+            derivation_label="synaptic_modification",
+            registered_circuit=MagicMock(),
+            dry_run=False,
+        )
+
+
+def test_register_derivation_label_invalid_value():
+    """Test that an invalid derivation_label value raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="derivation_label must be one of"):
+        register_derivation(
+            client=client,
+            from_entity=MagicMock(),
+            derivation_type="circuit_customization",
+            derivation_label="invalid_label",
+            registered_circuit=MagicMock(),
+            dry_run=False,
+        )
+
+
+@pytest.mark.parametrize("label", [e.value for e in CustomizationType])
+def test_register_derivation_label_valid_values(label):
+    """Test that all valid CustomizationType values are accepted."""
+    client = MagicMock()
+    registered_derivation = MagicMock()
+    client.register_entity.return_value = registered_derivation
+
+    with patch("obi_one.utils.circuit_registration.links.models.Derivation"):
+        result = register_derivation(
+            client=client,
+            from_entity=MagicMock(),
+            derivation_type="circuit_customization",
+            derivation_label=label,
+            registered_circuit=MagicMock(),
+            dry_run=False,
+        )
+    assert result is registered_derivation
+    client.register_entity.assert_called_once()
+
+
+def test_register_derivation_label_none_with_customization():
+    """Test that derivation_label=None is allowed with circuit_customization."""
+    client = MagicMock()
+    registered_derivation = MagicMock()
+    client.register_entity.return_value = registered_derivation
+
+    with patch("obi_one.utils.circuit_registration.links.models.Derivation"):
+        result = register_derivation(
+            client=client,
+            from_entity=MagicMock(),
+            derivation_type="circuit_customization",
+            derivation_label=None,
+            registered_circuit=MagicMock(),
+            dry_run=False,
+        )
+    assert result is registered_derivation
 
 
 # --- register_contributions ---

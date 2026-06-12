@@ -1,6 +1,7 @@
 """Registration of linked entities (derivations, contributions, publications)."""
 
 import logging
+from enum import Enum
 
 from entitysdk import Client, models
 from entitysdk.types import DerivationType
@@ -8,10 +9,18 @@ from entitysdk.types import DerivationType
 L = logging.getLogger(__name__)
 
 
+class CustomizationType(Enum):
+    synaptic_modification = "synaptic_modification"
+    emodel_addition = "emodel_addition"
+    emodel_modification = "emodel_modification"
+    population_modification = "population_modification"
+
+
 def register_derivation(
     client: Client,
     from_entity: models.Circuit | None,
     derivation_type: DerivationType | None,
+    derivation_label: str | None,
     registered_circuit: models.Circuit | None,
     *,
     dry_run: bool,
@@ -22,6 +31,7 @@ def register_derivation(
         client: The entitycore SDK client.
         from_entity: The parent circuit entity (None to skip).
         derivation_type: The type of derivation (must be a valid DerivationType).
+        derivation_label: Derivation label for 'circuit_customization' type (optional).
         registered_circuit: The derived circuit entity.
         dry_run: If True, perform validation only without registering.
 
@@ -36,6 +46,15 @@ def register_derivation(
         msg = "derivation_type is required when from_entity is provided!"
         raise ValueError(msg)
 
+    if derivation_label is not None:
+        if derivation_type != DerivationType.circuit_customization:
+            msg = "derivation_label can only be used with 'circuit_customization' derivation type!"
+            raise ValueError(msg)
+        valid = [e.value for e in CustomizationType]
+        if derivation_label not in valid:
+            msg = f"derivation_label must be one of {valid}, got '{derivation_label}'!"
+            raise ValueError(msg)
+
     if dry_run:
         L.info(f"Derivation '{derivation_type}': DRY RUN (not registered)")
         return None
@@ -48,9 +67,11 @@ def register_derivation(
         used=from_entity,
         generated=registered_circuit,
         derivation_type=derivation_type,
+        label=derivation_label,
     )
     registered_derivation = client.register_entity(derivation_model)
-    L.info(f"Derivation link '{derivation_type}' registered")
+    info_lbl = f" ('{derivation_label}')" if derivation_label else ""
+    L.info(f"Derivation link '{derivation_type}'{info_lbl} registered")
     return registered_derivation
 
 
