@@ -48,8 +48,9 @@ def assemble_collection_from_specs(
     out_cols = []
     for col_out, entry in specs.items():
         if entry["table"] is None:
-            col = pandas.Series([entry["default"]] * len(pt_root_mapping.index),
-                                index=pt_root_mapping.index)
+            col = pandas.Series(
+                [entry["default"]] * len(pt_root_mapping.index), index=pt_root_mapping.index
+            )
         else:
             col = tables[entry["table"]].reindex(pt_root_mapping.index)[entry["column"]]
         if not col_out.startswith("__"):

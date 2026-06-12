@@ -59,7 +59,7 @@ def write_edges(
     source_pop_name: str,
     tgt_pop_name: str,
     n_src: int | None = None,
-    n_tgt: int | None = None
+    n_tgt: int | None = None,
 ) -> None:
     h5 = h5py.File(fn_out, "a")
 
