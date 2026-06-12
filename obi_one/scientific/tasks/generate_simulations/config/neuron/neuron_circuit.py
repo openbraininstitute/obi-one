@@ -142,6 +142,21 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
+    def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        sonata_config = super().base_sonata_config(sonata_config)
+
+        sonata_config["conditions"]["extracellular_calcium"] = (
+            self.initialize.extracellular_calcium_concentration
+        )
+
+        sonata_config["conditions"]["mechanisms"] = {
+            "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+            "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+        }
+
+        return sonata_config
+
 
 class CircuitSimulationSingleConfig(CircuitSimulationScanConfig, SimulationSingleConfigMixin):
     """Only allows single values."""

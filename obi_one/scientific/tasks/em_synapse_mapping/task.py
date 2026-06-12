@@ -75,6 +75,7 @@ class EMSynapseMappingTask(Task):
 
         cfg = self.config
         init = cfg.initialize
+        advanced = cfg.advanced_options
 
         # Prepare output location
         out_root = cfg.coordinate_output_root
@@ -235,10 +236,20 @@ class EMSynapseMappingTask(Task):
         L.info("Writing the results...")
         fn_edges_out = "synaptome-edges.h5"
         fn_nodes_out = "synaptome-nodes.h5"
-        pop_bio = init.biophysical_node_population
-        pop_virt = init.virtual_node_population
-        pop_edge_int = init.physical_edge_population_name
-        pop_edge_ext = init.virtual_edge_population_name
+
+        pop_edge_ext = "virtual_afferents"
+        pop_edge_int = "physical_connections"
+        pop_bio = "biophysical_neurons"
+        pop_virt = "virtual_afferent_neurons"
+
+        if advanced.custom_virtual_edge_population_name:
+            pop_edge_ext = advanced.custom_virtual_edge_population_name
+        if advanced.custom_physical_edge_population_name:
+            pop_edge_int = advanced.custom_physical_edge_population_name
+        if advanced.custom_biophysical_node_population:
+            pop_bio = advanced.custom_biophysical_node_population
+        if advanced.custom_virtual_node_population:
+            pop_virt = advanced.custom_virtual_node_population
 
         write_nodes(out_root / fn_nodes_out, pop_bio, coll_bio, write_mode="w")
         if coll_virtual is not None:

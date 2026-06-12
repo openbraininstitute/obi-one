@@ -109,6 +109,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
     publications: dict | None = None,
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
+    skip_validation: bool = False,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
@@ -147,6 +148,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         authorized_public: Whether to make the circuit publicly accessible.
         skip_additional_assets: If True, skip generation/registration of additional assets
             (compressed circuit, matrices, plots, figures).
+        skip_validation: If True, skip SONATA circuit validation.
         overview_image_path: Path to a pre-existing overview image file (.png or .webp).
             If provided, generation is skipped and this file is registered directly (optional).
         sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
@@ -189,7 +191,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         raise FileNotFoundError(msg)
 
     # Validate SONATA circuit
-    run_validation(circuit_path)
+    if not skip_validation:
+        run_validation(circuit_path)
 
     # Assure target simulator consistency
     c = OBICircuit(name=name, path=str(circuit_path))

@@ -37,6 +37,7 @@ class TaskType(StrEnum):
     folder_compression = auto()
     ion_channel_fitting = auto()
     ion_channel_model_simulation = auto()
+    learning_engine_circuit_simulation = auto()
     me_model_simulation = auto()
     me_model_with_synapses_circuit_simulation = auto()
     morphology_containerization = auto()

@@ -26,25 +26,13 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
-    BRIAN2_TARGET_SIMULATOR,
     Brian2CircuitSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
-    IonChannelModelSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
-    MEModelSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
-    MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
 from obi_one.utils.sonata import write_simulation_config
 
 L = logging.getLogger(__name__)
@@ -57,17 +45,9 @@ DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
 
-SONATA_VERSION = 2.4
-
 
 class GenerateSimulationTask(Task):
-    config: (
-        CircuitSimulationSingleConfig
-        | MEModelSimulationSingleConfig
-        | MEModelWithSynapsesCircuitSimulationSingleConfig
-        | IonChannelModelSimulationSingleConfig
-        | Brian2CircuitSimulationSingleConfig
-    )
+    config: SIMULATION_GENERATION_SINGLE_CONFIGS
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
@@ -76,46 +56,6 @@ class GenerateSimulationTask(Task):
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
     _neuron_set_definitions: dict[str, dict] = PrivateAttr(default={})
-
-    def _initialize_sonata_simulation_config(self) -> dict:  # ty:ignore[invalid-return-type]
-        """Returns the default SONATA conditions dictionary."""
-        is_brian2 = isinstance(self.config, Brian2CircuitSimulationSingleConfig)
-
-        self._sonata_config = {}
-        self._sonata_config["version"] = SONATA_VERSION
-        if is_brian2:
-            self._sonata_config["target_simulator"] = BRIAN2_TARGET_SIMULATOR
-
-        self._sonata_config["run"] = {}
-        self._sonata_config["run"]["dt"] = self.config.initialize.timestep
-        self._sonata_config["run"]["random_seed"] = self.config.initialize.random_seed
-        self._sonata_config["run"]["tstop"] = self.config.initialize.simulation_length
-
-        self._sonata_config["conditions"] = {}
-        if not is_brian2 and hasattr(self.config.initialize, "extracellular_calcium_concentration"):
-            self._sonata_config["conditions"]["extracellular_calcium"] = (
-                self.config.initialize.extracellular_calcium_concentration
-            )
-        if hasattr(self.config.initialize, "temperature"):
-            self._sonata_config["conditions"]["celsius"] = self.config.initialize.temperature
-        self._sonata_config["conditions"]["v_init"] = self.config.initialize.v_init
-        if not is_brian2 and hasattr(self.config.initialize, "spike_location"):
-            self._sonata_config["conditions"]["spike_location"] = (
-                self.config.initialize.spike_location
-            )
-
-        self._sonata_config["output"] = {"output_dir": "output", "spikes_file": "spikes.h5"}
-        if (
-            isinstance(
-                self.config,
-                (CircuitSimulationSingleConfig, MEModelWithSynapsesCircuitSimulationSingleConfig),
-            )
-            and not is_brian2
-        ):
-            self._sonata_config["conditions"]["mechanisms"] = {
-                "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-                "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
-            }
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -197,12 +137,12 @@ class GenerateSimulationTask(Task):
         self, db_client: entitysdk.client.Client | None
     ) -> None:
         self._sonata_config["reports"] = {}
-        for recording in self.config.recordings.values():
+        for recording in getattr(self.config, "recordings", {}).values():
             self._sonata_config["reports"].update(
                 recording.config(
-                    self._circuit,  # ty:ignore[invalid-argument-type]
+                    self._circuit,
                     self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
-                    self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type]
+                    self.config.initialize.simulation_length,
                     DEFAULT_NODE_SET_NAME,
                     db_client,
                 )
@@ -214,7 +154,7 @@ class GenerateSimulationTask(Task):
             # TODO: Ensure that the order in the self.synaptic_manipulations dict is preserved!
             manipulation_list = [
                 item
-                for manipulation in self.config.synaptic_manipulations.values()  # ty:ignore[unresolved-attribute]
+                for manipulation in getattr(self.config, "synaptic_manipulations", {}).values()
                 for item in manipulation.config(DEFAULT_NODE_SET_NAME)
             ]
             if len(manipulation_list) > 0:
@@ -224,7 +164,7 @@ class GenerateSimulationTask(Task):
             # Separate RANGE (section_list) and GLOBAL (mechanisms) modifications
             range_modifications = []
             mechanisms: dict = {}
-            for modification in self.config.neuronal_manipulations.values():  # ty:ignore[unresolved-attribute]
+            for modification in getattr(self.config, "neuronal_manipulations", {}).values():
                 result = modification.config(
                     self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                     DEFAULT_NODE_SET_NAME,
@@ -265,12 +205,11 @@ class GenerateSimulationTask(Task):
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
         if hasattr(self.config, "neuron_sets"):
-            for recording in self.config.recordings.values():
+            for recording in getattr(self.config, "recordings", {}).values():
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     recording
                 )
-
-            for stimulus in self.config.stimuli.values():
+            for stimulus in getattr(self.config, "stimuli", {}).values():
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     stimulus
                 )
@@ -310,17 +249,18 @@ class GenerateSimulationTask(Task):
                 if (
                     not isinstance(self.config, Brian2CircuitSimulationSingleConfig)
                     and isinstance(self.config.initialize.node_set, NeuronSetReference)
+                    and self._circuit is not None
                     and (
-                        self.config.initialize.node_set.block.population_type(  # ty:ignore[unresolved-attribute]
+                        self.config.initialize.node_set.block.population_type(
                             self._circuit,
-                            self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
+                            self._circuit.default_population_name,
                         )
-                        not in {"biophysical", "inait_point_neuron_lif"}
+                        not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
                     )
                 ):
                     # Get list of biophysical populations to help user
                     biophysical_populations = Circuit.get_node_population_names(
-                        self._circuit.sonata_circuit,  # ty:ignore[unresolved-attribute]
+                        self._circuit.sonata_circuit,
                         incl_virtual=False,
                         incl_point=False,
                     )
@@ -469,7 +409,7 @@ class GenerateSimulationTask(Task):
     ) -> None:
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
-        self._initialize_sonata_simulation_config()
+        self._sonata_config = self.config.base_sonata_config()
         self._resolve_circuit(db_client)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
