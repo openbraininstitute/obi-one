@@ -8,14 +8,10 @@ property endpoint identified by `property_group` and `property`.
 This specification adds the backend and generated-schema contract only. The frontend still needs
 to implement rendering and endpoint-driven option loading for this UI element.
 
-The backend property endpoint supports MEModel, MEModel-with-synapses, and direct CellMorphology
-sources. MEModel-with-synapses discovery is limited to its single biophysical neuron and does not
-scan morphologies across a circuit.
+The backend property endpoint supports MEModel, MEModel-with-synapses, and direct CellMorphology sources.
 
 General Circuit support is deferred. It should be morphology-specific and reuse
-`/circuit/viz/{circuit_id}/morphologies/{morphology_file}/section-types` once the UI can provide
-the circuit ID, morphology file, and optional morphology name. The property endpoint must not scan
-all morphologies in a circuit.
+`/circuit/viz/{circuit_id}/morphologies/{morphology_file}/section-types` once the UI can provide the circuit ID, morphology file, and optional morphology name. The property endpoint must not scan all morphologies in a circuit.
 
 The component should render the returned options as checkboxes or a multi-select. Each option has:
 

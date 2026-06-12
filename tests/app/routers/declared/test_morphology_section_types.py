@@ -68,3 +68,21 @@ def test_mapped_morphology_source_properties_not_found(mock_options):
 
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "NOT_FOUND"
+
+
+@patch(f"{ROUTER_MODULE}.cell_morphology_section_type_options")
+def test_mapped_morphology_properties_invalid_source(mock_options):
+    client, _db_client = _client()
+    morphology_id = uuid4()
+    mock_options.side_effect = ValueError("unsupported morphology")
+
+    response = client.get(f"/declared/mapped-morphology-properties/{morphology_id}")
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "INVALID_REQUEST",
+        "detail": (
+            f"Could not discover morphology section types for {morphology_id}: "
+            "unsupported morphology"
+        ),
+    }
