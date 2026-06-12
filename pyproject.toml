@@ -52,7 +52,7 @@ dependencies = [
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.7.2",
+    "obp-accounting-sdk>=0.6.2",
     "numpy",
 ]
 
