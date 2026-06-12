@@ -63,8 +63,10 @@ class TestResolveNeuron:
         assert result.use_me_model is False
         assert result.spiny_morph == "spiny_mock"
         assert result.cave_version == 3
-        assert result.fn_morph_h5 == Path("morphologies") / (morph_entity.name + ".h5")
-        assert result.fn_morph_swc == Path("morphologies/morphology") / (morph_entity.name + ".swc")
+        assert result.fn_morph_h5 == Path("morphologies") / (str(morph_entity.id) + ".h5")
+        assert result.fn_morph_swc == Path("morphologies/morphology") / (
+            str(morph_entity.id) + ".swc"
+        )
 
     def test_resolve_memodel(
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
