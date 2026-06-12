@@ -176,6 +176,50 @@ def run_validation(circuit_path: str) -> None:
     L.info("No validation errors found!")
 
 
+def get_morphology_path(morph_stem: str, available_morph_dirs: list[str: str]) -> str|None:
+    """Get morphology path depending on morphology presence on file system and containerization."""
+    morph_fpath = None
+    for ext, morph_dir in available_morph_dirs.items():
+        # h5 container case: morph_container.h5/morph_name
+        if ext == "h5" and Path(morph_dir).suffix == ".h5":
+            morph_fpath = Path(morph_dir) / morph_stem
+        # swc, asc, h5 non-container cases: dir/morph.ext
+        else:
+            morph_fpath = Path(morph_dir) / f"{morph_stem}.{ext}"
+
+        if morph_fpath.exists():
+            return morph_fpath
+
+    return morph_fpath
+
+
+def get_source_morph_dirs(pop: snap.nodes.NodePopulation) -> dict[str: str]:
+    """Returns a dict with morph extension as key and morphology source directory as value."""
+    morph_dirs = {}
+    for morph_ext in ["swc", "asc", "h5"]:
+        try:
+            morph_folder = pop.morph._get_morphology_base(morph_ext)  # noqa: SLF001
+            # TODO: Should not use private function!! But required to get path
+            #       even if h5 container.
+        except BluepySnapError:
+            # Morphology folder for given extension not defined in config
+            continue
+
+        if not Path(morph_folder).exists():
+            # Morphology folder/container does not exist
+            continue
+
+        if (
+            Path(morph_folder).is_dir()
+            and len(filter_extension(Path(morph_folder).iterdir(), morph_ext)) == 0  # ty:ignore[invalid-argument-type]
+        ):
+            # Morphology folder does not contain morphologies
+            continue
+
+        morph_dirs[morph_ext] = morph_folder
+    return morph_dirs
+
+
 def get_morph_dirs(
     pop_name: str,
     pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]

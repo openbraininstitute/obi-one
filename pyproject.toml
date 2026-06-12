@@ -36,7 +36,7 @@ dependencies = [
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
-    "bluecellulab>=2.6.87",
+    "bluecellulab>=2.6.97",
     "blueetl",
     "bluepyefe>=2.3.53",
     "bluepysnap>=3.0.2",
