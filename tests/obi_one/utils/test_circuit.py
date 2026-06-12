@@ -2,8 +2,10 @@
 
 import json
 import shutil
+from unittest.mock import MagicMock, patch
 
 import pytest
+from entitysdk import types
 from PIL import Image
 
 from obi_one.core.exception import OBIONEError
@@ -17,6 +19,7 @@ from obi_one.utils.circuit import (
     run_connectivity_matrix_extraction,
     run_validation,
 )
+from obi_one.utils.circuit_registration import register_circuit, register_circuit_from_metadata
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
@@ -310,3 +313,97 @@ def test_run_connectivity_matrix_extraction_custom_edge_population(tmp_path):
             output_root=tmp_path,
             edge_population="nonexistent_population",
         )
+
+
+# --- scale_override (register_circuit) ---
+
+
+class _FakeCircuitModel:
+    """Stand-in for entitysdk ``models.Circuit`` that records kwargs as attributes."""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+def _matching_brain_region_and_subject():
+    """Brain region and subject mocks sharing a species (passes consistency check)."""
+    species = MagicMock(id="species-id", name="Mus musculus")
+    brain_region = MagicMock(species=species, name="SSp")
+    subject = MagicMock(species=species, name="mouse-subject")
+    return brain_region, subject
+
+
+def _register_and_get_scale(scale_override):
+    """Register the small test circuit and return the scale recorded on the circuit model."""
+    circuit_path = CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json"
+    client = MagicMock()
+    client.register_entity.return_value = MagicMock(id="new-id")
+    brain_region, subject = _matching_brain_region_and_subject()
+
+    with (
+        patch("obi_one.utils.circuit_registration.register.models.Circuit", _FakeCircuitModel),
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            scale_override=scale_override,
+            dry_run=False,
+        )
+
+    return client.register_entity.call_args.args[0].scale
+
+
+def test_register_circuit_scale_override_replaces_computed_scale():
+    """Test that scale_override replaces the auto-computed scale on the registered circuit."""
+    # N_10 is auto-computed as "small"; the override must win.
+    assert _register_and_get_scale(types.CircuitScale.region) == types.CircuitScale.region
+
+
+def test_register_circuit_without_scale_override_uses_computed_scale():
+    """Test that the auto-computed scale ("small") is used when no override is given."""
+    assert _register_and_get_scale(None) == types.CircuitScale.small
+
+
+def test_register_circuit_from_metadata_forwards_scale_override():
+    """Test that a scale_override in the metadata dict is forwarded to register_circuit."""
+    client = MagicMock()
+    metadata = {
+        "name": "test",
+        "description": "test",
+        "build_category": "computational_model",
+        "species": "Mus musculus",
+        "subject": "mouse-subject",
+        "brain_region": "SSp",
+        "brain_region_hierarchy": "test-hierarchy",
+        "target_simulator": "NEURON",
+        "scale_override": types.CircuitScale.whole_brain,
+    }
+
+    with (
+        patch("obi_one.utils.circuit_registration.register.check_if_circuit_exists"),
+        patch("obi_one.utils.circuit_registration.register.get_subject"),
+        patch("obi_one.utils.circuit_registration.register.get_brain_region_hierarchy"),
+        patch("obi_one.utils.circuit_registration.register.check_hierarchy_species"),
+        patch("obi_one.utils.circuit_registration.register.get_brain_region"),
+        patch("obi_one.utils.circuit_registration.register.get_license"),
+        patch("obi_one.utils.circuit_registration.register.get_root_circuit"),
+        patch("obi_one.utils.circuit_registration.register.get_parent_circuit"),
+        patch("obi_one.utils.circuit_registration.register.get_exp_date"),
+        patch("obi_one.utils.circuit_registration.register.register_circuit") as mock_register,
+    ):
+        register_circuit_from_metadata(
+            client=client,
+            circuit_metadata=metadata,
+            circuit_path="/some/path",
+        )
+
+    assert mock_register.call_args.kwargs["scale_override"] == types.CircuitScale.whole_brain
