@@ -21,8 +21,8 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.basic_connectivity_plots_helpers import (
-    _CANONICAL_EXC,
-    _CANONICAL_INH,
+    CANONICAL_EXC,
+    CANONICAL_INH,
     assemble_property_colormapping,
     find_canonical_synapse_classes,
 )
@@ -308,8 +308,8 @@ class BasicConnectivityPlotsTask(Task):
             try:
                 canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
                 axes_specs = [
-                    (ax_exc, "EXC", color_map_nodes[canon_map[_CANONICAL_EXC]]),
-                    (ax_inh, "INH", color_map_nodes[canon_map[_CANONICAL_INH]]),
+                    (ax_exc, "EXC", color_map_nodes[canon_map[CANONICAL_EXC]]),
+                    (ax_inh, "INH", color_map_nodes[canon_map[CANONICAL_INH]]),
                 ]
             except ValueError:
                 axes_specs = [

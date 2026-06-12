@@ -47,8 +47,9 @@ except ImportError as e:  # pragma: no cover
     raise ImportError(msg) from e
 
 L = logging.getLogger(__name__)
-_CANONICAL_EXC = "exc"
-_CANONICAL_INH = "inh"
+CANONICAL_EXC = "exc"
+CANONICAL_INH = "inh"
+CANONICAL_NA = "na"
 
 # Stats functions
 
@@ -56,11 +57,13 @@ _CANONICAL_INH = "inh"
 def find_canonical_synapse_classes(prop_values: list[str]) -> dict[str, str]:
     canon_mapping = {}
     for val in prop_values:
-        if _CANONICAL_EXC in val.lower():
-            canon_mapping[_CANONICAL_EXC] = val
-        if _CANONICAL_INH in val.lower():
-            canon_mapping[_CANONICAL_INH] = val
-    if (_CANONICAL_EXC not in canon_mapping) or (_CANONICAL_INH not in canon_mapping):
+        if CANONICAL_EXC in val.lower():
+            canon_mapping[CANONICAL_EXC] = val
+        elif CANONICAL_INH in val.lower():
+            canon_mapping[CANONICAL_INH] = val
+        else:  # If both EXC and INH are found any additional value is interpreted as NA
+            canon_mapping[CANONICAL_NA] = val
+    if (CANONICAL_EXC not in canon_mapping) or (CANONICAL_INH not in canon_mapping):
         err_str = "No canon E/I mapping found!"
         raise ValueError(err_str)
     return canon_mapping
@@ -72,7 +75,14 @@ def assemble_property_colormapping(
     color_values = list(conn.vertices[color_property].drop_duplicates())
     try:  # We attempt to display EXC / INH
         canon_map = find_canonical_synapse_classes(color_values)
-        color_values = [canon_map[_CANONICAL_INH], canon_map[_CANONICAL_EXC]]
+        if CANONICAL_NA in canon_map:
+            color_values = [
+                canon_map[CANONICAL_INH],
+                canon_map[CANONICAL_NA],
+                canon_map[CANONICAL_EXC],
+            ]
+        else:
+            color_values = [canon_map[CANONICAL_INH], canon_map[CANONICAL_EXC]]
     except ValueError:  # Fallback: Whatever is available
         pass
     col_idx_ = np.linspace(0, cmap.N, len(color_values)).astype(int)
@@ -1184,8 +1194,8 @@ def plot_smallMC(  # noqa: PLR0914
     try:
         canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
         axes_specs = [
-            (ax7, "EXC", color_map_nodes[canon_map[_CANONICAL_EXC]]),
-            (ax8, "INH", color_map_nodes[canon_map[_CANONICAL_INH]]),
+            (ax7, "EXC", color_map_nodes[canon_map[CANONICAL_EXC]]),
+            (ax8, "INH", color_map_nodes[canon_map[CANONICAL_INH]]),
         ]
     except ValueError:
         axes_specs = [
