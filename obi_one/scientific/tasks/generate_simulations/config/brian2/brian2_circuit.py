@@ -23,13 +23,13 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base imp
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
-    SimulationNeuronSetUnion,
+    Brian2SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     Brian2CircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
 L = logging.getLogger(__name__)
 
@@ -54,7 +54,6 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
@@ -107,7 +106,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, Brian2SimulationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
