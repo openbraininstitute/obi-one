@@ -80,19 +80,33 @@ class TestNeuronalManipulationPropertiesEndpoint:
         assert data["entity_type"] == "circuit"
         assert "mechanism_variables_by_ion_channel" in data
 
-    def test_circuit_path_missing_neuron_set_and_node_ids(self, client):
-        """Circuit entity without neuron_set or node_ids returns 400."""
-        with patch(
-            "app.endpoints.circuit_properties.try_get_mechanism_variables",
-            return_value=None,
+    def test_circuit_path_no_neuron_set_uses_fast_path(self, client):
+        """Circuit entity without neuron_set or node_ids uses fast path (all derivations)."""
+        with (
+            patch(
+                "app.endpoints.circuit_properties.try_get_mechanism_variables",
+                return_value=None,
+            ),
+            patch(
+                "app.endpoints.circuit_properties.get_circuit_manipulation_properties"
+            ) as mock_props,
         ):
+            mock_props.return_value = {
+                "entity_type": "circuit",
+                "population": None,
+                "mechanism_variables_by_ion_channel": {"NaTg": {}},
+                "warnings": None,
+            }
+
             response = client.post(
                 "/declared/neuronal-manipulation-properties",
                 json={"entity_id": str(uuid4())},
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
 
-        assert response.status_code == 400
+        assert response.status_code == 200
+        data = response.json()
+        assert data["entity_type"] == "circuit"
 
     def test_circuit_path_value_error(self, client):
         """ValueError from library returns 400."""

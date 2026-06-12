@@ -281,13 +281,7 @@ def neuronal_manipulation_properties_endpoint(
             "mechanism_variables_by_ion_channel": memodel_result,
         }
 
-    # Circuit path — need either neuron_set or node_ids
-    if request.neuron_set is None and request.node_ids is None:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="Either neuron_set or node_ids is required for circuit entities.",
-        )
-
+    # Circuit path
     try:
         result = get_circuit_manipulation_properties(
             db_client=db_client,

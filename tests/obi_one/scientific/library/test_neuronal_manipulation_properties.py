@@ -23,7 +23,6 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _fetch_emodel_derivation_mapping,
     _get_circuit_asset,
     _match_templates_to_emodels,
-    _resolve_population_and_node_ids,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -386,63 +385,6 @@ class TestMatchTemplatesToEmodels:
         matched, unmatched = _match_templates_to_emodels({}, {"hoc:x": "emodel-1"})
         assert matched == {}
         assert unmatched == set()
-
-
-class TestResolvePopulationAndNodeIds:
-    """Tests for _resolve_population_and_node_ids edge cases."""
-
-    def test_raises_when_neither_provided(self):
-        """Raises ValueError when neither neuron_set nor node_ids provided."""
-        with pytest.raises(ValueError, match="Either neuron_set or node_ids must be provided"):
-            _resolve_population_and_node_ids(
-                db_client=MagicMock(),
-                circuit_id="some-id",
-                circuit_entity=MagicMock(),
-                asset_id=MagicMock(),
-                neuron_set=None,
-                node_ids=None,
-                population=None,
-            )
-
-    def test_node_ids_with_population_returns_directly(self):
-        """When node_ids and population are provided, returns them without loading circuit."""
-        db_client = MagicMock()
-        result = _resolve_population_and_node_ids(
-            db_client=db_client,
-            circuit_id="some-id",
-            circuit_entity=MagicMock(),
-            asset_id=MagicMock(),
-            neuron_set=None,
-            node_ids=[0, 1, 2],
-            population="my_pop",
-        )
-
-        assert result == ("my_pop", [0, 1, 2])
-        # No fetch_file call needed since population was provided
-        db_client.fetch_file.assert_not_called()
-
-    def test_node_ids_without_population_loads_circuit(self):
-        """When node_ids provided but population is None, loads circuit to get default."""
-        db_client = MagicMock()
-        db_client.fetch_file.side_effect = _make_fetch_file_side_effect(TINY_CIRCUIT_DIR)
-        entity = MagicMock()
-        entity.name = "test_circuit"
-        asset_id = uuid4()
-
-        result = _resolve_population_and_node_ids(
-            db_client=db_client,
-            circuit_id=str(uuid4()),
-            circuit_entity=entity,
-            asset_id=asset_id,
-            neuron_set=None,
-            node_ids=[0, 1, 2],
-            population=None,
-        )
-
-        # Should resolve the default population from the circuit config
-        assert result[0] == "S1nonbarrel_neurons"
-        assert result[1] == [0, 1, 2]
-        db_client.fetch_file.assert_called_once()
 
 
 # --- Integration tests using tiny circuit data ---
@@ -839,30 +781,3 @@ class TestGetCircuitNodeIds:
         # Default population for the tiny circuit is S1nonbarrel_neurons
         assert population == "S1nonbarrel_neurons"
         assert node_ids == [5, 6]
-
-
-class TestResolvePopulationAndNodeIdsNeuronSetBranch:
-    """Test the neuron_set branch of _resolve_population_and_node_ids."""
-
-    def test_neuron_set_branch_calls_get_circuit_node_ids(self, mock_db_client):
-        """When neuron_set is provided and node_ids is None, delegates to get_circuit_node_ids."""
-
-        circuit_id = str(uuid4())
-        _, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
-        entity = mock_db_client.get_entity.return_value
-
-        neuron_set = MagicMock()
-        neuron_set.get_neuron_ids.return_value = np.array([0, 1])
-
-        population, node_ids = _resolve_population_and_node_ids(
-            db_client=mock_db_client,
-            circuit_id=circuit_id,
-            circuit_entity=entity,
-            asset_id=asset_id,
-            neuron_set=neuron_set,
-            node_ids=None,
-            population="S1nonbarrel_neurons",
-        )
-
-        assert population == "S1nonbarrel_neurons"
-        assert node_ids == [0, 1]
