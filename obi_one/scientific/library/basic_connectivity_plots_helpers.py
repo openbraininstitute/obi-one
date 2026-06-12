@@ -19,6 +19,7 @@ from matplotlib import gridspec
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Ellipse, FancyArrow
 from matplotlib.ticker import FuncFormatter
+from matplotlib.colors import Colormap
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 # Connectivity dependencies (optional) - check for networkx
@@ -46,9 +47,41 @@ except ImportError as e:  # pragma: no cover
     raise ImportError(msg) from e
 
 L = logging.getLogger(__name__)
+_CANONICAL_EXC = "exc"
+_CANONICAL_INH = "inh"
 
 # Stats functions
 
+def find_canonical_synapse_classes(
+        prop_values: list[str]
+) -> dict[str, str]:
+    canon_mapping = dict()
+    for val in prop_values:
+        if _CANONICAL_EXC in val.lower():
+            canon_mapping[_CANONICAL_EXC] = val
+        if _CANONICAL_INH in val.lower():
+            canon_mapping[_CANONICAL_INH] = val
+    if (_CANONICAL_EXC not in canon_mapping) or\
+        (_CANONICAL_INH not in canon_mapping):
+        raise ValueError("No canon E/I mapping found!")
+    return canon_mapping
+
+def assemble_property_colormapping(
+        conn: ConnectivityMatrix,
+        cmap: Colormap,
+        color_property: str = "synapse_class"
+    ) -> dict[str, str]:
+    color_values = list(conn.vertices[color_property].drop_duplicates())
+    try:  # We attempt to display EXC / INH
+        canon_map = find_canonical_synapse_classes(color_values)
+        color_values = [canon_map[_CANONICAL_INH], canon_map[_CANONICAL_EXC]]
+    except ValueError:  # Fallback: Whatever is available
+        pass
+    _col_idx = np.linspace(0, cmap.N, len(color_values)).astype(int)
+    color_map = {
+        _val: cmap(_idx) for _val, _idx in zip(color_values, _col_idx)
+    }
+    return color_map
 
 def connection_probability_pathway(
     conn: ConnectivityMatrix, grouping_prop: str
@@ -200,7 +233,7 @@ def make_pie_plot(  # noqa: PLR0914
     cmap = cmaps[grouping_prop]
     if grouping_prop == "synapse_class":
         # Fix red/blue for EXC/INH, if NA make it gray
-        color_map = {"EXC": cmap(cmap.N), "INH": cmap(0), "NA": "gray"}
+        color_map = assemble_property_colormapping(conn, cmap, color_property=grouping_prop)
         colors = [color_map.get(key, cmap(i)) for i, key in enumerate(category_counts.index)]
     else:
         colors = [cmap(i) for i in range(len(category_counts))[::-1]]
@@ -976,15 +1009,11 @@ def plot_network_legends(  # noqa: PLR0913
     fig: plt.Figure,
     ax_edge: plt.Axes,
     ax_node_size: plt.Axes,
-    ax_exc: plt.Axes,
-    ax_inh: plt.Axes,
-    cmap: plt.Colormap,
+    axes_tuples: list[tuple[plt.Axes, str, str]],
     *,
     largest_radius: float = 0.1,
     y_position: float = 0.75,
     fontsize: int = 12,
-    exc_label: str = "Excitatory neuron",
-    inh_label: str = "Inhibitory neuron",
     node_size_label: str = "Node size represents in+out degree",
     edge_label: str = "Edge thickness represents number of synapses",
 ) -> None:
@@ -994,57 +1023,34 @@ def plot_network_legends(  # noqa: PLR0913
         fig: Matplotlib figure
         ax_edge: Axis for edge width legend
         ax_node_size: Axis for node size legend
-        ax_exc: Axis for excitatory neuron legend
-        ax_inh: Axis for inhibitory neuron legend
-        cmap: Colormap for node colors
+        axes_tuples: List of (ax, label, color) for additional legends
         largest_radius: Radius for the largest circle
         y_position: Vertical position for circles
         fontsize: Font size for labels
-        exc_label: Label text for excitatory neurons
-        inh_label: Label text for inhibitory neurons
         node_size_label: Label text for node size legend
         edge_label: Label text for edge width legend
     """
-    color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
+    # color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
 
-    # Excitatory neuron legend
-    plot_growing_circles(
-        fig,
-        ax_exc,
-        radii=[largest_radius],
-        y1=y_position,
-        color=color_map["EXC"][:-1],  # ty:ignore[invalid-argument-type]
-    )
-    ax_exc.text(
-        0.5,
-        0.1,
-        exc_label,
-        va="center",
-        ha="center",
-        fontsize=fontsize,
-        color=color_map["EXC"][:-1],
-    )
-    ax_exc.set_axis_off()
-
-    # Inhibitory neuron legend
-    plot_growing_circles(
-        fig,
-        ax_inh,
-        radii=[largest_radius],
-        y1=y_position,
-        color=color_map["INH"][:-1],  # ty:ignore[invalid-argument-type]
-    )
-    ax_inh.text(
-        0.5,
-        0.1,
-        inh_label,
-        va="center",
-        ha="center",
-        fontsize=fontsize,
-        color=color_map["INH"][:-1],
-    )
-    ax_inh.set_axis_off()
-
+    for this_ax, this_label, this_col in axes_tuples:
+        plot_growing_circles(
+            fig,
+            this_ax,
+            radii=[largest_radius],
+            y1=y_position,
+            color=this_col
+        )
+        this_ax.text(
+            0.5,
+            0.1,
+            this_label,
+            va="center",
+            ha="center",
+            fontsize=fontsize,
+            color=this_col,
+        )
+        this_ax.set_axis_off()
+    
     # Node size legend
     plot_growing_circles(
         fig,
@@ -1138,10 +1144,10 @@ def plot_smallMC(  # noqa: PLR0914
 
     # Network plots
     # Color nodes by synapse class
-    color_map_nodes = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-    color_map_edges = {"INH": cmap(0), "EXC": cmap(cmap.N)}
     color_edges_by_prop = True
     color_property = "synapse_class"
+    color_map_nodes = assemble_property_colormapping(conn, cmap, color_property=color_property)
+    color_map_edges = assemble_property_colormapping(conn, cmap, color_property=color_property)
 
     # Plot x-y projection
     projection, coord_names, title = "xy", ["x", "y"], "Node positions: in x-y projection"
@@ -1186,15 +1192,24 @@ def plot_smallMC(  # noqa: PLR0914
         title=title,
         title_fontsize=textsize,
     )
+    try:
+        canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
+        axes_specs = [
+            (ax7, "EXC", color_map_nodes[canon_map[_CANONICAL_EXC]]),
+            (ax8, "INH", color_map_nodes[canon_map[_CANONICAL_INH]])
+        ]
+    except:
+        axes_specs = [
+            (ax_, label, color_map_nodes[label])
+            for ax_, label in zip([ax7, ax8], color_map_nodes.keys())
+        ]
 
     # Add network legends
     plot_network_legends(
         fig=fig,
         ax_edge=ax5,
         ax_node_size=ax6,
-        ax_exc=ax7,
-        ax_inh=ax8,
-        cmap=cmap,
+        axes_tuples=axes_specs,
         largest_radius=0.1,
         y_position=0.75,
         fontsize=12,
