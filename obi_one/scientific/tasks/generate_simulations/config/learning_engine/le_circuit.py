@@ -27,7 +27,7 @@ from obi_one.scientific.unions.unions_stimuli import (
     LearningEngineCircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
 L = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
@@ -105,6 +106,19 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    timestamps: dict[str, TimestampsUnion] = Field(
+        default_factory=dict,
+        title="Timestamps",
+        description="Timestamps for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
