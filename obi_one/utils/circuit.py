@@ -75,7 +75,9 @@ def fix_node_sets_file(circuit_path: Path) -> None:
         json.dump(nset_dict, f, indent=2)
 
 
-def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
+def get_circuit_size(
+    c: Circuit, scale_override: types.CircuitScale | None = None
+) -> tuple[types.CircuitScale, int, int, int]:
     """Returns the circuit scale, number of neurons, synapses, and connections.
 
     Counts neurons across all biophysical populations. If none exist,
@@ -104,6 +106,10 @@ def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
         scale = types.CircuitScale.microcircuit
     # TODO: Add support for other scales as well
     # https://github.com/openbraininstitute/obi-one/issues/463
+
+    # Override scale if provided
+    if scale_override is not None:
+        scale = scale_override
 
     # Get edge populations for synapse/connection counting
     if scale == types.CircuitScale.single:

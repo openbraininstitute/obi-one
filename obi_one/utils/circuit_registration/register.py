@@ -201,9 +201,9 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
     target_simulator = _resolve_target_simulator(target_simulator, c)
 
     # Compute scale, counts, and properties from circuit
-    scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
-    if scale_override is not None:
-        scale = scale_override
+    scale, number_neurons, number_synapses, number_connections = get_circuit_size(
+        c, scale_override=scale_override
+    )
     has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
         get_circuit_properties(c)
     )
