@@ -97,6 +97,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
     brain_region: models.BrainRegion,
     subject: models.Subject,
     target_simulator: types.TargetSimulator,
+    scale_override: types.CircuitScale | None = None,
     contact_email: str | None = None,
     published_in: str | None = None,
     experiment_date: datetime | None = None,
@@ -134,6 +135,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         brain_region: Resolved brain region entity.
         subject: Resolved subject entity.
         target_simulator: Target simulator for the circuit.
+        scale_override: If provided, override the automatically computed circuit scale.
         contact_email: Contact email address (optional).
         published_in: Human-readable publication string (optional).
         experiment_date: Experiment/build date (optional).
@@ -200,6 +202,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
 
     # Compute scale, counts, and properties from circuit
     scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
+    if scale_override is not None:
+        scale = scale_override
     has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
         get_circuit_properties(c)
     )
@@ -370,6 +374,7 @@ def register_circuit_from_metadata(
         brain_region=brain_region,
         subject=subject,
         target_simulator=circuit_metadata["target_simulator"],
+        scale_override=circuit_metadata.get("scale_override"),
         contact_email=circuit_metadata.get("contact"),
         published_in=circuit_metadata.get("published_in"),
         experiment_date=exp_date,
