@@ -22,14 +22,14 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base imp
     Brian2SimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
     Brian2SimulationNeuronSetUnion,
+    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     Brian2CircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
 

@@ -18,11 +18,10 @@ from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_bas
 )
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
-    AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
     LearningEngineNeuronSetUnion,
+    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     LearningEngineCircuitStimulusUnion,

@@ -12,8 +12,7 @@ from pathlib import Path
 
 import bluepysnap
 import bluepysnap.input
-import brian2
-import brian2.units
+import brian2  # ty: ignore[unresolved-import]
 import click
 import h5py
 import libsonata
