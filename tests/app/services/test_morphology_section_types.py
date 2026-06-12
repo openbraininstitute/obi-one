@@ -80,6 +80,48 @@ def test_cell_morphology_section_type_options():
     )
 
 
+def test_cell_morphology_requires_id():
+    morphology_id = uuid4()
+    morphology = CellMorphology.model_construct(id=None, assets=[])
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = morphology
+
+    with pytest.raises(ValueError, match="missing an id"):
+        cell_morphology_section_type_options(client, morphology_id)
+
+
+def test_cell_morphology_requires_supported_asset():
+    morphology_id = uuid4()
+    unsupported_asset = MagicMock(
+        content_type=ContentType.application_octet_stream,
+        label=AssetLabel.morphology,
+    )
+    morphology = CellMorphology.model_construct(
+        id=morphology_id,
+        assets=[unsupported_asset],
+    )
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = morphology
+
+    with pytest.raises(ValueError, match="no supported SWC, H5, or ASC asset"):
+        cell_morphology_section_type_options(client, morphology_id)
+
+
+def test_cell_morphology_asset_requires_id():
+    morphology_id = uuid4()
+    asset = MagicMock(
+        id=None,
+        content_type=ContentType.application_swc,
+        label=AssetLabel.morphology,
+    )
+    morphology = CellMorphology.model_construct(id=morphology_id, assets=[asset])
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = morphology
+
+    with pytest.raises(ValueError, match="Morphology asset is missing an id"):
+        cell_morphology_section_type_options(client, morphology_id)
+
+
 def test_memodel_section_type_options_uses_linked_morphology():
     morphology = CellMorphology.model_validate(
         json.loads((DATA_DIR / "cell_morphology.json").read_bytes())
@@ -99,6 +141,43 @@ def test_memodel_section_type_options_uses_linked_morphology():
         (4, "Apical dendrite"),
     ]
     client.get_entity.assert_called_once_with(entity_id=memodel_id, entity_type=MEModel)
+
+
+def test_memodel_section_type_options_fetches_linked_morphology():
+    memodel_id = uuid4()
+    morphology_id = uuid4()
+    linked_morphology = CellMorphology.model_construct(id=morphology_id, assets=[])
+    downloaded_morphology = CellMorphology.model_validate(
+        json.loads((DATA_DIR / "cell_morphology.json").read_bytes())
+    )
+    memodel = MagicMock(spec=MEModel)
+    memodel.morphology = linked_morphology
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.side_effect = [memodel, downloaded_morphology]
+    client.download_content.return_value = (DATA_DIR / "cell_morphology.swc").read_bytes()
+
+    options = memodel_section_type_options(client, memodel_id)
+
+    assert _values_and_labels(options) == [
+        (2, "Axon"),
+        (3, "Basal dendrite"),
+        (4, "Apical dendrite"),
+    ]
+    assert client.get_entity.call_args_list == [
+        call(entity_id=memodel_id, entity_type=MEModel),
+        call(entity_id=morphology_id, entity_type=CellMorphology),
+    ]
+
+
+def test_memodel_linked_morphology_requires_id():
+    memodel_id = uuid4()
+    memodel = MagicMock(spec=MEModel)
+    memodel.morphology = CellMorphology.model_construct(id=None, assets=[])
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = memodel
+
+    with pytest.raises(ValueError, match="MEModel morphology is missing an id"):
+        memodel_section_type_options(client, memodel_id)
 
 
 def test_memodel_with_synapses_section_type_options():
@@ -159,6 +238,92 @@ def test_memodel_with_synapses_rejects_general_circuit():
     client.download_file.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("circuit", "message"),
+    [
+        (
+            Circuit.model_construct(
+                id=None,
+                scale=CircuitScale.single,
+                number_neurons=1,
+                has_morphologies=True,
+            ),
+            "missing an id",
+        ),
+        (
+            Circuit.model_construct(
+                id=uuid4(),
+                scale=CircuitScale.single,
+                number_neurons=1,
+                has_morphologies=False,
+            ),
+            "has no morphologies",
+        ),
+    ],
+)
+def test_memodel_with_synapses_validates_circuit_metadata(circuit, message):
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = circuit
+
+    with pytest.raises(ValueError, match=message):
+        memodel_with_synapses_section_type_options(client, uuid4())
+
+    client.select_assets.assert_not_called()
+
+
+def test_memodel_with_synapses_requires_sonata_asset():
+    circuit_id = uuid4()
+    circuit = Circuit.model_construct(
+        id=circuit_id,
+        scale=CircuitScale.single,
+        number_neurons=1,
+        has_morphologies=True,
+    )
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = circuit
+    client.select_assets.return_value.one.side_effect = EntitySDKError("not found")
+
+    with pytest.raises(ValueError, match="missing a SONATA circuit asset"):
+        memodel_with_synapses_section_type_options(client, circuit_id)
+
+
+def test_memodel_with_synapses_sonata_asset_requires_id():
+    circuit_id = uuid4()
+    circuit = Circuit.model_construct(
+        id=circuit_id,
+        scale=CircuitScale.single,
+        number_neurons=1,
+        has_morphologies=True,
+    )
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = circuit
+    client.select_assets.return_value.one.return_value = MagicMock(id=None)
+
+    with pytest.raises(ValueError, match="SONATA circuit asset is missing an id"):
+        memodel_with_synapses_section_type_options(client, circuit_id)
+
+
+@patch(f"{SERVICE_MODULE}.get_nodes", return_value=[])
+@patch(f"{SERVICE_MODULE}.download_circuit_config")
+def test_memodel_with_synapses_requires_one_biophysical_node(mock_download, mock_nodes):
+    circuit_id = uuid4()
+    circuit = Circuit.model_construct(
+        id=circuit_id,
+        scale=CircuitScale.single,
+        number_neurons=1,
+        has_morphologies=True,
+    )
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = circuit
+    client.select_assets.return_value.one.return_value = MagicMock(id=uuid4())
+
+    with pytest.raises(ValueError, match="must contain one biophysical neuron"):
+        memodel_with_synapses_section_type_options(client, circuit_id)
+
+    mock_download.assert_called_once()
+    mock_nodes.assert_called_once()
+
+
 @patch(f"{SERVICE_MODULE}._memodel_section_type_options")
 def test_morphology_source_dispatches_to_memodel(mock_options):
     source_id = uuid4()
@@ -214,6 +379,17 @@ def test_morphology_source_dispatches_to_memodel_with_synapses(mock_options):
         call(entity_id=source_id, entity_type=Circuit),
     ]
     mock_options.assert_called_once_with(client, circuit)
+
+
+def test_morphology_source_rejects_unexpected_entity_type():
+    source_id = uuid4()
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.return_value = object()
+
+    with pytest.raises(EntitySDKError, match=rf"Entity {source_id} is not an MEModel"):
+        morphology_source_section_type_options(client, source_id)
+
+    assert client.get_entity.call_count == 3
 
 
 def test_morphology_source_rejects_unsupported_entity():
