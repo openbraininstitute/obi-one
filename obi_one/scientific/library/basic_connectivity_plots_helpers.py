@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 from conntility import ConnectivityMatrix
 from matplotlib import gridspec
+from matplotlib.colors import Colormap
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Ellipse, FancyArrow
 from matplotlib.ticker import FuncFormatter
-from matplotlib.colors import Colormap
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 # Connectivity dependencies (optional) - check for networkx
@@ -52,36 +52,33 @@ _CANONICAL_INH = "inh"
 
 # Stats functions
 
-def find_canonical_synapse_classes(
-        prop_values: list[str]
-) -> dict[str, str]:
-    canon_mapping = dict()
+
+def find_canonical_synapse_classes(prop_values: list[str]) -> dict[str, str]:
+    canon_mapping = {}
     for val in prop_values:
         if _CANONICAL_EXC in val.lower():
             canon_mapping[_CANONICAL_EXC] = val
         if _CANONICAL_INH in val.lower():
             canon_mapping[_CANONICAL_INH] = val
-    if (_CANONICAL_EXC not in canon_mapping) or\
-        (_CANONICAL_INH not in canon_mapping):
-        raise ValueError("No canon E/I mapping found!")
+    if (_CANONICAL_EXC not in canon_mapping) or (_CANONICAL_INH not in canon_mapping):
+        err_str = "No canon E/I mapping found!"
+        raise ValueError(err_str)
     return canon_mapping
 
+
 def assemble_property_colormapping(
-        conn: ConnectivityMatrix,
-        cmap: Colormap,
-        color_property: str = "synapse_class"
-    ) -> dict[str, str]:
+    conn: ConnectivityMatrix, cmap: Colormap, color_property: str = "synapse_class"
+) -> dict[str, str]:
     color_values = list(conn.vertices[color_property].drop_duplicates())
     try:  # We attempt to display EXC / INH
         canon_map = find_canonical_synapse_classes(color_values)
         color_values = [canon_map[_CANONICAL_INH], canon_map[_CANONICAL_EXC]]
     except ValueError:  # Fallback: Whatever is available
         pass
-    _col_idx = np.linspace(0, cmap.N, len(color_values)).astype(int)
-    color_map = {
-        _val: cmap(_idx) for _val, _idx in zip(color_values, _col_idx)
-    }
+    col_idx_ = np.linspace(0, cmap.N, len(color_values)).astype(int)
+    color_map = {val_: cmap(idx_) for val_, idx_ in zip(color_values, col_idx_, strict=True)}
     return color_map
+
 
 def connection_probability_pathway(
     conn: ConnectivityMatrix, grouping_prop: str
@@ -1005,7 +1002,7 @@ def make_MC_fig_template(  # noqa: PLR0914
     return fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8)  # ty:ignore[invalid-return-type]
 
 
-def plot_network_legends(  # noqa: PLR0913
+def plot_network_legends(
     fig: plt.Figure,
     ax_edge: plt.Axes,
     ax_node_size: plt.Axes,
@@ -1030,16 +1027,8 @@ def plot_network_legends(  # noqa: PLR0913
         node_size_label: Label text for node size legend
         edge_label: Label text for edge width legend
     """
-    # color_map = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-
     for this_ax, this_label, this_col in axes_tuples:
-        plot_growing_circles(
-            fig,
-            this_ax,
-            radii=[largest_radius],
-            y1=y_position,
-            color=this_col
-        )
+        plot_growing_circles(fig, this_ax, radii=[largest_radius], y1=y_position, color=this_col)
         this_ax.text(
             0.5,
             0.1,
@@ -1050,7 +1039,7 @@ def plot_network_legends(  # noqa: PLR0913
             color=this_col,
         )
         this_ax.set_axis_off()
-    
+
     # Node size legend
     plot_growing_circles(
         fig,
@@ -1196,12 +1185,12 @@ def plot_smallMC(  # noqa: PLR0914
         canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
         axes_specs = [
             (ax7, "EXC", color_map_nodes[canon_map[_CANONICAL_EXC]]),
-            (ax8, "INH", color_map_nodes[canon_map[_CANONICAL_INH]])
+            (ax8, "INH", color_map_nodes[canon_map[_CANONICAL_INH]]),
         ]
-    except:
+    except ValueError:
         axes_specs = [
             (ax_, label, color_map_nodes[label])
-            for ax_, label in zip([ax7, ax8], color_map_nodes.keys())
+            for ax_, label in zip([ax7, ax8], color_map_nodes.keys(), strict=False)
         ]
 
     # Add network legends

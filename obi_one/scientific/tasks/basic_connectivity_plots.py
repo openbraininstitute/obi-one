@@ -21,10 +21,10 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.basic_connectivity_plots_helpers import (
+    _CANONICAL_EXC,
+    _CANONICAL_INH,
     assemble_property_colormapping,
     find_canonical_synapse_classes,
-    _CANONICAL_EXC,
-    _CANONICAL_INH
 )
 
 # Since there are some scientific modules importing this module, but not necessarily using its
@@ -275,7 +275,9 @@ class BasicConnectivityPlotsTask(Task):
             # Setup colors
             cmap = mcolors.LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"])
             color_property = "synapse_class"
-            color_map_nodes = assemble_property_colormapping(conn, cmap, color_property=color_property)
+            color_map_nodes = assemble_property_colormapping(
+                conn, cmap, color_property=color_property
+            )
             color_map_edges = color_map_nodes.copy()
 
             # Plot circular projection
@@ -307,12 +309,12 @@ class BasicConnectivityPlotsTask(Task):
                 canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
                 axes_specs = [
                     (ax_exc, "EXC", color_map_nodes[canon_map[_CANONICAL_EXC]]),
-                    (ax_inh, "INH", color_map_nodes[canon_map[_CANONICAL_INH]])
+                    (ax_inh, "INH", color_map_nodes[canon_map[_CANONICAL_INH]]),
                 ]
-            except:
+            except ValueError:
                 axes_specs = [
                     (ax_, label, color_map_nodes[label])
-                    for ax_, label in zip([ax_exc, ax_inh], color_map_nodes.keys())
+                    for ax_, label in zip([ax_exc, ax_inh], color_map_nodes.keys(), strict=False)
                 ]
             plot_network_legends(
                 fig=fig,
