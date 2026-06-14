@@ -48,7 +48,9 @@ def compile_mechs_and_load_hoc(
             environment=environment,
             token_manager=access_token,
         )
-        _ = download_mechanisms(circuit_id=circuit_id, db_client=db_client, dest_dir=mech_dir)
+        _ = download_mechanisms(
+            circuit_id=str(circuit_id), db_client=db_client, dest_dir=Path(mech_dir)
+        )
         compile_mechanisms(mechanisms_dir=mech_dir)
 
         bluecellulab_initializable(
@@ -58,9 +60,9 @@ def compile_mechs_and_load_hoc(
             holding_current=0.0,
             threshold_current=0.0,
         )
-        result_queue.put(item=True)
+        result_queue.put(True)  # noqa: FBT003
     except Exception:  # noqa: BLE001
-        result_queue.put(item=False)
+        result_queue.put(False)  # noqa: FBT003
 
 
 def check_bluecellulab_initializable(

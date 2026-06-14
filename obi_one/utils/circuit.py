@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import bluepysnap as snap
+import bluepysnap.nodes
+from bluepysnap import circuit_validation
 
 if TYPE_CHECKING:
     import uuid
@@ -171,14 +173,14 @@ def copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None
 
 def run_validation(circuit_path: str) -> None:
     """Run SONATA circuit validation."""
-    errors = snap.circuit_validation.validate(circuit_path, skip_slow=True)
+    errors = circuit_validation.validate(circuit_path, skip_slow=True)
     if len(errors) > 0:
         msg = f"Circuit validation error(s) found: {errors}"
         raise ValueError(msg)
     L.info("No validation errors found!")
 
 
-def get_morphology_path(morph_stem: str, available_morph_dirs: list[str:str]) -> str | None:
+def get_morphology_path(morph_stem: str, available_morph_dirs: dict[str, str]) -> Path | None:
     """Get morphology path depending on morphology presence on file system and containerization."""
     morph_fpath = None
     for ext, morph_dir in available_morph_dirs.items():
@@ -195,7 +197,7 @@ def get_morphology_path(morph_stem: str, available_morph_dirs: list[str:str]) ->
     return morph_fpath
 
 
-def get_source_morph_dirs(pop: snap.nodes.NodePopulation) -> dict[str:str]:
+def get_source_morph_dirs(pop: snap.nodes.NodePopulation) -> dict[str, str]:
     """Returns a dict with morph extension as key and morphology source directory as value."""
     morph_dirs = {}
     for morph_ext in ["swc", "asc", "h5"]:
@@ -224,7 +226,7 @@ def get_source_morph_dirs(pop: snap.nodes.NodePopulation) -> dict[str:str]:
 
 def get_morph_dirs(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: snap.nodes.NodePopulation,
     original_circuit: snap.Circuit,
 ) -> tuple[dict, dict]:
     """Returns source and destination morphology directories for a node population."""
@@ -260,7 +262,7 @@ def get_morph_dirs(
 
 def copy_morphologies(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: snap.nodes.NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy morphologies for a node population from original to extracted circuit."""
@@ -319,7 +321,7 @@ def copy_morphologies(
 
 def copy_hoc_files(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: snap.nodes.NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy biophysical neuron model (.hoc) files for a node population."""
@@ -665,7 +667,9 @@ def get_mechanisms_suffixes(circuit_id: str | uuid.UUID, db_client: Client) -> s
     """Download the mechanisms from the circuit and return the set of suffixes."""
     suffixes = set()
     with tempfile.TemporaryDirectory() as tmp:
-        fpaths = download_mechanisms(circuit_id=circuit_id, db_client=db_client, dest_dir=tmp)
+        fpaths = download_mechanisms(
+            circuit_id=str(circuit_id), db_client=db_client, dest_dir=Path(tmp)
+        )
         suffixes.update(get_suffix_from_mod_file(fpath) for fpath in fpaths)
 
     return suffixes

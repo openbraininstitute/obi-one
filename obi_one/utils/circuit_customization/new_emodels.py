@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 
 import bluepysnap
+import bluepysnap.nodes
 import h5py
 import libsonata
 
@@ -14,6 +15,8 @@ from obi_one.utils.circuit_customization.validations.new_emodels import (
 from obi_one.utils.mechanisms import clean_compiled_mechanisms, compile_mechanisms
 
 # 1. validate stuff. 2. create circuit. 3. upload circuit.
+
+type Memodel_tuple = tuple[str, str]
 
 
 def hoc_morph_names(node_pop: libsonata.NodePopulation, id_: int) -> tuple[str, str]:
@@ -28,8 +31,8 @@ def hoc_morph_names(node_pop: libsonata.NodePopulation, id_: int) -> tuple[str, 
 def map_ids_to_updated_memodel(
     old_nodes_file_path: str | Path,
     new_nodes_file_path: str | Path,
-    new_emodels_file_paths: str | Path,
-) -> dict[str, str]:
+    new_emodels_file_paths: list[str | Path],
+) -> tuple[dict[int, Memodel_tuple], dict[int, Memodel_tuple], dict[Memodel_tuple, Memodel_tuple]]:
     """Creates maps of ids to memodels modified between old and new circuits.
 
     Also creates a mapping from new memodel to old memodel.
