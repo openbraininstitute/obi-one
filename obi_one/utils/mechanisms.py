@@ -1,7 +1,7 @@
 """Mechanisms-related utility functions."""
 
 import shutil
-import subprocess
+import subprocess  # noqa: S404
 from pathlib import Path
 
 
@@ -11,8 +11,8 @@ def compile_mechanisms(mechanisms_dir: str | Path) -> None:
     Args:
         mechanisms_dir (str or Pathlib.Path): path to the directory with mechanisms
     """
-    subprocess.run(
-        [
+    subprocess.run(  # noqa: S603
+        [  # noqa: S607
             "nrnivmodl",
             "-incflags",
             "-DDISABLE_REPORTINGLIB",

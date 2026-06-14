@@ -1,11 +1,11 @@
 """Circuit customization: new emodels."""
 
-import glob
 import shutil
 from pathlib import Path
 
 import bluepysnap
 import h5py
+import libsonata
 
 from obi_one.utils.circuit import get_morphology_path, get_source_morph_dirs
 from obi_one.utils.circuit_customization.validations.new_emodels import (
@@ -16,7 +16,7 @@ from obi_one.utils.mechanisms import clean_compiled_mechanisms, compile_mechanis
 # 1. validate stuff. 2. create circuit. 3. upload circuit.
 
 
-def hoc_morph_names(node_pop, id_) -> tuple[str, str]:
+def hoc_morph_names(node_pop: libsonata.NodePopulation, id_: int) -> tuple[str, str]:
     """Returns the hoc file name and morph name for a given circuit template id."""
     model_template = node_pop.get_attribute("model_template", id_)
     hoc_stem = model_template.split(":", 1)[1]  # model_template format is "hoc:hoc_path"
@@ -30,7 +30,7 @@ def map_ids_to_updated_memodel(
     new_nodes_file_path: str | Path,
     new_emodels_file_paths: str | Path,
 ) -> dict[str, str]:
-    """Creates two maps of ids to memodels that have been modified. One for old circuit one for new circuit.
+    """Creates maps of ids to memodels modified between old and new circuits.
 
     Also creates a mapping from new memodel to old memodel.
     """
@@ -62,13 +62,12 @@ def map_ids_to_updated_memodel(
 def get_all_emodel_file_paths(
     new_nodes_file_path: str | Path, circuit_emodels_dir: str | Path
 ) -> set[Path]:
-    """Returns the set of all emodel file paths that are needed for the new circuit based on the new nodes file."""
+    """Returns emodel file paths required by the new circuit nodes file."""
     node_pop = read_node_file(new_nodes_file_path)
     selection = node_pop.select_all()
     model_templates = set(node_pop.get_attribute("model_template", selection))
     model_template_names = {temp.split(":", 1)[1] for temp in model_templates}
-    emodel_file_paths = {Path(circuit_emodels_dir) / f"{name}.hoc" for name in model_template_names}
-    return emodel_file_paths
+    return {Path(circuit_emodels_dir) / f"{name}.hoc" for name in model_template_names}
 
 
 def get_biophysical_population(circuit_path: str | Path) -> bluepysnap.nodes.NodePopulation:
@@ -76,13 +75,13 @@ def get_biophysical_population(circuit_path: str | Path) -> bluepysnap.nodes.Nod
     circuit_config_path = Path(circuit_path) / "circuit_config.json"
     circuit = bluepysnap.Circuit(circuit_config_path)
     biophysical_pops = [pop for pop in circuit.nodes.values() if pop.type == "biophysical"]
-    assert len(biophysical_pops) == 1, (
-        f"Expected one and only one biophysical population, found {len(biophysical_pops)}"
-    )
+    if len(biophysical_pops) != 1:
+        msg = f"Expected one and only one biophysical population, found {len(biophysical_pops)}"
+        raise ValueError(msg)
     return biophysical_pops[0]
 
 
-def create_modified_circuit(
+def create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
     parent_circuit_path: str | Path,
     new_nodes_file_path: str | Path,
     new_emodels_file_paths: list[str | Path],
@@ -99,31 +98,38 @@ def create_modified_circuit(
         new_circuit_path: path to the new circuit folder to be created.
             If None, a new folder will be created with name {parent_circuit_path}-updated.
     """
-    from bluecellulab.circuit.circuit_access import EmodelProperties
-    from bluecellulab.tools import calculate_SS_voltage, compute_memodel_properties_v2
+    from bluecellulab.circuit.circuit_access import EmodelProperties  # noqa: PLC0415
+    from bluecellulab.tools import (  # noqa: PLC0415
+        calculate_SS_voltage,
+        compute_memodel_properties_v2,
+    )
 
     bcl_template_format = "v6"  # maybe make this a global?
     # - copy old circuit into new circuit directory
     if new_circuit_path is None:
-        new_circuit_path = f"{parent_circuit_path}-updated"  # TODO: might want to change that in case users modify multiple times their circuits
-    assert not Path(new_circuit_path).exists(), (
-        f"New circuit path {new_circuit_path} already exists. Please provide a different path for the new circuit or delete the existing one."
-    )
+        # TODO: might want to change that in case users modify multiple times their circuits
+        new_circuit_path = f"{parent_circuit_path}-updated"
+    if Path(new_circuit_path).exists():
+        msg = (
+            f"New circuit path {new_circuit_path} already exists. Please provide a different "
+            "path for the new circuit or delete the existing one."
+        )
+        raise ValueError(msg)
     shutil.copytree(parent_circuit_path, new_circuit_path)
 
     # - open new circuit
     pop = get_biophysical_population(new_circuit_path)
     circuit_emodels_dir = (
-        pop.models._properties.biophysical_neuron_models_dir
-    )  # I am using private property here. Is there another way to get this?
+        pop.models._properties.biophysical_neuron_models_dir  # noqa: SLF001
+    )
     available_morph_dirs = get_source_morph_dirs(pop)
     mechanisms_dir = Path(new_circuit_path) / "mod"  # I think this is hardcoded for all circuits
 
     # - get emodel and morph dirs for old circuit
     parent_pop = get_biophysical_population(parent_circuit_path)
     parent_circuit_emodels_dir = (
-        parent_pop.models._properties.biophysical_neuron_models_dir
-    )  # I am using private property here. Is there another way to get this?
+        parent_pop.models._properties.biophysical_neuron_models_dir  # noqa: SLF001
+    )
     available_parent_morph_dirs = get_source_morph_dirs(parent_pop)
 
     # - create a map of circuit id to new emodel name
@@ -145,10 +151,10 @@ def create_modified_circuit(
     shutil.copy(new_nodes_file_path, Path(pop.h5_filepath))
 
     # - remove unused (old) emodel files if any
-    all_emodels_in_parent_circuit = set(glob.glob(str(Path(circuit_emodels_dir) / "*.hoc")))
+    all_emodels_in_parent_circuit = set(Path(circuit_emodels_dir).glob("*.hoc"))
     for emodel_fpath in all_emodels_in_parent_circuit:
-        if Path(emodel_fpath) not in all_emodel_file_paths:
-            Path(emodel_fpath).unlink()
+        if emodel_fpath not in all_emodel_file_paths:
+            emodel_fpath.unlink()
 
     # - get holding current from parent circuit
     ihold_column_name = "@dynamics:holding_current"
@@ -168,7 +174,9 @@ def create_modified_circuit(
             hoc_fname, morph_stem = old_memodel
             hoc_fpath = Path(parent_circuit_emodels_dir) / hoc_fname
             morph_fpath = get_morphology_path(morph_stem, available_parent_morph_dirs)
-            assert morph_fpath is not None, f"Could not find morphology {morph_stem}"
+            if morph_fpath is None:
+                msg = f"Could not find morphology {morph_stem}"
+                raise ValueError(msg)
 
             holding_voltages[old_memodel] = calculate_SS_voltage(
                 hoc_fpath,
@@ -179,12 +187,14 @@ def create_modified_circuit(
             )
 
     # - compute dynamics params
-    memodels_dynamics_params = {}  # (hoc_fname, morph_fname): {"holding_curent": float, "resting_potential": float, "input_resistance": float, "threshold_current": float}
+    memodels_dynamics_params = {}
     for memodel in new_memodels_set:
         hoc_fname, morph_stem = memodel
         hoc_fpath = Path(circuit_emodels_dir) / hoc_fname
         morph_fpath = get_morphology_path(morph_stem, available_morph_dirs)
-        assert morph_fpath is not None, f"Could not find morphology {morph_stem}"
+        if morph_fpath is None:
+            msg = f"Could not find morphology {morph_stem}"
+            raise ValueError(msg)
         holding_voltage = holding_voltages[new_to_old_memodel_mapping[memodel]]
 
         memodels_dynamics_params[memodel] = compute_memodel_properties_v2(

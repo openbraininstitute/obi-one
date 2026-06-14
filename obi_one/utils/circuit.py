@@ -7,19 +7,21 @@ import logging
 import os
 import shutil
 import tempfile
-import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import bluepysnap as snap
 
 if TYPE_CHECKING:
+    import uuid
+
     import pandas as pd
+    from entitysdk.client import Client
+
 import h5py
 import numpy as np
 from bluepysnap import BluepySnapError
 from entitysdk import types
-from entitysdk.client import Client
 
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import _MAX_SMALL_MICROCIRCUIT_SIZE, _NEURON_PAIR_SIZE

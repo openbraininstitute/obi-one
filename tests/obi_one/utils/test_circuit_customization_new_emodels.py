@@ -132,7 +132,7 @@ def test_get_biophysical_population_raises_when_missing(mock_circuit, tmp_path):
     mock_circuit.return_value.nodes.values.return_value = [virtual_pop]
 
     with pytest.raises(
-        AssertionError, match="Expected one and only one biophysical population, found 0"
+        ValueError, match="Expected one and only one biophysical population, found 0"
     ):
         get_biophysical_population(tmp_path / "circuit")
 
@@ -262,7 +262,7 @@ def test_create_modified_circuit_raises_if_path_exists(tmp_path):
     with (
         patch("bluecellulab.tools.compute_memodel_properties_v2", create=True),
         patch("bluecellulab.tools.calculate_SS_voltage"),
-        pytest.raises(AssertionError, match="already exists"),
+        pytest.raises(ValueError, match="already exists"),
     ):
         create_modified_circuit(
             parent_circuit_path=parent_circuit,

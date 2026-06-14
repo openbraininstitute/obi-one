@@ -12,7 +12,7 @@ BAD_HOC_TEMPLATE_PATH = DATA_FOLDER_PATH / "createsimulation.hoc"  # not a hoc t
 def test_check_structure():
     check_structure(GOOD_HOC_TEMPLATE_PATH)  # should run without raising any error
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="begintemplate"):
         check_structure(BAD_HOC_TEMPLATE_PATH)
 
 
@@ -33,6 +33,6 @@ def test_check_mechanisms():
     }
     check_mechanisms(GOOD_HOC_TEMPLATE_PATH, expected_suffixes=expected_suffixes)
 
-    with pytest.raises(AssertionError):
-        expected_suffixes.remove("Ih")  # removing Ih to make it incompatible with the hoc file
-        check_mechanisms(GOOD_HOC_TEMPLATE_PATH, expected_suffixes=expected_suffixes)
+    incompatible_suffixes = expected_suffixes - {"Ih"}
+    with pytest.raises(ValueError, match="Ih"):
+        check_mechanisms(GOOD_HOC_TEMPLATE_PATH, expected_suffixes=incompatible_suffixes)

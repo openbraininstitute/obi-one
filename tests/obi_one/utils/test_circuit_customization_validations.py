@@ -36,21 +36,21 @@ def test_check_new_node_columns(tmp_path):
     with h5py.File(new_node_fpath, "r+") as new_node:
         group = new_node["nodes/S1nonbarrel_neurons/0/"]
         group.create_dataset("new_attribute", data=[0, 1])
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="attribute names"):
         check_new_node_columns(NODES_FILE_PATH, new_node_fpath)
 
     # missing attribute name: fail
     shutil.copy(NODES_FILE_PATH, new_node_fpath)
     with h5py.File(new_node_fpath, "r+") as new_node:
         del new_node["nodes/S1nonbarrel_neurons/0/model_template"]
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="attribute names"):
         check_new_node_columns(NODES_FILE_PATH, new_node_fpath)
 
     # unallowed modification: fail
     shutil.copy(NODES_FILE_PATH, new_node_fpath)
     with h5py.File(new_node_fpath, "r+") as new_node:
         new_node["nodes/S1nonbarrel_neurons/0/mtype"][0] = b"hoc:new_mtype"
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="mtype"):
         check_new_node_columns(NODES_FILE_PATH, new_node_fpath)
 
 
@@ -87,13 +87,13 @@ def test_check_new_hoc_in_nodes_file(tmp_path):
     # unexpected hoc case
     unexpected_hoc = tmp_path / "unexpected_template.hoc"
     unexpected_hoc.touch()
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="not declared"):
         check_new_hoc_in_nodes_file(NODES_FILE_PATH, [unexpected_hoc])
 
     # has the right stem but is not a hoc case
     not_a_hoc = tmp_path / "cACint_L23MC.txt"
     not_a_hoc.touch()
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match=r"\.hoc extension"):
         check_new_hoc_in_nodes_file(NODES_FILE_PATH, [not_a_hoc])
 
     # all hocs are declared in nodes file case

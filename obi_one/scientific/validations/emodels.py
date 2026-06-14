@@ -7,54 +7,66 @@ BUILTIN_NEURON_MECHANISMS = [
     "hh",
 ]
 
+_HOC_TEMPLATE_DECLARATION_PARTS = 2
+_MECHANISM_INSERT_PARTS = 2
+
 
 def check_structure(hoc_path: str | Path) -> None:
     """Checks that the hoc file is a valid hoc template.
 
     It must contain `begintemplate` and `endtemplate`.
     """
-    hoc_content = Path(hoc_path).read_text()
+    hoc_content = Path(hoc_path).read_text(encoding="utf-8")
 
     template_name = None
-    for line in hoc_content.splitlines():
-        line = line.strip()
-        splitted_line = line.split()
-        if len(splitted_line) == 2 and splitted_line[0] == "begintemplate":
+    for raw_line in hoc_content.splitlines():
+        stripped_line = raw_line.strip()
+        splitted_line = stripped_line.split()
+        if (
+            len(splitted_line) == _HOC_TEMPLATE_DECLARATION_PARTS
+            and splitted_line[0] == "begintemplate"
+        ):
             template_name = splitted_line[1]
             break
 
-    assert template_name is not None, f"Could not find 'begintemplate' in {hoc_path}"
-    assert f"endtemplate {template_name}" in hoc_content, (
-        f"Could not find 'endtemplate {template_name}' in {hoc_path}"
-    )
+    if template_name is None:
+        msg = f"Could not find 'begintemplate' in {hoc_path}"
+        raise ValueError(msg)
+    if f"endtemplate {template_name}" not in hoc_content:
+        msg = f"Could not find 'endtemplate {template_name}' in {hoc_path}"
+        raise ValueError(msg)
 
 
 def check_mechanisms(hoc_path: str | Path, expected_suffixes: set[str]) -> None:
     """Checks that the mechanisms declared in the hoc file are the ones we expect."""
-    hoc_content = Path(hoc_path).read_text()
+    hoc_content = Path(hoc_path).read_text(encoding="utf-8")
 
     declared_mechanisms = set()
-    for line in hoc_content.splitlines():
-        line = line.strip()
-        splitted_line = line.split()
-        if len(splitted_line) == 2 and splitted_line[0] == "insert":
+    for raw_line in hoc_content.splitlines():
+        stripped_line = raw_line.strip()
+        splitted_line = stripped_line.split()
+        if len(splitted_line) == _MECHANISM_INSERT_PARTS and splitted_line[0] == "insert":
             mechanism = splitted_line[1]
             declared_mechanisms.add(mechanism)
 
     for suffix in declared_mechanisms:
-        assert suffix in expected_suffixes or suffix in BUILTIN_NEURON_MECHANISMS, (
-            f"Declared mechanism '{suffix}' in {hoc_path} is not in expected suffixes {expected_suffixes}"
-        )
+        if suffix not in expected_suffixes and suffix not in BUILTIN_NEURON_MECHANISMS:
+            msg = (
+                f"Declared mechanism '{suffix}' in {hoc_path} is not in "
+                f"expected suffixes {expected_suffixes}"
+            )
+            raise ValueError(msg)
 
 
-# `v6` expects (gid, morph_dir, morph_fname), `v5` expects template to be initialized with (gid, morph_path), `bluepyopt` expects (morph_dir, morph_fname)
+# `v6` expects (gid, morph_dir, morph_fname), `v5` expects template to be initialized
+# with (gid, morph_path), `bluepyopt` expects (morph_dir, morph_fname).
 # we are using v6 on the platform
 def bluecellulab_initializable(
     hoc_path: str | Path,
     morphology_path: str | Path,
-    template_format="v6",
-    holding_current=0.0,
-    threshold_current=0.0,
+    template_format: str = "v6",
+    holding_current: float = 0.0,
+    threshold_current: float = 0.0,
 ) -> None:
     """Checks that the hoc file can be initialized in bluecellulab.
 
@@ -62,8 +74,8 @@ def bluecellulab_initializable(
     """
     # load bluecellulab module inside of function, because loading it outside can bring errors
     # if the mechanisms were not yet compiled when the library is loaded.
-    from bluecellulab import Cell
-    from bluecellulab.circuit.circuit_access.definition import EmodelProperties
+    from bluecellulab import Cell  # noqa: PLC0415
+    from bluecellulab.circuit.circuit_access.definition import EmodelProperties  # noqa: PLC0415
 
     emodel_properties = EmodelProperties(
         holding_current=holding_current, threshold_current=threshold_current
