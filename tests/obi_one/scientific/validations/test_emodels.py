@@ -1,9 +1,8 @@
-import pytest
 from pathlib import Path
 
-from obi_one.scientific.validations.emodels import check_mechanisms
-from obi_one.scientific.validations.emodels import check_structure
+import pytest
 
+from obi_one.scientific.validations.emodels import check_mechanisms, check_structure
 
 DATA_FOLDER_PATH = Path(__file__).parent.parent.parent.parent / "test_data"
 GOOD_HOC_TEMPLATE_PATH = DATA_FOLDER_PATH / "cADpyr.hoc"

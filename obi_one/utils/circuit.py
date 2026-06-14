@@ -6,10 +6,10 @@ import json
 import logging
 import os
 import shutil
-from pathlib import Path
 import tempfile
-from typing import TYPE_CHECKING
 import uuid
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import bluepysnap as snap
 
@@ -176,7 +176,7 @@ def run_validation(circuit_path: str) -> None:
     L.info("No validation errors found!")
 
 
-def get_morphology_path(morph_stem: str, available_morph_dirs: list[str: str]) -> str|None:
+def get_morphology_path(morph_stem: str, available_morph_dirs: list[str:str]) -> str | None:
     """Get morphology path depending on morphology presence on file system and containerization."""
     morph_fpath = None
     for ext, morph_dir in available_morph_dirs.items():
@@ -193,7 +193,7 @@ def get_morphology_path(morph_stem: str, available_morph_dirs: list[str: str]) -
     return morph_fpath
 
 
-def get_source_morph_dirs(pop: snap.nodes.NodePopulation) -> dict[str: str]:
+def get_source_morph_dirs(pop: snap.nodes.NodePopulation) -> dict[str:str]:
     """Returns a dict with morph extension as key and morphology source directory as value."""
     morph_dirs = {}
     for morph_ext in ["swc", "asc", "h5"]:
@@ -659,12 +659,11 @@ def run_basic_connectivity_plots(
     return output_dir, output_files
 
 
-def get_mechanisms_suffixes(circuit_id: str|uuid.UUID, db_client: Client) -> set[str]:
+def get_mechanisms_suffixes(circuit_id: str | uuid.UUID, db_client: Client) -> set[str]:
     """Download the mechanisms from the circuit and return the set of suffixes."""
     suffixes = set()
     with tempfile.TemporaryDirectory() as tmp:
         fpaths = download_mechanisms(circuit_id=circuit_id, db_client=db_client, dest_dir=tmp)
-        for fpath in fpaths:
-            suffixes.add(get_suffix_from_mod_file(fpath))
-    
+        suffixes.update(get_suffix_from_mod_file(fpath) for fpath in fpaths)
+
     return suffixes

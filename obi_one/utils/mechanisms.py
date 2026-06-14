@@ -1,11 +1,11 @@
 """Mechanisms-related utility functions."""
 
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 
 
-def compile_mechanisms(mechanisms_dir: str|Path) -> None:
+def compile_mechanisms(mechanisms_dir: str | Path) -> None:
     """Compile mechanisms in the given directory.
 
     Args:

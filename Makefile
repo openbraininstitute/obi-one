@@ -89,7 +89,7 @@ publish: build  ## Publish the Docker image to DockerHub
 
 test-local:  ## Run tests locally
 	@$(call load_env,test-local)
-	uv run -m pytest tests/obi_one/utils
+	uv run -m pytest tests
 	uv run -m coverage xml
 	uv run -m coverage html
 
