@@ -11,7 +11,118 @@ from obi_one.utils.circuit_customization.download import fetch_directory, get_so
 from obi_one.utils.circuit_customization.validations.populations import check_input_files
 
 
-def create_modified_circuit(  # noqa: C901, PLR0912
+def _update_circuit_config(
+    config_path: Path,
+    new_circuit_config_path: Path | None,
+) -> Circuit:
+    """Replace the circuit config file and return the loaded circuit.
+
+    Args:
+        config_path: Path to the existing circuit_config.json in the new circuit folder.
+        new_circuit_config_path: Path to the replacement config file, or None to keep existing.
+
+    Returns:
+        The loaded Circuit (from the potentially updated config).
+    """
+    if new_circuit_config_path:
+        shutil.copy(new_circuit_config_path, config_path)
+
+    return Circuit(config_path)
+
+
+def _update_node_sets(
+    new_circuit: Circuit,
+    parent_circuit: Circuit,
+    new_node_sets_path: Path | None,
+) -> None:
+    """Replace or remove the node sets file.
+
+    If the new circuit config references a node sets file:
+      - Replaces it with the custom one if provided.
+      - Validates the file exists.
+
+    If the new circuit config does not reference a node sets file:
+      - Raises if a custom node sets file was provided (nowhere to put it).
+      - Removes the old node sets file from the parent if it existed.
+
+    Args:
+        new_circuit: The loaded new circuit (after config update).
+        parent_circuit: The loaded parent circuit (before config update).
+        new_node_sets_path: Path to a replacement node_sets.json file, or None.
+
+    Raises:
+        ValueError: If validation fails.
+    """
+    node_sets_file = new_circuit.config.get("node_sets_file", "")
+    if node_sets_file:
+        node_sets_file = Path(node_sets_file)
+        if new_node_sets_path:
+            shutil.copy(new_node_sets_path, node_sets_file)
+
+        if not node_sets_file.is_file():
+            msg = f"Node sets file '{node_sets_file}' missing!"
+            raise ValueError(msg)
+    else:
+        if new_node_sets_path:
+            msg = (
+                f"New node sets file '{new_node_sets_path}' provided"
+                " but not specified in circuit config!"
+            )
+            raise ValueError(msg)
+
+        old_node_sets_file = parent_circuit.config.get("node_sets_file", "")
+        if old_node_sets_file:
+            Path(old_node_sets_file).unlink(missing_ok=True)
+
+
+def _update_node_populations(
+    new_circuit: Circuit,
+    parent_circuit: Circuit,
+    new_node_population_paths: dict[str, Path] | None,
+) -> None:
+    """Replace or remove node population files.
+
+    Copies custom node population files over the existing ones, validates that
+    all referenced files exist, and removes old files no longer referenced.
+
+    Args:
+        new_circuit: The loaded new circuit (after config update).
+        parent_circuit: The loaded parent circuit (before config update).
+        new_node_population_paths: Mapping of population name to replacement .h5 file,
+            or None if no replacements.
+
+    Raises:
+        ValueError: If a provided population name is not in the config, or if
+            a referenced file is missing after replacement.
+    """
+    npop_files = {
+        npop: Path(new_circuit.nodes[npop].h5_filepath)
+        for npop in new_circuit.nodes.population_names
+    }
+
+    if new_node_population_paths:
+        for npop_name, new_path in new_node_population_paths.items():
+            if npop_name not in npop_files:
+                msg = f"Node population '{npop_name}' provided but not found in circuit config!"
+                raise ValueError(msg)
+            shutil.copy(new_path, npop_files[npop_name])
+
+    for npop_name, npop_file in npop_files.items():
+        if not npop_file.is_file():
+            msg = f"Node population file '{npop_file}' for '{npop_name}' missing!"
+            raise ValueError(msg)
+
+    # Remove old node population files no longer referenced
+    old_npop_files = {
+        Path(parent_circuit.nodes[npop].h5_filepath)
+        for npop in parent_circuit.nodes.population_names
+    }
+    for old_npop_file in old_npop_files:
+        if old_npop_file not in npop_files.values():
+            old_npop_file.unlink(missing_ok=True)
+
+
+def create_modified_circuit(
     db_client: Client,
     circuit_id: str,
     *,
@@ -70,62 +181,9 @@ def create_modified_circuit(  # noqa: C901, PLR0912
     config_path = new_circuit_path / "circuit_config.json"
     parent_circuit = Circuit(config_path)
 
-    # Replace circuit config with custom one
-    if new_circuit_config_path:
-        shutil.copy(new_circuit_config_path, config_path)
-
-    # Load new circuit
-    new_circuit = Circuit(config_path)
-
-    # Replace node sets file with custom one, or remove existing one
-    node_sets_file = new_circuit.config.get("node_sets_file", "")
-    if node_sets_file:
-        node_sets_file = Path(node_sets_file)
-        # Node sets file specified in new circuit config
-        if new_node_sets_path:
-            shutil.copy(new_node_sets_path, node_sets_file)
-
-        if not node_sets_file.is_file():
-            msg = f"Node sets file '{node_sets_file}' missing!"
-            raise ValueError(msg)
-    else:
-        # Node sets file not specified in new circuit config
-        if new_node_sets_path:
-            msg = (
-                f"New node sets file '{new_node_sets_path}' provided"
-                " but not specified in circuit config!"
-            )
-            raise ValueError(msg)
-
-        old_node_sets_file = parent_circuit.config.get("node_sets_file", "")
-        if old_node_sets_file:
-            Path(old_node_sets_file).unlink(missing_ok=True)
-
-    # Replace node populations with custom ones, or remove existing ones
-    npop_files = {
-        npop: Path(new_circuit.nodes[npop].h5_filepath)
-        for npop in new_circuit.nodes.population_names
-    }
-
-    if new_node_population_paths:
-        for npop_name, new_path in new_node_population_paths.items():
-            if npop_name not in npop_files:
-                msg = f"Node population '{npop_name}' provided but not found in circuit config!"
-                raise ValueError(msg)
-            shutil.copy(new_path, npop_files[npop_name])
-
-    for npop_name, npop_file in npop_files.items():
-        if not npop_file.is_file():
-            msg = f"Node population file '{npop_file}' for '{npop_name}' missing!"
-            raise ValueError(msg)
-
-    # Remove old node population files no longer referenced
-    old_npop_files = {
-        Path(parent_circuit.nodes[npop].h5_filepath)
-        for npop in parent_circuit.nodes.population_names
-    }
-    for old_npop_file in old_npop_files:
-        if old_npop_file not in npop_files.values():
-            old_npop_file.unlink(missing_ok=True)
+    # Apply customizations
+    new_circuit = _update_circuit_config(config_path, new_circuit_config_path)
+    _update_node_sets(new_circuit, parent_circuit, new_node_sets_path)
+    _update_node_populations(new_circuit, parent_circuit, new_node_population_paths)
 
     return new_circuit_path, from_circuit
