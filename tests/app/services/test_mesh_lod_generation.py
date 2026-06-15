@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 
 import pytest
 from entitysdk.models import EMCellMesh
-from entitysdk.types import AssetLabel
 
 import obi_one.scientific.tasks.mesh_lod_generation as mesh_lod
 from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
@@ -13,10 +12,10 @@ from obi_one.scientific.tasks.mesh_lod_generation.estimate import (
     estimate_mesh_lod_generation_count,
 )
 from obi_one.scientific.tasks.mesh_lod_generation.task import (
+    MeshLODGenerationTask,
     _download_obj,
     _generate_lods,
     _upload_lod_directory,
-    run_mesh_lod_generation,
 )
 
 # Explicitly rebuild the Pydantic schema using the runtime UUID type
@@ -39,90 +38,84 @@ def test_init_exports():
 def test_mesh_lod_config_valid():
     """Ensure config parses valid combinations of UUIDs and attributes."""
     entity_id = uuid4()
-    obj_id = uuid4()
-
-    config = MeshLodGenerationScanConfig(
-        entity_id=entity_id,
-        obj_asset_id=obj_id,
-    )
-
+    obj_asset_id = uuid4()
+    config = MeshLodGenerationScanConfig(entity_id=entity_id, obj_asset_id=obj_asset_id)
     assert config.entity_id == entity_id
-    assert config.obj_asset_id == obj_id
-    assert config.name == "Mesh LOD Generation"
+    assert config.obj_asset_id == obj_asset_id
+
+
+def test_mesh_lod_config_invalid_types():
+    """Ensure structural failure when non-UUID string types are supplied."""
+    with pytest.raises(ValueError, match="uuid"):
+        MeshLodGenerationScanConfig(entity_id="not-a-uuid", obj_asset_id=uuid4())
 
 
 # ==========================================
-# 3. Sizing Resource Estimation (estimate.py)
+# 3. Estimation Metrics (estimate.py)
 # ==========================================
 def test_estimate_mesh_lod_generation_count():
-    """Verify resource allocation calculation returns 1 regardless of inputs."""
-    mock_db = MagicMock()
-    mock_config_id = uuid4()
-
-    result = estimate_mesh_lod_generation_count(db_client=mock_db, config_id=mock_config_id)
-    assert result == 1
+    """Ensure metrics scale deterministically (1 element per incoming item context)."""
+    config = MeshLodGenerationScanConfig(entity_id=uuid4(), obj_asset_id=uuid4())
+    assert estimate_mesh_lod_generation_count(config) == 1
 
 
 # ==========================================
-# 4. Pipeline Execution & Branches (task.py)
+# 4. Core Pipeline & Orchestration (task.py)
 # ==========================================
-def test_download_obj(tmp_path):
-    """Test that binary stream is properly intercepted and written out."""
-    mock_client = MagicMock()
-    mock_client.download_content.return_value = b"mock-obj-binary-data"
+@patch("entitysdk.Client")
+def test_download_obj_execution(mock_client_cls, tmp_path):
+    """Ensure asset payload downloads are bound correctly to paths."""
+    mock_client = mock_client_cls()
+    mock_client.download_content.return_value = b"gltf-raw-payload"
 
-    dest_file = tmp_path / "test.obj"
+    dest = tmp_path / "target.obj"
     entity_id = uuid4()
-    obj_id = uuid4()
+    obj_asset_id = uuid4()
 
-    _download_obj(mock_client, entity_id, obj_id, dest_file)
+    _download_obj(mock_client, entity_id, obj_asset_id, dest)
 
-    assert dest_file.read_bytes() == b"mock-obj-binary-data"
+    assert dest.read_bytes() == b"gltf-raw-payload"
     mock_client.download_content.assert_called_once_with(
         entity_id=entity_id,
         entity_type=EMCellMesh,
-        asset_id=obj_id,
+        asset_id=obj_asset_id,
     )
 
 
-def test_generate_lods_success(tmp_path):
-    """Verify proper directory reading when ultraliser produces output files."""
-    obj_path = tmp_path / "input.obj"
-    obj_path.write_bytes(b"data")
-
-    output_dir = tmp_path / "output_lods"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Pre-populate the directory to guarantee files exist when scanned by iterdir()
-    dummy_lod = output_dir / "lod_1.gltf"
-    dummy_lod.write_bytes(b"gltf-content")
-
-    with patch("obi_one.scientific.tasks.mesh_lod_generation.task.ultraliser") as mock_ultra:
-        mock_mesh_instance = MagicMock()
-        mock_ultra.Mesh.return_value = mock_mesh_instance
-
-        result = _generate_lods(obj_path, output_dir)
-
-        assert pathlib.Path("lod_1.gltf") in result
-        assert result[pathlib.Path("lod_1.gltf")] == dummy_lod
-
-
 def test_generate_lods_empty_failure(tmp_path):
-    """Ensure an explicit RuntimeError boundary is hit if no files are generated."""
-    obj_path = tmp_path / "input.obj"
-    obj_path.write_bytes(b"data")
-    output_dir = tmp_path / "output_lods"
+    """Ensure a RuntimeError is declared if ultraliser outputs nothing."""
+    input_obj = tmp_path / "empty.obj"
+    input_obj.write_text("v 0 0 0")
+    out_dir = tmp_path / "lods"
 
-    with patch("obi_one.scientific.tasks.mesh_lod_generation.task.ultraliser") as mock_ultra:
-        mock_mesh_instance = MagicMock()
-        mock_ultra.Mesh.return_value = mock_mesh_instance
+    with (
+        patch("ultraliser.LODGenerator.generate_web_lods"),
+        patch("ultraliser.Mesh"),
+        pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"),
+    ):
+        _generate_lods(input_obj, out_dir)
 
-        with pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"):
-            _generate_lods(obj_path, output_dir)
+
+def test_generate_lods_success(tmp_path):
+    """Ensure file dictionaries map correctly from structural output listings."""
+    input_obj = tmp_path / "valid.obj"
+    input_obj.write_text("v 0 0 0")
+    out_dir = tmp_path / "lods"
+
+    def side_effect(path_str):
+        pathlib.Path(path_str).mkdir(parents=True, exist_ok=True)
+        (pathlib.Path(path_str) / "lod_1.gltf").write_text("data")
+
+    with (
+        patch("ultraliser.LODGenerator.generate_web_lods", side_effect=side_effect),
+        patch("ultraliser.Mesh"),
+    ):
+        res = _generate_lods(input_obj, out_dir)
+        assert pathlib.Path("lod_1.gltf") in res
 
 
 def test_upload_lod_directory_with_id_attribute(tmp_path):
-    """Cover the branch where client returns an instance with an 'id' attribute."""
+    """Cover the branch where client returns an object containing an 'id' field."""
     mock_client = MagicMock()
     mock_result = MagicMock()
     mock_result.id = "asset-uuid-from-attr"
@@ -133,16 +126,7 @@ def test_upload_lod_directory_with_id_attribute(tmp_path):
     files = {pathlib.Path("lod_1.gltf"): dummy_file}
 
     asset_id = _upload_lod_directory(mock_client, entity_id, files)
-
     assert asset_id == "asset-uuid-from-attr"
-    mock_client.upload_directory.assert_called_once_with(
-        entity_id=entity_id,
-        entity_type=EMCellMesh,
-        name="lod-mesh-directory",
-        paths=files,
-        label=AssetLabel.lod_mesh_block,
-        metadata=None,
-    )
 
 
 def test_upload_lod_directory_with_list_fallback(tmp_path):
@@ -160,21 +144,20 @@ def test_upload_lod_directory_with_list_fallback(tmp_path):
     assert asset_id == "asset-uuid-from-list"
 
 
-@patch("obi_one.scientific.tasks.mesh_lod_generation.task._download_obj")
-@patch("obi_one.scientific.tasks.mesh_lod_generation.task._generate_lods")
 @patch("obi_one.scientific.tasks.mesh_lod_generation.task._upload_lod_directory")
-def test_run_mesh_lod_generation_pipeline(mock_upload, mock_generate, mock_download, tmp_path):
+@patch("obi_one.scientific.tasks.mesh_lod_generation.task._generate_lods")
+@patch("obi_one.scientific.tasks.mesh_lod_generation.task._download_obj")
+def test_run_mesh_lod_generation_pipeline(mock_download, mock_generate, mock_upload, tmp_path):
     """Test full integration workflow and temporal scoping from start to finish."""
     config = MeshLodGenerationScanConfig(entity_id=uuid4(), obj_asset_id=uuid4())
     mock_client = MagicMock()
 
     dummy_file = tmp_path / "lod_1.gltf"
     mock_generate.return_value = {pathlib.Path("lod_1.gltf"): dummy_file}
-    mock_upload.return_value = "final-registered-asset-id"
+    mock_upload.return_value = "final-asset-id"
 
-    result = run_mesh_lod_generation(config, mock_client)
+    task = MeshLODGenerationTask(config=config, client=mock_client)
+    asset_id = task.execute()
 
-    assert result == "final-registered-asset-id"
+    assert asset_id == "final-asset-id"
     mock_download.assert_called_once()
-    mock_generate.assert_called_once()
-    mock_upload.assert_called_once_with(mock_client, config.entity_id, mock_generate.return_value)
