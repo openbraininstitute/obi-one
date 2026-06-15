@@ -71,6 +71,7 @@ def _make_task(
     )
     config.advanced_options.custom_biophysical_node_population = custom_biophysical_node_population
     config.advanced_options.custom_virtual_node_population = custom_virtual_node_population
+    config.advanced_options.include_spiny_morphologies = False
     return EMSynapseMappingTask.model_construct(config=config)
 
 
