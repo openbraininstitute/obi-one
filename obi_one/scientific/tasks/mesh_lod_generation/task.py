@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 import ultraliser
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel
+from pydantic import ConfigDict
 
 from obi_one.core.task import Task
 
@@ -81,6 +82,8 @@ def _upload_lod_directory(
 
 
 class MeshLODGenerationTask(Task):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     config: MeshLodGenerationScanConfig
     client: entitysdk.Client
 
