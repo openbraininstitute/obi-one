@@ -59,6 +59,14 @@ class AdvancedEMSynapseMappingOptions(Block):
             SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
         },
     )
+    include_spiny_morphologies: bool = Field(
+        title="Include spiny morphologies",
+        description="Include a container file with spiny morphologies in the output circuit.",
+        default=True,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
 
 
 class EMSynapseMappingScanConfig(InfoScanConfig):

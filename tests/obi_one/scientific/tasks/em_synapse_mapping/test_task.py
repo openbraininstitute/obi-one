@@ -34,7 +34,7 @@ def resolved_neuron():
         use_me_model=False,
         phys_node_props={},
         name_in_circuit="1234",
-        fn_morph_h5=Path("morphologies/morph_A.h5"),
+        fn_morph_h5=Path("morph_A.h5"),
         fn_morph_swc=Path("morphologies/morphology/morph_A.swc"),
     )
 
@@ -226,5 +226,5 @@ class TestEMSynapseMappingTask:
         assert set(sonata_kwargs["edge_populations"]) == {"my_virtual_edges"}
 
         # node_sets.json references the custom biophysical population.
-        node_sets = json.loads((tmp_path / "out" / "node_sets.json").read_text())
+        node_sets = json.loads((tmp_path / "out" / "SONATA" / "node_sets.json").read_text())
         assert node_sets["All"]["population"] == "my_bio_nodes"
