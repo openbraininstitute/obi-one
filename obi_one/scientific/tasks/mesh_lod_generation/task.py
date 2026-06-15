@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     import entitysdk
 
+    from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
 
 import ultraliser
 from entitysdk.models import EMCellMesh
@@ -80,6 +81,9 @@ def _upload_lod_directory(
 
 
 class MeshLODGenerationTask(Task):
+    config: MeshLodGenerationScanConfig
+    client: entitysdk.Client
+
     def execute(self) -> str:
         entity_id = self.config.entity_id
         obj_asset_id = self.config.obj_asset_id
