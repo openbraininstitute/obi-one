@@ -100,4 +100,10 @@ class MeshLODGenerationTask(Task):
         return asset_id
 
 
-MeshLODGenerationTask.model_rebuild()
+# Inline lazy-import context map to resolve forward-references cleanly for Pydantic
+# without introducing eager module-level cross-imports.
+from obi_one.scientific.tasks.mesh_lod_generation.config import (  # noqa: E402
+    MeshLodGenerationScanConfig as _ScanConfig,
+)
+
+MeshLODGenerationTask.model_rebuild(_types_namespace={"MeshLodGenerationScanConfig": _ScanConfig})
