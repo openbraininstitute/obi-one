@@ -98,3 +98,6 @@ class MeshLODGenerationTask(Task):
             asset_id = _upload_lod_directory(self.client, entity_id, lod_files)
 
         return asset_id
+
+
+MeshLODGenerationTask.model_rebuild()

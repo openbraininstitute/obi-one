@@ -55,8 +55,7 @@ def test_mesh_lod_config_invalid_types():
 # ==========================================
 def test_estimate_mesh_lod_generation_count():
     """Ensure metrics scale deterministically (1 element per incoming item context)."""
-    config = MeshLodGenerationScanConfig(entity_id=uuid4(), obj_asset_id=uuid4())
-    assert estimate_mesh_lod_generation_count(config) == 1
+    assert estimate_mesh_lod_generation_count() == 1
 
 
 # ==========================================
@@ -89,7 +88,7 @@ def test_generate_lods_empty_failure(tmp_path):
     out_dir = tmp_path / "lods"
 
     with (
-        patch("ultraliser.LODGenerator.generate_web_lods"),
+        patch("ultraliser.LODGenerator"),
         patch("ultraliser.Mesh"),
         pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"),
     ):
@@ -106,10 +105,8 @@ def test_generate_lods_success(tmp_path):
         pathlib.Path(path_str).mkdir(parents=True, exist_ok=True)
         (pathlib.Path(path_str) / "lod_1.gltf").write_text("data")
 
-    with (
-        patch("ultraliser.LODGenerator.generate_web_lods", side_effect=side_effect),
-        patch("ultraliser.Mesh"),
-    ):
+    with patch("ultraliser.LODGenerator") as mock_gen, patch("ultraliser.Mesh"):
+        mock_gen.return_value.generate_web_lods.side_effect = side_effect
         res = _generate_lods(input_obj, out_dir)
         assert pathlib.Path("lod_1.gltf") in res
 
