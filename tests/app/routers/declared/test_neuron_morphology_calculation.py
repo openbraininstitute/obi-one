@@ -4,7 +4,7 @@ import sys
 import uuid
 from http import HTTPStatus
 from pathlib import Path
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
