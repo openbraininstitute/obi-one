@@ -477,7 +477,7 @@ def test_task_launch_success__circuit_simulation(
                     "accounting_service_subtype": str(
                         CIRCUIT_SCALE_TO_SERVICE_SUBTYPE[circuit_scale]
                     ),
-                    "count": 100,
+                    "count": 1 if circuit_scale == CircuitScale.small else 100,
                 },
             },
         },
@@ -529,7 +529,7 @@ def test_task_launch_success__circuit_simulation(
                     "accounting_service_subtype": str(
                         CIRCUIT_SCALE_TO_SERVICE_SUBTYPE[circuit_scale]
                     ),
-                    "count": 100,
+                    "count": 1 if circuit_scale == CircuitScale.small else 100,
                 },
             },
         },

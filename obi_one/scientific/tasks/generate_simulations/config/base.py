@@ -33,10 +33,6 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_timestamps import (
-    TimestampsReference,
-    TimestampsUnion,
-)
 
 SONATA_VERSION = 2.4
 
@@ -124,19 +120,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
     initialize: Initialize
-
-    timestamps: dict[str, TimestampsUnion] = Field(
-        default_factory=dict,
-        title="Timestamps",
-        description="Timestamps for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Timestamps",
-            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""

@@ -155,6 +155,14 @@ def _evaluate_accounting_parameters(
             )
 
 
+_DURATION_BILLING_SCALES = {
+    CircuitScale.microcircuit,
+    CircuitScale.region,
+    CircuitScale.system,
+    CircuitScale.whole_brain,
+}
+
+
 def _evaluate_circuit_simulation_parameters(
     *,
     db_client: Client,
@@ -164,8 +172,6 @@ def _evaluate_circuit_simulation_parameters(
         entity_id=simulation_id,
         entity_type=models.Simulation,
     )
-    # TODO: actually use the circuit and simulation files to determine the count
-    count = simulation.number_neurons
 
     circuit = db_client.get_entity(entity_id=simulation.entity_id, entity_type=models.Circuit)
 
@@ -175,7 +181,14 @@ def _evaluate_circuit_simulation_parameters(
         msg = f"Unsupported circuit scale '{circuit.scale}' for cost estimation"
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg) from e
 
-    return AccountingParameters(count=count, service_subtype=service_subtype)  # ty:ignore[invalid-argument-type]
+    if circuit.scale in _DURATION_BILLING_SCALES:
+        duration_ms = simulation.scan_parameters.get("initialize.duration", 1000)
+        duration_s = duration_ms / 1000.0
+        count = int(simulation.number_neurons * duration_s)
+    else:
+        count = 1
+
+    return AccountingParameters(count=count, service_subtype=service_subtype)
 
 
 def generate_accounting_callbacks(
