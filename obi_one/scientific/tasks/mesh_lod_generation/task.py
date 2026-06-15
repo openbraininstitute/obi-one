@@ -101,9 +101,19 @@ class MeshLODGenerationTask(Task):
 
 
 # Inline lazy-import context map to resolve forward-references cleanly for Pydantic
-# without introducing eager module-level cross-imports.
+# without introducing eager module-level cross-imports or violating linter boundaries.
+from uuid import UUID as _UUID  # noqa: E402
+
+import entitysdk as _entitysdk  # noqa: E402
+
 from obi_one.scientific.tasks.mesh_lod_generation.config import (  # noqa: E402
     MeshLodGenerationScanConfig as _ScanConfig,
 )
 
-MeshLODGenerationTask.model_rebuild(_types_namespace={"MeshLodGenerationScanConfig": _ScanConfig})
+MeshLODGenerationTask.model_rebuild(
+    _types_namespace={
+        "MeshLodGenerationScanConfig": _ScanConfig,
+        "entitysdk": _entitysdk,
+        "UUID": _UUID,
+    }
+)
