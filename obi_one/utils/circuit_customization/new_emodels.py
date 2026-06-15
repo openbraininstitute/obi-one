@@ -8,13 +8,13 @@ import bluepysnap.nodes
 import h5py
 import libsonata
 
-from obi_one.utils.circuit import get_morphology_path, get_source_morph_dirs
-from obi_one.utils.circuit_customization.validations.new_emodels import (
+from obi_one.utils.circuit import (
+    BCL_TEMPLATE_FORMAT,
+    get_morphology_path,
+    get_source_morph_dirs,
     read_node_file,
-)  # move these to more general utils
+)
 from obi_one.utils.mechanisms import clean_compiled_mechanisms, compile_mechanisms
-
-# 1. validate stuff. 2. create circuit. 3. upload circuit.
 
 type Memodel_tuple = tuple[str, str]
 
@@ -107,7 +107,6 @@ def create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
         compute_memodel_properties_v2,
     )
 
-    bcl_template_format = "v6"  # maybe make this a global?
     # - copy old circuit into new circuit directory
     if new_circuit_path is None:
         # TODO: might want to change that in case users modify multiple times their circuits
@@ -184,7 +183,7 @@ def create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
             holding_voltages[old_memodel] = calculate_SS_voltage(
                 hoc_fpath,
                 morph_fpath,
-                bcl_template_format,
+                BCL_TEMPLATE_FORMAT,
                 emodel_properties_filler,
                 old_holding_currents[ihold_column_name][id_],
             )
@@ -203,7 +202,7 @@ def create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
         memodels_dynamics_params[memodel] = compute_memodel_properties_v2(
             hoc_fpath,
             morph_fpath,
-            bcl_template_format,
+            BCL_TEMPLATE_FORMAT,
             holding_voltage,
             emodel_properties=emodel_properties_filler,
         )

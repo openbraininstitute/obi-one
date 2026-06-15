@@ -6,11 +6,11 @@ from pathlib import Path
 import h5py
 import pytest
 
+from obi_one.utils.circuit import read_node_file
 from obi_one.utils.circuit_customization.validations.new_emodels import (
     check_hoc_files_exist,
     check_new_hoc_in_nodes_file,
     check_new_node_columns,
-    read_node_file,
 )
 
 DATA_FOLDER_PATH = Path(__file__).parent.parent.parent / "test_data"

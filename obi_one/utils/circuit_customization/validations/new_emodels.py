@@ -6,11 +6,10 @@ from multiprocessing import Process, Queue
 from pathlib import Path
 
 import entitysdk
-import libsonata
 from entitysdk import Client
 
 from obi_one.scientific.validations.emodels import bluecellulab_initializable, check_mechanisms
-from obi_one.utils.circuit import get_mechanisms_suffixes
+from obi_one.utils.circuit import BCL_TEMPLATE_FORMAT, get_mechanisms_suffixes, read_node_file
 from obi_one.utils.circuit_customization.download import download_mechanisms
 from obi_one.utils.mechanisms import clean_compiled_mechanisms, compile_mechanisms
 
@@ -56,7 +55,7 @@ def compile_mechs_and_load_hoc(
         bluecellulab_initializable(
             hoc_path=hoc_path,
             morphology_path=morphology_path,
-            template_format="v6",
+            template_format=BCL_TEMPLATE_FORMAT,
             holding_current=0.0,
             threshold_current=0.0,
         )
@@ -117,14 +116,6 @@ def check_bluecellulab_initializable(
         else:
             msg = "No result returned from subprocess when running bluecellulab instantiation check"
             raise RuntimeError(msg)
-
-
-# see if should be moved to more general circuit utils
-def read_node_file(fpath: str | Path) -> libsonata.NodePopulation:
-    """Reads a node file and returns the node population."""
-    nodes = libsonata.NodeStorage(fpath)
-    pop_name = next(iter(nodes.population_names))  # expects size 1
-    return nodes.open_population(pop_name)
 
 
 def check_new_node_columns(old_node_file_path: str | Path, new_node_file_path: str | Path) -> None:

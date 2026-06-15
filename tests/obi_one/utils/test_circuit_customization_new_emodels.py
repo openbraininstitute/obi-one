@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import h5py
 import pytest
 
+from obi_one.utils.circuit import read_node_file
 from obi_one.utils.circuit_customization.new_emodels import (
     create_modified_circuit,
     get_all_emodel_file_paths,
@@ -14,7 +15,6 @@ from obi_one.utils.circuit_customization.new_emodels import (
     hoc_morph_names,
     map_ids_to_updated_memodel,
 )
-from obi_one.utils.circuit_customization.validations.new_emodels import read_node_file
 
 from tests.utils import CIRCUIT_DIR
 

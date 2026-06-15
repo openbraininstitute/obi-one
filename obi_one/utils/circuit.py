@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from entitysdk.client import Client
 
 import h5py
+import libsonata
 import numpy as np
 from bluepysnap import BluepySnapError
 from entitysdk import types
@@ -32,6 +33,8 @@ from obi_one.utils.filesystem import filter_extension
 from obi_one.utils.ion_channel import get_suffix_from_mod_file
 
 L = logging.getLogger(__name__)
+
+BCL_TEMPLATE_FORMAT = "v6"
 
 
 def fix_node_sets_file(circuit_path: Path) -> None:
@@ -673,3 +676,10 @@ def get_mechanisms_suffixes(circuit_id: str | uuid.UUID, db_client: Client) -> s
         suffixes.update(get_suffix_from_mod_file(fpath) for fpath in fpaths)
 
     return suffixes
+
+
+def read_node_file(fpath: str | Path) -> libsonata.NodePopulation:
+    """Reads a node file and returns the node population."""
+    nodes = libsonata.NodeStorage(fpath)
+    pop_name = next(iter(nodes.population_names))  # expects size 1
+    return nodes.open_population(pop_name)
