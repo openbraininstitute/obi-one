@@ -122,6 +122,53 @@ def _update_node_populations(
             old_npop_file.unlink(missing_ok=True)
 
 
+def _update_edge_populations(
+    new_circuit: Circuit,
+    parent_circuit: Circuit,
+    new_edge_population_paths: dict[str, Path] | None,
+) -> None:
+    """Replace or remove edge population files.
+
+    Copies custom edge population files over the existing ones, validates that
+    all referenced files exist, and removes old files no longer referenced.
+
+    Args:
+        new_circuit: The loaded new circuit (after config update).
+        parent_circuit: The loaded parent circuit (before config update).
+        new_edge_population_paths: Mapping of population name to replacement .h5 file,
+            or None if no replacements.
+
+    Raises:
+        ValueError: If a provided population name is not in the config, or if
+            a referenced file is missing after replacement.
+    """
+    epop_files = {
+        epop: Path(new_circuit.edges[epop].h5_filepath)
+        for epop in new_circuit.edges.population_names
+    }
+
+    if new_edge_population_paths:
+        for epop_name, new_path in new_edge_population_paths.items():
+            if epop_name not in epop_files:
+                msg = f"Edge population '{epop_name}' provided but not found in circuit config!"
+                raise ValueError(msg)
+            shutil.copy(new_path, epop_files[epop_name])
+
+    for epop_name, epop_file in epop_files.items():
+        if not epop_file.is_file():
+            msg = f"Edge population file '{epop_file}' for '{epop_name}' missing!"
+            raise ValueError(msg)
+
+    # Remove old edge population files no longer referenced
+    old_epop_files = {
+        Path(parent_circuit.edges[epop].h5_filepath)
+        for epop in parent_circuit.edges.population_names
+    }
+    for old_epop_file in old_epop_files:
+        if old_epop_file not in epop_files.values():
+            old_epop_file.unlink(missing_ok=True)
+
+
 def create_modified_circuit(
     db_client: Client,
     circuit_id: str,
@@ -185,5 +232,6 @@ def create_modified_circuit(
     new_circuit = _update_circuit_config(config_path, new_circuit_config_path)
     _update_node_sets(new_circuit, parent_circuit, new_node_sets_path)
     _update_node_populations(new_circuit, parent_circuit, new_node_population_paths)
+    _update_edge_populations(new_circuit, parent_circuit, new_edge_population_paths)
 
     return new_circuit_path, from_circuit
