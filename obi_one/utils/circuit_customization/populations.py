@@ -11,7 +11,7 @@ from obi_one.utils.circuit_customization.download import fetch_directory, get_so
 from obi_one.utils.circuit_customization.validations.populations import check_input_files
 
 
-def create_modified_circuit(
+def create_modified_circuit(  # noqa: C901, PLR0912
     db_client: Client,
     circuit_id: str,
     *,
@@ -101,6 +101,31 @@ def create_modified_circuit(
         if old_node_sets_file:
             Path(old_node_sets_file).unlink(missing_ok=True)
 
-    # TODO: Check if node populations were removed
+    # Replace node populations with custom ones, or remove existing ones
+    npop_files = {
+        npop: Path(new_circuit.nodes[npop].h5_filepath)
+        for npop in new_circuit.nodes.population_names
+    }
+
+    if new_node_population_paths:
+        for npop_name, new_path in new_node_population_paths.items():
+            if npop_name not in npop_files:
+                msg = f"Node population '{npop_name}' provided but not found in circuit config!"
+                raise ValueError(msg)
+            shutil.copy(new_path, npop_files[npop_name])
+
+    for npop_name, npop_file in npop_files.items():
+        if not npop_file.is_file():
+            msg = f"Node population file '{npop_file}' for '{npop_name}' missing!"
+            raise ValueError(msg)
+
+    # Remove old node population files no longer referenced
+    old_npop_files = {
+        Path(parent_circuit.nodes[npop].h5_filepath)
+        for npop in parent_circuit.nodes.population_names
+    }
+    for old_npop_file in old_npop_files:
+        if old_npop_file not in npop_files.values():
+            old_npop_file.unlink(missing_ok=True)
 
     return new_circuit_path, from_circuit
