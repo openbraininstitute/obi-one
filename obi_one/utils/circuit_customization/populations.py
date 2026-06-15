@@ -8,7 +8,10 @@ from entitysdk import models
 from entitysdk.client import Client
 
 from obi_one.utils.circuit_customization.download import fetch_directory, get_sonata_asset
-from obi_one.utils.circuit_customization.validations.populations import check_input_files
+from obi_one.utils.circuit_customization.validations.populations import (
+    check_customized_circuit,
+    check_input_files,
+)
 
 
 def _update_circuit_config(
@@ -233,5 +236,15 @@ def create_modified_circuit(
     _update_node_sets(new_circuit, parent_circuit, new_node_sets_path)
     _update_node_populations(new_circuit, parent_circuit, new_node_population_paths)
     _update_edge_populations(new_circuit, parent_circuit, new_edge_population_paths)
+
+    # Validate customizations
+
+    # (1) Try loading circuit and get population sizes
+    # (2) Try loading node sets
+    # (3) Check if ID mapping is still valid, otherwise remove + warning
+    # (4) Check if existing morphologies are still used and none missing
+    # (5) Check if existing hoc files are still used and none missing
+
+    check_customized_circuit(new_circuit_path)
 
     return new_circuit_path, from_circuit
