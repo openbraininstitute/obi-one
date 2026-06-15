@@ -33,6 +33,7 @@ def resolved_neuron():
         cave_version=3,
         use_me_model=False,
         phys_node_props={},
+        name_in_circuit="1234",
         fn_morph_h5=Path("morphologies/morph_A.h5"),
         fn_morph_swc=Path("morphologies/morphology/morph_A.swc"),
     )

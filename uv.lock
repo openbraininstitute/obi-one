@@ -863,14 +863,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.17.1"
+version = "0.17.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/e7/396a78fe0710bd1635c857ca106e727b523aa7063805aeba705ca44e87f3/entitysdk-0.17.1.tar.gz", hash = "sha256:4039ac73f196976ce5d858419a3b9e40444a9fddc726cbdb38477a8185a4a597", size = 89696, upload-time = "2026-06-08T15:19:31.777Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/6b/31db5b6d67bb7fd0583040355752e7a3120ab156d1f88731d887931d678c/entitysdk-0.17.2.tar.gz", hash = "sha256:b8c64c6daf74183bd9d9680e5718998e66d00a1974126dc5b9185cf024c0d4b9", size = 89828, upload-time = "2026-06-12T09:38:47.416Z" }
 
 [[package]]
 name = "executing"
@@ -2262,8 +2262,8 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.0" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.1" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.2" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.2" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2296,14 +2296,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.1"
+version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/45/ed7e5e5612f3fa321feabdad24b4916b4807f0c583c5c9b18ec61b5154e1/obp_accounting_sdk-0.6.1.tar.gz", hash = "sha256:70f895bc0cf126ebd28aed187eea6758e1bf8ee06d567c0ad9c9413a0cf8d403", size = 36124, upload-time = "2026-04-28T09:49:13.423Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/65/34d0a51314c63c949a14d02664fe4a137db00424a645c25e0ae2a9b961da/obp_accounting_sdk-0.6.2.tar.gz", hash = "sha256:a99fb49cfe2854441f602b6bd9a8df6213b15b4c2e92d25b2542f7d68f5613c9", size = 36144, upload-time = "2026-06-09T07:56:15.491Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/dd/c90f6da98fac0d84f9e1af74b066caf4bcc6b0d41c0a1a0012d4d8880747/obp_accounting_sdk-0.6.1-py3-none-any.whl", hash = "sha256:c8d0477ddc972a2374b688d54b955f9ffadf4c5ee8b57c6d9d39ae25b6af1f23", size = 27690, upload-time = "2026-04-28T09:49:12.268Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/32/4701a75074ffe867e31ee28c7a1bc3da11dc8e399789e081c4fc0d92878e/obp_accounting_sdk-0.6.2-py3-none-any.whl", hash = "sha256:c3619b4ad9f4e388c16de6e51c85c9ef31ef39d9536a45cb9229857fdf87e17b", size = 27701, upload-time = "2026-06-09T07:56:14.204Z" },
 ]
 
 [[package]]
