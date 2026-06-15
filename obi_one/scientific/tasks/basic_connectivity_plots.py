@@ -20,6 +20,12 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.scientific.library.basic_connectivity_plots_helpers import (
+    CANONICAL_EXC,
+    CANONICAL_INH,
+    assemble_property_colormapping,
+    find_canonical_synapse_classes,
+)
 
 # Since there are some scientific modules importing this module, but not necessarily using its
 # classes, we protect the imports without crashing at load time. In any case, if the
@@ -268,9 +274,11 @@ class BasicConnectivityPlotsTask(Task):
 
             # Setup colors
             cmap = mcolors.LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"])
-            color_map_nodes = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-            color_map_edges = {"INH": cmap(0), "EXC": cmap(cmap.N)}
             color_property = "synapse_class"
+            color_map_nodes = assemble_property_colormapping(
+                conn, cmap, color_property=color_property
+            )
+            color_map_edges = color_map_nodes.copy()
 
             # Plot circular projection
             plot_small_network(
@@ -297,13 +305,22 @@ class BasicConnectivityPlotsTask(Task):
             ax_main.set_aspect("equal")
 
             # Add network legends
+            try:
+                canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
+                axes_specs = [
+                    (ax_exc, "EXC", color_map_nodes[canon_map[CANONICAL_EXC]]),
+                    (ax_inh, "INH", color_map_nodes[canon_map[CANONICAL_INH]]),
+                ]
+            except ValueError:
+                axes_specs = [
+                    (ax_, label, color_map_nodes[label])
+                    for ax_, label in zip([ax_exc, ax_inh], color_map_nodes.keys(), strict=False)
+                ]
             plot_network_legends(
                 fig=fig,
                 ax_edge=ax_edge,
                 ax_node_size=ax_node_size,
-                ax_exc=ax_exc,
-                ax_inh=ax_inh,
-                cmap=cmap,
+                axes_tuples=axes_specs,
                 node_size_label="Total degree",
                 edge_label="Number of synapses",
             )
