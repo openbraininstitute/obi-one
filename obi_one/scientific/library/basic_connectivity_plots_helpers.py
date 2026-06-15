@@ -61,10 +61,12 @@ def find_canonical_synapse_classes(prop_values: list[str]) -> dict[str, str]:
             canon_mapping[CANONICAL_EXC] = val
         elif CANONICAL_INH in val.lower():
             canon_mapping[CANONICAL_INH] = val
-        else:  # If both EXC and INH are found any additional value is interpreted as NA
+        elif CANONICAL_NA not in canon_mapping:
             canon_mapping[CANONICAL_NA] = val
+        else:
+            L.warning("More than one string could be mapped to N/A.")
     if (CANONICAL_EXC not in canon_mapping) or (CANONICAL_INH not in canon_mapping):
-        err_str = "No canon E/I mapping found!"
+        err_str = "No canonical E/I mapping found!"
         raise ValueError(err_str)
     return canon_mapping
 
