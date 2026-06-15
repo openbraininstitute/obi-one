@@ -1,7 +1,9 @@
 """Circuit customization: population modification."""
 
+import shutil
 from pathlib import Path
 
+from bluepysnap import Circuit
 from entitysdk import models
 from entitysdk.client import Client
 
@@ -65,7 +67,40 @@ def create_modified_circuit(
 
     from_circuit, asset = get_sonata_asset(db_client, circuit_id)
     fetch_directory(db_client, circuit_id, asset.id, new_circuit_path, writable=True)
+    config_path = new_circuit_path / "circuit_config.json"
+    parent_circuit = Circuit(config_path)
 
-    # TODO: Replace files in new_circuit_path with customized ones
+    # Replace circuit config with custom one
+    if new_circuit_config_path:
+        shutil.copy(new_circuit_config_path, config_path)
+
+    # Load new circuit
+    new_circuit = Circuit(config_path)
+
+    # Replace node sets file with custom one, or remove existing one
+    node_sets_file = new_circuit.config.get("node_sets_file", "")
+    if node_sets_file:
+        node_sets_file = Path(node_sets_file)
+        # Node sets file specified in new circuit config
+        if new_node_sets_path:
+            shutil.copy(new_node_sets_path, node_sets_file)
+
+        if not node_sets_file.is_file():
+            msg = f"Node sets file '{node_sets_file}' missing!"
+            raise ValueError(msg)
+    else:
+        # Node sets file not specified in new circuit config
+        if new_node_sets_path:
+            msg = (
+                f"New node sets file '{new_node_sets_path}' provided"
+                " but not specified in circuit config!"
+            )
+            raise ValueError(msg)
+
+        old_node_sets_file = parent_circuit.config.get("node_sets_file", "")
+        if old_node_sets_file:
+            Path(old_node_sets_file).unlink(missing_ok=True)
+
+    # TODO: Check if node populations were removed
 
     return new_circuit_path, from_circuit
