@@ -9,7 +9,9 @@ from uuid import uuid4
 import pytest
 
 from obi_one.utils.circuit_customization.download import (
-    _get_sonata_asset,
+    fetch_directory,
+    fetch_file,
+    get_sonata_asset,
     download_circuit_config,
     download_edge_populations,
     download_electrical_models,
@@ -87,7 +89,7 @@ def _make_file_list(circuit_dir: Path):
 
 
 def test_get_sonata_asset_success(mock_client, circuit_id, mock_circuit_entity, mock_asset):
-    circuit, asset = _get_sonata_asset(mock_client, circuit_id)
+    circuit, asset = get_sonata_asset(mock_client, circuit_id)
     assert circuit is mock_circuit_entity
     assert asset is mock_asset
 
@@ -95,13 +97,13 @@ def test_get_sonata_asset_success(mock_client, circuit_id, mock_circuit_entity, 
 def test_get_sonata_asset_no_asset(mock_client, circuit_id, mock_circuit_entity):
     mock_circuit_entity.assets = []
     with pytest.raises(ValueError, match="must have exactly one"):
-        _get_sonata_asset(mock_client, circuit_id)
+        get_sonata_asset(mock_client, circuit_id)
 
 
 def test_get_sonata_asset_multiple_assets(mock_client, circuit_id, mock_circuit_entity, mock_asset):
     mock_circuit_entity.assets = [mock_asset, mock_asset]
     with pytest.raises(ValueError, match="must have exactly one"):
-        _get_sonata_asset(mock_client, circuit_id)
+        get_sonata_asset(mock_client, circuit_id)
 
 
 # --- download_circuit_config ---
@@ -297,3 +299,82 @@ def test_download_id_mapping_from_config(mock_client, circuit_id, tmp_path):
     result = download_id_mapping(circuit_id, mock_client, tmp_path / "output")
 
     assert result.name == "id_mapping.json"
+
+
+# --- fetch_file ---
+
+
+def test_fetch_file_default_strategy(mock_client, circuit_id, asset_id, tmp_path):
+    """Test that fetch_file uses link_or_download by default."""
+    mock_client.fetch_file.side_effect = _make_fetch_file_side_effect(CIRCUIT_DIR)
+
+    result = fetch_file(mock_client, circuit_id, asset_id, "circuit_config.json", tmp_path)
+
+    assert result == tmp_path / "circuit_config.json"
+    call_kwargs = mock_client.fetch_file.call_args.kwargs
+    assert call_kwargs["strategy"].value == "link_or_download"
+
+
+def test_fetch_file_writable_strategy(mock_client, circuit_id, asset_id, tmp_path):
+    """Test that fetch_file uses copy_or_download when writable=True."""
+    mock_client.fetch_file.side_effect = _make_fetch_file_side_effect(CIRCUIT_DIR)
+
+    result = fetch_file(
+        mock_client, circuit_id, asset_id, "circuit_config.json", tmp_path, writable=True
+    )
+
+    assert result == tmp_path / "circuit_config.json"
+    call_kwargs = mock_client.fetch_file.call_args.kwargs
+    assert call_kwargs["strategy"].value == "copy_or_download"
+
+
+def test_fetch_file_output_filename(mock_client, circuit_id, asset_id, tmp_path):
+    """Test that output_filename overrides the default filename."""
+    mock_client.fetch_file.side_effect = _make_fetch_file_side_effect(CIRCUIT_DIR)
+
+    result = fetch_file(
+        mock_client,
+        circuit_id,
+        asset_id,
+        "circuit_config.json",
+        tmp_path,
+        output_filename="renamed.json",
+    )
+
+    assert result == tmp_path / "renamed.json"
+
+
+# --- fetch_directory ---
+
+
+def test_fetch_directory_default_strategy(mock_client, circuit_id, asset_id, tmp_path):
+    """Test that fetch_directory uses link_or_download by default."""
+    mock_client.fetch_directory.return_value = [tmp_path / "file1.h5", tmp_path / "file2.h5"]
+
+    result = fetch_directory(mock_client, circuit_id, asset_id, tmp_path)
+
+    assert len(result) == 2
+    call_kwargs = mock_client.fetch_directory.call_args.kwargs
+    assert call_kwargs["strategy"].value == "link_or_download"
+    assert call_kwargs["ignore_directory_name"] is True
+
+
+def test_fetch_directory_writable_strategy(mock_client, circuit_id, asset_id, tmp_path):
+    """Test that fetch_directory uses copy_or_download when writable=True."""
+    mock_client.fetch_directory.return_value = [tmp_path / "file1.h5"]
+
+    result = fetch_directory(mock_client, circuit_id, asset_id, tmp_path, writable=True)
+
+    assert len(result) == 1
+    call_kwargs = mock_client.fetch_directory.call_args.kwargs
+    assert call_kwargs["strategy"].value == "copy_or_download"
+
+
+def test_fetch_directory_creates_dest_dir(mock_client, circuit_id, asset_id, tmp_path):
+    """Test that fetch_directory creates the destination directory if it doesn't exist."""
+    dest = tmp_path / "nested" / "output"
+    mock_client.fetch_directory.return_value = []
+
+    fetch_directory(mock_client, circuit_id, asset_id, dest)
+
+    assert dest.exists()

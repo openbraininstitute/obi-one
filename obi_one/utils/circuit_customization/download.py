@@ -14,7 +14,7 @@ from entitysdk.types import FetchFileStrategy
 L = logging.getLogger(__name__)
 
 
-def _get_sonata_asset(db_client: Client, circuit_id: str) -> tuple[Circuit, Asset]:
+def get_sonata_asset(db_client: Client, circuit_id: str) -> tuple[Circuit, Asset]:
     """Get the sonata_circuit directory asset from a circuit entity.
 
     Args:
@@ -40,7 +40,7 @@ def _get_sonata_asset(db_client: Client, circuit_id: str) -> tuple[Circuit, Asse
     return circuit, sonata_assets[0]
 
 
-def _fetch_file(
+def fetch_file(
     db_client: Client,
     circuit_id: str,
     asset_id: UUID,
@@ -48,6 +48,7 @@ def _fetch_file(
     dest_dir: Path,
     *,
     output_filename: str | None = None,
+    writable: bool = False,
 ) -> Path:
     """Fetch a single file from the sonata_circuit asset.
 
@@ -59,10 +60,15 @@ def _fetch_file(
         dest_dir: Destination directory.
         output_filename: If provided, use this filename instead of the full rel_path
             for the output file location.
+        writable: If True, use copy_or_download strategy to get a writable file.
+            If False (default), use link_or_download strategy (file may be read-only).
 
     Returns:
         Path to the downloaded file.
     """
+    strategy = (
+        FetchFileStrategy.copy_or_download if writable else FetchFileStrategy.link_or_download
+    )
     local_path = output_filename or rel_path
     output_path = dest_dir / local_path
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,10 +78,47 @@ def _fetch_file(
         asset_id=asset_id,
         output_path=output_path,
         asset_path=rel_path,  # ty:ignore[invalid-argument-type]
-        strategy=FetchFileStrategy.link_or_download,
+        strategy=strategy,
     )
     L.info(f"Downloaded '{rel_path}' to '{output_path}'")
     return output_path
+
+
+def fetch_directory(
+    db_client: Client,
+    circuit_id: str,
+    asset_id: UUID,
+    dest_dir: Path,
+    *,
+    writable: bool = False,
+) -> list[Path]:
+    """Fetch a directory from the sonata_circuit asset.
+
+    Args:
+        db_client: The entitycore SDK client.
+        circuit_id: The ID of the circuit entity.
+        asset_id: The ID of the sonata_circuit asset.
+        dest_dir: Destination directory.
+        writable: If True, use copy_or_download strategy to get writable files.
+            If False (default), use link_or_download strategy (files may be read-only).
+
+    Returns:
+        List of paths to the downloaded files.
+    """
+    strategy = (
+        FetchFileStrategy.copy_or_download if writable else FetchFileStrategy.link_or_download
+    )
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    paths = db_client.fetch_directory(
+        entity_id=circuit_id,  # ty:ignore[invalid-argument-type]
+        entity_type=Circuit,
+        asset_id=asset_id,
+        output_path=dest_dir,
+        ignore_directory_name=True,
+        strategy=strategy,
+    )
+    L.info(f"Downloaded directory to '{dest_dir}' ({len(paths)} files)")
+    return paths
 
 
 def download_electrical_models(
@@ -103,10 +146,10 @@ def download_electrical_models(
         ValueError: If the specified node population does not exist.
         FileNotFoundError: If no .hoc files are found.
     """
-    _, asset = _get_sonata_asset(db_client, circuit_id)
+    _, asset = get_sonata_asset(db_client, circuit_id)
 
     with tempfile.TemporaryDirectory() as tmp:
-        config_path = _fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
+        config_path = fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
         circuit = snap.Circuit(str(config_path))
 
         if node_population is not None:
@@ -161,7 +204,7 @@ def download_electrical_models(
         pop_dest_dir = dest_dir / pop if node_population is None else dest_dir
 
         downloaded.extend(
-            _fetch_file(
+            fetch_file(
                 db_client,
                 circuit_id,
                 asset.id,  # ty:ignore[invalid-argument-type]
@@ -199,10 +242,10 @@ def download_mechanisms(circuit_id: str, db_client: Client, dest_dir: Path) -> l
     Raises:
         FileNotFoundError: If no .mod files are found.
     """
-    _, asset = _get_sonata_asset(db_client, circuit_id)
+    _, asset = get_sonata_asset(db_client, circuit_id)
 
     with tempfile.TemporaryDirectory() as tmp:
-        config_path = _fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
+        config_path = fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
         circuit = snap.Circuit(str(config_path))
 
         mechanisms_dir = circuit.config.get("components", {}).get("mechanisms_dir")
@@ -228,7 +271,7 @@ def download_mechanisms(circuit_id: str, db_client: Client, dest_dir: Path) -> l
         raise FileNotFoundError(msg)
 
     downloaded = [
-        _fetch_file(
+        fetch_file(
             db_client,
             circuit_id,
             asset.id,  # ty:ignore[invalid-argument-type]
@@ -254,8 +297,8 @@ def download_circuit_config(circuit_id: str, db_client: Client, dest_dir: Path) 
     Returns:
         Path to the downloaded file.
     """
-    _, asset = _get_sonata_asset(db_client, circuit_id)
-    return _fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", dest_dir)  # ty:ignore[invalid-argument-type]
+    _, asset = get_sonata_asset(db_client, circuit_id)
+    return fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", dest_dir)  # ty:ignore[invalid-argument-type]
 
 
 def download_node_sets(circuit_id: str, db_client: Client, dest_dir: Path) -> Path:
@@ -272,16 +315,16 @@ def download_node_sets(circuit_id: str, db_client: Client, dest_dir: Path) -> Pa
     Returns:
         Path to the downloaded file.
     """
-    _, asset = _get_sonata_asset(db_client, circuit_id)
+    _, asset = get_sonata_asset(db_client, circuit_id)
 
     # Fetch circuit config to a temp location and resolve paths via bluepysnap
     with tempfile.TemporaryDirectory() as tmp:
-        config_path = _fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
+        config_path = fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
         circuit = snap.Circuit(str(config_path))
         node_sets_abs_path = Path(circuit.config["node_sets_file"])
         node_sets_rel_path = str(node_sets_abs_path.relative_to(Path(tmp).resolve()))
 
-    return _fetch_file(db_client, circuit_id, asset.id, node_sets_rel_path, dest_dir)  # ty:ignore[invalid-argument-type]
+    return fetch_file(db_client, circuit_id, asset.id, node_sets_rel_path, dest_dir)  # ty:ignore[invalid-argument-type]
 
 
 def download_id_mapping(circuit_id: str, db_client: Client, dest_dir: Path) -> Path:
@@ -298,10 +341,10 @@ def download_id_mapping(circuit_id: str, db_client: Client, dest_dir: Path) -> P
     Returns:
         Path to the downloaded file.
     """
-    _, asset = _get_sonata_asset(db_client, circuit_id)
+    _, asset = get_sonata_asset(db_client, circuit_id)
 
     with tempfile.TemporaryDirectory() as tmp:
-        config_path = _fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
+        config_path = fetch_file(db_client, circuit_id, asset.id, "circuit_config.json", Path(tmp))  # ty:ignore[invalid-argument-type]
         circuit = snap.Circuit(str(config_path))
 
         # Check components/provenance/id_mapping in config
@@ -318,7 +361,7 @@ def download_id_mapping(circuit_id: str, db_client: Client, dest_dir: Path) -> P
             # Fall back to id_mapping.json in root folder
             rel_path = "id_mapping.json"
 
-    return _fetch_file(db_client, circuit_id, asset.id, rel_path, dest_dir)  # ty:ignore[invalid-argument-type]
+    return fetch_file(db_client, circuit_id, asset.id, rel_path, dest_dir)  # ty:ignore[invalid-argument-type]
 
 
 def download_node_populations(
@@ -344,10 +387,10 @@ def download_node_populations(
     Raises:
         ValueError: If the specified node population does not exist.
     """
-    _, asset = _get_sonata_asset(db_client, circuit_id)
+    _, asset = get_sonata_asset(db_client, circuit_id)
 
     with tempfile.TemporaryDirectory() as tmp:
-        config_path = _fetch_file(
+        config_path = fetch_file(
             db_client,
             circuit_id,
             asset.id,  # ty:ignore[invalid-argument-type]
@@ -379,7 +422,7 @@ def download_node_populations(
     for pop, rel_path in pop_nodes:
         pop_dest_dir = dest_dir / pop if node_population is None else dest_dir
         downloaded.append(
-            _fetch_file(
+            fetch_file(
                 db_client,
                 circuit_id,
                 asset.id,  # ty:ignore[invalid-argument-type]
@@ -416,10 +459,10 @@ def download_edge_populations(
     Raises:
         ValueError: If the specified edge population does not exist.
     """
-    _, asset = _get_sonata_asset(db_client, circuit_id)
+    _, asset = get_sonata_asset(db_client, circuit_id)
 
     with tempfile.TemporaryDirectory() as tmp:
-        config_path = _fetch_file(
+        config_path = fetch_file(
             db_client,
             circuit_id,
             asset.id,  # ty:ignore[invalid-argument-type]
@@ -451,7 +494,7 @@ def download_edge_populations(
     for pop, rel_path in pop_edges:
         pop_dest_dir = dest_dir / pop if edge_population is None else dest_dir
         downloaded.append(
-            _fetch_file(
+            fetch_file(
                 db_client,
                 circuit_id,
                 asset.id,  # ty:ignore[invalid-argument-type]
