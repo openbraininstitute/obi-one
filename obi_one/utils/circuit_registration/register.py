@@ -75,6 +75,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     root: models.Circuit | UUID | None = None,
     parent: models.Circuit | UUID | None = None,
     derivation_type: DerivationType | None = None,
+    derivation_label: str | None = None,
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
@@ -110,6 +111,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
             hierarchy (optional).
         parent: Parent circuit entity or ID (UUID) for derivation linking (optional).
         derivation_type: Type of derivation (required if parent is provided).
+        derivation_label: Derivation label for 'circuit_customization' type (optional).
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
@@ -199,6 +201,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
             client=client,
             from_entity=parent,
             derivation_type=derivation_type,
+            derivation_label=derivation_label,
             registered_circuit=registered_circuit,
             dry_run=dry_run,
         )
@@ -264,8 +267,8 @@ def register_circuit_from_metadata(
         circuit_metadata: Dictionary with circuit properties. Required keys:
             name, description, build_category, species, subject, brain_region,
             brain_region_hierarchy.
-            Optional keys: root, parent, derivation_type, license, published_in,
-            contact, experiment_date, target_simulator.
+            Optional keys: root, parent, derivation_type, derivation_label,
+            license, published_in, contact, experiment_date, target_simulator.
         circuit_path: Path to the SONATA circuit folder (containing circuit_config.json)
             or directly to the circuit_config.json file.
         contributions: Raw contributions dict (agent name -> {type, role}).
@@ -316,6 +319,7 @@ def register_circuit_from_metadata(
         root=root,
         parent=parent,
         derivation_type=circuit_metadata.get("derivation_type"),
+        derivation_label=circuit_metadata.get("derivation_label"),
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
