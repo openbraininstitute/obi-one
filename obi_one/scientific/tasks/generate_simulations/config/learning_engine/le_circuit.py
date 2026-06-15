@@ -18,17 +18,16 @@ from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_bas
 )
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
-    AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+    LearningEngineNeuronSetUnion,
     NeuronSetReference,
-    SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     LearningEngineCircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 
 L = logging.getLogger(__name__)
 
@@ -45,7 +44,6 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
@@ -100,20 +98,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
         },
     )
 
-    distributions: dict[str, AllDistributionsUnion] = Field(
-        default_factory=dict,
-        title="Distributions",
-        description="Distributions used by stimuli (e.g. inter-spike interval distributions).",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Distribution",
-            SchemaKey.GROUP: BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, LearningEngineNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -121,6 +106,19 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    timestamps: dict[str, TimestampsUnion] = Field(
+        default_factory=dict,
+        title="Timestamps",
+        description="Timestamps for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )

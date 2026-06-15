@@ -1,2 +1,2 @@
 obi-one
-ultraliser==2.1.9
+ultraliser==2.2.0

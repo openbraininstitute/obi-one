@@ -117,7 +117,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
                         rng=rng,
                     )
                     relative_spikes = self._sample_spike_times_from_distribution(
-                        distribution,  # ty:ignore[invalid-argument-type]
+                        distribution,
                         number_of_spikes=number_of_spikes,
                         duration=self.duration,  # ty:ignore[invalid-argument-type]
                         rng=rng,
@@ -131,7 +131,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
                     rng=rng,
                 )
                 relative_spikes = self._sample_spike_times_from_distribution(
-                    distribution,  # ty:ignore[invalid-argument-type]
+                    distribution,
                     number_of_spikes=number_of_spikes,
                     duration=self.duration,  # ty:ignore[invalid-argument-type]
                     rng=rng,
