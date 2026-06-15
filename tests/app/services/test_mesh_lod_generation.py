@@ -3,6 +3,7 @@ import pathlib
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
+import entitysdk
 import pytest
 from entitysdk.models import EMCellMesh
 
@@ -55,7 +56,7 @@ def test_mesh_lod_config_invalid_types():
 # ==========================================
 def test_estimate_mesh_lod_generation_count():
     """Ensure metrics scale deterministically (1 element per incoming item context)."""
-    assert estimate_mesh_lod_generation_count() == 1
+    assert estimate_mesh_lod_generation_count(db_client=MagicMock(), config_id=uuid4()) == 1
 
 
 # ==========================================
@@ -147,7 +148,7 @@ def test_upload_lod_directory_with_list_fallback(tmp_path):
 def test_run_mesh_lod_generation_pipeline(mock_download, mock_generate, mock_upload, tmp_path):
     """Test full integration workflow and temporal scoping from start to finish."""
     config = MeshLodGenerationScanConfig(entity_id=uuid4(), obj_asset_id=uuid4())
-    mock_client = MagicMock()
+    mock_client = MagicMock(spec=entitysdk.Client)
 
     dummy_file = tmp_path / "lod_1.gltf"
     mock_generate.return_value = {pathlib.Path("lod_1.gltf"): dummy_file}
