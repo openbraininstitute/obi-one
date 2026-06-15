@@ -65,6 +65,9 @@ def check_input_files(
     validated_config = None
     if new_circuit_config_path:
         validated_config = _validate_file(new_circuit_config_path, ".json", "New config file")
+        if validated_config.name != "circuit_config.json":
+            msg = "Circuit config file 'circuit_config.json' required!"
+            raise ValueError(msg)
 
     validated_node_sets = None
     if new_node_sets_path:
