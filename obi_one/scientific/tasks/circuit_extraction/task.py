@@ -224,6 +224,9 @@ class CircuitExtractionTask(Task):
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+
         # Start benchmark tracking
         BenchmarkTracker.start_tracking()
 
@@ -320,6 +323,8 @@ class CircuitExtractionTask(Task):
             with BenchmarkTracker.section("run_validation"):
                 circuit_utils.run_validation(new_circuit_path)
 
+        import sys
+        sys.exit(-1)
         L.info("Extraction DONE")
 
         # Register new circuit entity incl. folder asset and linked entities

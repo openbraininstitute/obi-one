@@ -365,8 +365,8 @@ wheels = [
 
 [[package]]
 name = "brainbuilder"
-version = "0.20.2"
-source = { registry = "https://pypi.org/simple" }
+version = "0.20.4.dev1+g4a70b5e28"
+source = { git = "https://github.com/openbraininstitute/brainbuilder?rev=4a70b5e28b707eeafb154fb415f2c4f177d94251#4a70b5e28b707eeafb154fb415f2c4f177d94251" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "click" },
@@ -383,7 +383,6 @@ dependencies = [
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/a0/2dcbafbb24bfe26223f066efb527c79581e64718c478a6a82f5ee28a3d26/brainbuilder-0.20.2.tar.gz", hash = "sha256:577f2e773b3ccbc44ba2802802802bdafc3a2b10d90865c1c462f759b105d8f0", size = 217938, upload-time = "2025-07-08T11:18:13.113Z" }
 
 [[package]]
 name = "cached-property"
@@ -2240,7 +2239,7 @@ requires-dist = [
     { name = "bluepyefe", specifier = ">=2.3.57" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.5" },
-    { name = "brainbuilder", specifier = ">=0.20.2" },
+    { name = "brainbuilder", git = "https://github.com/openbraininstitute/brainbuilder?rev=4a70b5e28b707eeafb154fb415f2c4f177d94251" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
