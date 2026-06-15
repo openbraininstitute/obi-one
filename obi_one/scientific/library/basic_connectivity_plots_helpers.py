@@ -30,21 +30,21 @@ except ImportError as e:  # pragma: no cover
     raise ImportError(msg) from e
 
 # Connectivity dependencies (optional) - check for connalysis
-try:
-    from connalysis.network.classic import (
-        connection_probability_within,
-        density,
-    )
-    from connalysis.network.topology import (
-        node_degree,
-        rc_submatrix,
-    )
-except ImportError as e:  # pragma: no cover
-    msg = (
-        "Connectivity plotting requires connectome-analysis (connalysis). "
-        "Install with: pip install obi-one[connectivity]"
-    )
-    raise ImportError(msg) from e
+#try:
+#    from connalysis.network.classic import (
+#        connection_probability_within,
+#        density,
+#    )
+#    from connalysis.network.topology import (
+#        node_degree,
+#        rc_submatrix,
+#    )
+#except ImportError as e:  # pragma: no cover
+#    msg = (
+#        "Connectivity plotting requires connectome-analysis (connalysis). "
+#        "Install with: pip install obi-one[connectivity]"
+#    )
+#    raise ImportError(msg) from e
 
 L = logging.getLogger(__name__)
 CANONICAL_EXC = "exc"
