@@ -162,6 +162,55 @@ def test_get_circuit_size_single_neuron_circuit():
     assert num_nrn == 1
 
 
+@pytest.mark.parametrize(
+    ("circuit_dir", "circuit_name"),
+    [
+        (SINGLE_NEURON_CIRCUIT_DIR, "SingleNeuronCircuit__top_nodes_dim6__IDX0"),
+        (CIRCUIT_DIR, "nbS1-O1-E2Sst-maxNsyn-HEX0-L5"),
+        (CIRCUIT_DIR, "N_10__top_nodes_dim6"),
+    ],
+    ids=["single", "pair", "small"],
+)
+def test_get_circuit_size_scale_override_rejected_at_or_below_small(circuit_dir, circuit_name):
+    """Test that scale_override is rejected for circuits computed as 'small' or smaller."""
+    circuit_path = str(circuit_dir / circuit_name / "circuit_config.json")
+    c = Circuit(name="test", path=circuit_path)
+
+    # The override only applies above 'small' (microcircuit+); using it on a single/pair/small
+    # circuit raises rather than silently ignoring the override.
+    with pytest.raises(ValueError, match=r"scale_override should only be used for scales greater"):
+        get_circuit_size(c, scale_override=types.CircuitScale.region)
+
+
+def test_get_circuit_size_microcircuit_without_override():
+    """Test that a microcircuit-scale circuit keeps the computed 'microcircuit' scale by default."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_micro", path=circuit_path)
+
+    # Shrink the small-circuit threshold so the 10-neuron circuit is computed as "microcircuit".
+    with patch("obi_one.utils.circuit.MAX_SMALL_MICROCIRCUIT_SIZE", 5):
+        scale, num_nrn, _num_syn, _num_conn = get_circuit_size(c)
+
+    assert scale == types.CircuitScale.microcircuit
+    assert num_nrn == 10
+
+
+def test_get_circuit_size_scale_override_applied_for_microcircuit():
+    """Test that scale_override replaces the computed scale for a microcircuit-scale circuit."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_micro", path=circuit_path)
+
+    # Shrink the small-circuit threshold so the 10-neuron circuit is computed as "microcircuit",
+    # where the override does apply.
+    with patch("obi_one.utils.circuit.MAX_SMALL_MICROCIRCUIT_SIZE", 5):
+        scale, num_nrn, _num_syn, _num_conn = get_circuit_size(
+            c, scale_override=types.CircuitScale.region
+        )
+
+    assert scale == types.CircuitScale.region
+    assert num_nrn == 10
+
+
 def test_run_validation_valid_circuit():
     """Test that validation passes for a valid circuit."""
     circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
@@ -362,10 +411,21 @@ def _register_and_get_scale(scale_override):
     return client.register_entity.call_args.args[0].scale
 
 
-def test_register_circuit_scale_override_replaces_computed_scale():
-    """Test that scale_override replaces the auto-computed scale on the registered circuit."""
-    # N_10 is auto-computed as "small"; the override must win.
-    assert _register_and_get_scale(types.CircuitScale.region) == types.CircuitScale.region
+def test_register_circuit_scale_override_rejected_for_small_circuit():
+    """Test that scale_override raises (via get_circuit_size) for a 'small' circuit."""
+    # N_10 is auto-computed as "small"; the override is invalid at/below small scale, so
+    # register_circuit propagates the ValueError raised by get_circuit_size.
+    with pytest.raises(ValueError, match=r"scale_override should only be used for scales greater"):
+        _register_and_get_scale(types.CircuitScale.region)
+
+
+def test_register_circuit_scale_override_applied_for_microcircuit():
+    """Test that register_circuit forwards scale_override and it wins for a microcircuit."""
+    # Shrink the small-circuit threshold so N_10 is computed as "microcircuit", where the
+    # override applies. This proves register_circuit forwards scale_override to get_circuit_size.
+    with patch("obi_one.utils.circuit.MAX_SMALL_MICROCIRCUIT_SIZE", 5):
+        scale = _register_and_get_scale(types.CircuitScale.region)
+    assert scale == types.CircuitScale.region
 
 
 def test_register_circuit_without_scale_override_uses_computed_scale():

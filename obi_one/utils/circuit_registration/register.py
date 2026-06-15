@@ -136,6 +136,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         subject: Resolved subject entity.
         target_simulator: Target simulator for the circuit.
         scale_override: If provided, override the automatically computed circuit scale.
+            Only works for scales greater than 'small' (e.g. microcircuit, whole-brain).
         contact_email: Contact email address (optional).
         published_in: Human-readable publication string (optional).
         experiment_date: Experiment/build date (optional).
