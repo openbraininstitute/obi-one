@@ -2,11 +2,15 @@
 
 import shutil
 from pathlib import Path
+import tempfile
 
 import bluepysnap
 import bluepysnap.nodes
 import h5py
 import libsonata
+import uuid
+
+from entitysdk import Client
 
 from obi_one.utils.circuit import (
     BCL_TEMPLATE_FORMAT,
@@ -14,6 +18,16 @@ from obi_one.utils.circuit import (
     get_source_morph_dirs,
     read_node_file,
 )
+from obi_one.utils.circuit_customization.download import download_node_sets
+from obi_one.utils.circuit_customization.upload import upload_customized_circuit
+from obi_one.utils.circuit_customization.validations.new_emodels import (
+    check_bluecellulab_initializable,
+    check_hoc_files_exist,
+    check_hoc_mechanisms_compatible_with_circuit,
+    check_new_hoc_in_nodes_file,
+    check_new_node_columns,
+)
+from obi_one.utils.circuit_registration.links import CustomizationType
 from obi_one.utils.mechanisms import clean_compiled_mechanisms, compile_mechanisms
 
 type Memodel_tuple = tuple[str, str]
@@ -243,3 +257,73 @@ def create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
 
     # - return path of updated circuit
     return Path(new_circuit_path)
+
+
+def run(
+    client: Client,
+    parent_circuit_id: str | uuid.UUID,
+    new_node_file_path: str | Path,
+    new_hoc_files_paths: list[str | Path],
+    name: str,
+    description: str,
+    new_circuit_path: str | Path | None = None,
+    contact_email: str | None = None,
+    dry_run: bool = False,
+):
+    """Validate modifications, build and upload modified circuit."""
+    # check existence of new circuit path
+
+    # download parent circuit: need old node file path, old hoc dir
+
+    # validate
+    # with tempfile.TemporaryDirectory() as tmp:
+    #     old_nodes_file_path = download_node_sets(
+    #         circuit_id=parent_circuit_id,
+    #         db_client=client,
+    #         dest_dir=tmp,
+    #     )
+    #     check_hoc_mechanisms_compatible_with_circuit(
+    #         db_client=client,
+    #         hoc_paths=new_hoc_files_paths,
+    #         circuit_id=parent_circuit_id,
+    #     )
+    #     check_new_node_columns(
+    #         old_node_file_path=old_nodes_file_path,
+    #         new_node_file_path=new_node_file_path,
+    #     )
+    #     check_hoc_files_exist(
+    #         node_file_path=new_node_file_path,
+    #         old_hoc_dir: str | Path,
+    #         new_hoc_dir: str | Path,
+    #     )
+    #     check_new_hoc_in_nodes_file(
+    #         new_node_file_path=new_node_file_path,
+    #         new_hoc_paths=new_hoc_files_paths,
+    #     )
+    #     check_bluecellulab_initializable(
+    #         paths: list[dict],
+    #         circuit_id: str | uuid.UUID,
+    #         proj_context: entitysdk.ProjectContext,
+    #         environment: str,
+    #         access_token: str,
+    #     )
+
+    # # build
+    # new_circuit_path = create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
+    #     parent_circuit_path,
+    #     new_nodes_file_path,
+    #     new_emodels_file_paths,
+    #     new_circuit_path, # path, str or None
+    # )
+
+    # # upload
+    # return upload_customized_circuit(
+    #     client=client,
+    #     name=name,
+    #     description=description,
+    #     circuit_path=new_circuit_path,
+    #     customized_from=uuid.UUID(parent_circuit_id),
+    #     customization_type=CustomizationType.emodel_addition,
+    #     contact_email=contact_email,
+    #     dry_run=dry_run,
+    # )

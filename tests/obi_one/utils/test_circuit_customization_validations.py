@@ -62,7 +62,7 @@ def test_check_hoc_files_exist(tmp_path):
     new_hoc_dir.mkdir()
 
     with pytest.raises(FileNotFoundError):
-        check_hoc_files_exist(NODES_FILE_PATH, old_hoc_dir, new_hoc_dir)
+        check_hoc_files_exist(NODES_FILE_PATH, old_hoc_dir, [])
 
     # create hoc files in one dir
     node_pop = read_node_file(NODES_FILE_PATH)
@@ -73,13 +73,17 @@ def test_check_hoc_files_exist(tmp_path):
         (old_hoc_dir / f"{temp}.hoc").touch()
 
     # should pass since all hoc files exist
-    check_hoc_files_exist(NODES_FILE_PATH, old_hoc_dir, new_hoc_dir)
+    check_hoc_files_exist(NODES_FILE_PATH, old_hoc_dir, [])
 
     # remove hoc files from directory and add them to new dir and check again
     for temp in templates_names:
         (old_hoc_dir / f"{temp}.hoc").unlink()
         (new_hoc_dir / f"{temp}.hoc").touch()
-    check_hoc_files_exist(NODES_FILE_PATH, old_hoc_dir, new_hoc_dir)
+    check_hoc_files_exist(
+        NODES_FILE_PATH,
+        old_hoc_dir,
+        [new_hoc_dir / f"{temp}.hoc" for temp in templates_names]
+    )
 
 
 def test_check_new_hoc_in_nodes_file(tmp_path):

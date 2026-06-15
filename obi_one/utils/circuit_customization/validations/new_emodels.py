@@ -15,7 +15,7 @@ from obi_one.utils.mechanisms import clean_compiled_mechanisms, compile_mechanis
 
 
 def check_hoc_mechanisms_compatible_with_circuit(
-    db_client: Client, hoc_path: str | Path, circuit_id: str | uuid.UUID
+    db_client: Client, hoc_paths: list[str | Path], circuit_id: str | uuid.UUID
 ) -> None:
     """Checks hoc mechanisms are compatible with the circuit mechanisms.
 
@@ -23,7 +23,8 @@ def check_hoc_mechanisms_compatible_with_circuit(
     mechanism suffixes are included in that set.
     """
     expected_suffixes = get_mechanisms_suffixes(circuit_id=circuit_id, db_client=db_client)
-    check_mechanisms(hoc_path=hoc_path, expected_suffixes=expected_suffixes)
+    for hoc_path in hoc_paths:
+        check_mechanisms(hoc_path=hoc_path, expected_suffixes=expected_suffixes)
 
 
 def compile_mechs_and_load_hoc(
@@ -180,8 +181,9 @@ def check_new_node_columns(old_node_file_path: str | Path, new_node_file_path: s
             raise ValueError(msg)
 
 
+# modify this: hsould accpet list of hoc paths, not a dir
 def check_hoc_files_exist(
-    node_file_path: str | Path, old_hoc_dir: str | Path, new_hoc_dir: str | Path
+    node_file_path: str | Path, old_hoc_dir: str | Path, new_hoc_file_paths: list[str | Path]
 ) -> None:
     """Checks that each model template in the node file has a corresponding hoc file.
 
@@ -191,12 +193,13 @@ def check_hoc_files_exist(
     Args:
         node_file_path: path to the new node file
         old_hoc_dir: path to the directory containing the hoc files of the parent circuit
-        new_hoc_dir: path to the direcotry containing the new hoc files
+        new_hoc_file_paths: paths to the new hoc files
     """
     node_pop = read_node_file(node_file_path)
     selection = node_pop.select_all()
 
     model_templates = set(node_pop.get_attribute("model_template", selection))
+    new_hoc_file_stems = set(str(Path(hoc_path).stem) for hoc_path in new_hoc_file_paths)
     for model_template in model_templates:
         if ":" not in model_template:
             msg = (
@@ -208,11 +211,10 @@ def check_hoc_files_exist(
             msg = f"Expects model template to be of extention 'hoc', got {ftype}"
             raise ValueError(msg)
         old_fpath = Path(old_hoc_dir) / f"{fname}.hoc"
-        new_fpath = Path(new_hoc_dir) / f"{fname}.hoc"
-        if not old_fpath.exists() and not new_fpath.exists():
+        if not old_fpath.exists() and fname not in new_hoc_file_stems:
             msg = (
-                f"Hoc file for model template {model_template} not found in {old_hoc_dir} "
-                f"nor in {new_hoc_dir}"
+                f"Hoc file for model template {model_template} not found in circuit directory "
+                f"nor in provided new hoc files."
             )
             raise FileNotFoundError(msg)
 
