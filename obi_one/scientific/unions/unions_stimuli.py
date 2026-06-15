@@ -3,6 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.electric_field import (
     SpatiallyUniformElectricFieldStimulus,
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
@@ -90,6 +91,13 @@ MEModelStimulusUnion = Annotated[
 
 IonChannelModelStimulusUnion = Annotated[
     SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
+    Discriminator("type"),
+]
+
+"""Brian2-specific stimulus types."""
+
+Brian2CircuitStimulusUnion = Annotated[
+    Brian2DirectPoissonStimulus,
     Discriminator("type"),
 ]
 

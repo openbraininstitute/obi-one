@@ -57,6 +57,16 @@ SimulationNeuronSetUnion = Annotated[
     Discriminator("type"),
 ]
 
+Brian2SimulationNeuronSetUnion = Annotated[
+    IDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
+LearningEngineNeuronSetUnion = Annotated[
+    IDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
 
 CircuitExtractionNeuronSetUnion = Annotated[
     AllNeurons
