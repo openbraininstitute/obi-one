@@ -1,3 +1,13 @@
-from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
+"""Level of detail (LOD) mesh generation task pipeline."""
 
-__all__ = ["MeshLodGenerationScanConfig"]
+from obi_one.scientific.tasks.mesh_lod_generation.config import (
+    MeshLodGenerationScanConfig,
+    MeshLodGenerationSingleConfig,
+)
+from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationTask
+
+__all__ = [
+    "MeshLODGenerationTask",
+    "MeshLodGenerationScanConfig",
+    "MeshLodGenerationSingleConfig",
+]

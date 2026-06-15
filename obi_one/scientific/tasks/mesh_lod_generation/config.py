@@ -1,27 +1,32 @@
+"""Configuration schemas for the level-of-detail (LOD) mesh generation pipeline."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
+
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-from obi_one.core.scan_config import ScanConfig
-from obi_one.types import TaskType
 
+class MeshLodGenerationScanConfig(BaseModel):
+    """Configuration schema for processing LOD mesh scans."""
 
-class MeshLodGenerationScanConfig(ScanConfig):
-    """Configuration for generating LOD meshes from a registered EM-cell OBJ asset."""
-
-    name: ClassVar[str] = "Mesh LOD Generation"
-    description: ClassVar[str] = (
-        "Generates web-compatible Level-of-Detail meshes from a registered EM-cell OBJ "
-        "asset using ultraliser and uploads them as a directory block on the same entity."
+    entity_id: UUID = Field(
+        ...,
+        description="The unique identifier of the target EMCellMesh entity.",
+    )
+    obj_asset_id: UUID = Field(
+        ...,
+        description="The specific asset ID corresponding to the source OBJ payload data.",
     )
 
-    task_type: TaskType = TaskType.mesh_lod_generation
 
-    entity_id: UUID
-    """The EMCellMesh entity to attach the generated LOD assets to."""
+# Alias single configuration mapping for task registry deserialization matching
+MeshLodGenerationSingleConfig = MeshLodGenerationScanConfig
 
-    obj_asset_id: UUID
-    """The asset ID of the source OBJ file to generate LODs from."""
+__all__ = [
+    "MeshLodGenerationScanConfig",
+    "MeshLodGenerationSingleConfig",
+]
