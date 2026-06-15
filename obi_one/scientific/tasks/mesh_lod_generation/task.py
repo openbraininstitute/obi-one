@@ -19,11 +19,12 @@ if TYPE_CHECKING:
 
     import entitysdk
 
-    from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
 
 import ultraliser
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel
+
+from obi_one.core.task import Task
 
 
 def _download_obj(
@@ -78,24 +79,18 @@ def _upload_lod_directory(
     return asset_id
 
 
-def run_mesh_lod_generation(
-    config: MeshLodGenerationScanConfig,
-    client: entitysdk.Client,
-) -> str:
-    """Execute the full LOD generation pipeline for a single config.
+class MeshLODGenerationTask(Task):
+    def execute(self) -> str:
+        entity_id = self.config.entity_id
+        obj_asset_id = self.config.obj_asset_id
 
-    Returns the asset ID of the uploaded LOD directory block.
-    """
-    entity_id = config.entity_id
-    obj_asset_id = config.obj_asset_id
+        with tempfile.TemporaryDirectory(prefix="mesh_lod_") as tmp:
+            tmp_path = pathlib.Path(tmp)
+            obj_path = tmp_path / "input.obj"
+            output_dir = tmp_path / "output_lods"
 
-    with tempfile.TemporaryDirectory(prefix="mesh_lod_") as tmp:
-        tmp_path = pathlib.Path(tmp)
-        obj_path = tmp_path / "input.obj"
-        output_dir = tmp_path / "output_lods"
+            _download_obj(self.client, entity_id, obj_asset_id, obj_path)
+            lod_files = _generate_lods(obj_path, output_dir)
+            asset_id = _upload_lod_directory(self.client, entity_id, lod_files)
 
-        _download_obj(client, entity_id, obj_asset_id, obj_path)
-        lod_files = _generate_lods(obj_path, output_dir)
-        asset_id = _upload_lod_directory(client, entity_id, lod_files)
-
-    return asset_id
+        return asset_id
