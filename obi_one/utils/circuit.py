@@ -673,7 +673,14 @@ def get_mechanisms_suffixes(circuit_id: str | uuid.UUID, db_client: Client) -> s
         fpaths = download_mechanisms(
             circuit_id=str(circuit_id), db_client=db_client, dest_dir=Path(tmp)
         )
-        suffixes.update(get_suffix_from_mod_file(fpath) for fpath in fpaths)
+        for fpath in fpaths:
+            try:
+                suffix = get_suffix_from_mod_file(fpath)
+                suffixes.add(suffix)
+            except ValueError:
+                # ValueError is raised when a point process mechanism is found (e.g. synpase)
+                # point process mechanisms do not have any suffix
+                pass
 
     return suffixes
 

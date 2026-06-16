@@ -11,6 +11,8 @@ import libsonata
 import uuid
 
 from entitysdk import Client
+from entitysdk.models import Circuit
+from entitysdk.staging.circuit import stage_circuit
 
 from obi_one.utils.circuit import (
     BCL_TEMPLATE_FORMAT,
@@ -74,6 +76,36 @@ def map_ids_to_updated_memodel(
                 new_to_old_memodel_mapping[new_hoc_morph_names] = old_hoc_morph_names
 
     return old_id_mapping, new_id_mapping, new_to_old_memodel_mapping
+
+
+def get_hoc_morph_paths(
+        old_nodes_file_path: str | Path,
+        new_node_file_path: str | Path,
+        new_hoc_files_paths: list[str | Path],
+        parent_circuit_emodels_dir: str | Path,
+        available_parent_morph_dirs: dict[str, str],
+    ) -> list[dict[str: str]]:
+    """Returns a list of dict containing the hoc and morphology path for each memodel."""
+    hoc_morph_paths = []
+    _, new_hoc_morph_names_mapping, _ = map_ids_to_updated_memodel(
+        old_nodes_file_path=old_nodes_file_path,
+        new_nodes_file_path=new_node_file_path,
+        new_emodels_file_paths=new_hoc_files_paths,
+    )
+
+    for memodel in new_hoc_morph_names_mapping.values():
+        hoc_fname, morph_stem = memodel
+        selected_hoc_path = None
+        for new_hoc_file_path in new_hoc_files_paths:
+            new_hoc_file = str(Path(new_hoc_file_path).name)
+            if hoc_fname == new_hoc_file:
+                selected_hoc_path = new_hoc_file_path
+        if selected_hoc_path is None:
+            selected_hoc_path = Path(parent_circuit_emodels_dir) / hoc_fname
+        morph_fpath = get_morphology_path(morph_stem, available_parent_morph_dirs)
+        hoc_morph_paths.append({"hoc_path": selected_hoc_path, "morphology_path": morph_fpath})
+    
+    return hoc_morph_paths
 
 
 def get_all_emodel_file_paths(
@@ -272,58 +304,77 @@ def run(
 ):
     """Validate modifications, build and upload modified circuit."""
     # check existence of new circuit path
+    if Path(new_circuit_path).exists():
+        msg = (
+            f"Found {new_circuit_path}. Cannot create new circuit. "
+            "Please provide a path that is empty."
+        )
+        raise FileExistsError(msg)
 
-    # download parent circuit: need old node file path, old hoc dir
+    # download parent circuit
+    with tempfile.TemporaryDirectory() as parent_circuit_path:
+        circuit_model = client.get_entity(entity_id=parent_circuit_id, entity_type=Circuit)
+        stage_circuit(client=client, model=circuit_model, output_dir=Path(parent_circuit_path))
+        parent_pop = get_biophysical_population(parent_circuit_path)
+        parent_circuit_emodels_dir = (
+            parent_pop.models._properties.biophysical_neuron_models_dir  # noqa: SLF001
+        )
+        available_parent_morph_dirs = get_source_morph_dirs(parent_pop)
+        old_nodes_file_path = parent_pop.h5_filepath
 
-    # validate
-    # with tempfile.TemporaryDirectory() as tmp:
-    #     old_nodes_file_path = download_node_sets(
-    #         circuit_id=parent_circuit_id,
-    #         db_client=client,
-    #         dest_dir=tmp,
-    #     )
-    #     check_hoc_mechanisms_compatible_with_circuit(
-    #         db_client=client,
-    #         hoc_paths=new_hoc_files_paths,
-    #         circuit_id=parent_circuit_id,
-    #     )
-    #     check_new_node_columns(
-    #         old_node_file_path=old_nodes_file_path,
-    #         new_node_file_path=new_node_file_path,
-    #     )
-    #     check_hoc_files_exist(
-    #         node_file_path=new_node_file_path,
-    #         old_hoc_dir: str | Path,
-    #         new_hoc_dir: str | Path,
-    #     )
-    #     check_new_hoc_in_nodes_file(
-    #         new_node_file_path=new_node_file_path,
-    #         new_hoc_paths=new_hoc_files_paths,
-    #     )
-    #     check_bluecellulab_initializable(
-    #         paths: list[dict],
-    #         circuit_id: str | uuid.UUID,
-    #         proj_context: entitysdk.ProjectContext,
-    #         environment: str,
-    #         access_token: str,
-    #     )
+        # validate
+        check_hoc_mechanisms_compatible_with_circuit(
+            db_client=client,
+            hoc_paths=new_hoc_files_paths,
+            circuit_id=parent_circuit_id,
+        )
+        check_new_node_columns(
+            old_node_file_path=old_nodes_file_path,
+            new_node_file_path=new_node_file_path,
+        )
+        print("debug: after check new node columns")
+        check_hoc_files_exist(
+            node_file_path=new_node_file_path,
+            old_hoc_dir=parent_circuit_emodels_dir,
+            new_hoc_file_paths=new_hoc_files_paths,
+        )
+        check_new_hoc_in_nodes_file(
+            new_node_file_path=new_node_file_path,
+            new_hoc_paths=new_hoc_files_paths,
+        )
 
-    # # build
-    # new_circuit_path = create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
-    #     parent_circuit_path,
-    #     new_nodes_file_path,
-    #     new_emodels_file_paths,
-    #     new_circuit_path, # path, str or None
-    # )
+        # TODO: try to have consitent namings
+        hoc_morph_paths = get_hoc_morph_paths(
+            old_nodes_file_path=old_nodes_file_path,
+            new_node_file_path=new_node_file_path,
+            new_hoc_files_paths=new_hoc_files_paths,
+            parent_circuit_emodels_dir=parent_circuit_emodels_dir,
+            available_parent_morph_dirs=available_parent_morph_dirs,
+        )
 
-    # # upload
-    # return upload_customized_circuit(
-    #     client=client,
-    #     name=name,
-    #     description=description,
-    #     circuit_path=new_circuit_path,
-    #     customized_from=uuid.UUID(parent_circuit_id),
-    #     customization_type=CustomizationType.emodel_addition,
-    #     contact_email=contact_email,
-    #     dry_run=dry_run,
-    # )
+        check_bluecellulab_initializable(
+            db_client=client,
+            paths=hoc_morph_paths,
+            circuit_id=parent_circuit_id,
+        )
+
+        # build
+        # first have to download whole circuit
+        new_circuit_path = create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
+            parent_circuit_path=parent_circuit_path,
+            new_nodes_file_path=new_node_file_path,
+            new_emodels_file_paths=new_hoc_files_paths,
+            new_circuit_path=new_circuit_path, # path, str or None
+        )
+
+    # upload
+    return upload_customized_circuit(
+        client=client,
+        name=name,
+        description=description,
+        circuit_path=new_circuit_path,
+        customized_from=uuid.UUID(parent_circuit_id),
+        customization_type=CustomizationType.emodel_addition,
+        contact_email=contact_email,
+        dry_run=dry_run,
+    )
