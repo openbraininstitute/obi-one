@@ -21,7 +21,30 @@ class AllNeuronsBase(NeuronSet, abc.ABC):
     def get_node_set_definition(
         self, circuit: Circuit, *, force_resolve_ids: bool = False
     ) -> tuple[dict | list, dict]:
-        """Returns node set definition combining all matching populations."""
+        """Returns the SONATA node set definition, optionally forcing to resolve individual IDs.
+
+        Returns a tuple of (expression, combined) where:
+
+        - expression (dict): A single SONATA node set expression. Examples:
+            - Symbolic by population: {"population": "pop_name"}
+            - Symbolic by properties: {"layer": "6", "synapse_class": "EXC"}
+            - Resolved IDs: {"population": "pop_name", "node_id": [1, 2, 3]}
+
+        - expression (list): A compound expression referencing multiple named node sets.
+            Example: ["__ClassName__blockname__0__", "__ClassName__blockname__1__"]
+            Each name must exist as a key in the combined dict.
+            Also used for symbolic references to existing node sets: ["Layer6"]
+
+        - combined (dict): Additional node set definitions needed by a compound expression.
+            Example: {"__ClassName__blockname__0__": {"population": "A", "node_id": [...]},
+                      "__ClassName__blockname__1__": {"population": "B", "node_id": [...]}}
+            Empty ({}) when expression is a single dict.
+
+        Args:
+            circuit: The circuit to resolve the node set in.
+            force_resolve_ids: If True, always resolve to explicit neuron IDs
+                instead of preserving symbolic expressions.
+        """
         if not self.has_block_name():
             msg = "Block name must be set."
             raise ValueError(msg)

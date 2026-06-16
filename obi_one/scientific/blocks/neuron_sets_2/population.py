@@ -97,8 +97,23 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
     ) -> tuple[dict | list, dict]:
         """Returns the SONATA node set definition, optionally forcing to resolve individual IDs.
 
-        In case of a compound expression (list expression), any new definitions
-        to be combined are returned as dict.
+        Returns a tuple of (expression, combined) where:
+
+        - expression (dict): A single SONATA node set expression. Examples:
+            - Symbolic by population: {"population": "pop_name"}
+            - Symbolic by properties: {"layer": "6", "synapse_class": "EXC"}
+            - Resolved IDs: {"population": "pop_name", "node_id": [1, 2, 3]}
+
+        - expression (list): A compound expression referencing multiple named node sets.
+            This is not used for population neuron sets.
+
+        - combined (dict): Additional node set definitions needed by a compound expression.
+            Always empty ({}) for population neuron sets.
+
+        Args:
+            circuit: The circuit to resolve the node set in.
+            force_resolve_ids: If True, always resolve to explicit neuron IDs
+                instead of preserving symbolic expressions.
         """
         if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
             # Symbolic expression can be preserved
