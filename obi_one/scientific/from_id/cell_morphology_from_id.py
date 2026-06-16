@@ -9,10 +9,10 @@ import morphio
 import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import CellMorphology, EMCellMesh, SkeletonizationExecution
+from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
 from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
 from entitysdk.models.entity import Entity
-from entitysdk.types import CellMorphologyProtocolDesign
+from entitysdk.types import CellMorphologyProtocolDesign, TaskActivityType, EntityType
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
@@ -90,12 +90,16 @@ class CellMorphologyFromID(EntityFromID):
             return False
 
         activity = db_client.search_entity(
-            entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
+            entity_type=TaskActivity, query={"task_activity_type": TaskActivityType.skeletonization__execution,
+                                             "generated__id": morph_entity.id
+                                             }
         ).one_or_none()
         if activity is None:
             return False
-
-        return (len(activity.used) == 1) and activity.used[0].type == "em_cell_mesh"  # ty:ignore[invalid-argument-type, not-subscriptable]
+        if (len(activity.used) != 1) or (activity.used[0].type != EntityType.task_config):
+            return False
+        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)
+        return len(task_cfg.inputs) == 1
 
     def source_mesh_entity(self, db_client: entitysdk.client.Client = None) -> EMCellMesh:  # ty:ignore[invalid-parameter-default]
         """EMCellMesh entity that the morphology originates from.
@@ -110,9 +114,12 @@ class CellMorphologyFromID(EntityFromID):
 
         morph_entity = self.entity(db_client=db_client)
         activity = db_client.search_entity(
-            entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
+            entity_type=TaskActivity, query={"task_activity_type": TaskActivityType.skeletonization__execution,
+                                             "generated__id": morph_entity.id
+                                             }
         ).one_or_none()
-        source_mesh = db_client.get_entity(entity_id=activity.used[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
+        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)
+        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
         return source_mesh
 
     def write_spiny_neuron_h5(
