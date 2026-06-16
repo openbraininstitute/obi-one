@@ -119,7 +119,7 @@ def test_estimate_task_cost(project_context, accounting_parameters, task_definit
         )
 
     assert isinstance(info, TaskAccountingInfo)
-    assert info.cost == 100.0  # noqa: RUF069
+    assert info.cost == pytest.approx(100.0)
     assert info.parameters == accounting_parameters
 
 
@@ -333,7 +333,6 @@ def test_evaluate_circuit_simulation_parameters__default_duration(db_client, htt
     assert res.service_subtype == ServiceSubtype.MICROCIRCUIT_SIM
     # 419 neurons * 1 second (default) = 419
     assert res.count == 419
-
 
 
 def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):

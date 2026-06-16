@@ -3,7 +3,7 @@ from uuid import UUID
 
 import httpx
 from entitysdk import Client, ProjectContext, models
-from entitysdk.types import AssetLabel, CircuitScale, ContentType
+from entitysdk.types import AssetLabel, CircuitScale
 from fastapi import HTTPException
 from obp_accounting_sdk import AccountingSessionFactory, OneshotSession
 from obp_accounting_sdk.constants import ServiceSubtype
@@ -214,7 +214,7 @@ def _get_simulation_duration_ms(
         tstop = config.get("run", {}).get("tstop")
         if tstop is not None:
             return float(tstop)
-    except Exception:
+    except Exception:  # noqa: BLE001
         L.warning(f"Could not read sonata_simulation_config for simulation {simulation.id}")
 
     # Fallback to scan_parameters
