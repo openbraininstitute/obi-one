@@ -65,7 +65,8 @@ def resolve_neuron(  # NOQA: PLR0914
     Args:
         neuron_ref: A CellMorphologyFromID or MEModelFromID reference.
         db_client: Entity SDK client.
-        out_root: Root output directory for smooth morphology files and emodel hoc files, if applicable.
+        out_root: Root output directory for smooth morphology files and emodel hoc files,
+        if applicable.
         spiny_morph_out_root: Root output directory for spiny morphology files.
 
     Returns:
