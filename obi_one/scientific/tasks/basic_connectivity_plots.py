@@ -27,9 +27,13 @@ from obi_one.core.task import Task
 
 with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     from obi_one.scientific.library.basic_connectivity_plots_helpers import (
+        CANONICAL_EXC,
+        CANONICAL_INH,
+        assemble_property_colormapping,
         compute_global_connectivity,
         connection_probability_pathway,
         connection_probability_within_pathway,
+        find_canonical_synapse_classes,
         plot_connection_probability_pathway_stats,
         plot_connection_probability_stats,
         plot_network_legends,
@@ -38,10 +42,6 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
         plot_small_network,
         plot_smallMC,
         plot_smallMC_network_stats,
-        assemble_property_colormapping,
-        find_canonical_synapse_classes,
-        CANONICAL_EXC,
-        CANONICAL_INH
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
