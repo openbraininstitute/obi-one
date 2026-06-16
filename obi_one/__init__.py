@@ -157,6 +157,9 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PointNeuronCircuitFromEMScanConfig",
+    "PointNeuronCircuitFromEMSingleConfig",
+    "PointNeuronCircuitFromEMTask",
     "PoissonDistribution",
     "PoissonSpikeStimulus",
     "PositiveFloatRange",
@@ -493,6 +496,11 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
+)
+from obi_one.scientific.tasks.point_neuron_circuit_from_em import (
+    PointNeuronCircuitFromEMScanConfig,
+    PointNeuronCircuitFromEMSingleConfig,
+    PointNeuronCircuitFromEMTask,
 )
 from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,

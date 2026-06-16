@@ -43,3 +43,4 @@ class TaskType(StrEnum):
     morphology_decontainerization = auto()
     morphology_locations = auto()
     morphology_metrics = auto()
+    point_neuron_circuit_from_em = auto()
