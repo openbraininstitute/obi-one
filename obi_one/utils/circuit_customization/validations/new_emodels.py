@@ -5,7 +5,6 @@ import uuid
 from multiprocessing import Process, Queue
 from pathlib import Path
 
-import entitysdk
 from entitysdk import Client
 
 from obi_one.scientific.validations.emodels import bluecellulab_initializable, check_mechanisms
@@ -46,7 +45,7 @@ def check_bluecellulab_initializable_subprocess(
             threshold_current=0.0,
         )
         result_queue.put(True)  # noqa: FBT003
-    except Exception as e:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         result_queue.put(False)  # noqa: FBT003
 
 
@@ -71,7 +70,7 @@ def check_bluecellulab_initializable(
         mech_dir = Path("mechanisms")
         if mech_dir.exists():
             shutil.rmtree(mech_dir)
-        
+
         _ = download_mechanisms(
             circuit_id=str(circuit_id), db_client=db_client, dest_dir=Path(mech_dir)
         )
@@ -116,8 +115,12 @@ def check_new_node_columns(old_node_file_path: str | Path, new_node_file_path: s
 
     old_attribute_names = set(old_node_pop.attribute_names)
     new_attribute_names = set(new_node_pop.attribute_names)
-    old_dynamic_attribute_names = set(attr for attr in old_node_pop.dynamics_attribute_names if "deprecated" not in attr)
-    new_dynamic_attribute_names = set(attr for attr in new_node_pop.dynamics_attribute_names if "deprecated" not in attr)
+    old_dynamic_attribute_names = set(
+        attr for attr in old_node_pop.dynamics_attribute_names if "deprecated" not in attr
+    )
+    new_dynamic_attribute_names = set(
+        attr for attr in new_node_pop.dynamics_attribute_names if "deprecated" not in attr
+    )
 
     if new_attribute_names != old_attribute_names:
         msg = (

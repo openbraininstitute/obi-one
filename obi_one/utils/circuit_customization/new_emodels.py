@@ -1,15 +1,14 @@
 """Circuit customization: new emodels."""
 
 import shutil
-from pathlib import Path
 import tempfile
+import uuid
+from pathlib import Path
 
 import bluepysnap
 import bluepysnap.nodes
 import h5py
 import libsonata
-import uuid
-
 from entitysdk import Client
 from entitysdk.models import Circuit
 from entitysdk.staging.circuit import stage_circuit
@@ -20,7 +19,6 @@ from obi_one.utils.circuit import (
     get_source_morph_dirs,
     read_node_file,
 )
-from obi_one.utils.circuit_customization.download import download_node_sets
 from obi_one.utils.circuit_customization.upload import upload_customized_circuit
 from obi_one.utils.circuit_customization.validations.new_emodels import (
     check_bluecellulab_initializable,
@@ -79,12 +77,12 @@ def map_ids_to_updated_memodel(
 
 
 def get_hoc_morph_paths(
-        old_nodes_file_path: str | Path,
-        new_node_file_path: str | Path,
-        new_hoc_files_paths: list[str | Path],
-        parent_circuit_emodels_dir: str | Path,
-        available_parent_morph_dirs: dict[str, str],
-    ) -> list[dict[str: str]]:
+    old_nodes_file_path: str | Path,
+    new_node_file_path: str | Path,
+    new_hoc_files_paths: list[str | Path],
+    parent_circuit_emodels_dir: str | Path,
+    available_parent_morph_dirs: dict[str, str],
+) -> list[dict[str:str]]:
     """Returns a list of dict containing the hoc and morphology path for each memodel."""
     hoc_morph_paths = []
     _, new_hoc_morph_names_mapping, _ = map_ids_to_updated_memodel(
@@ -104,7 +102,7 @@ def get_hoc_morph_paths(
             selected_hoc_path = Path(parent_circuit_emodels_dir) / hoc_fname
         morph_fpath = get_morphology_path(morph_stem, available_parent_morph_dirs)
         hoc_morph_paths.append({"hoc_path": selected_hoc_path, "morphology_path": morph_fpath})
-    
+
     return hoc_morph_paths
 
 
@@ -360,11 +358,11 @@ def run(
 
         # build
         # first have to download whole circuit
-        new_circuit_path = create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
+        new_circuit_path = create_modified_circuit(
             parent_circuit_path=parent_circuit_path,
             new_nodes_file_path=new_node_file_path,
             new_emodels_file_paths=new_hoc_files_paths,
-            new_circuit_path=new_circuit_path, # path, str or None
+            new_circuit_path=new_circuit_path,  # path, str or None
         )
 
     # upload

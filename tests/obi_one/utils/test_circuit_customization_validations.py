@@ -80,9 +80,7 @@ def test_check_hoc_files_exist(tmp_path):
         (old_hoc_dir / f"{temp}.hoc").unlink()
         (new_hoc_dir / f"{temp}.hoc").touch()
     check_hoc_files_exist(
-        NODES_FILE_PATH,
-        old_hoc_dir,
-        [new_hoc_dir / f"{temp}.hoc" for temp in templates_names]
+        NODES_FILE_PATH, old_hoc_dir, [new_hoc_dir / f"{temp}.hoc" for temp in templates_names]
     )
 
 
