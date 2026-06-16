@@ -1,5 +1,6 @@
 """Circuit customization: population modification."""
 
+import json
 import shutil
 from pathlib import Path
 
@@ -172,6 +173,44 @@ def _update_edge_populations(
             old_epop_file.unlink(missing_ok=True)
 
 
+def _get_id_mapping_file(config_dict: dict) -> str:
+    return config_dict.get("components", {}).get("provenance", {}).get("id_mapping", "")
+
+
+def _update_id_mapping(
+    new_circuit: Circuit, parent_circuit: Circuit, new_circuit_path: Path
+) -> None:
+    """Validate that ID mapping is still valid. Removes old file if no longer referenced."""
+    cfg_dict = new_circuit.config
+    old_cfg_dict = parent_circuit.config
+
+    id_map_rel_file = _get_id_mapping_file(cfg_dict)
+    id_map_file = new_circuit_path / id_map_rel_file
+    old_id_map_rel_file = _get_id_mapping_file(old_cfg_dict)
+    old_id_map_file = new_circuit_path / old_id_map_rel_file
+    if id_map_rel_file:
+        if not id_map_file.is_file():
+            msg = f"ID mapping file '{id_map_file}' missing!"
+            raise ValueError(msg)
+        if id_map_file.suffix.lower() != ".json":
+            msg = "ID mapping file must be a .json file!"
+            raise ValueError(msg)
+    else:
+        if old_id_map_rel_file and old_id_map_file.is_file():
+            old_id_map_file.unlink(missing_ok=True)
+        return
+
+    with id_map_file.open("r") as f:
+        id_map = json.load(f)
+
+    for npop in new_circuit.nodes.population_names:
+        map_ids = id_map.get(npop, {}).get("new_id", [])
+        id_max = new_circuit.nodes[npop].size - 1
+        if not map_ids or min(map_ids) < 0 or max(map_ids) > id_max:
+            msg = f"ID mapping for node population '{npop}' inconsistent or missing!"
+            raise ValueError(msg)
+
+
 def create_modified_circuit(
     db_client: Client,
     circuit_id: str,
@@ -236,15 +275,13 @@ def create_modified_circuit(
     _update_node_sets(new_circuit, parent_circuit, new_node_sets_path)
     _update_node_populations(new_circuit, parent_circuit, new_node_population_paths)
     _update_edge_populations(new_circuit, parent_circuit, new_edge_population_paths)
+    _update_id_mapping(new_circuit, parent_circuit, new_circuit_path)
 
     # Validate customizations
-
-    # (1) Try loading circuit and get population sizes
-    # (2) Try loading node sets
-    # (3) Check if ID mapping is still valid, otherwise remove + warning
-    # (4) Check if existing morphologies are still used and none missing
-    # (5) Check if existing hoc files are still used and none missing
-
     check_customized_circuit(new_circuit_path)
+
+    # TODO: Check if ID mapping is still valid, otherwise remove + warning
+    # TODO: Check if existing morphologies are still used and none missing
+    # TODO: Check if existing hoc files are still used and none missing
 
     return new_circuit_path, from_circuit

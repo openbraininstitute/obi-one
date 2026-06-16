@@ -91,21 +91,22 @@ def check_input_files(
 
 
 def check_customized_circuit(new_circuit_path: Path) -> None:
-    """Validate that the customized circuit can be loaded and has valid populations.
+    """Validate that the customized circuit can be loaded successfully.
 
-    Attempts to load the circuit and access node/edge population sizes. This will
-    raise if files are missing or corrupted.
+    Attempts to load the circuit and access node/edge populations and node sets.
+    This will raise if files are missing or corrupted.
 
     Args:
         new_circuit_path: Path to the new circuit folder (containing circuit_config.json).
 
     Raises:
-        ValueError: If the circuit cannot be loaded or population files are invalid.
+        ValueError: If the circuit cannot be loaded or population/node set files are invalid.
     """
     try:
         circuit = Circuit(new_circuit_path / "circuit_config.json")
         circuit.nodes.size
         circuit.edges.size
+        circuit.node_sets
     except Exception as e:
         msg = f"Failed to load customized circuit: {e}"
         raise ValueError(msg) from e
