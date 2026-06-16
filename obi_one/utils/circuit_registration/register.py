@@ -9,7 +9,7 @@ from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
-from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
+from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
 from obi_one.utils.circuit_registration.assets import register_asset
 from obi_one.utils.circuit_registration.generate import generate_additional_circuit_assets
 from obi_one.utils.circuit_registration.links import (
@@ -30,34 +30,64 @@ from obi_one.utils.circuit_registration.resolve import (
     get_root_circuit,
     get_subject,
 )
+from obi_one.utils.io import extract_tar_gz
 
 L = logging.getLogger(__name__)
 
 
 def _resolve_target_simulator(
-    target_simulator: types.TargetSimulator | None,
+    target_simulator: types.TargetSimulator,
     circuit: OBICircuit,
-) -> types.TargetSimulator | None:
+) -> types.TargetSimulator:
     """Resolve target simulator from user input and circuit config.
 
-    If both are specified, checks consistency. If only the config specifies it,
-    uses the config value.
+    Checks consistency between the provided target_simulator and the value
+    specified in the circuit config (if any).
     """
     cfg_target_simulator = circuit.sonata_circuit.config.get("target_simulator")
-    if cfg_target_simulator:
-        if target_simulator:
-            if target_simulator != cfg_target_simulator:
-                msg = (
-                    f"Specified target simulator '{target_simulator}' does not match"
-                    f" '{cfg_target_simulator}' in circuit config!"
-                )
-                raise ValueError(msg)
-        else:
-            target_simulator = cfg_target_simulator
+    if cfg_target_simulator and target_simulator != cfg_target_simulator:
+        msg = (
+            f"Specified target simulator '{target_simulator}' does not match"
+            f" '{cfg_target_simulator}' in circuit config!"
+        )
+        raise ValueError(msg)
     return target_simulator
 
 
-def register_circuit(  # noqa: PLR0913, PLR0914
+def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
+    """Resolve circuit_path to the circuit_config.json file.
+
+    If ``circuit_path`` is a .gz archive, it is extracted first and the original
+    compressed path is returned as the second element.  Otherwise the second
+    element is None.
+
+    Returns:
+        Tuple of (resolved circuit_config.json path, compressed path or None).
+    """
+    circuit_path = Path(circuit_path)
+    circuit_path_compressed: Path | None = None
+
+    if circuit_path.suffix == ".gz":
+        circuit_path_compressed = circuit_path
+        circuit_path = extract_tar_gz(circuit_path, clean=True)
+        L.info(f"Extracted compressed circuit '{circuit_path_compressed}' to '{circuit_path}'")
+
+    if circuit_path.is_dir():
+        config_candidate = circuit_path / "circuit_config.json"
+        if not config_candidate.exists():
+            # Archive may contain a single top-level directory; look one level deeper
+            subdirs = [d for d in circuit_path.iterdir() if d.is_dir()]
+            if len(subdirs) == 1:
+                config_candidate = subdirs[0] / "circuit_config.json"
+        circuit_path = config_candidate
+    if not circuit_path.exists():
+        msg = f"Circuit config not found at '{circuit_path}'!"
+        raise ValueError(msg)
+
+    return circuit_path, circuit_path_compressed
+
+
+def register_circuit(  # noqa: PLR0913, PLR0914, C901
     client: Client,
     circuit_path: str | Path,
     *,
@@ -66,7 +96,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     build_category: types.CircuitBuildCategory,
     brain_region: models.BrainRegion,
     subject: models.Subject,
-    target_simulator: types.TargetSimulator | None = None,
+    target_simulator: types.TargetSimulator,
+    scale_override: types.CircuitScale | None = None,
     contact_email: str | None = None,
     published_in: str | None = None,
     experiment_date: datetime | None = None,
@@ -80,6 +111,9 @@ def register_circuit(  # noqa: PLR0913, PLR0914
     publications: dict | None = None,
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
+    skip_validation: bool = False,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
@@ -94,14 +128,16 @@ def register_circuit(  # noqa: PLR0913, PLR0914
 
     Args:
         client: The entitycore SDK client.
-        circuit_path: Path to circuit_config.json (or the folder containing it).
+        circuit_path: Path to circuit_config.json (or the folder containing it,
+            or a compressed .gz archive of the circuit folder).
         name: Circuit name.
         description: Circuit description.
         build_category: Build category (computational_model, em_reconstruction).
         brain_region: Resolved brain region entity.
         subject: Resolved subject entity.
-        target_simulator: Target simulator for the circuit (optional,
-            defaults to NEURON if not provided).
+        target_simulator: Target simulator for the circuit.
+        scale_override: If provided, override the automatically computed circuit scale.
+            Only works for scales greater than 'small' (e.g. microcircuit, whole-brain).
         contact_email: Contact email address (optional).
         published_in: Human-readable publication string (optional).
         experiment_date: Experiment/build date (optional).
@@ -115,21 +151,22 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
-        skip_additional_assets: If True, skip generation of additional assets
+        skip_additional_assets: If True, skip generation/registration of additional assets
             (compressed circuit, matrices, plots, figures).
+        skip_validation: If True, skip SONATA circuit validation.
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform a dry run without registering anything.
 
     Returns:
         The registered circuit entity, or None if dry_run is True.
     """
-    # Resolve circuit_path to the circuit_config.json file
-    circuit_path = Path(circuit_path)
-    if circuit_path.is_dir():
-        circuit_path /= "circuit_config.json"
-    if not circuit_path.exists():
-        msg = f"Circuit config not found at '{circuit_path}'!"
+    # Validate that a license is provided for public circuits
+    if authorized_public and license is None:
+        msg = "A license is required when registering a public circuit (authorized_public=True)."
         raise ValueError(msg)
-    circuit_folder = circuit_path.parent
 
     # Validate species consistency
     if (
@@ -144,12 +181,32 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         )
         raise ValueError(msg)
 
+    # Resolve circuit_path to the circuit_config.json file
+    circuit_path, circuit_path_compressed = _resolve_circuit_path(circuit_path)
+    circuit_folder = circuit_path.parent
+
+    # Validate provided image paths
+    overview_image_path = Path(overview_image_path) if overview_image_path else None
+    sim_designer_image_path = Path(sim_designer_image_path) if sim_designer_image_path else None
+    if overview_image_path is not None and not overview_image_path.exists():
+        msg = f"Overview image file not found: '{overview_image_path}'"
+        raise FileNotFoundError(msg)
+    if sim_designer_image_path is not None and not sim_designer_image_path.exists():
+        msg = f"Sim designer image file not found: '{sim_designer_image_path}'"
+        raise FileNotFoundError(msg)
+
+    # Validate SONATA circuit
+    if not skip_validation:
+        run_validation(circuit_path)
+
     # Assure target simulator consistency
     c = OBICircuit(name=name, path=str(circuit_path))
     target_simulator = _resolve_target_simulator(target_simulator, c)
 
     # Compute scale, counts, and properties from circuit
-    scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
+    scale, number_neurons, number_synapses, number_connections = get_circuit_size(
+        c, scale_override=scale_override
+    )
     has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
         get_circuit_properties(c)
     )
@@ -176,7 +233,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         has_spines=has_spines,
         scale=scale,
         build_category=build_category,
-        target_simulator=target_simulator,  # ty:ignore[invalid-argument-type]
+        target_simulator=target_simulator,
         root_circuit_id=root.id if isinstance(root, models.Circuit) else root,
         atlas_id=atlas.id if atlas is not None else None,
         contact_email=contact_email,
@@ -239,6 +296,9 @@ def register_circuit(  # noqa: PLR0913, PLR0914
         generate_additional_circuit_assets(
             circuit_path=circuit_path,
             edge_population=edge_pop,
+            circuit_path_compressed=circuit_path_compressed,
+            overview_image_path=overview_image_path,
+            sim_designer_image_path=sim_designer_image_path,
             client=client,
             circuit_entity=registered_circuit,
         )
@@ -254,6 +314,8 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
@@ -266,16 +328,20 @@ def register_circuit_from_metadata(
         client: The entitycore SDK client.
         circuit_metadata: Dictionary with circuit properties. Required keys:
             name, description, build_category, species, subject, brain_region,
-            brain_region_hierarchy.
-            Optional keys: root, parent, derivation_type, derivation_label,
-            license, published_in, contact, experiment_date, target_simulator.
-        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json)
-            or directly to the circuit_config.json file.
+            brain_region_hierarchy, target_simulator.
+            Optional keys: root, parent, derivation_type, license, published_in,
+            contact, experiment_date.
+        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json),
+            directly to the circuit_config.json file, or a compressed .gz archive.
         contributions: Raw contributions dict (agent name -> {type, role}).
             Will be resolved via get_contributions(). Optional.
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
         authorized_public: Whether to make the circuit publicly accessible.
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform validation and dry run without registering.
 
     Returns:
@@ -311,7 +377,8 @@ def register_circuit_from_metadata(
         build_category=circuit_metadata["build_category"],
         brain_region=brain_region,
         subject=subject,
-        target_simulator=circuit_metadata.get("target_simulator"),
+        target_simulator=circuit_metadata["target_simulator"],
+        scale_override=circuit_metadata.get("scale_override"),
         contact_email=circuit_metadata.get("contact"),
         published_in=circuit_metadata.get("published_in"),
         experiment_date=exp_date,
@@ -323,5 +390,7 @@ def register_circuit_from_metadata(
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
+        overview_image_path=overview_image_path,
+        sim_designer_image_path=sim_designer_image_path,
         dry_run=dry_run,
     )

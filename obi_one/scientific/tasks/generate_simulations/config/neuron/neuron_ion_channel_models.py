@@ -1,17 +1,13 @@
 import logging
-from typing import Annotated, ClassVar, Self
+from typing import ClassVar, Self
 
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
+from libsonata import SimulatorType
+from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
-from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
-    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    _MIN_SIMULATION_LENGTH_MILLISECONDS,
+    SIMULATION_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
@@ -19,8 +15,8 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_TIMESTAMPS_NAME,
+    BaseSimulationScanConfig,
     BlockGroup,
-    SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.unions.unions_ion_channel_model import (
@@ -43,12 +39,15 @@ from obi_one.scientific.unions.unions_timestamps import (
 L = logging.getLogger(__name__)
 
 
-class IonChannelModelSimulationScanConfig(SimulationScanConfig):
+class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     """Form for simulating ion channel model(s)."""
 
     single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
-    description: ClassVar[str] = "Ion Channal Model SONATA simulation campaign"
+    description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"
+
+    _target_simulator: ClassVar[SimulatorType] = SimulatorType.NEURON
+    _timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -65,36 +64,7 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         },
     }
 
-    class Initialize(Block):
-        simulation_length: (
-            Annotated[
-                NonNegativeFloat,
-                Field(
-                    ge=_MIN_SIMULATION_LENGTH_MILLISECONDS, le=_MAX_SIMULATION_LENGTH_MILLISECONDS
-                ),
-            ]
-            | Annotated[
-                list[
-                    Annotated[
-                        NonNegativeFloat,
-                        Field(
-                            ge=_MIN_SIMULATION_LENGTH_MILLISECONDS,
-                            le=_MAX_SIMULATION_LENGTH_MILLISECONDS,
-                        ),
-                    ]
-                ],
-                Field(min_length=1),
-            ]
-        ) = Field(
-            default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-            title="Duration",
-            description="Simulation length in milliseconds (ms).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: Units.MILLISECONDS,
-            },
-        )
-
+    class Initialize(BaseSimulationScanConfig.Initialize):
         temperature: NonNegativeFloat | list[NonNegativeFloat] = Field(
             title="Temperature (in °C)",
             description="Temperature of the simulation.",
@@ -104,31 +74,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             },
         )
 
-        v_init: float | list[float] = Field(
-            default=-80.0,
-            title="Initial Voltage",
-            description="Initial membrane potential in millivolts (mV).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: Units.MILLIVOLTS,
-            },
-        )
-        random_seed: int | list[int] = Field(
-            default=1,
-            title="Random Seed",
-            description="Random seed for the simulation.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-            },
-        )
-        _timestep: PositiveFloat | list[PositiveFloat] = PrivateAttr(
-            default=0.025
-        )  # Simulation time step in ms
-
-        @property
-        def timestep(self) -> PositiveFloat | list[PositiveFloat]:
-            return self._timestep
-
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the simulation.",
@@ -136,16 +81,6 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 2,
-        },
-    )
-
-    info: Info = Field(
-        title="Info",
-        description="Information about the campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -201,12 +136,19 @@ class IonChannelModelSimulationScanConfig(SimulationScanConfig):
         description="Timestamps for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
             SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
-            SchemaKey.SINGULAR_NAME: "Timestamps",
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
         },
     )
+
+    def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
+        """Returns the base SONATA configuration for the simulation campaign."""
+        sonata_config = super().base_sonata_config(sonata_config)
+        sonata_config["conditions"]["celsius"] = self.initialize.temperature
+
+        return sonata_config
 
     @property
     def circuit(self) -> CircuitFromIonChannelModels:

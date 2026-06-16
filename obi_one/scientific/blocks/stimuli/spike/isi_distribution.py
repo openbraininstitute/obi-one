@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
 
@@ -26,10 +26,10 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
     title: ClassVar[str] = "Inter-Spike Interval Distribution Spike Replay (Efferent)"
 
     duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]]
     ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
@@ -99,7 +99,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
             if self.resample_each_repetition:
                 for timestamp in timestamps:
                     relative_spikes = self._generate_spike_train_from_distribution(
-                        distribution,  # ty:ignore[invalid-argument-type]
+                        distribution,
                         self.duration,  # ty:ignore[invalid-argument-type]
                         rng=rng,
                     )
@@ -107,7 +107,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
                     spikes_by_gid[gid].extend(spike_offset + t for t in relative_spikes)
             else:
                 relative_spikes = self._generate_spike_train_from_distribution(
-                    distribution,  # ty:ignore[invalid-argument-type]
+                    distribution,
                     self.duration,  # ty:ignore[invalid-argument-type]
                     rng=rng,
                 )

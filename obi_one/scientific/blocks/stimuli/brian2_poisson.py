@@ -23,9 +23,9 @@ from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
-    _MIN_NON_NEGATIVE_FLOAT_VALUE,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
+    MIN_NON_NEGATIVE_FLOAT_VALUE,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -35,17 +35,13 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Brian2DirectPoissonStimulus(Block):
-    """Independent Poisson drive injected directly into target membrane potentials.
+    """Independent Poisson drive injected directly into the soma.
 
-    Emitted as a SONATA ``inputs`` entry with ``module="poisson"``. Every
-    neuron in :attr:`neuron_set` receives its own ``PoissonInput`` firing at
-    :attr:`frequency`; each spike adds :attr:`weight` to the target state
-    variable (default ``v``). If :attr:`zero_refractory` is true, the
-    targeted neurons' refractory period (state variable ``rfc``) is cleared
-    so they can follow the Poisson rate.
+    Each neuron receives its own Poisson Input directly into the soma
+    firing. Each spike adds a weight to the membrane potential.
     """
 
-    title: ClassVar[str] = "Direct Poisson Input (Brian2)"
+    title: ClassVar[str] = "Direct Poisson Input"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -59,8 +55,8 @@ class Brian2DirectPoissonStimulus(Block):
     )
 
     frequency: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
         default=150.0,
         title="Frequency",
@@ -79,10 +75,10 @@ class Brian2DirectPoissonStimulus(Block):
     )
 
     duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]]
     ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description=(
             "Informational only; Brian2 PoissonInput is always-on for the whole "

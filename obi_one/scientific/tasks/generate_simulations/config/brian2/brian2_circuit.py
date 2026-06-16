@@ -16,27 +16,27 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    SimulationScanConfig,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.unions.unions_brian2 import (
-    Brian2CircuitStimulusUnion,
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base import (
+    Brian2SimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+    Brian2SimulationNeuronSetUnion,
     NeuronSetReference,
-    SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_stimuli import StimulusReference
+from obi_one.scientific.unions.unions_stimuli import (
+    Brian2CircuitStimulusUnion,
+    StimulusReference,
+)
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
 
 Brian2CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
-BRIAN2_TARGET_SIMULATOR = "Brian2"  # must match libsonata.SimulatorType.Brian2
 
-
-class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
+class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
     """Configuration for generating Brian2-targeted SONATA simulation configs.
 
     Only exposes stimulus, recording, and neuron set types that are
@@ -54,7 +54,6 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
@@ -62,25 +61,16 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
         },
     }
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
-        default_factory=dict,
-        description="Neuron sets for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    class Initialize(SimulationScanConfig.Initialize):
+    class Initialize(Brian2SimulationScanConfig.Initialize):
         """Initialization parameters for a Brian2 circuit simulation."""
 
         circuit: Brian2CircuitDiscriminator | list[Brian2CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
+            },
         )
         node_set: NeuronSetReference | None = Field(
             default=None,
@@ -89,6 +79,7 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
             },
         )
 
@@ -115,19 +106,17 @@ class Brian2CircuitSimulationScanConfig(SimulationScanConfig):
         },
     )
 
-    """
-    recordings: dict[str, Brian2RecordingUnion] = Field(
+    neuron_sets: dict[str, Brian2SimulationNeuronSetUnion] = Field(
         default_factory=dict,
-        description="Brian2-compatible recordings for the simulation.",
+        description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Recording",
-            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
-    """
 
 
 class Brian2CircuitSimulationSingleConfig(

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # ruff: noqa: S101
 import contextlib
 import logging
@@ -27,8 +27,6 @@ from entitysdk.utils.store import LocalAssetStore
 from obi_auth import get_token
 from obi_auth.typedef import AuthMode, DeploymentEnvironment
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
-
-POPULATION = "drosophila"
 
 REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_path=True)
 L = logging.getLogger(__name__)
@@ -107,8 +105,8 @@ def _make_poisson(
     n0: brian2.NeuronGroup,
 ) -> tuple[brian2.NeuronGroup, list]:
     L.info("Making Poisson Stimulus: rate: %f Hz, weight: %f mV", config.rate, config.weight)
-    exc_node_ids = simulation.circuit.node_sets.to_libsonata.materialize(
-        "sugar", simulation.circuit.nodes["drosophila"].to_libsonata
+    exc_node_ids = simulation.node_sets.to_libsonata.materialize(
+        config.node_set, simulation.circuit.nodes["drosophila"].to_libsonata
     ).flatten()
 
     poisson_inputs = []
@@ -252,7 +250,8 @@ def _create_synapses(circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup) -
     return syn
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
+def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
+    """Returns the path to the spikes file, None if there were no spikes."""
     simulation = bluepysnap.Simulation(simulation_config_path)
     circuit = simulation.circuit
 
@@ -262,6 +261,9 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
     brian2.start_scope()
 
     neurons = _create_neurons(circuit)
+    # Override the initial membrane potential with `v_init` (mV) from the simulation config,
+    # taking precedence over the value set by the neuron template.
+    neurons.v = simulation.conditions.v_init * brian2.units.mV
     synapses = _create_synapses(circuit, neurons)
 
     spike_monitor = brian2.SpikeMonitor(neurons)
@@ -275,13 +277,17 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    node_ids, timestamps = zip(
-        *[(k, float(v)) for k, vs in spike_monitor.spike_trains().items() for v in vs], strict=True
-    )
+    spikes = [(k, float(v)) for k, vs in spike_monitor.spike_trains().items() for v in vs]
+    if not spikes:
+        L.info("No neurons spiked in the simulation")
+        return None
+
+    node_ids, timestamps = zip(*spikes, strict=True)
     L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
+    (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     spikes_path = _write_spikes(
         filepath=output_dir / simulation.output.spikes_file,
-        population_name=POPULATION,
+        population_name=circuit.nodes.population_names[0],
         timestamps=timestamps,
         node_ids=node_ids,
     )
@@ -399,15 +405,16 @@ def sonata_main(
             simulation_id=simulation_id,
         )
     )
-    L.info("Uploading assets for simulation")
-    assert simulation_result.id
-    client.upload_file(
-        entity_id=simulation_result.id,
-        entity_type=models.SimulationResult,
-        file_path=spikes_report_filepath,
-        file_content_type=ContentType.application_x_hdf5,
-        asset_label=AssetLabel.spike_report,
-    )
+    if spikes_report_filepath:
+        L.info("Uploading assets for simulation")
+        assert simulation_result.id
+        client.upload_file(
+            entity_id=simulation_result.id,
+            entity_type=models.SimulationResult,
+            file_path=spikes_report_filepath,
+            file_content_type=ContentType.application_x_hdf5,
+            asset_label=AssetLabel.spike_report,
+        )
 
     L.info("Updating simulation execution")
     client.update_entity(

@@ -26,7 +26,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
@@ -318,7 +318,7 @@ class CircuitExtractionTask(Task):
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
             with BenchmarkTracker.section("run_validation"):
-                circuit_utils.run_validation(new_circuit_path)  # ty:ignore[invalid-argument-type]
+                circuit_utils.run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
