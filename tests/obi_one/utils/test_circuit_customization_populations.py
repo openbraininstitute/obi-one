@@ -12,6 +12,7 @@ from bluepysnap import Circuit
 from obi_one.utils.circuit_customization.populations import (
     _update_circuit_config,
     _update_edge_populations,
+    _update_id_mapping,
     _update_node_populations,
     _update_node_sets,
     create_modified_circuit,
@@ -473,3 +474,108 @@ def test_create_modified_circuit_removes_edge_population(circuit_copy):
     assert (
         circuit_copy / "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical" / "edges.h5"
     ).is_file()
+
+
+# --- _update_id_mapping ---
+
+
+def test_update_id_mapping_valid(circuit_copy):
+    """Test that a valid ID mapping passes validation."""
+    config_path = circuit_copy / "circuit_config.json"
+
+    # Add provenance/id_mapping to the config
+    config = json.loads(config_path.read_text())
+    config.setdefault("components", {})["provenance"] = {"id_mapping": "id_mapping.json"}
+    config_path.write_text(json.dumps(config))
+
+    circuit = Circuit(config_path)
+    _update_id_mapping(circuit, circuit, circuit_copy)
+
+
+def test_update_id_mapping_missing_file(circuit_copy):
+    """Test that a missing ID mapping file raises."""
+    config_path = circuit_copy / "circuit_config.json"
+
+    # Reference a non-existent file
+    config = json.loads(config_path.read_text())
+    config.setdefault("components", {})["provenance"] = {"id_mapping": "missing.json"}
+    config_path.write_text(json.dumps(config))
+
+    circuit = Circuit(config_path)
+    with pytest.raises(ValueError, match="missing"):
+        _update_id_mapping(circuit, circuit, circuit_copy)
+
+
+def test_update_id_mapping_invalid_ids(circuit_copy):
+    """Test that out-of-bounds IDs in mapping raise."""
+    config_path = circuit_copy / "circuit_config.json"
+
+    # Add provenance/id_mapping to the config
+    config = json.loads(config_path.read_text())
+    config.setdefault("components", {})["provenance"] = {"id_mapping": "id_mapping.json"}
+    config_path.write_text(json.dumps(config))
+
+    # Write an invalid mapping with out-of-bounds IDs
+    id_mapping = {"S1nonbarrel_neurons": {"new_id": [0, 1, 999]}}
+    (circuit_copy / "id_mapping.json").write_text(json.dumps(id_mapping))
+
+    circuit = Circuit(config_path)
+    with pytest.raises(ValueError, match="inconsistent or missing"):
+        _update_id_mapping(circuit, circuit, circuit_copy)
+
+
+def test_update_id_mapping_removes_old_file(circuit_copy):
+    """Test that old ID mapping file is removed when not in new config."""
+    config_path = circuit_copy / "circuit_config.json"
+
+    # Parent config has id_mapping
+    config_with_mapping = json.loads(config_path.read_text())
+    config_with_mapping.setdefault("components", {})["provenance"] = {
+        "id_mapping": "id_mapping.json"
+    }
+
+    # New config does not have id_mapping
+    config_without_mapping = json.loads(config_path.read_text())
+
+    # Write parent config, load parent circuit
+    config_path.write_text(json.dumps(config_with_mapping))
+    parent_circuit = Circuit(config_path)
+
+    # Write new config (no id_mapping), load new circuit
+    config_path.write_text(json.dumps(config_without_mapping))
+    new_circuit = Circuit(config_path)
+
+    # Verify file exists before
+    assert (circuit_copy / "id_mapping.json").is_file()
+
+    _update_id_mapping(new_circuit, parent_circuit, circuit_copy)
+
+    # File should be removed
+    assert not (circuit_copy / "id_mapping.json").is_file()
+
+
+# --- create_modified_circuit path validation ---
+
+
+def test_create_modified_circuit_path_already_exists(circuit_copy):
+    """Test that existing output path raises."""
+    output_path = circuit_copy  # Already exists
+
+    with pytest.raises(ValueError, match="already exists"):
+        create_modified_circuit(
+            db_client=MagicMock(),
+            circuit_id="fake-id",
+            new_node_sets_path=circuit_copy / "node_sets.json",
+            new_circuit_path=output_path,
+        )
+
+
+def test_create_modified_circuit_no_path(circuit_copy):
+    """Test that None circuit path raises."""
+    with pytest.raises(ValueError, match="new_circuit_path is required"):
+        create_modified_circuit(
+            db_client=MagicMock(),
+            circuit_id="fake-id",
+            new_node_sets_path=circuit_copy / "node_sets.json",
+            new_circuit_path=None,
+        )
