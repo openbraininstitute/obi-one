@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from bluepysnap import Circuit
+from bluepysnap.exceptions import BluepySnapError
 
 
 def _validate_file(path: str | Path, expected_suffix: str, label: str) -> Path:
@@ -104,9 +105,62 @@ def check_customized_circuit(new_circuit_path: Path) -> None:
     """
     try:
         circuit = Circuit(new_circuit_path / "circuit_config.json")
-        circuit.nodes.size
-        circuit.edges.size
-        circuit.node_sets
+        circuit.nodes.size  # noqa: B018
+        circuit.edges.size  # noqa: B018
+        circuit.node_sets  # noqa: B018
     except Exception as e:
         msg = f"Failed to load customized circuit: {e}"
         raise ValueError(msg) from e
+
+
+def _get_morph_paths(circuit: Circuit) -> set[str]:
+    """Get all unique morphology directory paths referenced by the circuit."""
+    morph_paths = set()
+    for npop in circuit.nodes.population_names:
+        morph = circuit.nodes[npop].morph
+        for ext in ["swc", "asc", "h5"]:
+            try:
+                morph_path = morph._get_morphology_base(ext)  # noqa: SLF001
+            except BluepySnapError:
+                continue
+            if morph_path:
+                morph_paths.add(morph_path)
+    return morph_paths
+
+
+def _get_morph_names(circuit: Circuit) -> set[str]:
+    """Get all unique morphology names referenced by the circuit's node populations."""
+    morph_names = set()
+    for npop in circuit.nodes.population_names:
+        nodes = circuit.nodes[npop]
+        if "morphology" in nodes.property_names:
+            morph_names.update(nodes.get(properties="morphology").to_list())
+    return morph_names
+
+
+def check_morphologies(new_circuit: Circuit, parent_circuit: Circuit) -> None:
+    """Check that all morphology paths and names in the new circuit exist in the parent.
+
+    Ensures the customized circuit does not reference morphology directories or
+    morphology names that were not present in the parent circuit.
+
+    Args:
+        new_circuit: The loaded new circuit (after customization).
+        parent_circuit: The loaded parent circuit (before customization).
+
+    Raises:
+        ValueError: If new morphology paths or names are not a subset of the parent's.
+    """
+    new_morph_paths = _get_morph_paths(new_circuit)
+    old_morph_paths = _get_morph_paths(parent_circuit)
+    extra_paths = new_morph_paths - old_morph_paths
+    if extra_paths:
+        msg = f"Morphology path(s) not found in parent circuit: {extra_paths}"
+        raise ValueError(msg)
+
+    new_morph_names = _get_morph_names(new_circuit)
+    old_morph_names = _get_morph_names(parent_circuit)
+    extra_names = new_morph_names - old_morph_names
+    if extra_names:
+        msg = f"{len(extra_names)} morphology name(s) not found in parent circuit!"
+        raise ValueError(msg)

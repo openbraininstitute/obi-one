@@ -12,6 +12,7 @@ from obi_one.utils.circuit_customization.download import fetch_directory, get_so
 from obi_one.utils.circuit_customization.validations.populations import (
     check_customized_circuit,
     check_input_files,
+    check_morphologies,
 )
 
 
@@ -304,8 +305,8 @@ def create_modified_circuit(
 
     # Validate customizations
     check_customized_circuit(new_circuit_path)
+    check_morphologies(new_circuit, parent_circuit)
 
-    # TODO: Check if existing morphologies are still used and none missing
     # TODO: Check if existing hoc files are still used and none missing
 
     return new_circuit_path, from_circuit
