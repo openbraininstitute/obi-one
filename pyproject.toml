@@ -40,7 +40,7 @@ dependencies = [
     "blueetl",
     "bluepyefe>=2.3.57",
     "bluepysnap>=3.0.2",
-    "brainbuilder@git+https://github.com/openbraininstitute/brainbuilder@39f94d96ec40be4f25a35e1cbcc9bbc2dff108c6",
+    "brainbuilder@git+https://github.com/openbraininstitute/brainbuilder@0bed20b04fcbee8095c269d4484d6648689d3a57",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
