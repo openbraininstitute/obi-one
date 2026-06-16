@@ -9,9 +9,6 @@ from uuid import uuid4
 import pytest
 
 from obi_one.utils.circuit_customization.download import (
-    fetch_directory,
-    fetch_file,
-    get_sonata_asset,
     download_circuit_config,
     download_edge_populations,
     download_electrical_models,
@@ -19,6 +16,9 @@ from obi_one.utils.circuit_customization.download import (
     download_mechanisms,
     download_node_populations,
     download_node_sets,
+    fetch_directory,
+    fetch_file,
+    get_sonata_asset,
 )
 
 CIRCUIT_DIR = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6")
