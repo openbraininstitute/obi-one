@@ -188,7 +188,7 @@ def _evaluate_circuit_simulation_parameters(
     else:
         count = 1
 
-    return AccountingParameters(count=count, service_subtype=service_subtype)  # ty:ignore[invalid-argument-type]
+    return AccountingParameters(count=count, service_subtype=service_subtype)
 
 
 def generate_accounting_callbacks(
