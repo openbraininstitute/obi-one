@@ -85,7 +85,7 @@ def _update_node_sets(
 def _update_node_populations(
     new_circuit: Circuit,
     parent_circuit: Circuit,
-    new_node_population_paths: dict[str, Path] | None,
+    new_node_population_paths: dict[str, str | Path] | None,
 ) -> None:
     """Replace or remove node population files.
 
@@ -133,7 +133,7 @@ def _update_node_populations(
 def _update_edge_populations(
     new_circuit: Circuit,
     parent_circuit: Circuit,
-    new_edge_population_paths: dict[str, Path] | None,
+    new_edge_population_paths: dict[str, str | Path] | None,
 ) -> None:
     """Replace or remove edge population files.
 
@@ -296,7 +296,7 @@ def create_modified_circuit(
         raise ValueError(msg)
 
     from_circuit, asset = get_sonata_asset(db_client, circuit_id)
-    fetch_directory(db_client, circuit_id, asset.id, new_circuit_path, writable=True)
+    fetch_directory(db_client, circuit_id, asset.id, new_circuit_path, writable=True)  # ty:ignore[invalid-argument-type]
     config_path = new_circuit_path / "circuit_config.json"
     parent_circuit = Circuit(config_path)
 

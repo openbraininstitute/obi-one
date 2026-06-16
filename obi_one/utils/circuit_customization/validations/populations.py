@@ -17,13 +17,13 @@ def _validate_file(path: str | Path, expected_suffix: str, label: str) -> Path:
 
 def _validate_file_dict(
     paths: dict[str, str | Path], expected_suffix: str, label: str
-) -> dict[str, Path]:
+) -> dict[str, str | Path]:
     """Validate a dict of file paths and return them as Path objects."""
-    result = {k: Path(v) for k, v in paths.items()}
+    result: dict[str, str | Path] = {k: Path(v) for k, v in paths.items()}
     wrong = [
         path
         for path in result.values()
-        if not path.is_file() or path.suffix.lower() != expected_suffix
+        if not Path(path).is_file() or Path(path).suffix.lower() != expected_suffix
     ]
     if wrong:
         msg = (
@@ -38,7 +38,7 @@ def check_input_files(
     new_node_sets_path: str | Path | None = None,
     new_node_population_paths: dict[str, str | Path] | None = None,
     new_edge_population_paths: dict[str, str | Path] | None = None,
-) -> tuple[Path | None, Path | None, dict[str, Path] | None, dict[str, Path] | None]:
+) -> tuple[Path | None, Path | None, dict[str, str | Path] | None, dict[str, str | Path] | None]:
     """Validate all population customization input files.
 
     Checks that at least one customization is provided and that all specified
