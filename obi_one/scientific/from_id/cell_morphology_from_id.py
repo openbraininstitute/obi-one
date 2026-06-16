@@ -10,9 +10,8 @@ import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
-from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
 from entitysdk.models.entity import Entity
-from entitysdk.types import CellMorphologyProtocolDesign, TaskActivityType, EntityType
+from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivityType
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
@@ -84,15 +83,15 @@ class CellMorphologyFromID(EntityFromID):
         cm_protocol = morph_entity.cell_morphology_protocol
         if cm_protocol is None:
             return False
-        if not isinstance(cm_protocol, DigitalReconstructionCellMorphologyProtocol):
-            return False
         if cm_protocol.protocol_design != CellMorphologyProtocolDesign.electron_microscopy:
             return False
 
         activity = db_client.search_entity(
-            entity_type=TaskActivity, query={"task_activity_type": TaskActivityType.skeletonization__execution,
-                                             "generated__id": morph_entity.id
-                                             }
+            entity_type=TaskActivity,
+            query={
+                "task_activity_type": TaskActivityType.skeletonization__execution,
+                "generated__id": morph_entity.id,
+            },
         ).one_or_none()
         if activity is None:
             return False
@@ -114,9 +113,11 @@ class CellMorphologyFromID(EntityFromID):
 
         morph_entity = self.entity(db_client=db_client)
         activity = db_client.search_entity(
-            entity_type=TaskActivity, query={"task_activity_type": TaskActivityType.skeletonization__execution,
-                                             "generated__id": morph_entity.id
-                                             }
+            entity_type=TaskActivity,
+            query={
+                "task_activity_type": TaskActivityType.skeletonization__execution,
+                "generated__id": morph_entity.id,
+            },
         ).one_or_none()
         task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)
         source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
