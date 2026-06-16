@@ -3,7 +3,7 @@ from uuid import UUID
 
 import httpx
 from entitysdk import Client, ProjectContext, models
-from entitysdk.types import CircuitScale
+from entitysdk.types import AssetLabel, CircuitScale, ContentType
 from fastapi import HTTPException
 from obp_accounting_sdk import AccountingSessionFactory, OneshotSession
 from obp_accounting_sdk.constants import ServiceSubtype
@@ -21,6 +21,7 @@ from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
 from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
+from obi_one.utils.db_sdk import select_json_asset_content
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
     CircuitScale.small: ServiceSubtype.SMALL_SIM,
@@ -182,13 +183,46 @@ def _evaluate_circuit_simulation_parameters(
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg) from e
 
     if circuit.scale in _DURATION_BILLING_SCALES:
-        duration_ms = simulation.scan_parameters.get("initialize.duration", 1000)
+        duration_ms = _get_simulation_duration_ms(db_client=db_client, simulation=simulation)
         duration_s = duration_ms / 1000.0
         count = int(simulation.number_neurons * duration_s)
     else:
         count = 1
 
     return AccountingParameters(count=count, service_subtype=service_subtype)
+
+
+def _get_simulation_duration_ms(
+    *,
+    db_client: Client,
+    simulation: models.Simulation,
+) -> float:
+    """Get the simulation duration in milliseconds.
+
+    Reads from the sonata_simulation_config asset (run.tstop), falling back to
+    scan_parameters["initialize.simulation_length"], then to the default of 1000 ms.
+    """
+    default_duration_ms = 1000.0
+
+    # Try reading from the SONATA simulation config asset
+    try:
+        config = select_json_asset_content(
+            client=db_client,
+            entity=simulation,
+            selection={"label": AssetLabel.sonata_simulation_config},
+        )
+        tstop = config.get("run", {}).get("tstop")
+        if tstop is not None:
+            return float(tstop)
+    except Exception:
+        L.warning(f"Could not read sonata_simulation_config for simulation {simulation.id}")
+
+    # Fallback to scan_parameters
+    duration = simulation.scan_parameters.get("initialize.simulation_length")
+    if duration is not None:
+        return float(duration)
+
+    return default_duration_ms
 
 
 def generate_accounting_callbacks(
