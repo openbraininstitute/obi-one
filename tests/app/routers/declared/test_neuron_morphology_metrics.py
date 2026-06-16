@@ -108,7 +108,7 @@ def test_register_morphology_metrics_success(client, morphology_json, monkeypatc
 
     with (
         patch("app.endpoints.morphology_metrics.run_morphology_analysis") as mock_run,
-        patch("app.endpoints.morphology_metrics.register_measurements") as mock_reg,
+        patch("app.endpoints.morphology_metrics.register_morphometrics") as mock_reg,
     ):
         mock_run.return_value = ["metric1", "metric2"]
         mock_registered_entity = MagicMock()
