@@ -174,13 +174,38 @@ def _update_edge_populations(
 
 
 def _get_id_mapping_file(config_dict: dict) -> str:
+    """Extract the ID mapping file path from a circuit config dict.
+
+    Args:
+        config_dict: The circuit configuration dictionary.
+
+    Returns:
+        Relative path to the ID mapping file, or empty string if not specified.
+    """
     return config_dict.get("components", {}).get("provenance", {}).get("id_mapping", "")
 
 
 def _update_id_mapping(
     new_circuit: Circuit, parent_circuit: Circuit, new_circuit_path: Path
 ) -> None:
-    """Validate that ID mapping is still valid. Removes old file if no longer referenced."""
+    """Validate and update the ID mapping file for the customized circuit.
+
+    If the new circuit config references an ID mapping file, validates that:
+    - The file exists and is a .json file.
+    - Each node population has a valid "new_id" entry with IDs within bounds.
+
+    If the new config does not reference an ID mapping file, removes the old
+    one from the parent circuit (if it existed).
+
+    Args:
+        new_circuit: The loaded new circuit (after config update).
+        parent_circuit: The loaded parent circuit (before config update).
+        new_circuit_path: Path to the new circuit folder.
+
+    Raises:
+        ValueError: If the ID mapping file is missing, has wrong format,
+            or contains inconsistent mappings.
+    """
     cfg_dict = new_circuit.config
     old_cfg_dict = parent_circuit.config
 
@@ -280,7 +305,6 @@ def create_modified_circuit(
     # Validate customizations
     check_customized_circuit(new_circuit_path)
 
-    # TODO: Check if ID mapping is still valid, otherwise remove + warning
     # TODO: Check if existing morphologies are still used and none missing
     # TODO: Check if existing hoc files are still used and none missing
 
