@@ -63,6 +63,7 @@ def _update_node_sets(
     if node_sets_file:
         node_sets_file = Path(node_sets_file)
         if new_node_sets_path:
+            node_sets_file.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(new_node_sets_path, node_sets_file)
 
         if not node_sets_file.is_file():
@@ -111,6 +112,7 @@ def _update_node_populations(
             if npop_name not in npop_files:
                 msg = f"Node population '{npop_name}' provided but not found in circuit config!"
                 raise ValueError(msg)
+            npop_files[npop_name].parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(new_path, npop_files[npop_name])
 
     for npop_name, npop_file in npop_files.items():
@@ -158,6 +160,7 @@ def _update_edge_populations(
             if epop_name not in epop_files:
                 msg = f"Edge population '{epop_name}' provided but not found in circuit config!"
                 raise ValueError(msg)
+            epop_files[epop_name].parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(new_path, epop_files[epop_name])
 
     for epop_name, epop_file in epop_files.items():
