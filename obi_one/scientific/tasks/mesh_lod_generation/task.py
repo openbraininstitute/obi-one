@@ -22,6 +22,7 @@ from obi_one.core.task import Task
 
 # Guard imports used strictly for type-hinting annotations
 if TYPE_CHECKING:
+    import os
     from uuid import UUID
 
     import entitysdk
@@ -46,14 +47,15 @@ def _download_obj(
 def _generate_lods(
     obj_path: pathlib.Path,
     output_dir: pathlib.Path,
-) -> dict[pathlib.Path, pathlib.Path]:
+) -> dict[os.PathLike, os.PathLike]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)  # ty:ignore[unresolved-attribute]
     generator = ultraliser.LODGenerator(mesh)  # ty:ignore[unresolved-attribute]
     generator.generate_web_lods(str(output_dir))
 
-    lod_files: dict[pathlib.Path, pathlib.Path] = {
+    # Explicitly type hint the dictionary to use os.PathLike to satisfy invariant checks
+    lod_files: dict[os.PathLike, os.PathLike] = {
         pathlib.Path(p.name): p for p in output_dir.iterdir() if p.is_file()
     }
 
@@ -67,7 +69,7 @@ def _generate_lods(
 def _upload_lod_directory(
     client: entitysdk.Client,
     entity_id: UUID,
-    lod_files: dict[pathlib.Path, pathlib.Path],
+    lod_files: dict[os.PathLike, os.PathLike],
 ) -> str:
     result = client.upload_directory(
         entity_id=entity_id,
