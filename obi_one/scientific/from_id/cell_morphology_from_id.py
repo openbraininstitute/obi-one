@@ -106,7 +106,11 @@ class CellMorphologyFromID(EntityFromID):
         ):
             return False
         task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)
-        return (task_cfg.inputs is not None) and (len(task_cfg.inputs) == 1)
+        return (
+            (task_cfg.inputs is not None)
+            and (len(task_cfg.inputs) == 1)
+            and (task_cfg.inputs[0].type == EntityType.em_cell_mesh)
+        )
 
     def source_mesh_entity(self, db_client: entitysdk.client.Client = None) -> EMCellMesh:  # ty:ignore[invalid-parameter-default]
         """EMCellMesh entity that the morphology originates from.
