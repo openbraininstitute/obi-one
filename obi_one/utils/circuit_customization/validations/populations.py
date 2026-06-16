@@ -164,3 +164,54 @@ def check_morphologies(new_circuit: Circuit, parent_circuit: Circuit) -> None:
     if extra_names:
         msg = f"{len(extra_names)} morphology name(s) not found in parent circuit!"
         raise ValueError(msg)
+
+
+def _get_hoc_paths(circuit: Circuit) -> set[str]:
+    """Get all unique electrical model .hoc directory paths referenced by the circuit."""
+    hoc_paths = set()
+    for npop in circuit.nodes.population_names:
+        nodes = circuit.nodes[npop]
+        if nodes.type == "virtual":
+            continue
+        hoc_path = nodes.config.get("biophysical_neuron_models_dir", "")
+        if hoc_path:
+            hoc_paths.add(hoc_path)
+    return hoc_paths
+
+
+def _get_hoc_names(circuit: Circuit) -> set[str]:
+    """Get all unique electrical model .hoc names referenced by the circuit's node populations."""
+    hoc_names = set()
+    for npop in circuit.nodes.population_names:
+        nodes = circuit.nodes[npop]
+        if "model_template" in nodes.property_names:
+            hoc_names.update(nodes.get(properties="model_template").to_list())
+    return hoc_names
+
+
+def check_electrical_models(new_circuit: Circuit, parent_circuit: Circuit) -> None:
+    """Check that all electrical model paths and names in the new circuit exist in the parent.
+
+    Ensures the customized circuit does not reference .hoc directories or
+    model templates that were not present in the parent circuit.
+
+    Args:
+        new_circuit: The loaded new circuit (after customization).
+        parent_circuit: The loaded parent circuit (before customization).
+
+    Raises:
+        ValueError: If new .hoc paths or model names are not a subset of the parent's.
+    """
+    new_hoc_paths = _get_hoc_paths(new_circuit)
+    old_hoc_paths = _get_hoc_paths(parent_circuit)
+    extra_paths = new_hoc_paths - old_hoc_paths
+    if extra_paths:
+        msg = f"Electrical model .hoc path(s) not found in parent circuit: {extra_paths}"
+        raise ValueError(msg)
+
+    new_hoc_names = _get_hoc_names(new_circuit)
+    old_hoc_names = _get_hoc_names(parent_circuit)
+    extra_names = new_hoc_names - old_hoc_names
+    if extra_names:
+        msg = f"{len(extra_names)} electrical model .hoc name(s) not found in parent circuit!"
+        raise ValueError(msg)
