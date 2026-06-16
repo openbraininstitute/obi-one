@@ -15,12 +15,12 @@ from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import run_morphology_analysis
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-from app.services.morphology_registration import register_morphometrics
 from obi_one.scientific.library.morphology_metrics import (
     MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
+from obi_one.scientific.library.morphology_registration import register_morphometrics
 
 MORPHOLOGY_FORMAT_TO_CONTENT_TYPE = {
     "swc": "application/swc",

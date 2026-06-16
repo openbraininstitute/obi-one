@@ -3,7 +3,6 @@ import pathlib
 import tempfile
 import traceback
 from contextlib import ExitStack, suppress
-from functools import cache
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Final, TypeVar, cast
@@ -26,7 +25,6 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.morphology import (
@@ -34,8 +32,10 @@ from app.services.morphology import (
     MorphologyFiles,
     validate_and_convert_morphology,
 )
-from app.services.morphology_registration import (
+from obi_one.scientific.library.morphology_measurement_annotation import (
     compute_morphometrics,
+)
+from obi_one.scientific.library.morphology_registration import (
     register_morphometrics,
     try_generate_and_upload_mesh,
     upload_morphology_content,
@@ -53,9 +53,6 @@ class ApiErrorCode:
 
 ALLOWED_EXTENSIONS: Final[set[str]] = {".swc", ".h5", ".asc"}
 ALLOWED_EXT_STR: Final[str] = ", ".join(ALLOWED_EXTENSIONS)
-
-DEFAULT_NEURITE_DOMAIN: Final[str] = "basal_dendrite"
-TARGET_NEURITE_DOMAINS: Final[list[str]] = ["apical_dendrite", "axon"]
 
 BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
@@ -104,26 +101,6 @@ def _validate_file_extension(filename: str | None) -> str:
             },
         )
     return file_extension
-
-
-@cache
-def _get_template() -> dict:
-    template_path = Path(__file__).parent / "morphology_template.json"
-    return json.loads(template_path.read_text())
-
-
-@cache
-def _get_analysis_dict() -> dict:
-    """Lazily initialize and cache the analysis dictionary."""
-    analysis_dict_base = uf.create_analysis_dict(_get_template())
-    analysis_dict = dict(analysis_dict_base)
-
-    if DEFAULT_NEURITE_DOMAIN in analysis_dict:
-        default_analysis = analysis_dict[DEFAULT_NEURITE_DOMAIN]
-        for domain in TARGET_NEURITE_DOMAINS:
-            analysis_dict.setdefault(domain, default_analysis)
-
-    return analysis_dict
 
 
 def run_morphology_analysis(morphology_path: str) -> list[MeasurementKind]:
