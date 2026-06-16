@@ -22,6 +22,9 @@ from obi_one.scientific.tasks.point_neuron_circuit_from_em.connectivity import (
     ResolvedConnectivity,
     resolve_connectivity,
 )
+from obi_one.scientific.tasks.point_neuron_circuit_from_em.register import (
+    register_point_neuron_circuit,
+)
 
 L = logging.getLogger(__name__)
 
@@ -43,6 +46,7 @@ class PointNeuronCircuitFromEMTask(Task):
     _internal_connectivity: pandas.DataFrame | None = PrivateAttr(default=None)
     _neuron_summary: pandas.DataFrame | None = PrivateAttr(default=None)
     _circuit_config_path: Path | None = PrivateAttr(default=None)
+    _registered_circuit_id: str | None = PrivateAttr(default=None)
 
     @property
     def internal_connectivity(self) -> pandas.DataFrame | None:
@@ -58,6 +62,11 @@ class PointNeuronCircuitFromEMTask(Task):
     def circuit_config_path(self) -> Path | None:
         """Path to the written Brian2 SONATA ``circuit_config.json``, set on execute."""
         return self._circuit_config_path
+
+    @property
+    def registered_circuit_id(self) -> str | None:
+        """Id of the registered Circuit entity, set on execute."""
+        return self._registered_circuit_id
 
     def execute(
         self,
@@ -115,13 +124,23 @@ class PointNeuronCircuitFromEMTask(Task):
         output_dir = Path(self.config.coordinate_output_root)
         self._circuit_config_path = write_brian2_sonata_circuit(output_dir, connectivity)
 
+        L.info("Registering the circuit...")
+        self._registered_circuit_id = register_point_neuron_circuit(
+            db_client=db_client,
+            circuit_path=self._circuit_config_path,
+            source_dataset=source_dataset,
+            point_pt_root_ids=connectivity.point_pt_root_ids,
+            virtual_count=len(connectivity.virtual_pt_root_ids),
+        )
+
         report = self._connectivity_report(source_dataset, cave_version, connectivity)
         print(report)  # noqa: T201
 
+        generated = [self._registered_circuit_id] if self._registered_circuit_id else None
         PointNeuronCircuitFromEMTask._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
-            generated=None,
+            generated=generated,
         )
 
     def _connectivity_report(
@@ -155,5 +174,6 @@ class PointNeuronCircuitFromEMTask(Task):
             connectivity.neuron_summary.to_string(),
             "",
             f"Brian2 SONATA circuit written to: {self._circuit_config_path}",
+            f"Registered circuit id: {self._registered_circuit_id}",
         ]
         return "\n".join(lines)

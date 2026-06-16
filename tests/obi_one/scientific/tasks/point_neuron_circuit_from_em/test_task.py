@@ -112,6 +112,9 @@ class TestPointNeuronCircuitFromEMTask:
         with (
             patch.dict(os.environ, {_CAVE_KEY: "fake-key"}),
             patch(f"{_TASK_MODULE}.EMDataSetFromID", return_value=em_dataset),
+            patch(
+                f"{_TASK_MODULE}.register_point_neuron_circuit", return_value="circuit-id"
+            ) as mock_register,
         ):
             task.execute(db_client=mock_db_client)
 
@@ -144,3 +147,10 @@ class TestPointNeuronCircuitFromEMTask:
         circuit = bluepysnap.Circuit(str(task.circuit_config_path))
         assert circuit.nodes["point_neurons"].size == 2
         assert circuit.nodes["virtual_afferent_neurons"].size == 2
+
+        # The written circuit is registered (registration itself is mocked here).
+        mock_register.assert_called_once()
+        assert mock_register.call_args.kwargs["circuit_path"] == task.circuit_config_path
+        assert mock_register.call_args.kwargs["point_pt_root_ids"] == [111, 222]
+        assert mock_register.call_args.kwargs["virtual_count"] == 2
+        assert task.registered_circuit_id == "circuit-id"
