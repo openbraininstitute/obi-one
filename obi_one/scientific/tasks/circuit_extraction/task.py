@@ -224,8 +224,13 @@ class CircuitExtractionTask(Task):
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
+
+        logging.basicConfig(
+            format="%(asctime)s %(levelname)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+            level=logging.DEBUG,
+            force=True,
+        )
 
         # Start benchmark tracking
         BenchmarkTracker.start_tracking()
