@@ -245,9 +245,7 @@ def test_evaluate_circuit_simulation_parameters__small_scale_ignores_duration(
     assert res.count == 1
 
 
-def test_evaluate_circuit_simulation_parameters__fallback_to_scan_parameters(
-    db_client, httpx_mock
-):
+def test_evaluate_circuit_simulation_parameters__fallback_to_scan_parameters(db_client, httpx_mock):
     """When SONATA config asset is unavailable, fall back to scan_parameters."""
     config_id = uuid4()
     entity_id = uuid4()
