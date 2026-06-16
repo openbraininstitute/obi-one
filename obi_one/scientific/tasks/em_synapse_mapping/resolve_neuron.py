@@ -58,15 +58,15 @@ def resolve_neuron(  # NOQA: PLR0914
     neuron_ref: CellMorphologyFromID | MEModelFromID,
     db_client: Client,
     out_root: Path,
-    spiny_morph_root: Path,
+    spiny_morph_out_root: Path,
 ) -> ResolvedNeuron:
     """Resolve a neuron reference into morphology files, provenance, and ME model properties.
 
     Args:
         neuron_ref: A CellMorphologyFromID or MEModelFromID reference.
         db_client: Entity SDK client.
-        out_root: Root output directory for smooth morphology files.
-        spiny_morph_root: Root output directory for spiny morphology files.
+        out_root: Root output directory for smooth morphology files and emodel hoc files, if applicable.
+        spiny_morph_out_root: Root output directory for spiny morphology files.
 
     Returns:
         A ResolvedNeuron with all resolved information.
@@ -92,10 +92,8 @@ def resolve_neuron(  # NOQA: PLR0914
 
     smooth_morph = morph_from_id.neurom_morphology(db_client)
     smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
-    morph_from_id.write_spiny_neuron_h5(spiny_morph_root / fn_spiny_morph, db_client=db_client)
-    spiny_morph = load_morphology_with_spines(str(spiny_morph_root / fn_spiny_morph))
-    # Version from the spiny morphology because
-    # it fixes "contour with only a single point is not valid"!
+    morph_from_id.write_spiny_neuron_h5(spiny_morph_out_root / fn_spiny_morph, db_client=db_client)
+    spiny_morph = load_morphology_with_spines(str(spiny_morph_out_root / fn_spiny_morph))
     spiny_morph.morphology.to_morphio().as_mutable().write(out_root / fn_morphology_out_h5)
 
     phys_node_props = {}
