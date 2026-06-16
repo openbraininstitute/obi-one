@@ -23,7 +23,9 @@ from obi_one.core.task import Task
 # Guard imports used strictly for type-hinting annotations
 if TYPE_CHECKING:
     from uuid import UUID
+
     import entitysdk
+
     from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
 
 
