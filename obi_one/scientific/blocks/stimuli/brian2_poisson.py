@@ -35,17 +35,13 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Brian2DirectPoissonStimulus(Block):
-    """Independent Poisson drive injected directly into target membrane potentials.
+    """Independent Poisson drive injected directly into the soma.
 
-    Emitted as a SONATA ``inputs`` entry with ``module="poisson"``. Every
-    neuron in :attr:`neuron_set` receives its own ``PoissonInput`` firing at
-    :attr:`frequency`; each spike adds :attr:`weight` to the target state
-    variable (default ``v``). If :attr:`zero_refractory` is true, the
-    targeted neurons' refractory period (state variable ``rfc``) is cleared
-    so they can follow the Poisson rate.
+    Each neuron receives its own Poisson Input directly into the soma
+    firing. Each spike adds a weight to the membrane potential.
     """
 
-    title: ClassVar[str] = "Direct Poisson Input (Brian2)"
+    title: ClassVar[str] = "Direct Poisson Input"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
