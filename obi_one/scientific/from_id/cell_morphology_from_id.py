@@ -10,6 +10,7 @@ import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
+from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
 from entitysdk.models.entity import Entity
 from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivityType
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
@@ -83,7 +84,9 @@ class CellMorphologyFromID(EntityFromID):
         cm_protocol = morph_entity.cell_morphology_protocol
         if cm_protocol is None:
             return False
-        if cm_protocol.protocol_design != CellMorphologyProtocolDesign.electron_microscopy:
+        if (isinstance(cm_protocol, PlaceholderCellMorphologyProtocol)) or (
+            cm_protocol.protocol_design != CellMorphologyProtocolDesign.electron_microscopy
+        ):
             return False
 
         activity = db_client.search_entity(
@@ -95,10 +98,15 @@ class CellMorphologyFromID(EntityFromID):
         ).one_or_none()
         if activity is None:
             return False
-        if (len(activity.used) != 1) or (activity.used[0].type != EntityType.task_config):
+        if (
+            (activity.used is None)
+            or (len(activity.used) != 1)
+            or (activity.used[0].type != EntityType.task_config)
+            or (activity.used[0].id is None)
+        ):
             return False
         task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)
-        return len(task_cfg.inputs) == 1
+        return (task_cfg.inputs is not None) and (len(task_cfg.inputs) == 1)
 
     def source_mesh_entity(self, db_client: entitysdk.client.Client = None) -> EMCellMesh:  # ty:ignore[invalid-parameter-default]
         """EMCellMesh entity that the morphology originates from.
@@ -119,8 +127,8 @@ class CellMorphologyFromID(EntityFromID):
                 "generated__id": morph_entity.id,
             },
         ).one_or_none()
-        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)
-        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
+        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
+        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable]
         return source_mesh
 
     def write_spiny_neuron_h5(
