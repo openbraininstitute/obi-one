@@ -20,12 +20,6 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.library.basic_connectivity_plots_helpers import (
-    CANONICAL_EXC,
-    CANONICAL_INH,
-    assemble_property_colormapping,
-    find_canonical_synapse_classes,
-)
 
 # Since there are some scientific modules importing this module, but not necessarily using its
 # classes, we protect the imports without crashing at load time. In any case, if the
@@ -44,6 +38,10 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
         plot_small_network,
         plot_smallMC,
         plot_smallMC_network_stats,
+        assemble_property_colormapping,
+        find_canonical_synapse_classes,
+        CANONICAL_EXC,
+        CANONICAL_INH
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
