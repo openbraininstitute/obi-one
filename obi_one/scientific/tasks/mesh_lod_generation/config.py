@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 
-class MeshLodGenerationScanConfig(BaseModel):
+class MeshLodGenerationSingleConfig(BaseModel):
     """Configuration schema for processing LOD mesh scans."""
 
     entity_id: UUID = Field(
@@ -24,7 +24,7 @@ class MeshLodGenerationScanConfig(BaseModel):
 
 
 # Alias single configuration mapping for task registry deserialization matching
-MeshLodGenerationSingleConfig = MeshLodGenerationScanConfig
+MeshLodGenerationScanConfig = MeshLodGenerationSingleConfig
 
 __all__ = [
     "MeshLodGenerationScanConfig",

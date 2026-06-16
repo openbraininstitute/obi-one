@@ -13,20 +13,18 @@ import pathlib
 import tempfile
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import os
-    from uuid import UUID
-
-    import entitysdk
-
-    from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
-
 import ultraliser
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel
 from pydantic import ConfigDict
 
 from obi_one.core.task import Task
+
+# Guard imports used strictly for type-hinting annotations
+if TYPE_CHECKING:
+    from uuid import UUID
+    import entitysdk
+    from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
 
 
 def _download_obj(
@@ -46,14 +44,14 @@ def _download_obj(
 def _generate_lods(
     obj_path: pathlib.Path,
     output_dir: pathlib.Path,
-) -> dict[os.PathLike, os.PathLike]:
+) -> dict[pathlib.Path, pathlib.Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)  # ty:ignore[unresolved-attribute]
     generator = ultraliser.LODGenerator(mesh)  # ty:ignore[unresolved-attribute]
     generator.generate_web_lods(str(output_dir))
 
-    lod_files: dict[os.PathLike, os.PathLike] = {
+    lod_files: dict[pathlib.Path, pathlib.Path] = {
         pathlib.Path(p.name): p for p in output_dir.iterdir() if p.is_file()
     }
 
@@ -67,7 +65,7 @@ def _generate_lods(
 def _upload_lod_directory(
     client: entitysdk.Client,
     entity_id: UUID,
-    lod_files: dict[os.PathLike, os.PathLike],
+    lod_files: dict[pathlib.Path, pathlib.Path],
 ) -> str:
     result = client.upload_directory(
         entity_id=entity_id,
@@ -101,22 +99,3 @@ class MeshLODGenerationTask(Task):
             asset_id = _upload_lod_directory(self.client, entity_id, lod_files)
 
         return asset_id
-
-
-# Inline lazy-import context map to resolve forward-references cleanly for Pydantic
-# without introducing eager module-level cross-imports or violating linter boundaries.
-from uuid import UUID as _UUID  # noqa: E402
-
-import entitysdk as _entitysdk  # noqa: E402
-
-from obi_one.scientific.tasks.mesh_lod_generation.config import (  # noqa: E402
-    MeshLodGenerationScanConfig as _ScanConfig,
-)
-
-MeshLODGenerationTask.model_rebuild(
-    _types_namespace={
-        "MeshLodGenerationScanConfig": _ScanConfig,
-        "entitysdk": _entitysdk,
-        "UUID": _UUID,
-    }
-)
