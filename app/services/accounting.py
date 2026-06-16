@@ -183,6 +183,9 @@ def _evaluate_circuit_simulation_parameters(
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg) from e
 
     if circuit.scale in _DURATION_BILLING_SCALES:
+        if simulation.number_neurons is None:
+            msg = f"Simulation '{simulation.id}' has no number_neurons for cost estimation"
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
         duration_ms = _get_simulation_duration_ms(db_client=db_client, simulation=simulation)
         duration_s = duration_ms / 1000.0
         count = int(simulation.number_neurons * duration_s)
