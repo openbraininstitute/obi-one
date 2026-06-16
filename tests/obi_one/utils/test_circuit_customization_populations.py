@@ -3,11 +3,19 @@
 import json
 import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from bluepysnap import Circuit
 
+from obi_one.utils.circuit_customization.populations import (
+    _update_circuit_config,
+    _update_edge_populations,
+    _update_node_populations,
+    _update_node_sets,
+    create_modified_circuit,
+)
 from obi_one.utils.circuit_customization.validations.populations import (
     check_customized_circuit,
     check_electrical_models,
@@ -48,7 +56,7 @@ def test_check_input_files_valid_config(circuit_copy):
 def test_check_input_files_wrong_config_name(circuit_copy):
     """Test that config with wrong name raises."""
     wrong_name = circuit_copy / "node_sets.json"
-    with pytest.raises(ValueError, match="circuit_config.json"):
+    with pytest.raises(ValueError, match=r"circuit_config\.json"):
         check_input_files(new_circuit_config_path=wrong_name)
 
 
@@ -75,7 +83,7 @@ def test_check_input_files_valid_node_population(circuit_copy):
 def test_check_input_files_wrong_extension(circuit_copy):
     """Test that wrong file extension raises."""
     json_file = circuit_copy / "node_sets.json"
-    with pytest.raises(ValueError, match="must be .h5"):
+    with pytest.raises(ValueError, match=r"must be \.h5"):
         check_input_files(new_node_population_paths={"pop": json_file})
 
 
@@ -114,7 +122,6 @@ def test_check_customized_circuit_missing_nodes(circuit_copy):
 
 def test_check_morphologies_valid(circuit_copy):
     """Test that identical circuits pass morphology check."""
-    from bluepysnap import Circuit
 
     circuit = Circuit(circuit_copy / "circuit_config.json")
     check_morphologies(circuit, circuit)
@@ -122,7 +129,6 @@ def test_check_morphologies_valid(circuit_copy):
 
 def test_check_morphologies_extra_path(circuit_copy):
     """Test that extra morphology paths raise."""
-    from bluepysnap import Circuit
 
     circuit = Circuit(circuit_copy / "circuit_config.json")
 
@@ -141,7 +147,6 @@ def test_check_morphologies_extra_path(circuit_copy):
 
 def test_check_electrical_models_valid(circuit_copy):
     """Test that identical circuits pass electrical model check."""
-    from bluepysnap import Circuit
 
     circuit = Circuit(circuit_copy / "circuit_config.json")
     check_electrical_models(circuit, circuit)
@@ -149,7 +154,6 @@ def test_check_electrical_models_valid(circuit_copy):
 
 def test_check_electrical_models_extra_path(circuit_copy):
     """Test that extra hoc paths raise."""
-    from bluepysnap import Circuit
 
     circuit = Circuit(circuit_copy / "circuit_config.json")
 
@@ -159,7 +163,7 @@ def test_check_electrical_models_extra_path(circuit_copy):
     parent_nodes_mock.population_names = []
     parent_mock.nodes = parent_nodes_mock
 
-    with pytest.raises(ValueError, match="Electrical model .hoc path"):
+    with pytest.raises(ValueError, match=r"Electrical model \.hoc path"):
         check_electrical_models(circuit, parent_mock)
 
 
@@ -168,11 +172,6 @@ def test_check_electrical_models_extra_path(circuit_copy):
 
 def test_create_modified_circuit_replaces_node_sets(circuit_copy):
     """Test that node sets file gets replaced."""
-    from obi_one.utils.circuit_customization.populations import (
-        _update_circuit_config,
-        _update_node_sets,
-    )
-    from bluepysnap import Circuit
 
     config_path = circuit_copy / "circuit_config.json"
     parent_circuit = Circuit(config_path)
@@ -189,18 +188,13 @@ def test_create_modified_circuit_replaces_node_sets(circuit_copy):
     _update_node_sets(new_circuit, parent_circuit, custom_node_sets)
 
     # Verify the file was replaced
-    with Path(node_sets_file).open() as f:
+    with Path(node_sets_file).open(encoding="utf-8") as f:
         content = json.load(f)
     assert "custom_set" in content
 
 
 def test_create_modified_circuit_node_sets_not_in_config(circuit_copy):
     """Test error when node sets file provided but not in config."""
-    from obi_one.utils.circuit_customization.populations import (
-        _update_circuit_config,
-        _update_node_sets,
-    )
-    from bluepysnap import Circuit
 
     # Modify config to remove node_sets_file reference
     config_path = circuit_copy / "circuit_config.json"
@@ -220,11 +214,6 @@ def test_create_modified_circuit_node_sets_not_in_config(circuit_copy):
 
 def test_create_modified_circuit_replaces_node_population(circuit_copy):
     """Test that a node population file gets replaced."""
-    from obi_one.utils.circuit_customization.populations import (
-        _update_circuit_config,
-        _update_node_populations,
-    )
-    from bluepysnap import Circuit
 
     config_path = circuit_copy / "circuit_config.json"
     parent_circuit = Circuit(config_path)
@@ -238,9 +227,7 @@ def test_create_modified_circuit_replaces_node_population(circuit_copy):
     replacement = circuit_copy.parent / "replacement_nodes.h5"
     replacement.write_bytes(b"\x89HDF" + b"\x00" * 100)
 
-    _update_node_populations(
-        new_circuit, parent_circuit, {"S1nonbarrel_neurons": replacement}
-    )
+    _update_node_populations(new_circuit, parent_circuit, {"S1nonbarrel_neurons": replacement})
 
     # The file should have been replaced
     assert nodes_h5.stat().st_size != original_size
@@ -248,11 +235,6 @@ def test_create_modified_circuit_replaces_node_population(circuit_copy):
 
 def test_create_modified_circuit_unknown_population(circuit_copy):
     """Test error when unknown population name is provided."""
-    from obi_one.utils.circuit_customization.populations import (
-        _update_circuit_config,
-        _update_node_populations,
-    )
-    from bluepysnap import Circuit
 
     config_path = circuit_copy / "circuit_config.json"
     parent_circuit = Circuit(config_path)
@@ -267,7 +249,6 @@ def test_create_modified_circuit_unknown_population(circuit_copy):
 
 def test_create_modified_circuit_full_flow(circuit_copy):
     """Test the full create_modified_circuit flow with replaced populations."""
-    from obi_one.utils.circuit_customization.populations import create_modified_circuit
 
     mock_client = MagicMock()
     circuit_id = str(uuid4())
@@ -280,7 +261,7 @@ def test_create_modified_circuit_full_flow(circuit_copy):
     # Mock fetch_directory to copy the real circuit
     output_path = circuit_copy.parent / "new_circuit"
 
-    def mock_fetch_dir(db_client, cid, asset_id, dest, *, writable=False):
+    def mock_fetch_dir(_db_client, _cid, _asset_id, dest, *, writable=False):  # noqa: ARG001
         shutil.copytree(circuit_copy, dest)
         return list(dest.rglob("*"))
 
@@ -326,7 +307,6 @@ def test_create_modified_circuit_full_flow(circuit_copy):
 
 def test_create_modified_circuit_new_populations(circuit_copy):
     """Test adding new populations with a custom config."""
-    from obi_one.utils.circuit_customization.populations import create_modified_circuit
 
     mock_client = MagicMock()
     circuit_id = str(uuid4())
@@ -337,7 +317,7 @@ def test_create_modified_circuit_new_populations(circuit_copy):
 
     output_path = circuit_copy.parent / "new_circuit"
 
-    def mock_fetch_dir(db_client, cid, asset_id, dest, *, writable=False):
+    def mock_fetch_dir(_db_client, _cid, _asset_id, dest, *, writable=False):  # noqa: ARG001
         shutil.copytree(circuit_copy, dest)
         return list(dest.rglob("*"))
 
@@ -393,9 +373,7 @@ def test_create_modified_circuit_new_populations(circuit_copy):
             new_circuit_config_path=custom_config,
             new_node_sets_path=circuit_copy / "node_sets.json",
             new_node_population_paths={"NewPop": custom_nodes},
-            new_edge_population_paths={
-                "NewPop__S1nonbarrel_neurons__chemical": custom_edges
-            },
+            new_edge_population_paths={"NewPop__S1nonbarrel_neurons__chemical": custom_edges},
             new_circuit_path=output_path,
         )
 
@@ -409,11 +387,6 @@ def test_create_modified_circuit_new_populations(circuit_copy):
 
 def test_create_modified_circuit_removes_node_sets(circuit_copy):
     """Test that node sets file is removed when not referenced in new config."""
-    from obi_one.utils.circuit_customization.populations import (
-        _update_circuit_config,
-        _update_node_sets,
-    )
-    from bluepysnap import Circuit
 
     config_path = circuit_copy / "circuit_config.json"
     parent_circuit = Circuit(config_path)
@@ -440,11 +413,6 @@ def test_create_modified_circuit_removes_node_sets(circuit_copy):
 
 def test_create_modified_circuit_removes_node_population(circuit_copy):
     """Test that node population files are removed when not referenced in new config."""
-    from obi_one.utils.circuit_customization.populations import (
-        _update_circuit_config,
-        _update_node_populations,
-    )
-    from bluepysnap import Circuit
 
     config_path = circuit_copy / "circuit_config.json"
     parent_circuit = Circuit(config_path)
@@ -475,11 +443,6 @@ def test_create_modified_circuit_removes_node_population(circuit_copy):
 
 def test_create_modified_circuit_removes_edge_population(circuit_copy):
     """Test that edge population files are removed when not referenced in new config."""
-    from obi_one.utils.circuit_customization.populations import (
-        _update_circuit_config,
-        _update_edge_populations,
-    )
-    from bluepysnap import Circuit
 
     config_path = circuit_copy / "circuit_config.json"
     parent_circuit = Circuit(config_path)
