@@ -1,6 +1,7 @@
 """Resolve afferent connectivity between EM cell meshes directly from the EM reconstruction."""
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy  # NOQA: ICN001
@@ -11,8 +12,8 @@ from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 
 L = logging.getLogger(__name__)
 
-# Synapse table column used to (re)locate synapses; mirrors the EM synapse mapping task.
-_SYN_LOCATION_COLUMN = "post_pt_position"
+# The afferent synapse query is one network round-trip per neuron, so we run them in parallel.
+_MAX_QUERY_WORKERS = 8
 
 
 @dataclass
@@ -74,31 +75,40 @@ def _accumulate_counts(
     cave_version: int,
     db_client: Client,
 ) -> tuple[numpy.ndarray, dict[tuple[int, int], int], list[dict]]:
-    """Query afferent synapses per neuron and aggregate internal/external synapse counts."""
+    """Query afferent synapses per neuron (in parallel) and aggregate synapse counts."""
     point_index = {pt_root_id: idx for idx, pt_root_id in enumerate(pt_root_ids)}
     point_set = set(pt_root_ids)
     internal_counts = numpy.zeros((len(pt_root_ids), len(pt_root_ids)), dtype=numpy.int64)
     external_counts: dict[tuple[int, int], int] = {}
     summary_rows = []
 
-    for post_pt_root_id in pt_root_ids:
-        syns, _notice = em_dataset.synapse_info_df(
-            post_pt_root_id, cave_version, col_location=_SYN_LOCATION_COLUMN, db_client=db_client
+    # Warm the cached dataset entity so the threaded CAVE queries don't race on db_client.
+    em_dataset.entity(db_client)
+
+    def _pre_counts(post_pt_root_id: int) -> tuple[int, pandas.Series]:
+        pre_ids = em_dataset.afferent_pre_pt_root_ids(
+            post_pt_root_id, cave_version, db_client=db_client
         )
-        post_idx = point_index[post_pt_root_id]
-        pre_counts = syns["pre_pt_root_id"].value_counts()
-        internal_total = _record_pre_counts(
-            pre_counts, point_set, point_index, post_idx, internal_counts, external_counts
-        )
-        summary_rows.append(
-            {
-                "pt_root_id": post_pt_root_id,
-                "total_afferent_synapses": len(syns),
-                "internal_afferent_synapses": internal_total,
-                "external_afferent_synapses": len(syns) - internal_total,
-                "external_presynaptic_partners": int((~pre_counts.index.isin(point_set)).sum()),
-            }
-        )
+        return post_pt_root_id, pandas.Series(pre_ids).value_counts()
+
+    n_workers = min(_MAX_QUERY_WORKERS, len(pt_root_ids)) or 1
+    with ThreadPoolExecutor(max_workers=n_workers) as executor:
+        # Results aggregated here, in the main thread, so the shared structures stay race-free.
+        for post_pt_root_id, pre_counts in executor.map(_pre_counts, pt_root_ids):
+            post_idx = point_index[post_pt_root_id]
+            internal_total = _record_pre_counts(
+                pre_counts, point_set, point_index, post_idx, internal_counts, external_counts
+            )
+            total = int(pre_counts.sum())
+            summary_rows.append(
+                {
+                    "pt_root_id": post_pt_root_id,
+                    "total_afferent_synapses": total,
+                    "internal_afferent_synapses": internal_total,
+                    "external_afferent_synapses": total - internal_total,
+                    "external_presynaptic_partners": int((~pre_counts.index.isin(point_set)).sum()),
+                }
+            )
 
     return internal_counts, external_counts, summary_rows
 

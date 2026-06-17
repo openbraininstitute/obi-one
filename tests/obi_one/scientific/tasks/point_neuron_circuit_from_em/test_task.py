@@ -4,7 +4,6 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import bluepysnap
-import pandas as pd
 import pytest
 
 from obi_one.config import settings
@@ -35,15 +34,6 @@ def _make_task(meshes):
     config = Mock()
     config.initialize.cell_meshes.elements = tuple(meshes)
     return PointNeuronCircuitFromEMTask.model_construct(config=config)
-
-
-def _synapses_df(pre_ids, post_id):
-    return pd.DataFrame(
-        {
-            "pre_pt_root_id": pre_ids,
-            "post_pt_root_id": [post_id] * len(pre_ids),
-        }
-    )
 
 
 class TestEMCellMeshFromID:
@@ -98,16 +88,16 @@ class TestPointNeuronCircuitFromEMTask:
 
         # Neuron 111: 2 internal synapses from 222, 1 external from 999.
         # Neuron 222: 1 internal synapse from 111, 1 external from 888.
-        syn_map = {
-            111: _synapses_df([222, 222, 999], 111),
-            222: _synapses_df([111, 888], 222),
+        pre_map = {
+            111: [222, 222, 999],
+            222: [111, 888],
         }
 
-        def fake_synapse_info_df(post_pt_root_id, cave_version, col_location=None, db_client=None):  # noqa: ARG001
-            return syn_map[post_pt_root_id], "notice"
+        def fake_afferents(post_pt_root_id, cave_version, db_client=None):  # noqa: ARG001
+            return pre_map[post_pt_root_id]
 
         em_dataset = Mock()
-        em_dataset.synapse_info_df.side_effect = fake_synapse_info_df
+        em_dataset.afferent_pre_pt_root_ids.side_effect = fake_afferents
 
         with (
             patch.dict(os.environ, {_CAVE_KEY: "fake-key"}),
@@ -136,7 +126,7 @@ class TestPointNeuronCircuitFromEMTask:
         assert summary.loc[222, "external_presynaptic_partners"] == 1
 
         # The EM dataset is built with the shared source dataset id and queried per neuron.
-        assert em_dataset.synapse_info_df.call_count == 2
+        assert em_dataset.afferent_pre_pt_root_ids.call_count == 2
 
         # A Brian2 SONATA circuit was written and loads with bluepysnap.
         assert task.circuit_config_path == tmp_path / "circuit_config.json"

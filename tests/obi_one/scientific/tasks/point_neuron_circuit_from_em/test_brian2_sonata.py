@@ -15,6 +15,7 @@ from obi_one.scientific.tasks.point_neuron_circuit_from_em.connectivity import (
     EdgeSet,
     ResolvedConnectivity,
 )
+from obi_one.utils.circuit import run_validation
 
 
 def _connectivity(*, with_virtual=True):
@@ -62,6 +63,7 @@ class TestWriteBrian2SonataCircuit:
         assert (tmp_path / "nodes.h5").exists()
         assert (tmp_path / "edges.h5").exists()
         assert (tmp_path / "models" / "point_neuron.json").exists()
+        assert (tmp_path / "models" / "virtual_neuron.json").exists()
         assert (tmp_path / "models" / "synapse.json").exists()
         assert (tmp_path / "node_sets.json").exists()
 
@@ -73,6 +75,9 @@ class TestWriteBrian2SonataCircuit:
         assert circuit.nodes[POINT_POPULATION].get(
             properties="model_template"
         ).unique().tolist() == ["json:point_neuron"]
+        assert circuit.nodes[VIRTUAL_POPULATION].get(
+            properties="model_template"
+        ).unique().tolist() == ["json:virtual_neuron"]
 
         internal_name = f"{POINT_POPULATION}__{POINT_POPULATION}__brian2_synapse"
         external_name = f"{VIRTUAL_POPULATION}__{POINT_POPULATION}__brian2_synapse"
@@ -85,6 +90,55 @@ class TestWriteBrian2SonataCircuit:
         assert circuit.to_libsonata.node_population_properties(POINT_POPULATION).type == (
             "brian2_point"
         )
+
+    def test_written_circuit_passes_sonata_validation(self, tmp_path):
+        # Guards against e.g. the virtual population missing the required model_template property.
+        config_path = write_brian2_sonata_circuit(tmp_path, _connectivity(with_virtual=True))
+        try:
+            run_validation(config_path)
+        except FileNotFoundError as exc:  # bluepysnap build without brian2 SONATA schemas
+            pytest.skip(f"bluepysnap lacks brian2 SONATA schemas: {exc}")
+
+    def test_inhibitory_fraction_gives_negative_weights(self, tmp_path):
+        n = 10
+        pts = list(range(100, 100 + n))
+        # One internal edge from each neuron i -> (i + 1) % n.
+        internal = EdgeSet(
+            source_node_id=np.arange(n, dtype=np.uint32),
+            target_node_id=((np.arange(n) + 1) % n).astype(np.uint32),
+            synapse_count=np.full(n, 2, dtype=np.int64),
+        )
+        empty = EdgeSet(
+            np.array([], dtype=np.uint32),
+            np.array([], dtype=np.uint32),
+            np.array([], dtype=np.int64),
+        )
+        connectivity = ResolvedConnectivity(
+            point_pt_root_ids=pts,
+            virtual_pt_root_ids=[],
+            internal_edges=internal,
+            external_edges=empty,
+            internal_matrix=pd.DataFrame(
+                np.zeros((n, n), dtype=np.int64), index=pd.Index(pts), columns=pd.Index(pts)
+            ),
+            neuron_summary=pd.DataFrame({"pt_root_id": pts}).set_index("pt_root_id"),
+        )
+
+        circuit = bluepysnap.Circuit(str(write_brian2_sonata_circuit(tmp_path, connectivity)))
+
+        # Exactly 20% of the neurons are inhibitory.
+        synapse_class = circuit.nodes[POINT_POPULATION].get(properties="synapse_class")
+        assert (synapse_class == "INH").sum() == round(0.2 * n)
+
+        # A synapse is negative iff its presynaptic neuron is inhibitory.
+        internal_name = f"{POINT_POPULATION}__{POINT_POPULATION}__brian2_synapse"
+        edges = circuit.edges[internal_name].to_libsonata
+        selection = edges.select_all()
+        weights = edges.get_attribute("w", selection)
+        sources = edges.source_nodes(selection)
+        inhibitory = {i for i in range(n) if synapse_class.iloc[i] == "INH"}
+        for weight, source in zip(weights, sources, strict=True):
+            assert (weight < 0) == (source in inhibitory)
 
     def test_writes_circuit_without_virtual_population(self, tmp_path):
         config_path = write_brian2_sonata_circuit(tmp_path, _connectivity(with_virtual=False))

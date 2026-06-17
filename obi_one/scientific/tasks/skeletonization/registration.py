@@ -6,7 +6,7 @@ from entitysdk import Client, models
 from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
 from entitysdk.types import AssetLabel, CellMorphologyProtocolDesign, StainingType
 
-from app.services.morphology_registration import register_morphology_with_assets_and_metrics
+# from app.services.morphology_registration import register_morphology_with_assets_and_metrics
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL, ROLE_NAME
 from obi_one.scientific.tasks.skeletonization.schemas import Metadata, SkeletonizationOutputs
@@ -122,14 +122,14 @@ def register_output_resource(
         AssetLabel.morphology_with_spines: outputs.h5_combined_morphology_file,
     }
 
-    registered_morphology, _measurement, _mesh = register_morphology_with_assets_and_metrics(
-        client=client,
-        morphology=morphology,
-        morphology_files=morphology_files,
-        metrics_source_path=outputs.h5_morphology_file,
-        generate_mesh=True,
-        extra_assets=extra_assets,
-    )
+    # registered_morphology, _measurement, _mesh = register_morphology_with_assets_and_metrics(
+    #     client=client,
+    #     morphology=morphology,
+    #     morphology_files=morphology_files,
+    #     metrics_source_path=outputs.h5_morphology_file,
+    #     generate_mesh=True,
+    #     extra_assets=extra_assets,
+    # )
 
     # Create contribution linking morphology to its creator
     client.register_entity(
