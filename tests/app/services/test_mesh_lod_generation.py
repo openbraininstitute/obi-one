@@ -19,15 +19,27 @@ from obi_one.scientific.tasks.mesh_lod_generation.task import (
 )
 
 MeshLodGenerationScanConfig.model_rebuild(_types_namespace={"UUID": UUID})
-MeshLODGenerationTask.model_rebuild(_types_namespace={"UUID": UUID, "entitysdk": entitysdk})
+MeshLODGenerationTask.model_rebuild(
+    _types_namespace={
+        "UUID": UUID,
+        "entitysdk": entitysdk,
+        "MeshLodGenerationScanConfig": MeshLodGenerationScanConfig,
+    }
+)
 
 
+# ==========================================
+# 1. Package Initialization (__init__.py)
+# ==========================================
 def test_init_exports():
     """Ensure __all__ and package-level exports are properly initialized."""
     assert "MeshLodGenerationScanConfig" in mesh_lod.__all__
     assert mesh_lod.MeshLodGenerationScanConfig is MeshLodGenerationScanConfig
 
 
+# ==========================================
+# 2. Configuration Schema (config.py)
+# ==========================================
 def test_mesh_lod_config_valid():
     """Ensure config parses valid combinations of UUIDs and attributes."""
     entity_id = uuid4()
@@ -43,11 +55,17 @@ def test_mesh_lod_config_invalid_types():
         MeshLodGenerationScanConfig(entity_id="not-a-uuid", obj_asset_id=uuid4())
 
 
+# ==========================================
+# 3. Estimation Metrics (estimate.py)
+# ==========================================
 def test_estimate_mesh_lod_generation_count():
     """Ensure metrics scale deterministically (1 element per incoming item context)."""
     assert estimate_mesh_lod_generation_count(db_client=MagicMock(), config_id=uuid4()) == 1
 
 
+# ==========================================
+# 4. Core Pipeline & Orchestration (task.py)
+# ==========================================
 @patch("entitysdk.Client")
 def test_download_obj_execution(mock_client_cls, tmp_path):
     """Ensure asset payload downloads are bound correctly to paths."""
