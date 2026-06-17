@@ -137,6 +137,10 @@ class BasicConnectivityPlotsTask(Task):
             "layer": plt.get_cmap("Dark2"),
             "mtype": plt.get_cmap("GnBu"),
         }
+        # Only keep properties that exist in the connectome's node table.
+        node_cmaps = {
+            prop: cmap for prop, cmap in node_cmaps.items() if prop in conn.vertex_properties
+        }
         fig = plot_node_stats(conn, node_cmaps, full_width)
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"node_stats.{fmt}"
@@ -157,7 +161,11 @@ class BasicConnectivityPlotsTask(Task):
         if size[0] < n_min_stats:
             L.warning("Your network is likely too small for these plots to be informative.")
         conn_probs = {"full": {}, "within": {}}
-        for grouping_prop in ["synapse_class", "layer", "mtype"]:
+        # Only group by properties that exist in the connectome's node table.
+        grouping_props = [
+            prop for prop in ("synapse_class", "layer", "mtype") if prop in conn.vertex_properties
+        ]
+        for grouping_prop in grouping_props:
             conn_probs["full"][grouping_prop] = connection_probability_pathway(conn, grouping_prop)
             conn_probs["within"][grouping_prop] = connection_probability_within_pathway(
                 conn, grouping_prop, max_dist=100
