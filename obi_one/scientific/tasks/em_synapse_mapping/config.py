@@ -170,16 +170,3 @@ class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.em_synapse_mapping__execution
     )
-
-    class Initialize(EMSynapseMappingScanConfig.Initialize):
-        neurons: "EMSynapseMappingInputNamedTuple"
-
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the EM Synaptome.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
