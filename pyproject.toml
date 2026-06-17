@@ -136,6 +136,9 @@ Issues = "https://github.com/openbraininstitute/obi-one/issues"
 where = ["."]
 include = ["obi_one*"]
 
+[tool.setuptools.package-data]
+"obi_one.scientific.library" = ["*.json"]
+
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
 

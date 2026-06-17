@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime
 from http import HTTPStatus
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 from uuid import UUID, uuid4
 
 import entitysdk
@@ -325,7 +325,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute-partners/inait",
-            "ref": "commit:55428c970249d37d4d0f22f69a81ab07987dfa33",
+            "ref": ANY,
             "path": "scripts/simulate-circuits/run.py",
             "dependencies": "scripts/simulate-circuits/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},

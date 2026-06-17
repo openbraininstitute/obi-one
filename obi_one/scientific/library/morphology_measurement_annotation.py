@@ -1,15 +1,46 @@
+"""NeuroM-based morphology measurement annotation helpers."""
+
+import json
+import logging
 from collections import defaultdict
+from functools import cache
+from pathlib import Path
 from typing import Any
 
 import neurom as nm
 import numpy as np
+from entitysdk.models.measurement_annotation import MeasurementKind
 from neurom.core import Morphology
 
-from app.logger import L
+L = logging.getLogger(__name__)
 
-# Define constants for magic numbers and set literal checks
+DEFAULT_NEURITE_DOMAIN = "basal_dendrite"
+TARGET_NEURITE_DOMAINS = ("apical_dendrite", "axon")
+
 MIN_MEASUREMENT_ITEM_ENTRIES = 2
 EMPTY_NAME_SET = {None, ""}
+
+_TEMPLATE_PATH = Path(__file__).with_name("morphology_template.json")
+
+
+@cache
+def get_morphology_template() -> dict:
+    """Return the cached morphology measurement annotation JSON template."""
+    return json.loads(_TEMPLATE_PATH.read_text())
+
+
+@cache
+def get_morphology_analysis_dict() -> dict[str, list[list[str]]]:
+    """Return the cached analysis dictionary derived from the morphology template."""
+    analysis_dict_base = create_analysis_dict(get_morphology_template())
+    analysis_dict = dict(analysis_dict_base)
+
+    if DEFAULT_NEURITE_DOMAIN in analysis_dict:
+        default_analysis = analysis_dict[DEFAULT_NEURITE_DOMAIN]
+        for domain in TARGET_NEURITE_DOMAINS:
+            analysis_dict.setdefault(domain, default_analysis)
+
+    return analysis_dict
 
 
 def _update_entity_id_recursive(obj: dict | list, entity_id: str) -> None:
@@ -49,10 +80,8 @@ def find_pref_labels_by_domain(
 
 def create_analysis_dict(
     obj: dict | list,
-    # NOTE: results now stores list of [label, unit]
-    # Changed list[str] to list[list[str]] for clarity
     results: defaultdict[str, list[list[str]]] | None = None,
-) -> defaultdict[str, list[list[str]]]:  # Changed list[str] to list[list[str]] for clarity
+) -> defaultdict[str, list[list[str]]]:
     """Recursively collect pref_labels and units grouped by structural_domain."""
     if results is None:
         results = defaultdict(list)
@@ -62,12 +91,9 @@ def create_analysis_dict(
             try:
                 domain = obj["structural_domain"]
                 label = obj["pref_label"]
-                # Extract the unit from the first item in measurement_items
                 unit = obj["measurement_items"][0]["unit"]
-                # Append a list [label, unit]
                 results[domain].append([label, unit])
             except (KeyError, IndexError):
-                # Handle cases where measurement_items or unit might be missing
                 pass
         for value in obj.values():
             create_analysis_dict(value, results)
@@ -85,7 +111,7 @@ def _process_measurement(
     neuron: Morphology,
     neurite_type: int | None = None,
 ) -> list[Any]:
-    """Helper to get a neurom measurement, aggregate if it's a list, and package the result."""
+    """Get a neurom measurement, aggregate if it's a list, and package the result."""
     nm_get_key = "max_radial_distance" if label.endswith("max_radial_distance") else label
 
     if neurite_type is not None:
@@ -139,9 +165,7 @@ def build_results_dict(
     analysis_dict: dict[str, list[list[str]]],
     neuron: Morphology,
 ) -> dict[str, list[list[Any]]]:
-    """Analyzes neuron morphology using neurom and numpy based on the provided
-    analysis_dict structure (which contains [label, unit] pairs).
-    """
+    """Analyze neuron morphology using neurom based on the analysis_dict structure."""
 
     def _run_analysis(category_key: str, neurite_type: int | None = None) -> list[list[Any]]:
         category_results = []
@@ -155,7 +179,6 @@ def build_results_dict(
     results_dict["soma"] = _run_analysis("soma")
     results_dict["neuron_morphology"] = _run_analysis("neuron_morphology")
 
-    # Only compute neurite-domain metrics if that structure exists
     if _has_neurite_type(neuron, nm.AXON):  # ty:ignore[invalid-argument-type]
         results_dict["axon"] = _run_analysis("axon", nm.AXON)  # ty:ignore[invalid-argument-type]
     else:
@@ -178,7 +201,7 @@ def _update_aggregate_items(
     measurement_items: list[dict[str, Any]],
     entry_value: list,
 ) -> None:
-    """Internal helper to update measurement_items with aggregated (list-of-lists) values."""
+    """Update measurement_items with aggregated (list-of-lists) values."""
     items_by_name = {item.get("name"): item for item in measurement_items if item.get("name")}
 
     for sub_entry in entry_value:
@@ -195,7 +218,6 @@ def _update_aggregate_items(
                 item["unit"] = sub_unit
         else:
             matched = False
-            # Use set literal for checking item names
             check_names = EMPTY_NAME_SET | {sub_name}
             for item in measurement_items:
                 if item.get("name") in check_names:
@@ -205,10 +227,10 @@ def _update_aggregate_items(
                     matched = True
                     break
             if not matched:
-                new_item: dict[
-                    str,
-                    str | float | int | None,
-                ] = {"name": sub_name, "value": sub_val}
+                new_item: dict[str, str | float | int | None] = {
+                    "name": sub_name,
+                    "value": sub_val,
+                }
                 if sub_unit is not None:
                     new_item["unit"] = sub_unit
                 measurement_items.append(new_item)
@@ -218,7 +240,7 @@ def _update_scalar_items(
     measurement_items: list[dict[str, Any]],
     entry_value: float | list | tuple,
 ) -> None:
-    """Internal helper to update measurement_items with a scalar value."""
+    """Update measurement_items with a scalar value."""
     scalar_val = entry_value
     scalar_unit = None
 
@@ -249,10 +271,7 @@ def update_measurement_items(
     measurement_items: list[dict[str, Any]],
     entry_value: float | list | tuple,
 ) -> None:
-    """Measurement_items: list of dicts from JSON (each dict has name, unit, value).
-    Entry_value: either a scalar (number) OR a list-of-lists (aggregate stats),
-    e.g. 4444.35 OR [['minimum', 4444, 'μm'], ...].
-    """
+    """Update measurement_items from a scalar or aggregate stats payload."""
     if (
         isinstance(entry_value, list)
         and entry_value
@@ -285,9 +304,7 @@ def fill_json(
     values: dict[str, Any],
     entity_id: str,
 ) -> dict[str, Any]:
-    """Traverse JSON template and fill measurement values.
-    Updates any 'entity_id' key (at any depth) to the given entity_id.
-    """
+    """Traverse JSON template and fill measurement values."""
     _update_entity_id_recursive(template, entity_id)
 
     for data_obj in template.get("data", []):
@@ -303,13 +320,26 @@ def fill_json(
 
                 payload = _get_payload(entry)
                 if payload is None:
-                    break  # matched label but nothing to write
+                    break
 
                 measurement.setdefault("measurement_items", [])
                 update_measurement_items(measurement["measurement_items"], payload)
                 break
 
     return template
+
+
+def compute_morphometrics(morphology_path: str | Path) -> list[MeasurementKind]:
+    """Compute morphometric measurements for a morphology file."""
+    neuron = nm.load_morphology(str(morphology_path))
+    results_dict = build_results_dict(get_morphology_analysis_dict(), neuron)
+    filled = fill_json(get_morphology_template(), results_dict, entity_id="temp_id")
+    measurement_kinds = filled["data"][0]["measurement_kinds"]
+    return [
+        mk
+        for mk in measurement_kinds
+        if any(mi.get("value") is not None for mi in mk.get("measurement_items", []))
+    ]
 
 
 def _has_neurite_type(neuron: Morphology, neurite_type: int) -> bool:

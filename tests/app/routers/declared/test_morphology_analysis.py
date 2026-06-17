@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-import app.endpoints.useful_functions.useful_functions as uf
+import obi_one.scientific.library.morphology_measurement_annotation as uf
 from app.endpoints.morphology_metrics_calculation import run_morphology_analysis
 
 from tests.utils import DATA_DIR
