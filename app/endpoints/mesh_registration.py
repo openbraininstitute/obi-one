@@ -55,13 +55,12 @@ def _register_obj_asset(
     client: entitysdk.client.Client,
     entity_id: UUID,
     obj_path: pathlib.Path,
-) -> str:
+) -> UUID:
     """Upload raw OBJ file as an asset on the EMCellMesh entity."""
     L.info(f"Uploading OBJ asset for entity {entity_id} …")
     try:
         with obj_path.open("rb") as f:
             file_content = f.read()
-
         asset = client.upload_content(
             entity_id=entity_id,
             entity_type=EMCellMesh,
@@ -70,7 +69,7 @@ def _register_obj_asset(
             file_content_type=ContentType.application_obj,
             asset_label=AssetLabel.cell_surface_mesh,
         )
-        L.info(f"OBJ asset uploaded successfully: {asset.path}")
+        L.info(f"OBJ asset uploaded successfully: {asset.id}")
     except EntitySDKError as exc:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -80,20 +79,20 @@ def _register_obj_asset(
             },
         ) from exc
     else:
-        return asset.path
+        return asset.id
 
 
 def _create_lod_task_config(
     client: entitysdk.client.Client,
     entity_id: UUID,
-    obj_asset_id: str,
+    obj_asset_id: UUID,
 ) -> UUID:
-    """Create a TaskConfig entity encoding the LOD generation inputs."""
     L.info(f"Creating LOD generation TaskConfig for entity {entity_id} …")
     config_payload = json.dumps(
         {
+            "type": "MeshLodGenerationSingleConfig",
             "entity_id": str(entity_id),
-            "obj_asset_id": obj_asset_id,
+            "obj_asset_id": str(obj_asset_id),
         }
     ).encode()
 
@@ -185,7 +184,6 @@ async def register_mesh_and_generate_lods(
         obj_asset_id = await run_in_threadpool(
             _register_obj_asset, client, entity_uuid, pathlib.Path(temp_obj_path)
         )
-
         config_id = await run_in_threadpool(
             _create_lod_task_config, client, entity_uuid, obj_asset_id
         )

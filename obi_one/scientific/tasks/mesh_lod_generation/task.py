@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 import ultraliser
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel
-from pydantic import ConfigDict
 
 from obi_one.core.task import Task
 
@@ -84,12 +83,15 @@ def _upload_lod_directory(
 
 
 class MeshLODGenerationTask(Task):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     config: MeshLodGenerationScanConfig
-    client: entitysdk.Client
 
-    def execute(self) -> str:
+    def execute(
+        self,
+        *,
+        db_client: entitysdk.client.Client,
+        entity_cache: bool = False,  # noqa: ARG002
+        execution_activity_id: str | None = None,
+    ) -> str:
         entity_id = self.config.entity_id
         obj_asset_id = self.config.obj_asset_id
 
@@ -98,8 +100,16 @@ class MeshLODGenerationTask(Task):
             obj_path = tmp_path / "input.obj"
             output_dir = tmp_path / "output_lods"
 
-            _download_obj(self.client, entity_id, obj_asset_id, obj_path)
+            _download_obj(db_client, entity_id, obj_asset_id, obj_path)
             lod_files = _generate_lods(obj_path, output_dir)
-            asset_id = _upload_lod_directory(self.client, entity_id, lod_files)
+            asset_id = _upload_lod_directory(db_client, entity_id, lod_files)
 
+        execution_activity = MeshLODGenerationTask._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
+        MeshLODGenerationTask._update_execution_activity(
+            db_client=db_client,
+            execution_activity=execution_activity,
+            generated=[asset_id],
+        )
         return asset_id
