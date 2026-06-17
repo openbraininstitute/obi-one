@@ -264,7 +264,7 @@ def test_register_obj_asset_success(tmp_path):
 
     mock_client = MagicMock()
     uploaded_asset = MagicMock()
-    uploaded_asset.path = "assets/mesh.obj"
+    uploaded_asset.id = "assets/mesh.obj"
     mock_client.upload_content.return_value = uploaded_asset
 
     result = _register_obj_asset(mock_client, uuid4(), obj_path)

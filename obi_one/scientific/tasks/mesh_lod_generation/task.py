@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pathlib
 import tempfile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel
@@ -62,7 +62,6 @@ def _generate_lods(
     generator = ultraliser.LODGenerator(mesh)  # ty: ignore[unresolved-attribute]
     generator.generate_web_lods(str(output_dir))
 
-    # Explicitly type hint the dictionary to use os.PathLike to satisfy invariant checks
     lod_files: dict[os.PathLike, os.PathLike] = {
         pathlib.Path(p.name): p for p in output_dir.iterdir() if p.is_file()
     }
@@ -93,14 +92,18 @@ def _upload_lod_directory(
 
 class MeshLODGenerationTask(Task):
     config: MeshLodGenerationScanConfig
+    client: entitysdk.Client | None = None
+
+    model_config: ClassVar[dict] = {"arbitrary_types_allowed": True}
 
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client,
+        db_client: entitysdk.client.Client | None = None,
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,
     ) -> str:
+        resolved_client = db_client if db_client is not None else self.client
         entity_id = self.config.entity_id
         obj_asset_id = self.config.obj_asset_id
 
@@ -109,15 +112,15 @@ class MeshLODGenerationTask(Task):
             obj_path = tmp_path / "input.obj"
             output_dir = tmp_path / "output_lods"
 
-            _download_obj(db_client, entity_id, obj_asset_id, obj_path)
+            _download_obj(resolved_client, entity_id, obj_asset_id, obj_path)
             lod_files = _generate_lods(obj_path, output_dir)
-            asset_id = _upload_lod_directory(db_client, entity_id, lod_files)
+            asset_id = _upload_lod_directory(resolved_client, entity_id, lod_files)
 
         execution_activity = MeshLODGenerationTask._get_execution_activity(
-            db_client=db_client, execution_activity_id=execution_activity_id
+            db_client=resolved_client, execution_activity_id=execution_activity_id
         )
         MeshLODGenerationTask._update_execution_activity(
-            db_client=db_client,
+            db_client=resolved_client,
             execution_activity=execution_activity,
             generated=[asset_id],
         )

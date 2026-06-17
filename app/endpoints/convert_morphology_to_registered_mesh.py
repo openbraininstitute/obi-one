@@ -2,7 +2,7 @@ import tempfile
 import uuid
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any  # <-- Added import
+from typing import Any
 
 import entitysdk.client
 import entitysdk.exception
@@ -105,7 +105,7 @@ def _validate_mesh_output(glb_path: Path, glb_path_str: str) -> None:
         raise RuntimeError(msg)
 
 
-def mesh_and_register(
+def mesh_and_upload(
     db_client: entitysdk.client.Client,
     cell_morphology_id: uuid.UUID,
     swc_bytes: bytes,
@@ -204,7 +204,7 @@ def register_morphology_mesh(
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
-    asset = mesh_and_register(db_client, cell_morphology_id, swc_bytes)
+    asset = mesh_and_upload(db_client, cell_morphology_id, swc_bytes)
 
     L.info(f"register_morphology_mesh: done, asset id={asset.id}")
     return {"asset_id": str(asset.id), "status": "success"}
