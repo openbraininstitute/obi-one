@@ -54,6 +54,10 @@ def _generate_lods(
 ) -> dict[os.PathLike, os.PathLike]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    if not HAS_MESHING:
+        msg = "ultraliser not installed"
+        raise RuntimeError(msg)
+
     mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)
     generator = ultraliser.LODGenerator(mesh)
     generator.generate_web_lods(str(output_dir))
