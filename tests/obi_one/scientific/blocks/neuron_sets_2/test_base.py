@@ -7,10 +7,10 @@ import pytest
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
 from obi_one.scientific.blocks.neuron_sets_2.predefined import (
-    PredefinedBiophysicalPopulationNeuronSet,
+    BiophysicalPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.property import (
-    BiophysicalPropertyNeuronSet,
+    BiophysicalPopulationPropertyNeuronSet,
     NeuronPropertyFilter,
 )
 
@@ -72,7 +72,7 @@ def test_ids_to_node_set_definition_no_simplification():
 
 def test_add_node_set_to_sonata_circuit(circuit):
     """Test that a node set is added and queryable via bluepysnap."""
-    nset = BiophysicalPropertyNeuronSet(
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}
@@ -96,7 +96,7 @@ def test_add_node_set_to_sonata_circuit(circuit):
 
 def test_to_node_set_file(circuit, tmp_path):
     """Test writing a node set to a JSON file."""
-    nset = PredefinedBiophysicalPopulationNeuronSet(
+    nset = BiophysicalPopulationPredefinedNeuronSet(
         node_set="Layer6", population="S1nonbarrel_neurons"
     )
     nset.set_block_name("file_nset")
@@ -123,7 +123,7 @@ def test_to_node_set_file(circuit, tmp_path):
 
 def test_to_node_set_file_force_resolve(circuit, tmp_path):
     """Test writing with force_resolve_ids produces node_id in output."""
-    nset = PredefinedBiophysicalPopulationNeuronSet(
+    nset = BiophysicalPopulationPredefinedNeuronSet(
         node_set="Layer6", population="S1nonbarrel_neurons"
     )
     nset.set_block_name("file_resolved")
@@ -147,12 +147,12 @@ def test_to_node_set_file_force_resolve(circuit, tmp_path):
 
 def test_to_node_set_file_append(circuit, tmp_path):
     """Test appending a node set to an existing file."""
-    nset1 = PredefinedBiophysicalPopulationNeuronSet(
+    nset1 = BiophysicalPopulationPredefinedNeuronSet(
         node_set="Layer6", population="S1nonbarrel_neurons"
     )
     nset1.set_block_name("nset1")
 
-    nset2 = PredefinedBiophysicalPopulationNeuronSet(
+    nset2 = BiophysicalPopulationPredefinedNeuronSet(
         node_set="L6_BPC", population="S1nonbarrel_neurons"
     )
     nset2.set_block_name("nset2")

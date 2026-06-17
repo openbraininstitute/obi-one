@@ -12,7 +12,7 @@ from obi_one.scientific.blocks.neuron_sets_2.population import (
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.predefined import (
-    PredefinedBiophysicalPopulationNeuronSet,
+    BiophysicalPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     BiophysicalNeuronSetReference,
@@ -36,7 +36,7 @@ def circuit():
 @pytest.fixture
 def nset_a():
     """L6_BPC node set."""
-    nset = PredefinedBiophysicalPopulationNeuronSet(
+    nset = BiophysicalPopulationPredefinedNeuronSet(
         node_set="L6_BPC", population="S1nonbarrel_neurons"
     )
     nset.set_block_name("nset_a")
@@ -46,7 +46,7 @@ def nset_a():
 @pytest.fixture
 def nset_b():
     """L6_TPC:A node set."""
-    nset = PredefinedBiophysicalPopulationNeuronSet(
+    nset = BiophysicalPopulationPredefinedNeuronSet(
         node_set="L6_TPC:A", population="S1nonbarrel_neurons"
     )
     nset.set_block_name("nset_b")
@@ -220,7 +220,7 @@ def test_combined_biophysical_type_mismatch_symbolic(circuit):
     ref_virt.block = virt_nset
 
     # Create a biophysical neuron set
-    bio_nset = PredefinedBiophysicalPopulationNeuronSet(
+    bio_nset = BiophysicalPopulationPredefinedNeuronSet(
         node_set="L6_BPC", population="S1nonbarrel_neurons"
     )
     bio_nset.set_block_name("bio_pop")
@@ -247,7 +247,7 @@ def test_combined_biophysical_type_mismatch_resolved(circuit):
     ref_virt.block = virt_nset
 
     # Create a biophysical neuron set
-    bio_nset = PredefinedBiophysicalPopulationNeuronSet(
+    bio_nset = BiophysicalPopulationPredefinedNeuronSet(
         node_set="L6_BPC", population="S1nonbarrel_neurons"
     )
     bio_nset.set_block_name("bio_pop2")
@@ -271,17 +271,17 @@ def test_combined_biophysical_type_mismatch_resolved(circuit):
 def test_nested_combined(circuit):
     """Test combining a combined set with another set (depth > 1)."""
     # Create base sets
-    nset_a = PredefinedBiophysicalPopulationNeuronSet(
+    nset_a = BiophysicalPopulationPredefinedNeuronSet(
         node_set="L6_BPC", population="S1nonbarrel_neurons"
     )
     nset_a.set_block_name("nested_a")
 
-    nset_b = PredefinedBiophysicalPopulationNeuronSet(
+    nset_b = BiophysicalPopulationPredefinedNeuronSet(
         node_set="L6_TPC:A", population="S1nonbarrel_neurons"
     )
     nset_b.set_block_name("nested_b")
 
-    nset_c = PredefinedBiophysicalPopulationNeuronSet(
+    nset_c = BiophysicalPopulationPredefinedNeuronSet(
         node_set="Layer6", population="S1nonbarrel_neurons"
     )
     nset_c.set_block_name("nested_c")

@@ -17,7 +17,7 @@ from obi_one.scientific.library.circuit import Circuit
 L = logging.getLogger("obi-one")
 
 
-class IDBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
+class IDPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
     """Abstract base class for neuron sets provided by a list of neuron IDs."""
 
     neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)] = Field(
@@ -45,7 +45,7 @@ class IDBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         return {"population": self.population, "node_id": list(self.neuron_ids.elements)}  # ty:ignore[unresolved-attribute]
 
 
-class BiophysicalIDNeuronSet(IDBaseNeuronSet, BiophysicalPopulationNeuronSet):
+class BiophysicalPopulationIDNeuronSet(IDPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected biophysical node population.
@@ -57,7 +57,7 @@ class BiophysicalIDNeuronSet(IDBaseNeuronSet, BiophysicalPopulationNeuronSet):
     )
 
 
-class VirtualIDNeuronSet(IDBaseNeuronSet, VirtualPopulationNeuronSet):
+class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected virtual node population.
@@ -69,7 +69,7 @@ class VirtualIDNeuronSet(IDBaseNeuronSet, VirtualPopulationNeuronSet):
     )
 
 
-class PointIDNeuronSet(IDBaseNeuronSet, PointPopulationNeuronSet):
+class PointPopulationIDNeuronSet(IDPopulationBaseNeuronSet, PointPopulationNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected point neuron population.

@@ -77,7 +77,7 @@ class NeuronPropertyFilter(OBIBaseModel):
         return string_rep[:-1]  # Remove trailing comma and space
 
 
-class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
+class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
     """Abstract base class for a neuron set definition based on neuron properties
     in a given node population.
     """
@@ -147,7 +147,9 @@ class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         return {"population": self.population, "node_id": node_ids}
 
 
-class BiophysicalPropertyNeuronSet(PropertyBaseNeuronSet, BiophysicalPopulationNeuronSet):
+class BiophysicalPopulationPropertyNeuronSet(
+    PropertyPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet
+):
     """Neuron set definition based on neuron properties.
 
     Resolved in one selected biophysical node population.
@@ -159,7 +161,9 @@ class BiophysicalPropertyNeuronSet(PropertyBaseNeuronSet, BiophysicalPopulationN
     )
 
 
-class VirtualPropertyNeuronSet(PropertyBaseNeuronSet, VirtualPopulationNeuronSet):
+class VirtualPopulationPropertyNeuronSet(
+    PropertyPopulationBaseNeuronSet, VirtualPopulationNeuronSet
+):
     """Neuron set definition based on neuron properties.
 
     Resolved in one selected virtual node population.
@@ -171,7 +175,7 @@ class VirtualPropertyNeuronSet(PropertyBaseNeuronSet, VirtualPopulationNeuronSet
     )
 
 
-class PointPropertyNeuronSet(PropertyBaseNeuronSet, PointPopulationNeuronSet):
+class PointPopulationPropertyNeuronSet(PropertyPopulationBaseNeuronSet, PointPopulationNeuronSet):
     """Neuron set definition based on neuron properties.
 
     Resolved in one selected point neuron population.

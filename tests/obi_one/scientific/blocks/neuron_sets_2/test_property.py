@@ -5,9 +5,9 @@ import pytest
 
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.property import (
-    BiophysicalPropertyNeuronSet,
+    BiophysicalPopulationPropertyNeuronSet,
     NeuronPropertyFilter,
-    VirtualPropertyNeuronSet,
+    VirtualPopulationPropertyNeuronSet,
 )
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
@@ -25,8 +25,8 @@ def circuit():
 
 
 def test_property_neuron_set_basic(circuit):
-    """Test BiophysicalPropertyNeuronSet filters by properties correctly."""
-    nset = BiophysicalPropertyNeuronSet(
+    """Test BiophysicalPopulationPropertyNeuronSet filters by properties correctly."""
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}
@@ -41,7 +41,7 @@ def test_property_neuron_set_basic(circuit):
 
 def test_property_neuron_set_symbolic_expression(circuit):
     """Test symbolic expression when properties resolve in only one population."""
-    nset = BiophysicalPropertyNeuronSet(
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["3", "6"], "synapse_class": ["EXC"]}
@@ -57,8 +57,8 @@ def test_property_neuron_set_symbolic_expression(circuit):
 
 
 def test_property_neuron_set_with_sampling(circuit):
-    """Test BiophysicalPropertyNeuronSet with sub-sampling."""
-    nset = BiophysicalPropertyNeuronSet(
+    """Test BiophysicalPopulationPropertyNeuronSet with sub-sampling."""
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}
@@ -75,7 +75,7 @@ def test_property_neuron_set_with_sampling(circuit):
 
 def test_property_neuron_set_invalid_property(circuit):
     """Test that an invalid property name raises."""
-    nset = BiophysicalPropertyNeuronSet(
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(filter_dict={"INVALID_PROP": ["x"], "layer": ["6"]}),
     )
@@ -87,7 +87,7 @@ def test_property_neuron_set_invalid_property(circuit):
 
 def test_property_neuron_set_no_match(circuit):
     """Test that non-matching property values return empty."""
-    nset = BiophysicalPropertyNeuronSet(
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(filter_dict={"synapse_class": ["NONEXISTENT"]}),
     )
@@ -99,7 +99,7 @@ def test_property_neuron_set_no_match(circuit):
 
 def test_property_neuron_set_force_resolve(circuit):
     """Test force_resolve_ids returns explicit IDs."""
-    nset = BiophysicalPropertyNeuronSet(
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}
@@ -114,8 +114,8 @@ def test_property_neuron_set_force_resolve(circuit):
 
 
 def test_property_neuron_set_virtual_mismatch(circuit):
-    """Test VirtualPropertyNeuronSet fails with a biophysical population."""
-    nset = VirtualPropertyNeuronSet(
+    """Test VirtualPopulationPropertyNeuronSet fails with a biophysical population."""
+    nset = VirtualPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(filter_dict={"layer": ["6"]}),
     )
@@ -126,8 +126,8 @@ def test_property_neuron_set_virtual_mismatch(circuit):
 
 
 def test_property_neuron_set_biophysical_matching(circuit):
-    """Test BiophysicalPropertyNeuronSet works with a biophysical population."""
-    nset = BiophysicalPropertyNeuronSet(
+    """Test BiophysicalPopulationPropertyNeuronSet works with a biophysical population."""
+    nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}

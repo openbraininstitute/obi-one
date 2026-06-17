@@ -205,7 +205,7 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
         return {"population": self.population, "node_id": node_ids}
 
 
-class PredefinedBiophysicalPopulationNeuronSet(
+class BiophysicalPopulationPredefinedNeuronSet(
     PredefinedPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet
 ):
     """Use an existing node set already defined in the circuit's node sets file.
@@ -220,7 +220,7 @@ class PredefinedBiophysicalPopulationNeuronSet(
     )
 
 
-class PredefinedVirtualPopulationNeuronSet(
+class VirtualPopulationPredefinedNeuronSet(
     PredefinedPopulationBaseNeuronSet, VirtualPopulationNeuronSet
 ):
     """Use an existing node set already defined in the circuit's node sets file.
@@ -235,7 +235,7 @@ class PredefinedVirtualPopulationNeuronSet(
     )
 
 
-class PredefinedPointPopulationNeuronSet(
+class PointPopulationPredefinedNeuronSet(
     PredefinedPopulationBaseNeuronSet, PointPopulationNeuronSet
 ):
     """Use an existing node set already defined in the circuit's node sets file.

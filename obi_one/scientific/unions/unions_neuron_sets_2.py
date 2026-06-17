@@ -10,9 +10,9 @@ from obi_one.scientific.blocks.neuron_sets_2.combined import (
     VirtualCombinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.id import (
-    BiophysicalIDNeuronSet,
-    PointIDNeuronSet,
-    VirtualIDNeuronSet,
+    BiophysicalPopulationIDNeuronSet,
+    PointPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
@@ -20,15 +20,15 @@ from obi_one.scientific.blocks.neuron_sets_2.population import (
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.predefined import (
-    PredefinedBiophysicalPopulationNeuronSet,
+    BiophysicalPopulationPredefinedNeuronSet,
+    PointPopulationPredefinedNeuronSet,
     PredefinedNeuronSet,
-    PredefinedPointPopulationNeuronSet,
-    PredefinedVirtualPopulationNeuronSet,
+    VirtualPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.property import (
-    BiophysicalPropertyNeuronSet,
-    PointPropertyNeuronSet,
-    VirtualPropertyNeuronSet,
+    BiophysicalPopulationPropertyNeuronSet,
+    PointPopulationPropertyNeuronSet,
+    VirtualPopulationPropertyNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.specific import (
     AllBiophysicalNeurons,
@@ -39,25 +39,25 @@ from obi_one.scientific.blocks.neuron_sets_2.specific import (
 
 _BIOPHYSICAL_NEURON_SETS = (
     BiophysicalPopulationNeuronSet
-    | BiophysicalIDNeuronSet
-    | BiophysicalPropertyNeuronSet
-    | PredefinedBiophysicalPopulationNeuronSet
+    | BiophysicalPopulationIDNeuronSet
+    | BiophysicalPopulationPropertyNeuronSet
+    | BiophysicalPopulationPredefinedNeuronSet
     | BiophysicalCombinedNeuronSet
     | AllBiophysicalNeurons
 )
 _VIRTUAL_NEURON_SETS = (
     VirtualPopulationNeuronSet
-    | VirtualIDNeuronSet
-    | VirtualPropertyNeuronSet
-    | PredefinedVirtualPopulationNeuronSet
+    | VirtualPopulationIDNeuronSet
+    | VirtualPopulationPropertyNeuronSet
+    | VirtualPopulationPredefinedNeuronSet
     | VirtualCombinedNeuronSet
     | AllVirtualNeurons
 )
 _POINT_NEURON_SETS = (
     PointPopulationNeuronSet
-    | PointIDNeuronSet
-    | PointPropertyNeuronSet
-    | PredefinedPointPopulationNeuronSet
+    | PointPopulationIDNeuronSet
+    | PointPopulationPropertyNeuronSet
+    | PointPopulationPredefinedNeuronSet
     | PointCombinedNeuronSet
     | AllPointNeurons
 )

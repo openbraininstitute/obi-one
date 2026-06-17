@@ -6,8 +6,8 @@ import pytest
 import obi_one as obi
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets_2.id import (
-    BiophysicalIDNeuronSet,
-    VirtualIDNeuronSet,
+    BiophysicalPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
 )
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
@@ -25,8 +25,8 @@ def circuit():
 
 
 def test_id_neuron_set_basic(circuit):
-    """Test BiophysicalIDNeuronSet returns the specified IDs."""
-    nset = BiophysicalIDNeuronSet(
+    """Test BiophysicalPopulationIDNeuronSet returns the specified IDs."""
+    nset = BiophysicalPopulationIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="test_ids", elements=(0, 2, 5, 8)),
     )
@@ -38,8 +38,8 @@ def test_id_neuron_set_basic(circuit):
 
 
 def test_id_neuron_set_expression(circuit):
-    """Test BiophysicalIDNeuronSet node set definition contains population and node_id."""
-    nset = BiophysicalIDNeuronSet(
+    """Test BiophysicalPopulationIDNeuronSet node set definition contains population and node_id."""
+    nset = BiophysicalPopulationIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="test_ids", elements=(1, 3, 7)),
     )
@@ -52,8 +52,8 @@ def test_id_neuron_set_expression(circuit):
 
 
 def test_id_neuron_set_with_sampling(circuit):
-    """Test BiophysicalIDNeuronSet with sub-sampling."""
-    nset = BiophysicalIDNeuronSet(
+    """Test BiophysicalPopulationIDNeuronSet with sub-sampling."""
+    nset = BiophysicalPopulationIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="test_ids", elements=list(range(10))),
         sample_percentage=50,
@@ -67,7 +67,7 @@ def test_id_neuron_set_with_sampling(circuit):
 
 def test_id_neuron_set_invalid_ids(circuit):
     """Test that neuron IDs not in the population raise an error."""
-    nset = BiophysicalIDNeuronSet(
+    nset = BiophysicalPopulationIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="bad_ids", elements=(0, 999)),
     )
@@ -78,8 +78,8 @@ def test_id_neuron_set_invalid_ids(circuit):
 
 
 def test_id_neuron_set_biophysical_matching(circuit):
-    """Test BiophysicalIDNeuronSet works with biophysical population."""
-    nset = BiophysicalIDNeuronSet(
+    """Test BiophysicalPopulationIDNeuronSet works with biophysical population."""
+    nset = BiophysicalPopulationIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="bio_ids", elements=(0, 1, 2)),
     )
@@ -90,8 +90,8 @@ def test_id_neuron_set_biophysical_matching(circuit):
 
 
 def test_id_neuron_set_virtual_mismatch(circuit):
-    """Test VirtualIDNeuronSet fails with a biophysical population."""
-    nset = VirtualIDNeuronSet(
+    """Test VirtualPopulationIDNeuronSet fails with a biophysical population."""
+    nset = VirtualPopulationIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="virt_ids", elements=(0, 1)),
     )
