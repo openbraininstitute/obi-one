@@ -7,7 +7,6 @@ import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.property import (
     BiophysicalPropertyNeuronSet,
     NeuronPropertyFilter,
-    PropertyNeuronSet,
     VirtualPropertyNeuronSet,
 )
 
@@ -26,8 +25,8 @@ def circuit():
 
 
 def test_property_neuron_set_basic(circuit):
-    """Test PropertyNeuronSet filters by properties correctly."""
-    nset = PropertyNeuronSet(
+    """Test BiophysicalPropertyNeuronSet filters by properties correctly."""
+    nset = BiophysicalPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}
@@ -42,7 +41,7 @@ def test_property_neuron_set_basic(circuit):
 
 def test_property_neuron_set_symbolic_expression(circuit):
     """Test symbolic expression when properties resolve in only one population."""
-    nset = PropertyNeuronSet(
+    nset = BiophysicalPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["3", "6"], "synapse_class": ["EXC"]}
@@ -58,8 +57,8 @@ def test_property_neuron_set_symbolic_expression(circuit):
 
 
 def test_property_neuron_set_with_sampling(circuit):
-    """Test PropertyNeuronSet with sub-sampling."""
-    nset = PropertyNeuronSet(
+    """Test BiophysicalPropertyNeuronSet with sub-sampling."""
+    nset = BiophysicalPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}
@@ -76,7 +75,7 @@ def test_property_neuron_set_with_sampling(circuit):
 
 def test_property_neuron_set_invalid_property(circuit):
     """Test that an invalid property name raises."""
-    nset = PropertyNeuronSet(
+    nset = BiophysicalPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(filter_dict={"INVALID_PROP": ["x"], "layer": ["6"]}),
     )
@@ -88,7 +87,7 @@ def test_property_neuron_set_invalid_property(circuit):
 
 def test_property_neuron_set_no_match(circuit):
     """Test that non-matching property values return empty."""
-    nset = PropertyNeuronSet(
+    nset = BiophysicalPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(filter_dict={"synapse_class": ["NONEXISTENT"]}),
     )
@@ -100,7 +99,7 @@ def test_property_neuron_set_no_match(circuit):
 
 def test_property_neuron_set_force_resolve(circuit):
     """Test force_resolve_ids returns explicit IDs."""
-    nset = PropertyNeuronSet(
+    nset = BiophysicalPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
             filter_dict={"layer": ["6"], "synapse_class": ["EXC"]}

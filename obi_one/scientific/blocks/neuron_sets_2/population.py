@@ -128,34 +128,6 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         return (expression, {})
 
 
-class PopulationNeuronSet(PopulationBaseNeuronSet):
-    """Sample a percentage of neurons from any population."""
-
-    title: ClassVar[str] = "Population Sample % (Any)"
-    description: ClassVar[str] = "Sample a percentage of neurons from a population of any type."
-
-    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitUsability.SHOW_NEURON_SETS,
-            SchemaKey.FALSE_MESSAGE: "This circuit has no populations.",
-        },
-    }
-
-    population: str = Field(
-        min_length=1,
-        title="Population",
-        description="Name of the node population to select from.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.NEURONAL_POPULATION,
-        },
-    )
-
-
 class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet):
     """Sample a percentage of neurons from a biophysical population."""
 
@@ -238,35 +210,5 @@ class VirtualPopulationNeuronSet(PopulationBaseNeuronSet):
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.VIRTUAL_NEURONAL_POPULATION,
-        },
-    )
-
-
-class NonVirtualPopulationNeuronSet(PopulationBaseNeuronSet):
-    """Sample a percentage of neurons from a non-virtual population."""
-
-    title: ClassVar[str] = "Population Sample % (Non-Virtual)"
-    description: ClassVar[str] = "Sample a percentage of neurons from a non-virtual population."
-
-    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
-        NeuronSetPopulationType.NONVIRTUAL
-    )
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS,
-            SchemaKey.FALSE_MESSAGE: "This circuit has no non-virtual populations.",
-        },
-    }
-
-    population: str = Field(
-        min_length=1,
-        title="Population",
-        description="Name of the non-virtual node population to select from.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.NONVIRTUAL_NEURONAL_POPULATION,
         },
     )

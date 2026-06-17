@@ -7,7 +7,6 @@ import obi_one as obi
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets_2.id import (
     BiophysicalIDNeuronSet,
-    IDNeuronSet,
     VirtualIDNeuronSet,
 )
 
@@ -26,8 +25,8 @@ def circuit():
 
 
 def test_id_neuron_set_basic(circuit):
-    """Test IDNeuronSet returns the specified IDs."""
-    nset = IDNeuronSet(
+    """Test BiophysicalIDNeuronSet returns the specified IDs."""
+    nset = BiophysicalIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="test_ids", elements=(0, 2, 5, 8)),
     )
@@ -39,8 +38,8 @@ def test_id_neuron_set_basic(circuit):
 
 
 def test_id_neuron_set_expression(circuit):
-    """Test IDNeuronSet node set definition contains population and node_id."""
-    nset = IDNeuronSet(
+    """Test BiophysicalIDNeuronSet node set definition contains population and node_id."""
+    nset = BiophysicalIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="test_ids", elements=(1, 3, 7)),
     )
@@ -53,8 +52,8 @@ def test_id_neuron_set_expression(circuit):
 
 
 def test_id_neuron_set_with_sampling(circuit):
-    """Test IDNeuronSet with sub-sampling."""
-    nset = IDNeuronSet(
+    """Test BiophysicalIDNeuronSet with sub-sampling."""
+    nset = BiophysicalIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="test_ids", elements=list(range(10))),
         sample_percentage=50,
@@ -68,7 +67,7 @@ def test_id_neuron_set_with_sampling(circuit):
 
 def test_id_neuron_set_invalid_ids(circuit):
     """Test that neuron IDs not in the population raise an error."""
-    nset = IDNeuronSet(
+    nset = BiophysicalIDNeuronSet(
         population="S1nonbarrel_neurons",
         neuron_ids=NamedTuple(name="bad_ids", elements=(0, 999)),
     )

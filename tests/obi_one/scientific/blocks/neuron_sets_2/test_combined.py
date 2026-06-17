@@ -12,7 +12,7 @@ from obi_one.scientific.blocks.neuron_sets_2.population import (
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.predefined import (
-    PredefinedPopulationNeuronSet,
+    PredefinedBiophysicalPopulationNeuronSet,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     BiophysicalNeuronSetReference,
@@ -36,7 +36,9 @@ def circuit():
 @pytest.fixture
 def nset_a():
     """L6_BPC node set."""
-    nset = PredefinedPopulationNeuronSet(node_set="L6_BPC", population="S1nonbarrel_neurons")
+    nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="L6_BPC", population="S1nonbarrel_neurons"
+    )
     nset.set_block_name("nset_a")
     return nset
 
@@ -44,7 +46,9 @@ def nset_a():
 @pytest.fixture
 def nset_b():
     """L6_TPC:A node set."""
-    nset = PredefinedPopulationNeuronSet(node_set="L6_TPC:A", population="S1nonbarrel_neurons")
+    nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+    )
     nset.set_block_name("nset_b")
     return nset
 
@@ -216,7 +220,9 @@ def test_combined_biophysical_type_mismatch_symbolic(circuit):
     ref_virt.block = virt_nset
 
     # Create a biophysical neuron set
-    bio_nset = PredefinedPopulationNeuronSet(node_set="L6_BPC", population="S1nonbarrel_neurons")
+    bio_nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="L6_BPC", population="S1nonbarrel_neurons"
+    )
     bio_nset.set_block_name("bio_pop")
     ref_bio = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="bio_pop")
     ref_bio.block = bio_nset
@@ -241,7 +247,9 @@ def test_combined_biophysical_type_mismatch_resolved(circuit):
     ref_virt.block = virt_nset
 
     # Create a biophysical neuron set
-    bio_nset = PredefinedPopulationNeuronSet(node_set="L6_BPC", population="S1nonbarrel_neurons")
+    bio_nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="L6_BPC", population="S1nonbarrel_neurons"
+    )
     bio_nset.set_block_name("bio_pop2")
     ref_bio = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="bio_pop2")
     ref_bio.block = bio_nset
@@ -263,13 +271,19 @@ def test_combined_biophysical_type_mismatch_resolved(circuit):
 def test_nested_combined(circuit):
     """Test combining a combined set with another set (depth > 1)."""
     # Create base sets
-    nset_a = PredefinedPopulationNeuronSet(node_set="L6_BPC", population="S1nonbarrel_neurons")
+    nset_a = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="L6_BPC", population="S1nonbarrel_neurons"
+    )
     nset_a.set_block_name("nested_a")
 
-    nset_b = PredefinedPopulationNeuronSet(node_set="L6_TPC:A", population="S1nonbarrel_neurons")
+    nset_b = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+    )
     nset_b.set_block_name("nested_b")
 
-    nset_c = PredefinedPopulationNeuronSet(node_set="Layer6", population="S1nonbarrel_neurons")
+    nset_c = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
     nset_c.set_block_name("nested_c")
 
     # Create references

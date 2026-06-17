@@ -6,43 +6,33 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.neuron_sets_2.combined import (
     BiophysicalCombinedNeuronSet,
     CombinedNeuronSet,
-    NonVirtualCombinedNeuronSet,
     PointCombinedNeuronSet,
     VirtualCombinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.id import (
     BiophysicalIDNeuronSet,
-    IDNeuronSet,
-    NonVirtualIDNeuronSet,
     PointIDNeuronSet,
     VirtualIDNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
-    NonVirtualPopulationNeuronSet,
     PointPopulationNeuronSet,
-    PopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.predefined import (
     PredefinedBiophysicalPopulationNeuronSet,
     PredefinedNeuronSet,
-    PredefinedNonVirtualPopulationNeuronSet,
     PredefinedPointPopulationNeuronSet,
-    PredefinedPopulationNeuronSet,
     PredefinedVirtualPopulationNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.property import (
     BiophysicalPropertyNeuronSet,
-    NonVirtualPropertyNeuronSet,
     PointPropertyNeuronSet,
-    PropertyNeuronSet,
     VirtualPropertyNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.specific import (
     AllBiophysicalNeurons,
     AllNeurons,
-    AllNonVirtualNeurons,
     AllPointNeurons,
     AllVirtualNeurons,
 )
@@ -71,24 +61,13 @@ _POINT_NEURON_SETS = (
     | PointCombinedNeuronSet
     | AllPointNeurons
 )
-_NONVIRTUAL_NEURON_SETS = (
-    NonVirtualPopulationNeuronSet
-    | NonVirtualIDNeuronSet
-    | NonVirtualPropertyNeuronSet
-    | PredefinedNonVirtualPopulationNeuronSet
-    | NonVirtualCombinedNeuronSet
-    | AllNonVirtualNeurons
-)
+_NONVIRTUAL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
 _ALL_NEURON_SETS = (
     _BIOPHYSICAL_NEURON_SETS
     | _VIRTUAL_NEURON_SETS
     | _POINT_NEURON_SETS
     | _NONVIRTUAL_NEURON_SETS
-    | PopulationNeuronSet
-    | IDNeuronSet
-    | PropertyNeuronSet
     | PredefinedNeuronSet
-    | PredefinedPopulationNeuronSet
     | CombinedNeuronSet
     | AllNeurons
 )

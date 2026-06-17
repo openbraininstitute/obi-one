@@ -9,10 +9,8 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
-    NonVirtualPopulationNeuronSet,
     PointPopulationNeuronSet,
     PopulationBaseNeuronSet,
-    PopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.library.circuit import Circuit
@@ -149,18 +147,6 @@ class PropertyBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         return {"population": self.population, "node_id": node_ids}
 
 
-class PropertyNeuronSet(PropertyBaseNeuronSet, PopulationNeuronSet):
-    """Neuron set definition based on neuron properties.
-
-    Resolved in one selected node population of any type.
-    """
-
-    title: ClassVar[str] = "By Properties (Any)"
-    description: ClassVar[str] = (
-        "Use neurons based on properties, resolved in a single population of any type."
-    )
-
-
 class BiophysicalPropertyNeuronSet(PropertyBaseNeuronSet, BiophysicalPopulationNeuronSet):
     """Neuron set definition based on neuron properties.
 
@@ -182,18 +168,6 @@ class VirtualPropertyNeuronSet(PropertyBaseNeuronSet, VirtualPopulationNeuronSet
     title: ClassVar[str] = "By Properties (Virtual)"
     description: ClassVar[str] = (
         "Use neurons based on properties, resolved in a single virtual population."
-    )
-
-
-class NonVirtualPropertyNeuronSet(PropertyBaseNeuronSet, NonVirtualPopulationNeuronSet):
-    """Neuron set definition based on neuron properties.
-
-    Resolved in one selected non-virtual node population.
-    """
-
-    title: ClassVar[str] = "By Properties (Non-Virtual)"
-    description: ClassVar[str] = (
-        "Use neurons based on properties, resolved in a single non-virtual population."
     )
 
 

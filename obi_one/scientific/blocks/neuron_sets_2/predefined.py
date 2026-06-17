@@ -9,10 +9,8 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
-    NonVirtualPopulationNeuronSet,
     PointPopulationNeuronSet,
     PopulationBaseNeuronSet,
-    PopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.library.circuit import Circuit
@@ -207,19 +205,6 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
         return {"population": self.population, "node_id": node_ids}
 
 
-class PredefinedPopulationNeuronSet(PredefinedPopulationBaseNeuronSet, PopulationNeuronSet):
-    """Use an existing node set already defined in the circuit's node sets file.
-
-    The node set is resolved in one selected node population of any type.
-    """
-
-    title: ClassVar[str] = "Predefined Neuron Set (Any Population)"
-    description: ClassVar[str] = (
-        "Use neurons from a predefined node set from the SONATA circuit,"
-        " resolved in a single population of any type."
-    )
-
-
 class PredefinedBiophysicalPopulationNeuronSet(
     PredefinedPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet
 ):
@@ -247,21 +232,6 @@ class PredefinedVirtualPopulationNeuronSet(
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit,"
         " resolved in a single virtual population."
-    )
-
-
-class PredefinedNonVirtualPopulationNeuronSet(
-    PredefinedPopulationBaseNeuronSet, NonVirtualPopulationNeuronSet
-):
-    """Use an existing node set already defined in the circuit's node sets file.
-
-    The node set is resolved in one selected non-virtual node population.
-    """
-
-    title: ClassVar[str] = "Predefined Neuron Set (Non-Virtual Population)"
-    description: ClassVar[str] = (
-        "Use neurons from a predefined node set from the SONATA circuit,"
-        " resolved in a single non-virtual population."
     )
 
 

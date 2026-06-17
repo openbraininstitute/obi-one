@@ -6,7 +6,6 @@ import pytest
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
-    PopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
 
@@ -25,8 +24,8 @@ def circuit():
 
 
 def test_population_neuron_set_full(circuit):
-    """Test PopulationNeuronSet returns all neurons without sampling."""
-    nset = PopulationNeuronSet(population="S1nonbarrel_neurons")
+    """Test BiophysicalPopulationNeuronSet returns all neurons without sampling."""
+    nset = BiophysicalPopulationNeuronSet(population="S1nonbarrel_neurons")
     nset.set_block_name("pop_full")
 
     ids = nset.get_neuron_ids(circuit)
@@ -40,8 +39,8 @@ def test_population_neuron_set_full(circuit):
 
 
 def test_population_neuron_set_sampling(circuit):
-    """Test PopulationNeuronSet with 50% sampling."""
-    nset = PopulationNeuronSet(
+    """Test BiophysicalPopulationNeuronSet with 50% sampling."""
+    nset = BiophysicalPopulationNeuronSet(
         population="S1nonbarrel_neurons", sample_percentage=50, sample_seed=1
     )
     nset.set_block_name("pop_50")
@@ -58,7 +57,7 @@ def test_population_neuron_set_sampling(circuit):
 
 def test_population_neuron_set_force_resolve(circuit):
     """Test force_resolve_ids returns explicit IDs even without sampling."""
-    nset = PopulationNeuronSet(population="S1nonbarrel_neurons")
+    nset = BiophysicalPopulationNeuronSet(population="S1nonbarrel_neurons")
     nset.set_block_name("pop_resolve")
 
     nset_def, _ = nset.get_node_set_definition(circuit, force_resolve_ids=True)
@@ -78,7 +77,7 @@ def test_population_neuron_set_invalid_population(circuit):
 
 def test_population_neuron_set_get_populations(circuit):
     """Test get_populations returns the single population."""
-    nset = PopulationNeuronSet(population="S1nonbarrel_neurons")
+    nset = BiophysicalPopulationNeuronSet(population="S1nonbarrel_neurons")
     nset.set_block_name("pop_test")
 
     pops = nset.get_populations(circuit)
@@ -87,11 +86,11 @@ def test_population_neuron_set_get_populations(circuit):
 
 def test_population_neuron_set_deterministic_sampling(circuit):
     """Test that same seed produces same results."""
-    nset1 = PopulationNeuronSet(
+    nset1 = BiophysicalPopulationNeuronSet(
         population="S1nonbarrel_neurons", sample_percentage=50, sample_seed=42
     )
     nset1.set_block_name("pop_det1")
-    nset2 = PopulationNeuronSet(
+    nset2 = BiophysicalPopulationNeuronSet(
         population="S1nonbarrel_neurons", sample_percentage=50, sample_seed=42
     )
     nset2.set_block_name("pop_det2")
@@ -103,11 +102,11 @@ def test_population_neuron_set_deterministic_sampling(circuit):
 
 def test_population_neuron_set_different_seeds(circuit):
     """Test that different seeds produce different results."""
-    nset1 = PopulationNeuronSet(
+    nset1 = BiophysicalPopulationNeuronSet(
         population="S1nonbarrel_neurons", sample_percentage=50, sample_seed=1
     )
     nset1.set_block_name("pop_s1")
-    nset2 = PopulationNeuronSet(
+    nset2 = BiophysicalPopulationNeuronSet(
         population="S1nonbarrel_neurons", sample_percentage=50, sample_seed=2
     )
     nset2.set_block_name("pop_s2")

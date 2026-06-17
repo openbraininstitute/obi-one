@@ -8,10 +8,8 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
-    NonVirtualPopulationNeuronSet,
     PointPopulationNeuronSet,
     PopulationBaseNeuronSet,
-    PopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.library.circuit import Circuit
@@ -47,18 +45,6 @@ class IDBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         return {"population": self.population, "node_id": list(self.neuron_ids.elements)}  # ty:ignore[unresolved-attribute]
 
 
-class IDNeuronSet(IDBaseNeuronSet, PopulationNeuronSet):
-    """Neuron set definition by providing a list of neuron IDs.
-
-    Resolved in one selected node population of any type.
-    """
-
-    title: ClassVar[str] = "Sample IDs (Any)"
-    description: ClassVar[str] = (
-        "Use neurons by providing a list of IDs, resolved in a single population of any type."
-    )
-
-
 class BiophysicalIDNeuronSet(IDBaseNeuronSet, BiophysicalPopulationNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
@@ -80,18 +66,6 @@ class VirtualIDNeuronSet(IDBaseNeuronSet, VirtualPopulationNeuronSet):
     title: ClassVar[str] = "Sample IDs (Virtual)"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single virtual population."
-    )
-
-
-class NonVirtualIDNeuronSet(IDBaseNeuronSet, NonVirtualPopulationNeuronSet):
-    """Neuron set definition by providing a list of neuron IDs.
-
-    Resolved in one selected non-virtual node population.
-    """
-
-    title: ClassVar[str] = "Sample IDs (Non-Virtual)"
-    description: ClassVar[str] = (
-        "Use neurons by providing a list of IDs, resolved in a single non-virtual population."
     )
 
 

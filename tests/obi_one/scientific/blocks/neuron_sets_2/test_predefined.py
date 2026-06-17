@@ -7,7 +7,6 @@ import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.predefined import (
     PredefinedBiophysicalPopulationNeuronSet,
     PredefinedNeuronSet,
-    PredefinedPopulationNeuronSet,
     PredefinedVirtualPopulationNeuronSet,
 )
 
@@ -78,12 +77,14 @@ def test_predefined_neuron_set_invalid_node_set(circuit):
         nset.get_neuron_ids(circuit)
 
 
-# --- PredefinedPopulationNeuronSet (single population) ---
+# --- PredefinedBiophysicalPopulationNeuronSet (single population) ---
 
 
 def test_predefined_population_full(circuit):
-    """Test PredefinedPopulationNeuronSet without sampling."""
-    nset = PredefinedPopulationNeuronSet(node_set="Layer6", population="S1nonbarrel_neurons")
+    """Test PredefinedBiophysicalPopulationNeuronSet without sampling."""
+    nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
     nset.set_block_name("predef_pop_full")
 
     ids = nset.get_neuron_ids(circuit)
@@ -92,8 +93,8 @@ def test_predefined_population_full(circuit):
 
 
 def test_predefined_population_sampling(circuit):
-    """Test PredefinedPopulationNeuronSet with sampling."""
-    nset = PredefinedPopulationNeuronSet(
+    """Test PredefinedBiophysicalPopulationNeuronSet with sampling."""
+    nset = PredefinedBiophysicalPopulationNeuronSet(
         node_set="Layer6",
         population="S1nonbarrel_neurons",
         sample_percentage=50,
@@ -108,7 +109,9 @@ def test_predefined_population_sampling(circuit):
 
 def test_predefined_population_symbolic_single_pop(circuit):
     """Test symbolic expression when node set resolves in only one population."""
-    nset = PredefinedPopulationNeuronSet(node_set="Layer6", population="S1nonbarrel_neurons")
+    nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
     nset.set_block_name("predef_pop_sym")
 
     # No sampling -> symbolic path
@@ -119,8 +122,10 @@ def test_predefined_population_symbolic_single_pop(circuit):
 
 
 def test_predefined_population_force_resolve(circuit):
-    """Test force_resolve_ids on PredefinedPopulationNeuronSet."""
-    nset = PredefinedPopulationNeuronSet(node_set="Layer6", population="S1nonbarrel_neurons")
+    """Test force_resolve_ids on PredefinedBiophysicalPopulationNeuronSet."""
+    nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
     nset.set_block_name("predef_pop_resolve")
 
     nset_def, _ = nset.get_node_set_definition(circuit, force_resolve_ids=True)
@@ -131,7 +136,9 @@ def test_predefined_population_force_resolve(circuit):
 
 def test_predefined_population_invalid_node_set(circuit):
     """Test that a non-existent node set raises for population variant."""
-    nset = PredefinedPopulationNeuronSet(node_set="NONEXISTENT", population="S1nonbarrel_neurons")
+    nset = PredefinedBiophysicalPopulationNeuronSet(
+        node_set="NONEXISTENT", population="S1nonbarrel_neurons"
+    )
     nset.set_block_name("predef_pop_invalid")
 
     with pytest.raises(ValueError, match="not found in circuit"):
