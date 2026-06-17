@@ -25,8 +25,8 @@ if HAS_MESHING:
         HAS_MESHING = False
 
 if not HAS_MESHING:
-    NEURON_COLORS: Any = None  # <-- Added explicit type annotation
-    NeuronMorphology: Any = None  # <-- Added explicit type annotation
+    NEURON_COLORS: Any = None
+    NeuronMorphology: Any = None
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 

@@ -13,13 +13,18 @@ import pathlib
 import tempfile
 from typing import TYPE_CHECKING
 
-import ultraliser
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel
 
 from obi_one.core.task import Task
 
-# Guard imports used strictly for type-hinting annotations
+try:
+    import ultraliser
+
+    HAS_MESHING = True
+except ImportError:
+    HAS_MESHING = False
+
 if TYPE_CHECKING:
     import os
     from uuid import UUID
