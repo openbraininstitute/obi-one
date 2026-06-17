@@ -246,7 +246,38 @@ class NeuronSet(Block, abc.ABC):
         init_empty: bool = False,
         optional_node_set_name: str | None = None,
     ) -> Path:
-        """Resolves the node set for a given circuit and writes it to a .json node set file."""
+        """Resolves the neuron set for a given circuit and writes it to a .json node set file.
+
+        The node set name in the output file defaults to
+        ``__{ClassName}__{block_name}`` unless overridden via ``optional_node_set_name``.
+
+        Args:
+            circuit: The circuit to resolve the neuron set in.
+            output_path: Directory where the output file will be written.
+            file_name: Output file name. If None, uses the circuit's node set file name.
+            overwrite_if_exists: If True, overwrite an existing file. Mutually exclusive
+                with append_if_exists.
+            append_if_exists: If True, append to an existing file. The node set name
+                must not already exist in the file.
+            force_resolve_ids: If True, resolve to explicit neuron IDs instead of
+                preserving symbolic expressions.
+            init_empty: If True, start with an empty file (ignore circuit's existing
+                node sets). Only applies when creating a new file or overwriting.
+            optional_node_set_name: Override the auto-generated node set name.
+
+        Returns:
+            Path to the written output file.
+
+        Note:
+            If the neuron set consists of a compound expression (list + combined dict),
+            all entries from the combined dict are written to the file alongside the main
+            node set entry. This ensures the compound expression references are resolvable.
+
+        Raises:
+            ValueError: If neither block_name nor optional_node_set_name is set,
+                if overwrite and append are both True, or if the file exists without
+                either option specified.
+        """
         if optional_node_set_name is not None:
             node_set_name = optional_node_set_name
         elif self.has_block_name():
