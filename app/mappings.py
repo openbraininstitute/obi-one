@@ -47,8 +47,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=TaskActivityType.skeletonization__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            # TODO: test-only override to run PR #833; revert to APP_TAG before merging.
-            ref="commit:8e88309e39fccf420ee8095b1d639a5012289290",
+            ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
             capabilities=Capabilities(private_packages=True),
