@@ -4,7 +4,7 @@ import logging
 
 from entitysdk import Client, models
 from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
-from entitysdk.types import AssetLabel, CellMorphologyProtocolDesign, StainingType
+from entitysdk.types import AssetLabel, CellMorphologyProtocolDesign, DerivationType, StainingType
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.morphology_registration import (
@@ -83,6 +83,7 @@ def register_output_resource(
     - Uploads the combined H5 morphology (with spines) as an extra asset.
     - Computes and registers morphometric measurements.
     - Attempts to generate and upload a GLB surface mesh.
+    - Creates a Derivation linking EMDenseReconstructionDataset to Morphology.
 
     Args:
         client: Authenticated EntitySDK client used for entity registration.
@@ -139,6 +140,13 @@ def register_output_resource(
             entity=registered_morphology,
             role=role,
             agent=registered_morphology.created_by,  # ty:ignore[invalid-argument-type]
+        )
+    )
+    client.register_entity(
+        entity=models.Derivation(
+            generated=registered_morphology,
+            used=metadata.em_dense_reconstruction_dataset,
+            derivation_type=DerivationType.em_dense_reconstruction_dataset_cell_morphology,
         )
     )
 
