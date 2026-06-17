@@ -2,6 +2,7 @@ import tempfile
 import uuid
 from http import HTTPStatus
 from pathlib import Path
+from typing import Any  # <-- Added import
 
 import entitysdk.client
 import entitysdk.exception
@@ -24,8 +25,8 @@ if HAS_MESHING:
         HAS_MESHING = False
 
 if not HAS_MESHING:
-    NEURON_COLORS = None
-    NeuronMorphology = None
+    NEURON_COLORS: Any = None  # <-- Added explicit type annotation
+    NeuronMorphology: Any = None  # <-- Added explicit type annotation
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
