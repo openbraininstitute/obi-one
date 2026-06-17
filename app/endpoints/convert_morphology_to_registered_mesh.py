@@ -9,19 +9,19 @@ from entitysdk.models.asset import Asset
 from entitysdk.models.cell_morphology import CellMorphology
 from entitysdk.types import AssetLabel, ContentType
 from fastapi import APIRouter, Depends
+from obi_one.scientific.library.morphology_mesh import HAS_MESHING
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 
-try:
-    from nmm.common import NEURON_COLORS
-    from nmm.morphology import NeuronMorphology
-
-    HAS_MESHING = True
-except ImportError:
-    HAS_MESHING = False
+if HAS_MESHING:
+    try:
+        from nmm.common import NEURON_COLORS
+        from nmm.morphology import NeuronMorphology
+    except ImportError:
+        HAS_MESHING = False
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
