@@ -58,8 +58,8 @@ def _generate_lods(
         msg = "ultraliser not installed"
         raise RuntimeError(msg)
 
-    mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)
-    generator = ultraliser.LODGenerator(mesh)
+    mesh = ultraliser.Mesh(file_name=str(obj_path), verbose=False)  # type: ignore[attr-defined]
+    generator = ultraliser.LODGenerator(mesh)  # type: ignore[attr-defined]
     generator.generate_web_lods(str(output_dir))
 
     # Explicitly type hint the dictionary to use os.PathLike to satisfy invariant checks
