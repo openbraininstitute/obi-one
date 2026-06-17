@@ -1,11 +1,11 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from entitysdk.exception import EntitySDKError
 
 from app.errors import ApiError
-from app.services.morphology_registration import (
+from obi_one.scientific.library.morphology_registration import (
     register_morphometrics,
     try_generate_and_upload_mesh,
     upload_morphology_content,
@@ -52,7 +52,7 @@ def test_register_morphometrics_entity_sdk_error():
 
 
 def test_try_generate_and_upload_mesh_no_meshing():
-    with patch("app.endpoints.convert_morphology_to_registered_mesh.HAS_MESHING", new=False):
+    with patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=False):
         client = MagicMock()
         result = try_generate_and_upload_mesh(client, uuid.uuid4(), swc_bytes=b"swc")
     assert result is None
@@ -61,9 +61,9 @@ def test_try_generate_and_upload_mesh_no_meshing():
 def test_try_generate_and_upload_mesh_success():
     mesh_id = uuid.uuid4()
     with (
-        patch("app.endpoints.convert_morphology_to_registered_mesh.HAS_MESHING", new=True),
+        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
         patch(
-            "app.endpoints.convert_morphology_to_registered_mesh.mesh_and_register",
+            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
             MagicMock(return_value=MagicMock(id=mesh_id)),
         ),
     ):
@@ -75,9 +75,9 @@ def test_try_generate_and_upload_mesh_success():
 
 def test_try_generate_and_upload_mesh_api_error():
     with (
-        patch("app.endpoints.convert_morphology_to_registered_mesh.HAS_MESHING", new=True),
+        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
         patch(
-            "app.endpoints.convert_morphology_to_registered_mesh.mesh_and_register",
+            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
             MagicMock(side_effect=ApiError(message="mesh failed", error_code="TEST_ERR")),
         ),
     ):
@@ -88,9 +88,9 @@ def test_try_generate_and_upload_mesh_api_error():
 
 def test_try_generate_and_upload_mesh_unexpected_error():
     with (
-        patch("app.endpoints.convert_morphology_to_registered_mesh.HAS_MESHING", new=True),
+        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
         patch(
-            "app.endpoints.convert_morphology_to_registered_mesh.mesh_and_register",
+            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
             MagicMock(side_effect=RuntimeError("crash")),
         ),
     ):
@@ -104,13 +104,13 @@ def test_try_generate_and_upload_mesh_from_path(tmp_path):
     swc_file = tmp_path / "cell.swc"
     swc_file.write_bytes(b"swc data")
     with (
-        patch("app.endpoints.convert_morphology_to_registered_mesh.HAS_MESHING", new=True),
+        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
         patch(
-            "app.endpoints.convert_morphology_to_registered_mesh.mesh_and_register",
+            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
             MagicMock(return_value=MagicMock(id=mesh_id)),
         ) as mock_mesh,
     ):
         client = MagicMock()
         result = try_generate_and_upload_mesh(client, uuid.uuid4(), swc_path=swc_file)
     assert result is not None
-    mock_mesh.assert_called_once_with(client, mock_mesh.call_args[0][1], b"swc data")
+    mock_mesh.assert_called_once_with(client, ANY, b"swc data")

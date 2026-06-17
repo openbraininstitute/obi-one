@@ -6,8 +6,10 @@ from entitysdk import Client, models
 from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
 from entitysdk.types import AssetLabel, CellMorphologyProtocolDesign, StainingType
 
-from app.services.morphology_registration import register_morphology_with_assets_and_metrics
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.morphology_registration import (
+    register_morphology_with_assets_and_metrics,
+)
 from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL, ROLE_NAME
 from obi_one.scientific.tasks.skeletonization.schemas import Metadata, SkeletonizationOutputs
 

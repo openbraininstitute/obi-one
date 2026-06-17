@@ -16,10 +16,7 @@ from fastapi import HTTPException
 from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import (
     MorphologyMetadata,
-    _get_analysis_dict,
     _get_h5_analysis_path,
-    _get_template,
-    _get_template as cached_func,
     _prepare_entity_payload,
     _resolve_swc_bytes_for_mesh,
     _validate_file_extension,
@@ -27,6 +24,10 @@ from app.endpoints.morphology_metrics_calculation import (
     run_morphology_analysis,
 )
 from app.services.morphology import MorphologyFiles, validate_and_convert_morphology
+from obi_one.scientific.library.morphology_measurement_annotation import (
+    get_morphology_analysis_dict,
+    get_morphology_template,
+)
 
 ROUTE = "/declared/register-morphology-with-calculated-metrics"
 
@@ -53,36 +54,6 @@ def mock_heavy_dependencies(_monkeypatch_session):
 
 @pytest.fixture(autouse=True)
 def mock_template_and_functions(monkeypatch):
-    fake_template = {
-        "data": [
-            {
-                "entity_id": None,
-                "entity_type": "reconstruction_morphology",
-                "measurement_kinds": [
-                    {
-                        "structural_domain": "soma",
-                        "pref_label": "mock_metric",
-                        "measurement_items": [{"name": "raw", "unit": "μm", "value": 42.0}],
-                    }
-                ],
-            }
-        ],
-        "pagination": {"page": 1, "page_size": 100, "total_items": 1},
-        "facets": None,
-    }
-
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template", lambda: fake_template
-    )
-
-    def mock_create_analysis_dict(_template):
-        return {"soma": {"mock_metric": lambda _: 42.0}}
-
-    monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
-        mock_create_analysis_dict,
-    )
-
     mock_result = MagicMock()
     mock_result.hdf5 = Path("path0.h5")
     mock_result.swc = Path("path1.swc")
@@ -160,8 +131,8 @@ def mock_io_for_test(monkeypatch):
         lambda _client, entity_id, _measurements: MagicMock(id=str(entity_id)),
     )
 
-    _get_template.cache_clear()
-    _get_analysis_dict.cache_clear()
+    get_morphology_template.cache_clear()
+    get_morphology_analysis_dict.cache_clear()
 
 
 @pytest.fixture
@@ -373,51 +344,36 @@ def test_validate_file_extension_valid():
     assert _validate_file_extension("neuron.asc") == ".asc"
 
 
-def test_get_template_caches(monkeypatch):
-    sentinel = {"data": []}
-    _get_template.cache_clear()
+def test_get_morphology_template_caches():
+    get_morphology_template.cache_clear()
 
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template",
-        MagicMock(return_value=sentinel),
-    )
-
-    result1 = cached_func()
-    result2 = cached_func()
+    result1 = get_morphology_template()
+    result2 = get_morphology_template()
     assert result1 is result2
 
 
-def test_get_analysis_dict_caches(monkeypatch):
-    _get_template.cache_clear()
-    _get_analysis_dict.cache_clear()
-    sentinel = {"soma": {}}
+def test_get_morphology_analysis_dict_caches():
+    get_morphology_analysis_dict.cache_clear()
 
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template", lambda: {"data": []}
-    )
-    monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
-        lambda _: sentinel,
-    )
-
-    result1 = _get_analysis_dict()
-    result2 = _get_analysis_dict()
+    result1 = get_morphology_analysis_dict()
+    result2 = get_morphology_analysis_dict()
     assert result1 is result2
-    assert result1 == sentinel
 
 
-def test_get_analysis_dict_extends_neurite_domains(monkeypatch):
-    _get_template.cache_clear()
-    _get_analysis_dict.cache_clear()
+def test_get_morphology_analysis_dict_extends_neurite_domains(monkeypatch):
+    get_morphology_template.cache_clear()
+    get_morphology_analysis_dict.cache_clear()
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template", lambda: {"data": []}
+        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_template",
+        lambda: {"data": []},
     )
     monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.create_analysis_dict",
-        lambda _t: {"basal_dendrite": {"metric": lambda _: 1.0}},
+        "obi_one.scientific.library.morphology_measurement_annotation.create_analysis_dict",
+        lambda _t: {"basal_dendrite": [["metric", "μm"]]},
     )
-    result = _get_analysis_dict()
+
+    result = get_morphology_analysis_dict()
     assert "apical_dendrite" in result
     assert "axon" in result
 
@@ -514,11 +470,11 @@ def test_resolve_swc_bytes_for_mesh_non_swc_returns_none():
 def test_run_morphology_analysis_success(monkeypatch):
     fake_neuron = MagicMock()
     monkeypatch.setattr(
-        "neurom.load_morphology",
+        "obi_one.scientific.library.morphology_measurement_annotation.nm.load_morphology",
         MagicMock(return_value=fake_neuron),
     )
     monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.build_results_dict",
+        "obi_one.scientific.library.morphology_measurement_annotation.build_results_dict",
         MagicMock(return_value={}),
     )
 
@@ -528,15 +484,18 @@ def test_run_morphology_analysis_success(monkeypatch):
         ]
     }
     monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.fill_json",
+        "obi_one.scientific.library.morphology_measurement_annotation.fill_json",
         MagicMock(return_value=fake_filled),
     )
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template",
+        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_template",
         lambda: {"data": [{"measurement_kinds": []}]},
     )
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation._get_analysis_dict", dict)
+    monkeypatch.setattr(
+        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
+        dict,
+    )
 
     result = run_morphology_analysis("some/path.h5")
     assert len(result) == 1
@@ -545,11 +504,11 @@ def test_run_morphology_analysis_success(monkeypatch):
 def test_run_morphology_analysis_filters_none_values(monkeypatch):
     fake_neuron = MagicMock()
     monkeypatch.setattr(
-        "neurom.load_morphology",
+        "obi_one.scientific.library.morphology_measurement_annotation.nm.load_morphology",
         MagicMock(return_value=fake_neuron),
     )
     monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.build_results_dict",
+        "obi_one.scientific.library.morphology_measurement_annotation.build_results_dict",
         MagicMock(return_value={}),
     )
 
@@ -564,15 +523,18 @@ def test_run_morphology_analysis_filters_none_values(monkeypatch):
         ]
     }
     monkeypatch.setattr(
-        "app.endpoints.useful_functions.useful_functions.fill_json",
+        "obi_one.scientific.library.morphology_measurement_annotation.fill_json",
         MagicMock(return_value=fake_filled),
     )
 
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_template",
+        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_template",
         lambda: {"data": [{"measurement_kinds": []}]},
     )
-    monkeypatch.setattr("app.endpoints.morphology_metrics_calculation._get_analysis_dict", dict)
+    monkeypatch.setattr(
+        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
+        dict,
+    )
 
     result = run_morphology_analysis("some/path.h5")
     assert len(result) == 1
@@ -585,7 +547,7 @@ def test_run_morphology_analysis_exception(monkeypatch):
         MagicMock(side_effect=RuntimeError("neurom crash")),
     )
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation._get_analysis_dict",
+        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
         dict,
     )
     with pytest.raises(HTTPException) as exc_info:
