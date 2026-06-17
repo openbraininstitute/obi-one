@@ -306,6 +306,7 @@ def test_task_launch_success__circuit_simulation(
         url=f"{db_url}/simulation/{simulation_id}/assets/{simulation_config_asset_id}/download",
         method="GET",
         json=_simulation_config(target_simulator=target_simulator),
+        is_reusable=True,  # simulation config may be fetched multiple times
     )
     # mock circuit metadata needed for fetching target_simulator/scale for toggling
     httpx_mock.add_response(
@@ -683,6 +684,7 @@ def test_task_estimate__circuit_simulation(client, target_simulator, circuit_sca
         url=f"{db_url}/simulation/{simulation_id}/assets/{simulation_config_asset_id}/download",
         method="GET",
         json=_simulation_config(target_simulator=target_simulator),
+        is_reusable=True,  # simulation config may be fetched multiple times
     )
     # mock circuit metadata needed for fetching target_simulator/scale for toggling
     httpx_mock.add_response(

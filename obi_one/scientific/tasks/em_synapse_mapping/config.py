@@ -59,6 +59,14 @@ class AdvancedEMSynapseMappingOptions(Block):
             SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
         },
     )
+    include_spiny_morphologies: bool = Field(
+        title="Include spiny morphologies",
+        description="Include a container file with spiny morphologies in the output circuit.",
+        default=True,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
 
 
 class EMSynapseMappingScanConfig(InfoScanConfig):
@@ -161,17 +169,4 @@ class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin
     _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.em_synapse_mapping__config
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.em_synapse_mapping__execution
-    )
-
-    class Initialize(EMSynapseMappingScanConfig.Initialize):
-        neurons: "EMSynapseMappingInputNamedTuple"
-
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the EM Synaptome.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
     )
