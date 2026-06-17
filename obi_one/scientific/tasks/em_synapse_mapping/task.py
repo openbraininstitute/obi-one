@@ -75,6 +75,7 @@ class EMSynapseMappingTask(Task):
 
         cfg = self.config
         init = cfg.initialize
+        advanced = cfg.advanced_options
 
         # Prepare output location
         out_root = cfg.coordinate_output_root
@@ -86,16 +87,24 @@ class EMSynapseMappingTask(Task):
         # Resolve all neurons: morphology, provenance, ME model
         L.info("Resolving neurons...")
         resolved_neurons = []
-        all_pt_root_ids = set()
+        pt_root_id_names: dict[int, str] = {}
 
-        for neuron_entry in init.neurons:
+        for neuron_entry in init.neurons.elements:
             resolved_neuron = resolve_neuron(
                 neuron_entry,
                 db_client,
                 out_root,
             )
+            if resolved_neuron.pt_root_id in pt_root_id_names:
+                err_str = (
+                    f"Duplicate pt_root_id {resolved_neuron.pt_root_id}: "
+                    f"'{resolved_neuron.morph_entity.name or resolved_neuron.pt_root_id}' "  # ty:ignore[unresolved-attribute]
+                    f"resolves to the same physical neuron as "
+                    f"'{pt_root_id_names[resolved_neuron.pt_root_id]}'."
+                )
+                raise ValueError(err_str)
             resolved_neurons.append(resolved_neuron)
-            all_pt_root_ids.add(resolved_neuron.pt_root_id)
+            pt_root_id_names[resolved_neuron.pt_root_id] = str(resolved_neuron.morph_entity.name)  # ty:ignore[unresolved-attribute]
 
         n_neurons = len(resolved_neurons)
         is_multi = n_neurons > 1
@@ -120,6 +129,7 @@ class EMSynapseMappingTask(Task):
             merge_spiny_morphologies(
                 source_files=[out_root / rn.fn_morph_h5 for rn in resolved_neurons],
                 output_path=out_root / fn_merged_h5,  # ty:ignore[unsupported-operator]
+                neuron_id_strings=[rn.name_in_circuit for rn in resolved_neurons],
                 include_meshes=False,
             )
 
@@ -153,7 +163,7 @@ class EMSynapseMappingTask(Task):
             plt.close("all")
 
             # Split synapses: internal (pre is in the set) vs external
-            is_internal = syns["pre_pt_root_id"].isin(all_pt_root_ids)
+            is_internal = syns["pre_pt_root_id"].isin(pt_root_id_names)
 
             for is_int, edge_list, pre_post_list in [
                 (True, all_internal_edges, all_internal_pre_post),
@@ -203,7 +213,7 @@ class EMSynapseMappingTask(Task):
             em_dataset, db_client, cave_version, node_spec, bio_pt_root_mapping
         )  # ty:ignore[not-iterable]
 
-        morph_names = [f"morphology/{rn.morph_entity.name}" for rn in resolved_neurons]
+        morph_names = [f"morphology/{rn.name_in_circuit}" for rn in resolved_neurons]
         coll_bio.properties["morphology"] = numpy.array(morph_names)
 
         for bio_idx, rn in enumerate(resolved_neurons):
@@ -235,10 +245,20 @@ class EMSynapseMappingTask(Task):
         L.info("Writing the results...")
         fn_edges_out = "synaptome-edges.h5"
         fn_nodes_out = "synaptome-nodes.h5"
-        pop_bio = init.biophysical_node_population
-        pop_virt = init.virtual_node_population
-        pop_edge_int = init.physical_edge_population_name
-        pop_edge_ext = init.virtual_edge_population_name
+
+        pop_edge_ext = "virtual_afferents"
+        pop_edge_int = "physical_connections"
+        pop_bio = "biophysical_neurons"
+        pop_virt = "virtual_afferent_neurons"
+
+        if advanced.custom_virtual_edge_population_name:
+            pop_edge_ext = advanced.custom_virtual_edge_population_name
+        if advanced.custom_physical_edge_population_name:
+            pop_edge_int = advanced.custom_physical_edge_population_name
+        if advanced.custom_biophysical_node_population:
+            pop_bio = advanced.custom_biophysical_node_population
+        if advanced.custom_virtual_node_population:
+            pop_virt = advanced.custom_virtual_node_population
 
         write_nodes(out_root / fn_nodes_out, pop_bio, coll_bio, write_mode="w")
         if coll_virtual is not None:
@@ -258,6 +278,8 @@ class EMSynapseMappingTask(Task):
                 int_edges_df,
                 pop_bio,
                 pop_bio,
+                n_src=len(pop_bio),
+                n_tgt=len(pop_bio),
             )
 
         if all_external_edges:
@@ -270,6 +292,8 @@ class EMSynapseMappingTask(Task):
                 ext_edges_df,
                 pop_virt,
                 pop_bio,
+                n_src=len(pop_virt),
+                n_tgt=len(pop_bio),
             )
 
         # Write circuit config
@@ -287,7 +311,7 @@ class EMSynapseMappingTask(Task):
             virtual_population=pop_virt if coll_virtual is not None else None,
             morphologies_dir="morphologies",
             alternate_morphologies_h5=(
-                str(resolved_neurons[0].fn_morph_h5) if not is_multi else None
+                str(resolved_neurons[0].fn_morph_h5) if not is_multi else fn_merged_h5
             ),
         )
         circuit_config_path = out_root / "circuit_config.json"
@@ -320,3 +344,5 @@ class EMSynapseMappingTask(Task):
             execution_activity=execution_activity,
             generated=[registered_circuit_id],
         )
+
+        L.info(f"EM synapse mapping completed. Output Circuit ID: {registered_circuit_id}")

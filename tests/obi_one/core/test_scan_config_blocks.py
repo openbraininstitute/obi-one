@@ -251,3 +251,30 @@ class TestScanConfigSerialization:
         json_str = config.model_dump_json()
         restored = DictBlockConfig.model_validate_json(json_str)
         assert restored.blocks["b1"].val_a == 10
+
+
+class TestAddBlockUnknownReferenceType:
+    def test_add_block_with_unknown_reference_type_raises(self):
+        """Adding a block when the reference type is not in the registry should raise."""
+        from obi_one.core.exception import OBIONEError  # noqa: PLC0415
+
+        class UnregisteredRefConfig(ScanConfig):
+            single_coord_class_name: ClassVar[str] = ""
+            name: ClassVar[str] = "UnregisteredRefConfig"
+            description: ClassVar[str] = "Has unregistered ref"
+
+            class Initialize(Block):
+                type: str = "Block"
+                x: int = 0
+
+            initialize: Initialize
+
+            blocks: dict[str, BlockUnion] = Field(
+                default_factory=dict,
+                json_schema_extra={"reference_type": "NonExistentRef"},
+            )
+
+        config = UnregisteredRefConfig(initialize=UnregisteredRefConfig.Initialize())
+        block = BlockTypeA(val_a=42)
+        with pytest.raises(OBIONEError, match="not found in block reference registry"):
+            config.add(block, name="test_block")

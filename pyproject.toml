@@ -38,7 +38,7 @@ dependencies = [
     "aiofiles",
     "bluecellulab>=2.6.97",
     "blueetl",
-    "bluepyefe>=2.3.53",
+    "bluepyefe>=2.3.57",
     "bluepysnap>=3.0.2",
     "brainbuilder>=0.20.2",
     "caveclient>=7.11.0",
@@ -52,7 +52,7 @@ dependencies = [
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.6.0",
+    "obp-accounting-sdk>=0.6.2",
     "numpy",
 ]
 
@@ -82,7 +82,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.1",
+    "obp-accounting-sdk>=0.6.2",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -100,7 +100,7 @@ all = [
 # Requires MPI-enabled h5py and NEURON built from source.
 # Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
 bluerecording = [
-    "bluerecording",
+    "bluerecording>=0.4.5",
 ]
 
 [dependency-groups]

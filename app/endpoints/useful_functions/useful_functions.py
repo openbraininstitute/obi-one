@@ -5,6 +5,8 @@ import neurom as nm
 import numpy as np
 from neurom.core import Morphology
 
+from app.logger import L
+
 # Define constants for magic numbers and set literal checks
 MIN_MEASUREMENT_ITEM_ENTRIES = 2
 EMPTY_NAME_SET = {None, ""}
@@ -90,6 +92,22 @@ def _process_measurement(
         data = nm.get(nm_get_key, neuron, neurite_type=neurite_type)
     else:
         data = nm.get(nm_get_key, neuron)
+
+    if isinstance(data, list):
+        nan_count = sum(
+            isinstance(value, (float, np.floating)) and np.isnan(value) for value in data
+        )
+        if nan_count:
+            L.warning(
+                "Skipping morphology metric %s because %d of %d values are NaN",
+                label,
+                nan_count,
+                len(data),
+            )
+            data = None
+    elif isinstance(data, (float, np.floating)) and np.isnan(data):
+        L.warning("Skipping NaN value for morphology metric %s", label)
+        data = None
 
     if isinstance(data, list) and not data:
         data = None

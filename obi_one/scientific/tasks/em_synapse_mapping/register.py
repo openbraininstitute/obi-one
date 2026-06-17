@@ -3,7 +3,7 @@ from pathlib import Path
 
 from entitysdk import Client
 from entitysdk.models import EMDenseReconstructionDataset
-from entitysdk.types import CircuitBuildCategory
+from entitysdk.types import CircuitBuildCategory, TargetSimulator
 
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import assemble_publication_links
@@ -22,6 +22,7 @@ def register_output(
     all_notices: list[str],
     total_internal: int,
     total_external: int,
+    target_simulator: TargetSimulator = TargetSimulator.NEURON,
 ) -> str:
     """Register the EM synapse mapping output as a circuit entity.
 
@@ -65,9 +66,12 @@ def register_output(
         build_category=CircuitBuildCategory.em_reconstruction,
         brain_region=source_dataset.brain_region,  # ty:ignore[invalid-argument-type]
         subject=source_dataset.subject,  # ty:ignore[invalid-argument-type]
+        target_simulator=target_simulator,
         experiment_date=source_dataset.experiment_date,
         license=em_entity.license,  # ty:ignore[unresolved-attribute]
         publications=publications,
+        skip_additional_assets=False,
+        skip_validation=True,
     )
 
     L.info(f"Output registered as: {registered_circuit.id}")  # ty:ignore[unresolved-attribute]
