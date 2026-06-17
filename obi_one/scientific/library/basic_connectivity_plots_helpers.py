@@ -30,11 +30,11 @@ except ImportError as e:  # pragma: no cover
 
 # Connectivity dependencies (optional) - check for connalysis
 try:
-    from connalysis.network.classic import (
+    from connalysis.network.classic import (  # ty:ignore[unresolved-import]
         connection_probability_within,
         density,
     )
-    from connalysis.network.topology import (
+    from connalysis.network.topology import (  # ty:ignore[unresolved-import]
         node_degree,
         rc_submatrix,
     )

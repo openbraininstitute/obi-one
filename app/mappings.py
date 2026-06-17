@@ -168,24 +168,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.extracellular_recording_weights_calculation: TaskDefinition(
-        task_type=TaskType.extracellular_recording_weights_calculation,
-        config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
-        activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
-        ),
-        resources=MachineResources(
-            cores=1,
-            memory=8,
-            timelimit="02:00",
-            compute_cell="local",
-            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
-        ),
-    ),
 }  # ty:ignore[invalid-assignment]
 
 CLUSTER_INSTANCES_INFO = {

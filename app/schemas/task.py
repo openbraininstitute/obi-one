@@ -4,7 +4,7 @@ from uuid import UUID
 from entitysdk.models.activity import Activity, Entity
 from entitysdk.types import TaskActivityType, TaskConfigType
 from obp_accounting_sdk.constants import ServiceSubtype
-from pydantic import Field, field_validator
+from pydantic import Field
 
 from app.schemas.accounting import AccountingParameters
 from app.schemas.base import Schema
@@ -75,16 +75,6 @@ class TaskLaunchSubmit(Schema):
 
     task_type: TaskType
     config_id: UUID
-
-    @field_validator("task_type")
-    @classmethod
-    def task_type_must_be_launchable(cls, v: TaskType) -> TaskType:
-        from app.mappings import TASK_DEFINITIONS  # noqa: PLC0415
-
-        if v not in TASK_DEFINITIONS:
-            msg = f"Task type '{v}' is not launchable. Valid types: {list(TASK_DEFINITIONS.keys())}"
-            raise ValueError(msg)
-        return v
 
 
 class TaskLaunchInfo(TaskLaunchSubmit):

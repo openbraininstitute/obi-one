@@ -23,9 +23,7 @@ from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
 ASSET_ID = uuid4()
 
-TASK_TYPES = [
-    task_type for task_type in TASK_DEFINITIONS if task_type != TaskType.circuit_simulation
-]
+TASK_TYPES = [task_type for task_type in TaskType if task_type != TaskType.circuit_simulation]
 
 
 @pytest.fixture
@@ -387,8 +385,8 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "type": "python_repository",
             "location": task_definition.code.location,
             "ref": APP_TAG,
-            "path": "obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            "dependencies": "obi_one/scientific/library/simulation/brian2/requirements.txt",
+            "path": "scientific/library/simulation/brian2/simulate_brian2.py",
+            "dependencies": "scientific/library/simulation/brian2/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": [],
         },

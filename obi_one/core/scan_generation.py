@@ -9,44 +9,28 @@ from pathlib import Path
 from typing import Any
 
 import entitysdk
-from pydantic import PrivateAttr, SerializeAsAny, ValidationError, field_validator
+from pydantic import PrivateAttr, ValidationError
 
 from obi_one.core.block import Block
-from obi_one.core.deserializable_types import load_class
 from obi_one.core.exception import OBIONEError
 from obi_one.core.param import MultiValueScanParam, SingleValueScanParam
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME, SCAN_CONFIG_FILENAME
 from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 from obi_one.core.task import Task
+from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
+from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
 
 L = logging.getLogger(__name__)
 
 
 class ScanGenerationTask(Task, abc.ABC):
-    """Task for creating multiple SingleConfigs where lists with multiple parameters are found.
+    """Task for creating multiple SingleConfigs where lists with multiple parameters are found."""
 
-    The form field is typed as ScanConfig (the base class) but accepts any
-    registered ScanConfig subclass. Validation is handled by _validate_form which
-    resolves the concrete type via the type registry.
-    """
-
-    form: SerializeAsAny[ScanConfig]  # Validated via _validate_form using the type registry
+    form: ScanConfigsUnion  # REFACTORING NOTE: Should be renmaed to scan_config
     output_root: Path = Path()
     coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     obi_one_version: str | None = None
     _multiple_value_parameters: list = None  # ty:ignore[invalid-assignment]
     _coordinate_parameters: list = PrivateAttr(default=[])
-
-    @field_validator("form", mode="before")
-    @classmethod
-    def _validate_form(cls, v: Any) -> Any:
-        """Resolve the concrete ScanConfig subclass from the type map."""
-        if isinstance(v, dict):
-            form_cls = load_class(v["type"])
-            return form_cls.model_validate(v)  # ty:ignore[unresolved-attribute]
-        return v
-
     _single_configs: list[SingleConfigMixin] = PrivateAttr(default=[])
 
     @property
@@ -238,7 +222,7 @@ class ScanGenerationTask(Task, abc.ABC):
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
         # Serialize the scan
-        self.serialize(self.output_root / SCAN_CONFIG_FILENAME)
+        self.serialize(self.output_root / _SCAN_CONFIG_FILENAME)
 
         # Create the campaign entity
         campaign = None
@@ -260,7 +244,7 @@ class ScanGenerationTask(Task, abc.ABC):
 
             # Serialize the coordinate instance
             single_coord_config.serialize(
-                single_coord_config.coordinate_output_root / COORDINATE_CONFIG_FILENAME
+                single_coord_config.coordinate_output_root / _COORDINATE_CONFIG_FILENAME
             )
 
             # Create the single coordinate entity

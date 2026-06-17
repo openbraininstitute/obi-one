@@ -19,12 +19,12 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.constants import (
+    _COORDINATE_CONFIG_FILENAME,
     _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     _MAX_SIMULATION_LENGTH_MILLISECONDS,
     _MIN_SIMULATION_LENGTH_MILLISECONDS,
+    _SCAN_CONFIG_FILENAME,
     _SIMULATION_TIMESTEP_MILLISECONDS,
-    COORDINATE_CONFIG_FILENAME,
-    SCAN_CONFIG_FILENAME,
 )
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
@@ -234,7 +234,7 @@ class SimulationScanConfig(InfoScanConfig, abc.ABC):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.SimulationCampaign,  # ty:ignore[possibly-missing-submodule]
-            file_path=output_root / SCAN_CONFIG_FILENAME,
+            file_path=output_root / _SCAN_CONFIG_FILENAME,
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]
             asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
         )
@@ -309,7 +309,7 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-            file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
+            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]
             asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
         )
