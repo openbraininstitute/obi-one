@@ -41,6 +41,9 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 )
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
+from obi_one.scientific.tasks.point_neuron_circuit_from_em import (
+    PointNeuronCircuitFromEMScanConfig,
+)
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.unions.aliases import SimulationsForm
 
@@ -65,6 +68,7 @@ ScanConfigsUnion = Annotated[
     | Brian2CircuitSimulationScanConfig
     | CreateExtracellularRecordingArrayScanConfig
     | IonChannelModelSimulationScanConfig
-    | LearningEngineCircuitSimulationScanConfig,
+    | LearningEngineCircuitSimulationScanConfig
+    | PointNeuronCircuitFromEMScanConfig,
     Discriminator("type"),
 ]

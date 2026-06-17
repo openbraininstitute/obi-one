@@ -59,6 +59,8 @@ TYPE_MAP: dict[str, str] = {
     "MorphologyLocationsSingleConfig": "obi_one.scientific.tasks.morphology_locations",
     "MorphologyMetricsScanConfig": "obi_one.scientific.tasks.morphology_metrics",
     "MorphologyMetricsSingleConfig": "obi_one.scientific.tasks.morphology_metrics",
+    "PointNeuronCircuitFromEMScanConfig": "obi_one.scientific.tasks.point_neuron_circuit_from_em",
+    "PointNeuronCircuitFromEMSingleConfig": "obi_one.scientific.tasks.point_neuron_circuit_from_em",
     "SkeletonizationScanConfig": "obi_one.scientific.tasks.skeletonization",
     "SkeletonizationSingleConfig": "obi_one.scientific.tasks.skeletonization",
     # __init__.py aliases (class is re-exported under this name)

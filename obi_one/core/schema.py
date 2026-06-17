@@ -70,4 +70,5 @@ class AcceptedInputTypes(StrEnum):
     """
 
     CELL_MORPHOLOGY_FROM_ID = "CellMorphologyFromID"
+    EM_CELL_MESH_FROM_ID = "EMCellMeshFromID"
     ME_MODEL_FROM_ID = "MEModelFromID"

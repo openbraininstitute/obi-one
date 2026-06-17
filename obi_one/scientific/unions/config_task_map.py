@@ -76,6 +76,10 @@ from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
+from obi_one.scientific.tasks.point_neuron_circuit_from_em import (
+    PointNeuronCircuitFromEMSingleConfig,
+    PointNeuronCircuitFromEMTask,
+)
 from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
     SkeletonizationTask,
@@ -195,6 +199,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.morphology_metrics: (
         MorphologyMetricsTask,
         MorphologyMetricsSingleConfig,
+        None,
+    ),
+    TaskType.point_neuron_circuit_from_em: (
+        PointNeuronCircuitFromEMTask,
+        PointNeuronCircuitFromEMSingleConfig,
         None,
     ),
 }

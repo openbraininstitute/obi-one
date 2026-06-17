@@ -48,6 +48,22 @@ class EMDataSetFromID(EntityFromID):
         )
         return syns, notice_text
 
+    def afferent_pre_pt_root_ids(
+        self,
+        post_pt_root_id: int,
+        cave_version: int,
+        db_client: Client | None = None,
+    ) -> numpy.ndarray:
+        """Presynaptic pt_root_ids of all afferent synapses onto a neuron.
+
+        Lightweight counterpart to :meth:`synapse_info_df` for connectivity counting: it skips
+        synapse-position conversion and table-metadata lookups, returning only the presynaptic
+        pt_root_id of each afferent synapse (autapses already removed by CAVE).
+        """
+        client = self._make_cave_client(db_client, cave_version=cave_version)  # ty:ignore[invalid-argument-type]
+        syns = client.materialize.synapse_query(post_ids=[post_pt_root_id])  # ty:ignore[unresolved-attribute]
+        return syns["pre_pt_root_id"].to_numpy()
+
     def neuron_info_df(
         self, table_name: str, cave_version: int, db_client: Client | None = None
     ) -> tuple[pandas.DataFrame, str]:
