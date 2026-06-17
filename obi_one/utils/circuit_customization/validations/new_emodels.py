@@ -27,7 +27,6 @@ def check_hoc_mechanisms_compatible_with_circuit(
 
 
 def check_bluecellulab_initializable_subprocess(
-    circuit_id: str | uuid.UUID,
     hoc_path: str | Path,
     morphology_path: str | Path,
     result_queue: Queue,
@@ -57,11 +56,9 @@ def check_bluecellulab_initializable(
     """Checks that the hoc file can be initialized in bluecellulab.
 
     Args:
-        paths: list of dict containing "hoc_path" and "morphology_path"
-        circuit_id: circuit identifier used to download mechanisms
-        proj_context: entitysdk project context
-        environment: entitysdk environment name
-        access_token: entitysdk access token manager
+        db_client: entitysdk client used for mechanism download.
+        paths: list of dict containing "hoc_path" and "morphology_path".
+        circuit_id: circuit identifier used to download mechanisms.
     """
     # run in just one process for simplicity. Can be parallelized later if needed.
     for path in paths:
@@ -80,7 +77,6 @@ def check_bluecellulab_initializable(
         p = Process(
             target=check_bluecellulab_initializable_subprocess,
             args=(
-                circuit_id,
                 path["hoc_path"],
                 path["morphology_path"],
                 result_queue,
@@ -115,12 +111,12 @@ def check_new_node_columns(old_node_file_path: str | Path, new_node_file_path: s
 
     old_attribute_names = set(old_node_pop.attribute_names)
     new_attribute_names = set(new_node_pop.attribute_names)
-    old_dynamic_attribute_names = set(
+    old_dynamic_attribute_names = {
         attr for attr in old_node_pop.dynamics_attribute_names if "deprecated" not in attr
-    )
-    new_dynamic_attribute_names = set(
+    }
+    new_dynamic_attribute_names = {
         attr for attr in new_node_pop.dynamics_attribute_names if "deprecated" not in attr
-    )
+    }
 
     if new_attribute_names != old_attribute_names:
         msg = (
@@ -158,9 +154,9 @@ def check_new_node_columns(old_node_file_path: str | Path, new_node_file_path: s
                 )
                 raise ValueError(msg)
 
-    # remove this check because dynamic params are not consistent depending where you take the node file from
-    # ask Christoph if we should fix the data or if I just remove this check.
-    # I feel like the check is not really needed anyway, since dynamic params are re-computed afterwards
+    # this check can be added back when prod-build-circuit/issues/34 is fixed.
+    # I feel like the check is not really needed anyway,
+    # since dynamic params are re-computed afterwards,
     # for dyn_attr in old_dynamic_attribute_names:
     #     old_values = old_node_pop.get_dynamics_attribute(dyn_attr, old_selection)
     #     new_values = new_node_pop.get_dynamics_attribute(dyn_attr, new_selection)
@@ -190,7 +186,7 @@ def check_hoc_files_exist(
     selection = node_pop.select_all()
 
     model_templates = set(node_pop.get_attribute("model_template", selection))
-    new_hoc_file_stems = set(str(Path(hoc_path).stem) for hoc_path in new_hoc_file_paths)
+    new_hoc_file_stems = {str(Path(hoc_path).stem) for hoc_path in new_hoc_file_paths}
     for model_template in model_templates:
         if ":" not in model_template:
             msg = (

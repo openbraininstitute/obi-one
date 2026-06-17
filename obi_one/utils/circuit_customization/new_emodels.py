@@ -13,6 +13,7 @@ from entitysdk import Client
 from entitysdk.models import Circuit
 from entitysdk.staging.circuit import stage_circuit
 
+from obi_one.scientific.validations.emodels import check_structure
 from obi_one.utils.circuit import (
     BCL_TEMPLATE_FORMAT,
     get_morphology_path,
@@ -155,7 +156,7 @@ def create_modified_circuit(  # noqa: PLR0914, PLR0915, C901
     if new_circuit_path is None:
         # TODO: might want to change that in case users modify multiple times their circuits
         new_circuit_path = f"{parent_circuit_path}-updated"
-    if Path(new_circuit_path).exists():
+    if new_circuit_path is not None and Path(new_circuit_path).exists():
         msg = (
             f"New circuit path {new_circuit_path} already exists. Please provide a different "
             "path for the new circuit or delete the existing one."
@@ -298,11 +299,12 @@ def run(
     description: str,
     new_circuit_path: str | Path | None = None,
     contact_email: str | None = None,
+    *,
     dry_run: bool = False,
-):
+) -> Circuit | None:
     """Validate modifications, build and upload modified circuit."""
     # check existence of new circuit path
-    if Path(new_circuit_path).exists():
+    if new_circuit_path is not None and Path(new_circuit_path).exists():
         msg = (
             f"Found {new_circuit_path}. Cannot create new circuit. "
             "Please provide a path that is empty."
@@ -321,6 +323,9 @@ def run(
         old_nodes_file_path = parent_pop.h5_filepath
 
         # validate
+        for hoc_path in new_hoc_files_paths:
+            check_structure(hoc_path)
+
         check_hoc_mechanisms_compatible_with_circuit(
             db_client=client,
             hoc_paths=new_hoc_files_paths,
@@ -330,7 +335,6 @@ def run(
             old_node_file_path=old_nodes_file_path,
             new_node_file_path=new_node_file_path,
         )
-        print("debug: after check new node columns")
         check_hoc_files_exist(
             node_file_path=new_node_file_path,
             old_hoc_dir=parent_circuit_emodels_dir,
@@ -371,7 +375,7 @@ def run(
         name=name,
         description=description,
         circuit_path=new_circuit_path,
-        customized_from=uuid.UUID(parent_circuit_id),
+        customized_from=uuid.UUID(str(parent_circuit_id)),
         customization_type=CustomizationType.emodel_addition,
         contact_email=contact_email,
         dry_run=dry_run,
