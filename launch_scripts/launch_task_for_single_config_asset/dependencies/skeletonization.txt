@@ -1,2 +1,2 @@
-obi-one
+obi-one @ git+https://github.com/openbraininstitute/obi-one.git@morphology_registration
 ultraliser==2.2.0
