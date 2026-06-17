@@ -91,7 +91,7 @@ class EMSynapseMappingTask(Task):
         resolved_neurons = []
         pt_root_id_names: dict[int, str] = {}
 
-        for neuron_entry in init.neurons.elements:
+        for neuron_entry in init.neurons.elements:  # ty:ignore[unresolved-attribute]
             resolved_neuron = resolve_neuron(neuron_entry, db_client, out_root, spiny_dir)
             if resolved_neuron.pt_root_id in pt_root_id_names:
                 err_str = (
