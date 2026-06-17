@@ -104,6 +104,9 @@ class MeshLODGenerationTask(Task):
         execution_activity_id: str | None = None,
     ) -> str:
         resolved_client = db_client if db_client is not None else self.client
+        if resolved_client is None:
+            msg = "Client is not provided."
+            raise ValueError(msg)
         entity_id = self.config.entity_id
         obj_asset_id = self.config.obj_asset_id
 
