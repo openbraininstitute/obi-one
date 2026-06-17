@@ -214,7 +214,7 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.96"
+version = "2.6.97"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -233,9 +233,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c1/e0/0dfa0f4d66fe13617221c5c273d846d6b31c64c280201606f39518594ac2/bluecellulab-2.6.96.tar.gz", hash = "sha256:c93bdb70ad3c7b1be3cfc9428ccbd223ef995a7abd985b58d776aa651f96b4fd", size = 558095, upload-time = "2026-05-04T09:39:08.542Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/66/00b6d771ccf61ca98dbec902778e9d00657ecc6122a9be3e746a7f496c6e/bluecellulab-2.6.97.tar.gz", hash = "sha256:a2b6e181af448ea7b0851eef7440c42cfda609249b0c0afebe30c6400ef75055", size = 558304, upload-time = "2026-06-11T14:20:00.025Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/4c/18a19d0a894fec9f5a6d636510e10e36ed70d95e595b2d0fd5f712086540/bluecellulab-2.6.96-py3-none-any.whl", hash = "sha256:beb6665b5642442c77850c4b96e64f1894c9033aca5062f7ad3a783d77371fa9", size = 183126, upload-time = "2026-05-04T09:39:06.126Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/1b/b684d1b3fcbff60fcbfd513e59afd7b7358ec7933869a4a77391a748889e/bluecellulab-2.6.97-py3-none-any.whl", hash = "sha256:1ba572db83148b67d5f1c78e5d1ca1b7dc4123f5b8d65c4aee7d7dee02013e9d", size = 183343, upload-time = "2026-06-11T14:19:58.558Z" },
 ]
 
 [[package]]
@@ -2219,6 +2219,7 @@ service = [
 [package.dev-dependencies]
 dev = [
     { name = "coverage" },
+    { name = "h5py" },
     { name = "jsonschema" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2235,7 +2236,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.87" },
+    { name = "bluecellulab", specifier = ">=2.6.97" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
     { name = "bluepysnap", specifier = ">=3.0.2" },
@@ -2281,6 +2282,7 @@ provides-extras = ["connectivity", "meshing", "notebooks", "service", "all", "bl
 [package.metadata.requires-dev]
 dev = [
     { name = "coverage", extras = ["toml"] },
+    { name = "h5py" },
     { name = "jsonschema", specifier = ">=4.25.1" },
     { name = "pytest" },
     { name = "pytest-cov" },

@@ -1,5 +1,6 @@
 """Tests for obi_one.utils.circuit_customization.upload."""
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -46,7 +47,7 @@ def test_upload_resolves_uuid(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=circuit_id,
             customization_type=CustomizationType.synaptic_modification,
             dry_run=True,
@@ -65,7 +66,7 @@ def test_upload_accepts_circuit_entity(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.emodel_addition,
             dry_run=True,
@@ -86,7 +87,7 @@ def test_upload_raises_if_no_brain_region(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
         )
@@ -101,7 +102,7 @@ def test_upload_raises_if_no_subject(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
         )
@@ -121,7 +122,7 @@ def test_upload_brain_region_override(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
             brain_region_override=override_br,
@@ -143,7 +144,7 @@ def test_upload_subject_override(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.emodel_modification,
             subject_override=override_subj,
@@ -165,7 +166,7 @@ def test_upload_description_prefix(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="modified synapses",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
             dry_run=True,
@@ -187,7 +188,7 @@ def test_upload_passes_derivation_type_and_label(mock_client, mock_parent_circui
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.population_modification,
             dry_run=True,
@@ -213,7 +214,7 @@ def test_upload_resolves_atlas(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
             dry_run=True,
@@ -233,7 +234,7 @@ def test_upload_no_atlas_when_parent_has_none(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
             dry_run=True,
@@ -256,7 +257,7 @@ def test_upload_root_is_parent_id_when_no_root(mock_client, mock_parent_circuit)
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
             dry_run=True,
@@ -277,7 +278,7 @@ def test_upload_root_is_parent_root_circuit_id(mock_client, mock_parent_circuit)
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
             dry_run=True,
@@ -293,7 +294,6 @@ def test_upload_root_is_parent_root_circuit_id(mock_client, mock_parent_circuit)
 @freeze_time("2026-06-12 10:00:00")
 def test_upload_experiment_date_is_current(mock_client, mock_parent_circuit):
     """Test that experiment_date is set to the current UTC time."""
-    from datetime import UTC, datetime
 
     with patch("obi_one.utils.circuit_customization.upload.register_circuit") as mock_register:
         mock_register.return_value = None
@@ -301,7 +301,7 @@ def test_upload_experiment_date_is_current(mock_client, mock_parent_circuit):
             client=mock_client,
             name="custom",
             description="test",
-            circuit_path="/tmp/circuit",
+            circuit_path="circuit",
             customized_from=mock_parent_circuit,
             customization_type=CustomizationType.synaptic_modification,
             dry_run=True,

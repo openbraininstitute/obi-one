@@ -6,24 +6,35 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import bluepysnap as snap
-import bluepysnap.circuit_validation
+import bluepysnap.nodes
+from bluepysnap import circuit_validation
 
 if TYPE_CHECKING:
+    import uuid
+
     import pandas as pd
+    from entitysdk.client import Client
+
 import h5py
+import libsonata
 import numpy as np
 from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
+from obi_one.utils.circuit_customization.download import download_mechanisms
 from obi_one.utils.filesystem import filter_extension
+from obi_one.utils.ion_channel import get_suffix_from_mod_file
 
 L = logging.getLogger(__name__)
+
+BCL_TEMPLATE_FORMAT = "v6"
 
 
 def fix_node_sets_file(circuit_path: Path) -> None:
@@ -187,9 +198,53 @@ def run_validation(circuit_path: str | Path) -> None:
     L.info("No SONATA validation errors found!")
 
 
+def get_morphology_path(morph_stem: str, available_morph_dirs: dict[str, str]) -> Path | None:
+    """Get morphology path depending on morphology presence on file system and containerization."""
+    morph_fpath = None
+    for ext, morph_dir in available_morph_dirs.items():
+        # h5 container case: morph_container.h5/morph_name
+        if ext == "h5" and Path(morph_dir).suffix == ".h5":
+            morph_fpath = Path(morph_dir) / morph_stem
+        # swc, asc, h5 non-container cases: dir/morph.ext
+        else:
+            morph_fpath = Path(morph_dir) / f"{morph_stem}.{ext}"
+
+        if morph_fpath.exists():
+            return morph_fpath
+
+    return morph_fpath
+
+
+def get_source_morph_dirs(pop: snap.nodes.NodePopulation) -> dict[str, str]:
+    """Returns a dict with morph extension as key and morphology source directory as value."""
+    morph_dirs = {}
+    for morph_ext in ["swc", "asc", "h5"]:
+        try:
+            morph_folder = pop.morph._get_morphology_base(morph_ext)  # noqa: SLF001
+            # TODO: Should not use private function!! But required to get path
+            #       even if h5 container.
+        except BluepySnapError:
+            # Morphology folder for given extension not defined in config
+            continue
+
+        if not Path(morph_folder).exists():
+            # Morphology folder/container does not exist
+            continue
+
+        if (
+            Path(morph_folder).is_dir()
+            and len(filter_extension(Path(morph_folder).iterdir(), morph_ext)) == 0  # ty:ignore[invalid-argument-type]
+        ):
+            # Morphology folder does not contain morphologies
+            continue
+
+        morph_dirs[morph_ext] = morph_folder
+    return morph_dirs
+
+
 def get_morph_dirs(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: snap.nodes.NodePopulation,
     original_circuit: snap.Circuit,
 ) -> tuple[dict, dict]:
     """Returns source and destination morphology directories for a node population."""
@@ -225,7 +280,7 @@ def get_morph_dirs(
 
 def copy_morphologies(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: snap.nodes.NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy morphologies for a node population from original to extracted circuit."""
@@ -284,7 +339,7 @@ def copy_morphologies(
 
 def copy_hoc_files(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: snap.nodes.NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy biophysical neuron model (.hoc) files for a node population."""
@@ -624,3 +679,29 @@ def run_basic_connectivity_plots(
             raise OBIONEError(msg)
     L.info(f"Basic connectivity plots generated in {output_dir}: {output_files}")
     return output_dir, output_files
+
+
+def get_mechanisms_suffixes(circuit_id: str | uuid.UUID, db_client: Client) -> set[str]:
+    """Download the mechanisms from the circuit and return the set of suffixes."""
+    suffixes = set()
+    with tempfile.TemporaryDirectory() as tmp:
+        fpaths = download_mechanisms(
+            circuit_id=str(circuit_id), db_client=db_client, dest_dir=Path(tmp)
+        )
+        for fpath in fpaths:
+            try:
+                suffix = get_suffix_from_mod_file(fpath)
+                suffixes.add(suffix)
+            except ValueError:
+                # ValueError is raised when a point process mechanism is found (e.g. synpase)
+                # point process mechanisms do not have any suffix
+                pass
+
+    return suffixes
+
+
+def read_node_file(fpath: str | Path) -> libsonata.NodePopulation:
+    """Reads a node file and returns the node population."""
+    nodes = libsonata.NodeStorage(fpath)
+    pop_name = next(iter(nodes.population_names))  # expects size 1
+    return nodes.open_population(pop_name)

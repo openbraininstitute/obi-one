@@ -2,7 +2,9 @@
 
 import json
 import shutil
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from entitysdk import types
@@ -14,6 +16,8 @@ from obi_one.utils.circuit import (
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
+    get_mechanisms_suffixes,
+    get_morphology_path,
     run_basic_connectivity_plots,
     run_circuit_folder_compression,
     run_connectivity_matrix_extraction,
@@ -25,6 +29,8 @@ from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
 EDGE_POPULATION = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical"
+DATA_FOLDER_PATH = Path(__file__).parent.parent.parent / "test_data"
+IC_MOD_FILE_PATH = DATA_FOLDER_PATH / "TC_iT_Des98.mod"
 
 
 def _copy_circuit(tmp_path, circuit_name=CIRCUIT_NAME):
@@ -364,6 +370,105 @@ def test_run_connectivity_matrix_extraction_custom_edge_population(tmp_path):
         )
 
 
+@pytest.fixture
+def db_client():
+    return MagicMock()
+
+
+def test_get_morphology_path_swc(tmp_path):
+    """Test morphology lookup for swc files in a directory."""
+    morph_dir = tmp_path / "swc"
+    morph_dir.mkdir()
+    morph_file = morph_dir / "cell.swc"
+    morph_file.touch()
+
+    result = get_morphology_path("cell", {"swc": morph_dir})
+
+    assert result == morph_file
+
+
+def test_get_morphology_path_asc(tmp_path):
+    """Test morphology lookup for asc files in a directory."""
+    morph_dir = tmp_path / "asc"
+    morph_dir.mkdir()
+    morph_file = morph_dir / "cell.asc"
+    morph_file.touch()
+
+    result = get_morphology_path("cell", {"asc": morph_dir})
+
+    assert result == morph_file
+
+
+def test_get_morphology_path_h5_container(tmp_path):
+    """Test morphology lookup inside an h5 morphology container."""
+    morph_container = tmp_path / "morphologies.h5"
+    morph_container.touch()
+
+    result = get_morphology_path(
+        "dend-cell",
+        {"h5": morph_container},
+    )
+
+    assert result == morph_container / "dend-cell"
+
+
+def test_get_morphology_path_h5_file(tmp_path):
+    """Test morphology lookup for standalone h5 morphology files."""
+    morph_dir = tmp_path / "h5"
+    morph_dir.mkdir()
+    morph_file = morph_dir / "cell.h5"
+    morph_file.touch()
+
+    result = get_morphology_path("cell", {"h5": morph_dir})
+
+    assert result == morph_file
+
+
+def test_get_morphology_path_skips_missing_extensions(tmp_path):
+    """Test lookup when multiple dirs are given but only one has the morphology."""
+    swc_dir = tmp_path / "swc"
+    asc_dir = tmp_path / "asc"
+    h5_dir = tmp_path / "h5"
+    swc_dir.mkdir()
+    asc_dir.mkdir()
+    h5_dir.mkdir()
+    asc_file = asc_dir / "cell.asc"
+    asc_file.touch()
+
+    result = get_morphology_path(
+        "cell",
+        {"swc": swc_dir, "asc": asc_dir, "h5": h5_dir},
+    )
+
+    assert result == asc_file
+
+
+def test_get_morphology_path_not_found(tmp_path):
+    """Test morphology lookup when no morphology file exists."""
+    morph_dir = tmp_path / "swc"
+    morph_dir.mkdir()
+
+    result = get_morphology_path("missing", {"swc": morph_dir})
+
+    assert result == morph_dir / "missing.swc"
+    assert not result.exists()
+
+
+def test_get_morphology_path_empty_dirs():
+    """Test morphology lookup with no available morphology directories."""
+    assert get_morphology_path("cell", {}) is None
+
+
+@patch("obi_one.utils.circuit.download_mechanisms")
+def test_get_mechanisms_suffixes(mock_download_mechanisms, db_client):
+    """Test that mechanism suffixes are correctly extracted from downloaded mechanisms.
+
+    Most function is patched, but that is ok since download_mechanisms is tested elsewhere.
+    """
+    mock_download_mechanisms.return_value = [IC_MOD_FILE_PATH]
+    circuit_id = UUID("12345678-1234-5678-1234-567812345678")
+    suffixes = get_mechanisms_suffixes(circuit_id, db_client)
+    assert suffixes == {"TC_iT_Des98"}
 # --- scale_override (register_circuit) ---
 
 
