@@ -12,6 +12,7 @@ import entitysdk.client
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from conntility import ConnectivityMatrix
 from pydantic import model_validator
 
@@ -154,8 +155,8 @@ class BasicConnectivityPlotsTask(Task):
         size: tuple[int, int],
         n_min_stats: int,
         conn: ConnectivityMatrix,
-        deg: dict[str, float],
-        deg_er: dict[str, float],
+        deg: pd.DataFrame,
+        deg_er: pd.DataFrame,
         dir_path: str | Path,
     ) -> None:
         if size[0] < n_min_stats:
@@ -174,8 +175,8 @@ class BasicConnectivityPlotsTask(Task):
         fig_network_pathway = plot_connection_probability_pathway_stats(
             full_width,
             conn_probs,
-            deg,  # ty:ignore[invalid-argument-type]
-            deg_er,  # ty:ignore[invalid-argument-type]
+            deg,
+            deg_er,
         )
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"network_pathway_stats.{fmt}"

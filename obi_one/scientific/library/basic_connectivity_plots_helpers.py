@@ -37,7 +37,6 @@ try:
         density,
     )
     from connalysis.network.topology import (
-        node_degree,
         rc_submatrix,
     )
 except ImportError as e:  # pragma: no cover
@@ -270,7 +269,7 @@ def in_out_degree(adj: sp.spmatrix) -> pd.DataFrame:
         DataFrame indexed by node with integer ``"IN"`` (in-degree, column sums)
         and ``"OUT"`` (out-degree, row sums) columns.
     """
-    adj_bool = adj.astype(bool)
+    adj_bool = sp.csr_matrix(adj, dtype=bool)
     index = pd.Series(range(adj_bool.shape[0]), name="node")
     return pd.DataFrame(
         {
@@ -745,7 +744,7 @@ def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
     axs[1].set_title("Connection strength")
 
     # Plot degrees
-    degree = node_degree(adj, direction=("IN", "OUT"))
+    degree = in_out_degree(adj)
     bar_width = 0.4
     df = degree["IN"].value_counts().sort_index()
     axs[2].bar(
@@ -952,9 +951,7 @@ def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
     widths = [w / max(weights) * edge_weight_scale for w in weights]  # normalize for plotting
 
     # Make nodes proportional to total degree
-    total_degree = node_degree(conn.matrix.astype(bool).astype(int), direction=("IN", "OUT")).sum(
-        axis=1
-    )
+    total_degree = in_out_degree(conn.matrix).sum(axis=1)
     min_deg, max_deg = min(total_degree), max(total_degree)
     if max_deg > min_deg:
         node_sizes = [
