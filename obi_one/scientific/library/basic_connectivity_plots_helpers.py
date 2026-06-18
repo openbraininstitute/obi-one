@@ -172,7 +172,7 @@ def connection_probability_within_pathway(
 
 
 def directed_connection_probability_within(
-    m: sp.spmatrix,
+    m: np.ndarray | sp.spmatrix,
     v: pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame],
     max_dist: float = 100,
     cols: list[str] | None = None,
@@ -298,6 +298,9 @@ def compute_global_connectivity(
             [density(m), density(m_er), density(rc_submatrix(m)), density(rc_submatrix(m_er))]
         )
     if connection_type == "within":
+        if v is None:
+            msg = "Node coordinates `v` are required for within-distance connectivity."
+            raise ValueError(msg)
         return np.array(
             [
                 directed_connection_probability_within(m, v, max_dist=max_dist, cols=cols),
