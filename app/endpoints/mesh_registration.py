@@ -116,13 +116,18 @@ def _create_lod_task_config(
             "Registered TaskConfig entity has no valid ID.",
         )
 
-        client.upload_content(
+        config_asset = client.upload_content(
             entity_id=config_entity_id,
             entity_type=TaskConfig,
             file_content=config_payload,
             file_name="config.json",
             file_content_type=ContentType.application_json,
             asset_label=AssetLabel.task_config,
+        )
+
+        _require_uuid(
+            config_asset.id,
+            "Uploaded config asset has no valid ID.",
         )
 
     except (EntitySDKError, ValueError) as exc:
