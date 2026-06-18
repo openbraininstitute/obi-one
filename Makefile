@@ -114,7 +114,7 @@ pip-audit:  ## Run package auditing
 
 run-local: ## Run the application locally
 	@$(call load_env,run-local)
-	uv run -m app run --host $(UVICORN_HOST) --port $(UVICORN_PORT) --reload
+	uv run --no-sync -m app run --host $(UVICORN_HOST) --port $(UVICORN_PORT) --reload
 
 run-docker: build  ## Run the application in Docker
 	docker compose up app --watch --remove-orphans

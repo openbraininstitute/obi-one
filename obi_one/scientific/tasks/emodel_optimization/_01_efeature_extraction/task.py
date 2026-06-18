@@ -269,6 +269,9 @@ class EModelEFeatureExtractionTask(Task):
         timing can't be recovered (with a warning); and builds files_metadata +
         targets. Per-protocol ecode metadata carries each recording's LJP plus
         the detected ``ton`` for Ramp protocols.
+
+        When ``autoselect`` is enabled, uses BluePyEModel's auto_targets presets
+        instead of manually-built targets rows.
         """
         from bluepyefe.ecode import eCodes  # noqa: PLC0415
         from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
@@ -276,6 +279,38 @@ class EModelEFeatureExtractionTask(Task):
         )
 
         nwb_paths = [path for path, _ in downloaded]
+
+        # --- Autoselect mode: use auto_targets presets ---
+        if self.config.efeatures_by_protocol.autoselect:
+            from bluepyemodel.efeatures_extraction.auto_targets import (  # noqa: PLC0415
+                get_auto_target_from_presets,
+            )
+
+            auto_targets = get_auto_target_from_presets(
+                list(self.config.efeatures_by_protocol.auto_targets_presets)
+            )
+            L.info(
+                "Autoselect enabled: using auto_targets presets %s",
+                self.config.efeatures_by_protocol.auto_targets_presets,
+            )
+
+            # Still need files_metadata with LJP — build with empty ecodes_metadata
+            # since auto_targets handles protocol selection internally.
+            files = _build_files_metadata(
+                nwb_paths_with_ljp=downloaded,
+                ecodes_metadata_dict={},
+            )
+            if not files:
+                msg = "No NWB ephys files were downloaded for extraction."
+                raise FileNotFoundError(msg)
+
+            return TargetsConfiguration(
+                files=files,
+                auto_targets=auto_targets,
+                protocols_rheobase=list(self.config.rheobase.protocols),
+            )
+
+        # --- Manual mode: build targets from per-protocol feature selection ---
         all_protocols = self.config.efeatures_by_protocol.protocols
 
         # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
@@ -352,4 +387,153 @@ class EModelEFeatureExtractionTask(Task):
             access_point.store_targets_configuration(targets_configuration)
             extract_save_features_protocols(access_point=access_point, mapper=map)
 
+        # 5. Register TaskResult entity and upload assets to entitycore.
+        if db_client is not None:
+            self._register_task_result(coord_root, db_client)
+
         return coord_root
+
+    def _build_figures_manifest(self, figures_dir: Path) -> dict:
+        """Build a manifest.json describing all PDF figure files in the directory."""
+        import re  # noqa: PLC0415
+
+        files_list = []
+        for pdf_path in sorted(figures_dir.rglob("*.pdf")):
+            rel_path = pdf_path.relative_to(figures_dir)
+            entry: dict[str, str] = {"path": str(rel_path)}
+
+            # Try to parse: <cell>_<protocol>_<feature>_amp.pdf or <cell>_<protocol>_recordings.pdf
+            name = pdf_path.stem
+            if name == "legend":
+                entry["type"] = "legend"
+            elif name.endswith("_recordings"):
+                parts = name.rsplit("_recordings", 1)
+                # parts[0] = <cell>_<protocol>
+                last_underscore = parts[0].rfind("_")
+                if last_underscore > 0:
+                    entry["protocol"] = parts[0][last_underscore + 1:]
+                    entry["cell"] = parts[0][:last_underscore]
+                entry["type"] = "recordings_plot"
+            elif "_amp" in name:
+                # <cell>_<protocol>_<feature>_amp
+                match = re.match(r"^(.+?)_([^_]+)_(.+?)_amp$", name)
+                if match:
+                    entry["cell"] = match.group(1)
+                    entry["protocol"] = match.group(2)
+                    entry["feature"] = match.group(3)
+                entry["type"] = "feature_plot"
+            else:
+                entry["type"] = "other"
+
+            files_list.append(entry)
+
+        # Collect unique cells
+        cells = sorted({e.get("cell", "") for e in files_list if e.get("cell")})
+
+        return {"cells": cells, "files": files_list}
+
+    def _register_task_result(
+        self,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
+    ) -> None:
+        """Register a TaskResult entity and upload extraction output assets."""
+        from entitysdk.models import TaskResult  # noqa: PLC0415
+        from entitysdk.types import (  # noqa: PLC0415
+            AssetLabel,
+            ContentType,
+            TaskResultType,
+        )
+
+        import json  # noqa: PLC0415
+
+        campaign_name = getattr(self.config, "campaign_name", "EFeature Extraction")
+
+        # Register the TaskResult entity.
+        task_result = db_client.register_entity(
+            TaskResult(
+                name=f"EFeature Extraction Result — {campaign_name}",
+                description="Extracted e-features from ephys recordings.",
+                task_result_type=TaskResultType.efeature_extraction__result,
+            )
+        )
+        L.info("TaskResult entity registered: %s", task_result.id)
+
+        # Upload extracted features JSON.
+        features_path = coord_root / EXTRACTED_FEATURES_FILENAME
+        if features_path.exists():
+            db_client.upload_assets(
+                entity_id=task_result.id,
+                entity_type=TaskResult,
+                asset_path=features_path,
+                asset_label=AssetLabel.efeature_extraction_features,
+                content_type=ContentType.application_json,
+            )
+            L.info("Uploaded extracted features JSON.")
+
+        # Upload recipes JSON.
+        recipes_path = coord_root / RECIPES_RELPATH
+        if recipes_path.exists():
+            db_client.upload_assets(
+                entity_id=task_result.id,
+                entity_type=TaskResult,
+                asset_path=recipes_path,
+                asset_label=AssetLabel.efeature_extraction_recipe,
+                content_type=ContentType.application_json,
+            )
+            L.info("Uploaded recipes JSON.")
+
+        # Upload figures directory with manifest.
+        figures_dir = coord_root / "figures"
+        if figures_dir.exists() and any(figures_dir.rglob("*.pdf")):
+            # Generate manifest
+            manifest = self._build_figures_manifest(figures_dir)
+            manifest_path = figures_dir / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest, indent=2))
+
+            # Build paths dict for directory upload: {relative_path: absolute_path}
+            paths = {}
+            for file_path in sorted(figures_dir.rglob("*")):
+                if file_path.is_file():
+                    rel = str(file_path.relative_to(figures_dir))
+                    paths[rel] = str(file_path)
+
+            db_client.upload_asset_directory(
+                entity_id=task_result.id,
+                entity_type=TaskResult,
+                paths=paths,
+                asset_label=AssetLabel.efeature_extraction_figures,
+                content_type=ContentType.application_vnd_directory,
+            )
+            L.info("Uploaded figures directory (%d files).", len(paths))
+
+        # Upload cells pickle (optional).
+        # bluepyefe writes pickles under the extraction output directory.
+        for pickle_candidate in coord_root.rglob("*.pkl"):
+            db_client.upload_assets(
+                entity_id=task_result.id,
+                entity_type=TaskResult,
+                asset_path=pickle_candidate,
+                asset_label=AssetLabel.efeature_extraction_cells,
+                content_type=ContentType.application_octet_stream,
+            )
+            L.info("Uploaded cells pickle: %s", pickle_candidate.name)
+            break  # Only upload the first pickle found
+
+        # Link input ElectricalCellRecording entities to the TaskResult via Derivation.
+        from entitysdk.models import Derivation  # noqa: PLC0415
+        from entitysdk.types import DerivationType  # noqa: PLC0415
+
+        for recording in self.config.initialize.electrical_cell_recording:
+            recording_entity = recording.entity(db_client=db_client)
+            db_client.register_entity(
+                Derivation(
+                    used=recording_entity,
+                    generated=task_result,
+                    derivation_type=DerivationType.unspecified,
+                )
+            )
+        L.info(
+            "Linked %d input recordings to TaskResult.",
+            len(self.config.initialize.electrical_cell_recording),
+        )

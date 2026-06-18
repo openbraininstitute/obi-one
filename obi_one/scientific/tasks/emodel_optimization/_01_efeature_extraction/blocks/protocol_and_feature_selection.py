@@ -71,6 +71,28 @@ class ProtocolAndFeatureSelection(Block):
     leaves it alone instead of expanding it as a parameter-scan dimension.
     """
 
+    autoselect: bool = Field(
+        default=False,
+        title="Automatically fill the features and protocols",
+        description=(
+            "When enabled, protocols and features are selected automatically"
+            " using BluePyEModel's auto_targets presets. Manual protocol/feature"
+            " selection below is ignored."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+
+    auto_targets_presets: tuple[str, ...] = Field(
+        default=("firing_pattern", "ap_waveform", "iv"),
+        title="Auto-target presets",
+        description=(
+            "Preset names from BluePyEModel's AUTO_TARGET_DICT used when"
+            " autoselect is enabled. Options: 'firing_pattern', 'ap_waveform',"
+            " 'iv', 'validation'."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
     protocols: tuple[ProtocolUnion, ...] = Field(
         default_factory=_default_protocols,
         title="Protocols",
@@ -79,6 +101,7 @@ class ProtocolAndFeatureSelection(Block):
             " example; the frontend can repopulate this from the catalogue and"
             " the protocols returned by"
             " ``/declared/electrical-cell-recording-protocols``."
+            " Ignored when autoselect is enabled."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,
