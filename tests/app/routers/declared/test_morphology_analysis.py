@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from app.endpoints.morphology_metrics_calculation import _run_morphology_analysis
+import obi_one.scientific.library.morphology_measurement_annotation as uf
+from app.endpoints.morphology_metrics_calculation import run_morphology_analysis
 
 from tests.utils import DATA_DIR
 
@@ -29,7 +30,7 @@ def _flatten_measurements(measurements):
 
 
 def test_real_morphology_metrics_match_golden_values():
-    actual_measurements = _run_morphology_analysis(str(DATA_DIR / "ch150801A1.swc"))
+    actual_measurements = run_morphology_analysis(str(DATA_DIR / "ch150801A1.swc"))
 
     expected_measurements = json.loads(
         (DATA_DIR / "measurement_kinds_ch150801A1_swc.json").read_text()
@@ -42,3 +43,23 @@ def test_real_morphology_metrics_match_golden_values():
 
     for key, expected_value in expected.items():
         assert actual[key] == pytest.approx(expected_value), key
+
+
+def test_metric_with_nan_values_is_skipped(monkeypatch, caplog):
+    monkeypatch.setattr(uf.nm, "get", lambda *_args, **_kwargs: [1.0, float("nan"), 3.0])
+
+    result = uf._process_measurement("section_tortuosity", "dimensionless", object())
+
+    assert result == ["section_tortuosity", None, "dimensionless"]
+    assert "1 of 3 values are NaN" in caplog.text
+    json.dumps(result, allow_nan=False)
+
+
+def test_scalar_nan_metric_is_skipped(monkeypatch, caplog):
+    monkeypatch.setattr(uf.nm, "get", lambda *_args, **_kwargs: float("nan"))
+
+    result = uf._process_measurement("soma_radius", "um", object())
+
+    assert result == ["soma_radius", None, "um"]
+    assert "Skipping NaN value for morphology metric soma_radius" in caplog.text
+    json.dumps(result, allow_nan=False)

@@ -1,7 +1,5 @@
-import tempfile
 import uuid
 from http import HTTPStatus
-from pathlib import Path
 
 import entitysdk.client
 import entitysdk.exception
@@ -14,28 +12,9 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-
-try:
-    from nmm.common import NEURON_COLORS
-    from nmm.morphology import NeuronMorphology
-
-    HAS_MESHING = True
-except ImportError:
-    HAS_MESHING = False
+from obi_one.scientific.library.morphology_mesh import HAS_MESHING, mesh_and_upload
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
-
-
-def _mesh_swc(swc_path: str, output_directory: str) -> str:
-    morphology = NeuronMorphology(
-        swc_path,
-        smooth_sections=True,
-        soma_color=NEURON_COLORS.SOMA,
-        axon_color=NEURON_COLORS.AXON,
-        basal_dendrite_color=NEURON_COLORS.BASAL_DENDRITE,
-        apical_dendrite_color=NEURON_COLORS.APICAL_DENDRITE,
-    )
-    return morphology.export_annotated_glb_mesh(output_directory=output_directory, show_stats=False)
 
 
 def _check_no_existing_glb_assets(
@@ -63,68 +42,29 @@ def _check_no_existing_glb_assets(
         )
 
 
-def _upload_glb_asset(
-    db_client: entitysdk.client.Client,
-    cell_morphology_id: uuid.UUID,
-    glb_path: Path,
-) -> Asset:
-    L.info(
-        f"register_morphology_mesh: uploading GLB asset for {cell_morphology_id} "
-        f"({glb_path.stat().st_size} bytes)"
-    )
-    try:
-        return db_client.upload_file(
-            entity_id=cell_morphology_id,
-            entity_type=CellMorphology,
-            file_path=glb_path,
-            file_content_type=ContentType.model_gltf_binary,
-            asset_label=AssetLabel.cell_surface_mesh,
-        )
-    except entitysdk.exception.EntitySDKError as err:
-        L.error(f"Failed to upload GLB asset for {cell_morphology_id}: {err}")
-        raise ApiError(
-            message="Failed to upload the GLB mesh asset.",
-            error_code=ApiErrorCode.DATABASE_CLIENT_ERROR,
-            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            details=str(err),
-        ) from err
-
-
-def _validate_mesh_output(glb_path: Path, glb_path_str: str) -> None:
-    if not glb_path.exists():
-        msg = f"Meshing produced no output at {glb_path_str}"
-        raise RuntimeError(msg)
-
-    if glb_path.stat().st_size == 0:
-        msg = f"Meshing produced blank output at {glb_path_str}"
-        raise RuntimeError(msg)
-
-
-def _mesh_and_register(
+def mesh_and_register(
     db_client: entitysdk.client.Client,
     cell_morphology_id: uuid.UUID,
     swc_bytes: bytes,
 ) -> Asset:
+    """Convert SWC bytes to a GLB mesh and upload it as an asset on the given morphology."""
     L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
     try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            swc_path = Path(tmp_dir) / f"{uuid.uuid4()}.swc"
-            swc_path.write_bytes(swc_bytes)
-
-            glb_path_str = _mesh_swc(str(swc_path), output_directory=tmp_dir)
-            glb_path = Path(glb_path_str)
-
-            _validate_mesh_output(glb_path, glb_path_str)
-
-            return _upload_glb_asset(db_client, cell_morphology_id, glb_path)
-
+        return mesh_and_upload(db_client, cell_morphology_id, swc_bytes)
     except ApiError:
         raise
     except Exception as err:
+        # The shared meshing implementation wraps EntitySDKError (upload failures) into
+        # RuntimeError, so inspect the cause to distinguish DB errors from meshing errors.
+        is_db_error = isinstance(err, entitysdk.exception.EntitySDKError) or isinstance(
+            err.__cause__, entitysdk.exception.EntitySDKError
+        )
         L.error(f"Meshing failed for {cell_morphology_id}: {err}")
         raise ApiError(
             message=f"Meshing failed for morphology {cell_morphology_id}.",
-            error_code=ApiErrorCode.INTERNAL_ERROR,
+            error_code=ApiErrorCode.DATABASE_CLIENT_ERROR
+            if is_db_error
+            else ApiErrorCode.INTERNAL_ERROR,
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             details=str(err),
         ) from err
@@ -198,7 +138,7 @@ def register_morphology_mesh(
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
-    asset = _mesh_and_register(db_client, cell_morphology_id, swc_bytes)
+    asset = mesh_and_register(db_client, cell_morphology_id, swc_bytes)
 
     L.info(f"register_morphology_mesh: done, asset id={asset.id}")
     return {"asset_id": str(asset.id), "status": "success"}

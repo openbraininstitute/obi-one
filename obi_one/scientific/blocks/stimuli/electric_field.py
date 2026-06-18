@@ -6,9 +6,9 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MAX_EFIELD_FREQUENCY_HZ,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_EFIELD_FREQUENCY_HZ,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
@@ -60,10 +60,10 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     )
 
     duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]]
     ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time in milliseconds (ms) for how long the main stimulus is activated. "
         + _RAMP_QAULIFIER_DESCRIPTION,
@@ -172,7 +172,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         Annotated[
             NonNegativeFloat,
             Field(
-                lt=_MAX_EFIELD_FREQUENCY_HZ,
+                lt=MAX_EFIELD_FREQUENCY_HZ,
             ),
         ]
         | Annotated[
@@ -180,7 +180,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
                 Annotated[
                     NonNegativeFloat,
                     Field(
-                        lt=_MAX_EFIELD_FREQUENCY_HZ,
+                        lt=MAX_EFIELD_FREQUENCY_HZ,
                     ),
                 ]
             ],

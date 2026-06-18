@@ -1,6 +1,6 @@
 import abc
-from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
-    
+from typing import Annotated, Any, ClassVar, get_args
+
 from pydantic import Discriminator, Field
 
 from obi_one.core.base import OBIBaseModel

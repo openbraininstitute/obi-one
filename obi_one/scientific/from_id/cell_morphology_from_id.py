@@ -2,24 +2,21 @@ import io
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import ClassVar
 
 import entitysdk
 import morphio
 import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import CellMorphology, EMCellMesh, SkeletonizationExecution
-from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellMorphologyProtocol
+from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
+from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
 from entitysdk.models.entity import Entity
-from entitysdk.types import CellMorphologyProtocolDesign
+from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivityType
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 L = logging.getLogger(__name__)
 
@@ -42,10 +39,13 @@ class CellMorphologyFromID(EntityFromID):
                         L.info("Downloading SWC file for morphology...")
 
                         # Download the content into memory
+                        if asset.id is None:
+                            msg = "Asset must have an id"
+                            raise ValueError(msg)
                         content = db_client.download_content(
                             entity_id=self.entity(db_client=db_client).id,  # ty:ignore[invalid-argument-type]
                             entity_type=self.entitysdk_type,
-                            asset_id=cast("UUID", asset.id),
+                            asset_id=asset.id,
                         ).decode(encoding="utf-8")
 
                         self._swc_file_content = content
@@ -84,18 +84,33 @@ class CellMorphologyFromID(EntityFromID):
         cm_protocol = morph_entity.cell_morphology_protocol
         if cm_protocol is None:
             return False
-        if not isinstance(cm_protocol, DigitalReconstructionCellMorphologyProtocol):
-            return False
-        if cm_protocol.protocol_design != CellMorphologyProtocolDesign.electron_microscopy:
+        if (isinstance(cm_protocol, PlaceholderCellMorphologyProtocol)) or (
+            cm_protocol.protocol_design != CellMorphologyProtocolDesign.electron_microscopy
+        ):
             return False
 
         activity = db_client.search_entity(
-            entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
+            entity_type=TaskActivity,
+            query={
+                "task_activity_type": TaskActivityType.skeletonization__execution,
+                "generated__id": morph_entity.id,
+            },
         ).one_or_none()
         if activity is None:
             return False
-
-        return (len(activity.used) == 1) and activity.used[0].type == "em_cell_mesh"  # ty:ignore[invalid-argument-type, not-subscriptable]
+        if (
+            (activity.used is None)
+            or (len(activity.used) != 1)
+            or (activity.used[0].type != EntityType.task_config)
+            or (activity.used[0].id is None)
+        ):
+            return False
+        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)
+        return (
+            (task_cfg.inputs is not None)
+            and (len(task_cfg.inputs) == 1)
+            and (task_cfg.inputs[0].type == EntityType.em_cell_mesh)
+        )
 
     def source_mesh_entity(self, db_client: entitysdk.client.Client = None) -> EMCellMesh:  # ty:ignore[invalid-parameter-default]
         """EMCellMesh entity that the morphology originates from.
@@ -110,9 +125,14 @@ class CellMorphologyFromID(EntityFromID):
 
         morph_entity = self.entity(db_client=db_client)
         activity = db_client.search_entity(
-            entity_type=SkeletonizationExecution, query={"generated__id": morph_entity.id}
+            entity_type=TaskActivity,
+            query={
+                "task_activity_type": TaskActivityType.skeletonization__execution,
+                "generated__id": morph_entity.id,
+            },
         ).one_or_none()
-        source_mesh = db_client.get_entity(entity_id=activity.used[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
+        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
+        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable]
         return source_mesh
 
     def write_spiny_neuron_h5(
@@ -125,10 +145,13 @@ class CellMorphologyFromID(EntityFromID):
             if (asset.label == AssetLabel.morphology_with_spines) and (
                 asset.content_type == ContentType.application_x_hdf5
             ):
+                if asset.id is None:
+                    msg = "Asset must have an id"
+                    raise ValueError(msg)
                 db_client.download_file(
                     entity_id=entity.id,  # ty:ignore[invalid-argument-type]
                     entity_type=self.entitysdk_class,
-                    asset_id=cast("UUID", asset.id),
+                    asset_id=asset.id,
                     output_path=str(path_to),  # ty:ignore[invalid-argument-type]
                 )
                 return

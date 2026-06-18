@@ -1,16 +1,12 @@
 import io
 import logging
-from typing import TYPE_CHECKING, Annotated, Self, cast
+from typing import Annotated, Self
 
 import entitysdk
 import neurom
 from entitysdk.models.cell_morphology import CellMorphology
 from neurom import load_morphology
 from pydantic import BaseModel, Field
-
-if TYPE_CHECKING:
-    from uuid import UUID
-
 
 L = logging.getLogger(__name__)
 
@@ -237,10 +233,13 @@ def get_morphology_metrics(
 
     for asset in morphology.assets:
         if asset.content_type == "application/swc":
+            if asset.id is None:
+                msg = "Asset must have an id"
+                raise ValueError(msg)
             content = db_client.download_content(
                 entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
                 entity_type=CellMorphology,
-                asset_id=cast("UUID", asset.id),
+                asset_id=asset.id,
             ).decode(encoding="utf-8")
 
             neurom_morphology = load_morphology(io.StringIO(content), reader="swc")

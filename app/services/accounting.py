@@ -3,7 +3,7 @@ from uuid import UUID
 
 import httpx
 from entitysdk import Client, ProjectContext, models
-from entitysdk.types import CircuitScale
+from entitysdk.types import AssetLabel, CircuitScale
 from fastapi import HTTPException
 from obp_accounting_sdk import AccountingSessionFactory, OneshotSession
 from obp_accounting_sdk.constants import ServiceSubtype
@@ -19,7 +19,9 @@ from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskDefinition
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
+from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
 from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
+from obi_one.utils.db_sdk import select_json_asset_content
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
     CircuitScale.small: ServiceSubtype.SMALL_SIM,
@@ -118,8 +120,8 @@ def _evaluate_accounting_parameters(
     match task_definition.task_type:
         case TaskType.circuit_extraction:
             return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
+                count=estimate_circuit_extraction_count(db_client=db_client, config_id=config_id),
+                service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
             )
         case (
             TaskType.circuit_simulation_neuron
@@ -134,7 +136,7 @@ def _evaluate_accounting_parameters(
         case TaskType.em_synapse_mapping:
             return AccountingParameters(
                 count=1,
-                service_subtype=ServiceSubtype.SMALL_CIRCUIT_SIM,
+                service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
             )
         case TaskType.ion_channel_model_simulation_execution:
             return AccountingParameters(
@@ -154,6 +156,14 @@ def _evaluate_accounting_parameters(
             )
 
 
+_DURATION_BILLING_SCALES = {
+    CircuitScale.microcircuit,
+    CircuitScale.region,
+    CircuitScale.system,
+    CircuitScale.whole_brain,
+}
+
+
 def _evaluate_circuit_simulation_parameters(
     *,
     db_client: Client,
@@ -163,8 +173,6 @@ def _evaluate_circuit_simulation_parameters(
         entity_id=simulation_id,
         entity_type=models.Simulation,
     )
-    # TODO: actually use the circuit and simulation files to determine the count
-    count = simulation.number_neurons
 
     circuit = db_client.get_entity(entity_id=simulation.entity_id, entity_type=models.Circuit)
 
@@ -174,7 +182,50 @@ def _evaluate_circuit_simulation_parameters(
         msg = f"Unsupported circuit scale '{circuit.scale}' for cost estimation"
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg) from e
 
-    return AccountingParameters(count=count, service_subtype=service_subtype)  # ty:ignore[invalid-argument-type]
+    if circuit.scale in _DURATION_BILLING_SCALES:
+        if simulation.number_neurons is None:
+            msg = f"Simulation '{simulation.id}' has no number_neurons for cost estimation"
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
+        duration_ms = _get_simulation_duration_ms(db_client=db_client, simulation=simulation)
+        duration_s = duration_ms / 1000.0
+        count = int(simulation.number_neurons * duration_s)
+    else:
+        count = 1
+
+    return AccountingParameters(count=count, service_subtype=service_subtype)
+
+
+def _get_simulation_duration_ms(
+    *,
+    db_client: Client,
+    simulation: models.Simulation,
+) -> float:
+    """Get the simulation duration in milliseconds.
+
+    Reads from the sonata_simulation_config asset (run.tstop), falling back to
+    scan_parameters["initialize.simulation_length"], then to the default of 1000 ms.
+    """
+    default_duration_ms = 1000.0
+
+    # Try reading from the SONATA simulation config asset
+    try:
+        config = select_json_asset_content(
+            client=db_client,
+            entity=simulation,
+            selection={"label": AssetLabel.sonata_simulation_config},
+        )
+        tstop = config.get("run", {}).get("tstop")
+        if tstop is not None:
+            return float(tstop)
+    except Exception:  # noqa: BLE001
+        L.warning(f"Could not read sonata_simulation_config for simulation {simulation.id}")
+
+    # Fallback to scan_parameters
+    duration = simulation.scan_parameters.get("initialize.simulation_length")
+    if duration is not None:
+        return float(duration)
+
+    return default_duration_ms
 
 
 def generate_accounting_callbacks(

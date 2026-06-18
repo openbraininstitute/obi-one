@@ -107,16 +107,13 @@ class SigFitHTau(IonChannelEquation):
     )
 
 
-
 _MINF_BLOCKS = SigFitMInf
 MInfUnion = Annotated[
     _MINF_BLOCKS | None, Discriminator("type")
 ]  # None: have to use a dummy fallback because pydantic forces me to have a 'real' Union here
 
 _MTAU_BLOCKS = SigFitMTau | ThermoFitMTau | ThermoFitMTauV2 | BellFitMTau
-MTauUnion = Annotated[
-    _MTAU_BLOCKS, Discriminator("type")
-]
+MTauUnion = Annotated[_MTAU_BLOCKS, Discriminator("type")]
 
 _HINF_BLOCKS = SigFitHInf
 HInfUnion = Annotated[_HINF_BLOCKS | None, Discriminator("type")]

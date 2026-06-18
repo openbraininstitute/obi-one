@@ -16,11 +16,11 @@ from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
-    _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
-    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MIN_NON_NEGATIVE_FLOAT_VALUE,
-    _MIN_TIME_STEP_MILLISECONDS,
+    DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+    DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MIN_NON_NEGATIVE_FLOAT_VALUE,
+    MIN_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
@@ -98,7 +98,7 @@ class StimulusWithTimestamps(BaseStimulus):
 
 class StimulusWithDuration(BaseStimulus):
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
@@ -144,8 +144,8 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         self._default_timestamps = default_timestamps
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population)  # ty:ignore[unresolved-attribute]
-            not in {"biophysical", "inait_point_neuron_lif"}
+            self.neuron_set.block.population_type(circuit, population)
+            not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
@@ -433,10 +433,10 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     width: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
-        default=_DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         json_schema_extra={
@@ -445,8 +445,8 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     frequency: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
         default=1.0,
         description="The frequency of pulse trains. Given in Hertz (Hz).",
@@ -492,8 +492,8 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     frequency: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
         default=1.0,
         description="The frequency of the waveform. Given in Hertz (Hz).",
@@ -504,8 +504,8 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
     ) = Field(
         default=0.025,
         description="Timestep of generated signal in milliseconds (ms).",
@@ -606,7 +606,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     _input_type: str = "voltage_clamp"
 
     level1_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
+        default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 1 Duration",
         description="Duration 1 of SEClamp stimulus (in ms)",
         json_schema_extra={
@@ -626,7 +626,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     )
 
     level2_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
+        default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
         title="Level 2 Duration",
         description="Duration 2 of SEClamp stimulus (in ms)",
         json_schema_extra={
@@ -646,7 +646,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     )
 
     level3_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
+        default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 3 Duration",
         description="Duration 3 of SEClamp stimulus (in ms)",
         json_schema_extra={
@@ -718,7 +718,9 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "duration_levels": [0]
             + [combination.duration for combination in self.duration_voltage[:-1]],
             "voltage_levels": [combination.voltage for combination in self.duration_voltage],
-            "node_set": resolve_neuron_set_2_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "node_set": resolve_neuron_set_2_ref_to_node_set(
+                self.neuron_set, self._default_node_set
+            ),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,

@@ -1,5 +1,4 @@
 import json
-from typing import TYPE_CHECKING, cast
 
 import entitysdk
 import numpy as np
@@ -7,15 +6,12 @@ from entitysdk import models
 
 from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
 from obi_one import deserialize_obi_object_from_json_data
+from obi_one.core.registry import task_registry
 from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.unions.config_task_map import get_task_type_config_asset_label
 from obi_one.utils import db_sdk
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 
 def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
@@ -72,13 +68,16 @@ def estimate_task_resources(  # noqa: PLR0914
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
+        asset_label=task_registry.get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
     ).id
+    if config_asset_id is None:
+        msg = "Config asset must have an id"
+        raise ValueError(msg)
 
     json_str = db_client.download_content(
         entity_id=json_model.config_id,
         entity_type=config_type,
-        asset_id=cast("UUID", config_asset_id),
+        asset_id=config_asset_id,
     ).decode(encoding="utf-8")
 
     json_dict = json.loads(json_str)

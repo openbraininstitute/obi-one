@@ -4,7 +4,6 @@ from typing import Annotated, ClassVar, Self
 
 import entitysdk
 from entitysdk.models.ion_channel_model import IonChannelModel
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr, model_validator
 
 from obi_one.core.base import OBIBaseModel
@@ -14,15 +13,14 @@ from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
+from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
 from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     resolve_neuron_set_2_ref_to_node_set,
 )
+from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class IonChannelVariableForRecording(OBIBaseModel):
@@ -92,14 +90,21 @@ class IonChannelVariableForRecording(OBIBaseModel):
 
         return self
 
+
 class Recording(Block, ABC):
-    neuron_set: BiophysicalNeuronSetReference | PointNeuronSetReference | TimestampsReference | None = Field(
+    neuron_set: (
+        BiophysicalNeuronSetReference | PointNeuronSetReference | TimestampsReference | None
+    ) = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to record from.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [BiophysicalNeuronSetReference.__name__, PointNeuronSetReference.__name__, TimestampsReference.__name__],
+            SchemaKey.REFERENCE_TYPES: [
+                BiophysicalNeuronSetReference.__name__,
+                PointNeuronSetReference.__name__,
+                TimestampsReference.__name__,
+            ],
         },
     )
 
@@ -107,9 +112,9 @@ class Recording(Block, ABC):
     _end_time: PositiveFloat = 100.0
 
     dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
-        | Annotated[NonNegativeFloatRange, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
+        Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
+        | Annotated[NonNegativeFloatRange, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
     ) = Field(
         default=0.1,
         title="Timestep",
@@ -133,8 +138,8 @@ class Recording(Block, ABC):
         self._default_node_set = default_node_set
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population)  # ty:ignore[unresolved-attribute]
-            not in {"biophysical", "inait_point_neuron_lif"}
+            self.neuron_set.block.population_type(circuit, population)
+            not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
