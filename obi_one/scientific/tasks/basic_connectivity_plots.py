@@ -34,6 +34,7 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
         connection_probability_pathway,
         connection_probability_within_pathway,
         find_canonical_synapse_classes,
+        in_out_degree,
         plot_connection_probability_pathway_stats,
         plot_connection_probability_stats,
         plot_network_legends,
@@ -45,7 +46,6 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
-    from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
 
 L = logging.getLogger(__name__)
@@ -401,7 +401,7 @@ class BasicConnectivityPlotsTask(Task):
     ) -> None:
         # Check for connectivity dependencies
         if (  # pragma: no cover
-            "compute_global_connectivity" not in globals() or "node_degree" not in globals()
+            "compute_global_connectivity" not in globals() or "ER_model" not in globals()
         ):
             msg = (
                 "Connectivity plotting requires connectome-analysis (connalysis). "
@@ -439,8 +439,8 @@ class BasicConnectivityPlotsTask(Task):
         # Degrees of matrix and control
         adj = conn.matrix.astype(bool)
         adj_er = ER_model(adj)
-        deg = node_degree(adj, direction=("IN", "OUT"))
-        deg_er = node_degree(adj_er, direction=("IN", "OUT"))
+        deg = in_out_degree(adj)
+        deg_er = in_out_degree(adj_er)
 
         n_min_stats = 50  # Minimum number of nodes for statistics
         n_max_2d_plot = 20  # Maximum number of nodes for 2D plots and table

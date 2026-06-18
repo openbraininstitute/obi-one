@@ -34,7 +34,6 @@ except ImportError as e:  # pragma: no cover
 # Connectivity dependencies (optional) - check for connalysis
 try:
     from connalysis.network.classic import (
-        connection_probability_within,
         density,
     )
     from connalysis.network.topology import (
@@ -152,7 +151,7 @@ def connection_probability_within_pathway(
     analysis_specs = {
         "analyses": {
             "probability_within": {
-                "source": connection_probability_within,
+                "source": _connection_probability_within_pathway_source,
                 "args": [
                     ["x", "y", "z"],
                     max_dist,
@@ -174,7 +173,7 @@ def connection_probability_within_pathway(
 
 def directed_connection_probability_within(
     m: sp.spmatrix,
-    v: pd.DataFrame,
+    v: pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame],
     max_dist: float = 100,
     cols: list[str] | None = None,
 ) -> float:
@@ -183,7 +182,7 @@ def directed_connection_probability_within(
     Computes the same quantity as
     :func:`connalysis.network.classic.connection_probability_within` with
     ``type="directed"``: the fraction of ordered node pairs lying within
-    ``max_dist`` of each other (excluding self-pairs) that are connected.
+    ``max_dist`` of each other that are connected.
 
     Unlike the connalysis implementation, it counts over the existing edges
     rather than materialising the full within-distance pair mask and indexing the
@@ -195,31 +194,90 @@ def directed_connection_probability_within(
     whole-brain connectomes.
 
     Args:
-        m: Square sparse adjacency matrix of the graph.
-        v: Node table containing the coordinate columns.
+        m: Sparse adjacency matrix of the (sub)graph.
+        v: Node table(s) with the coordinate columns. A single frame is used for
+            both the pre- and post-synaptic populations (a square graph). A
+            ``(pre, post)`` tuple gives distinct populations (a pathway
+            submatrix), matching connalysis' calling convention. Self-pairs are
+            only excluded in the single-frame case (connalysis likewise skips its
+            ``setdiag(0)`` when ``v`` is a tuple).
         max_dist: Maximum distance for a pair of nodes to be counted.
         cols: Coordinate columns used for the distance (defaults to ``["x", "y"]``).
 
     Returns:
-        Fraction of within-distance directed pairs (excluding self-pairs) that are
-        connected, or ``nan`` when no within-distance pairs exist.
+        Fraction of within-distance directed pairs that are connected, or ``nan``
+        when no within-distance pairs exist.
     """
     if cols is None:
         cols = ["x", "y"]
-    coords = v[cols].to_numpy()
-    # Denominator: every within-distance ordered pair, minus the N self-pairs.
-    # query_ball_point always includes the query point itself (distance 0), so the
-    # per-node counts each contain exactly one self-pair to remove.
-    counts = KDTree(coords).query_ball_point(coords, max_dist, return_length=True)
-    n_pairs = int(counts.sum()) - coords.shape[0]
+    same_population = not isinstance(v, tuple)
+    v_pre, v_post = (v, v) if same_population else v
+    coords_pre = v_pre[cols].to_numpy()
+    coords_post = v_post[cols].to_numpy()
+    # Denominator: every within-distance ordered (pre, post) pair. For a single
+    # population each post node is within distance of itself, so drop those N
+    # self-pairs (connalysis does this via setdiag(0), but only when pre == post).
+    counts = KDTree(coords_pre).query_ball_point(coords_post, max_dist, return_length=True)
+    n_pairs = int(counts.sum()) - (coords_post.shape[0] if same_population else 0)
     if n_pairs <= 0:
         return np.nan
-    # Numerator: existing edges whose endpoints lie within max_dist (off-diagonal).
+    # Numerator: existing edges whose endpoints lie within max_dist (excluding the
+    # diagonal for a single population, where pre and post index the same nodes).
     edges = sp.csc_matrix(m).tocoo()
-    off_diag = edges.row != edges.col
-    pre, post = edges.row[off_diag], edges.col[off_diag]
-    dist = np.linalg.norm(coords[pre] - coords[post], axis=1)
+    pre, post = edges.row, edges.col
+    if same_population:
+        off_diag = pre != post
+        pre, post = pre[off_diag], post[off_diag]
+    dist = np.linalg.norm(coords_pre[pre] - coords_post[post], axis=1)
     return int((dist <= max_dist).sum()) / n_pairs
+
+
+def _connection_probability_within_pathway_source(
+    m: sp.spmatrix,
+    v: tuple[pd.DataFrame, pd.DataFrame],
+    cols: list[str],
+    max_dist: float,
+    connection_type: str,
+) -> float:
+    """Edge-based drop-in for the ``conn.analyze`` pathway source.
+
+    ``conntility.analysis.analysis_decorators.pathways_by_grouping_config`` calls
+    the analysis source positionally as ``source(submatrix, (pre, post), cols,
+    max_dist, type)``; the pathway plots only ever request ``"directed"``. This
+    bridges that convention to :func:`directed_connection_probability_within` so
+    the (otherwise unchanged) pathway computation no longer relies on connalysis'
+    ``connection_probability_within``, which does not scale to large circuits.
+    """
+    if connection_type != "directed":
+        msg = f"Unsupported connection type {connection_type!r}; expected 'directed'."
+        raise NotImplementedError(msg)
+    return directed_connection_probability_within(m, v, max_dist=max_dist, cols=cols)
+
+
+def in_out_degree(adj: sp.spmatrix) -> pd.DataFrame:
+    """In- and out-degree of every node, computed from the sparse matrix.
+
+    Equivalent to ``connalysis.network.topology.node_degree(adj,
+    direction=("IN", "OUT"))`` but without densifying the adjacency matrix.
+    ``node_degree`` calls ``adj.toarray()``, which for a whole-brain connectome
+    (e.g. 127k x 127k) allocates ~16 GB and can exhaust memory; summing the
+    sparse matrix over each axis is equivalent and bounded by the edge count.
+
+    Args:
+        adj: Sparse adjacency matrix where ``adj[i, j]`` is an edge from i to j.
+
+    Returns:
+        DataFrame indexed by node with integer ``"IN"`` (in-degree, column sums)
+        and ``"OUT"`` (out-degree, row sums) columns.
+    """
+    adj_bool = adj.astype(bool)
+    index = pd.Series(range(adj_bool.shape[0]), name="node")
+    return pd.DataFrame(
+        {
+            "IN": pd.Series(np.asarray(adj_bool.sum(axis=0)).ravel(), index=index),
+            "OUT": pd.Series(np.asarray(adj_bool.sum(axis=1)).ravel(), index=index),
+        }
+    )
 
 
 def compute_global_connectivity(
