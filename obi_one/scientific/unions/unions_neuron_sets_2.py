@@ -3,23 +3,74 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.neuron_sets_2.combined import (
+    BiophysicalCombinedNeuronSet,
+    CombinedNeuronSet,
+    PointCombinedNeuronSet,
+    VirtualCombinedNeuronSet,
+)
 from obi_one.scientific.blocks.neuron_sets_2.id import (
-    BiophysicalIDNeuronSet,
-    PointIDNeuronSet,
-    VirtualIDNeuronSet,
+    BiophysicalPopulationIDNeuronSet,
+    PointPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets_2.population import (
+    BiophysicalPopulationNeuronSet,
+    PointPopulationNeuronSet,
+    VirtualPopulationNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets_2.predefined import (
+    BiophysicalPopulationPredefinedNeuronSet,
+    PointPopulationPredefinedNeuronSet,
+    PredefinedNeuronSet,
+    VirtualPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets_2.property import (
-    BiophysicalPropertyNeuronSet,
-    VirtualPropertyNeuronSet,
-    PointPropertyNeuronSet,
+    BiophysicalPopulationPropertyNeuronSet,
+    PointPopulationPropertyNeuronSet,
+    VirtualPopulationPropertyNeuronSet,
 )
-from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets_2.specific import (
+    AllBiophysicalNeurons,
+    AllNeurons,
+    AllPointNeurons,
+    AllVirtualNeurons,
+)
 
-_BIOPHYSICAL_NEURON_SETS = BiophysicalIDNeuronSet | BiophysicalPropertyNeuronSet | PredefinedNeuronSet
-_VIRTUAL_NEURON_SETS = VirtualIDNeuronSet | VirtualPropertyNeuronSet
-_POINT_NEURON_SETS = PointIDNeuronSet | PointPropertyNeuronSet
-_ALL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _VIRTUAL_NEURON_SETS | _POINT_NEURON_SETS
-_BIOPHYSICAL_AND_POINT_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
+_BIOPHYSICAL_NEURON_SETS = (
+    BiophysicalPopulationNeuronSet
+    | BiophysicalPopulationIDNeuronSet
+    | BiophysicalPopulationPropertyNeuronSet
+    | BiophysicalPopulationPredefinedNeuronSet
+    | BiophysicalCombinedNeuronSet
+    | AllBiophysicalNeurons
+)
+_VIRTUAL_NEURON_SETS = (
+    VirtualPopulationNeuronSet
+    | VirtualPopulationIDNeuronSet
+    | VirtualPopulationPropertyNeuronSet
+    | VirtualPopulationPredefinedNeuronSet
+    | VirtualCombinedNeuronSet
+    | AllVirtualNeurons
+)
+_POINT_NEURON_SETS = (
+    PointPopulationNeuronSet
+    | PointPopulationIDNeuronSet
+    | PointPopulationPropertyNeuronSet
+    | PointPopulationPredefinedNeuronSet
+    | PointCombinedNeuronSet
+    | AllPointNeurons
+)
+_NONVIRTUAL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
+_ALL_NEURON_SETS = (
+    _BIOPHYSICAL_NEURON_SETS
+    | _VIRTUAL_NEURON_SETS
+    | _POINT_NEURON_SETS
+    | _NONVIRTUAL_NEURON_SETS
+    | PredefinedNeuronSet
+    | CombinedNeuronSet
+    | AllNeurons
+)
 
 
 BiophysicalNeuronSetUnion = Annotated[
@@ -43,7 +94,7 @@ AllNeuronSetUnion = Annotated[
 ]
 
 NonVirtualNeuronSetUnion = Annotated[
-    _BIOPHYSICAL_AND_POINT_NEURON_SETS,
+    _NONVIRTUAL_NEURON_SETS,
     Discriminator("type"),
 ]
 
@@ -82,6 +133,9 @@ ALL_NEURON_SETS_REFERENCE_UNION = (
     BiophysicalNeuronSetReference | VirtualNeuronSetReference | PointNeuronSetReference
 )
 NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | PointNeuronSetReference
+BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference
+VIRTUAL_NEURON_SETS_REFERENCE_UNION = VirtualNeuronSetReference
+POINT_NEURON_SETS_REFERENCE_UNION = PointNeuronSetReference
 
 ALL_NEURON_SETS_REFERENCE_TYPES = [
     BiophysicalNeuronSetReference.__name__,
@@ -90,6 +144,15 @@ ALL_NEURON_SETS_REFERENCE_TYPES = [
 ]
 NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
     BiophysicalNeuronSetReference.__name__,
+    PointNeuronSetReference.__name__,
+]
+BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
+    BiophysicalNeuronSetReference.__name__,
+]
+VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+    VirtualNeuronSetReference.__name__,
+]
+POINT_NEURON_SETS_REFERENCE_TYPES = [
     PointNeuronSetReference.__name__,
 ]
 
@@ -115,6 +178,6 @@ def resolve_neuron_set_2_ref_to_neuron_set(
             )
             raise ValueError(msg)
 
-        return default_neuron_set_reference.block
+        return default_neuron_set_reference.block  # ty:ignore[invalid-return-type]
 
-    return neuron_set_reference.block
+    return neuron_set_reference.block  # ty:ignore[invalid-return-type]
