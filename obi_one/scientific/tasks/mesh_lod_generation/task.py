@@ -1,7 +1,7 @@
 """Task implementation: generate LOD meshes for a registered EM-cell OBJ asset.
 
 This module is executed remotely by the obi-one launch-system. It:
-1. Reads the MeshLodGenerationScanConfig from the TaskConfig entity.
+1. Reads the MeshLodGenerationSingleConfig from the TaskConfig entity.
 2. Downloads the source OBJ asset from entitycore.
 3. Runs ultraliser LOD generation.
 4. Uploads the resulting LOD directory block back onto the EMCellMesh entity.
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
     import entitysdk
 
-    from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
+    from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
 
 def _download_obj(
@@ -91,7 +91,7 @@ def _upload_lod_directory(
 
 
 class MeshLODGenerationTask(Task):
-    config: MeshLodGenerationScanConfig
+    config: MeshLodGenerationSingleConfig
     client: entitysdk.Client | None = None
 
     model_config: ClassVar[dict] = {"arbitrary_types_allowed": True}

@@ -61,7 +61,7 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingTask,
 )
 from obi_one.scientific.tasks.mesh_lod_generation.config import (
-    MeshLodGenerationScanConfig,
+    MeshLodGenerationSingleConfig,
 )
 from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationTask
 from obi_one.scientific.tasks.morphology_containerization import (
@@ -117,7 +117,7 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     ),
     TaskType.mesh_lod_generation: (
         MeshLODGenerationTask,
-        MeshLodGenerationScanConfig,
+        MeshLodGenerationSingleConfig,
         AssetLabel.task_config,
     ),
     TaskType.morphology_skeletonization: (

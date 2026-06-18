@@ -23,10 +23,6 @@ class MeshLodGenerationSingleConfig(BaseModel):
     )
 
 
-# Alias single configuration mapping for task registry deserialization matching
-MeshLodGenerationScanConfig = MeshLodGenerationSingleConfig
-
 __all__ = [
-    "MeshLodGenerationScanConfig",
     "MeshLodGenerationSingleConfig",
 ]

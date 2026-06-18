@@ -51,7 +51,6 @@ TYPE_MAP: dict[str, str] = {
     "MEModelSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model",
     "MEModelWithSynapsesCircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses",
     "MEModelWithSynapsesCircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses",
-    "MeshLodGenerationScanConfig": "obi_one.scientific.tasks.mesh_lod_generation.config",
     "MeshLodGenerationSingleConfig": "obi_one.scientific.tasks.mesh_lod_generation.config",
     "MorphologyContainerizationScanConfig": "obi_one.scientific.tasks.morphology_containerization",
     "MorphologyContainerizationSingleConfig": "obi_one.scientific.tasks.morphology_containerization",

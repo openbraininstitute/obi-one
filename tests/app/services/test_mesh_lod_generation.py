@@ -7,7 +7,7 @@ import pytest
 from entitysdk.models import EMCellMesh
 
 import obi_one.scientific.tasks.mesh_lod_generation as mesh_lod
-from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationScanConfig
+from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 from obi_one.scientific.tasks.mesh_lod_generation.estimate import (
     estimate_mesh_lod_generation_count,
 )
@@ -18,12 +18,12 @@ from obi_one.scientific.tasks.mesh_lod_generation.task import (
     _upload_lod_directory,
 )
 
-MeshLodGenerationScanConfig.model_rebuild(_types_namespace={"UUID": UUID})
+MeshLodGenerationSingleConfig.model_rebuild(_types_namespace={"UUID": UUID})
 MeshLODGenerationTask.model_rebuild(
     _types_namespace={
         "UUID": UUID,
         "entitysdk": entitysdk,
-        "MeshLodGenerationScanConfig": MeshLodGenerationScanConfig,
+        "MeshLodGenerationSingleConfig": MeshLodGenerationSingleConfig,
     }
 )
 
@@ -33,8 +33,7 @@ MeshLODGenerationTask.model_rebuild(
 # ==========================================
 def test_init_exports():
     """Ensure __all__ and package-level exports are properly initialized."""
-    assert "MeshLodGenerationScanConfig" in mesh_lod.__all__
-    assert mesh_lod.MeshLodGenerationScanConfig is MeshLodGenerationScanConfig
+    assert "MeshLodGenerationSingleConfig" in mesh_lod.__all__
 
 
 # ==========================================
@@ -44,7 +43,7 @@ def test_mesh_lod_config_valid():
     """Ensure config parses valid combinations of UUIDs and attributes."""
     entity_id = uuid4()
     obj_asset_id = uuid4()
-    config = MeshLodGenerationScanConfig(entity_id=entity_id, obj_asset_id=obj_asset_id)
+    config = MeshLodGenerationSingleConfig(entity_id=entity_id, obj_asset_id=obj_asset_id)
     assert config.entity_id == entity_id
     assert config.obj_asset_id == obj_asset_id
 
@@ -52,7 +51,7 @@ def test_mesh_lod_config_valid():
 def test_mesh_lod_config_invalid_types():
     """Ensure structural failure when non-UUID string types are supplied."""
     with pytest.raises(ValueError, match="uuid"):
-        MeshLodGenerationScanConfig(entity_id="not-a-uuid", obj_asset_id=uuid4())
+        MeshLodGenerationSingleConfig(entity_id="not-a-uuid", obj_asset_id=uuid4())
 
 
 # ==========================================
@@ -151,7 +150,7 @@ def test_upload_lod_directory_with_list_fallback(tmp_path):
 @patch("obi_one.scientific.tasks.mesh_lod_generation.task._download_obj")
 def test_run_mesh_lod_generation_pipeline(mock_download, mock_generate, mock_upload, tmp_path):
     """Test full integration workflow and temporal scoping from start to finish."""
-    config = MeshLodGenerationScanConfig(entity_id=uuid4(), obj_asset_id=uuid4())
+    config = MeshLodGenerationSingleConfig(entity_id=uuid4(), obj_asset_id=uuid4())
     mock_client = MagicMock(spec=entitysdk.Client)
 
     dummy_file = tmp_path / "lod_1.gltf"
