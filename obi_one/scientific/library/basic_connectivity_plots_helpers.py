@@ -14,6 +14,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
 from conntility import ConnectivityMatrix
 from matplotlib import gridspec
 from matplotlib.colors import Colormap
@@ -21,6 +22,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Ellipse, FancyArrow
 from matplotlib.ticker import FuncFormatter
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from scipy.spatial import KDTree
 
 # Connectivity dependencies (optional) - check for networkx
 try:
@@ -170,6 +172,56 @@ def connection_probability_within_pathway(
     return out["probability_within"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
 
 
+def directed_connection_probability_within(
+    m: sp.spmatrix,
+    v: pd.DataFrame,
+    max_dist: float = 100,
+    cols: list[str] | None = None,
+) -> float:
+    """Connection probability among directed node pairs within ``max_dist``.
+
+    Computes the same quantity as
+    :func:`connalysis.network.classic.connection_probability_within` with
+    ``type="directed"``: the fraction of ordered node pairs lying within
+    ``max_dist`` of each other (excluding self-pairs) that are connected.
+
+    Unlike the connalysis implementation, it counts over the existing edges
+    rather than materialising the full within-distance pair mask and indexing the
+    adjacency matrix with it. That mask holds one entry per within-distance
+    ordered pair, so for large circuits it both allocates tens of GB and overflows
+    SciPy's 32-bit ``csr_sample_values`` sample count once the pair count exceeds
+    ``2**31 - 1`` (raising ``ValueError: could not convert integer scalar``). The
+    edge-based count is bounded by the number of edges, so it scales to
+    whole-brain connectomes.
+
+    Args:
+        m: Square sparse adjacency matrix of the graph.
+        v: Node table containing the coordinate columns.
+        max_dist: Maximum distance for a pair of nodes to be counted.
+        cols: Coordinate columns used for the distance (defaults to ``["x", "y"]``).
+
+    Returns:
+        Fraction of within-distance directed pairs (excluding self-pairs) that are
+        connected, or ``nan`` when no within-distance pairs exist.
+    """
+    if cols is None:
+        cols = ["x", "y"]
+    coords = v[cols].to_numpy()
+    # Denominator: every within-distance ordered pair, minus the N self-pairs.
+    # query_ball_point always includes the query point itself (distance 0), so the
+    # per-node counts each contain exactly one self-pair to remove.
+    counts = KDTree(coords).query_ball_point(coords, max_dist, return_length=True)
+    n_pairs = int(counts.sum()) - coords.shape[0]
+    if n_pairs <= 0:
+        return np.nan
+    # Numerator: existing edges whose endpoints lie within max_dist (off-diagonal).
+    edges = sp.csc_matrix(m).tocoo()
+    off_diag = edges.row != edges.col
+    pre, post = edges.row[off_diag], edges.col[off_diag]
+    dist = np.linalg.norm(coords[pre] - coords[post], axis=1)
+    return int((dist <= max_dist).sum()) / n_pairs
+
+
 def compute_global_connectivity(
     m: np.ndarray,
     m_er: np.ndarray,
@@ -190,27 +242,13 @@ def compute_global_connectivity(
     if connection_type == "within":
         return np.array(
             [
-                connection_probability_within(
-                    m, v, max_dist=max_dist, cols=cols, type="directed", skip_symmetry_check=True
+                directed_connection_probability_within(m, v, max_dist=max_dist, cols=cols),
+                directed_connection_probability_within(m_er, v, max_dist=max_dist, cols=cols),
+                directed_connection_probability_within(
+                    rc_submatrix(m), v, max_dist=max_dist, cols=cols
                 ),
-                connection_probability_within(
-                    m_er, v, max_dist=max_dist, cols=cols, type="directed", skip_symmetry_check=True
-                ),
-                connection_probability_within(
-                    rc_submatrix(m),
-                    v,
-                    max_dist=max_dist,
-                    cols=cols,
-                    type="directed",
-                    skip_symmetry_check=True,
-                ),
-                connection_probability_within(
-                    rc_submatrix(m_er),
-                    v,
-                    max_dist=max_dist,
-                    cols=cols,
-                    type="directed",
-                    skip_symmetry_check=True,
+                directed_connection_probability_within(
+                    rc_submatrix(m_er), v, max_dist=max_dist, cols=cols
                 ),
             ]
         )
@@ -478,7 +516,7 @@ def plot_connection_probability_stats(
 
     # Global connection probabilities
     axs[0], bars, labels = plot_global_connection_probability(axs[0], global_conn_probs["full"])
-    axs[2], bars, labels = plot_global_connection_probability(axs[2], global_conn_probs["widthin"])
+    axs[2], bars, labels = plot_global_connection_probability(axs[2], global_conn_probs["within"])
 
     # Cartoons and labels
     ax = axs[4]

@@ -198,7 +198,7 @@ class BasicConnectivityPlotsTask(Task):
         # Global connection probabilities
         global_conn_probs = {"full": None, "within": None}
         global_conn_probs["full"] = compute_global_connectivity(adj, adj_er, connection_type="full")
-        global_conn_probs["widthin"] = compute_global_connectivity(
+        global_conn_probs["within"] = compute_global_connectivity(
             adj, adj_er, v=conn.vertices, connection_type="within", max_dist=100, cols=["x", "y"]
         )
 
