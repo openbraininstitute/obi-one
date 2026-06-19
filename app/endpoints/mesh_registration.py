@@ -51,8 +51,8 @@ def _require_uuid(value: UUID | None, msg: str) -> UUID:
 
 def _convert_obj_to_glb(obj_path: pathlib.Path, glb_path: pathlib.Path) -> None:
     L.info(f"Converting OBJ to GLB: {obj_path} -> {glb_path}")
-    mesh = pylmesh.load(str(obj_path))
-    pylmesh.save(str(glb_path), mesh)
+    mesh = pylmesh.load_mesh(str(obj_path))
+    pylmesh.save_mesh(str(glb_path), mesh)
 
 
 def _register_glb_asset(

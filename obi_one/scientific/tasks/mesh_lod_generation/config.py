@@ -17,9 +17,13 @@ class MeshLodGenerationSingleConfig(BaseModel):
         ...,
         description="The unique identifier of the target EMCellMesh entity.",
     )
-    obj_asset_id: UUID = Field(
+    mesh_asset_id: UUID = Field(
         ...,
-        description="The specific asset ID corresponding to the source OBJ payload data.",
+        description="The specific asset ID corresponding to the source mesh payload data.",
+    )
+    mesh_format: str = Field(
+        ...,
+        description="The format of the source mesh asset ('obj' or 'glb').",
     )
 
 
