@@ -92,9 +92,7 @@ class IonChannelVariableForRecording(OBIBaseModel):
 
 
 class Recording(Block, ABC):
-    neuron_set: (
-        BiophysicalNeuronSetReference | PointNeuronSetReference | TimestampsReference | None
-    ) = Field(
+    neuron_set: BiophysicalNeuronSetReference | PointNeuronSetReference | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to record from.",

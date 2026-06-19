@@ -12,7 +12,7 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NonVirtualNeuronSetUnion,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -106,7 +106,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Variable Modification by Section List"
 
-    neuron_set: NonVirtualNeuronSetUnion | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -165,7 +165,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Full Neuron Variable Modification"
 
-    neuron_set: NonVirtualNeuronSetUnion | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",

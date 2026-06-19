@@ -1,9 +1,10 @@
 import abc
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     CombinedNeuronSet,
@@ -36,6 +37,8 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllNeurons,
     AllPointNeurons,
     AllVirtualNeurons,
+    nbS1POmInputs,
+    nbS1VPMInputs,
 )
 
 _BIOPHYSICAL_NEURON_SETS = (
@@ -99,9 +102,66 @@ NonVirtualNeuronSetUnion = Annotated[
     Discriminator("type"),
 ]
 
+Brian2SimulationNeuronSetUnion = Annotated[
+    BiophysicalPopulationIDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
+LearningEngineNeuronSetUnion = Annotated[
+    BiophysicalPopulationIDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
+
+CircuitExtractionNeuronSetUnion = Annotated[
+    AllNeurons,
+    # | ExcitatoryNeurons
+    # | InhibitoryNeurons
+    # | PredefinedNeuronSet
+    # # | CombinedNeuronSet  # To be added later
+    # # | PropertyNeuronSet  # To be added later
+    # # | VolumetricCountNeuronSet  # To be added later
+    # # | VolumetricRadiusNeuronSet  # To be added later
+    # | BiophysicalPopulationIDNeuronSet,
+    Discriminator("type"),
+]
+
+SynapseParameterizationNeuronSetUnion = CircuitExtractionNeuronSetUnion
+
+
+MEModelWithSynapsesNeuronSetUnion = Annotated[
+    nbS1VPMInputs | nbS1POmInputs,
+    Discriminator("type"),
+]
+
 
 class NeuronSetReference(BlockReference, abc.ABC):
-    pass
+    @property
+    def block(self) -> NeuronSet:
+        """Returns the block associated with this reference."""
+        if isinstance(super().block, NeuronSet):
+            return cast("NeuronSet", super().block)
+        msg = f"Expected block of type NeuronSet, but got {type(super().block)}"
+        raise TypeError(msg)
+
+    @block.setter
+    def block(self, value: NeuronSet) -> None:
+        BlockReference.block.fset(self, value)
+
+
+"""
+class PopulationBaseNeuronSetReference(NeuronSetReference):
+    @property
+    def block(self) -> NeuronSet:
+        if isinstance(super().block, NeuronSet):
+            return cast("NeuronSet", super().block)
+        msg = f"Expected block of type NeuronSet, but got {type(super().block)}"
+        raise TypeError(msg)
+
+    @block.setter
+    def block(self, value: NeuronSet) -> None:
+        BlockReference.block.fset(self, value)
+"""
 
 
 class BiophysicalNeuronSetReference(NeuronSetReference):

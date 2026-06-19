@@ -242,7 +242,7 @@ class GenerateSimulationTask(Task):
 
         if DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
             self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name] = (  # ty:ignore[unresolved-attribute]
-                DEFAULT_NEURON_SET_BLOCK_REFERENCE.block  # ty:ignore[invalid-assignment]
+                DEFAULT_NEURON_SET_BLOCK_REFERENCE.block
             )
 
         return DEFAULT_NEURON_SET_BLOCK_REFERENCE
@@ -295,7 +295,7 @@ class GenerateSimulationTask(Task):
 
                 self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
                     self.config.initialize.node_set,
-                    DEFAULT_NODE_SET_NAME,  # ty:ignore[invalid-argument-type]
+                    DEFAULT_NODE_SET_NAME,
                 )
             elif not hasattr(self.config.initialize, "node_set"):
                 _ = self._default_neuron_set_ref()

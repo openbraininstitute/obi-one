@@ -52,7 +52,7 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
             return max(1, len(neuron_ids))
 
     neuron_ids = single_config.neuron_set.get_neuron_ids(
-        circuit=parent_circuit,  # ty:ignore[invalid-argument-type]
+        circuit=parent_circuit,
         population=parent_circuit.default_population_name,  # ty:ignore[unresolved-attribute]
     )
     return max(1, len(neuron_ids))

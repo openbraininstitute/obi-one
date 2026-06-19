@@ -10,7 +10,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     ALL_NEURON_SETS_REFERENCE_UNION,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    resolve_neuron_set_ref_to_neuron_set,
+    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -55,10 +55,10 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
     def _sonata_manipulations_list(self) -> dict:
         sonata_config = {
             "name": self.block_name,
-            "source": resolve_neuron_set_ref_to_neuron_set(
+            "source": resolve_neuron_set_ref_to_node_set(
                 self.presynaptic_neuron_set, self._default_node_set
             ),
-            "target": resolve_neuron_set_ref_to_neuron_set(
+            "target": resolve_neuron_set_ref_to_node_set(
                 self.postsynaptic_neuron_set, self._default_node_set
             ),
         }

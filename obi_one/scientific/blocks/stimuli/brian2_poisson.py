@@ -28,7 +28,8 @@ from obi_one.scientific.library.constants import (
     MIN_NON_NEGATIVE_FLOAT_VALUE,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+    POINT_NEURON_SETS_REFERENCE_TYPES,
+    POINT_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
@@ -43,13 +44,13 @@ class Brian2DirectPoissonStimulus(Block):
 
     title: ClassVar[str] = "Direct Poisson Input"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Neurons that receive the Poisson drive.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
