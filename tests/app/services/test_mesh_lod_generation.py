@@ -13,7 +13,7 @@ from obi_one.scientific.tasks.mesh_lod_generation.estimate import (
 )
 from obi_one.scientific.tasks.mesh_lod_generation.task import (
     MeshLODGenerationTask,
-    _download_obj,
+    _download_mesh,
     _generate_lods,
     _upload_lod_directory,
 )
@@ -42,16 +42,21 @@ def test_init_exports():
 def test_mesh_lod_config_valid():
     """Ensure config parses valid combinations of UUIDs and attributes."""
     entity_id = uuid4()
-    obj_asset_id = uuid4()
-    config = MeshLodGenerationSingleConfig(entity_id=entity_id, obj_asset_id=obj_asset_id)
+    mesh_asset_id = uuid4()
+    config = MeshLodGenerationSingleConfig(
+        entity_id=entity_id, mesh_asset_id=mesh_asset_id, mesh_format="obj"
+    )
     assert config.entity_id == entity_id
-    assert config.obj_asset_id == obj_asset_id
+    assert config.mesh_asset_id == mesh_asset_id
+    assert config.mesh_format == "obj"
 
 
 def test_mesh_lod_config_invalid_types():
     """Ensure structural failure when non-UUID string types are supplied."""
     with pytest.raises(ValueError, match="uuid"):
-        MeshLodGenerationSingleConfig(entity_id="not-a-uuid", obj_asset_id=uuid4())
+        MeshLodGenerationSingleConfig(
+            entity_id="not-a-uuid", mesh_asset_id=uuid4(), mesh_format="obj"
+        )
 
 
 # ==========================================
@@ -66,29 +71,29 @@ def test_estimate_mesh_lod_generation_count():
 # 4. Core Pipeline & Orchestration (task.py)
 # ==========================================
 @patch("entitysdk.Client")
-def test_download_obj_execution(mock_client_cls, tmp_path):
+def test_download_mesh_execution(mock_client_cls, tmp_path):
     """Ensure asset payload downloads are bound correctly to paths."""
     mock_client = mock_client_cls()
     mock_client.download_content.return_value = b"gltf-raw-payload"
 
     dest = tmp_path / "target.obj"
     entity_id = uuid4()
-    obj_asset_id = uuid4()
+    mesh_asset_id = uuid4()
 
-    _download_obj(mock_client, entity_id, obj_asset_id, dest)
+    _download_mesh(mock_client, entity_id, mesh_asset_id, dest)
 
     assert dest.read_bytes() == b"gltf-raw-payload"
     mock_client.download_content.assert_called_once_with(
         entity_id=entity_id,
         entity_type=EMCellMesh,
-        asset_id=obj_asset_id,
+        asset_id=mesh_asset_id,
     )
 
 
 def test_generate_lods_empty_failure(tmp_path):
     """Ensure a RuntimeError is declared if ultraliser outputs nothing."""
-    input_obj = tmp_path / "empty.obj"
-    input_obj.write_text("v 0 0 0")
+    input_mesh = tmp_path / "empty.obj"
+    input_mesh.write_text("v 0 0 0")
     out_dir = tmp_path / "lods"
 
     with (
@@ -96,13 +101,13 @@ def test_generate_lods_empty_failure(tmp_path):
         patch("ultraliser.Mesh"),
         pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"),
     ):
-        _generate_lods(input_obj, out_dir)
+        _generate_lods(input_mesh, "obj", out_dir)
 
 
 def test_generate_lods_success(tmp_path):
     """Ensure file dictionaries map correctly from structural output listings."""
-    input_obj = tmp_path / "valid.obj"
-    input_obj.write_text("v 0 0 0")
+    input_mesh = tmp_path / "valid.obj"
+    input_mesh.write_text("v 0 0 0")
     out_dir = tmp_path / "lods"
 
     def side_effect(path_str):
@@ -111,8 +116,37 @@ def test_generate_lods_success(tmp_path):
 
     with patch("ultraliser.LODGenerator") as mock_gen, patch("ultraliser.Mesh"):
         mock_gen.return_value.generate_web_lods.side_effect = side_effect
-        res = _generate_lods(input_obj, out_dir)
+        res = _generate_lods(input_mesh, "obj", out_dir)
         assert pathlib.Path("lod_1.gltf") in res
+
+
+def test_generate_lods_glb_success(tmp_path):
+    """Ensure GLB format is also accepted by _generate_lods."""
+    input_mesh = tmp_path / "valid.glb"
+    input_mesh.write_bytes(b"glb-data")
+    out_dir = tmp_path / "lods"
+
+    def side_effect(path_str):
+        pathlib.Path(path_str).mkdir(parents=True, exist_ok=True)
+        (pathlib.Path(path_str) / "lod_1.gltf").write_text("data")
+
+    with patch("ultraliser.LODGenerator") as mock_gen, patch("ultraliser.Mesh"):
+        mock_gen.return_value.generate_web_lods.side_effect = side_effect
+        res = _generate_lods(input_mesh, "glb", out_dir)
+        assert pathlib.Path("lod_1.gltf") in res
+
+
+def test_generate_lods_unsupported_format(tmp_path):
+    """Ensure a RuntimeError is raised for unsupported mesh formats."""
+    input_mesh = tmp_path / "valid.stl"
+    input_mesh.write_text("solid")
+    out_dir = tmp_path / "lods"
+
+    with (
+        patch("ultraliser.Mesh"),
+        pytest.raises(RuntimeError, match="Unsupported mesh format"),
+    ):
+        _generate_lods(input_mesh, "stl", out_dir)
 
 
 def test_upload_lod_directory_with_id_attribute(tmp_path):
@@ -147,10 +181,12 @@ def test_upload_lod_directory_with_list_fallback(tmp_path):
 
 @patch("obi_one.scientific.tasks.mesh_lod_generation.task._upload_lod_directory")
 @patch("obi_one.scientific.tasks.mesh_lod_generation.task._generate_lods")
-@patch("obi_one.scientific.tasks.mesh_lod_generation.task._download_obj")
+@patch("obi_one.scientific.tasks.mesh_lod_generation.task._download_mesh")
 def test_run_mesh_lod_generation_pipeline(mock_download, mock_generate, mock_upload, tmp_path):
     """Test full integration workflow and temporal scoping from start to finish."""
-    config = MeshLodGenerationSingleConfig(entity_id=uuid4(), obj_asset_id=uuid4())
+    config = MeshLodGenerationSingleConfig(
+        entity_id=uuid4(), mesh_asset_id=uuid4(), mesh_format="obj"
+    )
     mock_client = MagicMock(spec=entitysdk.Client)
 
     dummy_file = tmp_path / "lod_1.gltf"
