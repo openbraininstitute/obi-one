@@ -59,9 +59,7 @@ def _generate_lods(
         msg = "ultraliser not installed"
         raise RuntimeError(msg)
 
-    if mesh_format == "obj":
-        mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)  # ty: ignore[unresolved-attribute]
-    elif mesh_format == "glb":
+    if mesh_format in {"obj", "glb"}:
         mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)  # ty: ignore[unresolved-attribute]
     else:
         msg = f"Unsupported mesh format for LOD generation: {mesh_format}"
