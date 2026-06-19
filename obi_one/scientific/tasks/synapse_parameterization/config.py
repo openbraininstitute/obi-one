@@ -90,7 +90,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Parameterizations...",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticModelAssignerReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelAssignerReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Parameterization",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 0,
@@ -102,7 +102,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Synaptic models for synapse parameterization.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Model",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 1,
@@ -114,7 +114,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Distributions for synapse parameterization.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 2,
@@ -126,7 +126,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

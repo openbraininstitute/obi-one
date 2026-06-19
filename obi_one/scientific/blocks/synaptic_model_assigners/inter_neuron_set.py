@@ -20,7 +20,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         description="Source neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
             SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
@@ -31,7 +31,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         description="Target neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
             SchemaKey.SUPPORTS_VIRTUAL: False,
         },
     )

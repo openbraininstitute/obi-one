@@ -82,7 +82,6 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-                SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
             },
         )
@@ -102,7 +101,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticManipulationsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticManipulationsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,
@@ -140,7 +139,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

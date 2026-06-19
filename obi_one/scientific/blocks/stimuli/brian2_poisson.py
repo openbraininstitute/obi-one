@@ -49,7 +49,7 @@ class Brian2DirectPoissonStimulus(Block):
         description="Neurons that receive the Poisson drive.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
             SchemaKey.SUPPORTS_VIRTUAL: False,
         },
     )
