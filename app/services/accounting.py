@@ -24,6 +24,8 @@ from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletoni
 from obi_one.utils.db_sdk import select_json_asset_content
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
+    CircuitScale.single: ServiceSubtype.SINGLE_SIM,
+    CircuitScale.pair: ServiceSubtype.PAIR_SIM,
     CircuitScale.small: ServiceSubtype.SMALL_SIM,
     CircuitScale.microcircuit: ServiceSubtype.MICROCIRCUIT_SIM,
     CircuitScale.region: ServiceSubtype.REGION_SIM,
