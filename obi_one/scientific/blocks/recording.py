@@ -12,7 +12,6 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -127,8 +126,6 @@ class Recording(Block, ABC):
 
     def config(
         self,
-        circuit: Circuit,
-        population: str | None = None,
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,

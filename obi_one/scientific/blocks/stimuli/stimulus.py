@@ -14,7 +14,6 @@ from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
     DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
@@ -133,8 +132,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
 
     def config(
         self,
-        circuit: Circuit,
-        population: str | None = None,
         default_node_set: str = "All",
         default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
     ) -> dict:

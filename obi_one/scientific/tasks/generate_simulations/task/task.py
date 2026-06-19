@@ -128,8 +128,6 @@ class GenerateSimulationTask(Task):
             else:
                 self._sonata_config["inputs"].update(
                     stimulus.config(
-                        circuit=self._circuit,  # ty:ignore[invalid-argument-type]
-                        population=self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                         default_node_set=DEFAULT_NODE_SET_NAME,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
                     )
@@ -142,8 +140,6 @@ class GenerateSimulationTask(Task):
         for recording in getattr(self.config, "recordings", {}).values():
             self._sonata_config["reports"].update(
                 recording.config(
-                    self._circuit,
-                    self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                     self.config.initialize.simulation_length,
                     DEFAULT_NODE_SET_NAME,
                     db_client,
