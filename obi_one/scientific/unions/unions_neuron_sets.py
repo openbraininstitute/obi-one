@@ -42,8 +42,8 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 )
 
 _BIOPHYSICAL_NEURON_SETS = (
-    # BiophysicalPopulationNeuronSet
-    BiophysicalPopulationIDNeuronSet
+    BiophysicalPopulationNeuronSet
+    | BiophysicalPopulationIDNeuronSet
     | BiophysicalPopulationPropertyNeuronSet
     | BiophysicalPopulationPredefinedNeuronSet
     | BiophysicalCombinedNeuronSet

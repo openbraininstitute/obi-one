@@ -128,11 +128,8 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         return (expression, {})
 
 
-class BiophysicalPopulationNeuronSet:
+class BiophysicalPopulationNeuronSetMixin:
     """Sample a percentage of neurons from a biophysical population."""
-
-    title: ClassVar[str] = "Population Sample % (Biophysical)"
-    description: ClassVar[str] = "Sample a percentage of neurons from a biophysical population."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
@@ -157,6 +154,12 @@ class BiophysicalPopulationNeuronSet:
         },
     )
 
+class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin):
+
+    """Sample a percentage of neurons from a biophysical population."""
+
+    title: ClassVar[str] = "SAMPLE POPULATION (Biophysical)"
+    description: ClassVar[str] = "Sample a percentage of neurons from a biophysical population."
 
 class PointPopulationNeuronSet(PopulationBaseNeuronSet):
     """Sample a percentage of neurons from a point neuron population."""
