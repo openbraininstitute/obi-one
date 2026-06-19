@@ -34,15 +34,15 @@ def _get_population_ids(circuit, neuron_set, with_virtual, with_external):
         src = edges.source
         tgt = edges.target
         if _is_virtual_epop(circuit, epop_name):
-            tgt_nids = neuron_set.get_neuron_ids(circuit, population=tgt.name)
+            tgt_nids = neuron_set.get_neuron_ids(circuit)[tgt.name]
             etab = edges.pathway_edges(target=tgt_nids, properties=["@source_node", "@target_node"])
             if with_virtual:
                 _update_ids(npop_dict, src.name, etab["@source_node"].to_numpy())
                 _update_ids(epop_dict, epop_name, etab.index.to_numpy())
             _update_ids(npop_dict, tgt.name, etab["@target_node"].to_numpy())
         else:
-            src_nids = neuron_set.get_neuron_ids(circuit, population=src.name)
-            tgt_nids = neuron_set.get_neuron_ids(circuit, population=tgt.name)
+            src_nids = neuron_set.get_neuron_ids(circuit)[src.name]
+            tgt_nids = neuron_set.get_neuron_ids(circuit)[tgt.name]
             etab = edges.pathway_edges(
                 source=src_nids, target=tgt_nids, properties=["@source_node", "@target_node"]
             )

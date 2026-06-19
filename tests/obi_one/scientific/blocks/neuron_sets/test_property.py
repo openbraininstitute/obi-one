@@ -22,7 +22,7 @@ def test_property_neuron_set():
         ),
     )
     with pytest.raises(ValueError, match="Invalid neuron properties!"):
-        neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
 
     # (b) Invalid property value --> Empty neuron set
     neuron_set = obi.PropertyNeuronSet(
@@ -30,7 +30,7 @@ def test_property_neuron_set():
             filter_dict={"layer": ["5", "6"], "synapse_class": ["INVALID"]}
         ),
     )
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     assert len(neuron_set_ids) == 0
 
     # (c) Valid property neuron set
@@ -39,7 +39,7 @@ def test_property_neuron_set():
             filter_dict={"layer": ["3", "6"], "synapse_class": ["EXC"]}
         ),
     )
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, range(1, 10))
     assert neuron_set_def == {"layer": ["3", "6"], "synapse_class": "EXC"}
@@ -49,7 +49,7 @@ def test_property_neuron_set():
         property_filter=obi.NeuronPropertyFilter(filter_dict={"synapse_class": ["EXC"]}),
         node_sets=("Layer3", "Layer6"),
     )
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, range(1, 10))
     assert neuron_set_def["population"] == circuit.default_population_name

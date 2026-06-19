@@ -28,11 +28,11 @@ def test_id_neuron_set():
             f" of circuit '{circuit_name}'."
         ),
     ):
-        neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
 
     # (b) Selected IDs
     neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="IDNeuronSet", elements=range(10)))
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, range(10))
     assert neuron_set_def["population"] == circuit.default_population_name
@@ -42,7 +42,7 @@ def test_id_neuron_set():
     neuron_set = obi.IDNeuronSet(
         neuron_ids=obi.NamedTuple(name="IDNeuronSet", elements=range(10)), sample_percentage=50
     )
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     assert len(neuron_set_ids) == 5
     assert neuron_set_def["population"] == circuit.default_population_name

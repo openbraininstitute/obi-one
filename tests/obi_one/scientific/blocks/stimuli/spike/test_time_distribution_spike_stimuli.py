@@ -83,8 +83,8 @@ def _patch_neuron_set_methods(
     neuron_ids: list[int],
     population: str = "test_pop",
 ) -> None:
-    def _get_neuron_ids(_self: object, _circuit: object, _pop: object) -> list[int]:
-        return neuron_ids
+    def _get_neuron_ids(_self: object, _circuit: object) -> dict[str, list[int]]:
+        return {population: neuron_ids}
 
     def _get_population(_self: object, _pop: object) -> str:
         return population

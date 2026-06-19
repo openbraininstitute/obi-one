@@ -148,7 +148,6 @@ __all__ = [
     "OBIONEError",
     "OrnsteinUhlenbeckConductanceSomaticStimulus",
     "OrnsteinUhlenbeckCurrentSomaticStimulus",
-    "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
     "PathDistanceMorphologyLocations",
@@ -177,8 +176,6 @@ __all__ = [
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
-    "SimplexMembershipBasedNeuronSet",
-    "SimplexNeuronSet",
     "Simulation",
     "SimulationsForm",
     "SingleConfigMixin",
@@ -208,8 +205,6 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
-    "VolumetricCountNeuronSet",
-    "VolumetricRadiusNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
@@ -287,15 +282,6 @@ from obi_one.scientific.blocks.morphology_locations.random import (
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
-from obi_one.scientific.blocks.neuron_sets.old.pair import PairMotifNeuronSet
-from obi_one.scientific.blocks.neuron_sets.old.simplex import (
-    SimplexMembershipBasedNeuronSet,
-    SimplexNeuronSet,
-)
-from obi_one.scientific.blocks.neuron_sets.old.volumetric import (
-    VolumetricCountNeuronSet,
-    VolumetricRadiusNeuronSet,
-)
 from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter
 from obi_one.scientific.blocks.neuron_sets.specific import (

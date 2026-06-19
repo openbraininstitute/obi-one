@@ -36,5 +36,5 @@ class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         circ = circuit.sonata_circuit
         ep = circ.edges[self.edge_population_name]
-        src_ids = self.source_neuron_set.block.get_neuron_ids(circuit, population=ep.source.name)  # ty:ignore[unresolved-attribute]
+        src_ids = self.source_neuron_set.block.get_neuron_ids(circuit)[ep.source.name]  # ty:ignore[unresolved-attribute]
         return ep.efferent_edges(src_ids)

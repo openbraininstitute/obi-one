@@ -9,7 +9,7 @@ def _get_distance(circuit, neuron_set, neuron_ids):
     """Get neuron distance relative to the centroid of (filtered) neuron population."""
     base_neuron_ids = obi.PropertyNeuronSet(
         property_filter=neuron_set.property_filter
-    ).get_neuron_ids(circuit, circuit.default_population_name)
+    ).get_neuron_ids(circuit)[circuit.default_population_name]
     all_pos = circuit.sonata_circuit.nodes[circuit.default_population_name].positions(
         base_neuron_ids
     )
@@ -41,7 +41,7 @@ def test_volumetric_neuron_sets():
             n=n,
             property_filter=obi.NeuronPropertyFilter(filter_dict={"synapse_class": ["EXC"]}),
         )
-        neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
         neuron_set_def = neuron_set.get_node_set_definition(
             circuit, circuit.default_population_name
         )
@@ -74,7 +74,7 @@ def test_volumetric_neuron_sets():
                 filter_dict={"layer": ["5", "6"], "synapse_class": ["EXC"]}
             ),
         )
-        neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
         neuron_set_def = neuron_set.get_node_set_definition(
             circuit, circuit.default_population_name
         )

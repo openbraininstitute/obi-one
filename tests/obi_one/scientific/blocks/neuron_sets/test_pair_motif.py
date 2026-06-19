@@ -30,7 +30,7 @@ def test_pair_motif_neuron_set():
         conn_fb_filter=conn_fb_filter,
         pair_selection=pair_selection,
     )
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, [1, 3, 4, 9])
     assert neuron_set_def["population"] == circuit.default_population_name
@@ -74,7 +74,7 @@ def test_pair_motif_neuron_set():
         conn_fb_filter=conn_fb_filter,
         pair_selection=pair_selection,
     )
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, [6, 8])
     assert neuron_set_def["population"] == circuit.default_population_name

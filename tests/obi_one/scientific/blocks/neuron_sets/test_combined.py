@@ -25,20 +25,18 @@ def test_combined_neuron_set():
         ValueError,
         match=re.escape(f"Node set 'L6_TPC:AA' not found in circuit '{circuit_name}'."),
     ):
-        neuron_set_ids = neuron_set.get_neuron_ids(
-            circuit, population=circuit.default_population_name
-        )
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)
 
     # (b) Combined neuron set
     neuron_set = obi.CombinedNeuronSet(node_sets=("L6_BPC", "L6_TPC:A"))
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, population=circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, [1, 2, 6, 7, 8, 9])
     assert neuron_set_def == ["L6_BPC", "L6_TPC:A"]
 
     # (c) Combined neuron set with sub-sampling (50% corresponding to 3 neuron)
     neuron_set = obi.CombinedNeuronSet(node_sets=("L6_BPC", "L6_TPC:A"), sample_percentage=50)
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, population=circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     assert len(neuron_set_ids) == 3
     assert isinstance(neuron_set_def, dict)

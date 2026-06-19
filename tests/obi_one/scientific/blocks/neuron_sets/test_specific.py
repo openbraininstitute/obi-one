@@ -19,7 +19,7 @@ def test_hard_coded_neuron_sets():
 
     # (a) All neurons
     neuron_set = obi.AllNeurons()
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(
         neuron_set_ids, circuit.sonata_circuit.nodes[circuit.default_population_name].ids()
@@ -28,7 +28,7 @@ def test_hard_coded_neuron_sets():
 
     # (b) Excitatory neurons
     neuron_set = obi.ExcitatoryNeurons()
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(
         neuron_set_ids,
@@ -38,7 +38,7 @@ def test_hard_coded_neuron_sets():
 
     # (c) Inhibitory neurons
     neuron_set = obi.InhibitoryNeurons()
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(
         neuron_set_ids,

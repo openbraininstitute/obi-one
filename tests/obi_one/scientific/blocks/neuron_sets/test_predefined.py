@@ -24,20 +24,18 @@ def test_predefined_neuron_set():
         ValueError,
         match=re.escape(f"Node set 'Layer678' not found in circuit '{circuit_name}'."),
     ):
-        neuron_set_ids = neuron_set.get_neuron_ids(
-            circuit, population=circuit.default_population_name
-        )
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)
 
     # (b) Existing node set
     neuron_set = obi.PredefinedNeuronSet(node_set="Layer6")
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, population=circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     np.testing.assert_array_equal(neuron_set_ids, range(1, 10))
     assert neuron_set_def == ["Layer6"]
 
     # (c) Existing node set with sub-sampling (11% corresponding to 1 neuron)
     neuron_set = obi.PredefinedNeuronSet(node_set="Layer6", sample_percentage=11)
-    neuron_set_ids = neuron_set.get_neuron_ids(circuit, population=circuit.default_population_name)
+    neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
     neuron_set_def = neuron_set.get_node_set_definition(circuit, circuit.default_population_name)
     assert len(neuron_set_ids) == 1
     assert isinstance(neuron_set_def, dict)

@@ -32,7 +32,7 @@ def test_simplex_neuron_sets():
             subsample=False,
             property_filter=obi.NeuronPropertyFilter(),
         )
-        neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
         neuron_set_def = neuron_set.get_node_set_definition(
             circuit, circuit.default_population_name
         )
@@ -59,7 +59,7 @@ def test_simplex_neuron_sets():
             subsample=False,
             property_filter=obi.NeuronPropertyFilter(),
         )
-        neuron_set_ids = neuron_set.get_neuron_ids(circuit, circuit.default_population_name)
+        neuron_set_ids = neuron_set.get_neuron_ids(circuit)[circuit.default_population_name]
         neuron_set_def = neuron_set.get_node_set_definition(
             circuit, circuit.default_population_name
         )

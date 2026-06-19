@@ -77,6 +77,18 @@ _ALL_NEURON_SETS = (
 )
 
 
+SimulationNeuronSetUnion = Annotated[
+    # IDNeuronSet
+    AllNeurons
+    # | ExcitatoryNeurons
+    # | InhibitoryNeurons
+    | PredefinedNeuronSet
+    | nbS1VPMInputs
+    | nbS1POmInputs,
+    Discriminator("type"),
+]
+
+
 BiophysicalNeuronSetUnion = Annotated[
     _BIOPHYSICAL_NEURON_SETS,
     Discriminator("type"),

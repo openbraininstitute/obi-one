@@ -103,8 +103,8 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_neuron_set: NeuronSet,
         source_node_population: str | None = None,
     ) -> Path:
-        source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
         source_node_population = source_neuron_set.get_population(source_node_population)
+        source_gids = source_neuron_set.get_neuron_ids(circuit)[source_node_population]
 
         # Generate spikes
         spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)  # ty:ignore[invalid-argument-type]
