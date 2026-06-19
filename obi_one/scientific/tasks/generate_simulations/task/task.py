@@ -264,10 +264,7 @@ class GenerateSimulationTask(Task):
                     and isinstance(self.config.initialize.node_set, NeuronSetReference)
                     and self._circuit is not None
                     and (
-                        self.config.initialize.node_set.block.population_type(
-                            self._circuit,
-                            self._circuit.default_population_name,
-                        )
+                        self.config.initialize.node_set.block.get_neuron_set_population_type()
                         not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
                     )
                 ):
