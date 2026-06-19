@@ -333,7 +333,55 @@ def test_evaluate_circuit_simulation_parameters__default_duration(db_client, htt
     assert res.count == 419
 
 
-def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
+@pytest.mark.parametrize(
+    ("scale", "number_neurons", "expected_subtype"),
+    [
+        ("single", 1, ServiceSubtype.SINGLE_SIM),
+        ("pair", 2, ServiceSubtype.PAIR_SIM),
+    ],
+)
+def test_evaluate_circuit_simulation_parameters__single_pair_scale_ignores_duration(
+    db_client, httpx_mock, scale, number_neurons, expected_subtype
+):
+    """For single/pair scale circuits, duration should not factor into the count."""
+    config_id = uuid4()
+    entity_id = uuid4()
+    simulation_campaign_id = uuid4()
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "simulation_campaign_id": str(simulation_campaign_id),
+            "entity_id": str(entity_id),
+            "number_neurons": number_neurons,
+            "scan_parameters": {},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{entity_id}",
+        method="GET",
+        json={
+            "id": str(entity_id),
+            "number_neurons": number_neurons,
+            "number_synapses": 10,
+            "number_connections": 12,
+            "scale": scale,
+            "build_category": "computational_model",
+        },
+    )
+
+    res = test_module._evaluate_circuit_simulation_parameters(
+        db_client=db_client,
+        simulation_id=config_id,
+    )
+
+    assert res.service_subtype == expected_subtype
+    assert res.count == 1
+
+
+def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, monkeypatch):
     config_id = uuid4()
     entity_id = uuid4()
     simulation_campaign_id = uuid4()
@@ -361,6 +409,10 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
             "build_category": "computational_model",
         },
     )
+
+    # Simulate a circuit scale with no service-subtype mapping to exercise the defensive
+    # fallback (e.g. a new scale added to entitysdk but not yet mapped here).
+    monkeypatch.setattr(test_module, "CIRCUIT_SCALE_TO_SERVICE_SUBTYPE", {})
 
     with pytest.raises(HTTPException, match="Unsupported circuit scale"):
         test_module._evaluate_circuit_simulation_parameters(
