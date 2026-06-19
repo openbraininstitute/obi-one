@@ -21,7 +21,6 @@ class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
-            SchemaKey.SUPPORTS_VIRTUAL: True,
         },
     )
 

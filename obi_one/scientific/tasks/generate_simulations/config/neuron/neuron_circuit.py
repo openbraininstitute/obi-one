@@ -35,6 +35,10 @@ from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
 )
+from obi_one.scientific.unions.unions_neuron_sets_2 import (
+    SimulationNeuronSetUnion,
+    NeuronSetReference,
+)
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
