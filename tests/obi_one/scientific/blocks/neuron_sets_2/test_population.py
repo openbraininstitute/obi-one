@@ -1,8 +1,8 @@
-"""Tests for neuron_sets_2 population neuron sets."""
+"""Tests for neuron_sets population neuron sets."""
 
 import numpy as np
 import pytest
-from obi_one.scientific.blocks.neuron_sets_2.population import (
+from obi_one.scientific.blocks.neuron_sets.population import (
     BiophysicalPopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )

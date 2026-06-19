@@ -1,8 +1,8 @@
-"""Tests for neuron_sets_2 predefined neuron sets."""
+"""Tests for neuron_sets predefined neuron sets."""
 
 import numpy as np
 import pytest
-from obi_one.scientific.blocks.neuron_sets_2.predefined import (
+from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
     PredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,

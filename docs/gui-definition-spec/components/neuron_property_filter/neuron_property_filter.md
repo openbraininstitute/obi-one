@@ -3,7 +3,7 @@
 ui_element: `neuron_property_filter`
 
 This component backs the `property_filter` field of `PropertyNeuronSet` (see
-`obi_one/scientific/blocks/neuron_sets_2/property.py`). It lets the user build
+`obi_one/scientific/blocks/neuron_sets/property.py`). It lets the user build
 one or more filters over node properties of the population selected on the
 parent block.
 

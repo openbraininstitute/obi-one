@@ -1,18 +1,18 @@
-"""Tests for neuron_sets_2 combined neuron sets."""
+"""Tests for neuron_sets combined neuron sets."""
 
 import numpy as np
 import pytest
-from obi_one.scientific.blocks.neuron_sets_2.combined import (
+from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     SetOperation,
 )
-from obi_one.scientific.blocks.neuron_sets_2.population import (
+from obi_one.scientific.blocks.neuron_sets.population import (
     VirtualPopulationNeuronSet,
 )
-from obi_one.scientific.blocks.neuron_sets_2.predefined import (
+from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
 )
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
+from obi_one.scientific.unions.unions_neuron_sets import (
     BiophysicalNeuronSetReference,
     VirtualNeuronSetReference,
 )

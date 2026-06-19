@@ -1,7 +1,7 @@
-"""Tests for neuron_sets_2 specific (AllNeurons) neuron sets."""
+"""Tests for neuron_sets specific (AllNeurons) neuron sets."""
 
 import pytest
-from obi_one.scientific.blocks.neuron_sets_2.specific import (
+from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
     AllNeurons,
     AllNonVirtualNeurons,

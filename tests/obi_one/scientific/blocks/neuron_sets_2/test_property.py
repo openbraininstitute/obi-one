@@ -1,8 +1,8 @@
-"""Tests for neuron_sets_2 property neuron sets."""
+"""Tests for neuron_sets property neuron sets."""
 
 import numpy as np
 import pytest
-from obi_one.scientific.blocks.neuron_sets_2.property import (
+from obi_one.scientific.blocks.neuron_sets.property import (
     BiophysicalPopulationPropertyNeuronSet,
     NeuronPropertyFilter,
     VirtualPopulationPropertyNeuronSet,

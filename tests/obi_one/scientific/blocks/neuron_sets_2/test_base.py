@@ -1,13 +1,13 @@
-"""Tests for neuron_sets_2 base class utilities."""
+"""Tests for neuron_sets base class utilities."""
 
 import json
 
 import pytest
-from obi_one.scientific.blocks.neuron_sets_2.base import NeuronSet
-from obi_one.scientific.blocks.neuron_sets_2.predefined import (
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
 )
-from obi_one.scientific.blocks.neuron_sets_2.property import (
+from obi_one.scientific.blocks.neuron_sets.property import (
     BiophysicalPopulationPropertyNeuronSet,
     NeuronPropertyFilter,
 )

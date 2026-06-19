@@ -45,7 +45,7 @@ class Recording:
     )
 ```
 
-A pre-defined module-level list constant can also be passed directly (e.g. `NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES` in `unions_neuron_sets_2.py`).
+A pre-defined module-level list constant can also be passed directly (e.g. `NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES` in `unions_neuron_sets.py`).
 
 ### UI design
 
