@@ -14,6 +14,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
 from conntility import ConnectivityMatrix
 from matplotlib import gridspec
 from matplotlib.colors import Colormap
@@ -21,6 +22,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Ellipse, FancyArrow
 from matplotlib.ticker import FuncFormatter
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from scipy.spatial import KDTree
 
 # Connectivity dependencies (optional) - check for networkx
 try:
@@ -170,6 +172,56 @@ def connection_probability_within_pathway(
     return out["probability_within"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
 
 
+def directed_connection_probability_within(
+    m: np.ndarray | sp.spmatrix,
+    v: pd.DataFrame,
+    max_dist: float = 100,
+    cols: list[str] | None = None,
+) -> float:
+    """Connection probability among directed node pairs within ``max_dist``.
+
+    Computes the same quantity as
+    :func:`connalysis.network.classic.connection_probability_within` with
+    ``type="directed"``: the fraction of ordered node pairs lying within
+    ``max_dist`` of each other (excluding self-pairs) that are connected.
+
+    Unlike the connalysis implementation, it counts over the existing edges
+    rather than materialising the full within-distance pair mask and indexing the
+    adjacency matrix with it. That mask holds one entry per within-distance
+    ordered pair, so for large circuits it both allocates tens of GB and overflows
+    SciPy's 32-bit ``csr_sample_values`` sample count once the pair count exceeds
+    ``2**31 - 1`` (raising ``ValueError: could not convert integer scalar``). The
+    edge-based count is bounded by the number of edges, so it scales to
+    whole-brain connectomes.
+
+    Args:
+        m: Square adjacency matrix of the graph (sparse or dense).
+        v: Node table containing the coordinate columns.
+        max_dist: Maximum distance for a pair of nodes to be counted.
+        cols: Coordinate columns used for the distance (defaults to ``["x", "y"]``).
+
+    Returns:
+        Fraction of within-distance directed pairs (excluding self-pairs) that are
+        connected, or ``nan`` when no within-distance pairs exist.
+    """
+    if cols is None:
+        cols = ["x", "y"]
+    coords = v[cols].to_numpy()
+    # Denominator: every within-distance ordered pair, minus the N self-pairs.
+    # query_ball_point always includes the query point itself (distance 0), so the
+    # per-node counts each contain exactly one self-pair to remove.
+    counts = KDTree(coords).query_ball_point(coords, max_dist, return_length=True)
+    n_pairs = int(counts.sum()) - coords.shape[0]
+    if n_pairs <= 0:
+        return np.nan
+    # Numerator: existing edges whose endpoints lie within max_dist (off-diagonal).
+    edges = sp.csc_matrix(m).tocoo()
+    off_diag = edges.row != edges.col
+    pre, post = edges.row[off_diag], edges.col[off_diag]
+    dist = np.linalg.norm(coords[pre] - coords[post], axis=1)
+    return int((dist <= max_dist).sum()) / n_pairs
+
+
 def compute_global_connectivity(
     m: np.ndarray,
     m_er: np.ndarray,
@@ -188,29 +240,18 @@ def compute_global_connectivity(
             [density(m), density(m_er), density(rc_submatrix(m)), density(rc_submatrix(m_er))]
         )
     if connection_type == "within":
+        if v is None:
+            msg = "Node coordinates `v` are required for within-distance connectivity."
+            raise ValueError(msg)
         return np.array(
             [
-                connection_probability_within(
-                    m, v, max_dist=max_dist, cols=cols, type="directed", skip_symmetry_check=True
+                directed_connection_probability_within(m, v, max_dist=max_dist, cols=cols),
+                directed_connection_probability_within(m_er, v, max_dist=max_dist, cols=cols),
+                directed_connection_probability_within(
+                    rc_submatrix(m), v, max_dist=max_dist, cols=cols
                 ),
-                connection_probability_within(
-                    m_er, v, max_dist=max_dist, cols=cols, type="directed", skip_symmetry_check=True
-                ),
-                connection_probability_within(
-                    rc_submatrix(m),
-                    v,
-                    max_dist=max_dist,
-                    cols=cols,
-                    type="directed",
-                    skip_symmetry_check=True,
-                ),
-                connection_probability_within(
-                    rc_submatrix(m_er),
-                    v,
-                    max_dist=max_dist,
-                    cols=cols,
-                    type="directed",
-                    skip_symmetry_check=True,
+                directed_connection_probability_within(
+                    rc_submatrix(m_er), v, max_dist=max_dist, cols=cols
                 ),
             ]
         )
@@ -280,29 +321,30 @@ def plot_node_stats(
     fig = plt.figure(figsize=(full_width, full_width // 3))
     gs = gridspec.GridSpec(2, 2, width_ratios=[1, 2.75])
 
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[1, 0])
-    ax3 = fig.add_subplot(gs[:, 1])
-
     """Make plot of synapse class and mtype counts."""
-
+    ax1 = fig.add_subplot(gs[0, 0])
     ax1.set_title("EI cell distribution")
     make_pie_plot(ax1, conn, "synapse_class", cmaps)
-    ax2.set_title("Layer cell distribution")
-    make_pie_plot(ax2, conn, "layer", cmaps)
+
+    if "layer" in conn.vertices.columns:
+        ax2 = fig.add_subplot(gs[1, 0])
+        ax2.set_title("Layer cell distribution")
+        make_pie_plot(ax2, conn, "layer", cmaps)
 
     # mtype classes
-    grouping_prop = "mtype"
-    category_counts = conn.vertices[grouping_prop].value_counts()
-    category_counts = category_counts[category_counts > 0]
-    # Make bar chart
-    cmap = cmaps[grouping_prop]
-    category_counts.plot(kind="bar", color=cmap(cmap.N))
-    ax3.set_xlabel("m-type")
-    ax3.set_ylabel("Counts")
-    ax3.set_title("m-type cell distribution")
-    ax3.tick_params(axis="x", rotation=90)
-    ax3.spines[["top", "right"]].set_visible(False)
+    if "mtype" in conn.vertices.columns:
+        ax3 = fig.add_subplot(gs[:, 1])
+        grouping_prop = "mtype"
+        category_counts = conn.vertices[grouping_prop].value_counts()
+        category_counts = category_counts[category_counts > 0]
+        # Make bar chart
+        cmap = cmaps[grouping_prop]
+        category_counts.plot(kind="bar", color=cmap(cmap.N))
+        ax3.set_xlabel("m-type")
+        ax3.set_ylabel("Counts")
+        ax3.set_title("m-type cell distribution")
+        ax3.tick_params(axis="x", rotation=90)
+        ax3.spines[["top", "right"]].set_visible(False)
 
     return fig
 
@@ -477,7 +519,7 @@ def plot_connection_probability_stats(
 
     # Global connection probabilities
     axs[0], bars, labels = plot_global_connection_probability(axs[0], global_conn_probs["full"])
-    axs[2], bars, labels = plot_global_connection_probability(axs[2], global_conn_probs["widthin"])
+    axs[2], bars, labels = plot_global_connection_probability(axs[2], global_conn_probs["within"])
 
     # Cartoons and labels
     ax = axs[4]
@@ -527,6 +569,14 @@ def plot_connection_probability_pathway_stats(
 ) -> plt.Figure:
     fig, axs = plt.subplots(3, 3, figsize=(full_width, full_width))
 
+    # Pathway groupings in row order. Some (e.g. 'layer'/'mtype') may be absent from the
+    # node table (e.g. for point-neuron circuits), in which case their row is left empty.
+    pathway_titles = {
+        "synapse_class": "Pathway: synapse class",
+        "layer": "Pathway: layer",
+        "mtype": "Pathway: m-type",
+    }
+
     for j, connection_type in enumerate(["full", "within"]):
         title = (
             "Connection probabilty \nper pathway overall"
@@ -538,7 +588,10 @@ def plot_connection_probability_pathway_stats(
         )
 
         # Connection probability
-        for i, grouping_prop in enumerate(["synapse_class", "layer", "mtype"]):
+        for i, (grouping_prop, pathway_title) in enumerate(pathway_titles.items()):
+            if grouping_prop not in conn_probs[connection_type]:
+                axs[i, j].set_visible(False)
+                continue
             plotme = conn_probs[connection_type][grouping_prop]
             axs[i, j], plot = plot_connection_probability_pathway(axs[i, j], plotme, cmap="viridis")
             cbar = plt.colorbar(
@@ -551,10 +604,9 @@ def plot_connection_probability_pathway_stats(
             cbar.ax.ticklabel_format(style="scientific", axis="y", scilimits=(0, 0))
             axs[i, j].set_xlabel("Post-synaptic cell")
             axs[i, j].set_ylabel("Pre-synaptic cell")
-        axs[2, j].set_title("Pathway: m-type")
-        axs[2, j].tick_params(labelbottom=False, labelleft=False)
-        axs[1, j].set_title("Pathway: layer")
-        axs[0, j].set_title("Pathway: synapse class")
+            axs[i, j].set_title(pathway_title)
+            if grouping_prop == "mtype":
+                axs[i, j].tick_params(labelbottom=False, labelleft=False)
 
     # Plot degree distributions
     axs[0, 2].text(
@@ -1235,6 +1287,9 @@ def plot_node_table(  # noqa: PLR0914
     col_sel = ["node_ids", "layer", "mtype"]
     if add_syn_class_column:
         col_sel += ["synapse_class"]
+    # Keep only properties present in the connectome's node table (e.g. point-neuron
+    # circuits may lack 'layer' or 'mtype').
+    col_sel = [col for col in col_sel if col in conn.vertices.columns]
     col_lbl_map = {
         "node_ids": "Neuron ID",
         "layer": "Layer",
