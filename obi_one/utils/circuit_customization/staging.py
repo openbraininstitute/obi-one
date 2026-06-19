@@ -86,9 +86,6 @@ def _apply_file_overrides(
     # Build a map of filename -> full path from the config
     existing_files: dict[str, Path] = {}
     for entry in component_list:
-        for _pop_name, _pop_info in entry.get("populations", {}).items():
-            # populations may reference h5 file directly or via the entry
-            pass
         h5_file = entry.get("nodes_file") or entry.get("edges_file")
         if h5_file:
             h5_path = Path(h5_file) if Path(h5_file).is_absolute() else circuit_dir / h5_file

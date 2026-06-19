@@ -1,8 +1,8 @@
-import contextlib
 from http import HTTPStatus
 from uuid import UUID
 
 import entitysdk.client
+import entitysdk.exception
 from entitysdk import models
 from fastapi import APIRouter, Depends, Response
 from starlette.responses import StreamingResponse
@@ -30,22 +30,26 @@ from app.types import TaskType
 
 
 def _check_circuit_is_active(db_client: entitysdk.client.Client, config_id: UUID) -> None:
-    """Block simulation launch if the circuit is a customized circuit still in draft status.
+    """Block simulation launch if the circuit is a customized circuit not yet validated."""
+    try:
+        simulation = db_client.get_entity(entity_id=config_id, entity_type=models.Simulation)
+        circuit = db_client.get_entity(entity_id=simulation.entity_id, entity_type=models.Circuit)
+    except entitysdk.exception.EntitySDKError:
+        return
 
-    A customized circuit (root_circuit_id is set) must be validated before simulation.
-    Until entitycore has a dedicated status field, we check if the circuit has a
-    root_circuit_id — if so, it's a customized circuit and we reject if not yet active.
+    if circuit.root_circuit_id is None:
+        return
 
-    TODO: Replace with proper status field check once entitycore supports it.
-    """
-    with contextlib.suppress(Exception):
-        # The config references a circuit — resolve it
-        db_client.get_entity(entity_id=config_id, entity_type=models.TaskConfig)
-        # For now, this is a placeholder. The actual check will be:
-        # 1. Get the circuit_id from the task config
-        # 2. Fetch the circuit
-        # 3. If root_circuit_id is set and status != "active", block
-        # Until entitycore has the status field, this is a no-op.
+    readiness_status = getattr(circuit, "readiness_status", None)
+    if readiness_status != "active":
+        raise ApiError(
+            message=(
+                f"Circuit is not ready for simulation (readiness_status={readiness_status!r})."
+                " Validation may still be pending or may have failed."
+            ),
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
 
 
 router = APIRouter(

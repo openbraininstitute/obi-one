@@ -12,7 +12,7 @@ import h5py
 import httpx
 import numpy as np
 from entitysdk import models
-from entitysdk.types import AssetLabel, ContentType, DerivationType
+from entitysdk.types import AssetLabel, DerivationType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -45,6 +45,10 @@ class HocValidationError(ValueError):
 
 class ModValidationError(ValueError):
     """Raised when a MOD file fails validation."""
+
+
+class NodeValidationError(ValueError):
+    """Raised when a node file fails validation."""
 
 
 def _save_uploads(files: list[UploadFile], target_dir: Path) -> list[Path]:
@@ -154,6 +158,24 @@ def _extract_hoc_mechanisms(hoc_path: Path) -> set[str]:
     return mechanisms
 
 
+def _validate_nodes(paths: list[Path]) -> None:
+    """Layer 1 validation for node files."""
+    for path in paths:
+        try:
+            with h5py.File(path, "r") as f:
+                if "nodes" not in f:
+                    msg = f"'{path.name}': missing 'nodes' group"
+                    raise NodeValidationError(msg)
+                for pop_name in f["nodes"]:
+                    pop = f["nodes"][pop_name]
+                    if "node_type_id" not in pop and "0" not in pop:
+                        msg = f"'{path.name}' population '{pop_name}': missing 'node_type_id'"
+                        raise NodeValidationError(msg)
+        except OSError as e:
+            msg = f"'{path.name}': not a valid HDF5 file: {e}"
+            raise NodeValidationError(msg) from e
+
+
 def _validate_hoc_mechanisms(hoc_paths: list[Path], mod_paths: list[Path]) -> None:
     """Check that mechanisms used in HOC files are available (built-in or from provided MODs)."""
     available = BUILTIN_NEURON_MECHANISMS | _extract_mod_mechanism_names(mod_paths)
@@ -206,95 +228,30 @@ def _run_validations(
 
     if node_files:
         node_paths = _save_uploads(node_files, tmp)
-
-    # Cross-validation: HOC mechanisms must exist in provided MOD files
-    if hoc_paths and mod_paths and not errors:
         try:
-            _validate_hoc_mechanisms(hoc_paths, mod_paths)
-        except HocValidationError as e:
-            errors.append(f"hoc/mod cross-check: {e}")
+            _validate_nodes(node_paths)
+        except ValueError as e:
+            errors.append(f"nodes: {e}")
 
     return edge_paths, hoc_paths, mod_paths, node_paths, errors
-
-
-def _upload_overrides(
-    db_client: entitysdk.client.Client,
-    registered: models.Circuit,
-    tmp: Path,
-    edge_paths: list[Path],
-    hoc_paths: list[Path],
-    mod_paths: list[Path],
-    node_files: list[UploadFile] | None,
-    circuit_config_file: UploadFile | None,
-) -> None:
-    """Upload override assets to the registered circuit entity."""
-    for path in edge_paths:
-        db_client.upload_file(
-            entity_id=registered.id,
-            entity_type=models.Circuit,
-            file_path=path,
-            file_content_type=ContentType("application/x-hdf5"),
-            asset_label=AssetLabel.sonata_circuit,
-        )
-
-    for path in hoc_paths:
-        db_client.upload_file(
-            entity_id=registered.id,
-            entity_type=models.Circuit,
-            file_path=path,
-            file_content_type=ContentType("text/plain"),
-            asset_label=AssetLabel.neuron_hoc,
-        )
-
-    for path in mod_paths:
-        db_client.upload_file(
-            entity_id=registered.id,
-            entity_type=models.Circuit,
-            file_path=path,
-            file_content_type=ContentType("text/plain"),
-            asset_label=AssetLabel.neuron_mechanisms,
-        )
-
-    if node_files:
-        for path in _save_uploads(node_files, tmp):
-            db_client.upload_file(
-                entity_id=registered.id,
-                entity_type=models.Circuit,
-                file_path=path,
-                file_content_type=ContentType("application/x-hdf5"),
-                asset_label=AssetLabel.sonata_circuit,
-            )
-
-    if circuit_config_file:
-        cfg_path = tmp / circuit_config_file.filename
-        cfg_path.write_bytes(circuit_config_file.file.read())
-        db_client.upload_file(
-            entity_id=registered.id,
-            entity_type=models.Circuit,
-            file_path=cfg_path,
-            file_content_type=ContentType("application/json"),
-            asset_label=AssetLabel.sonata_circuit,
-        )
 
 
 def _trigger_validation_task(
     *,
     ls_client: httpx.Client,
     circuit_id: UUID,
-    parent_circuit_id: UUID,
     project_id: UUID,
     virtual_lab_id: UUID,
 ) -> None:
     """Submit a circuit validation job to the launch-system."""
+    launch_path = "launch_scripts/launch_circuit_validation"
     job_data = {
         "code": {
             "type": "python_repository",
             "location": settings.OBI_ONE_REPO,
             "ref": f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}",
-            "path": str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py"),
-            "dependencies": str(
-                Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies" / "default.txt"
-            ),
+            "path": f"{launch_path}/main.py",
+            "dependencies": f"{launch_path}/dependencies/default.txt",
         },
         "resources": {
             "type": "machine",
@@ -304,9 +261,7 @@ def _trigger_validation_task(
             "compute_cell": "local",
         },
         "inputs": [
-            "--task-type circuit_validation",
-            f"--config_entity_id {circuit_id}",
-            f"--parent_circuit_id {parent_circuit_id}",
+            f"--circuit_id {circuit_id}",
             f"--virtual_lab_id {virtual_lab_id}",
             f"--project_id {project_id}",
         ],
@@ -373,6 +328,13 @@ def customize_circuit_endpoint(
         edge_paths, hoc_paths, mod_paths, node_paths, errors = _run_validations(
             tmp, edges_files, emodel_files, mechanism_files, node_files
         )
+
+        # Cross-validation: HOC mechanisms must exist in provided MOD files
+        if hoc_paths and not errors:
+            try:
+                _validate_hoc_mechanisms(hoc_paths, mod_paths)
+            except HocValidationError as e:
+                errors.append(f"hoc/mod cross-check: {e}")
 
         if errors:
             raise HTTPException(status_code=422, detail={"validation_errors": errors})
@@ -447,7 +409,6 @@ def customize_circuit_endpoint(
     _trigger_validation_task(
         ls_client=ls_client,
         circuit_id=registered.id,
-        parent_circuit_id=parent_circuit_id,
         project_id=db_client.project_context.project_id,
         virtual_lab_id=db_client.project_context.virtual_lab_id,
     )
