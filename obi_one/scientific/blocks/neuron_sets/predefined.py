@@ -34,7 +34,7 @@ class PredefinedBaseNeuronSet(NeuronSet, abc.ABC):
         title="Node Set",
         description="Name of the node set to use.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN_SWEEP,
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.NODE_SET,
         },
@@ -213,7 +213,7 @@ class BiophysicalPopulationPredefinedNeuronSet(
     The node set is resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = "Predefined Neuron Set (Biophysical Population)"
+    title: ClassVar[str] = "PREDEFINED (Biophysical)"
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit,"
         " resolved in a single biophysical population."

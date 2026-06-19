@@ -128,7 +128,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         return (expression, {})
 
 
-class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet):
+class BiophysicalPopulationNeuronSet:
     """Sample a percentage of neurons from a biophysical population."""
 
     title: ClassVar[str] = "Population Sample % (Biophysical)"

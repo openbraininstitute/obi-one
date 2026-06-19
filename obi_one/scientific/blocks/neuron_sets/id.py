@@ -51,7 +51,7 @@ class BiophysicalPopulationIDNeuronSet(IDPopulationBaseNeuronSet, BiophysicalPop
     Resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = "Sample IDs (Biophysical)"
+    title: ClassVar[str] = "BY ID (Biophysical)"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single biophysical population."
     )

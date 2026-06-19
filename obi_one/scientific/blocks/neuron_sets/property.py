@@ -91,6 +91,7 @@ class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
             SchemaKey.PROPERTY: CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION,
+            "population_source_dropdown_key": "population",
         },
     )
 
@@ -155,7 +156,7 @@ class BiophysicalPopulationPropertyNeuronSet(
     Resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = "By Properties (Biophysical)"
+    title: ClassVar[str] = "BY NODE PROPERTY (Biophysical)"
     description: ClassVar[str] = (
         "Use neurons based on properties, resolved in a single biophysical population."
     )

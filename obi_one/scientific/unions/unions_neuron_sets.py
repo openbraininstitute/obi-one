@@ -42,8 +42,8 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 )
 
 _BIOPHYSICAL_NEURON_SETS = (
-    BiophysicalPopulationNeuronSet
-    | BiophysicalPopulationIDNeuronSet
+    # BiophysicalPopulationNeuronSet
+    BiophysicalPopulationIDNeuronSet
     | BiophysicalPopulationPropertyNeuronSet
     | BiophysicalPopulationPredefinedNeuronSet
     | BiophysicalCombinedNeuronSet
@@ -78,13 +78,14 @@ _ALL_NEURON_SETS = (
 
 
 SimulationNeuronSetUnion = Annotated[
+    _ALL_NEURON_SETS,
     # IDNeuronSet
-    AllNeurons
+    # AllNeurons
     # | ExcitatoryNeurons
     # | InhibitoryNeurons
-    | PredefinedNeuronSet
-    | nbS1VPMInputs
-    | nbS1POmInputs,
+    # | PredefinedNeuronSet
+    # | nbS1VPMInputs
+    # | nbS1POmInputs,
     Discriminator("type"),
 ]
 
