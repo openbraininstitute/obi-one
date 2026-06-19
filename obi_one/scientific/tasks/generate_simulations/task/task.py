@@ -31,6 +31,7 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit 
 from obi_one.scientific.unions.unions_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
+    NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
@@ -189,10 +190,21 @@ class GenerateSimulationTask(Task):
 
         This is only done if the config has a neuron_sets attribute.
         """
-
+        """
         def is_optional_neuronsetreference(attr_value: type) -> bool:
             args = get_args(attr_value)
             return args == (NeuronSetReference, type(None))
+        """
+
+        def is_optional_neuronsetreference(attr_value: type) -> bool:
+            args_len = 2
+            args = get_args(attr_value)
+            return (
+                len(args) == args_len
+                and isinstance(args[0], type)
+                and issubclass(args[0], NeuronSetReference)
+                and args[1] is type(None)
+            )
 
         if hasattr(self.config, "neuron_sets"):
             type_hints = get_type_hints(block.__class__)

@@ -290,13 +290,17 @@ from obi_one.scientific.blocks.morphology_locations.random import (
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
-from obi_one.scientific.blocks.neuron_sets.pair import PairMotifNeuronSet
-from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
-from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter, PropertyNeuronSet
-from obi_one.scientific.blocks.neuron_sets.simplex import (
+from obi_one.scientific.blocks.neuron_sets.old.pair import PairMotifNeuronSet
+from obi_one.scientific.blocks.neuron_sets.old.simplex import (
     SimplexMembershipBasedNeuronSet,
     SimplexNeuronSet,
 )
+from obi_one.scientific.blocks.neuron_sets.old.volumetric import (
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter, PropertyNeuronSet
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllNeurons,
     ExcitatoryNeurons,
@@ -304,10 +308,6 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
-)
-from obi_one.scientific.blocks.neuron_sets.volumetric import (
-    VolumetricCountNeuronSet,
-    VolumetricRadiusNeuronSet,
 )
 from obi_one.scientific.blocks.recording import (
     Recording,

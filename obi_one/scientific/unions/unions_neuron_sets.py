@@ -1,3 +1,4 @@
+import abc
 from typing import Annotated, Any, ClassVar
 
 from pydantic import Discriminator
@@ -99,7 +100,11 @@ NonVirtualNeuronSetUnion = Annotated[
 ]
 
 
-class BiophysicalNeuronSetReference(BlockReference):
+class NeuronSetReference(BlockReference, abc.ABC):
+    pass
+
+
+class BiophysicalNeuronSetReference(NeuronSetReference):
     """A reference to a Biophysical or Point NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = BiophysicalNeuronSetUnion
@@ -109,7 +114,7 @@ class BiophysicalNeuronSetReference(BlockReference):
     }
 
 
-class VirtualNeuronSetReference(BlockReference):
+class VirtualNeuronSetReference(NeuronSetReference):
     """A reference to a Virtual NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = VirtualNeuronSetUnion
@@ -119,7 +124,7 @@ class VirtualNeuronSetReference(BlockReference):
     }
 
 
-class PointNeuronSetReference(BlockReference):
+class PointNeuronSetReference(NeuronSetReference):
     """A reference to a Point NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = PointNeuronSetUnion

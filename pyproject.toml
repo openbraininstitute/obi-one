@@ -205,7 +205,7 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/blocks/neuron_sets/pair.py" = [
+"obi_one/scientific/blocks/neuron_sets/old/pair.py" = [
     "SLF001"
 ]
 
