@@ -1,0 +1,131 @@
+from typing import Annotated, Any, ClassVar, cast
+
+from pydantic import Discriminator
+
+from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
+from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
+from obi_one.scientific.blocks.neuron_sets.pair import PairMotifNeuronSet
+from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.property import PropertyNeuronSet
+from obi_one.scientific.blocks.neuron_sets.simplex import (
+    SimplexMembershipBasedNeuronSet,
+    SimplexNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllNeurons,
+    ExcitatoryNeurons,
+    InhibitoryNeurons,
+    nbS1POmInputs,
+    nbS1VPMInputs,
+    rCA1CA3Inputs,
+)
+from obi_one.scientific.blocks.neuron_sets.volumetric import (
+    VolumetricCountNeuronSet,
+    VolumetricRadiusNeuronSet,
+)
+
+NeuronSetUnion = Annotated[
+    CombinedNeuronSet
+    | IDNeuronSet
+    | PredefinedNeuronSet
+    | PropertyNeuronSet
+    | PairMotifNeuronSet
+    | VolumetricCountNeuronSet
+    | VolumetricRadiusNeuronSet
+    | SimplexNeuronSet
+    | SimplexMembershipBasedNeuronSet
+    | nbS1VPMInputs
+    | nbS1POmInputs
+    | rCA1CA3Inputs
+    | AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons,
+    Discriminator("type"),
+]
+
+
+SimulationNeuronSetUnion = Annotated[
+    IDNeuronSet
+    | AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | PredefinedNeuronSet
+    | nbS1VPMInputs
+    | nbS1POmInputs,
+    Discriminator("type"),
+]
+
+Brian2SimulationNeuronSetUnion = Annotated[
+    IDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
+LearningEngineNeuronSetUnion = Annotated[
+    IDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
+
+CircuitExtractionNeuronSetUnion = Annotated[
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | PredefinedNeuronSet
+    # | CombinedNeuronSet  # To be added later
+    # | PropertyNeuronSet  # To be added later
+    # | VolumetricCountNeuronSet  # To be added later
+    # | VolumetricRadiusNeuronSet  # To be added later
+    | IDNeuronSet,
+    Discriminator("type"),
+]
+
+SynapseParameterizationNeuronSetUnion = CircuitExtractionNeuronSetUnion
+
+
+MEModelWithSynapsesNeuronSetUnion = Annotated[
+    nbS1VPMInputs | nbS1POmInputs,
+    Discriminator("type"),
+]
+
+
+class NeuronSetReference(BlockReference):
+    """A reference to a NeuronSet block."""
+
+    allowed_block_types: ClassVar[Any] = NeuronSetUnion
+
+    @property
+    def block(self) -> AbstractNeuronSet:
+        """Returns the NeuronSet block associated with this reference."""
+        return cast("AbstractNeuronSet", super().block)  # Ensure block is resolved and cached
+
+    @block.setter
+    def block(self, value: AbstractNeuronSet) -> None:
+        BlockReference.block.fset(self, value)
+
+
+def resolve_neuron_set_ref_to_node_set(
+    neuron_set_reference: NeuronSetReference | None, default_node_set: str
+) -> str:
+    if neuron_set_reference is None:
+        return default_node_set
+
+    return neuron_set_reference.block.block_name
+
+
+def resolve_neuron_set_ref_to_neuron_set(
+    neuron_set_reference: NeuronSetReference | None,
+    default_neuron_set_reference: NeuronSetReference | None,
+) -> NeuronSetUnion | None:
+    if neuron_set_reference is None:
+        if default_neuron_set_reference is None:
+            msg = (
+                "NeuronSetReference is None and no default_neuron_set provided. "
+                "Cannot resolve to a NeuronSet."
+            )
+            raise ValueError(msg)
+
+        return default_neuron_set_reference.block  # ty:ignore[invalid-return-type]
+
+    return neuron_set_reference.block  # ty:ignore[invalid-return-type]

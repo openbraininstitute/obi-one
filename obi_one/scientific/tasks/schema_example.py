@@ -14,7 +14,7 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
+from obi_one.scientific.unions.unions_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     AllNeuronSetUnion,
 )

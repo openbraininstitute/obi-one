@@ -9,8 +9,8 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    resolve_neuron_set_2_ref_to_node_set,
+from obi_one.scientific.unions.unions_neuron_sets import (
+    resolve_neuron_set_ref_to_node_set,
 )
 
 
@@ -56,9 +56,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,
@@ -121,9 +119,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,
@@ -177,9 +173,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,
@@ -253,9 +247,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "tau": self.time_constant,

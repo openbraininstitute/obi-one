@@ -2,12 +2,12 @@
 
 import numpy as np
 import pytest
-
-import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.population import (
     BiophysicalPopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
+
+import obi_one as obi
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 

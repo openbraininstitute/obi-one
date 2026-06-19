@@ -15,10 +15,10 @@ from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
+from obi_one.scientific.unions.unions_neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
-    resolve_neuron_set_2_ref_to_node_set,
+    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
@@ -181,7 +181,7 @@ class SomaVoltageRecording(Recording):
         sonata_config = {}
 
         sonata_config[self.block_name] = {
-            "cells": resolve_neuron_set_2_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",
@@ -266,7 +266,7 @@ class IonChannelVariableRecording(Recording):
             self.variable.validate_model_and_set_unit(db_client)
 
         sonata_config[self.block_name] = {
-            "cells": resolve_neuron_set_2_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",

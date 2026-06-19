@@ -1,8 +1,6 @@
 """Tests for neuron_sets_2 specific (AllNeurons) neuron sets."""
 
 import pytest
-
-import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets_2.specific import (
     AllBiophysicalNeurons,
     AllNeurons,
@@ -10,6 +8,8 @@ from obi_one.scientific.blocks.neuron_sets_2.specific import (
     AllPointNeurons,
     AllVirtualNeurons,
 )
+
+import obi_one as obi
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 

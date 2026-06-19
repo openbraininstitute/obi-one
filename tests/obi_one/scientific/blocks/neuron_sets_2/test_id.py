@@ -2,13 +2,13 @@
 
 import numpy as np
 import pytest
-
-import obi_one as obi
-from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets_2.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
 )
+
+import obi_one as obi
+from obi_one.core.tuple import NamedTuple
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 

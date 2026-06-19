@@ -140,8 +140,6 @@ __all__ = [
     "NamedTuple",
     "NeuronPropertyFilter",
     "NeuronSet",
-    "NeuronSetReference",
-    "NeuronSetUnion",
     "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",

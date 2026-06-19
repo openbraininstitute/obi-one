@@ -22,10 +22,10 @@ from obi_one.scientific.library.constants import (
     MIN_NON_NEGATIVE_FLOAT_VALUE,
     MIN_TIMESTEP_MILLISECONDS,
 )
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
+from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
-    resolve_neuron_set_2_ref_to_node_set,
+    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -184,9 +184,7 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.amplitude,
@@ -218,9 +216,7 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "percent_start": self.percentage_of_threshold_current,
@@ -262,9 +258,7 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.amplitude_start,
@@ -309,9 +303,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "percent_start": self.percentage_of_threshold_current_start,
@@ -353,9 +345,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "mean": self.mean_amplitude,
@@ -400,9 +390,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "mean_percent": self.mean_percentage_of_threshold_current,
@@ -461,9 +449,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.amplitude,
@@ -520,9 +506,7 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.maximum_amplitude,
@@ -558,9 +542,7 @@ class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "percent_less": self.percentage_below_threshold,
@@ -584,9 +566,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,
@@ -674,9 +654,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "voltage": self.level1_voltage,
             "duration_levels": [0, self.level1_duration, self.level2_duration],
             "voltage_levels": [self.level1_voltage, self.level2_voltage, self.level3_voltage],
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,
@@ -718,9 +696,7 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "duration_levels": [0]
             + [combination.duration for combination in self.duration_voltage[:-1]],
             "voltage_levels": [combination.voltage for combination in self.duration_voltage],
-            "node_set": resolve_neuron_set_2_ref_to_node_set(
-                self.neuron_set, self._default_node_set
-            ),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,

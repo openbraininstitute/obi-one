@@ -157,6 +157,10 @@ neuromorphomesh = { index = "obi-codeartifact" }
 line-length = 100
 target-version = "py312"
 include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
+# Legacy module kept for reference; excluded from formatting and linting.
+extend-exclude = ["obi_one/scientific/blocks/neuron_sets_old"]
+# Honour the exclusion even when files are passed explicitly (e.g. `make format FILE=...`).
+force-exclude = true
 
 [tool.ruff.lint]
 preview = true

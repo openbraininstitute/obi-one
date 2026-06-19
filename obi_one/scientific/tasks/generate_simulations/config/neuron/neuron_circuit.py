@@ -24,20 +24,18 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
+from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
+    NeuronSetReference,
     PointNeuronSetReference,
+    SimulationNeuronSetUnion,
     VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
-)
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
-    SimulationNeuronSetUnion,
-    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 

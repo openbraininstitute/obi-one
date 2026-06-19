@@ -28,10 +28,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions.unions_neuron_sets_2 import (
+from obi_one.scientific.unions.unions_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
-    resolve_neuron_set_2_ref_to_node_set,
+    resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
 from obi_one.utils.sonata import write_simulation_config
@@ -281,7 +281,7 @@ class GenerateSimulationTask(Task):
                     )
                     raise OBIONEError(msg)
 
-                self._sonata_config["node_set"] = resolve_neuron_set_2_ref_to_node_set(
+                self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
                     self.config.initialize.node_set,
                     DEFAULT_NODE_SET_NAME,  # ty:ignore[invalid-argument-type]
                 )

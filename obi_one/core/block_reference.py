@@ -27,7 +27,7 @@ class BlockReference(OBIBaseModel, abc.ABC):
     _block: Any = None
 
     @staticmethod
-    def get_class_names(tp):
+    def get_class_names(tp: Any) -> list[str]:
         args = get_args(tp)
         return [t.__name__ for t in args] if args else [tp.__name__]
 
@@ -63,7 +63,7 @@ class BlockReference(OBIBaseModel, abc.ABC):
         """
         Temp commented out to get working
         if not isinstance(value, self.allowed_block_types_union()):
-            msg = f"Value must be of type {self.block_type.__name__}."  # ty:ignore[unresolved-attribute]
+            msg = f"Value must be of type {self.block_type.__name__}."
             raise TypeError(msg)
         """
 
