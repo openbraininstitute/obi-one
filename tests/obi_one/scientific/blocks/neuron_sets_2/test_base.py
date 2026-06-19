@@ -3,6 +3,8 @@
 import json
 
 import pytest
+
+import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
@@ -11,8 +13,6 @@ from obi_one.scientific.blocks.neuron_sets.property import (
     BiophysicalPopulationPropertyNeuronSet,
     NeuronPropertyFilter,
 )
-
-import obi_one as obi
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 

@@ -2,6 +2,8 @@
 
 import numpy as np
 import pytest
+
+import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     SetOperation,
@@ -16,8 +18,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     BiophysicalNeuronSetReference,
     VirtualNeuronSetReference,
 )
-
-import obi_one as obi
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
