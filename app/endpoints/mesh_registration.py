@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 import entitysdk.client
+import pylmesh
 from entitysdk.common import ProjectContext
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import EMCellMesh, Entity, TaskConfig
@@ -32,10 +33,12 @@ router = APIRouter(
     tags=["mesh-registration"],
 )
 
+_SUPPORTED_MESH_FORMATS = {"obj", "glb"}
+
 
 class MeshRegistrationResponse(BaseModel):
     entity_id: str
-    obj_asset_id: str
+    glb_asset_id: str
     task_job_id: str
     status: str
 
@@ -44,6 +47,51 @@ def _require_uuid(value: UUID | None, msg: str) -> UUID:
     if value is None:
         raise ValueError(msg)
     return value
+
+
+def _convert_obj_to_glb(obj_path: pathlib.Path, glb_path: pathlib.Path) -> None:
+    L.info(f"Converting OBJ to GLB: {obj_path} -> {glb_path}")
+    mesh = pylmesh.load(str(obj_path))
+    pylmesh.save(str(glb_path), mesh)
+
+
+def _register_glb_asset(
+    client: entitysdk.client.Client,
+    entity_id: UUID,
+    glb_path: pathlib.Path,
+) -> UUID:
+    L.info(f"Uploading GLB asset for entity {entity_id} …")
+
+    try:
+        with glb_path.open("rb") as f:
+            file_content = f.read()
+
+        asset = client.upload_content(
+            entity_id=entity_id,
+            entity_type=EMCellMesh,
+            file_content=file_content,
+            file_name=glb_path.name,
+            file_content_type=ContentType.model_gltf_binary,
+            asset_label=AssetLabel.cell_surface_mesh,
+        )
+
+        asset_id = _require_uuid(
+            asset.id,
+            "Uploaded GLB asset has no valid ID.",
+        )
+
+        L.info(f"GLB asset uploaded successfully: {asset_id}")
+
+    except (EntitySDKError, ValueError) as exc:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+                "detail": f"Failed to upload GLB asset to entitysdk: {exc}",
+            },
+        ) from exc
+
+    return asset_id
 
 
 def _register_obj_asset(
@@ -68,7 +116,7 @@ def _register_obj_asset(
 
         asset_id = _require_uuid(
             asset.id,
-            "Uploaded asset has no valid ID.",
+            "Uploaded OBJ asset has no valid ID.",
         )
 
         L.info(f"OBJ asset uploaded successfully: {asset_id}")
@@ -88,7 +136,8 @@ def _register_obj_asset(
 def _create_lod_task_config(
     client: entitysdk.client.Client,
     entity_id: UUID,
-    obj_asset_id: UUID,
+    mesh_asset_id: UUID,
+    mesh_format: str,
 ) -> UUID:
     L.info(f"Creating LOD generation TaskConfig for entity {entity_id} …")
 
@@ -96,7 +145,8 @@ def _create_lod_task_config(
         {
             "type": "MeshLodGenerationSingleConfig",
             "entity_id": str(entity_id),
-            "obj_asset_id": str(obj_asset_id),
+            "mesh_asset_id": str(mesh_asset_id),
+            "mesh_format": mesh_format,
         }
     ).encode()
 
@@ -152,6 +202,95 @@ def _ensure_project_context(client: entitysdk.client.Client) -> ProjectContext:
     return client.project_context
 
 
+def _detect_mesh_format(filename: str) -> str:
+    suffix = pathlib.Path(filename).suffix.lower()
+    if suffix == ".obj":
+        return "obj"
+    if suffix == ".glb":
+        return "glb"
+    return ""
+
+
+def _validate_entity_type(entity_type: str) -> None:
+    if entity_type != "EMCellMesh":
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": (
+                    f"Unsupported entity type: '{entity_type}'. Only 'EMCellMesh' is allowed."
+                ),
+            },
+        )
+
+
+def _validate_mesh_format(filename: str) -> str:
+    mesh_format = _detect_mesh_format(filename)
+    if mesh_format not in _SUPPORTED_MESH_FORMATS:
+        suffix = pathlib.Path(filename).suffix
+        msg = f"Unsupported mesh file format '{suffix}'. Only .obj and .glb are accepted."
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={"code": ApiErrorCode.INVALID_REQUEST, "detail": msg},
+        )
+    return mesh_format
+
+
+def _parse_entity_uuid(entity_id: str) -> UUID:
+    try:
+        return UUID(entity_id)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": f"Invalid entity_id format: '{entity_id}'. Must be a valid UUID.",
+            },
+        ) from err
+
+
+def _cleanup_temps(*paths: str | None) -> None:
+    for path in paths:
+        if path:
+            _cleanup_temp_file(path)
+
+
+async def _prepare_mesh_assets(
+    client: entitysdk.client.Client,
+    entity_uuid: UUID,
+    temp_mesh_path: str,
+    mesh_format: str,
+) -> tuple[UUID, UUID, str, str | None]:
+    if mesh_format == "obj":
+        glb_path = pathlib.Path(temp_mesh_path).with_suffix(".glb")
+        temp_glb_path = str(glb_path)
+        await run_in_threadpool(
+            _convert_obj_to_glb,
+            pathlib.Path(temp_mesh_path),
+            glb_path,
+        )
+        glb_asset_id = await run_in_threadpool(
+            _register_glb_asset,
+            client,
+            entity_uuid,
+            glb_path,
+        )
+        lod_mesh_asset_id = await run_in_threadpool(
+            _register_obj_asset,
+            client,
+            entity_uuid,
+            pathlib.Path(temp_mesh_path),
+        )
+        return glb_asset_id, lod_mesh_asset_id, "obj", temp_glb_path
+    glb_asset_id = await run_in_threadpool(
+        _register_glb_asset,
+        client,
+        entity_uuid,
+        pathlib.Path(temp_mesh_path),
+    )
+    return glb_asset_id, glb_asset_id, "glb", None
+
+
 @router.post(
     "/{entity_id}/register-mesh",
     status_code=HTTPStatus.ACCEPTED,
@@ -165,50 +304,33 @@ async def register_mesh_and_generate_lods(
     background_tasks: BackgroundTasks,
     entity_type: Annotated[str, Form(...)] = "EMCellMesh",
 ) -> MeshRegistrationResponse:
-    if entity_type != "EMCellMesh":
-        msg_type = f"Unsupported entity type: '{entity_type}'. Only 'EMCellMesh' is allowed."
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": msg_type,
-            },
-        )
+    _validate_entity_type(entity_type)
+    mesh_format = _validate_mesh_format(file.filename or "")
+    entity_uuid = _parse_entity_uuid(entity_id)
+
+    temp_mesh_path = None
+    temp_glb_path = None
 
     try:
-        entity_uuid = UUID(entity_id)
-    except ValueError as err:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Invalid entity_id format: '{entity_id}'. Must be a valid UUID.",
-            },
-        ) from err
+        temp_mesh_path = _save_upload_to_tempfile(file, f".{mesh_format}")
+        await run_in_threadpool(validate_mesh_reader, temp_mesh_path)
 
-    temp_obj_path = None
-
-    try:
-        temp_obj_path = _save_upload_to_tempfile(file, ".obj")
-
-        await run_in_threadpool(validate_mesh_reader, temp_obj_path)
-
-        obj_asset_id = await run_in_threadpool(
-            _register_obj_asset,
-            client,
-            entity_uuid,
-            pathlib.Path(temp_obj_path),
-        )
+        (
+            glb_asset_id,
+            lod_mesh_asset_id,
+            lod_mesh_format,
+            temp_glb_path,
+        ) = await _prepare_mesh_assets(client, entity_uuid, temp_mesh_path, mesh_format)
 
         config_id = await run_in_threadpool(
             _create_lod_task_config,
             client,
             entity_uuid,
-            obj_asset_id,
+            lod_mesh_asset_id,
+            lod_mesh_format,
         )
 
         task_definition = TASK_DEFINITIONS[TaskType.mesh_lod_generation]
-
         project_context = _ensure_project_context(client)
 
         task_info = await run_in_threadpool(
@@ -222,26 +344,22 @@ async def register_mesh_and_generate_lods(
             callbacks=[],
         )
 
-        background_tasks.add_task(_cleanup_temp_file, temp_obj_path)
+        background_tasks.add_task(_cleanup_temps, temp_mesh_path, temp_glb_path)
 
         return MeshRegistrationResponse(
             entity_id=str(entity_uuid),
-            obj_asset_id=str(obj_asset_id),
+            glb_asset_id=str(glb_asset_id),
             task_job_id=str(task_info.job_id),
             status="pending",
         )
 
     except HTTPException:
-        if temp_obj_path:
-            _cleanup_temp_file(temp_obj_path)
+        _cleanup_temps(temp_mesh_path, temp_glb_path)
         raise
 
     except BaseException as exc:
         L.error(f"Unexpected error during mesh registration: {exc!s}")
-
-        if temp_obj_path:
-            _cleanup_temp_file(temp_obj_path)
-
+        _cleanup_temps(temp_mesh_path, temp_glb_path)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
