@@ -49,7 +49,12 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     """Abstract base class for combining neuron sets within and across node populations."""
 
     base_neuron_set: BlockReference | None
-    combined_with: list[tuple[BlockReference, Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF]]]
+    combined_with: list[
+        tuple[
+            BlockReference,
+            Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
+        ]
+    ]
 
     def _resolve_refs(self) -> tuple[NeuronSet, list[tuple[NeuronSet, SetOperation]]]:
         """Resolve neuron set references to actual NeuronSet objects."""
@@ -63,11 +68,9 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         )
         combined_with = []
         for nset, op in self.combined_with:
-            with_nset = (
-                nset.block if hasattr(nset, "block") else nset
-            )
+            with_nset = nset.block if hasattr(nset, "block") else nset
             combined_with.append((with_nset, op))
-        return base_nset, combined_with
+        return base_nset, combined_with  # ty: ignore[invalid-return-type]
 
     def check_combined_depth(
         self, visited: set[str] | None = None, depth: int = _MAX_COMBINED_DEPTH
@@ -202,7 +205,10 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine neuron sets of any type."""
 
     title: ClassVar[str] = "Combined (Any)"
-    description: ClassVar[str] = "Use neuron sets of any type combined with set operations."
+    description: ClassVar[str] = (
+        "Use neuron sets of any type combined with set operations."
+        " Operations will be applied from top to bottom."
+    )
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
 
@@ -216,7 +222,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: BlockReference | None = Field(
         default=None,
-        title="First Neuron Set",
+        title="Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -224,12 +230,17 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: BlockReference | None = Field(
-        default=None,
-        title="Second Neuron Set",
-        description="Neuron set to combine with.",
+    combined_with: list[
+        tuple[
+            BlockReference,
+            Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
+        ]
+    ] = Field(
+        default_factory=list,
+        title="Combine With",
+        description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: _ALL_REFERENCE_TYPES,
         },
     )
@@ -239,7 +250,10 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine biophysical neuron sets."""
 
     title: ClassVar[str] = "Combined (Biophysical)"
-    description: ClassVar[str] = "Use biophysical neuron sets combined with set operations."
+    description: ClassVar[str] = (
+        "Use biophysical neuron sets combined with set operations."
+        " Operations will be applied from top to bottom."
+    )
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
@@ -255,7 +269,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: BlockReference | None = Field(
         default=None,
-        title="First Neuron Set",
+        title="Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -263,12 +277,17 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: BlockReference | None = Field(
-        default=None,
-        title="Second Neuron Set",
-        description="Neuron set to combine with.",
+    combined_with: list[
+        tuple[
+            BlockReference,
+            Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
+        ]
+    ] = Field(
+        default_factory=list,
+        title="Combine With",
+        description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: _BIOPHYSICAL_REFERENCE_TYPES,
         },
     )
@@ -278,7 +297,10 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine virtual neuron sets."""
 
     title: ClassVar[str] = "Combined (Virtual)"
-    description: ClassVar[str] = "Use virtual neuron sets combined with set operations."
+    description: ClassVar[str] = (
+        "Use virtual neuron sets combined with set operations."
+        " Operations will be applied from top to bottom."
+    )
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
@@ -292,7 +314,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: BlockReference | None = Field(
         default=None,
-        title="First Neuron Set",
+        title="Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -300,12 +322,17 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: BlockReference | None = Field(
-        default=None,
-        title="Second Neuron Set",
-        description="Neuron set to combine with.",
+    combined_with: list[
+        tuple[
+            BlockReference,
+            Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
+        ]
+    ] = Field(
+        default_factory=list,
+        title="Combine With",
+        description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: _VIRTUAL_REFERENCE_TYPES,
         },
     )
@@ -315,7 +342,10 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine non-virtual neuron sets."""
 
     title: ClassVar[str] = "Combined (Non-Virtual)"
-    description: ClassVar[str] = "Use non-virtual neuron sets combined with set operations."
+    description: ClassVar[str] = (
+        "Use non-virtual neuron sets combined with set operations."
+        " Operations will be applied from top to bottom."
+    )
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.NONVIRTUAL
@@ -331,7 +361,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: BlockReference | None = Field(
         default=None,
-        title="First Neuron Set",
+        title="Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -339,12 +369,17 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: BlockReference | None = Field(
-        default=None,
-        title="Second Neuron Set",
-        description="Neuron set to combine with.",
+    combined_with: list[
+        tuple[
+            BlockReference,
+            Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
+        ]
+    ] = Field(
+        default_factory=list,
+        title="Combine With",
+        description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: _NON_VIRTUAL_REFERENCE_TYPES,
         },
     )
@@ -354,7 +389,10 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine point neuron sets."""
 
     title: ClassVar[str] = "Combined (Point)"
-    description: ClassVar[str] = "Use point neuron sets combined with set operations."
+    description: ClassVar[str] = (
+        "Use point neuron sets combined with set operations."
+        " Operations will be applied from top to bottom."
+    )
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.POINT
 
@@ -368,7 +406,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: BlockReference | None = Field(
         default=None,
-        title="First Neuron Set",
+        title="Neuron Set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -376,12 +414,17 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: BlockReference | None = Field(
-        default=None,
-        title="Second Neuron Set",
-        description="Neuron set to combine with.",
+    combined_with: list[
+        tuple[
+            BlockReference,
+            Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
+        ]
+    ] = Field(
+        default_factory=list,
+        title="Combine With",
+        description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: _POINT_REFERENCE_TYPES,
         },
     )
