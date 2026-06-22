@@ -160,7 +160,7 @@ def morph_to_spine_and_soma_df(m: MorphologyWithSpines) -> pandas.DataFrame:
 
 
 def map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas.DataFrame:
-    chunk_sz = 1000
+    chunk_sz = 250
     if len(pts) <= chunk_sz:
         res = _map_points_to_segs_df(segs, pts.to_numpy())  # ty:ignore[unresolved-attribute]
     else:
