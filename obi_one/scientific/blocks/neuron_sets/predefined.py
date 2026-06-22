@@ -9,6 +9,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.constants import (
     BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    MULTI_POPULATION_NEURON_SET_TITLE_SUFFIX,
     POINT_NEURON_SET_TITLE_SUFFIX,
     PREDEFINED_NEURON_SET_TITLE_PREFIX,
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
@@ -76,7 +77,9 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
     node set definition.
     """
 
-    title: ClassVar[str] = "Predefined Neuron Set (multi-population)"
+    title: ClassVar[str] = (
+        f"{PREDEFINED_NEURON_SET_TITLE_PREFIX}{MULTI_POPULATION_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit."
         " May span multiple node populations."

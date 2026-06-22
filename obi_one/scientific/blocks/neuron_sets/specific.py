@@ -3,6 +3,13 @@ import logging
 from typing import ClassVar
 
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.constants import (
+    ALL_NEURON_SET_TITLE_PREFIX,
+    ALL_POPULATION_TYPES_NEURON_SET_TITLE_SUFFIX,
+    BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    POINT_NEURON_SET_TITLE_SUFFIX,
+    VIRTUAL_NEURON_SET_TITLE_SUFFIX,
+)
 from obi_one.scientific.library.circuit import Circuit
 
 L = logging.getLogger(__name__)
@@ -70,7 +77,9 @@ class AllNeuronsBase(NeuronSet, abc.ABC):
 class AllNeurons(AllNeuronsBase):
     """All neurons across all populations."""
 
-    title: ClassVar[str] = "All Neurons"
+    title: ClassVar[str] = (
+        f"{ALL_NEURON_SET_TITLE_PREFIX}{ALL_POPULATION_TYPES_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = "All neurons from all node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
@@ -88,7 +97,7 @@ class AllNeurons(AllNeuronsBase):
 class AllBiophysicalNeurons(AllNeuronsBase):
     """All biophysical neurons across all biophysical populations."""
 
-    title: ClassVar[str] = "All Biophysical Neurons"
+    title: ClassVar[str] = f"{ALL_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "All neurons from all biophysical node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
@@ -108,7 +117,7 @@ class AllBiophysicalNeurons(AllNeuronsBase):
 class AllPointNeurons(AllNeuronsBase):
     """All point neurons across all point neuron populations."""
 
-    title: ClassVar[str] = "All Point Neurons"
+    title: ClassVar[str] = f"{ALL_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "All neurons from all point neuron populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.POINT
@@ -126,7 +135,7 @@ class AllPointNeurons(AllNeuronsBase):
 class AllVirtualNeurons(AllNeuronsBase):
     """All virtual neurons across all virtual populations."""
 
-    title: ClassVar[str] = "All Virtual Neurons"
+    title: ClassVar[str] = f"{ALL_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "All neurons from all virtual node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
