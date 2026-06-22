@@ -143,14 +143,14 @@ def morph_to_segs_df(morph: Morphology) -> pandas.DataFrame:
 def morph_to_spine_and_soma_df(m: MorphologyWithSpines) -> pandas.DataFrame:
     all_spine_points = pandas.concat(
         [
-            pandas.DataFrame(m.spines.spine_mesh_points(i), columns=["x", "y", "z"])  # ty:ignore[invalid-argument-type]
+            pandas.DataFrame(m.spines.spine_mesh_points(i), columns=["x", "y", "z"]).dropna()  # ty:ignore[invalid-argument-type]
             for i in range(m.spines.spine_count)
         ],
         axis=0,
         keys=m.spines.spine_table.index.to_numpy(),
         names=[_C_SP_INDEX],
     ).reset_index(0)
-    soma_points = pandas.DataFrame(m.soma.soma_mesh_points, columns=["x", "y", "z"])  # ty:ignore[invalid-argument-type]
+    soma_points = pandas.DataFrame(m.soma.soma_mesh_points, columns=["x", "y", "z"]).dropna()  # ty:ignore[invalid-argument-type]
     soma_points[_C_SP_INDEX] = -1
 
     spine_and_soma_points = pandas.concat([all_spine_points, soma_points], axis=0).reset_index(
@@ -160,7 +160,7 @@ def morph_to_spine_and_soma_df(m: MorphologyWithSpines) -> pandas.DataFrame:
 
 
 def map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas.DataFrame:
-    chunk_sz = 1000
+    chunk_sz = 250
     if len(pts) <= chunk_sz:
         res = _map_points_to_segs_df(segs, pts.to_numpy())  # ty:ignore[unresolved-attribute]
     else:

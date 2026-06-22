@@ -39,7 +39,7 @@ dependencies = [
     "bluecellulab>=2.6.87",
     "blueetl",
     "bluepyefe>=2.3.57",
-    "bluepysnap>=3.0.2",
+    "bluepysnap>=3.0.5",
     "brainbuilder>=0.20.2",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
@@ -52,7 +52,7 @@ dependencies = [
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.6.2",
+    "obp-accounting-sdk>=0.6.3",
     "numpy",
 ]
 
@@ -139,6 +139,8 @@ include = ["obi_one*"]
 "obi_one.scientific.library" = ["*.json"]
 
 [tool.setuptools_scm]
+tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
+version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.uv]
