@@ -52,7 +52,7 @@ class IDPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
 
 
 class BiophysicalPopulationIDNeuronSet(
-    IDPopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin
+    BiophysicalPopulationNeuronSetMixin, IDPopulationBaseNeuronSet
 ):
     """Neuron set definition by providing a list of neuron IDs.
 
@@ -65,7 +65,7 @@ class BiophysicalPopulationIDNeuronSet(
     )
 
 
-class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin):
+class VirtualPopulationIDNeuronSet(VirtualPopulationNeuronSetMixin, IDPopulationBaseNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected virtual node population.
@@ -77,7 +77,7 @@ class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationN
     )
 
 
-class PointPopulationIDNeuronSet(IDPopulationBaseNeuronSet, PointPopulationNeuronSetMixin):
+class PointPopulationIDNeuronSet(PointPopulationNeuronSetMixin, IDPopulationBaseNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected point neuron population.

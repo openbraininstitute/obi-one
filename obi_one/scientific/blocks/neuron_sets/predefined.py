@@ -215,7 +215,7 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
 
 
 class BiophysicalPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin
+    BiophysicalPopulationNeuronSetMixin, PredefinedPopulationBaseNeuronSet,
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
@@ -232,7 +232,7 @@ class BiophysicalPopulationPredefinedNeuronSet(
 
 
 class VirtualPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin
+    VirtualPopulationNeuronSetMixin, PredefinedPopulationBaseNeuronSet, 
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
@@ -247,7 +247,7 @@ class VirtualPopulationPredefinedNeuronSet(
 
 
 class PointPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, PointPopulationNeuronSetMixin
+    PointPopulationNeuronSetMixin, PredefinedPopulationBaseNeuronSet
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 

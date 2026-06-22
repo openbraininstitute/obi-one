@@ -211,7 +211,7 @@ class VirtualPopulationNeuronSetMixin:
     )
 
 
-class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin):
+class BiophysicalPopulationNeuronSet(BiophysicalPopulationNeuronSetMixin, PopulationBaseNeuronSet):
     """Sample a percentage of neurons from a biophysical population."""
 
     title: ClassVar[str] = (
@@ -220,14 +220,14 @@ class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet, BiophysicalPopulat
     description: ClassVar[str] = "Sample a percentage of neurons from a biophysical population."
 
 
-class PointPopulationNeuronSet(PopulationBaseNeuronSet, PointPopulationNeuronSetMixin):
+class PointPopulationNeuronSet(PointPopulationNeuronSetMixin, PopulationBaseNeuronSet):
     """Sample a percentage of neurons from a point neuron population."""
 
     title: ClassVar[str] = f"{POPULATION_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "Sample a percentage of neurons from a point neuron population."
 
 
-class VirtualPopulationNeuronSet(PopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin):
+class VirtualPopulationNeuronSet(VirtualPopulationNeuronSetMixin, PopulationBaseNeuronSet,):
     """Sample a percentage of neurons from a virtual population."""
 
     title: ClassVar[str] = f"{POPULATION_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"

@@ -155,7 +155,7 @@ class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
 
 
 class BiophysicalPopulationPropertyNeuronSet(
-    PropertyPopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin
+    BiophysicalPopulationNeuronSetMixin, PropertyPopulationBaseNeuronSet
 ):
     """Neuron set definition based on neuron properties.
 
@@ -171,7 +171,7 @@ class BiophysicalPopulationPropertyNeuronSet(
 
 
 class VirtualPopulationPropertyNeuronSet(
-    PropertyPopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin
+    VirtualPopulationNeuronSetMixin, PropertyPopulationBaseNeuronSet,
 ):
     """Neuron set definition based on neuron properties.
 
@@ -185,7 +185,7 @@ class VirtualPopulationPropertyNeuronSet(
 
 
 class PointPopulationPropertyNeuronSet(
-    PropertyPopulationBaseNeuronSet, PointPopulationNeuronSetMixin
+    PointPopulationNeuronSetMixin, PropertyPopulationBaseNeuronSet,
 ):
     """Neuron set definition based on neuron properties.
 
