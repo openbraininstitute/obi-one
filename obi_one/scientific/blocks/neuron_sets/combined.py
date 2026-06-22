@@ -49,7 +49,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     """Abstract base class for combining neuron sets within and across node populations."""
 
     base_neuron_set: BlockReference | None
-    combined_with: list[tuple[BlockReference | None, Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF]]]
+    combined_with: list[tuple[BlockReference, Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF]]]
 
     def _resolve_refs(self) -> tuple[NeuronSet, list[tuple[NeuronSet, SetOperation]]]:
         """Resolve neuron set references to actual NeuronSet objects."""
@@ -63,9 +63,6 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         )
         combined_with = []
         for nset, op in self.combined_with:
-            if nset is None:
-                msg = "All neuron set references must be set for combining."
-                raise ValueError(msg)
             with_nset = (
                 nset.block if hasattr(nset, "block") else nset
             )
