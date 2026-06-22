@@ -136,6 +136,8 @@ where = ["."]
 include = ["obi_one*"]
 
 [tool.setuptools_scm]
+tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
+version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.uv]
