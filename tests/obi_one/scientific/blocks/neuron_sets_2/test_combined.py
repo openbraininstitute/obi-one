@@ -320,3 +320,158 @@ def test_nested_combined(circuit):
 
     result = outer.get_neuron_ids(circuit)
     assert sorted(result["S1nonbarrel_neurons"]) == expected
+
+
+# --- Multiple operations in combined_with list ---
+
+
+def test_combined_multiple_operations(circuit):
+    """Test combining with multiple neuron sets using different operations."""
+    # Create three neuron sets: A, B, C
+    nset_a = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="L6_BPC", population="S1nonbarrel_neurons"
+    )
+    nset_a.set_block_name("multi_a")
+
+    nset_b = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+    )
+    nset_b.set_block_name("multi_b")
+
+    nset_c = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
+    nset_c.set_block_name("multi_c")
+
+    ref_a = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="multi_a")
+    ref_a.block = nset_a
+    ref_b = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="multi_b")
+    ref_b.block = nset_b
+    ref_c = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="multi_c")
+    ref_c.block = nset_c
+
+    # A union B then intersect C  =>  (A ∪ B) ∩ C
+    combined = BiophysicalCombinedNeuronSet(
+        base_neuron_set=ref_a,
+        combined_with=[
+            (ref_b, SetOperation.UNION),
+            (ref_c, SetOperation.INTERSECT),
+        ],
+    )
+    combined.set_block_name("multi_ops")
+
+    ids_a = set(nset_a.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    ids_b = set(nset_b.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    ids_c = set(nset_c.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    expected = sorted((ids_a | ids_b) & ids_c)
+
+    result = combined.get_neuron_ids(circuit)
+    assert sorted(result["S1nonbarrel_neurons"]) == expected
+
+
+def test_combined_operation_order_matters(circuit):
+    """Test that the order of operations in combined_with affects the result.
+
+    Demonstrates that (A ∪ B) - C != (A - C) ∪ B in general,
+    proving sequential left-to-right evaluation.
+    """
+    nset_a = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="L6_BPC", population="S1nonbarrel_neurons"
+    )
+    nset_a.set_block_name("order_a")
+
+    nset_b = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+    )
+    nset_b.set_block_name("order_b")
+
+    nset_c = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
+    nset_c.set_block_name("order_c")
+
+    ref_a = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="order_a")
+    ref_a.block = nset_a
+    ref_b = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="order_b")
+    ref_b.block = nset_b
+    ref_c = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="order_c")
+    ref_c.block = nset_c
+
+    # Order 1: A union B, then diff C  =>  (A ∪ B) - C
+    combined_1 = BiophysicalCombinedNeuronSet(
+        base_neuron_set=ref_a,
+        combined_with=[
+            (ref_b, SetOperation.UNION),
+            (ref_c, SetOperation.DIFF),
+        ],
+    )
+    combined_1.set_block_name("order_1")
+
+    # Order 2: A diff C, then union B  =>  (A - C) ∪ B
+    combined_2 = BiophysicalCombinedNeuronSet(
+        base_neuron_set=ref_a,
+        combined_with=[
+            (ref_c, SetOperation.DIFF),
+            (ref_b, SetOperation.UNION),
+        ],
+    )
+    combined_2.set_block_name("order_2")
+
+    ids_a = set(nset_a.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    ids_b = set(nset_b.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+    ids_c = set(nset_c.get_neuron_ids(circuit)["S1nonbarrel_neurons"])
+
+    # Compute expected results
+    expected_1 = sorted((ids_a | ids_b) - ids_c)
+    expected_2 = sorted((ids_a - ids_c) | ids_b)
+
+    result_1 = combined_1.get_neuron_ids(circuit)
+    result_2 = combined_2.get_neuron_ids(circuit)
+
+    # Verify each result matches its expected value
+    assert sorted(result_1["S1nonbarrel_neurons"]) == expected_1
+    assert sorted(result_2["S1nonbarrel_neurons"]) == expected_2
+
+    # Verify the two orders produce different results (proving order matters)
+    assert expected_1 != expected_2
+
+
+def test_combined_multiple_unions_symbolic(circuit):
+    """Test that multiple unions produce a symbolic expression with all sets."""
+    nset_a = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="L6_BPC", population="S1nonbarrel_neurons"
+    )
+    nset_a.set_block_name("sym_a")
+
+    nset_b = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+    )
+    nset_b.set_block_name("sym_b")
+
+    nset_c = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
+    nset_c.set_block_name("sym_c")
+
+    ref_a = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="sym_a")
+    ref_a.block = nset_a
+    ref_b = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="sym_b")
+    ref_b.block = nset_b
+    ref_c = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="sym_c")
+    ref_c.block = nset_c
+
+    # All unions -> symbolic expression should be preserved
+    combined = BiophysicalCombinedNeuronSet(
+        base_neuron_set=ref_a,
+        combined_with=[
+            (ref_b, SetOperation.UNION),
+            (ref_c, SetOperation.UNION),
+        ],
+    )
+    combined.set_block_name("sym_multi")
+
+    nset_def, combined_defs = combined.get_node_set_definition(circuit)
+    # All-union -> symbolic compound expression (list of names)
+    assert isinstance(nset_def, list)
+    assert len(nset_def) == 3  # base + 2 combined_with entries
+    assert set(nset_def) == set(combined_defs.keys())
