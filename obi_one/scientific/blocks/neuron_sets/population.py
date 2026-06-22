@@ -227,7 +227,10 @@ class PointPopulationNeuronSet(PointPopulationNeuronSetMixin, PopulationBaseNeur
     description: ClassVar[str] = "Sample a percentage of neurons from a point neuron population."
 
 
-class VirtualPopulationNeuronSet(VirtualPopulationNeuronSetMixin, PopulationBaseNeuronSet,):
+class VirtualPopulationNeuronSet(
+    VirtualPopulationNeuronSetMixin,
+    PopulationBaseNeuronSet,
+):
     """Sample a percentage of neurons from a virtual population."""
 
     title: ClassVar[str] = f"{POPULATION_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"

@@ -2,6 +2,7 @@ import abc
 import logging
 from typing import ClassVar
 
+from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.constants import (
     ALL_NEURON_SET_TITLE_PREFIX,
@@ -10,14 +11,11 @@ from obi_one.scientific.blocks.neuron_sets.constants import (
     POINT_NEURON_SET_TITLE_SUFFIX,
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
 )
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
-    CircuitMappedProperties,
     CircuitUsability,
     MappedPropertiesGroup,
 )
-
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.library.circuit import Circuit
 
 L = logging.getLogger(__name__)
 
