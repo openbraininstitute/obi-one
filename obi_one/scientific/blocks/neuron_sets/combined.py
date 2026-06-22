@@ -49,36 +49,34 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     """Abstract base class for combining neuron sets within and across node populations."""
 
     base_neuron_set: BlockReference | None
-    combined_with: BlockReference | None
-    operation: Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF] = Field(
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
-        },
-        title="Operation",
-        description="Set option for combining the IDs in the neuron sets.",
-        default=SetOperation.UNION,
-    )
+    combined_with: list[tuple[BlockReference | None, Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF]]]
 
-    def _resolve_refs(self) -> tuple[NeuronSet, NeuronSet]:
+    def _resolve_refs(self) -> tuple[NeuronSet, list[tuple[NeuronSet, SetOperation]]]:
         """Resolve neuron set references to actual NeuronSet objects."""
-        if self.base_neuron_set is None or self.combined_with is None:
-            msg = "Both neuron set references must be set for combining."
+        if self.base_neuron_set is None:
+            msg = "Base neuron set reference must be set for combining."
             raise ValueError(msg)
         base_nset = (
             self.base_neuron_set.block
             if hasattr(self.base_neuron_set, "block")
             else self.base_neuron_set
         )
-        with_nset = (
-            self.combined_with.block if hasattr(self.combined_with, "block") else self.combined_with
-        )
-        return base_nset, with_nset  # ty:ignore[invalid-return-type]
+        combined_with = []
+        for nset, op in self.combined_with:
+            if nset is None:
+                msg = "All neuron set references must be set for combining."
+                raise ValueError(msg)
+            with_nset = (
+                nset.block if hasattr(nset, "block") else nset
+            )
+            combined_with.append((with_nset, op))
+        return base_nset, combined_with
 
     def check_combined_depth(
         self, visited: set[str] | None = None, depth: int = _MAX_COMBINED_DEPTH
     ) -> None:
         if not self.has_block_name():
-            msg = "Block name must be set."
+            msg = "Block name must be set before checking combined depth."
             raise ValueError(msg)
         if visited is None:
             visited = set()
@@ -89,16 +87,18 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
             msg = "Too many nested combined neuron sets!"
             raise ValueError(msg)
         visited.add(self.block_name)
-        base_nset, with_nset = self._resolve_refs()
-        for nset in [base_nset, with_nset]:
+        base_nset, comb_with = self._resolve_refs()
+        all_nsets = [base_nset] + [nset for nset, _ in comb_with]
+        for nset in all_nsets:
             if isinstance(nset, CombinedBaseNeuronSet):
                 nset.check_combined_depth(visited, depth - 1)
 
     def get_populations(self, circuit: Circuit) -> list[str]:
         """Returns population names included in the neuron set."""
-        base_nset, with_nset = self._resolve_refs()
+        base_nset, comb_with = self._resolve_refs()
+        all_nsets = [base_nset] + [nset for nset, _ in comb_with]
         all_pops = []
-        for nset in [base_nset, with_nset]:
+        for nset in all_nsets:
             for pop in nset.get_populations(circuit):
                 if pop not in all_pops:
                     all_pops.append(pop)
@@ -139,10 +139,11 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         """Returns list of neuron IDs per population."""
         self.check_combined_depth()
         self.check_populations_in_circuit(circuit=circuit)
-        base_nset, with_nset = self._resolve_refs()
-        base_ids = base_nset.get_neuron_ids(circuit)
-        with_ids = with_nset.get_neuron_ids(circuit)
-        comb_ids = CombinedBaseNeuronSet._combine_ids(base_ids, with_ids, self.operation)
+        base_nset, comb_with = self._resolve_refs()
+        comb_ids = base_nset.get_neuron_ids(circuit)
+        for nset, op in comb_with:
+            with_ids = nset.get_neuron_ids(circuit)
+            comb_ids = CombinedBaseNeuronSet._combine_ids(comb_ids, with_ids, op)
 
         if all(len(ids) == 0 for ids in comb_ids.values()):
             L.warning("Combined neuron set empty!")
@@ -179,8 +180,8 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         if not self.has_block_name():
             msg = "Block name must be set."
             raise ValueError(msg)
-        is_union = self.operation == SetOperation.UNION
-        if force_resolve_ids or not is_union:
+        unions_only = all(op == SetOperation.UNION for _, op in self.combined_with)
+        if force_resolve_ids or not unions_only:
             # Resolve and combine individual IDs per population and use in compound expression
             ids_per_npop = self.get_neuron_ids(circuit)
             prefix = f"__{self.__class__.__name__}__{self.block_name}"
@@ -191,10 +192,11 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
             # Symbolic expression may be preserved
             self.check_combined_depth()
             self.check_populations_in_circuit(circuit=circuit)
-            base_nset, with_nset = self._resolve_refs()
+            base_nset, comb_with = self._resolve_refs()
+            all_nsets = [base_nset] + [nset for nset, _ in comb_with]
             prefix = f"__{self.__class__.__name__}__"
             expression, combined = CombinedBaseNeuronSet._make_union_expression(
-                circuit, [base_nset, with_nset], prefix
+                circuit, all_nsets, prefix
             )
         return (expression, combined)
 
