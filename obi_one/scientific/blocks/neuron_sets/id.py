@@ -7,8 +7,8 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.constants import (
-    ID_NEURON_SET_TITLE_PREFIX,
     BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    ID_NEURON_SET_TITLE_PREFIX,
     POINT_NEURON_SET_TITLE_SUFFIX,
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
 )

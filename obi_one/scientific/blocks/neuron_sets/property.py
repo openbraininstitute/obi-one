@@ -8,9 +8,9 @@ from pydantic import Field, model_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.constants import (
-    PROPERTY_NEURON_SET_TITLE_PREFIX,
     BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
     POINT_NEURON_SET_TITLE_SUFFIX,
+    PROPERTY_NEURON_SET_TITLE_PREFIX,
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
 )
 from obi_one.scientific.blocks.neuron_sets.population import (
@@ -162,7 +162,9 @@ class BiophysicalPopulationPropertyNeuronSet(
     Resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = f"{PROPERTY_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    title: ClassVar[str] = (
+        f"{PROPERTY_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = (
         "Use neurons based on properties, resolved in a single biophysical population."
     )

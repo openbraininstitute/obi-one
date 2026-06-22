@@ -5,12 +5,6 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.neuron_sets.combined import (
-    BiophysicalCombinedNeuronSet,
-    CombinedNeuronSet,
-    PointCombinedNeuronSet,
-    VirtualCombinedNeuronSet,
-)
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     PointPopulationIDNeuronSet,
@@ -46,7 +40,6 @@ _BIOPHYSICAL_NEURON_SETS = (
     | BiophysicalPopulationIDNeuronSet
     | BiophysicalPopulationPropertyNeuronSet
     | BiophysicalPopulationPredefinedNeuronSet
-    | BiophysicalCombinedNeuronSet
     | AllBiophysicalNeurons
 )
 _VIRTUAL_NEURON_SETS = (
@@ -54,7 +47,6 @@ _VIRTUAL_NEURON_SETS = (
     | VirtualPopulationIDNeuronSet
     | VirtualPopulationPropertyNeuronSet
     | VirtualPopulationPredefinedNeuronSet
-    | VirtualCombinedNeuronSet
     | AllVirtualNeurons
 )
 _POINT_NEURON_SETS = (
@@ -62,7 +54,6 @@ _POINT_NEURON_SETS = (
     | PointPopulationIDNeuronSet
     | PointPopulationPropertyNeuronSet
     | PointPopulationPredefinedNeuronSet
-    | PointCombinedNeuronSet
     | AllPointNeurons
 )
 _NONVIRTUAL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
@@ -72,7 +63,6 @@ _ALL_NEURON_SETS = (
     | _POINT_NEURON_SETS
     | _NONVIRTUAL_NEURON_SETS
     | PredefinedNeuronSet
-    | CombinedNeuronSet
     | AllNeurons
 )
 

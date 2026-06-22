@@ -9,13 +9,13 @@ from pydantic import Field, NonNegativeFloat
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.blocks.neuron_sets.constants import (
-    POPULATION_NEURON_SET_TITLE_PREFIX,
     BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
     POINT_NEURON_SET_TITLE_SUFFIX,
+    POPULATION_NEURON_SET_TITLE_PREFIX,
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
 )
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     CircuitUsability,
@@ -214,7 +214,9 @@ class VirtualPopulationNeuronSetMixin:
 class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin):
     """Sample a percentage of neurons from a biophysical population."""
 
-    title: ClassVar[str] = f"{POPULATION_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    title: ClassVar[str] = (
+        f"{POPULATION_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = "Sample a percentage of neurons from a biophysical population."
 
 

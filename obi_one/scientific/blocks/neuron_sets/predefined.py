@@ -8,9 +8,9 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.constants import (
-    PREDEFINED_NEURON_SET_TITLE_PREFIX,
     BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
     POINT_NEURON_SET_TITLE_SUFFIX,
+    PREDEFINED_NEURON_SET_TITLE_PREFIX,
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
 )
 from obi_one.scientific.blocks.neuron_sets.population import (
@@ -219,7 +219,9 @@ class BiophysicalPopulationPredefinedNeuronSet(
     The node set is resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = f"{PREDEFINED_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    title: ClassVar[str] = (
+        f"{PREDEFINED_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit,"
         " resolved in a single biophysical population."

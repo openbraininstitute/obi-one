@@ -48,7 +48,6 @@ __all__ = [
     "ClusteredPathDistanceMorphologyLocations",
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
-    "CombinedNeuronSet",
     "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
@@ -281,7 +280,6 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter
 from obi_one.scientific.blocks.neuron_sets.specific import (
