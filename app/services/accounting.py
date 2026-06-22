@@ -129,11 +129,15 @@ def _evaluate_accounting_parameters(
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_cluster
             | TaskType.circuit_simulation_inait_machine
-            | TaskType.circuit_simulation_brian2_machine
         ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
+            )
+        case TaskType.circuit_simulation_brian2_machine:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.BRIAN2_CIRCUIT_SIMULATION,
             )
         case TaskType.em_synapse_mapping:
             return AccountingParameters(
