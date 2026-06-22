@@ -6,6 +6,12 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.constants import (
+    ID_NEURON_SET_TITLE_PREFIX,
+    BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    POINT_NEURON_SET_TITLE_SUFFIX,
+    VIRTUAL_NEURON_SET_TITLE_SUFFIX,
+)
 from obi_one.scientific.blocks.neuron_sets.population import (
     BiophysicalPopulationNeuronSetMixin,
     PointPopulationNeuronSetMixin,
@@ -53,7 +59,7 @@ class BiophysicalPopulationIDNeuronSet(
     Resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = "BY ID (Biophysical)"
+    title: ClassVar[str] = f"{ID_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single biophysical population."
     )
@@ -65,7 +71,7 @@ class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationN
     Resolved in one selected virtual node population.
     """
 
-    title: ClassVar[str] = "Sample IDs (Virtual)"
+    title: ClassVar[str] = f"{ID_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single virtual population."
     )
@@ -77,7 +83,7 @@ class PointPopulationIDNeuronSet(IDPopulationBaseNeuronSet, PointPopulationNeuro
     Resolved in one selected point neuron population.
     """
 
-    title: ClassVar[str] = "Sample IDs (Point)"
+    title: ClassVar[str] = f"{ID_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single point neuron population."
     )

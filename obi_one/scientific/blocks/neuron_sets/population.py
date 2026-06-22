@@ -10,6 +10,12 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.blocks.neuron_sets.constants import (
+    POPULATION_NEURON_SET_TITLE_PREFIX,
+    BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    POINT_NEURON_SET_TITLE_SUFFIX,
+    VIRTUAL_NEURON_SET_TITLE_SUFFIX,
+)
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     CircuitUsability,
@@ -208,19 +214,19 @@ class VirtualPopulationNeuronSetMixin:
 class BiophysicalPopulationNeuronSet(PopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin):
     """Sample a percentage of neurons from a biophysical population."""
 
-    title: ClassVar[str] = "SAMPLE POPULATION (Biophysical)"
+    title: ClassVar[str] = f"{POPULATION_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "Sample a percentage of neurons from a biophysical population."
 
 
 class PointPopulationNeuronSet(PopulationBaseNeuronSet, PointPopulationNeuronSetMixin):
     """Sample a percentage of neurons from a point neuron population."""
 
-    title: ClassVar[str] = "Population Sample % (Point)"
+    title: ClassVar[str] = f"{POPULATION_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "Sample a percentage of neurons from a point neuron population."
 
 
 class VirtualPopulationNeuronSet(PopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin):
     """Sample a percentage of neurons from a virtual population."""
 
-    title: ClassVar[str] = "Population Sample % (Virtual)"
+    title: ClassVar[str] = f"{POPULATION_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "Sample a percentage of neurons from a virtual population."
