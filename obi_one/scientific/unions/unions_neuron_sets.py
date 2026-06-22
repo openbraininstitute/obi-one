@@ -36,25 +36,25 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 )
 
 _BIOPHYSICAL_NEURON_SETS = (
-    BiophysicalPopulationNeuronSet
+    BiophysicalPopulationPropertyNeuronSet
     | BiophysicalPopulationIDNeuronSet
-    | BiophysicalPopulationPropertyNeuronSet
-    | BiophysicalPopulationPredefinedNeuronSet
+    | BiophysicalPopulationNeuronSet
     | AllBiophysicalNeurons
+    | BiophysicalPopulationPredefinedNeuronSet
 )
 _VIRTUAL_NEURON_SETS = (
-    VirtualPopulationNeuronSet
+    VirtualPopulationPropertyNeuronSet
     | VirtualPopulationIDNeuronSet
-    | VirtualPopulationPropertyNeuronSet
-    | VirtualPopulationPredefinedNeuronSet
+    | VirtualPopulationNeuronSet
     | AllVirtualNeurons
+    | VirtualPopulationPredefinedNeuronSet
 )
 _POINT_NEURON_SETS = (
-    PointPopulationNeuronSet
+    PointPopulationPropertyNeuronSet
     | PointPopulationIDNeuronSet
-    | PointPopulationPropertyNeuronSet
-    | PointPopulationPredefinedNeuronSet
+    | PointPopulationNeuronSet
     | AllPointNeurons
+    | PointPopulationPredefinedNeuronSet
 )
 _NONVIRTUAL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
 _ALL_NEURON_SETS = (

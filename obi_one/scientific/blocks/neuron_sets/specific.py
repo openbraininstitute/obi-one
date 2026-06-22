@@ -10,6 +10,13 @@ from obi_one.scientific.blocks.neuron_sets.constants import (
     POINT_NEURON_SET_TITLE_SUFFIX,
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
 )
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
+
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
 
 L = logging.getLogger(__name__)
@@ -104,6 +111,14 @@ class AllBiophysicalNeurons(AllNeuronsBase):
         NeuronSetPopulationType.BIOPHYSICAL
     )
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no biophysical populations.",
+        },
+    }
+
     def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
         """Returns all biophysical population names."""
         return Circuit.get_node_population_names(
@@ -122,6 +137,14 @@ class AllPointNeurons(AllNeuronsBase):
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.POINT
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_POINT_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no point neuron populations.",
+        },
+    }
+
     def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
         """Returns all point neuron population names."""
         return Circuit.get_node_population_names(
@@ -139,6 +162,14 @@ class AllVirtualNeurons(AllNeuronsBase):
     description: ClassVar[str] = "All neurons from all virtual node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_VIRTUAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no virtual populations.",
+        },
+    }
 
     def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
         """Returns all virtual population names."""
