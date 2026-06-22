@@ -7,10 +7,10 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
+    BiophysicalPopulationNeuronSetMixin,
+    PointPopulationNeuronSetMixin,
     PopulationBaseNeuronSet,
-    VirtualPopulationNeuronSet,
+    VirtualPopulationNeuronSetMixin,
 )
 from obi_one.scientific.library.circuit import Circuit
 
@@ -45,7 +45,9 @@ class IDPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         return {"population": self.population, "node_id": list(self.neuron_ids.elements)}  # ty:ignore[unresolved-attribute]
 
 
-class BiophysicalPopulationIDNeuronSet(IDPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet):
+class BiophysicalPopulationIDNeuronSet(
+    IDPopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin
+):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected biophysical node population.
@@ -57,7 +59,7 @@ class BiophysicalPopulationIDNeuronSet(IDPopulationBaseNeuronSet, BiophysicalPop
     )
 
 
-class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationNeuronSet):
+class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected virtual node population.
@@ -69,7 +71,7 @@ class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationN
     )
 
 
-class PointPopulationIDNeuronSet(IDPopulationBaseNeuronSet, PointPopulationNeuronSet):
+class PointPopulationIDNeuronSet(IDPopulationBaseNeuronSet, PointPopulationNeuronSetMixin):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected point neuron population.

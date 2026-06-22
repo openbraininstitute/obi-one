@@ -8,10 +8,10 @@ from pydantic import Field, model_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
+    BiophysicalPopulationNeuronSetMixin,
+    PointPopulationNeuronSetMixin,
     PopulationBaseNeuronSet,
-    VirtualPopulationNeuronSet,
+    VirtualPopulationNeuronSetMixin,
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
@@ -149,7 +149,7 @@ class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
 
 
 class BiophysicalPopulationPropertyNeuronSet(
-    PropertyPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet
+    PropertyPopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin
 ):
     """Neuron set definition based on neuron properties.
 
@@ -163,7 +163,7 @@ class BiophysicalPopulationPropertyNeuronSet(
 
 
 class VirtualPopulationPropertyNeuronSet(
-    PropertyPopulationBaseNeuronSet, VirtualPopulationNeuronSet
+    PropertyPopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin
 ):
     """Neuron set definition based on neuron properties.
 
@@ -176,7 +176,9 @@ class VirtualPopulationPropertyNeuronSet(
     )
 
 
-class PointPopulationPropertyNeuronSet(PropertyPopulationBaseNeuronSet, PointPopulationNeuronSet):
+class PointPopulationPropertyNeuronSet(
+    PropertyPopulationBaseNeuronSet, PointPopulationNeuronSetMixin
+):
     """Neuron set definition based on neuron properties.
 
     Resolved in one selected point neuron population.

@@ -8,10 +8,10 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
+    BiophysicalPopulationNeuronSetMixin,
+    PointPopulationNeuronSetMixin,
     PopulationBaseNeuronSet,
-    VirtualPopulationNeuronSet,
+    VirtualPopulationNeuronSetMixin,
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
@@ -206,7 +206,7 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
 
 
 class BiophysicalPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet
+    PredefinedPopulationBaseNeuronSet, BiophysicalPopulationNeuronSetMixin
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
@@ -221,7 +221,7 @@ class BiophysicalPopulationPredefinedNeuronSet(
 
 
 class VirtualPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, VirtualPopulationNeuronSet
+    PredefinedPopulationBaseNeuronSet, VirtualPopulationNeuronSetMixin
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
@@ -236,7 +236,7 @@ class VirtualPopulationPredefinedNeuronSet(
 
 
 class PointPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, PointPopulationNeuronSet
+    PredefinedPopulationBaseNeuronSet, PointPopulationNeuronSetMixin
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
