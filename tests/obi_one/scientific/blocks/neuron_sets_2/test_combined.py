@@ -72,7 +72,7 @@ def ref_b(nset_b):
 def test_combined_union(circuit, ref_a, ref_b, nset_a, nset_b):
     """Test union operation combines IDs from both sets."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.UNION)]
     )
     combined.set_block_name("union_ab")
 
@@ -88,7 +88,7 @@ def test_combined_union(circuit, ref_a, ref_b, nset_a, nset_b):
 def test_combined_intersection(circuit, ref_a, ref_b, nset_a, nset_b):
     """Test intersection operation returns common IDs."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.INTERSECT
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.INTERSECT)]
     )
     combined.set_block_name("intersect_ab")
 
@@ -104,7 +104,7 @@ def test_combined_intersection(circuit, ref_a, ref_b, nset_a, nset_b):
 def test_combined_difference(circuit, ref_a, ref_b, nset_a, nset_b):
     """Test difference operation returns A - B."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.DIFF
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.DIFF)]
     )
     combined.set_block_name("diff_ab")
 
@@ -119,7 +119,7 @@ def test_combined_difference(circuit, ref_a, ref_b, nset_a, nset_b):
 def test_combined_union_symbolic(circuit, ref_a, ref_b):
     """Test union produces symbolic expression (not resolved IDs)."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.UNION)]
     )
     combined.set_block_name("union_sym")
 
@@ -134,7 +134,7 @@ def test_combined_union_symbolic(circuit, ref_a, ref_b):
 def test_combined_intersect_resolves_ids(circuit, ref_a, ref_b):
     """Test intersection always resolves IDs (non-union operation)."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.INTERSECT
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.INTERSECT)]
     )
     combined.set_block_name("intersect_resolve")
 
@@ -145,25 +145,25 @@ def test_combined_intersect_resolves_ids(circuit, ref_a, ref_b):
 
 
 def test_combined_missing_ref(circuit, ref_a):
-    """Test that None reference raises."""
+    """Test that None base_neuron_set raises."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=None, operation=SetOperation.UNION
+        base_neuron_set=None, combined_with=[(ref_a, SetOperation.UNION)]
     )
     combined.set_block_name("missing_ref")
 
-    with pytest.raises(ValueError, match="Both neuron set references must be set"):
+    with pytest.raises(ValueError, match="Base neuron set reference must be set"):
         combined.get_neuron_ids(circuit)
 
 
 def test_combined_recursive_cycle(circuit, ref_a, ref_b):
     """Test that a recursive cycle is detected."""
     combined_x = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.UNION)]
     )
     combined_x.set_block_name("combined_x")
 
     combined_y = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.UNION)]
     )
     combined_y.set_block_name("combined_y")
 
@@ -173,8 +173,8 @@ def test_combined_recursive_cycle(circuit, ref_a, ref_b):
     ref_y = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name="combined_y")
     ref_y.block = combined_y
 
-    combined_x.combined_with = ref_y
-    combined_y.combined_with = ref_x
+    combined_x.combined_with = [(ref_y, SetOperation.UNION)]
+    combined_y.combined_with = [(ref_x, SetOperation.UNION)]
 
     with pytest.raises(ValueError, match="Recursive loop"):
         combined_x.get_neuron_ids(circuit)
@@ -183,7 +183,7 @@ def test_combined_recursive_cycle(circuit, ref_a, ref_b):
 def test_combined_no_block_name(circuit, ref_a, ref_b):
     """Test that missing block name raises."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.UNION)]
     )
     # Don't set block name
 
@@ -197,7 +197,7 @@ def test_combined_no_block_name(circuit, ref_a, ref_b):
 def test_combined_biophysical_type_matching(circuit, ref_a, ref_b):
     """Test BiophysicalCombinedNeuronSet works when both inputs are biophysical."""
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.UNION)]
     )
     combined.set_block_name("bio_type_match")
 
@@ -229,7 +229,7 @@ def test_combined_biophysical_type_mismatch_symbolic(circuit):
 
     # Combine with union (symbolic path)
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_bio, combined_with=ref_virt, operation=SetOperation.UNION
+        base_neuron_set=ref_bio, combined_with=[(ref_virt, SetOperation.UNION)]
     )
     combined.set_block_name("bio_mismatch_sym")
 
@@ -256,7 +256,7 @@ def test_combined_biophysical_type_mismatch_resolved(circuit):
 
     # Combine with intersect (non-union = resolved path)
     combined = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_bio, combined_with=ref_virt, operation=SetOperation.INTERSECT
+        base_neuron_set=ref_bio, combined_with=[(ref_virt, SetOperation.INTERSECT)]
     )
     combined.set_block_name("bio_mismatch_resolve")
 
@@ -296,7 +296,7 @@ def test_nested_combined(circuit):
 
     # Create inner combined (A union B)
     inner = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_a, combined_with=ref_b, operation=SetOperation.UNION
+        base_neuron_set=ref_a, combined_with=[(ref_b, SetOperation.UNION)]
     )
     inner.set_block_name("inner_combined")
 
@@ -308,7 +308,7 @@ def test_nested_combined(circuit):
 
     # Create outer combined (inner intersect C)
     outer = BiophysicalCombinedNeuronSet(
-        base_neuron_set=ref_inner, combined_with=ref_c, operation=SetOperation.INTERSECT
+        base_neuron_set=ref_inner, combined_with=[(ref_c, SetOperation.INTERSECT)]
     )
     outer.set_block_name("outer_combined")
 
