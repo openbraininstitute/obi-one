@@ -137,11 +137,6 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         ContributeMorphologySingleConfig,
         None,
     ),
-    TaskType.create_extracellular_recording_array: (
-        CreateExtracellularRecordingArrayTask,
-        CreateExtracellularRecordingArraySingleConfig,
-        None,
-    ),
     TaskType.electrophysiology_metrics: (
         ElectrophysiologyMetricsTask,
         ElectrophysiologyMetricsSingleConfig,
