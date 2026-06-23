@@ -322,14 +322,14 @@ class GenerateSimulationTask(Task):
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
                 self._neuron_set_definitions[neuron_set_key] = (
-                    neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit)
+                    neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
                 )
 
         else:
             neuron_set = AllBiophysicalNeurons()
             neuron_set.set_block_name(self.config.default_node_set_name)
             self._neuron_set_definitions[self.config.default_node_set_name] = (
-                neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit)  # ty:ignore[invalid-argument-type]
+                neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)  # ty:ignore[invalid-argument-type]
             )
 
         # 3. Write node sets from SONATA circuit object to .json file

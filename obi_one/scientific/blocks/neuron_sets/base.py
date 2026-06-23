@@ -192,8 +192,8 @@ class NeuronSet(Block, abc.ABC):
         return expression, combined
 
     def add_node_set_definition_to_sonata_circuit(
-        self, circuit: Circuit, *, force_resolve_ids: bool = False
-    ) -> tuple[str, snap.Circuit]:
+        self, circuit: Circuit, sonata_circuit: snap.Circuit, *, force_resolve_ids: bool = False
+    ) -> str:
         """Adds the node set definition to the corresponding SONATA circuit object."""
         if not self.has_block_name():
             msg = "Block name undefined. NeuronSet must be set through a Task."
@@ -201,12 +201,12 @@ class NeuronSet(Block, abc.ABC):
         nset_def, compound_def = self.get_node_set_definition(
             circuit, force_resolve_ids=force_resolve_ids
         )
-        nset_name = f"__{self.__class__.__name__}__{self.block_name}"
+        # nset_name = f"__{self.__class__.__name__}__{self.block_name}"
+        nset_name = self.block_name
         nset_dict = compound_def | {nset_name: nset_def}
 
-        sonata_circuit = circuit.sonata_circuit
         add_node_set_to_circuit(sonata_circuit, nset_dict, overwrite_if_exists=False)
-        return nset_name, sonata_circuit
+        return nset_name
 
     @staticmethod
     def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> Path:
