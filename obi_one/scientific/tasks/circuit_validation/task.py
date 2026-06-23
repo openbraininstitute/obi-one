@@ -34,15 +34,18 @@ def run_circuit_validation(
     *,
     db_client: Client,
     circuit_id: UUID,
+    is_customization: bool = True,
 ) -> dict:
-    """Validate a customized circuit.
+    """Validate a circuit (registration or customization).
 
     The circuit entity already has a merged sonata_circuit directory asset.
     This task stages it, compiles any MOD files, and runs snap validation.
 
     Args:
         db_client: EntitySDK client.
-        circuit_id: The customized circuit entity ID.
+        circuit_id: The circuit entity ID.
+        is_customization: If True, run subset checks against parent and recompute
+            dynamic params. Set to False for plain circuit registration.
 
     Returns:
         dict with keys: valid (bool), errors (list[str]), warnings (list[str])
@@ -59,7 +62,11 @@ def run_circuit_validation(
         mod_dir = _find_mod_dir(circuit_config_path)
         has_mods = bool(mod_dir and mod_dir.exists() and any(mod_dir.glob("*.mod")))
         if has_mods:
-            _compile_mechanisms(mod_dir, staged_dir)
+            try:
+                _compile_mechanisms(mod_dir, staged_dir)
+            except RuntimeError as e:
+                _update_lifecycle_status(db_client, circuit_id, "failed")
+                return {"valid": False, "errors": [str(e)], "warnings": []}
 
         fatal_errors: list[str] = []
         warning_messages: list[str] = []
@@ -85,30 +92,41 @@ def run_circuit_validation(
         warning_messages.extend(str(e) for e in snap_errors if e.level == "WARNING")
 
         # Subset checks: morphologies and emodels must exist in parent
-        if circuit.root_circuit_id:
-            subset_errors = _check_content_subset_of_parent(
-                db_client, circuit.root_circuit_id, circuit_config_path
-            )
-            fatal_errors.extend(subset_errors)
-
-            # Node columns check: only model_template/etype should differ from parent
-            col_warnings = _check_node_columns_unchanged(
-                db_client, circuit.root_circuit_id, circuit_config_path
-            )
-            warning_messages.extend(col_warnings)
+        if is_customization and circuit.root_circuit_id:
+            with tempfile.TemporaryDirectory() as parent_tmp:
+                parent_dir = Path(parent_tmp) / "parent"
+                parent_dir.mkdir()
+                try:
+                    parent = db_client.get_entity(
+                        entity_id=circuit.root_circuit_id, entity_type=models.Circuit
+                    )
+                    parent_config_path = stage_circuit(
+                        db_client, model=parent, output_dir=parent_dir
+                    )
+                except Exception as e:  # noqa: BLE001
+                    L.warning("Could not stage parent circuit for checks: %s", e)
+                else:
+                    fatal_errors.extend(
+                        _check_content_subset_of_parent(circuit_config_path, parent_config_path)
+                    )
+                    warning_messages.extend(
+                        _check_node_columns_unchanged(circuit_config_path, parent_config_path)
+                    )
 
         if fatal_errors:
             L.warning(
                 "Circuit %s validation FAILED: %d fatal errors", circuit_id, len(fatal_errors)
             )
-            _update_readiness_status(db_client, circuit_id, "failed")
+            _update_lifecycle_status(db_client, circuit_id, "failed")
             return {"valid": False, "errors": fatal_errors, "warnings": warning_messages}
 
         L.info("Circuit %s validation PASSED (%d warnings)", circuit_id, len(warning_messages))
 
-        _recompute_dynamic_params(circuit_config_path)
+        if is_customization:
+            _recompute_dynamic_params(circuit_config_path)
 
-        _update_readiness_status(db_client, circuit_id, "active")
+        _update_lifecycle_status(db_client, circuit_id, "active")
+
         return {"valid": True, "errors": [], "warnings": warning_messages}
 
 
@@ -327,10 +345,8 @@ def _validate_hoc_loading(
     if load_mods:
         _load_compiled_mechanisms(working_dir)
 
-    from bluecellulab import Cell  # noqa: PLC0415
-    from bluecellulab.circuit.circuit_access.definition import EmodelProperties  # noqa: PLC0415
+    from obi_one.scientific.validations.emodels import bluecellulab_initializable  # noqa: PLC0415
 
-    emodel_properties = EmodelProperties(holding_current=0.0, threshold_current=0.0)
     errors = []
 
     for hoc_path in all_hoc_files:
@@ -340,11 +356,10 @@ def _validate_hoc_loading(
             L.warning("No morphology found for template '%s' — skipping", hoc_path.name)
             continue
         try:
-            _ = Cell(
-                template_path=str(hoc_path),
+            bluecellulab_initializable(
+                hoc_path=str(hoc_path),
                 morphology_path=str(morph_path),
                 template_format="v6",
-                emodel_properties=emodel_properties,
             )
         except Exception as e:  # noqa: BLE001
             errors.append(f"HOC template '{hoc_path.name}' failed to instantiate: {e}")
@@ -410,35 +425,22 @@ def _find_morphology_for_template(template_name: str, circuit_config_path: Path)
     return None
 
 
-def _validate_hoc_load_only(hoc_files: list[Path]) -> list[str]:
-    """Fallback: just check NEURON can parse the HOC file (no morphology available)."""
-    from bluecellulab.importer import import_hoc  # noqa: PLC0415
-    from neuron import h as neuron  # noqa: PLC0415
-
-    import_hoc(neuron)
-    errors = []
-    for hoc_path in hoc_files:
-        result = neuron.load_file(str(hoc_path))
-        if not result:
-            errors.append(f"HOC template failed to load: '{hoc_path.name}'")
-    return errors
-
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
 
-def _update_readiness_status(db_client: Client, circuit_id: UUID, status: str) -> None:
+def _update_lifecycle_status(db_client: Client, circuit_id: UUID, status: str) -> None:
+    """Update the circuit's lifecycle_status (entitysdk >= 0.18.0)."""
     try:
         db_client.update_entity(
             entity_id=circuit_id,
             entity_type=models.Circuit,
-            attrs_or_entity={"readiness_status": status},
+            attrs_or_entity={"lifecycle_status": status},
         )
-        L.info("Circuit %s readiness_status -> %s", circuit_id, status)
+        L.info("Circuit %s lifecycle_status -> %s", circuit_id, status)
     except Exception:  # noqa: BLE001
-        L.warning("Failed to update readiness_status for circuit %s", circuit_id, exc_info=True)
+        L.warning("Failed to update lifecycle_status for circuit %s", circuit_id, exc_info=True)
 
 
 def _find_mod_dir(circuit_config_path: Path) -> Path | None:
@@ -469,7 +471,11 @@ def _compile_mechanisms(mod_dir: Path, working_dir: Path) -> None:
 
 
 def _recompute_dynamic_params(circuit_config_path: Path) -> None:
-    """Recompute dynamic parameters (holding/threshold current) for ME-models in the circuit."""
+    """Recompute dynamic parameters (holding/threshold current) for ME-models.
+
+    Groups nodes by unique (model_template, morphology) to avoid redundant
+    computation — a circuit with 4M nodes may have only ~500 unique me-types.
+    """
     from bluepysnap import Circuit  # noqa: PLC0415
 
     try:
@@ -486,78 +492,105 @@ def _recompute_dynamic_params(circuit_config_path: Path) -> None:
             continue
 
         L.info("Recomputing dynamic params for population '%s'", pop_name)
-        updated_holding, updated_threshold = _compute_population_dynamics(pop)
+        holding, threshold = _compute_population_dynamics(pop, circuit_config_path)
 
-        if updated_holding:
-            _write_dynamics_to_h5(circuit_config_path, pop_name, updated_holding, updated_threshold)
+        if holding:
+            _write_dynamics_to_h5(circuit_config_path, pop_name, holding, threshold)
 
     L.info("Dynamic params recomputation complete")
 
 
-def _compute_population_dynamics(
+def _compute_population_dynamics(  # noqa: PLR0914
     pop: NodePopulation,
+    circuit_config_path: Path,
 ) -> tuple[dict[int, float], dict[int, float]]:
-    """Compute holding/threshold currents for all nodes in a population."""
-    from bluecellulab.tools import (  # noqa: PLC0415
-        compute_memodel_properties_v2,  # ty:ignore[unresolved-import]
-    )
+    """Compute holding/threshold per unique (template, morphology) pair, then broadcast."""
+    from bluecellulab.circuit.circuit_access.definition import EmodelProperties  # noqa: PLC0415
+    from bluecellulab.tools import compute_memodel_properties_v2  # noqa: PLC0415
+
+    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
+    cfg = json.loads(config.expanded_json)
+    component_hoc_dir = cfg.get("components", {}).get("biophysical_neuron_models_dir", "")
+
+    # Resolve per-population hoc dir
+    pop_cfg = _get_pop_config(cfg, pop.name)
+    hoc_dir_str = (pop_cfg or {}).get("biophysical_neuron_models_dir", "") or component_hoc_dir
+    if not hoc_dir_str:
+        return {}, {}
+    hoc_dir = Path(hoc_dir_str)
 
     df = pop.get(properties=["model_template", "morphology"])
-    hoc_dir = Path(pop.config.get("biophysical_neuron_models_dir", ""))
 
+    # Group node IDs by (model_template, morphology) — the "me-type"
+    me_type_groups: dict[tuple[str, str], list[int]] = {}
+    for node_id, row in df.iterrows():
+        tpl = row["model_template"]
+        morph = row["morphology"]
+        if not tpl or ":" not in tpl:
+            continue
+        me_type_groups.setdefault((tpl, morph), []).append(node_id)
+
+    L.info(
+        "Population '%s': %d nodes, %d unique me-types to compute",
+        pop.name,
+        len(df),
+        len(me_type_groups),
+    )
+
+    # Compute once per unique me-type
     updated_holding: dict[int, float] = {}
     updated_threshold: dict[int, float] = {}
 
-    for node_id, row in df.iterrows():
-        template_ref = row["model_template"]
-        if not template_ref or ":" not in template_ref:
-            continue
-
-        parts = template_ref.split(":", 1)
-        template_file = parts[1] + "." + parts[0]
-        template_path = hoc_dir / template_file
-
+    for (template_ref, morph_name), node_ids in me_type_groups.items():
+        kind, name = template_ref.split(":", 1)
+        template_path = hoc_dir / f"{name}.{kind}"
         if not template_path.exists():
             continue
 
-        morph_path = _resolve_node_morphology(pop, node_id)
+        morph_path = _resolve_node_morphology(pop, node_ids[0])
         if not morph_path:
             continue
 
+        emodel_props = EmodelProperties(holding_current=0.0, threshold_current=0.0)
         try:
             props = compute_memodel_properties_v2(
                 template_path=str(template_path),
                 morphology_path=str(morph_path),
                 template_format="v6",
                 holding_voltage=-85.0,
-                emodel_properties=None,
-            )
-            updated_holding[node_id] = props["holding_current"]
-            updated_threshold[node_id] = props["threshold_current"]
-            L.debug(
-                "Node %s: holding=%.4f, threshold=%.4f",
-                node_id,
-                props["holding_current"],
-                props["threshold_current"],
+                emodel_properties=emodel_props,
             )
         except Exception as e:  # noqa: BLE001
-            L.warning("Failed to compute dynamic params for node %s: %s", node_id, e)
+            L.warning("Dynamic params failed for me-type (%s, %s): %s", name, morph_name, e)
             continue
+
+        h_val = props["holding_current"]
+        t_val = props["threshold_current"]
+        for nid in node_ids:
+            updated_holding[nid] = h_val
+            updated_threshold[nid] = t_val
 
     return updated_holding, updated_threshold
 
 
+def _get_pop_config(cfg: dict, pop_name: str) -> dict | None:
+    """Extract the population config dict from the expanded circuit config."""
+    for entry in cfg.get("networks", {}).get("nodes", []):
+        if pop_name in entry.get("populations", {}):
+            return entry["populations"][pop_name]
+    return None
+
+
 def _resolve_node_morphology(pop: NodePopulation, node_id: int) -> Path | None:
     """Resolve the morphology path for a node, trying swc then asc extensions."""
-    try:
-        morph_path = pop.morph.get_morphology_path(node_id, extension="swc")
-        if not Path(morph_path).exists():
-            morph_path = pop.morph.get_morphology_path(node_id, extension="asc")
-    except Exception:  # noqa: BLE001
-        return None
-    if not Path(morph_path).exists():
-        return None
-    return Path(morph_path)
+    for ext in ("swc", "asc", "h5"):
+        try:
+            morph_path = pop.morph.get_morphology_path(node_id, extension=ext)
+            if Path(morph_path).exists():
+                return Path(morph_path)
+        except Exception:  # noqa: BLE001, S112
+            continue
+    return None
 
 
 def _write_dynamics_to_h5(
@@ -631,40 +664,20 @@ def _update_h5_dataset(
 # ---------------------------------------------------------------------------
 
 
-def _check_content_subset_of_parent(
-    db_client: Client, parent_circuit_id: UUID, child_config_path: Path
-) -> list[str]:
+def _check_content_subset_of_parent(child_config_path: Path, parent_config_path: Path) -> list[str]:
     """Verify morphology names and model_templates in the child are a subset of the parent."""
     from bluepysnap import Circuit as SnapCircuit  # noqa: PLC0415
 
     errors: list[str] = []
-
-    # Stage parent to a temp dir to inspect its contents
     try:
-        parent = db_client.get_entity(entity_id=parent_circuit_id, entity_type=models.Circuit)
+        parent_circuit = SnapCircuit(str(parent_config_path))
+        child_circuit = SnapCircuit(str(child_config_path))
     except Exception as e:  # noqa: BLE001
-        L.warning("Could not fetch parent circuit %s for subset check: %s", parent_circuit_id, e)
+        L.warning("Could not load circuits for subset check: %s", e)
         return errors
 
-    with tempfile.TemporaryDirectory() as parent_tmp:
-        parent_dir = Path(parent_tmp) / "parent"
-        parent_dir.mkdir()
-        try:
-            parent_config_path = stage_circuit(db_client, model=parent, output_dir=parent_dir)
-        except Exception as e:  # noqa: BLE001
-            L.warning("Could not stage parent circuit for subset check: %s", e)
-            return errors
-
-        try:
-            parent_circuit = SnapCircuit(str(parent_config_path))
-            child_circuit = SnapCircuit(str(child_config_path))
-        except Exception as e:  # noqa: BLE001
-            L.warning("Could not load circuits for subset check: %s", e)
-            return errors
-
-        errors.extend(_check_morphology_subset(child_circuit, parent_circuit))
-        errors.extend(_check_emodel_subset(child_circuit, parent_circuit))
-
+    errors.extend(_check_morphology_subset(child_circuit, parent_circuit))
+    errors.extend(_check_emodel_subset(child_circuit, parent_circuit))
     return errors
 
 
@@ -710,9 +723,7 @@ def _get_model_templates(circuit: SnapCircuitType) -> set[str]:
     return templates
 
 
-def _check_node_columns_unchanged(
-    db_client: Client, parent_circuit_id: UUID, child_config_path: Path
-) -> list[str]:
+def _check_node_columns_unchanged(child_config_path: Path, parent_config_path: Path) -> list[str]:
     """Check that only model_template/etype columns differ from parent nodes.
 
     Adopted from Aurélien's PR #837. Returns warnings (not errors) since dynamic
@@ -721,54 +732,41 @@ def _check_node_columns_unchanged(
     warnings: list[str] = []
     allowed_changes = {"model_template", "etype"}
 
-    try:
-        parent = db_client.get_entity(entity_id=parent_circuit_id, entity_type=models.Circuit)
-    except Exception:  # noqa: BLE001
-        return warnings
+    child_config = libsonata.CircuitConfig.from_file(str(child_config_path))
+    parent_config = libsonata.CircuitConfig.from_file(str(parent_config_path))
 
-    with tempfile.TemporaryDirectory() as parent_tmp:
-        parent_dir = Path(parent_tmp) / "parent"
-        parent_dir.mkdir()
+    for pop_name in child_config.node_populations:
+        if pop_name not in parent_config.node_populations:
+            continue
+
         try:
-            parent_config_path = stage_circuit(db_client, model=parent, output_dir=parent_dir)
-        except Exception:  # noqa: BLE001
-            return warnings
+            child_pop = child_config.node_population(pop_name)
+            parent_pop = parent_config.node_population(pop_name)
+        except Exception:  # noqa: BLE001, S112
+            continue
 
-        child_config = libsonata.CircuitConfig.from_file(str(child_config_path))
-        parent_config = libsonata.CircuitConfig.from_file(str(parent_config_path))
+        child_attrs = set(child_pop.attribute_names)
+        parent_attrs = set(parent_pop.attribute_names)
 
-        for pop_name in child_config.node_populations:
-            if pop_name not in parent_config.node_populations:
-                continue
+        if child_attrs != parent_attrs:
+            warnings.append(
+                f"Population '{pop_name}': attribute names differ from parent "
+                f"(added: {child_attrs - parent_attrs}, removed: {parent_attrs - child_attrs})"
+            )
+            continue
 
+        # Check each attribute for unexpected changes
+        selection = child_pop.select_all()
+        for attr in child_attrs - allowed_changes:
             try:
-                child_pop = child_config.node_population(pop_name)
-                parent_pop = parent_config.node_population(pop_name)
+                child_vals = child_pop.get_attribute(attr, selection)
+                parent_vals = parent_pop.get_attribute(attr, selection)
+                if not (child_vals == parent_vals).all():
+                    warnings.append(
+                        f"Population '{pop_name}': attribute '{attr}' was modified "
+                        f"(only {allowed_changes} changes are expected)"
+                    )
             except Exception:  # noqa: BLE001, S112
                 continue
-
-            child_attrs = set(child_pop.attribute_names)
-            parent_attrs = set(parent_pop.attribute_names)
-
-            if child_attrs != parent_attrs:
-                warnings.append(
-                    f"Population '{pop_name}': attribute names differ from parent "
-                    f"(added: {child_attrs - parent_attrs}, removed: {parent_attrs - child_attrs})"
-                )
-                continue
-
-            # Check each attribute for unexpected changes
-            selection = child_pop.select_all()
-            for attr in child_attrs - allowed_changes:
-                try:
-                    child_vals = child_pop.get_attribute(attr, selection)
-                    parent_vals = parent_pop.get_attribute(attr, selection)
-                    if not (child_vals == parent_vals).all():
-                        warnings.append(
-                            f"Population '{pop_name}': attribute '{attr}' was modified "
-                            f"(only {allowed_changes} changes are expected)"
-                        )
-                except Exception:  # noqa: BLE001, S112
-                    continue
 
     return warnings

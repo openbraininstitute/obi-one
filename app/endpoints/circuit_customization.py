@@ -21,6 +21,7 @@ from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
+from obi_one.scientific.validations.emodels import BUILTIN_NEURON_MECHANISMS
 from obi_one.utils.circuit_customization.staging import stage_customized_circuit
 
 L = logging.getLogger(__name__)
@@ -99,29 +100,16 @@ def _validate_edges(paths: list[Path]) -> None:
 
 def _validate_hoc(paths: list[Path]) -> None:
     """Layer 1 validation for HOC files: check template structure (begintemplate/endtemplate)."""
+    from obi_one.scientific.validations.emodels import check_structure  # noqa: PLC0415
+
     for path in paths:
         if path.suffix.lower() != ".hoc":
             msg = f"'{path.name}': expected .hoc extension"
             raise HocValidationError(msg)
-
-        content = path.read_text(encoding="utf-8", errors="replace")
-
-        template_name = None
-        for line in content.splitlines():
-            parts = line.strip().split()
-            if len(parts) == 2 and parts[0] == "begintemplate":  # noqa: PLR2004
-                template_name = parts[1]
-                break
-
-        if template_name is None:
-            msg = f"'{path.name}': could not find 'begintemplate' — not a valid HOC template"
-            raise HocValidationError(msg)
-        if f"endtemplate {template_name}" not in content:
-            msg = (
-                f"'{path.name}': found 'begintemplate {template_name}'"
-                " but missing matching 'endtemplate'"
-            )
-            raise HocValidationError(msg)
+        try:
+            check_structure(path)
+        except ValueError as e:
+            raise HocValidationError(str(e)) from e
 
 
 def _validate_mod(paths: list[Path]) -> None:
@@ -136,9 +124,6 @@ def _validate_mod(paths: list[Path]) -> None:
             raise ModValidationError(msg)
 
 
-BUILTIN_NEURON_MECHANISMS = {"pas", "hh", "extracellular", "capacitance"}
-
-
 def _extract_mod_mechanism_names(mod_paths: list[Path]) -> set[str]:
     """Extract SUFFIX names from MOD files (the mechanism names they define)."""
     names = set()
@@ -149,17 +134,6 @@ def _extract_mod_mechanism_names(mod_paths: list[Path]) -> set[str]:
             if len(parts) >= 2 and parts[0] == "SUFFIX":  # noqa: PLR2004
                 names.add(parts[1])
     return names
-
-
-def _extract_hoc_mechanisms(hoc_path: Path) -> set[str]:
-    """Extract mechanism names used via 'insert' statements in a HOC file."""
-    content = hoc_path.read_text(encoding="utf-8", errors="replace")
-    mechanisms = set()
-    for line in content.splitlines():
-        parts = line.strip().split()
-        if len(parts) == 2 and parts[0] == "insert":  # noqa: PLR2004
-            mechanisms.add(parts[1])
-    return mechanisms
 
 
 def _validate_nodes(paths: list[Path]) -> None:
@@ -249,17 +223,15 @@ def _validate_node_sets(path: Path) -> None:
 
 def _validate_hoc_mechanisms(hoc_paths: list[Path], mod_paths: list[Path]) -> None:
     """Check that mechanisms used in HOC files are available (built-in or from provided MODs)."""
+    from obi_one.scientific.validations.emodels import check_mechanisms  # noqa: PLC0415
+
     available = BUILTIN_NEURON_MECHANISMS | _extract_mod_mechanism_names(mod_paths)
 
     for hoc_path in hoc_paths:
-        used = _extract_hoc_mechanisms(hoc_path)
-        missing = used - available
-        if missing:
-            msg = (
-                f"'{hoc_path.name}': uses mechanisms {missing} "
-                f"that are not built-in or provided in MOD files"
-            )
-            raise HocValidationError(msg)
+        try:
+            check_mechanisms(hoc_path, available)
+        except ValueError as e:
+            raise HocValidationError(str(e)) from e
 
 
 def _validate_nodes_hoc_consistency(node_paths: list[Path], hoc_paths: list[Path]) -> None:
@@ -308,7 +280,10 @@ def _validate_nodes_hoc_consistency(node_paths: list[Path], hoc_paths: list[Path
 
 
 def _run_cross_validations(
-    hoc_paths: list[Path], mod_paths: list[Path], node_paths: list[Path]
+    hoc_paths: list[Path],
+    mod_paths: list[Path],
+    node_paths: list[Path],
+    parent_mechanism_names: set[str] | None = None,
 ) -> list[str]:
     """Run cross-file validations and return collected error messages."""
     errors: list[str] = []
@@ -322,7 +297,56 @@ def _run_cross_validations(
             _validate_nodes_hoc_consistency(node_paths, hoc_paths)
         except ValueError as e:
             errors.append(f"nodes/hoc cross-check: {e}")
+    if mod_paths and parent_mechanism_names is not None:
+        synapse_errors = _validate_new_mod_not_synapse(mod_paths, parent_mechanism_names)
+        errors.extend(synapse_errors)
     return errors
+
+
+def _validate_new_mod_not_synapse(
+    mod_paths: list[Path], parent_mechanism_names: set[str]
+) -> list[str]:
+    """Reject new MOD files that are synapse mechanisms (contain NET_RECEIVE).
+
+    Modification of existing MODs (same name as parent) is always allowed.
+    New MODs are only allowed if they are ion channels (no NET_RECEIVE).
+    """
+    errors: list[str] = []
+    for path in mod_paths:
+        # Check if this MOD name already exists in the parent
+        stem = path.stem
+        if stem in parent_mechanism_names:
+            continue  # modification of existing MOD — allowed
+        # New MOD — check for NET_RECEIVE
+        content = path.read_text(encoding="utf-8", errors="replace")
+        if "NET_RECEIVE" in content:
+            errors.append(
+                f"mechanisms: '{path.name}' is a new synapse mechanism (contains NET_RECEIVE). "
+                f"New synapse mechanisms are not supported — only ion channel MODs can be added."
+            )
+    return errors
+
+
+def _get_parent_mechanism_names(
+    db_client: entitysdk.client.Client, parent: models.Circuit
+) -> set[str]:
+    """Get the set of MOD file stems from the parent circuit's mechanisms_dir."""
+    import libsonata  # noqa: PLC0415
+
+    try:
+        # Stage parent config to get mechanism dir path (EFS-backed, fast)
+        from entitysdk.staging.circuit import stage_circuit  # noqa: PLC0415
+
+        with tempfile.TemporaryDirectory() as ptmp:
+            config_path = stage_circuit(db_client, model=parent, output_dir=Path(ptmp))
+            config = libsonata.CircuitConfig.from_file(str(config_path))
+            cfg = json.loads(config.expanded_json)
+            mech_dir = cfg.get("components", {}).get("mechanisms_dir", "")
+            if mech_dir and Path(mech_dir).is_dir():
+                return {p.stem for p in Path(mech_dir).glob("*.mod")}
+    except (OSError, KeyError, ValueError, json.JSONDecodeError) as e:
+        L.warning("Could not resolve parent mechanism names: %s", e)
+    return set()
 
 
 def _run_validations(
@@ -410,6 +434,17 @@ def _trigger_validation_task(
 ) -> None:
     """Submit a circuit validation job to the launch-system."""
     launch_path = "launch_scripts/launch_circuit_validation"
+    asset_gen_callback = {
+        "action_type": "http_request_with_token",
+        "event_type": "job_on_success",
+        "config": {
+            "url": (
+                f"{settings.API_URL}/api/obi-one/declared/circuit"
+                f"/{circuit_id}/generate-assets?force=true"
+            ),
+            "method": "POST",
+        },
+    }
     job_data = {
         "code": {
             "type": "python_repository",
@@ -431,7 +466,7 @@ def _trigger_validation_task(
             f"--project_id {project_id}",
         ],
         "project_id": str(project_id),
-        "callbacks": [],
+        "callbacks": [asset_gen_callback],
     }
 
     response = ls_client.post(url="/job", json=job_data)
@@ -457,30 +492,6 @@ def _register_and_stage(
     pop_map: dict[str, str],
 ) -> models.Circuit:
     """Register a new circuit entity, stage overrides, and upload the merged directory."""
-    circuit_model = models.Circuit(
-        name=name,
-        description=description,
-        subject=parent.subject,
-        brain_region=parent.brain_region,
-        license=parent.license,
-        number_neurons=parent.number_neurons,
-        number_synapses=parent.number_synapses,
-        number_connections=parent.number_connections,
-        has_morphologies=parent.has_morphologies,
-        has_point_neurons=parent.has_point_neurons,
-        has_electrical_cell_models=parent.has_electrical_cell_models,
-        has_spines=parent.has_spines,
-        scale=parent.scale,
-        build_category=parent.build_category,
-        target_simulator=parent.target_simulator,
-        root_circuit_id=parent.id,
-    )
-
-    try:
-        registered = db_client.register_entity(circuit_model)
-    except entitysdk.exception.EntitySDKError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to register circuit: {e}") from e
-
     staged_dir = tmp / "staged"
     staged_dir.mkdir()
 
@@ -499,6 +510,53 @@ def _register_and_stage(
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
+
+    # Compute metadata from the merged circuit
+    merged_config = staged_dir / "circuit_config.json"
+    if not merged_config.exists():
+        raise HTTPException(status_code=500, detail="Staged circuit is missing circuit_config.json")
+
+    try:
+        from obi_one.scientific.library.circuit import Circuit as OBICircuit  # noqa: PLC0415
+        from obi_one.utils.circuit import (  # noqa: PLC0415
+            get_circuit_properties,
+            get_circuit_size,
+        )
+
+        c = OBICircuit(name=name, path=str(merged_config))
+        scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
+        has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
+            get_circuit_properties(c)
+        )
+    except (OSError, ValueError, RuntimeError) as e:
+        raise HTTPException(
+            status_code=422, detail=f"Failed to compute circuit metadata: {e}"
+        ) from e
+
+    circuit_model = models.Circuit(
+        name=name,
+        description=description,
+        subject=parent.subject,
+        brain_region=parent.brain_region,
+        license=parent.license,
+        number_neurons=number_neurons,
+        number_synapses=number_synapses,
+        number_connections=number_connections,
+        has_morphologies=has_morphologies,
+        has_point_neurons=has_point_neurons,
+        has_electrical_cell_models=has_electrical_cell_models,
+        has_spines=has_spines,
+        scale=scale,
+        build_category=parent.build_category,
+        target_simulator=parent.target_simulator,
+        root_circuit_id=parent.id,
+        lifecycle_status="draft",
+    )
+
+    try:
+        registered = db_client.register_entity(circuit_model)
+    except entitysdk.exception.EntitySDKError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to register circuit: {e}") from e
 
     merged_files = {p.relative_to(staged_dir): p for p in staged_dir.rglob("*") if p.is_file()}
     db_client.upload_directory(
@@ -615,7 +673,12 @@ def customize_circuit_endpoint(
 
         # Cross-validations
         if not errors:
-            errors.extend(_run_cross_validations(hoc_paths, mod_paths, node_paths))
+            parent_mech_names = (
+                _get_parent_mechanism_names(db_client, parent) if mod_paths else None
+            )
+            errors.extend(
+                _run_cross_validations(hoc_paths, mod_paths, node_paths, parent_mech_names)
+            )
 
         if errors:
             raise HTTPException(status_code=422, detail={"validation_errors": errors})
@@ -644,8 +707,20 @@ def customize_circuit_endpoint(
             used=[{"id": parent.id, "type": "circuit"}],
             derivation_type=DerivationType.circuit_customization,
         )
-    except entitysdk.exception.EntitySDKError:
-        L.warning("Failed to create derivation link for %s", registered.id)
+    except entitysdk.exception.EntitySDKError as e:
+        L.error("Failed to create derivation link for %s: %s", registered.id, e)
+        try:
+            db_client.update_entity(
+                entity_id=registered.id,
+                entity_type=models.Circuit,
+                attrs_or_entity={"lifecycle_status": "failed"},
+            )
+        except entitysdk.exception.EntitySDKError:
+            L.warning("Also failed to mark circuit %s as failed", registered.id)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Circuit was created but derivation link to parent could not be recorded: {e}",
+        ) from e
 
     # 6. Trigger async validation task via launch-system
     _trigger_validation_task(

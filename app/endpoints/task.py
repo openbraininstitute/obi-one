@@ -40,11 +40,11 @@ def _check_circuit_is_active(db_client: entitysdk.client.Client, config_id: UUID
     if circuit.root_circuit_id is None:
         return
 
-    readiness_status = getattr(circuit, "readiness_status", None)
-    if readiness_status != "active":
+    lifecycle_status = getattr(circuit, "lifecycle_status", None)
+    if lifecycle_status != "active":
         raise ApiError(
             message=(
-                f"Circuit is not ready for simulation (readiness_status={readiness_status!r})."
+                f"Circuit is not ready for simulation (lifecycle_status={lifecycle_status!r})."
                 " Validation may still be pending or may have failed."
             ),
             error_code=ApiErrorCode.INVALID_REQUEST,

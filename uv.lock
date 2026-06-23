@@ -214,7 +214,7 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.96"
+version = "2.6.98"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -233,9 +233,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c1/e0/0dfa0f4d66fe13617221c5c273d846d6b31c64c280201606f39518594ac2/bluecellulab-2.6.96.tar.gz", hash = "sha256:c93bdb70ad3c7b1be3cfc9428ccbd223ef995a7abd985b58d776aa651f96b4fd", size = 558095, upload-time = "2026-05-04T09:39:08.542Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fa/85/f63ff829ba3d61eef3395fc2408af9adc9e0a2dedec372d2796a6d438537/bluecellulab-2.6.98.tar.gz", hash = "sha256:6c844c147e1d9ba17a652bfe4720aceb2108c41a5809166693b68094c3c695ac", size = 558266, upload-time = "2026-06-18T14:32:13.632Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/4c/18a19d0a894fec9f5a6d636510e10e36ed70d95e595b2d0fd5f712086540/bluecellulab-2.6.96-py3-none-any.whl", hash = "sha256:beb6665b5642442c77850c4b96e64f1894c9033aca5062f7ad3a783d77371fa9", size = 183126, upload-time = "2026-05-04T09:39:06.126Z" },
+    { url = "https://files.pythonhosted.org/packages/51/20/97c0bfc1caa786e43206b511619d707d43dd451375e8398e8f5980367062/bluecellulab-2.6.98-py3-none-any.whl", hash = "sha256:f13cf756af0616267f691c015a6178f1bdb8260a36402d0316de6aa9076ff14c", size = 183343, upload-time = "2026-06-18T14:32:12.438Z" },
 ]
 
 [[package]]
@@ -863,14 +863,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.17.2"
+version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/6b/31db5b6d67bb7fd0583040355752e7a3120ab156d1f88731d887931d678c/entitysdk-0.17.2.tar.gz", hash = "sha256:b8c64c6daf74183bd9d9680e5718998e66d00a1974126dc5b9185cf024c0d4b9", size = 89828, upload-time = "2026-06-12T09:38:47.416Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/bc/ac1519ff69f5201622eb583dfc39d71af081472b0d5e574ec396355fd785/entitysdk-0.18.0.tar.gz", hash = "sha256:3a4ed7d8e2d62af5aeecd11c960821b5e3fccfcd25f068d8d3178ecf96e30104", size = 90883, upload-time = "2026-06-23T07:48:34.995Z" }
 
 [[package]]
 name = "executing"
@@ -2235,7 +2235,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.87" },
+    { name = "bluecellulab", specifier = ">=2.6.98" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
     { name = "bluepysnap", specifier = ">=3.0.5" },
@@ -2246,7 +2246,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.16.0" },
+    { name = "entitysdk", specifier = ">=0.18.0" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },
