@@ -607,7 +607,7 @@ def customize_circuit_endpoint(
     ls_client: LaunchSystemClientDep,
     parent_circuit_id: Annotated[UUID, Form(...)],
     name: Annotated[str, Form(...)],
-    description: Annotated[str, Form("")],
+    description: Annotated[str, Form()] = "",
     edges_files: Annotated[
         list[UploadFile] | None, File(description="Edge population H5 files")
     ] = None,

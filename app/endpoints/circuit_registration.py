@@ -126,6 +126,14 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
             asset_label=AssetLabel.sonata_circuit,
         )
 
+        # 6b. Upload original archive as compressed_sonata_circuit (skips compression stage)
+        db_client.upload_file(
+            entity_id=registered.id,
+            entity_type=models.Circuit,
+            file_path=archive_path,
+            asset_label=AssetLabel.compressed_sonata_circuit,
+        )
+
         # 7. Create derivation link if parent provided
         if parent_circuit_id:
             db_client.create_derivation(
