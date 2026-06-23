@@ -30,6 +30,7 @@ class CircuitUsability(StrEnum):
     SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"
     SHOW_NONVIRTUAL_NEURON_SETS = "ShowNonVirtualNeuronSets"
     SHOW_NEURON_SETS = "ShowNeuronSets"
+    SHOW_DEPRECATED_BLOCKS = "ShowDeprecatedBlocks"
 
 
 class IonChannelPropertyType(StrEnum):

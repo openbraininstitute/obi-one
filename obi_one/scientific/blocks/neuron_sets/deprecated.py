@@ -1,9 +1,13 @@
 import abc
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
+from pydantic import Field, NonNegativeFloat
+
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.tuple import NamedTuple
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.core.schema import SchemaKey
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
@@ -56,7 +60,31 @@ class DeprecatedNeuronSet(NeuronSet, abc.ABC):
         raise NotImplementedError(self.deprecation_error_message)
 
 
-class ExcitatoryNeurons(DeprecatedNeuronSet):
+class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):
+    sample_percentage: (
+        Annotated[NonNegativeFloat, Field(le=100)]
+        | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)]
+    ) = Field(
+        default=100.0,
+        title="Sample (Percentage)",
+        description="Percentage of neurons to sample between 0 and 100%",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.PERCENT,
+        },
+    )
+
+    sample_seed: int | list[int] = Field(
+        default=1,
+        title="Sample Seed",
+        description="Seed for random sampling.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
+    )
+
+
+class ExcitatoryNeurons(DeprecatedSampleNeuronSet):
     title: ClassVar[str] = "All Excitatory Neurons (Deprecated)"
     description: ClassVar[str] = "All neurons from all node populations."
 
@@ -65,7 +93,7 @@ class ExcitatoryNeurons(DeprecatedNeuronSet):
     )
 
 
-class InhibitoryNeurons(DeprecatedNeuronSet):
+class InhibitoryNeurons(DeprecatedSampleNeuronSet):
     """All biophysical inhibitory neurons."""
 
     title: ClassVar[str] = "All Inhibitory Neurons (Deprecated)"
@@ -75,7 +103,43 @@ class InhibitoryNeurons(DeprecatedNeuronSet):
     )
 
 
-class IDNeuronSet(DeprecatedNeuronSet):
+class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # noqa: N801
+    """Virtual neurons projecting from the VPM thalamic nucleus.
+
+    Specifically, virtual neurons projecting from the VPM thalamic nucleus to biophysical
+    cortical neurons in the nbS1 model.
+    """
+
+    title: ClassVar[str] = "Demo: nbS1 VPM Inputs (Deprecated)"
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
+
+
+class nbS1POmInputs(DeprecatedSampleNeuronSet):  # noqa: N801
+    """Virtual neurons projecting from the POm thalamic nucleus.
+
+    Specifically, virtual neurons projecting from the POm thalamic nucleus to biophysical
+    cortical neurons in the nbS1 model.
+    """
+
+    title: ClassVar[str] = "Demo: nbS1 POm Inputs (Deprecated)"
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
+
+
+class rCA1CA3Inputs(DeprecatedSampleNeuronSet):  # noqa: N801
+    """Virtual neurons projecting from CA3 to CA1.
+
+    Specifically, virtual neurons projecting from the CA3 region to biophysical CA1 neurons
+    in the rCA1 model.
+    """
+
+    title: ClassVar[str] = "Demo: rCA1 CA3 Inputs (Deprecated)"
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
+
+
+class IDNeuronSet(DeprecatedSampleNeuronSet):
     """A neuron set that selects neurons by their IDs.
 
     This neuron set is used to select neurons by their IDs, which can be useful for
@@ -88,38 +152,10 @@ class IDNeuronSet(DeprecatedNeuronSet):
         NeuronSetPopulationType.BIOPHYSICAL
     )
 
-
-class nbS1VPMInputs(DeprecatedNeuronSet):  # noqa: N801
-    """Virtual neurons projecting from the VPM thalamic nucleus.
-
-    Specifically, virtual neurons projecting from the VPM thalamic nucleus to biophysical
-    cortical neurons in the nbS1 model.
-    """
-
-    title: ClassVar[str] = "Demo: nbS1 VPM Inputs (Deprecated)"
-
-    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
-
-
-class nbS1POmInputs(DeprecatedNeuronSet):  # noqa: N801
-    """Virtual neurons projecting from the POm thalamic nucleus.
-
-    Specifically, virtual neurons projecting from the POm thalamic nucleus to biophysical
-    cortical neurons in the nbS1 model.
-    """
-
-    title: ClassVar[str] = "Demo: nbS1 POm Inputs (Deprecated)"
-
-    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
-
-
-class rCA1CA3Inputs(DeprecatedNeuronSet):  # noqa: N801
-    """Virtual neurons projecting from CA3 to CA1.
-
-    Specifically, virtual neurons projecting from the CA3 region to biophysical CA1 neurons
-    in the rCA1 model.
-    """
-
-    title: ClassVar[str] = "Demo: rCA1 CA3 Inputs (Deprecated)"
-
-    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
+    neuron_ids: NamedTuple | Annotated[list[NamedTuple], Field(min_length=1)] = Field(
+        title="Neuron IDs",
+        description="List of neuron IDs to include in the neuron set.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.NEURON_IDS,
+        },
+    )
