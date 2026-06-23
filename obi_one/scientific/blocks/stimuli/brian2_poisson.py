@@ -110,13 +110,14 @@ class Brian2DirectPoissonStimulus(Block):
         self._default_node_set = default_node_set
         _ = default_timestamps or SingleTimestamp(start_time=0.0)
 
-        if self.neuron_set.block_name != "Default: All Biophysical Neurons":  # Temp hack
+        if self.neuron_set.block_name != "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
             neuron_set = resolve_neuron_set_ref_to_neuron_set(
-                self.neuron_set, self._default_node_set
+                self.neuron_set,
+                self._default_node_set,  # ty:ignore[invalid-argument-type]
             )
             max_n_neurons = 100
             if (
-                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))
+                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))  # ty:ignore[unresolved-attribute]
                 > max_n_neurons
             ):
                 msg = (
@@ -129,7 +130,7 @@ class Brian2DirectPoissonStimulus(Block):
 
     def _generate_config(self) -> dict:
 
-        if self.neuron_set.block_name == "Default: All Biophysical Neurons":
+        if self.neuron_set.block_name == "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
             node_set = "sugar"
         else:
             node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
