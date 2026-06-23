@@ -281,11 +281,6 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
-from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter
-from obi_one.scientific.blocks.neuron_sets.specific import (
-    AllNeurons,
-)
 from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
@@ -293,6 +288,11 @@ from obi_one.scientific.blocks.neuron_sets.deprecated import (
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
+)
+from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
+from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllNeurons,
 )
 from obi_one.scientific.blocks.recording import (
     Recording,

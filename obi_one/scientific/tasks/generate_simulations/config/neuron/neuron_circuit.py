@@ -27,8 +27,8 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
     NEURONSimulationNeuronSetUnion,
+    PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
