@@ -7,7 +7,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     CircuitFromID,
@@ -60,7 +59,9 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            BiophysicalNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
+            BiophysicalNeuronSetReference.__name__: (
+                NeuronSimulationScanConfig.default_node_set_name
+            ),
             VirtualNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
             PointNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,

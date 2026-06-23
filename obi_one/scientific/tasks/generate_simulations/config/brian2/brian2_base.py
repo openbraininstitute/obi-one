@@ -13,6 +13,8 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     PointNeuronSetReference,
 )
+
+
 class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for Brian2-based simulation scan configurations."""
 
@@ -21,6 +23,7 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
 
     default_node_set_name: ClassVar[str] = "Default: Sugar gustatory receptor neurons"
 
+    @property
     def default_neuron_set_reference(self) -> PointNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
         return PointNeuronSetReference(

@@ -27,12 +27,12 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit 
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
-    BiophysicalNeuronSetReference,
     NeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
 from obi_one.utils.sonata import write_simulation_config
+
 L = logging.getLogger(__name__)
 
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
@@ -215,7 +215,6 @@ class GenerateSimulationTask(Task):
 
     def _default_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
         """Returns the reference for the default neuron set."""
-
         default_neuron_set_ref = self.config.default_neuron_set_reference
 
         if (
@@ -323,9 +322,7 @@ class GenerateSimulationTask(Task):
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
                 self._neuron_set_definitions[neuron_set_key] = (
-                    neuron_set_.add_node_set_definition_to_sonata_circuit(
-                        self._circuit
-                    )
+                    neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit)
                 )
 
         else:
@@ -351,7 +348,9 @@ class GenerateSimulationTask(Task):
                     self.config.initialize.node_set.block_name  # ty:ignore[unresolved-attribute]
                 ]
             else:
-                neuron_set_definition = self._neuron_set_definitions[self.config.default_node_set_name]
+                neuron_set_definition = self._neuron_set_definitions[
+                    self.config.default_node_set_name
+                ]
 
             L.info("Hello world")
             L.info(neuron_set_definition)

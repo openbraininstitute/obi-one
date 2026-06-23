@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 import bluepysnap as snap
-import logging
+
 L = logging.getLogger(__name__)
 
 

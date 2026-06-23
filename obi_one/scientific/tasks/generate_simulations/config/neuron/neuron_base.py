@@ -11,9 +11,11 @@ from obi_one.scientific.library.constants import (
     SONATA,
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
     BaseSimulationScanConfig,
     BlockGroup,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    BiophysicalNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -23,9 +25,9 @@ from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    BiophysicalNeuronSetReference,
-)
+from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
+
+
 class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for neuron-based simulation scan configurations."""
 
@@ -34,11 +36,18 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     _timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
     default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
 
+    @property
     def default_neuron_set_reference(self) -> BiophysicalNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
-        return BiophysicalNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self._default_node_set_name
+
+        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
+
+        default_neuron_set_block_reference.block = AllBiophysicalNeurons()
+        default_neuron_set_block_reference.block.set_block_name(self.default_node_set_name)
+
+        return default_neuron_set_block_reference
 
     recordings: dict[str, RecordingUnion] = Field(
         default_factory=dict,

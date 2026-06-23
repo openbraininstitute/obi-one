@@ -11,6 +11,8 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     PointNeuronSetReference,
 )
+
+
 class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     """Abstract base class for learning engine-based simulation scan configurations."""
 
@@ -18,6 +20,7 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     _timestep: ClassVar[PositiveFloat] = 0.1
     default_node_set_name: ClassVar[str] = "Default: All Point Neurons"
 
+    @property
     def default_neuron_set_reference(self) -> PointNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
         return PointNeuronSetReference(
