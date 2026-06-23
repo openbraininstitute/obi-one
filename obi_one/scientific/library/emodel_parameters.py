@@ -233,9 +233,8 @@ def _parse_optimization_parameters(
         # the final HOC file. They are not runtime-modifiable NEURON variables.
         # Detection: section_list is not a recognized name AND variable has no
         # ion channel suffix.
-        if (
-            section_list not in _VALID_SECTION_LISTS
-            and not _extract_channel_suffix(neuron_variable, known_suffixes)
+        if section_list not in _VALID_SECTION_LISTS and not _extract_channel_suffix(
+            neuron_variable, known_suffixes
         ):
             continue
 
