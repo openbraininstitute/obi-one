@@ -142,7 +142,9 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: [BiophysicalNeuronSetReference.__name__,
+                                         VirtualNeuronSetReference.__name__,
+                                         PointNeuronSetReference.__name__],
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
