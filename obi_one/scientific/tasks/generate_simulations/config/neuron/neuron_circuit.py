@@ -28,7 +28,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
-    SimulationNeuronSetUnion,
+    NEURONSimulationNeuronSetUnion,
     VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
@@ -136,7 +136,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

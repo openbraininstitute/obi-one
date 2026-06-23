@@ -285,6 +285,8 @@ from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllNeurons,
+)
+from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
     InhibitoryNeurons,
