@@ -60,9 +60,9 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            BiophysicalNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-            VirtualNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
-            PointNeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            BiophysicalNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
+            VirtualNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
+            PointNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
         },

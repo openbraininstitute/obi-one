@@ -22,9 +22,6 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
-from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
-)
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
@@ -37,12 +34,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
 from obi_one.utils.sonata import write_simulation_config
 L = logging.getLogger(__name__)
-
-DEFAULT_NEURON_SET_BLOCK_REFERENCE = BiophysicalNeuronSetReference(
-    block_dict_name="neuron_sets", block_name=DEFAULT_NODE_SET_NAME
-)
-DEFAULT_NEURON_SET_BLOCK_REFERENCE.block = AllBiophysicalNeurons()
-DEFAULT_NEURON_SET_BLOCK_REFERENCE.block.set_block_name(DEFAULT_NODE_SET_NAME)
 
 DEFAULT_TIMESTAMPS = SingleTimestamp(start_time=0.0)
 
@@ -127,7 +118,7 @@ class GenerateSimulationTask(Task):
             else:
                 self._sonata_config["inputs"].update(
                     stimulus.config(
-                        default_node_set=DEFAULT_NODE_SET_NAME,
+                        default_node_set=self.config.default_node_set_name,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
                     )
                 )
@@ -140,7 +131,7 @@ class GenerateSimulationTask(Task):
             self._sonata_config["reports"].update(
                 recording.config(
                     self.config.initialize.simulation_length,
-                    DEFAULT_NODE_SET_NAME,
+                    self.config.default_node_set_name,
                     db_client,
                 )
             )
@@ -152,7 +143,7 @@ class GenerateSimulationTask(Task):
             manipulation_list = [
                 item
                 for manipulation in getattr(self.config, "synaptic_manipulations", {}).values()
-                for item in manipulation.config(DEFAULT_NODE_SET_NAME)
+                for item in manipulation.config(self.config.default_node_set_name)
             ]
             if len(manipulation_list) > 0:
                 self._sonata_config["connection_overrides"] = manipulation_list
@@ -164,7 +155,7 @@ class GenerateSimulationTask(Task):
             for modification in getattr(self.config, "neuronal_manipulations", {}).values():
                 result = modification.config(
                     self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
-                    DEFAULT_NODE_SET_NAME,
+                    self.config.default_node_set_name,
                 )
                 if isinstance(result, list):
                     # RANGE variables -> conditions.modifications list
@@ -224,23 +215,26 @@ class GenerateSimulationTask(Task):
 
     def _default_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
         """Returns the reference for the default neuron set."""
+
+        default_neuron_set_ref = self.config.default_neuron_set_reference
+
         if (
-            DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name in self.config.neuron_sets  # ty:ignore[unresolved-attribute]
+            default_neuron_set_ref.block_name in self.config.neuron_sets  # ty:ignore[unresolved-attribute]
             and not isinstance(
-                self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name],  # ty:ignore[unresolved-attribute]
+                self.config.neuron_sets[default_neuron_set_ref.block_name],  # ty:ignore[unresolved-attribute]
                 AllBiophysicalNeurons,
             )
         ):
-            msg = f"Default neuron set name '{DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name}' \
+            msg = f"Default neuron set name '{default_neuron_set_ref.block_name}' \
                 already exists in neuron_sets but is not an AllBiophysicalNeurons set!"
             raise OBIONEError(msg)
 
-        if DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
-            self.config.neuron_sets[DEFAULT_NEURON_SET_BLOCK_REFERENCE.block_name] = (  # ty:ignore[unresolved-attribute]
-                DEFAULT_NEURON_SET_BLOCK_REFERENCE.block
+        if default_neuron_set_ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
+            self.config.neuron_sets[default_neuron_set_ref.block_name] = (  # ty:ignore[unresolved-attribute]
+                default_neuron_set_ref.block
             )
 
-        return DEFAULT_NEURON_SET_BLOCK_REFERENCE
+        return default_neuron_set_ref
 
     def _ensure_simulation_target_node_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`.
@@ -287,14 +281,14 @@ class GenerateSimulationTask(Task):
 
                 self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
                     self.config.initialize.node_set,
-                    DEFAULT_NODE_SET_NAME,
+                    self.config.default_node_set_name,
                 )
             elif not hasattr(self.config.initialize, "node_set"):
                 _ = self._default_neuron_set_ref()
-                self._sonata_config["node_set"] = DEFAULT_NODE_SET_NAME
+                self._sonata_config["node_set"] = self.config.default_node_set_name
 
         else:
-            self._sonata_config["node_set"] = DEFAULT_NODE_SET_NAME
+            self._sonata_config["node_set"] = self.config.default_node_set_name
 
     def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
         """Resolve neuron sets and add them to the SONATA circuit object.
@@ -336,8 +330,8 @@ class GenerateSimulationTask(Task):
 
         else:
             neuron_set = AllBiophysicalNeurons()
-            neuron_set.set_block_name(DEFAULT_NODE_SET_NAME)
-            self._neuron_set_definitions[DEFAULT_NODE_SET_NAME] = (
+            neuron_set.set_block_name(self.config.default_node_set_name)
+            self._neuron_set_definitions[self.config.default_node_set_name] = (
                 neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit)  # ty:ignore[invalid-argument-type]
             )
 
@@ -357,7 +351,7 @@ class GenerateSimulationTask(Task):
                     self.config.initialize.node_set.block_name  # ty:ignore[unresolved-attribute]
                 ]
             else:
-                neuron_set_definition = self._neuron_set_definitions[DEFAULT_NODE_SET_NAME]
+                neuron_set_definition = self._neuron_set_definitions[self.config.default_node_set_name]
 
             L.info("Hello world")
             L.info(neuron_set_definition)
