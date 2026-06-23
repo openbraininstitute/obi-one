@@ -39,7 +39,6 @@ SONATA_VERSION = 2.4
 L = logging.getLogger(__name__)
 
 
-DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
 
