@@ -10,6 +10,7 @@ import bluepysnap as snap
 
 from obi_one.core.block import Block
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_metrics import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
@@ -105,7 +106,7 @@ class NeuronSet(Block, abc.ABC):
                 ptype = SonataPopulationType.BIOPHYSICAL
             elif circuit.sonata_circuit.nodes[pname].type == "virtual":
                 ptype = SonataPopulationType.VIRTUAL
-            elif circuit.sonata_circuit.nodes[pname].type.startswith("point_"):
+            elif circuit.sonata_circuit.nodes[pname].type in TYPES_OF_POINT_NODES:
                 ptype = SonataPopulationType.POINT
             else:
                 msg = f"Unknown SONATA population type for population '{pname}'!"
