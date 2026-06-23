@@ -95,6 +95,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
 
     def get_populations(self, circuit: Circuit) -> list[str]:
         """Returns population names included in the neuron set."""
+        self.check_combined_depth()
         base_nset, comb_with = self._resolve_refs()
         all_nsets = [base_nset] + [nset for nset, _ in comb_with]
         all_pops = []
