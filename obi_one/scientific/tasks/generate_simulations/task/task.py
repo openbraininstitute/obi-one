@@ -318,6 +318,8 @@ class GenerateSimulationTask(Task):
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
 
+            L.info("self.config.neuron_sets: %s", self.config.neuron_sets)  # ty:ignore[unresolved-attribute]
+
             for neuron_set_key, neuron_set_ in self.config.neuron_sets.items():  # ty:ignore[unresolved-attribute]
                 # 1. Check that the neuron sets block name matches the dict key
                 if neuron_set_key != neuron_set_.block_name:
@@ -357,6 +359,7 @@ class GenerateSimulationTask(Task):
             else:
                 neuron_set_definition = self._neuron_set_definitions[DEFAULT_NODE_SET_NAME]
 
+            L.info("Hello world")
             L.info(neuron_set_definition)
             # number_neurons = len(neuron_set_definition["node_id"])
             db_client.update_entity(
@@ -423,6 +426,6 @@ class GenerateSimulationTask(Task):
         self._add_sonata_simulation_config_reports(db_client)
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
-        # self._update_simulation_number_neurons(db_client)
+        self._update_simulation_number_neurons(db_client)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)
