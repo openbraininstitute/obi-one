@@ -29,6 +29,7 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
+    resolve_neuron_set_ref_to_neuron_set,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
@@ -94,9 +95,9 @@ class Brian2DirectPoissonStimulus(Block):
 
     def config(
         self,
-        circuit: Circuit,  # noqa: ARG002
-        population: str | None = None,  # noqa: ARG002
-        default_node_set: str = "All",
+        circuit: Circuit,
+        population: str | None = None,
+        default_node_set: str = "sugar",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
         """Return the SONATA inputs entry for this block.
@@ -108,16 +109,36 @@ class Brian2DirectPoissonStimulus(Block):
         """
         self._default_node_set = default_node_set
         _ = default_timestamps or SingleTimestamp(start_time=0.0)
+
+        if self.neuron_set.block_name != "Default: All Biophysical Neurons":  # Temp hack
+            neuron_set = resolve_neuron_set_ref_to_neuron_set(
+                self.neuron_set, self._default_node_set
+            )
+            max_n_neurons = 100
+            if (
+                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))
+                > max_n_neurons
+            ):
+                msg = (
+                    f"Number of neurons used with the {self.title} exceeds the maximum "
+                    f"allowed: {max_n_neurons}."
+                )
+                raise ValueError(msg)
+
         return self._generate_config()
 
     def _generate_config(self) -> dict:
+
+        if self.neuron_set.block_name == "Default: All Biophysical Neurons":
+            node_set = "sugar"
+        else:
+            node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
+
         return {
             self.block_name: {
                 "input_type": "spikes",
                 "module": "poisson",
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                "node_set": node_set,
                 "rate": self.frequency,
                 "weight": self.weight,
                 # libsonata requires `delay` on every input; the Brian2
