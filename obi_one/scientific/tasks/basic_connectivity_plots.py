@@ -12,6 +12,7 @@ import entitysdk.client
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from conntility import ConnectivityMatrix
 from pydantic import model_validator
 
@@ -34,6 +35,7 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
         connection_probability_pathway,
         connection_probability_within_pathway,
         find_canonical_synapse_classes,
+        in_out_degree,
         plot_connection_probability_pathway_stats,
         plot_connection_probability_stats,
         plot_network_legends,
@@ -45,7 +47,6 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
-    from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
 
 L = logging.getLogger(__name__)
@@ -137,6 +138,10 @@ class BasicConnectivityPlotsTask(Task):
             "layer": plt.get_cmap("Dark2"),
             "mtype": plt.get_cmap("GnBu"),
         }
+        # Only keep properties that exist in the connectome's node table.
+        node_cmaps = {
+            prop: cmap for prop, cmap in node_cmaps.items() if prop in conn.vertex_properties
+        }
         fig = plot_node_stats(conn, node_cmaps, full_width)
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"node_stats.{fmt}"
@@ -150,14 +155,18 @@ class BasicConnectivityPlotsTask(Task):
         size: tuple[int, int],
         n_min_stats: int,
         conn: ConnectivityMatrix,
-        deg: dict[str, float],
-        deg_er: dict[str, float],
+        deg: pd.DataFrame,
+        deg_er: pd.DataFrame,
         dir_path: str | Path,
     ) -> None:
         if size[0] < n_min_stats:
             L.warning("Your network is likely too small for these plots to be informative.")
         conn_probs = {"full": {}, "within": {}}
-        for grouping_prop in ["synapse_class", "layer", "mtype"]:
+        # Only group by properties that exist in the connectome's node table.
+        grouping_props = [
+            prop for prop in ("synapse_class", "layer", "mtype") if prop in conn.vertex_properties
+        ]
+        for grouping_prop in grouping_props:
             conn_probs["full"][grouping_prop] = connection_probability_pathway(conn, grouping_prop)
             conn_probs["within"][grouping_prop] = connection_probability_within_pathway(
                 conn, grouping_prop, max_dist=100
@@ -166,8 +175,8 @@ class BasicConnectivityPlotsTask(Task):
         fig_network_pathway = plot_connection_probability_pathway_stats(
             full_width,
             conn_probs,
-            deg,  # ty:ignore[invalid-argument-type]
-            deg_er,  # ty:ignore[invalid-argument-type]
+            deg,
+            deg_er,
         )
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"network_pathway_stats.{fmt}"
@@ -190,7 +199,7 @@ class BasicConnectivityPlotsTask(Task):
         # Global connection probabilities
         global_conn_probs = {"full": None, "within": None}
         global_conn_probs["full"] = compute_global_connectivity(adj, adj_er, connection_type="full")
-        global_conn_probs["widthin"] = compute_global_connectivity(
+        global_conn_probs["within"] = compute_global_connectivity(
             adj, adj_er, v=conn.vertices, connection_type="within", max_dist=100, cols=["x", "y"]
         )
 
@@ -393,7 +402,7 @@ class BasicConnectivityPlotsTask(Task):
     ) -> None:
         # Check for connectivity dependencies
         if (  # pragma: no cover
-            "compute_global_connectivity" not in globals() or "node_degree" not in globals()
+            "compute_global_connectivity" not in globals() or "ER_model" not in globals()
         ):
             msg = (
                 "Connectivity plotting requires connectome-analysis (connalysis). "
@@ -431,8 +440,8 @@ class BasicConnectivityPlotsTask(Task):
         # Degrees of matrix and control
         adj = conn.matrix.astype(bool)
         adj_er = ER_model(adj)
-        deg = node_degree(adj, direction=("IN", "OUT"))
-        deg_er = node_degree(adj_er, direction=("IN", "OUT"))
+        deg = in_out_degree(adj)
+        deg_er = in_out_degree(adj_er)
 
         n_min_stats = 50  # Minimum number of nodes for statistics
         n_max_2d_plot = 20  # Maximum number of nodes for 2D plots and table
