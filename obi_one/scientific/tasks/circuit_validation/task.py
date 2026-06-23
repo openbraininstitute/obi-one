@@ -107,6 +107,11 @@ def run_circuit_validation(
                     L.warning("Could not stage parent circuit for checks: %s", e)
                 else:
                     fatal_errors.extend(
+                        _check_new_populations_not_biophysical(
+                            circuit_config_path, parent_config_path
+                        )
+                    )
+                    fatal_errors.extend(
                         _check_content_subset_of_parent(circuit_config_path, parent_config_path)
                     )
                     warning_messages.extend(
@@ -662,6 +667,41 @@ def _update_h5_dataset(
 # Subset checks: customized circuit must not introduce new morphologies or
 # emodels that don't exist in the parent (adopted from PR #829).
 # ---------------------------------------------------------------------------
+
+_NON_BIOPHYSICAL_POPULATION_TYPES = {"virtual", "point_neuron"}
+
+
+def _check_new_populations_not_biophysical(
+    child_config_path: Path, parent_config_path: Path
+) -> list[str]:
+    """Reject new node populations that are biophysical.
+
+    New populations may only be virtual or point neurons — biophysical populations
+    require morphologies and HOC files that must come from the parent.
+    """
+    child_cfg = json.loads(libsonata.CircuitConfig.from_file(str(child_config_path)).expanded_json)
+    parent_cfg = json.loads(
+        libsonata.CircuitConfig.from_file(str(parent_config_path)).expanded_json
+    )
+
+    parent_pop_names = {
+        pop_name
+        for entry in parent_cfg.get("networks", {}).get("nodes", [])
+        for pop_name in entry.get("populations", {})
+    }
+
+    errors = []
+    for entry in child_cfg.get("networks", {}).get("nodes", []):
+        for pop_name, pop_cfg in entry.get("populations", {}).items():
+            if pop_name in parent_pop_names:
+                continue
+            pop_type = pop_cfg.get("type", "biophysical")
+            if pop_type not in _NON_BIOPHYSICAL_POPULATION_TYPES:
+                errors.append(
+                    f"New population '{pop_name}' has type '{pop_type}' — "
+                    f"only virtual or point_neuron populations can be added to a customized circuit"
+                )
+    return errors
 
 
 def _check_content_subset_of_parent(child_config_path: Path, parent_config_path: Path) -> list[str]:

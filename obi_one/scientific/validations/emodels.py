@@ -1,6 +1,4 @@
-"""Emodels validations.
-
-"""
+"""Emodels validations."""
 
 from pathlib import Path
 
