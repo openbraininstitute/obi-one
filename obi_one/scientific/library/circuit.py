@@ -5,6 +5,11 @@ import numpy as np
 from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.scientific.library.circuit_metrics import (
+    TYPES_OF_BIOPHYS_NODES,
+    TYPES_OF_POINT_NODES,
+    TYPES_OF_VIRTUAL_NODES,
+)
 
 CIRCUIT_MOD_DIR = "mod"
 
@@ -76,12 +81,11 @@ class Circuit(OBIBaseModel):
         """Returns node population names."""
         popul_names = c.nodes.population_names
         if not incl_virtual:
-            popul_names = [pop for pop in popul_names if c.nodes[pop].type != "virtual"]
+            popul_names = [pop for pop in popul_names if c.nodes[pop].type not in TYPES_OF_VIRTUAL_NODES]
         if not incl_point:
-            # Exclude "point_neuron", "point_process", etc. types
-            popul_names = [pop for pop in popul_names if "point_" not in c.nodes[pop].type]
+            popul_names = [pop for pop in popul_names if c.nodes[pop].type not in TYPES_OF_POINT_NODES]
         if not incl_biophysical:
-            popul_names = [pop for pop in popul_names if c.nodes[pop].type != "biophysical"]
+            popul_names = [pop for pop in popul_names if c.nodes[pop].type not in TYPES_OF_BIOPHYS_NODES]
         return popul_names
 
     @staticmethod
@@ -114,22 +118,20 @@ class Circuit(OBIBaseModel):
         """Returns edge population names."""
         popul_names = c.edges.population_names
         if not incl_virtual:
-            popul_names = [pop for pop in popul_names if c.edges[pop].source.type != "virtual"]
+            popul_names = [pop for pop in popul_names if c.edges[pop].source.type not in TYPES_OF_VIRTUAL_NODES]
         if not incl_point:
-            # Exclude "point_neuron", "point_process", etc. source/target types
             popul_names = [
                 pop
                 for pop in popul_names
-                if "point_" not in c.edges[pop].source.type
-                and "point_" not in c.edges[pop].target.type
+                if c.edges[pop].source.type not in TYPES_OF_POINT_NODES
+                and c.edges[pop].target.type not in TYPES_OF_POINT_NODES
             ]
         if not incl_biophysical:
-            # Exclude biophysical source/target types
             popul_names = [
                 pop
                 for pop in popul_names
-                if c.edges[pop].source.type != "biophysical"
-                and c.edges[pop].target.type != "biophysical"
+                if c.edges[pop].source.type not in TYPES_OF_BIOPHYS_NODES
+                and c.edges[pop].target.type not in TYPES_OF_BIOPHYS_NODES
             ]
         return popul_names
 
