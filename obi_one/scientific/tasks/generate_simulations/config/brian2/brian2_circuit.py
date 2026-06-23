@@ -23,6 +23,7 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base imp
 from obi_one.scientific.unions.unions_neuron_sets import (
     Brian2SimulationNeuronSetUnion,
     NeuronSetReference,
+    PointNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     Brian2CircuitStimulusUnion,
@@ -55,7 +56,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: "Default: Sugar gustatory receptor neurons",
+            PointNeuronSetReference.__name__: Brian2SimulationScanConfig.default_node_set_name,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
