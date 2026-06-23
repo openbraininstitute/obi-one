@@ -90,6 +90,7 @@ __all__ = [
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
+    "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
     "InhibitoryTsodyksMarkramSynapticModel",
@@ -285,6 +286,7 @@ from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllNeurons,
     ExcitatoryNeurons,
+    IDNeuronSet,
     InhibitoryNeurons,
     nbS1POmInputs,
     nbS1VPMInputs,

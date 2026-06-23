@@ -5,6 +5,14 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.deprecated import (
+    ExcitatoryNeurons,
+    IDNeuronSet,
+    InhibitoryNeurons,
+    nbS1POmInputs,
+    nbS1VPMInputs,
+    rCA1CA3Inputs,
+)
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     PointPopulationIDNeuronSet,
@@ -31,12 +39,6 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllNeurons,
     AllPointNeurons,
     AllVirtualNeurons,
-    ExcitatoryNeurons,
-    IDNeuronSet,
-    InhibitoryNeurons,
-    nbS1POmInputs,
-    nbS1VPMInputs,
-    rCA1CA3Inputs,
 )
 
 _DEPRECATED_BIOPHYSICAL_NEURON_SETS = ExcitatoryNeurons | InhibitoryNeurons | IDNeuronSet
