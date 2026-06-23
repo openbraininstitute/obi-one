@@ -201,7 +201,6 @@ class NeuronSet(Block, abc.ABC):
         nset_def, compound_def = self.get_node_set_definition(
             circuit, force_resolve_ids=force_resolve_ids
         )
-        # nset_name = f"__{self.__class__.__name__}__{self.block_name}"
         nset_name = self.block_name
         nset_dict = compound_def | {nset_name: nset_def}
 

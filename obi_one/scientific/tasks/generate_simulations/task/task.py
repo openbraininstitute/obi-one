@@ -8,7 +8,6 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
-from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -221,11 +220,12 @@ class GenerateSimulationTask(Task):
             default_neuron_set_ref.block_name in self.config.neuron_sets  # ty:ignore[unresolved-attribute]
             and not isinstance(
                 self.config.neuron_sets[default_neuron_set_ref.block_name],  # ty:ignore[unresolved-attribute]
-                AllBiophysicalNeurons,
+                self.config.default_neuron_set_type,
             )
         ):
             msg = f"Default neuron set name '{default_neuron_set_ref.block_name}' \
-                already exists in neuron_sets but is not an AllBiophysicalNeurons set!"
+                already exists in neuron_sets but is not an \
+                {self.config.default_neuron_set_type.__name__} set!"
             raise OBIONEError(msg)
 
         if default_neuron_set_ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
@@ -292,9 +292,8 @@ class GenerateSimulationTask(Task):
     def _resolve_neuron_sets_and_write_simulation_node_sets_file(self) -> None:
         """Resolve neuron sets and add them to the SONATA circuit object.
 
-        In the case where there is no neuron_sets dictionary in the config, the default
-        AllBiophysicalNeurons neuron set is created and added to the SONATA circuit object.
-
+        In the case where there is no neuron_sets dictionary in the config, the config's
+        default_neuron_set_type is created and added to the SONATA circuit object.
         The neuron_sets dict key is always used as the name of the new node set, even for a
         PredefinedNeuronSet, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
@@ -322,11 +321,13 @@ class GenerateSimulationTask(Task):
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
                 self._neuron_set_definitions[neuron_set_key] = (
-                    neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+                    neuron_set_.add_node_set_definition_to_sonata_circuit(
+                        self._circuit, sonata_circuit
+                    )
                 )
 
         else:
-            neuron_set = AllBiophysicalNeurons()
+            neuron_set = self.config.default_neuron_set_type()
             neuron_set.set_block_name(self.config.default_node_set_name)
             self._neuron_set_definitions[self.config.default_node_set_name] = (
                 neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)  # ty:ignore[invalid-argument-type]
