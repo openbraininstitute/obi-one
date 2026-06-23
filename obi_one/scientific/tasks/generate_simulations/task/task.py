@@ -345,21 +345,22 @@ class GenerateSimulationTask(Task):
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
         if db_client:
             if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
-                neuron_set_definition = self._neuron_set_definitions[
-                    self.config.initialize.node_set.block_name  # ty:ignore[unresolved-attribute]
-                ]
+                if self.config.initialize.node_set is None:
+                    msg = "initialize.node_set is None — cannot update number_neurons. \
+                    Even if originally set to None, its value should be set already by \
+                        _ensure_simulation_target_node_set()"
+                    raise OBIONEError(msg)
+                neuron_set = self.config.initialize.node_set
+                neuron_set_ids = neuron_set.block.get_neuron_ids(self._circuit)
+                number_neurons = sum(len(v) for v in neuron_set_ids.values())
             else:
-                neuron_set_definition = self._neuron_set_definitions[
-                    self.config.default_node_set_name
-                ]
+                # Essentially the memodel case when no neuron_sets
+                number_neurons = 1
 
-            L.info("Hello world")
-            L.info(neuron_set_definition)
-            # number_neurons = len(neuron_set_definition["node_id"])
             db_client.update_entity(
                 entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-                attrs_or_entity={"number_neurons": 10},
+                attrs_or_entity={"number_neurons": number_neurons},
             )
 
     def _write_simulation_config_to_file(self) -> None:
