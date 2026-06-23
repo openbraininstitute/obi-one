@@ -80,6 +80,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
+                SchemaKey.UI_HIDDEN: True,
             },
         )
 
