@@ -3,6 +3,11 @@ from typing import ClassVar
 
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.core.schema import SchemaKey
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 
 
 class DeprecatedNeuronSet(NeuronSet, abc.ABC):
@@ -13,6 +18,14 @@ class DeprecatedNeuronSet(NeuronSet, abc.ABC):
     for backward compatibility, but it is recommended to use alternative neuron sets
     instead.
     """
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_DEPRECATED_BLOCKS,
+            SchemaKey.FALSE_MESSAGE: "This neuron set is deprecated and should not be used.",
+        },
+    }
 
     @property
     def deprecation_error_message(self) -> str:

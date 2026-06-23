@@ -75,9 +75,9 @@ _ALL_NEURON_SETS = (
     | _POINT_NEURON_SETS
     | _NONVIRTUAL_NEURON_SETS
     # Think through these last two neuron sets again
-    # They are also in
-    | PredefinedNeuronSet  # Think through this neuron set again,
-    | AllNeurons  # Think through this neuron set again
+    # They are also in PointNeuronSetUnion
+    | PredefinedNeuronSet
+    | AllNeurons
 )
 
 BiophysicalNeuronSetUnion = Annotated[
