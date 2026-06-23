@@ -244,3 +244,13 @@ class rCA1CA3Inputs(NeuronSet):  # noqa: N801
     """
 
     title: ClassVar[str] = "Demo: rCA1 CA3 Inputs"
+
+
+class IDNeuronSet(NeuronSet):
+    """A neuron set that selects neurons by their IDs.
+
+    This neuron set is used to select neurons by their IDs, which can be useful for
+    selecting specific neurons for analysis or manipulation.
+    """
+
+    title: ClassVar[str] = "ID Neuron Set"

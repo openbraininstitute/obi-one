@@ -16,7 +16,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
     CircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    MEModelWithSynapsesNeuronSetUnion,
+    NEURONMEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
 )
 
@@ -57,7 +57,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         },
     )
 
-    neuron_sets: dict[str, MEModelWithSynapsesNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONMEModelWithSynapsesNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
