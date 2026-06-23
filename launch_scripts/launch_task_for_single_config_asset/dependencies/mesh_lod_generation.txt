@@ -1,6 +1,2 @@
-obi-one
-
-# --- Private Repository Configuration ---
---extra-index-url https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/
-
+obi-one @ git+https://github.com/openbraininstitute/obi-one.git@mesh_registration_endpoint
 ultraliser>=2.1.9
