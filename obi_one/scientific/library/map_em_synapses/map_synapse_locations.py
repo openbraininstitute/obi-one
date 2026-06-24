@@ -77,8 +77,8 @@ def add_competing_mesh_distances(
     )
     mask = competitor_dists < 0
     mask_idx = competitor_dists[mask].index
-    k = 100
     max_k = len(mesh_pt_df)
+    k = numpy.minimum(100, max_k)
 
     while len(mask_idx) > 0:
         dist, idx = tree.query(pts.loc[mask_idx], k=k)
