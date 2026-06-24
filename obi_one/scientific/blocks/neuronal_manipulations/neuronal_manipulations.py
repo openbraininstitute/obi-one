@@ -88,7 +88,8 @@ class ByNeuronModification(ComplexVariableHolder):
         default="GLOBAL",
         description="Variable type: 'RANGE' (section-specific) or 'GLOBAL' (neuron-wide)",
     )
-    new_value: float | list[float] = Field(
+    new_value: float | list[float] | None = Field(
+        default=None,
         description="New value(s) that applies to entire neuron (GLOBAL) or all sections (RANGE)",
     )
 
@@ -193,7 +194,11 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
             entry for all sections.
             For section properties (cm, Ra): list[dict] with a single
             conditions.modifications entry for all sections.
+            Empty list if no new_value is provided (use existing defaults).
         """
+        if self.modification.new_value is None:
+            return []
+
         # Handle RANGE variables (including section properties)
         if self.modification.variable_type == "RANGE":
             node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
