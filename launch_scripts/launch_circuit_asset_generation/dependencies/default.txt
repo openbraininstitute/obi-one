@@ -1,1 +1,1 @@
-.[connectivity]
+obi-one[connectivity]
