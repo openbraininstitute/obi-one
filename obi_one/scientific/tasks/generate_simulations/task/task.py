@@ -235,6 +235,11 @@ class GenerateSimulationTask(Task):
 
         return default_neuron_set_ref
 
+    """
+    NEW NEURON SETS REFACTOR: SOME OF THIS CAN PROBABLY BE REMOVED NOW THE
+    NEURON SETS HAVE TYPES (BIOPHYSICAL, POINT, ETC.)
+    """
+
     def _ensure_simulation_target_node_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`.
 
