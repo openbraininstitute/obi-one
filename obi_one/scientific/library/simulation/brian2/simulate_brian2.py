@@ -123,16 +123,86 @@ def _make_poisson(
     return n0, poisson_inputs
 
 
-def _get_inputs(
-    simulation: bluepysnap.Simulation, n0: brian2.NeuronGroup
-) -> tuple[brian2.NeuronGroup, list]:
+def _get_close_spikes(ids, times, window):
+    """Return mask of spikes where the same cell has another spike within `window`."""
+    order = np.lexsort((times, ids))
+    ids_sorted = ids[order]
+    times_sorted = times[order]
 
+    same_cell = ids_sorted[:-1] == ids_sorted[1:]
+    close = np.diff(times_sorted) <= window
+
+    both = same_cell & close
+
+    mask = np.zeros(len(ids), dtype=bool)
+    mask[:-1] |= both
+    mask[1:] |= both
+
+    result_mask = np.empty(len(ids), dtype=bool)
+    result_mask[order] = mask
+    return ~result_mask
+
+
+def _get_spike_replay(
+    simulation: bluepysnap.Simulation,
+    input_: bluepysnap.input.SynapseReplay,
+    n0: brian2.NeuronGroup,
+    synapses: brian2.Synapses,
+    synapse_template: SynapseTemplate,
+):
+    #XXX check population matches
+    input_.reader.get_population_names()
+
+    node_ids = simulation.node_sets.to_libsonata.materialize(
+        input_.node_set, simulation.circuit.nodes["drosophila"].to_libsonata
+    ).flatten()
+
+    spikes = input_.reader['drosophila'].get_dict()
+    spikes, times = spikes["node_ids"], spikes["timestamps"]
+    mask = np.isin(spikes, node_ids)
+    spikes, times = spikes[mask], times[mask]
+
+    dt = 0.1
+    mask = _get_close_spikes(spikes, times, window=dt)
+
+    L.debug(
+        "Removing %d spikes of %d since they overlap within window dt=%f",
+        np.sum(mask),
+        len(mask),
+        dt,
+    )
+    spikes, times = spikes[mask], times[mask]
+
+    times = input_.delay + times
+    replay = brian2.SpikeGeneratorGroup(
+        len(n0), indices=spikes, times=times * brian2.units.ms
+    )
+
+    replay_connectivity = brian2.Synapses(
+        replay,
+        n0,
+        model=synapse_template.params.model,
+        on_pre=synapse_template.params.on_pre,
+        delay=None
+        if synapse_template.params.delay is None
+        else synapse_template.params.delay.get(),
+    )
+
+    replay_connectivity.connect(i=synapses.i[:], j=synapses.j[:])
+    return [replay, replay_connectivity]
+
+#ValueError: Using a dt of <spikegeneratorgroup.dt: 100. * usecond>, some neurons of SpikeGeneratorGroup 'spikegeneratorgroup' spike more than once during a time step.
+
+
+def _get_inputs(
+    simulation: bluepysnap.Simulation, n0: brian2.NeuronGroup,
+    synapses, synapse_template: SynapseTemplate
+) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
     inputs = []
     for input_ in simulation.inputs.values():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
-            msg = "`SynapseReplay not handled`"
-            raise TypeError(msg)
-        if isinstance(input_, libsonata.SimulationConfig.Poisson):
+            inputs += _get_spike_replay(simulation, input_, n0, synapses, synapse_template)
+        elif isinstance(input_, libsonata.SimulationConfig.Poisson):
             n0, poissons = _make_poisson(simulation, input_, n0)
             inputs += poissons
 
@@ -179,7 +249,7 @@ def _write_spikes(
     return filepath
 
 
-def _create_neurons(circuit: bluepysnap.Circuit) -> brian2.NeuronGroup:
+def _create_neurons(circuit: bluepysnap.Circuit, simulation) -> brian2.NeuronGroup:
     assert len(circuit.nodes.population_names) == 1, "Only one population supported"
     nodes = circuit.nodes[next(iter(circuit.nodes.population_names))]
     L.info("Loading neuron population: `%s`, with %d ids", nodes.name, len(nodes.ids()))
@@ -206,7 +276,13 @@ def _create_neurons(circuit: bluepysnap.Circuit) -> brian2.NeuronGroup:
         reset=template.params.reset,
         refractory=template.params.refractory,
         namespace={k: v.get() for k, v in template.namespace.items()},
+        dt=simulation.run.dt * brian2.units.ms
     )
+
+    # Override the initial membrane potential with `v_init` (mV) from the simulation config,
+    # taking precedence over the value set by the neuron template.
+    n0.v = simulation.conditions.v_init * brian2.units.mV
+
 
     for name, value in template.initial.items():
         setattr(n0, name, value.get())
@@ -214,7 +290,7 @@ def _create_neurons(circuit: bluepysnap.Circuit) -> brian2.NeuronGroup:
     return n0
 
 
-def _create_synapses(circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup) -> brian2.Synapses:
+def _create_synapses(circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup) -> tuple[brian2.Synapses, SynapseTemplate]:
     assert len(circuit.edges.population_names) == 1, "Only one population supported"
     edges = circuit.edges[next(iter(circuit.edges.population_names))]
     edge_pop = edges.to_libsonata
@@ -232,22 +308,22 @@ def _create_synapses(circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup) -
         template = next(iter(template))
         ext, name = template.split(":")
         with (models_dir / f"{name}.{ext}").open() as fd:
-            synapse = SynapseTemplate.model_validate_json(fd.read())
+            synapse_template = SynapseTemplate.model_validate_json(fd.read())
 
     syn = brian2.Synapses(
         neurons,
         neurons,
-        model=synapse.params.model,
-        on_pre=synapse.params.on_pre,
-        delay=None if synapse.params.delay is None else synapse.params.delay.get(),
+        model=synapse_template.params.model,
+        on_pre=synapse_template.params.on_pre,
+        delay=None if synapse_template.params.delay is None else synapse_template.params.delay.get(),
     )
     syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
 
-    for name, unit in synapse.dynamics.items():
+    for name, unit in synapse_template.dynamics.items():
         values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
         setattr(syn, name, values)
 
-    return syn
+    return syn, synapse_template
 
 
 def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
@@ -260,18 +336,16 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
     brian2.seed(simulation.run.random_seed)
     brian2.start_scope()
 
-    neurons = _create_neurons(circuit)
-    # Override the initial membrane potential with `v_init` (mV) from the simulation config,
-    # taking precedence over the value set by the neuron template.
-    neurons.v = simulation.conditions.v_init * brian2.units.mV
-    synapses = _create_synapses(circuit, neurons)
+    neurons = _create_neurons(circuit, simulation)
+    synapses, synapse_template = _create_synapses(circuit, neurons)
 
     spike_monitor = brian2.SpikeMonitor(neurons)
 
-    neurons, inputs = _get_inputs(simulation, neurons)
+    neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
 
     net = brian2.Network(neurons, synapses, spike_monitor, *inputs)
     L.info("Running simulation")
+
     net.run(duration=simulation.run.tstop * brian2.units.ms)
 
     output_dir = Path(simulation.output.output_dir)
