@@ -117,6 +117,8 @@ class GenerateSimulationTask(Task):
             else:
                 self._sonata_config["inputs"].update(
                     stimulus.config(
+                        circuit=self._circuit,  # ty:ignore[invalid-argument-type]
+                        population=self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                         default_node_set=self.config.default_node_set_name,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
                     )
