@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from obi_one.scientific.library.emodel_parameters import (
+    _VALID_SECTION_LISTS,
+    _expand_section_list,
     _parse_optimization_parameters,
 )
 
@@ -28,6 +30,45 @@ def _make_icm(suffix, name=None, range_vars=None, global_vars=None):
     icm.neuron_block = neuron_block
 
     return icm
+
+
+class TestValidSectionLists:
+    """Tests for _VALID_SECTION_LISTS constant."""
+
+    def test_contains_standard_sections(self):
+        """Standard section lists are included."""
+        assert "somatic" in _VALID_SECTION_LISTS
+        assert "basal" in _VALID_SECTION_LISTS
+        assert "apical" in _VALID_SECTION_LISTS
+        assert "axonal" in _VALID_SECTION_LISTS
+
+    def test_contains_multiloc_aliases(self):
+        """Multi-location aliases are included."""
+        assert "all" in _VALID_SECTION_LISTS
+        assert "alldend" in _VALID_SECTION_LISTS
+        assert "somadend" in _VALID_SECTION_LISTS
+        assert "allnoaxon" in _VALID_SECTION_LISTS
+        assert "somaxon" in _VALID_SECTION_LISTS
+        assert "allact" in _VALID_SECTION_LISTS
+
+
+class TestExpandSectionList:
+    """Tests for _expand_section_list."""
+
+    def test_expand_all(self):
+        """'all' expands to all 4 section lists."""
+        result = _expand_section_list("all")
+        assert result == ["apical", "basal", "somatic", "axonal"]
+
+    def test_expand_alldend(self):
+        """'alldend' expands to apical and basal."""
+        result = _expand_section_list("alldend")
+        assert result == ["apical", "basal"]
+
+    def test_passthrough_unknown(self):
+        """Unknown section lists pass through unchanged."""
+        result = _expand_section_list("somatic")
+        assert result == ["somatic"]
 
 
 class TestParseOptimizationParameters:
@@ -57,6 +98,24 @@ class TestParseOptimizationParameters:
         assert result[0].neuron_variable == "gNaTgbar_NaTg"
         assert result[0].section_list == "somatic"
         assert result[0].value == pytest.approx(0.1)
+
+    def test_skips_multiple_distribution_params(self):
+        """Multiple distribution meta-parameters are all skipped."""
+        icm = _make_icm("NaTg")
+        emodel = _make_emodel(ion_channel_models=[icm])
+
+        parameters_json = [
+            {"name": "constant.distribution_decay", "value": 0.5},
+            {"name": "exponential.scale_factor", "value": 1.2},
+            {"name": "linear.offset_value", "value": 0.01},
+            {"name": "gNaTgbar_NaTg.somatic", "value": 0.1},
+        ]
+
+        result = _parse_optimization_parameters(parameters_json, emodel)
+
+        # Only the valid parameter should remain
+        assert len(result) == 1
+        assert result[0].neuron_variable == "gNaTgbar_NaTg"
 
     def test_does_not_skip_param_with_known_suffix_and_unknown_section(self):
         """Parameters with a recognized ion channel suffix are kept even if section_list is unusual.
@@ -96,3 +155,19 @@ class TestParseOptimizationParameters:
         assert len(g_pas_vars) == 4  # "all" expands to apical, basal, somatic, axonal
         assert len(e_pas_vars) == 1
         assert e_pas_vars[0].section_list == "somatic"
+
+    def test_multiloc_alias_expansion(self):
+        """Multi-location aliases are properly expanded."""
+        icm = _make_icm("pas")
+        emodel = _make_emodel(ion_channel_models=[icm])
+
+        parameters_json = [
+            {"name": "g_pas.alldend", "value": 0.001},
+        ]
+
+        result = _parse_optimization_parameters(parameters_json, emodel)
+
+        # "alldend" expands to apical and basal
+        assert len(result) == 2
+        section_lists = {v.section_list for v in result}
+        assert section_lists == {"apical", "basal"}
