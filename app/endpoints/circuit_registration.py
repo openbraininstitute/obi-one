@@ -10,7 +10,7 @@ from uuid import UUID
 import entitysdk.client
 import httpx
 from entitysdk import models
-from entitysdk.types import AssetLabel, DerivationType
+from entitysdk.types import AssetLabel, ContentType, DerivationType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.config import settings
@@ -111,19 +111,20 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
             target_simulator=target_simulator,
             root_circuit_id=parent_circuit_id,
             atlas_id=atlas_id,
-            license_id=license_id or None,
-            contact_email=contact_email,
-            authorized_public=authorized_public,
         )
         registered = db_client.register_entity(circuit_model)
         L.info("Circuit '%s' registered as %s (draft)", registered.name, registered.id)
 
         # 6. Upload sonata_circuit asset
+        paths = {
+            p.relative_to(circuit_dir): p for p in circuit_dir.rglob("*") if p.is_file()
+        }
         db_client.upload_directory(
             entity_id=registered.id,
             entity_type=models.Circuit,
-            directory_path=circuit_dir,
-            asset_label=AssetLabel.sonata_circuit,
+            name="sonata_circuit",
+            paths=paths,
+            label=AssetLabel.sonata_circuit,
         )
 
         # 6b. Upload original archive as compressed_sonata_circuit (skips compression stage)
@@ -131,18 +132,11 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
             entity_id=registered.id,
             entity_type=models.Circuit,
             file_path=archive_path,
+            file_content_type=ContentType.application_gzip,
             asset_label=AssetLabel.compressed_sonata_circuit,
         )
 
-        # 7. Create derivation link if parent provided
-        if parent_circuit_id:
-            db_client.create_derivation(
-                used_id=parent_circuit_id,
-                generated_id=registered.id,
-                derivation_type=DerivationType(derivation_type),
-            )
-
-    # 8. Trigger validation task
+    # 7. Trigger validation task
     _trigger_validation_task(
         ls_client=ls_client,
         circuit_id=registered.id,
@@ -153,9 +147,9 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
     return {
         "circuit_id": str(registered.id),
         "status": "draft",
-        "number_neurons": number_neurons,
-        "number_synapses": number_synapses,
-        "number_connections": number_connections,
+        "number_neurons": int(number_neurons),
+        "number_synapses": int(number_synapses),
+        "number_connections": int(number_connections) if number_connections is not None else None,
         "scale": str(scale),
     }
 
@@ -175,11 +169,11 @@ def generate_assets_endpoint(
     circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
 
     # Only active circuits can generate assets
-    if getattr(circuit, "readiness_status", None) not in {"active", None}:
-        status = getattr(circuit, "readiness_status", "unknown")
+    if getattr(circuit, "lifecycle_status", None) not in {"active", None}:
+        status = getattr(circuit, "lifecycle_status", "unknown")
         raise HTTPException(
             status_code=409,
-            detail=f"Circuit readiness_status is '{status}'. "
+            detail=f"Circuit lifecycle_status is '{status}'. "
             "Asset generation requires an active circuit.",
         )
 

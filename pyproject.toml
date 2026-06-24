@@ -229,10 +229,14 @@ addopts = [
     "--cov=app",
     "--durations=10",
     "--durations-min=1.0",
+    "-m not integration",
 ]
 testpaths = [
     "tests",
     "examples",
+]
+markers = [
+    "integration: integration tests requiring a running API (deselected by default)",
 ]
 filterwarnings = [
     "error::pydantic.warnings.PydanticDeprecationWarning",

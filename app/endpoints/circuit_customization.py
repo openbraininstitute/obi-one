@@ -221,11 +221,15 @@ def _validate_node_sets(path: Path) -> None:
         _validate_nodeset_expression(path, key, expr)
 
 
-def _validate_hoc_mechanisms(hoc_paths: list[Path], mod_paths: list[Path]) -> None:
+def _validate_hoc_mechanisms(
+    hoc_paths: list[Path], mod_paths: list[Path], parent_mechanism_names: set[str] | None = None
+) -> None:
     """Check that mechanisms used in HOC files are available (built-in or from provided MODs)."""
     from obi_one.scientific.validations.emodels import check_mechanisms  # noqa: PLC0415
 
     available = BUILTIN_NEURON_MECHANISMS | _extract_mod_mechanism_names(mod_paths)
+    if parent_mechanism_names:
+        available |= parent_mechanism_names
 
     for hoc_path in hoc_paths:
         try:
@@ -252,9 +256,19 @@ def _validate_nodes_hoc_consistency(node_paths: list[Path], hoc_paths: list[Path
                     group = f["nodes"][pop_name].get("0", f["nodes"][pop_name])
                     if "model_template" in group:
                         ds = group["model_template"]
-                        templates_in_nodes.update(
-                            v.decode() if isinstance(v, bytes) else v for v in ds[:]
-                        )
+                        if ds.dtype.kind in ("U", "S", "O"):
+                            # String dataset — read directly
+                            templates_in_nodes.update(
+                                v.decode() if isinstance(v, bytes) else v for v in ds[:]
+                            )
+                        else:
+                            # Enumerated (uint) — resolve via @library
+                            lib_path = f"nodes/{pop_name}/0/@library/model_template"
+                            if lib_path in f:
+                                lib = f[lib_path]
+                                templates_in_nodes.update(
+                                    v.decode() if isinstance(v, bytes) else v for v in lib[:]
+                                )
         except Exception:  # noqa: BLE001, S112
             continue
 
@@ -289,7 +303,7 @@ def _run_cross_validations(
     errors: list[str] = []
     if hoc_paths:
         try:
-            _validate_hoc_mechanisms(hoc_paths, mod_paths)
+            _validate_hoc_mechanisms(hoc_paths, mod_paths, parent_mechanism_names)
         except HocValidationError as e:
             errors.append(f"hoc/mod cross-check: {e}")
     if node_paths and hoc_paths and not errors:
@@ -344,6 +358,10 @@ def _get_parent_mechanism_names(
             mech_dir = cfg.get("components", {}).get("mechanisms_dir", "")
             if mech_dir and Path(mech_dir).is_dir():
                 return {p.stem for p in Path(mech_dir).glob("*.mod")}
+            # Fallback: scan staged directory for MOD files
+            mods = list(Path(ptmp).rglob("*.mod"))
+            if mods:
+                return {p.stem for p in mods}
     except (OSError, KeyError, ValueError, json.JSONDecodeError) as e:
         L.warning("Could not resolve parent mechanism names: %s", e)
     return set()
@@ -674,7 +692,9 @@ def customize_circuit_endpoint(
         # Cross-validations
         if not errors:
             parent_mech_names = (
-                _get_parent_mechanism_names(db_client, parent) if mod_paths else None
+                _get_parent_mechanism_names(db_client, parent)
+                if (mod_paths or hoc_paths)
+                else None
             )
             errors.extend(
                 _run_cross_validations(hoc_paths, mod_paths, node_paths, parent_mech_names)
@@ -699,30 +719,7 @@ def customize_circuit_endpoint(
             pop_map=pop_map,
         )
 
-    # 5. Create derivation link
-    try:
-        db_client.create_derivation(  # ty:ignore[unresolved-attribute]
-            entity_id=registered.id,
-            entity_type=models.Circuit,
-            used=[{"id": parent.id, "type": "circuit"}],
-            derivation_type=DerivationType.circuit_customization,
-        )
-    except entitysdk.exception.EntitySDKError as e:
-        L.error("Failed to create derivation link for %s: %s", registered.id, e)
-        try:
-            db_client.update_entity(
-                entity_id=registered.id,
-                entity_type=models.Circuit,
-                attrs_or_entity={"lifecycle_status": "failed"},
-            )
-        except entitysdk.exception.EntitySDKError:
-            L.warning("Also failed to mark circuit %s as failed", registered.id)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Circuit was created but derivation link to parent could not be recorded: {e}",
-        ) from e
-
-    # 6. Trigger async validation task via launch-system
+    # 5. Trigger async validation task via launch-system
     _trigger_validation_task(
         ls_client=ls_client,
         circuit_id=registered.id,  # ty:ignore[invalid-argument-type]
