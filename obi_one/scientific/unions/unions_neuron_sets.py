@@ -68,16 +68,11 @@ _POINT_NEURON_SETS = (
     | AllPointNeurons
     | PointPopulationPredefinedNeuronSet
 )
-_NONVIRTUAL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
+
 _ALL_NEURON_SETS = (
     _BIOPHYSICAL_NEURON_SETS
     | _VIRTUAL_NEURON_SETS
     | _POINT_NEURON_SETS
-    | _NONVIRTUAL_NEURON_SETS
-    # Think through these last two neuron sets again
-    # They are also in PointNeuronSetUnion
-    | PredefinedNeuronSet
-    | AllNeurons
 )
 
 BiophysicalNeuronSetUnion = Annotated[
@@ -97,11 +92,6 @@ PointNeuronSetUnion = Annotated[
 
 AllNeuronSetUnion = Annotated[
     _ALL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-NonVirtualNeuronSetUnion = Annotated[
-    _NONVIRTUAL_NEURON_SETS,
     Discriminator("type"),
 ]
 
