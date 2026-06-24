@@ -21,13 +21,21 @@ from obi_one.core.tuple import NamedTuple
 
 __all__ = [
     "AfferentSynapsesBlock",
+    "AllBiophysicalNeurons",
     "AllDistributionsReference",
     "AllDistributionsUnion",
     "AllNeurons",
+    "AllNonVirtualNeurons",
     "AllPairsSynapticModelAssigner",
+    "AllPointNeurons",
+    "AllVirtualNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
+    "BiophysicalPopulationIDNeuronSet",
+    "BiophysicalPopulationNeuronSet",
+    "BiophysicalPopulationPredefinedNeuronSet",
+    "BiophysicalPopulationPropertyNeuronSet",
     "Block",
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
@@ -153,6 +161,10 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PointPopulationIDNeuronSet",
+    "PointPopulationNeuronSet",
+    "PointPopulationPredefinedNeuronSet",
+    "PointPopulationPropertyNeuronSet",
     "PoissonDistribution",
     "PoissonSpikeStimulus",
     "PositiveFloatRange",
@@ -205,6 +217,10 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "VirtualPopulationIDNeuronSet",
+    "VirtualPopulationNeuronSet",
+    "VirtualPopulationPredefinedNeuronSet",
+    "VirtualPopulationPropertyNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
@@ -289,10 +305,34 @@ from obi_one.scientific.blocks.neuron_sets.deprecated import (
     nbS1VPMInputs,
     rCA1CA3Inputs,
 )
-from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
-from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter
+from obi_one.scientific.blocks.neuron_sets.id import (
+    BiophysicalPopulationIDNeuronSet,
+    PointPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.population import (
+    BiophysicalPopulationNeuronSet,
+    PointPopulationNeuronSet,
+    VirtualPopulationNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.predefined import (
+    BiophysicalPopulationPredefinedNeuronSet,
+    PointPopulationPredefinedNeuronSet,
+    PredefinedNeuronSet,
+    VirtualPopulationPredefinedNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.property import (
+    BiophysicalPopulationPropertyNeuronSet,
+    NeuronPropertyFilter,
+    PointPopulationPropertyNeuronSet,
+    VirtualPopulationPropertyNeuronSet,
+)
 from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllBiophysicalNeurons,
     AllNeurons,
+    AllNonVirtualNeurons,
+    AllPointNeurons,
+    AllVirtualNeurons,
 )
 from obi_one.scientific.blocks.recording import (
     Recording,
