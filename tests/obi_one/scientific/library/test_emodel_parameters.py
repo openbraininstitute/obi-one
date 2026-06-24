@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from obi_one.scientific.library.emodel_parameters import (
     _parse_optimization_parameters,
 )
@@ -54,7 +56,7 @@ class TestParseOptimizationParameters:
         assert len(result) == 1
         assert result[0].neuron_variable == "gNaTgbar_NaTg"
         assert result[0].section_list == "somatic"
-        assert result[0].value == 0.1
+        assert result[0].value == pytest.approx(0.1)
 
     def test_does_not_skip_param_with_known_suffix_and_unknown_section(self):
         """Parameters with a recognized ion channel suffix are kept even if section_list is unusual.
