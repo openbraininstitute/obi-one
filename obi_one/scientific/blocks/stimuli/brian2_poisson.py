@@ -72,7 +72,7 @@ class Brian2DirectPoissonStimulus(Block):
         default=68.75,
         title="Weight",
         description=(
-            "Amplitude of each Poisson kick, in millivolts. The default value is taken "
+            "Amplitude of each injection, in millivolts. The default value is taken "
             "from the original Shui et al. (2024) LIF FlyWire model simulations."
         ),
         json_schema_extra={
