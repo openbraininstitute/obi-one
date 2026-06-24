@@ -5,8 +5,11 @@ Christoph:
 - Tests
 
 James:
-- Add new classes to __init__.py
+
 - Review adding_point_population_types
+
+Done:
+- Add new classes to __init__.py
 
 
 Next:
