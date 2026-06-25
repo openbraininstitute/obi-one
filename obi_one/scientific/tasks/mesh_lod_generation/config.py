@@ -3,13 +3,14 @@
 from typing import ClassVar
 from uuid import UUID
 
+from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
+from obi_one.core.base import OBIBaseModel
 from obi_one.core.single import SingleConfigMixin
-from obi_one.types import TaskActivityType, TaskConfigType
 
 
-class MeshLodGenerationSingleConfig(SingleConfigMixin):
+class MeshLodGenerationSingleConfig(OBIBaseModel, SingleConfigMixin):
     """Configuration schema for processing LOD mesh scans."""
 
     _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.mesh_lod_generation__config
@@ -30,8 +31,6 @@ class MeshLodGenerationSingleConfig(SingleConfigMixin):
         description="The format of the source mesh asset ('obj' or 'glb').",
     )
 
-
-MeshLodGenerationSingleConfig.model_rebuild(_types_namespace={"UUID": UUID})
 
 __all__ = [
     "MeshLodGenerationSingleConfig",
