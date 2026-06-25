@@ -1,19 +1,18 @@
 # Finalization notes
 
 Christoph:
-- Linting/type checking (including raising error for spike replay, multi populations)
 - Tests
+- Fix example notebooks that use neuron sets
 
 James:
-
-- Review adding_point_population_types
+- Check brian2 & learning engine
+- Think about circular imports in combine neuron sets
 
 Done:
 - Add new classes to __init__.py
-
-
-Next:
-- Fix example notebooks that use neuron sets
+- Review adding_point_population_types
+- Merge adding_point_population_types
+- Linting/type checking (including raising error for spike replay, multi populations)
 
 Old remaining questions (maybe we already decided):
 - Do we still need:
@@ -22,8 +21,7 @@ Old remaining questions (maybe we already decided):
 
 
 Later (before initial deployment):
-- Merge adding_point_population_types
-- 
+- Check brian2 & learning engine
 
 After initial deployment:
 - Resolve circular imports issue with combined neuron sets
