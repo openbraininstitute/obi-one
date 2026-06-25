@@ -12,9 +12,7 @@ from obi_one.types import TaskActivityType, TaskConfigType
 class MeshLodGenerationSingleConfig(SingleConfigMixin):
     """Configuration schema for processing LOD mesh scans."""
 
-    _single_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.mesh_lod_generation__config
-    )
+    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.mesh_lod_generation__config
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.mesh_lod_generation__execution
     )
