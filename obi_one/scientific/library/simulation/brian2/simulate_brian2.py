@@ -32,6 +32,8 @@ REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_p
 L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 
+brian2.BrianLogger.log_level_debug()
+
 
 def _convert_to_known_unit(v: str) -> brian2.Unit:
     if v not in KNOWN_UNITS:
@@ -123,24 +125,21 @@ def _make_poisson(
     return n0, poisson_inputs
 
 
-def _get_close_spikes(ids, times, window):
-    """Return mask of spikes where the same cell has another spike within `window`."""
+def _get_close_spikes(ids: np.ndarray, times: np.ndarray, window: float) -> np.ndarray:
+    """Return mask of spikes where the same cell has another spike within `window`.
+
+    Only the 2nd spike will be marked as `close`
+    """
     order = np.lexsort((times, ids))
     ids_sorted = ids[order]
     times_sorted = times[order]
 
-    same_cell = ids_sorted[:-1] == ids_sorted[1:]
-    close = np.diff(times_sorted) <= window
-
-    both = same_cell & close
-
     mask = np.zeros(len(ids), dtype=bool)
-    mask[:-1] |= both
-    mask[1:] |= both
+    mask[1:] = (ids_sorted[:-1] == ids_sorted[1:]) & (np.diff(times_sorted) <= window)
 
     result_mask = np.empty(len(ids), dtype=bool)
     result_mask[order] = mask
-    return ~result_mask
+    return result_mask
 
 
 def _get_spike_replay(
@@ -151,29 +150,35 @@ def _get_spike_replay(
     synapse_template: SynapseTemplate,
 ):
     #XXX check population matches
-    input_.reader.get_population_names()
+    #input_.reader.get_population_names()
+    population = 'drosophila'
 
     node_ids = simulation.node_sets.to_libsonata.materialize(
         input_.node_set, simulation.circuit.nodes["drosophila"].to_libsonata
     ).flatten()
 
-    spikes = input_.reader['drosophila'].get_dict()
+    spikes = input_.reader[population].get_dict()
     spikes, times = spikes["node_ids"], spikes["timestamps"]
     mask = np.isin(spikes, node_ids)
     spikes, times = spikes[mask], times[mask]
 
-    dt = 0.1
-    mask = _get_close_spikes(spikes, times, window=dt)
+    spikes, times = spikes[times <= input_.duration], times[times <= input_.duration]
+
+    mask = np.invert(_get_close_spikes(spikes, times, window=simulation.run.dt))
 
     L.debug(
         "Removing %d spikes of %d since they overlap within window dt=%f",
-        np.sum(mask),
+        len(mask) - np.sum(mask),
         len(mask),
-        dt,
+        simulation.run.dt,
     )
     spikes, times = spikes[mask], times[mask]
 
     times = input_.delay + times
+
+    L.info("Replaying %d spikes from population `%s`, node_set: `%s`",
+           len(times), population, input_.node_set)
+
     replay = brian2.SpikeGeneratorGroup(
         len(n0), indices=spikes, times=times * brian2.units.ms
     )
@@ -182,6 +187,9 @@ def _get_spike_replay(
         replay,
         n0,
         model=synapse_template.params.model,
+        # "on_pre": "g += w"
+        #on_pre="v += 0.1 * mV",
+        #on_pre="g += 0.1 * mV",
         on_pre=synapse_template.params.on_pre,
         delay=None
         if synapse_template.params.delay is None
@@ -189,6 +197,14 @@ def _get_spike_replay(
     )
 
     replay_connectivity.connect(i=synapses.i[:], j=synapses.j[:])
+
+    edge_pop_name = next(iter(simulation.circuit.edges.population_names))
+    edges = simulation.circuit.edges[edge_pop_name]
+    edge_pop = edges.to_libsonata
+    for name, unit in synapse_template.dynamics.items():
+        values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
+        setattr(replay_connectivity, name, values)
+
     return [replay, replay_connectivity]
 
 #ValueError: Using a dt of <spikegeneratorgroup.dt: 100. * usecond>, some neurons of SpikeGeneratorGroup 'spikegeneratorgroup' spike more than once during a time step.
@@ -283,14 +299,15 @@ def _create_neurons(circuit: bluepysnap.Circuit, simulation) -> brian2.NeuronGro
     # taking precedence over the value set by the neuron template.
     n0.v = simulation.conditions.v_init * brian2.units.mV
 
-
     for name, value in template.initial.items():
         setattr(n0, name, value.get())
 
     return n0
 
 
-def _create_synapses(circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup) -> tuple[brian2.Synapses, SynapseTemplate]:
+def _create_synapses(
+    circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup
+) -> tuple[brian2.Synapses, SynapseTemplate]:
     assert len(circuit.edges.population_names) == 1, "Only one population supported"
     edges = circuit.edges[next(iter(circuit.edges.population_names))]
     edge_pop = edges.to_libsonata
@@ -343,15 +360,38 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
 
     neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
 
+    #id_ = 0
+    #id_ = 11916
+    #id_ = 102632 # spike replay
+    #statemon = brian2.StateMonitor(neurons, 'v', record=[id_])
+    #statemon0 = brian2.StateMonitor(neurons, 'g', record=[id_])
+    #net = brian2.Network(neurons, synapses, spike_monitor, statemon, statemon0, *inputs)
+
     net = brian2.Network(neurons, synapses, spike_monitor, *inputs)
-    L.info("Running simulation")
+
+    L.info(
+        "Running simulation with `%s` backend",
+        brian2.prefs.codegen.target,
+    )
 
     net.run(duration=simulation.run.tstop * brian2.units.ms)
+
+    #import matplotlib.pyplot as plt
+    #plt.figure(figsize=(9, 4))
+    ##axhline(El/mV, ls='-', c='lightgray', lw=3)
+    #plt.plot(statemon.t/brian2.units.ms, statemon.v[0]/brian2.units.mV, '-b')
+    #plt.plot(statemon0.t/brian2.units.ms, statemon0.g[0]/brian2.units.mV, '-b')
+    ##plot(spikemon.t/ms, spikemon.v/mV, 'ob')
+    #plt.xlabel('Time (ms)')
+    #plt.ylabel('v (mV)');
+    #plt.savefig("test.png")
 
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    spikes = [(k, float(v)) for k, vs in spike_monitor.spike_trains().items() for v in vs]
+    spikes = [
+        (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
+    ]
     if not spikes:
         L.info("No neurons spiked in the simulation")
         return None
