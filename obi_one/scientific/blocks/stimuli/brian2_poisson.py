@@ -69,10 +69,16 @@ class Brian2DirectPoissonStimulus(Block):
     )
 
     weight: float | list[float] = Field(
-        default=1.0e-3,
+        default=68.75,
         title="Weight",
-        description="Amplitude of each Poisson kick, in volts (SI).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        description=(
+            "Amplitude of each injection, in millivolts. The default value is taken "
+            "from the original Shui et al. (2024) LIF FlyWire model simulations."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
     )
 
     duration: (
