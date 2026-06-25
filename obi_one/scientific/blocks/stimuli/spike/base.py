@@ -59,7 +59,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
         default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
-        target_node_population: str | None = None,
         default_source_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
         default_target_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
     ) -> dict:
@@ -75,7 +74,7 @@ class SpikeStimulus(StimulusWithTimestamps):
             self.targeted_neuron_set, default_target_neuron_set_reference
         )
 
-        if target_neuron_set.is_biophysical(circuit, target_node_population) is False:  # ty:ignore[unresolved-attribute]
+        if target_neuron_set.has_biophysical_neurons(circuit) is False:  # ty:ignore[unresolved-attribute]
             msg = "Target Neuron Set of Spike Stimulus must be biophysical."
             raise OBIONEError(msg)
 
