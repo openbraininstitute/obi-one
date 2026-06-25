@@ -7,16 +7,18 @@ This module is executed remotely by the obi-one launch-system. It:
 4. Uploads the resulting LOD directory block back onto the EMCellMesh entity.
 """
 
-from __future__ import annotations
-
+import os
 import pathlib
 import tempfile
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
+from uuid import UUID
 
+import entitysdk
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel
 
 from obi_one.core.task import Task
+from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
 try:
     import ultraliser
@@ -24,14 +26,6 @@ try:
     HAS_MESHING = True
 except ImportError:
     HAS_MESHING = False
-
-if TYPE_CHECKING:
-    import os
-    from uuid import UUID
-
-    import entitysdk
-
-    from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
 
 def _download_mesh(
@@ -135,3 +129,12 @@ class MeshLODGenerationTask(Task):
             generated=[asset_id],
         )
         return asset_id
+
+
+MeshLODGenerationTask.model_rebuild(
+    _types_namespace={
+        "UUID": UUID,
+        "entitysdk": entitysdk,
+        "MeshLodGenerationSingleConfig": MeshLodGenerationSingleConfig,
+    }
+)
