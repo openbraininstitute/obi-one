@@ -1,13 +1,8 @@
 """Configuration schemas for the level-of-detail (LOD) mesh generation pipeline."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pydantic import BaseModel, Field
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 
 class MeshLodGenerationSingleConfig(BaseModel):
@@ -26,6 +21,8 @@ class MeshLodGenerationSingleConfig(BaseModel):
         description="The format of the source mesh asset ('obj' or 'glb').",
     )
 
+
+MeshLodGenerationSingleConfig.model_rebuild(_types_namespace={"UUID": UUID})
 
 __all__ = [
     "MeshLodGenerationSingleConfig",
