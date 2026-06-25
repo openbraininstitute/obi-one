@@ -351,13 +351,13 @@ class GenerateSimulationTask(Task):
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
         if db_client:
             if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
-                if self.config.initialize.node_set is None:
+                neuron_set = self.config.initialize.node_set
+                if neuron_set is None:
                     msg = "initialize.node_set is None — cannot update number_neurons. \
                     Even if originally set to None, its value should be set already by \
                         _ensure_simulation_target_node_set()"
                     raise OBIONEError(msg)
-                neuron_set = self.config.initialize.node_set
-                neuron_set_ids = neuron_set.block.get_neuron_ids(self._circuit)
+                neuron_set_ids = neuron_set.block.get_neuron_ids(self._circuit)  # ty:ignore[unresolved-attribute]
                 number_neurons = sum(len(v) for v in neuron_set_ids.values())
             else:
                 # Essentially the memodel case when no neuron_sets
