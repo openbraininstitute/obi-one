@@ -516,10 +516,28 @@ def run_connectivity_matrix_extraction(
     )
     if edge_population is None:
         edge_population = circuit.default_edge_population_name
+
+    # Only request node properties that exist in the circuit's point or biophysical
+    # node populations (excluding virtual ones), since not all circuits (e.g.
+    # point-neuron circuits) provide every attribute.
+    sonata_circuit = circuit.sonata_circuit
+    available_node_properties = {
+        prop
+        for pop in Circuit.get_node_population_names(
+            sonata_circuit, incl_virtual=False, incl_point=True
+        )
+        for prop in sonata_circuit.nodes[pop].property_names
+    }
+    node_attributes = tuple(
+        prop
+        for prop in ("synapse_class", "layer", "mtype", "etype", "x", "y", "z")
+        if prop in available_node_properties
+    )
+
     matrix_init = ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit,
         edge_population=edge_population,
-        node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
+        node_attributes=node_attributes,
         with_matrix_config=True,
     )
     matrix_extraction_config = ConnectivityMatrixExtractionScanConfig(initialize=matrix_init)

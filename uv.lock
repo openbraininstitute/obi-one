@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "bluepysnap"
-version = "3.0.4"
+version = "3.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -310,7 +310,7 @@ dependencies = [
     { name = "pandas" },
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/83/af976d39f7e690f3d749e3b35a01360cbf3a953544111f2bedad692c9339/bluepysnap-3.0.4.tar.gz", hash = "sha256:ac7c397ecc56554ce508e25a07b420c76668417bb97daeac26349b5bfa4bc451", size = 1053044, upload-time = "2026-05-05T13:09:54.804Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/08/7e02f9e347c6a9b22f7bdb000c9abcdad9e5828b018dcb5999bf84c0d528/bluepysnap-3.0.5.tar.gz", hash = "sha256:e818e76e2a62fc8ddb844066fc462d6c715fab3c8fca500ea47b699b383a4adb", size = 1053136, upload-time = "2026-06-09T12:43:26.733Z" }
 
 [[package]]
 name = "bluerecording"
@@ -863,14 +863,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.17.2"
+version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/6b/31db5b6d67bb7fd0583040355752e7a3120ab156d1f88731d887931d678c/entitysdk-0.17.2.tar.gz", hash = "sha256:b8c64c6daf74183bd9d9680e5718998e66d00a1974126dc5b9185cf024c0d4b9", size = 89828, upload-time = "2026-06-12T09:38:47.416Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/bc/ac1519ff69f5201622eb583dfc39d71af081472b0d5e574ec396355fd785/entitysdk-0.18.0.tar.gz", hash = "sha256:3a4ed7d8e2d62af5aeecd11c960821b5e3fccfcd25f068d8d3178ecf96e30104", size = 90883, upload-time = "2026-06-23T07:48:34.995Z" }
 
 [[package]]
 name = "executing"
@@ -2237,7 +2237,7 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.87" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepysnap", specifier = ">=3.0.2" },
+    { name = "bluepysnap", specifier = ">=3.0.5" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.5" },
     { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
@@ -2262,7 +2262,7 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.2" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.3" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.2" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
@@ -2296,14 +2296,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.2"
+version = "0.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/65/34d0a51314c63c949a14d02664fe4a137db00424a645c25e0ae2a9b961da/obp_accounting_sdk-0.6.2.tar.gz", hash = "sha256:a99fb49cfe2854441f602b6bd9a8df6213b15b4c2e92d25b2542f7d68f5613c9", size = 36144, upload-time = "2026-06-09T07:56:15.491Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/df/7ec881a89c453c5dc81ed3dadb1f23ee2061a02c38859f152ea66ab88eff/obp_accounting_sdk-0.6.3.tar.gz", hash = "sha256:8529edc4a5b3f41ad04affcde7ec3789e17144070e8701a636dca173dcdacda3", size = 36132, upload-time = "2026-06-22T12:07:16.618Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/32/4701a75074ffe867e31ee28c7a1bc3da11dc8e399789e081c4fc0d92878e/obp_accounting_sdk-0.6.2-py3-none-any.whl", hash = "sha256:c3619b4ad9f4e388c16de6e51c85c9ef31ef39d9536a45cb9229857fdf87e17b", size = 27701, upload-time = "2026-06-09T07:56:14.204Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/91/633d63f7ac6f5c6c21f8dcbb3ef6e90ac01799541ebd43d02229f52498e9/obp_accounting_sdk-0.6.3-py3-none-any.whl", hash = "sha256:e7c7631339e856c0fffdd6d60b3fa2f6228f6afe1fe34cc9d10a321bf05f4a6a", size = 27709, upload-time = "2026-06-22T12:07:15.445Z" },
 ]
 
 [[package]]

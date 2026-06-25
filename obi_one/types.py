@@ -32,7 +32,6 @@ class TaskType(StrEnum):
     brian2_circuit_simulation = auto()
     connectivity_matrix_extraction = auto()
     contribute_morphology = auto()
-    create_extracellular_recording_array = auto()
     electrophysiology_metrics = auto()
     folder_compression = auto()
     ion_channel_fitting = auto()

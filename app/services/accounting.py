@@ -24,6 +24,8 @@ from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletoni
 from obi_one.utils.db_sdk import select_json_asset_content
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
+    CircuitScale.single: ServiceSubtype.SINGLE_SIM,
+    CircuitScale.pair: ServiceSubtype.PAIR_SIM,
     CircuitScale.small: ServiceSubtype.SMALL_SIM,
     CircuitScale.microcircuit: ServiceSubtype.MICROCIRCUIT_SIM,
     CircuitScale.region: ServiceSubtype.REGION_SIM,
@@ -105,7 +107,7 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(
+def _evaluate_accounting_parameters(  # noqa: PLR0911
     *,
     db_client: Client,
     config_id: UUID,
@@ -128,11 +130,15 @@ def _evaluate_accounting_parameters(
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_cluster
             | TaskType.circuit_simulation_inait_machine
-            | TaskType.circuit_simulation_brian2_machine
         ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
+            )
+        case TaskType.circuit_simulation_brian2_machine:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.BRIAN2_CIRCUIT_SIMULATION,
             )
         case TaskType.em_synapse_mapping:
             return AccountingParameters(
