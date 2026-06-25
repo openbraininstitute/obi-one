@@ -108,7 +108,6 @@ class GenerateSimulationTask(Task):
                         sonata_simulation_config_directory=self.config.coordinate_output_root,
                         simulation_length=self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type]
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
-                        source_node_population=self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                         target_node_population=self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                         default_source_neuron_set_reference=self._default_neuron_set_ref(),
                         default_target_neuron_set_reference=self._default_neuron_set_ref(),

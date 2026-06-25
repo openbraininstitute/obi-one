@@ -59,7 +59,6 @@ class SpikeStimulus(StimulusWithTimestamps):
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
         default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
-        source_node_population: str | None = None,
         target_node_population: str | None = None,
         default_source_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
         default_target_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
@@ -84,7 +83,6 @@ class SpikeStimulus(StimulusWithTimestamps):
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
             source_neuron_set=source_neuron_set,  # ty:ignore[invalid-argument-type]
-            source_node_population=source_node_population,
         )
 
         sonata_config = self._generate_config(
@@ -101,9 +99,15 @@ class SpikeStimulus(StimulusWithTimestamps):
         circuit: Circuit,
         spike_file_directory: Path,
         source_neuron_set: NeuronSet,
-        source_node_population: str | None = None,
     ) -> Path:
-        source_node_population = source_neuron_set.get_population(source_node_population)
+        populations = source_neuron_set.get_populations(circuit)
+        if len(populations) != 1:
+            msg = (
+                "Spike stimulus only supports source neuron sets with one population. "
+                f"Got {len(populations)} populations: {populations}"
+            )
+            raise NotImplementedError(msg)
+        source_node_population = populations[0]
         source_gids = source_neuron_set.get_neuron_ids(circuit)[source_node_population]
 
         # Generate spikes
