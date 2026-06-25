@@ -107,7 +107,7 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(  # noqa: PLR0911
+def _evaluate_accounting_parameters(
     *,
     db_client: Client,
     config_id: UUID,
