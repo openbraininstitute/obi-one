@@ -111,7 +111,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_gids = source_neuron_set.get_neuron_ids(circuit)[source_node_population]
 
         # Generate spikes
-        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)  # ty:ignore[invalid-argument-type]
+        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)
 
         # Write spikes to file
         spike_file = f"{self.block_name}_spikes.h5"

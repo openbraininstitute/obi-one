@@ -236,7 +236,7 @@ class GenerateSimulationTask(Task):
             raise OBIONEError(msg)
 
         if default_neuron_set_ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
-            self.config.neuron_sets[default_neuron_set_ref.block_name] = (  # ty:ignore[unresolved-attribute]
+            self.config.neuron_sets[default_neuron_set_ref.block_name] = (  # ty:ignore[unresolved-attribute,invalid-assignment]
                 default_neuron_set_ref.block
             )
 
@@ -291,7 +291,7 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 self._sonata_config["node_set"] = resolve_neuron_set_ref_to_node_set(
-                    self.config.initialize.node_set,
+                    self.config.initialize.node_set,  # ty:ignore[invalid-argument-type]
                     self.config.default_node_set_name,
                 )
             elif not hasattr(self.config.initialize, "node_set"):
@@ -322,7 +322,7 @@ class GenerateSimulationTask(Task):
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
 
-            L.info("self.config.neuron_sets: %s", self.config.neuron_sets)  # ty:ignore[unresolved-attribute]
+            L.info("self.config.neuron_sets: %s", self.config.neuron_sets)
 
             for neuron_set_key, neuron_set_ in self.config.neuron_sets.items():  # ty:ignore[unresolved-attribute]
                 # 1. Check that the neuron sets block name matches the dict key
