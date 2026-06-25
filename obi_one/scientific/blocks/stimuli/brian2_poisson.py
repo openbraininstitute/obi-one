@@ -102,7 +102,7 @@ class Brian2DirectPoissonStimulus(Block):
     def config(
         self,
         circuit: Circuit,
-        population: str | None = None,
+        population: str | None = None,  # noqa: ARG002
         default_node_set: str = "sugar",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
@@ -122,10 +122,9 @@ class Brian2DirectPoissonStimulus(Block):
                 self._default_node_set,  # ty:ignore[invalid-argument-type]
             )
             max_n_neurons = 100
-            if (
-                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))  # ty:ignore[unresolved-attribute]
-                > max_n_neurons
-            ):
+            neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
+            total_neurons = sum(len(ids) for ids in neuron_ids.values())
+            if total_neurons > max_n_neurons:
                 msg = (
                     f"Number of neurons used with the {self.title} exceeds the maximum "
                     f"allowed: {max_n_neurons}."
