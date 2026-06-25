@@ -102,7 +102,6 @@ class Brian2DirectPoissonStimulus(Block):
     def config(
         self,
         circuit: Circuit,
-        population: str | None = None,  # noqa: ARG002
         default_node_set: str = "sugar",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:

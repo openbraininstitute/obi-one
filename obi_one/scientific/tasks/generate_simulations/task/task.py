@@ -8,6 +8,7 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
+from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -112,11 +113,17 @@ class GenerateSimulationTask(Task):
                         default_target_neuron_set_reference=self._default_neuron_set_ref(),
                     )
                 )
-            else:
+            elif isinstance(stimulus, Brian2DirectPoissonStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
                         circuit=self._circuit,  # ty:ignore[invalid-argument-type]
-                        population=self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
+                        default_node_set=self.config.default_node_set_name,
+                        default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
+                    )
+                )
+            else:
+                self._sonata_config["inputs"].update(
+                    stimulus.config(
                         default_node_set=self.config.default_node_set_name,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
                     )
