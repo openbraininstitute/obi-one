@@ -26,7 +26,6 @@ from obi_one.scientific.blocks.neuron_sets.population import (
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
     PointPopulationPredefinedNeuronSet,
-    PredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets.property import (
@@ -36,7 +35,6 @@ from obi_one.scientific.blocks.neuron_sets.property import (
 )
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
-    AllNeurons,
     AllPointNeurons,
     AllVirtualNeurons,
 )
@@ -102,11 +100,6 @@ NEURONSimulationNeuronSetUnion = Annotated[
 
 NEURONMEModelWithSynapsesNeuronSetUnion = Annotated[
     _VIRTUAL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-PointNeuronSetUnion = Annotated[
-    _POINT_NEURON_SETS | AllNeurons | PredefinedNeuronSet,
     Discriminator("type"),
 ]
 
