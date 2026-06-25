@@ -83,7 +83,7 @@ def fetch_publication_metadata(
     return {
         "DOI": doi,
         "title": title,
-        "authors": authors if authors else None,
+        "authors": authors or None,
         "publication_year": publication_year,
         "abstract": abstract,
     }

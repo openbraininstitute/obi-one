@@ -2,6 +2,7 @@
 
 import re
 
+from entitysdk import models
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, field_validator
 from starlette.requests import Request
@@ -52,9 +53,7 @@ def register_publication(
     user_context: UserContextDep,  # noqa: ARG001
     request: Request,
 ) -> dict:
-    """Register a publication by fetching metadata from Crossref and creating it in entitycore."""
-    from entitysdk import models
-
+    """Register a publication by fetching metadata and creating it in entitycore."""
     http_client = request.state.http_client
     doi = json_model.DOI
 
