@@ -10,8 +10,6 @@ import obi_one as obi
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
-    PointPopulationIDNeuronSet,
-    VirtualPopulationIDNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets.population import (
     BiophysicalPopulationNeuronSet,
@@ -19,7 +17,6 @@ from obi_one.scientific.blocks.neuron_sets.population import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
 
