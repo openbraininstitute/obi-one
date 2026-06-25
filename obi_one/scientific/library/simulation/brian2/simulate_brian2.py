@@ -123,6 +123,13 @@ def _make_poisson(
     return n0, poisson_inputs
 
 
+def _make_linear_current(
+    input_: libsonata.SimulationConfig.Linear,
+    ):
+    #['amp_end', 'amp_start', 'compartment_set', 'delay', 'duration', 'input_type', 'module', 'node_set', 'represents_physical_electrode']
+
+    return []
+
 def _get_inputs(
     simulation: bluepysnap.Simulation, n0: brian2.NeuronGroup
 ) -> tuple[brian2.NeuronGroup, list]:
@@ -132,9 +139,16 @@ def _get_inputs(
         if isinstance(input_, bluepysnap.input.SynapseReplay):
             msg = "`SynapseReplay not handled`"
             raise TypeError(msg)
+
         if isinstance(input_, libsonata.SimulationConfig.Poisson):
             n0, poissons = _make_poisson(simulation, input_, n0)
             inputs += poissons
+        elif isinstance(input_, libsonata.SimulationConfig.Linear):
+            inputs += _make_linear(input_)
+        else:
+            breakpoint() # XXX BREAKPOINT
+            msg = f"Unhandled or unknown input: `{input_.module}:{input_.input_type}`"
+            raise TypeError(msg)
 
     return n0, inputs
 
