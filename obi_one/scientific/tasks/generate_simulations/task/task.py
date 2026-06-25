@@ -46,7 +46,6 @@ class GenerateSimulationTask(Task):
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
-    _neuron_set_definitions: dict[str, dict] = PrivateAttr(default={})
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -312,7 +311,7 @@ class GenerateSimulationTask(Task):
         population (but which won't be a human-readable representation any more).
         """
         sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
-        self._neuron_set_definitions = {}
+
         if hasattr(self.config, "neuron_sets"):
             # circuit.sonata_circuit should be created once. Currently this would break other code.
 
@@ -326,18 +325,12 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                self._neuron_set_definitions[neuron_set_key] = (
-                    neuron_set_.add_node_set_definition_to_sonata_circuit(
-                        self._circuit, sonata_circuit
-                    )
-                )
+                neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
         else:
             neuron_set = self.config.default_neuron_set_type()
             neuron_set.set_block_name(self.config.default_node_set_name)
-            self._neuron_set_definitions[self.config.default_node_set_name] = (
-                neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)  # ty:ignore[invalid-argument-type]
-            )
+            neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)  # ty:ignore[invalid-argument-type]
 
         # 3. Write node sets from SONATA circuit object to .json file
         write_circuit_node_set_file(
