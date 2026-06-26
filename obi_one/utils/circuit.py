@@ -321,8 +321,6 @@ def copy_mod_files(
         f" population '{pop_name}' ({pop.size})"
     )
 
-    L.info(f"{mod_file_list}")
-
     dest_dir = pop.config.get("mechanisms_dir")
     Path(dest_dir).mkdir(parents=True, exist_ok=True)
 
