@@ -81,7 +81,7 @@ def _upload_lod_directory(
     client.upload_directory(
         entity_id=entity_id,
         entity_type=EMCellMesh,
-        name="lod-mesh-directory2",
+        name="lod-mesh-directory3",
         paths=lod_files,
         label=AssetLabel.lod_mesh_block,
         metadata=None,
