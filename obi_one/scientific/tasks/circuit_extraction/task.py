@@ -308,12 +308,9 @@ class CircuitExtractionTask(Task):
                     if "biophysical_neuron_models_dir" in pop.config:
                         circuit_utils.copy_hoc_files(pop_name, pop, original_circuit)
 
-            # Copy .mod files, if any
-            circuit_utils.copy_mod_files(
-                self._circuit.path,
-                self.config.coordinate_output_root,  # ty:ignore[invalid-argument-type]
-                "mod",
-            )
+                    # Copy .mod files, if any (Even if defined globally, shows up under pop.config)
+                    if "mechanisms_dir" in pop.config:
+                        circuit_utils.copy_mod_files(pop_name, pop, original_circuit)
 
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
