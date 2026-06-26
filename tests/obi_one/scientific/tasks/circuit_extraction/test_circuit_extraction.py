@@ -164,7 +164,9 @@ def test_circuit_extraction(tmp_path):
                 do_virtual=do_virtual,
                 create_external=create_external,
             )
-            neuron_set = obi.PredefinedNeuronSet(node_set=["L6_IPC", "L6_TPC:A"])
+            neuron_set = obi.BiophysicalPopulationPredefinedNeuronSet(
+                node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+            )
             info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
 
             circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
