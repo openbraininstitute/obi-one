@@ -285,8 +285,13 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             ref_cls = block_ref_registry.get_by_name(ref_name)
             if ref_cls is None:
                 continue
-            allowed = ref_cls.json_schema_extra_additions.get("allowed_block_types", [])  # ty:ignore[unresolved-attribute]
-            if block_class_name in allowed:
+            extras = getattr(ref_cls, "json_schema_extra_additions", None)
+            if extras is None:
+                # No restrictions — accept any block
+                reference_type = ref_cls
+                break
+            allowed = extras.get("allowed_block_types", [])
+            if not allowed or block_class_name in allowed:
                 reference_type = ref_cls
                 break
 
