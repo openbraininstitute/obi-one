@@ -8,7 +8,7 @@ import obi_one as obi
 from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import VirtualNeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
@@ -27,7 +27,7 @@ def _make_time_distribution_stimulus(
             block_dict_name="distributions",
             block_name="time_dist",
         ),
-        source_neuron_set=NeuronSetReference(
+        source_neuron_set=VirtualNeuronSetReference(
             block_dict_name="neuron_sets",
             block_name="test_neurons",
         ),
@@ -86,11 +86,11 @@ def _patch_neuron_set_methods(
     def _get_neuron_ids(_self: object, _circuit: object) -> dict[str, list[int]]:
         return {population: neuron_ids}
 
-    def _get_population(_self: object, _pop: object) -> str:
-        return population
+    def _get_populations(_self: object, _circuit: object) -> list[str]:
+        return [population]
 
     monkeypatch.setattr(type(neuron_set), "get_neuron_ids", _get_neuron_ids)
-    monkeypatch.setattr(type(neuron_set), "get_population", _get_population)
+    monkeypatch.setattr(type(neuron_set), "get_populations", _get_populations)
 
 
 def _patch_resolved_timestamps(
@@ -181,7 +181,6 @@ class TestSpikeTimeDistributionSpikeStimulus:
             circuit=MagicMock(),
             spike_file_directory=tmp_path,
             source_neuron_set=neuron_set,
-            source_node_population="test_pop",
         )
 
         spike_file = tmp_path / f"{stimulus.block_name}_spikes.h5"
@@ -221,7 +220,6 @@ class TestSpikeTimeDistributionSpikeStimulus:
             circuit=MagicMock(),
             spike_file_directory=tmp_path,
             source_neuron_set=neuron_set,
-            source_node_population="test_pop",
         )
 
         spike_file = tmp_path / f"{stimulus.block_name}_spikes.h5"
@@ -257,7 +255,6 @@ class TestSpikeTimeDistributionSpikeStimulus:
             circuit=MagicMock(),
             spike_file_directory=tmp_path,
             source_neuron_set=neuron_set,
-            source_node_population="test_pop",
         )
 
         spike_file = tmp_path / f"{stimulus.block_name}_spikes.h5"
@@ -309,7 +306,6 @@ class TestSpikeTimeStimulusIndexingConvention:
             circuit=MagicMock(),
             spike_file_directory=tmp_path,
             source_neuron_set=neuron_set,
-            source_node_population="test_pop",
         )
 
         spike_file = tmp_path / f"{stimulus.block_name}_spikes.h5"

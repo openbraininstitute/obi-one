@@ -270,7 +270,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__][
+        reference_type_names = self.block_mapping[block.__class__.__name__][
             SchemaKey.REFERENCE_TYPES
         ]
 
@@ -278,10 +278,23 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 
-        # Find the class in the registry whose name matches reference_type_name
-        reference_type = block_ref_registry.get_by_name(reference_type_name)
+        # Find the reference type that accepts this block class
+        block_class_name = block.__class__.__name__
+        reference_type = None
+        for ref_name in reference_type_names:
+            ref_cls = block_ref_registry.get_by_name(ref_name)
+            if ref_cls is None:
+                continue
+            allowed = ref_cls.json_schema_extra_additions.get("allowed_block_types", [])  # ty:ignore[unresolved-attribute]
+            if block_class_name in allowed:
+                reference_type = ref_cls
+                break
+
         if reference_type is None:
-            msg = f"Reference type '{reference_type_name}' not found in block reference registry."
+            msg = (
+                f"No reference type from {reference_type_names}"
+                f" accepts block class '{block_class_name}'."
+            )
             raise OBIONEError(msg)
 
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)

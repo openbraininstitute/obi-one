@@ -10,6 +10,11 @@ import bluepysnap as snap
 
 from obi_one.core.block import Block
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_metrics import (
+    TYPES_OF_BIOPHYS_NODES,
+    TYPES_OF_POINT_NODES,
+    TYPES_OF_VIRTUAL_NODES,
+)
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
 )
@@ -101,11 +106,11 @@ class NeuronSet(Block, abc.ABC):
 
         popul_types = {}
         for pname in self.get_populations(circuit):
-            if circuit.sonata_circuit.nodes[pname].type == "biophysical":
+            if circuit.sonata_circuit.nodes[pname].type in TYPES_OF_BIOPHYS_NODES:
                 ptype = SonataPopulationType.BIOPHYSICAL
-            elif circuit.sonata_circuit.nodes[pname].type == "virtual":
+            elif circuit.sonata_circuit.nodes[pname].type in TYPES_OF_VIRTUAL_NODES:
                 ptype = SonataPopulationType.VIRTUAL
-            elif circuit.sonata_circuit.nodes[pname].type.startswith("point_"):
+            elif circuit.sonata_circuit.nodes[pname].type in TYPES_OF_POINT_NODES:
                 ptype = SonataPopulationType.POINT
             else:
                 msg = f"Unknown SONATA population type for population '{pname}'!"
@@ -192,8 +197,8 @@ class NeuronSet(Block, abc.ABC):
         return expression, combined
 
     def add_node_set_definition_to_sonata_circuit(
-        self, circuit: Circuit, *, force_resolve_ids: bool = False
-    ) -> tuple[str, snap.Circuit]:
+        self, circuit: Circuit, sonata_circuit: snap.Circuit, *, force_resolve_ids: bool = False
+    ) -> str:
         """Adds the node set definition to the corresponding SONATA circuit object."""
         if not self.has_block_name():
             msg = "Block name undefined. NeuronSet must be set through a Task."
@@ -201,12 +206,11 @@ class NeuronSet(Block, abc.ABC):
         nset_def, compound_def = self.get_node_set_definition(
             circuit, force_resolve_ids=force_resolve_ids
         )
-        nset_name = f"__{self.__class__.__name__}__{self.block_name}"
+        nset_name = self.block_name
         nset_dict = compound_def | {nset_name: nset_def}
 
-        sonata_circuit = circuit.sonata_circuit
         add_node_set_to_circuit(sonata_circuit, nset_dict, overwrite_if_exists=False)
-        return nset_name, sonata_circuit
+        return nset_name
 
     @staticmethod
     def _get_output_file(circuit: Circuit, file_name: str | None, output_path: str) -> Path:

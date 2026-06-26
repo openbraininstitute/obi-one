@@ -69,10 +69,16 @@ class Brian2DirectPoissonStimulus(Block):
     )
 
     weight: float | list[float] = Field(
-        default=1.0e-3,
+        default=68.75,
         title="Weight",
-        description="Amplitude of each Poisson kick, in volts (SI).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        description=(
+            "Amplitude of each injection, in millivolts. The default value is taken "
+            "from the original Shui et al. (2024) LIF FlyWire model simulations."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
     )
 
     duration: (
@@ -96,7 +102,6 @@ class Brian2DirectPoissonStimulus(Block):
     def config(
         self,
         circuit: Circuit,
-        population: str | None = None,
         default_node_set: str = "sugar",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
@@ -116,10 +121,9 @@ class Brian2DirectPoissonStimulus(Block):
                 self._default_node_set,  # ty:ignore[invalid-argument-type]
             )
             max_n_neurons = 100
-            if (
-                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))  # ty:ignore[unresolved-attribute]
-                > max_n_neurons
-            ):
+            neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
+            total_neurons = sum(len(ids) for ids in neuron_ids.values())
+            if total_neurons > max_n_neurons:
                 msg = (
                     f"Number of neurons used with the {self.title} exceeds the maximum "
                     f"allowed: {max_n_neurons}."

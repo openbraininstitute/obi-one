@@ -7,7 +7,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     CircuitFromID,
@@ -22,6 +21,7 @@ from obi_one.scientific.unions.unions_distributions import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     LearningEngineNeuronSetUnion,
     NeuronSetReference,
+    PointNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     LearningEngineCircuitStimulusUnion,
@@ -48,7 +48,9 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            PointNeuronSetReference.__name__: (
+                LearningEngineSimulationScanConfig.default_node_set_name
+            ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
         },
@@ -103,7 +105,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: [PointNeuronSetReference.__name__],
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

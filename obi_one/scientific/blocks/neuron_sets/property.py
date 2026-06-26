@@ -7,11 +7,17 @@ from pydantic import Field, model_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.neuron_sets.constants import (
+    BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    POINT_NEURON_SET_TITLE_SUFFIX,
+    PROPERTY_NEURON_SET_TITLE_PREFIX,
+    VIRTUAL_NEURON_SET_TITLE_SUFFIX,
+)
 from obi_one.scientific.blocks.neuron_sets.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
+    BiophysicalPopulationNeuronSetMixin,
+    PointPopulationNeuronSetMixin,
     PopulationBaseNeuronSet,
-    VirtualPopulationNeuronSet,
+    VirtualPopulationNeuronSetMixin,
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
@@ -149,40 +155,46 @@ class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
 
 
 class BiophysicalPopulationPropertyNeuronSet(
-    PropertyPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet
+    BiophysicalPopulationNeuronSetMixin, PropertyPopulationBaseNeuronSet
 ):
     """Neuron set definition based on neuron properties.
 
     Resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = "BY NODE PROPERTY (Biophysical)"
+    title: ClassVar[str] = (
+        f"{PROPERTY_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = (
         "Use neurons based on properties, resolved in a single biophysical population."
     )
 
 
 class VirtualPopulationPropertyNeuronSet(
-    PropertyPopulationBaseNeuronSet, VirtualPopulationNeuronSet
+    VirtualPopulationNeuronSetMixin,
+    PropertyPopulationBaseNeuronSet,
 ):
     """Neuron set definition based on neuron properties.
 
     Resolved in one selected virtual node population.
     """
 
-    title: ClassVar[str] = "By Properties (Virtual)"
+    title: ClassVar[str] = f"{PROPERTY_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons based on properties, resolved in a single virtual population."
     )
 
 
-class PointPopulationPropertyNeuronSet(PropertyPopulationBaseNeuronSet, PointPopulationNeuronSet):
+class PointPopulationPropertyNeuronSet(
+    PointPopulationNeuronSetMixin,
+    PropertyPopulationBaseNeuronSet,
+):
     """Neuron set definition based on neuron properties.
 
     Resolved in one selected point neuron population.
     """
 
-    title: ClassVar[str] = "By Properties (Point)"
+    title: ClassVar[str] = f"{PROPERTY_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons based on properties, resolved in a single point neuron population."
     )

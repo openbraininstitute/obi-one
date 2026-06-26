@@ -7,11 +7,18 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.constants import (
+    BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    MULTI_POPULATION_NEURON_SET_TITLE_SUFFIX,
+    POINT_NEURON_SET_TITLE_SUFFIX,
+    PREDEFINED_NEURON_SET_TITLE_PREFIX,
+    VIRTUAL_NEURON_SET_TITLE_SUFFIX,
+)
 from obi_one.scientific.blocks.neuron_sets.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
+    BiophysicalPopulationNeuronSetMixin,
+    PointPopulationNeuronSetMixin,
     PopulationBaseNeuronSet,
-    VirtualPopulationNeuronSet,
+    VirtualPopulationNeuronSetMixin,
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
@@ -70,7 +77,9 @@ class PredefinedNeuronSet(PredefinedBaseNeuronSet):
     node set definition.
     """
 
-    title: ClassVar[str] = "Predefined Neuron Set (multi-population)"
+    title: ClassVar[str] = (
+        f"{PREDEFINED_NEURON_SET_TITLE_PREFIX}{MULTI_POPULATION_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit."
         " May span multiple node populations."
@@ -206,14 +215,17 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
 
 
 class BiophysicalPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet
+    BiophysicalPopulationNeuronSetMixin,
+    PredefinedPopulationBaseNeuronSet,
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
     The node set is resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = "PREDEFINED (Biophysical)"
+    title: ClassVar[str] = (
+        f"{PREDEFINED_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit,"
         " resolved in a single biophysical population."
@@ -221,14 +233,15 @@ class BiophysicalPopulationPredefinedNeuronSet(
 
 
 class VirtualPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, VirtualPopulationNeuronSet
+    VirtualPopulationNeuronSetMixin,
+    PredefinedPopulationBaseNeuronSet,
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
     The node set is resolved in one selected virtual node population.
     """
 
-    title: ClassVar[str] = "Predefined Neuron Set (Virtual Population)"
+    title: ClassVar[str] = f"{PREDEFINED_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit,"
         " resolved in a single virtual population."
@@ -236,14 +249,14 @@ class VirtualPopulationPredefinedNeuronSet(
 
 
 class PointPopulationPredefinedNeuronSet(
-    PredefinedPopulationBaseNeuronSet, PointPopulationNeuronSet
+    PointPopulationNeuronSetMixin, PredefinedPopulationBaseNeuronSet
 ):
     """Use an existing node set already defined in the circuit's node sets file.
 
     The node set is resolved in one selected point neuron population.
     """
 
-    title: ClassVar[str] = "Predefined Neuron Set (Point Population)"
+    title: ClassVar[str] = f"{PREDEFINED_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons from a predefined node set from the SONATA circuit,"
         " resolved in a single point neuron population."

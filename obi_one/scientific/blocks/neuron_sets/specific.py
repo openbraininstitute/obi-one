@@ -2,8 +2,20 @@ import abc
 import logging
 from typing import ClassVar
 
+from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.constants import (
+    ALL_NEURON_SET_TITLE_PREFIX,
+    ALL_POPULATION_TYPES_NEURON_SET_TITLE_SUFFIX,
+    BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    POINT_NEURON_SET_TITLE_SUFFIX,
+    VIRTUAL_NEURON_SET_TITLE_SUFFIX,
+)
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 
 L = logging.getLogger(__name__)
 
@@ -70,7 +82,9 @@ class AllNeuronsBase(NeuronSet, abc.ABC):
 class AllNeurons(AllNeuronsBase):
     """All neurons across all populations."""
 
-    title: ClassVar[str] = "All Neurons"
+    title: ClassVar[str] = (
+        f"{ALL_NEURON_SET_TITLE_PREFIX}{ALL_POPULATION_TYPES_NEURON_SET_TITLE_SUFFIX}"
+    )
     description: ClassVar[str] = "All neurons from all node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
@@ -88,12 +102,20 @@ class AllNeurons(AllNeuronsBase):
 class AllBiophysicalNeurons(AllNeuronsBase):
     """All biophysical neurons across all biophysical populations."""
 
-    title: ClassVar[str] = "All Biophysical Neurons"
+    title: ClassVar[str] = f"{ALL_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "All neurons from all biophysical node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
     )
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no biophysical populations.",
+        },
+    }
 
     def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
         """Returns all biophysical population names."""
@@ -108,10 +130,18 @@ class AllBiophysicalNeurons(AllNeuronsBase):
 class AllPointNeurons(AllNeuronsBase):
     """All point neurons across all point neuron populations."""
 
-    title: ClassVar[str] = "All Point Neurons"
+    title: ClassVar[str] = f"{ALL_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "All neurons from all point neuron populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.POINT
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_POINT_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no point neuron populations.",
+        },
+    }
 
     def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
         """Returns all point neuron population names."""
@@ -126,10 +156,18 @@ class AllPointNeurons(AllNeuronsBase):
 class AllVirtualNeurons(AllNeuronsBase):
     """All virtual neurons across all virtual populations."""
 
-    title: ClassVar[str] = "All Virtual Neurons"
+    title: ClassVar[str] = f"{ALL_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = "All neurons from all virtual node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_VIRTUAL_NEURON_SETS,
+            SchemaKey.FALSE_MESSAGE: "This circuit has no virtual populations.",
+        },
+    }
 
     def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
         """Returns all virtual population names."""
@@ -159,50 +197,3 @@ class AllNonVirtualNeurons(AllNeuronsBase):
             incl_point=True,
             incl_virtual=False,
         )
-
-
-"""
-Old types: to be deprecated.
-"""
-
-
-class ExcitatoryNeurons(NeuronSet):
-    """All biophysical excitatory neurons."""
-
-    title: ClassVar[str] = "All Excitatory Neurons"
-
-
-class InhibitoryNeurons(NeuronSet):
-    """All biophysical inhibitory neurons."""
-
-    title: ClassVar[str] = "All Inhibitory Neurons"
-
-
-class nbS1VPMInputs(NeuronSet):  # noqa: N801
-    """Virtual neurons projecting from the VPM thalamic nucleus.
-
-    Specifically, virtual neurons projecting from the VPM thalamic nucleus to biophysical
-    cortical neurons in the nbS1 model.
-    """
-
-    title: ClassVar[str] = "Demo: nbS1 VPM Inputs"
-
-
-class nbS1POmInputs(NeuronSet):  # noqa: N801
-    """Virtual neurons projecting from the POm thalamic nucleus.
-
-    Specifically, virtual neurons projecting from the POm thalamic nucleus to biophysical
-    cortical neurons in the nbS1 model.
-    """
-
-    title: ClassVar[str] = "Demo: nbS1 POm Inputs"
-
-
-class rCA1CA3Inputs(NeuronSet):  # noqa: N801
-    """Virtual neurons projecting from CA3 to CA1.
-
-    Specifically, virtual neurons projecting from the CA3 region to biophysical CA1 neurons
-    in the rCA1 model.
-    """
-
-    title: ClassVar[str] = "Demo: rCA1 CA3 Inputs"

@@ -6,11 +6,17 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.constants import (
+    BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX,
+    ID_NEURON_SET_TITLE_PREFIX,
+    POINT_NEURON_SET_TITLE_SUFFIX,
+    VIRTUAL_NEURON_SET_TITLE_SUFFIX,
+)
 from obi_one.scientific.blocks.neuron_sets.population import (
-    BiophysicalPopulationNeuronSet,
-    PointPopulationNeuronSet,
+    BiophysicalPopulationNeuronSetMixin,
+    PointPopulationNeuronSetMixin,
     PopulationBaseNeuronSet,
-    VirtualPopulationNeuronSet,
+    VirtualPopulationNeuronSetMixin,
 )
 from obi_one.scientific.library.circuit import Circuit
 
@@ -45,37 +51,39 @@ class IDPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
         return {"population": self.population, "node_id": list(self.neuron_ids.elements)}  # ty:ignore[unresolved-attribute]
 
 
-class BiophysicalPopulationIDNeuronSet(IDPopulationBaseNeuronSet, BiophysicalPopulationNeuronSet):
+class BiophysicalPopulationIDNeuronSet(
+    BiophysicalPopulationNeuronSetMixin, IDPopulationBaseNeuronSet
+):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected biophysical node population.
     """
 
-    title: ClassVar[str] = "BY ID (Biophysical)"
+    title: ClassVar[str] = f"{ID_NEURON_SET_TITLE_PREFIX}{BIOPHYSICAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single biophysical population."
     )
 
 
-class VirtualPopulationIDNeuronSet(IDPopulationBaseNeuronSet, VirtualPopulationNeuronSet):
+class VirtualPopulationIDNeuronSet(VirtualPopulationNeuronSetMixin, IDPopulationBaseNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected virtual node population.
     """
 
-    title: ClassVar[str] = "Sample IDs (Virtual)"
+    title: ClassVar[str] = f"{ID_NEURON_SET_TITLE_PREFIX}{VIRTUAL_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single virtual population."
     )
 
 
-class PointPopulationIDNeuronSet(IDPopulationBaseNeuronSet, PointPopulationNeuronSet):
+class PointPopulationIDNeuronSet(PointPopulationNeuronSetMixin, IDPopulationBaseNeuronSet):
     """Neuron set definition by providing a list of neuron IDs.
 
     Resolved in one selected point neuron population.
     """
 
-    title: ClassVar[str] = "Sample IDs (Point)"
+    title: ClassVar[str] = f"{ID_NEURON_SET_TITLE_PREFIX}{POINT_NEURON_SET_TITLE_SUFFIX}"
     description: ClassVar[str] = (
         "Use neurons by providing a list of IDs, resolved in a single point neuron population."
     )

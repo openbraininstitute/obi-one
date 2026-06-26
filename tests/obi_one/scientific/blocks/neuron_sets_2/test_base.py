@@ -71,7 +71,7 @@ def test_ids_to_node_set_definition_no_simplification():
 
 
 def test_add_node_set_to_sonata_circuit(circuit):
-    """Test that a node set is added and queryable via bluepysnap."""
+    """Test that a node set is added in-place to the passed SONATA circuit and is queryable."""
     nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
@@ -80,9 +80,13 @@ def test_add_node_set_to_sonata_circuit(circuit):
     )
     nset.set_block_name("added_nset")
 
-    nset_name, sonata_circuit = nset.add_node_set_definition_to_sonata_circuit(circuit)
+    sonata_circuit = circuit.sonata_circuit
+    nset_name = nset.add_node_set_definition_to_sonata_circuit(circuit, sonata_circuit)
 
-    # Verify it's in the node sets
+    # The node set name is the block name
+    assert nset_name == "added_nset"
+
+    # Verify it was added in-place to the passed-in circuit object
     assert nset_name in sonata_circuit.node_sets.content
 
     # Verify it resolves correctly via bluepysnap

@@ -16,7 +16,7 @@ from obi_one.scientific.unions.unions_distributions import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
-    SynapseParameterizationNeuronSetUnion,
+    NEURONSynapseParameterizationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
     SynapticModelAssignerReference,
@@ -121,7 +121,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SynapseParameterizationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSynapseParameterizationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

@@ -5,11 +5,13 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.neuron_sets.combined import (
-    BiophysicalCombinedNeuronSet,
-    CombinedNeuronSet,
-    PointCombinedNeuronSet,
-    VirtualCombinedNeuronSet,
+from obi_one.scientific.blocks.neuron_sets.deprecated import (
+    ExcitatoryNeurons,
+    IDNeuronSet,
+    InhibitoryNeurons,
+    nbS1POmInputs,
+    nbS1VPMInputs,
+    rCA1CA3Inputs,
 )
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
@@ -24,7 +26,6 @@ from obi_one.scientific.blocks.neuron_sets.population import (
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
     PointPopulationPredefinedNeuronSet,
-    PredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets.property import (
@@ -34,61 +35,39 @@ from obi_one.scientific.blocks.neuron_sets.property import (
 )
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
-    AllNeurons,
     AllPointNeurons,
     AllVirtualNeurons,
-    nbS1POmInputs,
-    nbS1VPMInputs,
 )
+
+_DEPRECATED_BIOPHYSICAL_NEURON_SETS = ExcitatoryNeurons | InhibitoryNeurons | IDNeuronSet
+
+_DEPRECATED_VIRTUAL_NEURON_SETS = rCA1CA3Inputs | nbS1POmInputs | nbS1VPMInputs
 
 _BIOPHYSICAL_NEURON_SETS = (
-    BiophysicalPopulationNeuronSet
+    BiophysicalPopulationPropertyNeuronSet
     | BiophysicalPopulationIDNeuronSet
-    | BiophysicalPopulationPropertyNeuronSet
-    | BiophysicalPopulationPredefinedNeuronSet
-    | BiophysicalCombinedNeuronSet
+    | BiophysicalPopulationNeuronSet
     | AllBiophysicalNeurons
+    | BiophysicalPopulationPredefinedNeuronSet
+    | _DEPRECATED_BIOPHYSICAL_NEURON_SETS
 )
 _VIRTUAL_NEURON_SETS = (
-    VirtualPopulationNeuronSet
+    VirtualPopulationPropertyNeuronSet
     | VirtualPopulationIDNeuronSet
-    | VirtualPopulationPropertyNeuronSet
-    | VirtualPopulationPredefinedNeuronSet
-    | VirtualCombinedNeuronSet
+    | VirtualPopulationNeuronSet
     | AllVirtualNeurons
+    | VirtualPopulationPredefinedNeuronSet
+    | _DEPRECATED_VIRTUAL_NEURON_SETS
 )
 _POINT_NEURON_SETS = (
-    PointPopulationNeuronSet
+    PointPopulationPropertyNeuronSet
     | PointPopulationIDNeuronSet
-    | PointPopulationPropertyNeuronSet
-    | PointPopulationPredefinedNeuronSet
-    | PointCombinedNeuronSet
+    | PointPopulationNeuronSet
     | AllPointNeurons
-)
-_NONVIRTUAL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS
-_ALL_NEURON_SETS = (
-    _BIOPHYSICAL_NEURON_SETS
-    | _VIRTUAL_NEURON_SETS
-    | _POINT_NEURON_SETS
-    | _NONVIRTUAL_NEURON_SETS
-    | PredefinedNeuronSet
-    | CombinedNeuronSet
-    | AllNeurons
+    | PointPopulationPredefinedNeuronSet
 )
 
-
-SimulationNeuronSetUnion = Annotated[
-    _ALL_NEURON_SETS,
-    # IDNeuronSet
-    # AllNeurons
-    # | ExcitatoryNeurons
-    # | InhibitoryNeurons
-    # | PredefinedNeuronSet
-    # | nbS1VPMInputs
-    # | nbS1POmInputs,
-    Discriminator("type"),
-]
-
+_ALL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _VIRTUAL_NEURON_SETS | _POINT_NEURON_SETS
 
 BiophysicalNeuronSetUnion = Annotated[
     _BIOPHYSICAL_NEURON_SETS,
@@ -110,42 +89,20 @@ AllNeuronSetUnion = Annotated[
     Discriminator("type"),
 ]
 
-NonVirtualNeuronSetUnion = Annotated[
-    _NONVIRTUAL_NEURON_SETS,
+NEURONSimulationNeuronSetUnion = Annotated[
+    _ALL_NEURON_SETS,
     Discriminator("type"),
 ]
 
-Brian2SimulationNeuronSetUnion = Annotated[
-    BiophysicalPopulationIDNeuronSet | AllNeurons | PredefinedNeuronSet,
+NEURONMEModelWithSynapsesNeuronSetUnion = Annotated[
+    _VIRTUAL_NEURON_SETS,
     Discriminator("type"),
 ]
 
-LearningEngineNeuronSetUnion = Annotated[
-    BiophysicalPopulationIDNeuronSet | AllNeurons | PredefinedNeuronSet,
-    Discriminator("type"),
-]
-
-
-CircuitExtractionNeuronSetUnion = Annotated[
-    AllNeurons,
-    # | ExcitatoryNeurons
-    # | InhibitoryNeurons
-    # | PredefinedNeuronSet
-    # # | CombinedNeuronSet  # To be added later
-    # # | PropertyNeuronSet  # To be added later
-    # # | VolumetricCountNeuronSet  # To be added later
-    # # | VolumetricRadiusNeuronSet  # To be added later
-    # | BiophysicalPopulationIDNeuronSet,
-    Discriminator("type"),
-]
-
-SynapseParameterizationNeuronSetUnion = CircuitExtractionNeuronSetUnion
-
-
-MEModelWithSynapsesNeuronSetUnion = Annotated[
-    nbS1VPMInputs | nbS1POmInputs,
-    Discriminator("type"),
-]
+Brian2SimulationNeuronSetUnion = PointNeuronSetUnion
+LearningEngineNeuronSetUnion = PointNeuronSetUnion
+CircuitExtractionNeuronSetUnion = NEURONSimulationNeuronSetUnion
+NEURONSynapseParameterizationNeuronSetUnion = NEURONSimulationNeuronSetUnion
 
 
 class NeuronSetReference(BlockReference, abc.ABC):
@@ -160,21 +117,6 @@ class NeuronSetReference(BlockReference, abc.ABC):
     @block.setter
     def block(self, value: NeuronSet) -> None:
         BlockReference.block.fset(self, value)
-
-
-"""
-class PopulationBaseNeuronSetReference(NeuronSetReference):
-    @property
-    def block(self) -> NeuronSet:
-        if isinstance(super().block, NeuronSet):
-            return cast("NeuronSet", super().block)
-        msg = f"Expected block of type NeuronSet, but got {type(super().block)}"
-        raise TypeError(msg)
-
-    @block.setter
-    def block(self, value: NeuronSet) -> None:
-        BlockReference.block.fset(self, value)
-"""
 
 
 class BiophysicalNeuronSetReference(NeuronSetReference):

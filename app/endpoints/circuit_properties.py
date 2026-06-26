@@ -248,6 +248,7 @@ def mapped_circuit_properties_endpoint(
                 CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: False,
                 CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS: False,
                 CircuitUsability.SHOW_NEURON_SETS: False,
+                CircuitUsability.SHOW_DEPRECATED_BLOCKS: False,
             }
     else:
         # For MEModel entities, set default usability
@@ -259,6 +260,7 @@ def mapped_circuit_properties_endpoint(
             CircuitUsability.SHOW_VIRTUAL_NEURON_SETS: False,
             CircuitUsability.SHOW_NONVIRTUAL_NEURON_SETS: False,
             CircuitUsability.SHOW_NEURON_SETS: False,
+            CircuitUsability.SHOW_DEPRECATED_BLOCKS: False,
         }
 
     return mapped_circuit_properties

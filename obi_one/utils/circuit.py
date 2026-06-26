@@ -20,6 +20,7 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_metrics import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
@@ -347,8 +348,7 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue
-        if npop.type.startswith("point_"):
-            # E.g., point_neuron, point_process
+        if npop.type in TYPES_OF_POINT_NODES:
             has_point_neurons = True
             break
 
