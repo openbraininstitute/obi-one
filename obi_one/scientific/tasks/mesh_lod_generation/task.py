@@ -78,7 +78,7 @@ def _upload_lod_directory(
     entity_id: UUID,
     lod_files: dict[os.PathLike, os.PathLike],
 ) -> str:
-    result = client.upload_directory(
+    client.upload_directory(
         entity_id=entity_id,
         entity_type=EMCellMesh,
         name="lod-mesh-directory2",
@@ -86,8 +86,7 @@ def _upload_lod_directory(
         label=AssetLabel.lod_mesh_block,
         metadata=None,
     )
-    asset_id = str(result.id) if hasattr(result, "id") else str(result[0].id)
-    return asset_id
+    return str(entity_id)
 
 
 class MeshLODGenerationTask(Task):
@@ -118,7 +117,7 @@ class MeshLODGenerationTask(Task):
 
             _download_mesh(resolved_client, entity_id, mesh_asset_id, mesh_path)
             lod_files = _generate_lods(mesh_path, mesh_format, output_dir)
-            asset_id = _upload_lod_directory(resolved_client, entity_id, lod_files)
+            generated_entity_id = _upload_lod_directory(resolved_client, entity_id, lod_files)
 
         execution_activity = MeshLODGenerationTask._get_execution_activity(
             db_client=resolved_client, execution_activity_id=execution_activity_id
@@ -126,9 +125,9 @@ class MeshLODGenerationTask(Task):
         MeshLODGenerationTask._update_execution_activity(
             db_client=resolved_client,
             execution_activity=execution_activity,
-            generated=[asset_id],
+            generated=[generated_entity_id],
         )
-        return asset_id
+        return generated_entity_id
 
 
 MeshLODGenerationTask.model_rebuild(
