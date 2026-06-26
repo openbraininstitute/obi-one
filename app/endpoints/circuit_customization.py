@@ -470,6 +470,7 @@ def _trigger_validation_task(
             "ref": "commit:c248951d8072637506fd34d4e12d723855d49187",  # TODO: use tag after merge
             "path": f"{launch_path}/main.py",
             "dependencies": f"{launch_path}/dependencies/default.txt",
+            "staged_directories": ["pyproject.toml", "obi_one/", "app/"],
         },
         "resources": {
             "type": "machine",
@@ -584,6 +585,50 @@ def _register_and_stage(
         paths=merged_files,  # ty:ignore[invalid-argument-type]
         label=AssetLabel.sonata_circuit,
     )
+
+    # Generate and register stats + visualization assets
+    from obi_one.utils.circuit_registration.generate import (  # noqa: PLC0415
+        generate_connectivity_matrix_asset,
+        generate_connectivity_plot_assets,
+        generate_overview_image_asset,
+        generate_sim_designer_image_asset,
+    )
+
+    edge_pop = (
+        c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
+    )
+    if edge_pop is not None:
+        matrix_dir = staged_dir / "__CONN_MATRIX__"
+        plot_dir = staged_dir / "__BASIC_PLOTS__"
+        viz_dir = staged_dir / "__CIRCUIT_VIZ__"
+
+        _, matrix_config_path, edge_pop = generate_connectivity_matrix_asset(
+            circuit_path=merged_config,
+            output_dir=matrix_dir,
+            edge_population=edge_pop,
+        )
+
+        generate_connectivity_plot_assets(
+            matrix_config=matrix_config_path,
+            edge_population=edge_pop,
+            output_dir=plot_dir,
+            client=db_client,
+            circuit_entity=registered,
+        )
+
+        generate_overview_image_asset(
+            plot_dir=plot_dir,
+            output_dir=viz_dir,
+            client=db_client,
+            circuit_entity=registered,
+        )
+
+        generate_sim_designer_image_asset(
+            plot_dir=plot_dir,
+            output_dir=viz_dir,
+            client=db_client,
+            circuit_entity=registered,
+        )
 
     return registered
 

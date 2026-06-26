@@ -136,6 +136,50 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
             asset_label=AssetLabel.compressed_sonata_circuit,
         )
 
+        # 6c. Generate and register stats + visualization assets
+        edge_pop = (
+            c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
+        )
+        if edge_pop is not None:
+            from obi_one.utils.circuit_registration.generate import (
+                generate_connectivity_matrix_asset,
+                generate_connectivity_plot_assets,
+                generate_overview_image_asset,
+                generate_sim_designer_image_asset,
+            )
+
+            matrix_dir = config_path.parent / "__CONN_MATRIX__"
+            plot_dir = config_path.parent / "__BASIC_PLOTS__"
+            viz_dir = config_path.parent / "__CIRCUIT_VIZ__"
+
+            _, matrix_config, edge_pop = generate_connectivity_matrix_asset(
+                circuit_path=config_path,
+                output_dir=matrix_dir,
+                edge_population=edge_pop,
+            )
+
+            generate_connectivity_plot_assets(
+                matrix_config=matrix_config,
+                edge_population=edge_pop,
+                output_dir=plot_dir,
+                client=db_client,
+                circuit_entity=registered,
+            )
+
+            generate_overview_image_asset(
+                plot_dir=plot_dir,
+                output_dir=viz_dir,
+                client=db_client,
+                circuit_entity=registered,
+            )
+
+            generate_sim_designer_image_asset(
+                plot_dir=plot_dir,
+                output_dir=viz_dir,
+                client=db_client,
+                circuit_entity=registered,
+            )
+
     # 7. Trigger validation task
     _trigger_validation_task(
         ls_client=ls_client,
