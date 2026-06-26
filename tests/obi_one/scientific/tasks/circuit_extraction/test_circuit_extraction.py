@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 import numpy as np
+import pydantic
 import pytest
 from bluepysnap import Circuit
 
@@ -223,3 +224,22 @@ def test_circuit_extraction(tmp_path):
 
                 # Check HOC files
                 _check_hoc(npop_dict, c_res)
+
+
+def test_circuit_extraction_rejects_virtual_neuron_set():
+    """CircuitExtractionScanConfig should not accept virtual neuron sets."""
+    from obi_one.scientific.blocks.neuron_sets.population import VirtualPopulationNeuronSet
+
+    virtual_nset = VirtualPopulationNeuronSet(population="VPM")
+
+    with pytest.raises(pydantic.ValidationError, match="union_tag_invalid"):
+        obi.CircuitExtractionScanConfig(
+            initialize=obi.CircuitExtractionScanConfig.Initialize(
+                circuit=obi.Circuit(
+                    name="N_10__top_nodes_dim6",
+                    path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+                ),
+            ),
+            neuron_set=virtual_nset,
+            info=obi.Info(campaign_name="Test", campaign_description="Should fail"),
+        )

@@ -101,7 +101,10 @@ NEURONMEModelWithSynapsesNeuronSetUnion = Annotated[
 
 Brian2SimulationNeuronSetUnion = PointNeuronSetUnion
 LearningEngineNeuronSetUnion = PointNeuronSetUnion
-CircuitExtractionNeuronSetUnion = NEURONSimulationNeuronSetUnion
+CircuitExtractionNeuronSetUnion = Annotated[
+    _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS,
+    Discriminator("type"),
+]
 NEURONSynapseParameterizationNeuronSetUnion = NEURONSimulationNeuronSetUnion
 
 
