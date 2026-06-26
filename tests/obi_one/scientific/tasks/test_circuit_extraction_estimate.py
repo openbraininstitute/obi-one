@@ -14,7 +14,9 @@ def test_estimate_circuit_extraction_count_from_neuron_set_size():
     config_id = uuid4()
     task_config = SimpleNamespace()
     fake_circuit = SimpleNamespace(default_population_name="default_pop")
-    fake_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: np.array([101, 202, 303]))
+    fake_neuron_set = SimpleNamespace(
+        get_neuron_ids=lambda **_kwargs: {"default_pop": [101, 202, 303]}
+    )
     fake_config = SimpleNamespace(
         initialize=SimpleNamespace(circuit=fake_circuit),
         neuron_set=fake_neuron_set,
@@ -48,7 +50,7 @@ def test_estimate_circuit_extraction_count_has_minimum_one_for_empty_set():
     config_id = uuid4()
     task_config = SimpleNamespace()
     fake_circuit = SimpleNamespace(default_population_name="default_pop")
-    fake_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: np.array([]))
+    fake_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: {"default_pop": []})
     fake_config = SimpleNamespace(
         initialize=SimpleNamespace(circuit=fake_circuit),
         neuron_set=fake_neuron_set,
@@ -92,7 +94,7 @@ def test_estimate_circuit_extraction_count_with_circuit_from_id_staging():
 
     fake_circuit_from_id = FakeCircuitFromID()
     fake_neuron_set = SimpleNamespace(
-        get_neuron_ids=lambda **_kwargs: np.array([1, 2]),
+        get_neuron_ids=lambda **_kwargs: {"default_pop": [1, 2]},
     )
     fake_config = SimpleNamespace(
         initialize=SimpleNamespace(circuit=fake_circuit_from_id),
