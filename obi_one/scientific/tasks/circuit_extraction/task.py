@@ -217,7 +217,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(
+    def execute(  # noqa: C901, PLR0915
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
@@ -308,10 +308,13 @@ class CircuitExtractionTask(Task):
                     if "mechanisms_dir" in pop.config:
                         circuit_utils.copy_mod_files(pop_name, pop, original_circuit)
 
-                if pop.config["type"] in ("biophysical", "point_process"):
-                    # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
-                    if "biophysical_neuron_models_dir" in pop.config:
-                        circuit_utils.copy_hoc_files(pop_name, pop, original_circuit)
+                # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
+                if (
+                    pop.config["type"] in {"biophysical", "point_process"}
+                    and "biophysical_neuron_models_dir" in pop.config
+                ):
+                    # Note: "biophysical_neuron_models_dir" is used for "point_process" as well
+                    circuit_utils.copy_hoc_files(pop_name, pop, original_circuit)
 
         # Run circuit validation
         if settings.circuit_extraction.run_validation:

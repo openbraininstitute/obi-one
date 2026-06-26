@@ -317,8 +317,7 @@ def copy_mod_files(
         return
 
     L.info(
-        f"Copying {len(mod_file_list)} mechanisms (.mod) for"
-        f" population '{pop_name}' ({pop.size})"
+        f"Copying {len(mod_file_list)} mechanisms (.mod) for population '{pop_name}' ({pop.size})"
     )
 
     dest_dir = pop.config.get("mechanisms_dir")
