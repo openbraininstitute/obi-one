@@ -304,13 +304,14 @@ class CircuitExtractionTask(Task):
                     if "morphology" in pop.property_names:
                         circuit_utils.copy_morphologies(pop_name, pop, original_circuit)
 
-                    # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
-                    if "biophysical_neuron_models_dir" in pop.config:
-                        circuit_utils.copy_hoc_files(pop_name, pop, original_circuit)
-
                     # Copy .mod files, if any (Even if defined globally, shows up under pop.config)
                     if "mechanisms_dir" in pop.config:
                         circuit_utils.copy_mod_files(pop_name, pop, original_circuit)
+
+                if pop.config["type"] in ("biophysical", "point_process"):
+                    # Copy .hoc file directory (Even if defined globally, shows up under pop.config)
+                    if "biophysical_neuron_models_dir" in pop.config:
+                        circuit_utils.copy_hoc_files(pop_name, pop, original_circuit)
 
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
