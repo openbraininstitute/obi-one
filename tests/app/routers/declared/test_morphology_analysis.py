@@ -45,6 +45,17 @@ def test_real_morphology_metrics_match_golden_values():
         assert actual[key] == pytest.approx(expected_value), key
 
 
+def test_morphology_metrics_do_not_reuse_apical_values_from_cached_template():
+    uf.get_morphology_template.cache_clear()
+    uf.get_morphology_analysis_dict.cache_clear()
+
+    with_apical = uf.compute_morphometrics(DATA_DIR / "ch150801A1.swc")
+    without_apical = uf.compute_morphometrics(DATA_DIR / "cell_morphology.asc")
+
+    assert any(m["structural_domain"] == "apical_dendrite" for m in with_apical)
+    assert not any(m["structural_domain"] == "apical_dendrite" for m in without_apical)
+
+
 def test_metric_with_nan_values_is_skipped(monkeypatch, caplog):
     monkeypatch.setattr(uf.nm, "get", lambda *_args, **_kwargs: [1.0, float("nan"), 3.0])
 
