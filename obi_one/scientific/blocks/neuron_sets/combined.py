@@ -7,6 +7,7 @@ import numpy as np
 from pydantic import Field
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.unions.unions_neuron_sets import BiophysicalNeuronSetUnion
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit

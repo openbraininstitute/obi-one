@@ -31,6 +31,10 @@ from obi_one.scientific.unions.unions_timestamps import (
     resolve_timestamps_ref_to_timestamps_block,
 )
 
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+)
+
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
 # But for now this keeps it below the other Block references in get_populationthe GUI
 # Eventually we can make the GUI always show the Block references at the top
@@ -115,6 +119,16 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    ns2: BiophysicalCombinedNeuronSet | None = Field(
+        default=None,
+        title="NS2",
+        description="NS2 block associated with the stimulus.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: [BiophysicalCombinedNeuronSet.__name__],
         },
     )
 
@@ -350,8 +364,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
             "represents_physical_electrode": self._represents_physical_electrode,
         }
         return stim_dict
-
-
+    
 class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
