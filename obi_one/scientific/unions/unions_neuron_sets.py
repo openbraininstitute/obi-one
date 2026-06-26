@@ -164,6 +164,7 @@ ALL_NEURON_SETS_REFERENCE_TYPES = [
 ]
 NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
     BiophysicalNeuronSetReference.__name__,
+    "CombinedBiophysicalNeuronSetReference",
     PointNeuronSetReference.__name__,
 ]
 BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [

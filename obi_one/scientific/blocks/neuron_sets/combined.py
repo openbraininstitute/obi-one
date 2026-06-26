@@ -7,7 +7,6 @@ import numpy as np
 from pydantic import Field
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.unions.unions_neuron_sets import BiophysicalNeuronSetUnion
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.library.circuit import Circuit
@@ -15,6 +14,7 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
+from obi_one.scientific.unions.unions_neuron_sets import BiophysicalNeuronSetReference
 
 L = logging.getLogger("obi-one")
 
@@ -269,7 +269,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: BlockReference | None = Field(
+    base_neuron_set: BiophysicalNeuronSetReference | None = Field(
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -281,7 +281,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: list[
         tuple[
-            BlockReference,
+            BiophysicalNeuronSetReference,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ]
     ] = Field(

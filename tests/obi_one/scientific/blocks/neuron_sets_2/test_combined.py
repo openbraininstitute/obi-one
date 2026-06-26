@@ -2,12 +2,12 @@
 
 import numpy as np
 import pytest
+
+import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     SetOperation,
 )
-
-import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.population import (
     VirtualPopulationNeuronSet,
 )

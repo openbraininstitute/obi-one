@@ -21,6 +21,9 @@ from obi_one.scientific.library.constants import (
     MIN_NON_NEGATIVE_FLOAT_VALUE,
     MIN_TIMESTEP_MILLISECONDS,
 )
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    CombinedBiophysicalNeuronSetReference,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
@@ -29,10 +32,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
-)
-
-from obi_one.scientific.blocks.neuron_sets.combined import (
-    BiophysicalCombinedNeuronSet,
 )
 
 # Could be in Stimulus class rather than repeated in SomaticStimulus and SpikeStimulus
@@ -111,6 +110,11 @@ class StimulusWithDuration(BaseStimulus):
     )
 
 
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+)
+
+
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
@@ -122,7 +126,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         },
     )
 
-    ns2: BiophysicalCombinedNeuronSet | None = Field(
+    ns2: CombinedBiophysicalNeuronSetReference | None = Field(
         default=None,
         title="NS2",
         description="NS2 block associated with the stimulus.",
@@ -364,7 +368,8 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
             "represents_physical_electrode": self._represents_physical_electrode,
         }
         return stim_dict
-    
+
+
 class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection around a mean percentage of each cell's threshold
     current.
