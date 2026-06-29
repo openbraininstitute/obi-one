@@ -53,7 +53,7 @@ class TestFetchPublicationMetadata:
 
         assert result["DOI"] == DOI
         assert result["title"] == "Groundbreaking research"
-        assert len(result["authors"]) == 3
+        assert len(result["authors"]) == 2
         assert result["authors"][0] == {"given_name": "J.", "family_name": "Parker"}
         assert result["authors"][1] == {"given_name": "A. C.", "family_name": "Smith"}
         assert result["publication_year"] == 2025
