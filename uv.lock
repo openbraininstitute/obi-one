@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "bluepysnap"
-version = "3.0.4"
+version = "3.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -310,7 +310,7 @@ dependencies = [
     { name = "pandas" },
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/83/af976d39f7e690f3d749e3b35a01360cbf3a953544111f2bedad692c9339/bluepysnap-3.0.4.tar.gz", hash = "sha256:ac7c397ecc56554ce508e25a07b420c76668417bb97daeac26349b5bfa4bc451", size = 1053044, upload-time = "2026-05-05T13:09:54.804Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/08/7e02f9e347c6a9b22f7bdb000c9abcdad9e5828b018dcb5999bf84c0d528/bluepysnap-3.0.5.tar.gz", hash = "sha256:e818e76e2a62fc8ddb844066fc462d6c715fab3c8fca500ea47b699b383a4adb", size = 1053136, upload-time = "2026-06-09T12:43:26.733Z" }
 
 [[package]]
 name = "bluerecording"
@@ -365,7 +365,7 @@ wheels = [
 
 [[package]]
 name = "brainbuilder"
-version = "0.20.2"
+version = "0.20.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -383,7 +383,7 @@ dependencies = [
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/a0/2dcbafbb24bfe26223f066efb527c79581e64718c478a6a82f5ee28a3d26/brainbuilder-0.20.2.tar.gz", hash = "sha256:577f2e773b3ccbc44ba2802802802bdafc3a2b10d90865c1c462f759b105d8f0", size = 217938, upload-time = "2025-07-08T11:18:13.113Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/e4/fcf1b46d5bfded51e4011a977cd9ea8484dc31645d60eaad3642f3a4ebab/brainbuilder-0.20.4.tar.gz", hash = "sha256:f24a73caae94aff3e50648e87416cc0536babaf725c833b4197fbb0eb5f3f0a1", size = 247760, upload-time = "2026-06-22T18:47:14.44Z" }
 
 [[package]]
 name = "cached-property"
@@ -863,14 +863,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.17.1"
+version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/e7/396a78fe0710bd1635c857ca106e727b523aa7063805aeba705ca44e87f3/entitysdk-0.17.1.tar.gz", hash = "sha256:4039ac73f196976ce5d858419a3b9e40444a9fddc726cbdb38477a8185a4a597", size = 89696, upload-time = "2026-06-08T15:19:31.777Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/bc/ac1519ff69f5201622eb583dfc39d71af081472b0d5e574ec396355fd785/entitysdk-0.18.0.tar.gz", hash = "sha256:3a4ed7d8e2d62af5aeecd11c960821b5e3fccfcd25f068d8d3178ecf96e30104", size = 90883, upload-time = "2026-06-23T07:48:34.995Z" }
 
 [[package]]
 name = "executing"
@@ -2238,9 +2238,9 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.87" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepysnap", specifier = ">=3.0.2" },
+    { name = "bluepysnap", specifier = ">=3.0.5" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.5" },
-    { name = "brainbuilder", specifier = ">=0.20.2" },
+    { name = "brainbuilder", specifier = ">=0.20.4" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
@@ -2263,8 +2263,8 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.0" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.1" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.3" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.2" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2296,14 +2296,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.1"
+version = "0.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/45/ed7e5e5612f3fa321feabdad24b4916b4807f0c583c5c9b18ec61b5154e1/obp_accounting_sdk-0.6.1.tar.gz", hash = "sha256:70f895bc0cf126ebd28aed187eea6758e1bf8ee06d567c0ad9c9413a0cf8d403", size = 36124, upload-time = "2026-04-28T09:49:13.423Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/df/7ec881a89c453c5dc81ed3dadb1f23ee2061a02c38859f152ea66ab88eff/obp_accounting_sdk-0.6.3.tar.gz", hash = "sha256:8529edc4a5b3f41ad04affcde7ec3789e17144070e8701a636dca173dcdacda3", size = 36132, upload-time = "2026-06-22T12:07:16.618Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/dd/c90f6da98fac0d84f9e1af74b066caf4bcc6b0d41c0a1a0012d4d8880747/obp_accounting_sdk-0.6.1-py3-none-any.whl", hash = "sha256:c8d0477ddc972a2374b688d54b955f9ffadf4c5ee8b57c6d9d39ae25b6af1f23", size = 27690, upload-time = "2026-04-28T09:49:12.268Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/91/633d63f7ac6f5c6c21f8dcbb3ef6e90ac01799541ebd43d02229f52498e9/obp_accounting_sdk-0.6.3-py3-none-any.whl", hash = "sha256:e7c7631339e856c0fffdd6d60b3fa2f6228f6afe1fe34cc9d10a321bf05f4a6a", size = 27709, upload-time = "2026-06-22T12:07:15.445Z" },
 ]
 
 [[package]]

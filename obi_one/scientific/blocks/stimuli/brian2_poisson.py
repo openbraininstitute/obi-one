@@ -29,23 +29,20 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
+    resolve_neuron_set_ref_to_neuron_set,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class Brian2DirectPoissonStimulus(Block):
-    """Independent Poisson drive injected directly into target membrane potentials.
+    """Independent Poisson drive injected directly into the soma.
 
-    Emitted as a SONATA ``inputs`` entry with ``module="poisson"``. Every
-    neuron in :attr:`neuron_set` receives its own ``PoissonInput`` firing at
-    :attr:`frequency`; each spike adds :attr:`weight` to the target state
-    variable (default ``v``). If :attr:`zero_refractory` is true, the
-    targeted neurons' refractory period (state variable ``rfc``) is cleared
-    so they can follow the Poisson rate.
+    Each neuron receives its own Poisson Input directly into the soma
+    firing. Each spike adds a weight to the membrane potential.
     """
 
-    title: ClassVar[str] = "Direct Poisson Input (Brian2)"
+    title: ClassVar[str] = "Direct Poisson Input"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
@@ -72,10 +69,16 @@ class Brian2DirectPoissonStimulus(Block):
     )
 
     weight: float | list[float] = Field(
-        default=1.0e-3,
+        default=68.75,
         title="Weight",
-        description="Amplitude of each Poisson kick, in volts (SI).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        description=(
+            "Amplitude of each injection, in millivolts. The default value is taken "
+            "from the original Shui et al. (2024) LIF FlyWire model simulations."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
     )
 
     duration: (
@@ -98,9 +101,9 @@ class Brian2DirectPoissonStimulus(Block):
 
     def config(
         self,
-        circuit: Circuit,  # noqa: ARG002
-        population: str | None = None,  # noqa: ARG002
-        default_node_set: str = "All",
+        circuit: Circuit,
+        population: str | None = None,
+        default_node_set: str = "sugar",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
         """Return the SONATA inputs entry for this block.
@@ -112,16 +115,37 @@ class Brian2DirectPoissonStimulus(Block):
         """
         self._default_node_set = default_node_set
         _ = default_timestamps or SingleTimestamp(start_time=0.0)
+
+        if self.neuron_set.block_name != "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
+            neuron_set = resolve_neuron_set_ref_to_neuron_set(
+                self.neuron_set,
+                self._default_node_set,  # ty:ignore[invalid-argument-type]
+            )
+            max_n_neurons = 100
+            if (
+                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))  # ty:ignore[unresolved-attribute]
+                > max_n_neurons
+            ):
+                msg = (
+                    f"Number of neurons used with the {self.title} exceeds the maximum "
+                    f"allowed: {max_n_neurons}."
+                )
+                raise ValueError(msg)
+
         return self._generate_config()
 
     def _generate_config(self) -> dict:
+
+        if self.neuron_set.block_name == "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
+            node_set = "sugar"
+        else:
+            node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
+
         return {
             self.block_name: {
                 "input_type": "spikes",
                 "module": "poisson",
-                "node_set": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                "node_set": node_set,
                 "rate": self.frequency,
                 "weight": self.weight,
                 # libsonata requires `delay` on every input; the Brian2

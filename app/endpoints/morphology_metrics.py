@@ -12,10 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.endpoints.morphology_metrics_calculation import (
-    register_measurements,
-    run_morphology_analysis,
-)
+from app.endpoints.morphology_metrics_calculation import run_morphology_analysis
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one.scientific.library.morphology_metrics import (
@@ -23,6 +20,7 @@ from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
+from obi_one.scientific.library.morphology_registration import register_morphometrics
 
 MORPHOLOGY_FORMAT_TO_CONTENT_TYPE = {
     "swc": "application/swc",
@@ -188,7 +186,18 @@ def register_morphology_metrics(
         db_client,
         morphology_format="h5",
     )
-    registered = register_measurements(db_client, cell_morphology_id, measurement_kinds)
+    try:
+        registered = register_morphometrics(db_client, cell_morphology_id, measurement_kinds)
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": (
+                    f"Entity measurement registration failed for {cell_morphology_id}: {err}"
+                ),
+            },
+        ) from err
 
     return {
         "measurement_entity_id": str(registered.id),

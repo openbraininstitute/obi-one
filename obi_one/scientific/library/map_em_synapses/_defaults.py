@@ -11,7 +11,7 @@ DEFAULT_NODE_SPECS = {
             "column": "classification_system",
             "default": "extrinsic_neuron",
         },
-        "cell_type": {
+        "mtype": {
             "table": "aibs_metamodel_mtypes_v661_v2",
             "column": "cell_type",
             "default": "extrinsic_neuron",
@@ -27,6 +27,8 @@ DEFAULT_NODE_SPECS = {
             "column": "status_dendrite",
             "default": False,
         },
+        "layer": {"table": None, "default": "N/A"},
+        "etype": {"table": None, "default": "N/A"},
         "__position": {"table": "aibs_metamodel_mtypes_v661_v2", "column": "pt_position"},
     }
 }

@@ -18,6 +18,10 @@ from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
     RecordingUnion,
 )
+from obi_one.scientific.unions.unions_timestamps import (
+    TimestampsReference,
+    TimestampsUnion,
+)
 
 
 class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
@@ -36,6 +40,19 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    timestamps: dict[str, TimestampsUnion] = Field(
+        default_factory=dict,
+        title="Timestamps",
+        description="Timestamps for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 

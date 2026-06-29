@@ -1,6 +1,7 @@
 import logging
 from typing import ClassVar, Self
 
+from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.exception import OBIONEError
@@ -32,6 +33,7 @@ from obi_one.scientific.unions.unions_stimuli import (
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
+    TimestampsUnion,
 )
 
 L = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
     description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"
 
+    _target_simulator: ClassVar[SimulatorType] = SimulatorType.NEURON
     _timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
 
     json_schema_extra_additions: ClassVar[dict] = {
@@ -124,6 +127,19 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+        },
+    )
+
+    timestamps: dict[str, TimestampsUnion] = Field(
+        default_factory=dict,
+        title="Timestamps",
+        description="Timestamps for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 

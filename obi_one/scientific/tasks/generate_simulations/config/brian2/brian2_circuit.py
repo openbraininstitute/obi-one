@@ -13,7 +13,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
@@ -21,14 +20,14 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base import (
     Brian2SimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_brian2 import (
-    Brian2CircuitStimulusUnion,
-)
 from obi_one.scientific.unions.unions_neuron_sets import (
+    Brian2SimulationNeuronSetUnion,
     NeuronSetReference,
-    SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_stimuli import StimulusReference
+from obi_one.scientific.unions.unions_stimuli import (
+    Brian2CircuitStimulusUnion,
+    StimulusReference,
+)
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
@@ -54,10 +53,9 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
-            BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            NeuronSetReference.__name__: "Default: Sugar gustatory receptor neurons",
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
@@ -81,6 +79,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
+                SchemaKey.UI_HIDDEN: True,
             },
         )
 
@@ -107,7 +106,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, Brian2SimulationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -118,20 +117,6 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
-
-    """
-    recordings: dict[str, Brian2RecordingUnion] = Field(
-        default_factory=dict,
-        description="Brian2-compatible recordings for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Recording",
-            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-    """
 
 
 class Brian2CircuitSimulationSingleConfig(

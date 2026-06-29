@@ -2,13 +2,16 @@
 
 import json
 import shutil
+from unittest.mock import MagicMock, patch
 
 import pytest
+from entitysdk import types
 from PIL import Image
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
+    copy_mod_files,
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
@@ -17,6 +20,7 @@ from obi_one.utils.circuit import (
     run_connectivity_matrix_extraction,
     run_validation,
 )
+from obi_one.utils.circuit_registration import register_circuit, register_circuit_from_metadata
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
@@ -157,6 +161,55 @@ def test_get_circuit_size_single_neuron_circuit():
 
     assert scale == "single"
     assert num_nrn == 1
+
+
+@pytest.mark.parametrize(
+    ("circuit_dir", "circuit_name"),
+    [
+        (SINGLE_NEURON_CIRCUIT_DIR, "SingleNeuronCircuit__top_nodes_dim6__IDX0"),
+        (CIRCUIT_DIR, "nbS1-O1-E2Sst-maxNsyn-HEX0-L5"),
+        (CIRCUIT_DIR, "N_10__top_nodes_dim6"),
+    ],
+    ids=["single", "pair", "small"],
+)
+def test_get_circuit_size_scale_override_rejected_at_or_below_small(circuit_dir, circuit_name):
+    """Test that scale_override is rejected for circuits computed as 'small' or smaller."""
+    circuit_path = str(circuit_dir / circuit_name / "circuit_config.json")
+    c = Circuit(name="test", path=circuit_path)
+
+    # The override only applies above 'small' (microcircuit+); using it on a single/pair/small
+    # circuit raises rather than silently ignoring the override.
+    with pytest.raises(ValueError, match=r"scale_override should only be used for scales greater"):
+        get_circuit_size(c, scale_override=types.CircuitScale.region)
+
+
+def test_get_circuit_size_microcircuit_without_override():
+    """Test that a microcircuit-scale circuit keeps the computed 'microcircuit' scale by default."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_micro", path=circuit_path)
+
+    # Shrink the small-circuit threshold so the 10-neuron circuit is computed as "microcircuit".
+    with patch("obi_one.utils.circuit.MAX_SMALL_MICROCIRCUIT_SIZE", 5):
+        scale, num_nrn, _num_syn, _num_conn = get_circuit_size(c)
+
+    assert scale == types.CircuitScale.microcircuit
+    assert num_nrn == 10
+
+
+def test_get_circuit_size_scale_override_applied_for_microcircuit():
+    """Test that scale_override replaces the computed scale for a microcircuit-scale circuit."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_micro", path=circuit_path)
+
+    # Shrink the small-circuit threshold so the 10-neuron circuit is computed as "microcircuit",
+    # where the override does apply.
+    with patch("obi_one.utils.circuit.MAX_SMALL_MICROCIRCUIT_SIZE", 5):
+        scale, num_nrn, _num_syn, _num_conn = get_circuit_size(
+            c, scale_override=types.CircuitScale.region
+        )
+
+    assert scale == types.CircuitScale.region
+    assert num_nrn == 10
 
 
 def test_run_validation_valid_circuit():
@@ -310,3 +363,199 @@ def test_run_connectivity_matrix_extraction_custom_edge_population(tmp_path):
             output_root=tmp_path,
             edge_population="nonexistent_population",
         )
+
+
+# --- scale_override (register_circuit) ---
+
+
+class _FakeCircuitModel:
+    """Stand-in for entitysdk ``models.Circuit`` that records kwargs as attributes."""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+def _matching_brain_region_and_subject():
+    """Brain region and subject mocks sharing a species (passes consistency check)."""
+    species = MagicMock(id="species-id", name="Mus musculus")
+    brain_region = MagicMock(species=species, name="SSp")
+    subject = MagicMock(species=species, name="mouse-subject")
+    return brain_region, subject
+
+
+def _register_and_get_scale(scale_override):
+    """Register the small test circuit and return the scale recorded on the circuit model."""
+    circuit_path = CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json"
+    client = MagicMock()
+    client.register_entity.return_value = MagicMock(id="new-id")
+    brain_region, subject = _matching_brain_region_and_subject()
+
+    with (
+        patch("obi_one.utils.circuit_registration.register.models.Circuit", _FakeCircuitModel),
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            scale_override=scale_override,
+            dry_run=False,
+        )
+
+    return client.register_entity.call_args.args[0].scale
+
+
+def test_register_circuit_scale_override_rejected_for_small_circuit():
+    """Test that scale_override raises (via get_circuit_size) for a 'small' circuit."""
+    # N_10 is auto-computed as "small"; the override is invalid at/below small scale, so
+    # register_circuit propagates the ValueError raised by get_circuit_size.
+    with pytest.raises(ValueError, match=r"scale_override should only be used for scales greater"):
+        _register_and_get_scale(types.CircuitScale.region)
+
+
+def test_register_circuit_scale_override_applied_for_microcircuit():
+    """Test that register_circuit forwards scale_override and it wins for a microcircuit."""
+    # Shrink the small-circuit threshold so N_10 is computed as "microcircuit", where the
+    # override applies. This proves register_circuit forwards scale_override to get_circuit_size.
+    with patch("obi_one.utils.circuit.MAX_SMALL_MICROCIRCUIT_SIZE", 5):
+        scale = _register_and_get_scale(types.CircuitScale.region)
+    assert scale == types.CircuitScale.region
+
+
+def test_register_circuit_without_scale_override_uses_computed_scale():
+    """Test that the auto-computed scale ("small") is used when no override is given."""
+    assert _register_and_get_scale(None) == types.CircuitScale.small
+
+
+def test_register_circuit_from_metadata_forwards_scale_override():
+    """Test that a scale_override in the metadata dict is forwarded to register_circuit."""
+    client = MagicMock()
+    metadata = {
+        "name": "test",
+        "description": "test",
+        "build_category": "computational_model",
+        "species": "Mus musculus",
+        "subject": "mouse-subject",
+        "brain_region": "SSp",
+        "brain_region_hierarchy": "test-hierarchy",
+        "target_simulator": "NEURON",
+        "scale_override": types.CircuitScale.whole_brain,
+    }
+
+    with (
+        patch("obi_one.utils.circuit_registration.register.check_if_circuit_exists"),
+        patch("obi_one.utils.circuit_registration.register.get_subject"),
+        patch("obi_one.utils.circuit_registration.register.get_brain_region_hierarchy"),
+        patch("obi_one.utils.circuit_registration.register.check_hierarchy_species"),
+        patch("obi_one.utils.circuit_registration.register.get_brain_region"),
+        patch("obi_one.utils.circuit_registration.register.get_license"),
+        patch("obi_one.utils.circuit_registration.register.get_root_circuit"),
+        patch("obi_one.utils.circuit_registration.register.get_parent_circuit"),
+        patch("obi_one.utils.circuit_registration.register.get_exp_date"),
+        patch("obi_one.utils.circuit_registration.register.register_circuit") as mock_register,
+    ):
+        register_circuit_from_metadata(
+            client=client,
+            circuit_metadata=metadata,
+            circuit_path="/some/path",
+        )
+
+    assert mock_register.call_args.kwargs["scale_override"] == types.CircuitScale.whole_brain
+
+
+# --- copy_mod_files ---
+
+
+def _make_mock_circuit_with_mods(tmp_path, mod_files):
+    """Create source mod files and return mocked snap objects for copy_mod_files."""
+    source_dir = tmp_path / "source_mods"
+    source_dir.mkdir()
+    for name in mod_files:
+        (source_dir / name).write_text(f"NEURON {{ SUFFIX {name} }}")
+
+    dest_dir = tmp_path / "dest_mods"
+
+    # Mock original circuit
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(source_dir)
+
+    # Mock target population
+    pop = MagicMock()
+    pop.config.get.return_value = str(dest_dir)
+    pop.size = 5
+
+    return pop, original_circuit, source_dir, dest_dir
+
+
+def test_copy_mod_files_copies_all_mod_files(tmp_path):
+    """Test that all .mod files are copied from source to destination."""
+    mod_files = ["Ca_HVA2.mod", "Ih.mod", "NaTg.mod"]
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, mod_files)
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    assert dest_dir.exists()
+    for name in mod_files:
+        assert (dest_dir / name).exists()
+        assert (dest_dir / name).read_text() == f"NEURON {{ SUFFIX {name} }}"
+
+
+def test_copy_mod_files_skips_existing(tmp_path):
+    """Test that existing files in destination are not overwritten."""
+    mod_files = ["Ca_HVA2.mod"]
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, mod_files)
+
+    # Pre-create destination with different content
+    dest_dir.mkdir(parents=True)
+    (dest_dir / "Ca_HVA2.mod").write_text("ORIGINAL CONTENT")
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # Should NOT be overwritten
+    assert (dest_dir / "Ca_HVA2.mod").read_text() == "ORIGINAL CONTENT"
+
+
+def test_copy_mod_files_no_source_dir():
+    """Test early return when mechanisms_dir is not configured."""
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = None
+
+    pop = MagicMock()
+
+    # Should return without error
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # dest_dir should never be accessed
+    pop.config.get.assert_not_called()
+
+
+def test_copy_mod_files_source_dir_does_not_exist(tmp_path):
+    """Test early return when mechanisms_dir path does not exist on disk."""
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(
+        tmp_path / "nonexistent"
+    )
+
+    pop = MagicMock()
+
+    # Should return without error
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    pop.config.get.assert_not_called()
+
+
+def test_copy_mod_files_empty_source_dir(tmp_path):
+    """Test early return when source directory exists but has no .mod files."""
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, [])
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # Destination directory should not be created
+    assert not dest_dir.exists()
