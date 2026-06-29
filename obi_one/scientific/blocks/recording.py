@@ -20,7 +20,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     PointNeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class IonChannelVariableForRecording(OBIBaseModel):
@@ -101,7 +100,6 @@ class Recording(Block, ABC):
             SchemaKey.REFERENCE_TYPES: [
                 BiophysicalNeuronSetReference.__name__,
                 PointNeuronSetReference.__name__,
-                TimestampsReference.__name__,
             ],
         },
     )

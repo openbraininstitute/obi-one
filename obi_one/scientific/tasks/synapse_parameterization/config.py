@@ -26,6 +26,9 @@ from obi_one.scientific.unions.unions_synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+)
 
 L = logging.getLogger(__name__)
 
@@ -55,8 +58,11 @@ class SynapseParameterizationScanConfig(ScanConfig):
             BlockGroup.SYNAPSE_PARAMETERS,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
     }
-
+        
     class Initialize(Block):
         circuit: CircuitFromID = Field(
             title="Circuit",

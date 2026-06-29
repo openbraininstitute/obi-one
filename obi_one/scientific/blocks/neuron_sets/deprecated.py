@@ -85,8 +85,9 @@ class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):
 
 
 class ExcitatoryNeurons(DeprecatedSampleNeuronSet):
+    """All biophysical excitatory neurons. Depracted."""
+
     title: ClassVar[str] = "All Excitatory Neurons (Deprecated)"
-    description: ClassVar[str] = "All neurons from all node populations."
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
