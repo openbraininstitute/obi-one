@@ -289,7 +289,8 @@ class GenerateSimulationTask(Task):
                         f"'{self.config.initialize.node_set.block_name}' is virtual. "
                         "Please use a non-virtual (biophysical or point) Neuron Set type. "
                         f"Available non-virtual populations: {non_virtual_list}. "
-                        f"You may be able to reference one through a PredefinedNeuronSet block type. "
+                        f"You may be able to reference one through a "
+                        f"PredefinedNeuronSet block type. "
                         "In future we will support population selection for any neuron set."
                     )
                     raise OBIONEError(msg)
