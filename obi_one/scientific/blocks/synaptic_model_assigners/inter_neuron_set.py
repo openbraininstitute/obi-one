@@ -6,7 +6,7 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_model_assigners.base import SynapseModelAssigner
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import ALL_NEURON_SETS_REFERENCE_UNION, ALL_NEURON_SETS_REFERENCE_TYPES, NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES, NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION
 
 L = logging.getLogger(__name__)
 
@@ -14,23 +14,23 @@ L = logging.getLogger(__name__)
 class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
     """Assign a synaptic model to synapses between a source and target neuron set."""
 
-    source_neuron_set: NeuronSetReference | None = Field(
+    source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
-    targeted_neuron_set: NeuronSetReference | None = Field(
+    targeted_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 

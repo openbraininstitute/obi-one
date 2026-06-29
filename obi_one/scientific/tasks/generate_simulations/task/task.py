@@ -28,7 +28,7 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit 
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
-    NeuronSetReference,
+    BaseNeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
@@ -182,11 +182,6 @@ class GenerateSimulationTask(Task):
 
         This is only done if the config has a neuron_sets attribute.
         """
-        """
-        def is_optional_neuronsetreference(attr_value: type) -> bool:
-            args = get_args(attr_value)
-            return args == (NeuronSetReference, type(None))
-        """
 
         def is_optional_neuronsetreference(attr_value: type) -> bool:
             args_len = 2
@@ -194,7 +189,7 @@ class GenerateSimulationTask(Task):
             return (
                 len(args) == args_len
                 and isinstance(args[0], type)
-                and issubclass(args[0], NeuronSetReference)
+                and issubclass(args[0], BaseNeuronSetReference)
                 and args[1] is type(None)
             )
 
@@ -261,7 +256,7 @@ class GenerateSimulationTask(Task):
                 # Assert that simulation neuron set is non-virtual (skip for Brian2)
                 if (
                     not isinstance(self.config, Brian2CircuitSimulationSingleConfig)
-                    and isinstance(self.config.initialize.node_set, NeuronSetReference)
+                    and isinstance(self.config.initialize.node_set, BaseNeuronSetReference)
                     and self._circuit is not None
                     and (
                         self.config.initialize.node_set.block.get_neuron_set_population_type()
