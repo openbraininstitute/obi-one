@@ -1,5 +1,6 @@
 """NeuroM-based morphology measurement annotation helpers."""
 
+import copy
 import json
 import logging
 from collections import defaultdict
@@ -333,7 +334,7 @@ def compute_morphometrics(morphology_path: str | Path) -> list[MeasurementKind]:
     """Compute morphometric measurements for a morphology file."""
     neuron = nm.load_morphology(str(morphology_path))
     results_dict = build_results_dict(get_morphology_analysis_dict(), neuron)
-    filled = fill_json(get_morphology_template(), results_dict, entity_id="temp_id")
+    filled = fill_json(copy.deepcopy(get_morphology_template()), results_dict, entity_id="temp_id")
     measurement_kinds = filled["data"][0]["measurement_kinds"]
     return [
         mk
