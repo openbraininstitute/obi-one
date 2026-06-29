@@ -67,14 +67,21 @@ def test_register_task_config_success():
     config_entity.id = uuid4()
     mock_client.register_entity.return_value = config_entity
 
-    # Mock NamedTemporaryFile to prevent FileNotFoundError and satisfy S108
-    with patch("tempfile.NamedTemporaryFile") as mock_tmp:
+    # Mock NamedTemporaryFile and path operations to avoid real FS access
+    with (
+        patch("tempfile.NamedTemporaryFile") as mock_tmp,
+        patch("pathlib.Path.unlink") as mock_unlink,
+    ):
+        # Use relative path to satisfy S108 linter
         mock_tmp.return_value.__enter__.return_value.name = "fake_config.json"
+
         result = _register_task_config(mock_client, uuid4(), uuid4(), "obj")
 
     assert result == config_entity.id
     mock_client.register_entity.assert_called_once()
     mock_client.upload_file.assert_called_once()
+    # Ensure cleanup was attempted by implementation
+    mock_unlink.assert_called()
 
 
 def test_register_task_config_register_fails():
