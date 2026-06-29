@@ -8,6 +8,7 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -249,7 +250,7 @@ class GenerateSimulationTask(Task):
     def _ensure_simulation_target_node_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`.
 
-        Infer default if needed. Assert biophysical.
+        Infer default if needed. Assert non-virtual (biophysical or point).
         """
         if hasattr(self.config, "neuron_sets"):
             if hasattr(self.config.initialize, "node_set"):
@@ -257,34 +258,38 @@ class GenerateSimulationTask(Task):
                     L.info("initialize.node_set is None — setting default node set.")
                     self.config.initialize.node_set = self._default_neuron_set_ref()  # ty:ignore[invalid-assignment]
 
-                # Assert that simulation neuron set is biophysical (skip for Brian2)
+                # Assert that simulation neuron set is non-virtual (skip for Brian2)
                 if (
                     not isinstance(self.config, Brian2CircuitSimulationSingleConfig)
                     and isinstance(self.config.initialize.node_set, NeuronSetReference)
                     and self._circuit is not None
                     and (
                         self.config.initialize.node_set.block.get_neuron_set_population_type()
-                        not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
+                        not in {
+                            NeuronSetPopulationType.BIOPHYSICAL,
+                            NeuronSetPopulationType.POINT,
+                            NeuronSetPopulationType.NONVIRTUAL,
+                        }
                     )
                 ):
-                    # Get list of biophysical populations to help user
-                    biophysical_populations = Circuit.get_node_population_names(
+                    # Get list of non-virtual populations to help user
+                    non_virtual_populations = Circuit.get_node_population_names(
                         self._circuit.sonata_circuit,
                         incl_virtual=False,
-                        incl_point=False,
+                        incl_point=True,
                     )
-                    biophysical_list = (
-                        ", ".join(f"'{pop}'" for pop in biophysical_populations)
-                        if biophysical_populations
+                    non_virtual_list = (
+                        ", ".join(f"'{pop}'" for pop in non_virtual_populations)
+                        if non_virtual_populations
                         else "none found"
                     )
 
                     msg = (
                         f"Simulation Neuron Set (Initialize -> Neuron Set): "
-                        f"'{self.config.initialize.node_set.block_name}' is not biophysical. "
-                        "Please use a different Neuron Set type. "
-                        f"Available biophysical populations: {biophysical_list}. "
-                        f"You may be able to reference one through a PredefinedNeuronSet block type"
+                        f"'{self.config.initialize.node_set.block_name}' is virtual. "
+                        "Please use a non-virtual (biophysical or point) Neuron Set type. "
+                        f"Available non-virtual populations: {non_virtual_list}. "
+                        f"You may be able to reference one through a PredefinedNeuronSet block type. "
                         "In future we will support population selection for any neuron set."
                     )
                     raise OBIONEError(msg)
