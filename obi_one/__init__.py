@@ -24,10 +24,10 @@ __all__ = [
     "AllBiophysicalNeurons",
     "AllDistributionsReference",
     "AllDistributionsUnion",
-    "AllNeurons",
     "AllNonVirtualNeurons",
     "AllPairsSynapticModelAssigner",
     "AllPointNeurons",
+    "AllPopulationNeurons",
     "AllVirtualNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
@@ -329,9 +329,9 @@ from obi_one.scientific.blocks.neuron_sets.property import (
 )
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
-    AllNeurons,
     AllNonVirtualNeurons,
     AllPointNeurons,
+    AllPopulationNeurons,
     AllVirtualNeurons,
 )
 from obi_one.scientific.blocks.recording import (

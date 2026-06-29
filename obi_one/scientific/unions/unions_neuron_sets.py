@@ -6,6 +6,7 @@ from pydantic import Discriminator
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.neuron_sets.deprecated import (
+    AllNeurons,
     ExcitatoryNeurons,
     IDNeuronSet,
     InhibitoryNeurons,
@@ -39,9 +40,11 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllVirtualNeurons,
 )
 
-_DEPRECATED_BIOPHYSICAL_NEURON_SETS = ExcitatoryNeurons | InhibitoryNeurons | IDNeuronSet
-
+_DEPRECATED_BIOPHYSICAL_NEURON_SETS = (
+    AllNeurons | ExcitatoryNeurons | InhibitoryNeurons | IDNeuronSet
+)
 _DEPRECATED_VIRTUAL_NEURON_SETS = rCA1CA3Inputs | nbS1POmInputs | nbS1VPMInputs
+_ALL_DEPRECATED_NEURON_SETS = _DEPRECATED_BIOPHYSICAL_NEURON_SETS | _DEPRECATED_VIRTUAL_NEURON_SETS
 
 _BIOPHYSICAL_NEURON_SETS = (
     BiophysicalPopulationPropertyNeuronSet
@@ -108,7 +111,7 @@ CircuitExtractionNeuronSetUnion = Annotated[
 NEURONSynapseParameterizationNeuronSetUnion = NEURONSimulationNeuronSetUnion
 
 
-class NeuronSetReference(BlockReference, abc.ABC):
+class BaseNeuronSetReference(BlockReference, abc.ABC):
     @property
     def block(self) -> NeuronSet:
         """Returns the block associated with this reference."""
@@ -122,7 +125,7 @@ class NeuronSetReference(BlockReference, abc.ABC):
         BlockReference.block.fset(self, value)
 
 
-class BiophysicalNeuronSetReference(NeuronSetReference):
+class BiophysicalNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Biophysical or Point NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = BiophysicalNeuronSetUnion
@@ -132,7 +135,7 @@ class BiophysicalNeuronSetReference(NeuronSetReference):
     }
 
 
-class VirtualNeuronSetReference(NeuronSetReference):
+class VirtualNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Virtual NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = VirtualNeuronSetUnion
@@ -142,7 +145,7 @@ class VirtualNeuronSetReference(NeuronSetReference):
     }
 
 
-class PointNeuronSetReference(NeuronSetReference):
+class PointNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Point NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = PointNeuronSetUnion
@@ -152,32 +155,57 @@ class PointNeuronSetReference(NeuronSetReference):
     }
 
 
+class NeuronSetReference(BlockReference):
+    """NeuronSetReference is Deprecated."""
+
+    allowed_block_types: ClassVar[Any] = _ALL_DEPRECATED_NEURON_SETS
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_ALL_DEPRECATED_NEURON_SETS)
+    }
+
+    @property
+    def block(self) -> NeuronSet:
+        msg = (
+            "NeuronSetReference is deprecated. Use BiophysicalNeuronSetReference, "
+            "VirtualNeuronSetReference, or PointNeuronSetReference instead."
+        )
+        raise DeprecationWarning(msg)
+
+
 ALL_NEURON_SETS_REFERENCE_UNION = (
-    BiophysicalNeuronSetReference | VirtualNeuronSetReference | PointNeuronSetReference
+    BiophysicalNeuronSetReference
+    | VirtualNeuronSetReference
+    | PointNeuronSetReference
+    | NeuronSetReference
 )
-NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | PointNeuronSetReference
-BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference
-VIRTUAL_NEURON_SETS_REFERENCE_UNION = VirtualNeuronSetReference
+NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
+    BiophysicalNeuronSetReference | PointNeuronSetReference | NeuronSetReference
+)
+BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | NeuronSetReference
+VIRTUAL_NEURON_SETS_REFERENCE_UNION = VirtualNeuronSetReference | NeuronSetReference
 POINT_NEURON_SETS_REFERENCE_UNION = PointNeuronSetReference
 
 ALL_NEURON_SETS_REFERENCE_TYPES = [
     BiophysicalNeuronSetReference.__name__,
     VirtualNeuronSetReference.__name__,
     PointNeuronSetReference.__name__,
+    NeuronSetReference.__name__,
 ]
 NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
     BiophysicalNeuronSetReference.__name__,
     PointNeuronSetReference.__name__,
+    NeuronSetReference.__name__,
 ]
 BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
     BiophysicalNeuronSetReference.__name__,
+    NeuronSetReference.__name__,
 ]
 VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
     VirtualNeuronSetReference.__name__,
+    NeuronSetReference.__name__,
 ]
-POINT_NEURON_SETS_REFERENCE_TYPES = [
-    PointNeuronSetReference.__name__,
-]
+POINT_NEURON_SETS_REFERENCE_TYPES = [PointNeuronSetReference.__name__, NeuronSetReference.__name__]
 
 
 def resolve_neuron_set_ref_to_node_set(

@@ -79,7 +79,7 @@ class AllNeuronsBase(NeuronSet, abc.ABC):
         return expression, combined
 
 
-class AllNeurons(AllNeuronsBase):
+class AllPopulationNeurons(AllNeuronsBase):
     """All neurons across all populations."""
 
     title: ClassVar[str] = (
