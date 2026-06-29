@@ -36,6 +36,15 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
     json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
             # TODO: Use {source_id} once the UI supports source-neutral endpoint placeholders.
