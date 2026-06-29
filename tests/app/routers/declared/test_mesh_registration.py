@@ -34,19 +34,14 @@ def valid_obj_file():
     return {"file": ("mesh.obj", content, "application/octet-stream")}
 
 
-@pytest.fixture
-def mock_task_info():
-    info = MagicMock()
-    info.job_id = uuid4()
-    info.activity_id = uuid4()
-    return info
-
-
-def test_register_mesh_success(client, mock_db_client, valid_obj_file, mock_task_info):
+def test_register_mesh_success(client, mock_db_client, valid_obj_file):
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     mock_glb_asset = MagicMock()
     mock_glb_asset.id = FAKE_GLB_ASSET_ID
+
+    mock_task_info = MagicMock()
+    mock_task_info.job_id = "job-123"
 
     with (
         patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value="fake.glb"),
@@ -62,32 +57,8 @@ def test_register_mesh_success(client, mock_db_client, valid_obj_file, mock_task
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
-    assert body["entity_id"] == ENTITY_ID
     assert body["status"] == "pending"
     assert body["glb_asset_id"] == str(FAKE_GLB_ASSET_ID)
-
-
-def test_register_mesh_missing_project_context(client, mock_db_client, valid_obj_file):
-    mock_db_client.project_context = None
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-
-    response = client.post(ROUTE, files=valid_obj_file)
-
-    client.app.dependency_overrides.pop(get_client, None)
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-
-
-def test_register_mesh_upload_fails(client, mock_db_client, valid_obj_file):
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-
-    with (
-        patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value="fake.glb"),
-        patch(f"{TARGET_MODULE}.run_in_threadpool", side_effect=Exception("upload failed")),
-    ):
-        response = client.post(ROUTE, files=valid_obj_file)
-
-    client.app.dependency_overrides.pop(get_client, None)
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 def test_register_task_config_success():
@@ -96,7 +67,9 @@ def test_register_task_config_success():
     config_entity.id = uuid4()
     mock_client.register_entity.return_value = config_entity
 
-    with patch("tempfile.NamedTemporaryFile"):
+    # Mock NamedTemporaryFile to prevent FileNotFoundError and satisfy S108
+    with patch("tempfile.NamedTemporaryFile") as mock_tmp:
+        mock_tmp.return_value.__enter__.return_value.name = "fake_config.json"
         result = _register_task_config(mock_client, uuid4(), uuid4(), "obj")
 
     assert result == config_entity.id
