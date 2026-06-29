@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 import entitysdk.client
 from entitysdk.models import EMCellMesh, TaskConfig
-from entitysdk.types import ContentType
+from entitysdk.types import AssetLabel, ContentType, TaskConfigType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -36,8 +36,8 @@ def _register_task_config(
     client: entitysdk.client.Client, entity_id: UUID, mesh_asset_id: UUID, mesh_format: str
 ) -> UUID:
     lod_config = MeshLodGenerationSingleConfig(
-        entity_id=str(entity_id),
-        mesh_asset_id=str(mesh_asset_id),
+        entity_id=entity_id,
+        mesh_asset_id=mesh_asset_id,
         mesh_format=mesh_format,
     )
 
@@ -55,11 +55,15 @@ def _register_task_config(
         TaskConfig(
             name=f"LOD Generation for {entity_id}",
             description="Auto-generated LOD configuration",
-            task_config_type="mesh_lod_generation__config",
+            task_config_type=TaskConfigType.mesh_lod_generation__config,
             meta={"scan_parameters": config_payload},
             inputs=[],
         )
     )
+
+    if config_entity.id is None:
+        msg = "Failed to register TaskConfig entity: id is None"
+        raise RuntimeError(msg)
 
     with tempfile.NamedTemporaryFile(
         mode="w+", suffix=".json", encoding="utf-8", delete=False
@@ -71,10 +75,10 @@ def _register_task_config(
         client.upload_file(
             entity_id=config_entity.id,
             entity_type=TaskConfig,
-            file_path=tmp_path,
+            file_path=pathlib.Path(tmp_path),
             file_name="task_config.json",
-            file_content_type="application/json",
-            asset_label="task_config",
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.task_config,
         )
     finally:
         pathlib.Path(tmp_path).unlink()
@@ -96,17 +100,23 @@ async def register_mesh(
 
     unique_filename = f"{entity_id}_{uuid4().hex[:8]}.glb"
 
-    try:
-        glb_asset = await run_in_threadpool(
-            client.upload_file,
-            entity_id=entity_id,
-            entity_type=EMCellMesh,
-            file_path=temp_mesh_path,
-            file_name=unique_filename,
-            file_content_type=ContentType.model_gltf_binary.value,
-            asset_label="cell_surface_mesh",
-        )
+    if client.project_context is None:
+        raise HTTPException(status_code=500, detail="No project context on client")
 
+    glb_asset = await run_in_threadpool(
+        client.upload_file,
+        entity_id=entity_id,
+        entity_type=EMCellMesh,
+        file_path=temp_mesh_path,
+        file_name=unique_filename,
+        file_content_type=ContentType.model_gltf_binary,
+        asset_label=AssetLabel.cell_surface_mesh,
+    )
+
+    if glb_asset.id is None:
+        raise HTTPException(status_code=500, detail="GLB asset upload returned no id")
+
+    try:
         config_id = await run_in_threadpool(
             _register_task_config, client, entity_id, glb_asset.id, lod_mesh_format
         )
