@@ -1,1 +1,8 @@
-/workspace/user_repo
+# Minimal deps for circuit_validation task (source code loaded via staged_directories)
+entitysdk>=0.18.0
+obi-auth
+bluepysnap
+bluecellulab
+libsonata
+h5py
+numpy
