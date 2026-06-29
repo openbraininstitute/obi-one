@@ -1,6 +1,5 @@
 """Tests for the mesh registration endpoint."""
 
-import json
 from http import HTTPStatus
 from io import BytesIO
 from unittest.mock import MagicMock, patch
@@ -12,8 +11,7 @@ from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
 from app.endpoints.mesh_registration import (
-    _create_lod_task_config,
-    _register_glb_asset,
+    _register_task_config,
 )
 from app.errors import ApiErrorCode
 
@@ -25,15 +23,8 @@ FAKE_GLB_ASSET_ID = str(uuid4())
 FAKE_OBJ_ASSET_ID = str(uuid4())
 FAKE_CONFIG_ID = uuid4()
 
-# _prepare_mesh_assets return value for OBJ uploads:
-# (glb_asset_id, lod_mesh_asset_id, lod_mesh_format, temp_glb_path)
 FAKE_PREPARE_OBJ_RESULT = (FAKE_GLB_ASSET_ID, FAKE_OBJ_ASSET_ID, "obj", "fake-temp.glb")
 FAKE_PREPARE_GLB_RESULT = (FAKE_GLB_ASSET_ID, FAKE_GLB_ASSET_ID, "glb", None)
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -62,11 +53,6 @@ def mock_task_info():
     return info
 
 
-# ---------------------------------------------------------------------------
-# Endpoint integration tests
-# ---------------------------------------------------------------------------
-
-
 def test_register_mesh_obj_success(client, mock_db_client, valid_obj_file, mock_task_info):
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
@@ -78,7 +64,7 @@ def test_register_mesh_obj_success(client, mock_db_client, valid_obj_file, mock_
             f"{TARGET_MODULE}._prepare_mesh_assets",
             return_value=FAKE_PREPARE_OBJ_RESULT,
         ),
-        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
+        patch(f"{TARGET_MODULE}._register_task_config", return_value=FAKE_CONFIG_ID),
         patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
@@ -104,7 +90,7 @@ def test_register_mesh_glb_success(client, mock_db_client, valid_glb_file, mock_
             f"{TARGET_MODULE}._prepare_mesh_assets",
             return_value=FAKE_PREPARE_GLB_RESULT,
         ),
-        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
+        patch(f"{TARGET_MODULE}._register_task_config", return_value=FAKE_CONFIG_ID),
         patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
     ):
         response = client.post(ROUTE, files=valid_glb_file)
@@ -189,7 +175,7 @@ def test_register_mesh_task_config_creation_fails(client, mock_db_client, valid_
             return_value=FAKE_PREPARE_OBJ_RESULT,
         ),
         patch(
-            f"{TARGET_MODULE}._create_lod_task_config",
+            f"{TARGET_MODULE}._register_task_config",
             side_effect=HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
@@ -218,7 +204,7 @@ def test_register_mesh_task_submit_fails(client, mock_db_client, valid_obj_file)
             f"{TARGET_MODULE}._prepare_mesh_assets",
             return_value=FAKE_PREPARE_OBJ_RESULT,
         ),
-        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
+        patch(f"{TARGET_MODULE}._register_task_config", return_value=FAKE_CONFIG_ID),
         patch(
             f"{TARGET_MODULE}.task_service.submit_task_job",
             side_effect=RuntimeError("ls down"),
@@ -243,7 +229,7 @@ def test_register_mesh_missing_project_context(client, mock_db_client, valid_obj
             f"{TARGET_MODULE}._prepare_mesh_assets",
             return_value=FAKE_PREPARE_OBJ_RESULT,
         ),
-        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
+        patch(f"{TARGET_MODULE}._register_task_config", return_value=FAKE_CONFIG_ID),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
 
@@ -266,7 +252,7 @@ def test_register_mesh_cleanup_called_on_success(
             f"{TARGET_MODULE}._prepare_mesh_assets",
             return_value=FAKE_PREPARE_OBJ_RESULT,
         ),
-        patch(f"{TARGET_MODULE}._create_lod_task_config", return_value=FAKE_CONFIG_ID),
+        patch(f"{TARGET_MODULE}._register_task_config", return_value=FAKE_CONFIG_ID),
         patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
     ):
         response = client.post(ROUTE, files=valid_obj_file)
@@ -297,95 +283,22 @@ def test_register_mesh_cleanup_called_on_exception(client, mock_db_client, valid
     mock_cleanup.assert_called_once_with(FAKE_TEMP_PATH, None)
 
 
-# ---------------------------------------------------------------------------
-# Unit tests: _register_glb_asset
-# ---------------------------------------------------------------------------
-
-
-def test_register_glb_asset_success(tmp_path):
-    glb_path = tmp_path / "mesh.glb"
-    glb_path.write_bytes(b"glb-data")
-
-    mock_client = MagicMock()
-    uploaded_asset = MagicMock()
-    uploaded_asset.id = "assets/mesh.glb"
-    mock_client.upload_content.return_value = uploaded_asset
-
-    result = _register_glb_asset(mock_client, uuid4(), glb_path)
-
-    assert result == "assets/mesh.glb"
-    mock_client.upload_content.assert_called_once()
-
-
-def test_register_glb_asset_sdk_error(tmp_path):
-    glb_path = tmp_path / "mesh.glb"
-    glb_path.write_bytes(b"glb-data")
-
-    mock_client = MagicMock()
-    mock_client.upload_content.side_effect = EntitySDKError("network failure")
-
-    with pytest.raises(HTTPException) as exc_info:
-        _register_glb_asset(mock_client, uuid4(), glb_path)
-
-    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert exc_info.value.detail["code"] == ApiErrorCode.ENTITYSDK_API_FAILURE
-
-
-# ---------------------------------------------------------------------------
-# Unit tests: _create_lod_task_config
-# ---------------------------------------------------------------------------
-
-
-def test_create_lod_task_config_success():
+def test_register_task_config_success():
     mock_client = MagicMock()
     config_entity = MagicMock()
     config_entity.id = uuid4()
     mock_client.register_entity.return_value = config_entity
 
-    result = _create_lod_task_config(mock_client, uuid4(), uuid4(), "obj")
+    result = _register_task_config(mock_client, uuid4(), uuid4(), "obj")
 
     assert result == config_entity.id
     mock_client.register_entity.assert_called_once()
-    mock_client.upload_content.assert_called_once()
+    mock_client.upload_file.assert_called_once()
 
 
-def test_create_lod_task_config_register_fails():
+def test_register_task_config_register_fails():
     mock_client = MagicMock()
     mock_client.register_entity.side_effect = EntitySDKError("register failed")
 
-    with pytest.raises(HTTPException) as exc_info:
-        _create_lod_task_config(mock_client, uuid4(), uuid4(), "obj")
-
-    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert exc_info.value.detail["code"] == ApiErrorCode.ENTITYSDK_API_FAILURE
-
-
-def test_create_lod_task_config_upload_fails():
-    mock_client = MagicMock()
-    config_entity = MagicMock()
-    config_entity.id = uuid4()
-    mock_client.register_entity.return_value = config_entity
-    mock_client.upload_content.side_effect = EntitySDKError("upload failed")
-
-    with pytest.raises(HTTPException) as exc_info:
-        _create_lod_task_config(mock_client, uuid4(), uuid4(), "obj")
-
-    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert exc_info.value.detail["code"] == ApiErrorCode.ENTITYSDK_API_FAILURE
-
-
-def test_create_lod_task_config_payload_contains_entity_and_asset():
-    mock_client = MagicMock()
-    config_entity = MagicMock()
-    entity_id = uuid4()
-    mesh_asset_id = uuid4()
-    config_entity.id = uuid4()
-    mock_client.register_entity.return_value = config_entity
-
-    _create_lod_task_config(mock_client, entity_id, mesh_asset_id, "glb")
-
-    call_kwargs = mock_client.upload_content.call_args.kwargs
-    payload = json.loads(call_kwargs["file_content"])
-    assert payload["entity_id"] == str(entity_id)
-    assert payload["mesh_asset_id"] == str(mesh_asset_id)
-    assert payload["mesh_format"] == "glb"
+    with pytest.raises(EntitySDKError):
+        _register_task_config(mock_client, uuid4(), uuid4(), "obj")
