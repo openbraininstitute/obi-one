@@ -80,15 +80,13 @@ def _check_nodes(npop_dict, c_orig, c_res, id_map):
         np.testing.assert_array_equal(id_map[npop_name]["original_id"], npop_ids)
         np.testing.assert_array_equal(id_map[npop_name]["new_id"], nids_res)
         # Check node properties
-        if npop_name.startswith("external_"):
-            np.testing.assert_array_equal(
-                c_orig.nodes[npop_name.replace("external_", "")].property_names,
-                c_res.nodes[npop_name].property_names,
-            )
+        # brainbuilder drops "model_template" for all virtual populations during extraction
+        orig_props = set(c_orig.nodes[npop_name.replace("external_", "")].property_names)
+        res_props = set(c_res.nodes[npop_name].property_names)
+        if c_res.nodes[npop_name].config["type"] == "virtual":
+            assert res_props == orig_props - {"model_template"}
         else:
-            np.testing.assert_array_equal(
-                c_orig.nodes[npop_name].property_names, c_res.nodes[npop_name].property_names
-            )
+            assert res_props == orig_props
 
 
 def _check_edges(epop_dict, c_orig, c_res, id_map):

@@ -11,6 +11,7 @@ from PIL import Image
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
+    copy_mod_files,
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
@@ -467,3 +468,94 @@ def test_register_circuit_from_metadata_forwards_scale_override():
         )
 
     assert mock_register.call_args.kwargs["scale_override"] == types.CircuitScale.whole_brain
+
+
+# --- copy_mod_files ---
+
+
+def _make_mock_circuit_with_mods(tmp_path, mod_files):
+    """Create source mod files and return mocked snap objects for copy_mod_files."""
+    source_dir = tmp_path / "source_mods"
+    source_dir.mkdir()
+    for name in mod_files:
+        (source_dir / name).write_text(f"NEURON {{ SUFFIX {name} }}")
+
+    dest_dir = tmp_path / "dest_mods"
+
+    # Mock original circuit
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(source_dir)
+
+    # Mock target population
+    pop = MagicMock()
+    pop.config.get.return_value = str(dest_dir)
+    pop.size = 5
+
+    return pop, original_circuit, source_dir, dest_dir
+
+
+def test_copy_mod_files_copies_all_mod_files(tmp_path):
+    """Test that all .mod files are copied from source to destination."""
+    mod_files = ["Ca_HVA2.mod", "Ih.mod", "NaTg.mod"]
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, mod_files)
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    assert dest_dir.exists()
+    for name in mod_files:
+        assert (dest_dir / name).exists()
+        assert (dest_dir / name).read_text() == f"NEURON {{ SUFFIX {name} }}"
+
+
+def test_copy_mod_files_skips_existing(tmp_path):
+    """Test that existing files in destination are not overwritten."""
+    mod_files = ["Ca_HVA2.mod"]
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, mod_files)
+
+    # Pre-create destination with different content
+    dest_dir.mkdir(parents=True)
+    (dest_dir / "Ca_HVA2.mod").write_text("ORIGINAL CONTENT")
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # Should NOT be overwritten
+    assert (dest_dir / "Ca_HVA2.mod").read_text() == "ORIGINAL CONTENT"
+
+
+def test_copy_mod_files_no_source_dir():
+    """Test early return when mechanisms_dir is not configured."""
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = None
+
+    pop = MagicMock()
+
+    # Should return without error
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # dest_dir should never be accessed
+    pop.config.get.assert_not_called()
+
+
+def test_copy_mod_files_source_dir_does_not_exist(tmp_path):
+    """Test early return when mechanisms_dir path does not exist on disk."""
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(
+        tmp_path / "nonexistent"
+    )
+
+    pop = MagicMock()
+
+    # Should return without error
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    pop.config.get.assert_not_called()
+
+
+def test_copy_mod_files_empty_source_dir(tmp_path):
+    """Test early return when source directory exists but has no .mod files."""
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, [])
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # Destination directory should not be created
+    assert not dest_dir.exists()

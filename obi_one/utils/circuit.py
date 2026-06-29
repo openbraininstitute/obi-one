@@ -167,16 +167,6 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
                 rebase_config(v, old_base, new_base)
 
 
-def copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None:
-    """Copy mod files from circuit directory to output root."""
-    mod_folder = "mod"
-    source_dir = Path(os.path.split(circuit_path)[0]) / mod_folder
-    if Path(source_dir).exists():
-        L.info("Copying mod files")
-        dest_dir = Path(output_root) / mod_folder
-        shutil.copytree(source_dir, dest_dir)
-
-
 def run_validation(circuit_path: str | Path) -> None:
     """Run SONATA circuit validation."""
     errors = snap.circuit_validation.validate(
@@ -309,6 +299,36 @@ def copy_hoc_files(
             raise ValueError(msg)
         if not Path(dest_file).exists():
             # Copy only, if not yet existing (could happen for shared hoc files
+            # among populations)
+            shutil.copyfile(src_file, dest_file)
+
+
+def copy_mod_files(
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
+) -> None:
+    """Copy mechanisms (.mod) files for a node population."""
+    source_dir = original_circuit.nodes[pop_name].config.get("mechanisms_dir")
+    if not source_dir or not Path(source_dir).exists():
+        return
+
+    mod_file_list = [p.name for p in Path(source_dir).glob("*.mod")]
+    if len(mod_file_list) == 0:
+        return
+
+    L.info(
+        f"Copying {len(mod_file_list)} mechanisms (.mod) for population '{pop_name}' ({pop.size})"
+    )
+
+    dest_dir = pop.config.get("mechanisms_dir")
+    Path(dest_dir).mkdir(parents=True, exist_ok=True)
+
+    for mod_file in mod_file_list:
+        src_file = Path(source_dir) / mod_file
+        dest_file = Path(dest_dir) / mod_file
+        if not Path(dest_file).exists():
+            # Copy only, if not yet existing (could happen for shared mod files
             # among populations)
             shutil.copyfile(src_file, dest_file)
 
