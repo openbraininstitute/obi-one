@@ -467,7 +467,7 @@ def _trigger_validation_task(
         "code": {
             "type": "python_repository",
             "location": settings.OBI_ONE_REPO,
-            "ref": "commit:988c069a0b54ed5d0423787e17cf8b5d7b474f81",  # TODO: use tag after merge
+            "ref": "commit:24ab7f763bd9f9aec6df428ec62e4006290f9b76",  # TODO: use tag after merge
             "path": f"{launch_path}/main.py",
             "dependencies": f"{launch_path}/dependencies/default.txt",
             "staged_directories": ["obi_one/"],

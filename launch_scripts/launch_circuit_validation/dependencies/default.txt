@@ -1,8 +1,14 @@
-# Minimal deps for circuit_validation task (source code loaded via staged_directories)
+# Deps for circuit_validation task. obi-one is available via staged_directories + pyproject.toml
+# We install the repo with --no-build-isolation to skip pylmesh (already has compiled deps issue)
 entitysdk>=0.18.0
-obi-auth
+obi-auth>=1.0.0
 bluepysnap
 bluecellulab
-libsonata
+libsonata>=0.1.36
 h5py
 numpy
+pydantic>=2.0
+pydantic-settings
+voxcell
+morph-tool
+neurom

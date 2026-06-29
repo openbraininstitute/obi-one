@@ -17,7 +17,7 @@ from functools import partial
 from pathlib import Path
 from uuid import UUID
 
-# Ensure repo root is on sys.path (when run from /workspace/user_repo via launch-system)
+# Add repo root to sys.path for obi_one imports (not pip-installed, loaded from source)
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
