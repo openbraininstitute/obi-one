@@ -1,164 +1,141 @@
-"""Tests for the mesh registration endpoint."""
+import json
+import pathlib
+import tempfile
+from typing import Annotated
+from uuid import UUID, uuid4
 
-from http import HTTPStatus
-from io import BytesIO
-from unittest.mock import MagicMock, patch
-from uuid import uuid4
+import entitysdk.client
+from entitysdk.models import EMCellMesh, TaskConfig
+from entitysdk.types import ContentType
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel
 
-import pytest
-from entitysdk.exception import EntitySDKError
-from fastapi import HTTPException
-from fastapi.testclient import TestClient
-
+from app.dependencies.callback import CallBackUrlDep
 from app.dependencies.entitysdk import get_client
-from app.endpoints.mesh_registration import _register_task_config
+from app.dependencies.launch_system import LaunchSystemClientDep
+from app.endpoints.mesh_validation import _save_upload_to_tempfile
+from app.logger import L
+from app.mappings import TASK_DEFINITIONS
+from app.services import task as task_service
+from app.types import TaskType
+from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
-ENTITY_ID = str(uuid4())
-TARGET_MODULE = "app.endpoints.mesh_registration"
-ROUTE = f"/declared/{ENTITY_ID}/register-mesh"
-FAKE_TEMP_PATH = "fake-temp-mesh.obj"
-FAKE_GLB_ASSET_ID = str(uuid4())
-FAKE_OBJ_ASSET_ID = str(uuid4())
-FAKE_CONFIG_ID = uuid4()
-
-FAKE_PREPARE_OBJ_RESULT = (FAKE_GLB_ASSET_ID, FAKE_OBJ_ASSET_ID, "obj", "fake-temp.glb")
-FAKE_PREPARE_GLB_RESULT = (FAKE_GLB_ASSET_ID, FAKE_GLB_ASSET_ID, "glb", None)
+router = APIRouter(prefix="/declared", tags=["mesh-registration"])
 
 
-@pytest.fixture
-def mock_db_client() -> MagicMock:
-    client = MagicMock()
-    client.project_context = MagicMock()
-    return client
+class MeshRegistrationResponse(BaseModel):
+    entity_id: str
+    glb_asset_id: str
+    task_job_id: str
+    activity_id: str | None = None
+    status: str
 
 
-@pytest.fixture
-def valid_obj_file() -> dict:
-    content = BytesIO(b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3")
-    return {"file": ("mesh.obj", content, "application/octet-stream")}
+def _register_task_config(
+    client: entitysdk.client.Client, entity_id: UUID, mesh_asset_id: UUID, mesh_format: str
+) -> UUID:
+    lod_config = MeshLodGenerationSingleConfig(
+        entity_id=str(entity_id),
+        mesh_asset_id=str(mesh_asset_id),
+        mesh_format=mesh_format,
+    )
+
+    config_payload = lod_config.model_dump(mode="json")
+    config_payload.update(
+        {
+            "idx": -1,
+            "scan_output_root": ".",
+            "coordinate_output_root": ".",
+            "type": "MeshLodGenerationSingleConfig",
+        }
+    )
+
+    config_entity = client.register_entity(
+        TaskConfig(
+            name=f"LOD Generation for {entity_id}",
+            description="Auto-generated LOD configuration",
+            task_config_type="mesh_lod_generation__config",
+            meta={"scan_parameters": config_payload},
+            inputs=[],
+        )
+    )
+
+    with tempfile.NamedTemporaryFile(
+        mode="w+", suffix=".json", delete=False, encoding="utf-8"
+    ) as tmp:
+        json.dump(config_payload, tmp)
+        tmp_path = tmp.name
+
+    try:
+        client.upload_file(
+            entity_id=config_entity.id,
+            entity_type=TaskConfig,
+            file_path=tmp_path,
+            file_name="task_config.json",
+            file_content_type="application/json",
+            asset_label="task_config",
+        )
+    finally:
+        pathlib.Path(tmp_path).unlink()  # Clean up temp file
+
+    return config_entity.id
 
 
-@pytest.fixture
-def valid_glb_file() -> dict:
-    content = BytesIO(b"glTF\x02\x00\x00\x00")
-    return {"file": ("mesh.glb", content, "application/octet-stream")}
+@router.post("/{entity_id}/register-mesh")
+async def register_mesh(
+    entity_id: UUID,
+    client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ls_client: LaunchSystemClientDep,
+    callback_url: CallBackUrlDep,
+    file: Annotated[UploadFile, File()],
+    lod_mesh_format: Annotated[str, Form()] = "obj",
+) -> MeshRegistrationResponse:
 
+    temp_mesh_path = pathlib.Path(_save_upload_to_tempfile(file, suffix=".glb"))
 
-@pytest.fixture
-def mock_task_info() -> MagicMock:
-    info = MagicMock()
-    info.job_id = uuid4()
-    return info
+    unique_filename = f"{entity_id}_{uuid4().hex[:8]}.glb"
 
+    try:
+        glb_asset = await run_in_threadpool(
+            client.upload_file,
+            entity_id=entity_id,
+            entity_type=EMCellMesh,
+            file_path=temp_mesh_path,
+            file_name=unique_filename,
+            file_content_type=ContentType.model_gltf_binary.value,
+            asset_label="cell_surface_mesh",
+        )
 
-def test_register_mesh_obj_success(
-    client: TestClient, mock_db_client: MagicMock, valid_obj_file: dict, mock_task_info: MagicMock
-) -> None:
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+        config_id = await run_in_threadpool(
+            _register_task_config, client, entity_id, glb_asset.id, lod_mesh_format
+        )
 
-    with (
-        patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
-        patch(f"{TARGET_MODULE}._cleanup_temps"),
-        patch(f"{TARGET_MODULE}._prepare_mesh_assets", return_value=FAKE_PREPARE_OBJ_RESULT),
-        patch(f"{TARGET_MODULE}._register_task_config", return_value=FAKE_CONFIG_ID),
-        patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
-    ):
-        response = client.post(ROUTE, files=valid_obj_file)
+        task_info = await run_in_threadpool(
+            task_service.submit_task_job,
+            db_client=client,
+            ls_client=ls_client,
+            callback_url=callback_url,
+            config_id=config_id,
+            project_context=client.project_context,
+            task_definition=TASK_DEFINITIONS[TaskType.mesh_lod_generation],
+            callbacks=[],
+        )
 
-    client.app.dependency_overrides.pop(get_client, None)
+        activity_id = None
+        if isinstance(task_info, dict):
+            activity_id = task_info.get("activity_id")
+        else:
+            activity_id = getattr(task_info, "activity_id", None)
 
-    assert response.status_code == HTTPStatus.ACCEPTED  # noqa: S101
-    body = response.json()
-    assert body["entity_id"] == ENTITY_ID  # noqa: S101
-    assert body["status"] == "pending"  # noqa: S101
+        return MeshRegistrationResponse(
+            entity_id=str(entity_id),
+            glb_asset_id=str(glb_asset.id),
+            task_job_id=str(getattr(task_info, "job_id", "unknown")),
+            activity_id=str(activity_id) if activity_id else None,
+            status="pending",
+        )
 
-
-def test_register_mesh_glb_success(
-    client: TestClient, mock_db_client: MagicMock, valid_glb_file: dict, mock_task_info: MagicMock
-) -> None:
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-
-    with (
-        patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value="fake-temp.glb"),
-        patch(f"{TARGET_MODULE}._cleanup_temps"),
-        patch(f"{TARGET_MODULE}._prepare_mesh_assets", return_value=FAKE_PREPARE_GLB_RESULT),
-        patch(f"{TARGET_MODULE}._register_task_config", return_value=FAKE_CONFIG_ID),
-        patch(f"{TARGET_MODULE}.task_service.submit_task_job", return_value=mock_task_info),
-    ):
-        response = client.post(ROUTE, files=valid_glb_file)
-
-    client.app.dependency_overrides.pop(get_client, None)
-
-    assert response.status_code == HTTPStatus.ACCEPTED  # noqa: S101
-    assert response.json()["status"] == "pending"  # noqa: S101
-
-
-def test_register_mesh_unsupported_format(client: TestClient, mock_db_client: MagicMock) -> None:
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-    content = BytesIO(b"data")
-    files = {"file": ("mesh.stl", content, "application/octet-stream")}
-
-    response = client.post(ROUTE, files=files)
-    client.app.dependency_overrides.pop(get_client, None)
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR  # noqa: S101
-
-
-def test_register_mesh_invalid_entity_id(client: TestClient, valid_obj_file: dict) -> None:
-    response = client.post("/declared/not-a-uuid/register-mesh", files=valid_obj_file)
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY  # noqa: S101
-
-
-def test_register_mesh_wrong_entity_type(
-    client: TestClient, mock_db_client: MagicMock, valid_obj_file: dict
-) -> None:
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-    response = client.post(ROUTE, files=valid_obj_file, data={"entity_type": "Circuit"})
-    client.app.dependency_overrides.pop(get_client, None)
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR  # noqa: S101
-
-
-def test_register_mesh_asset_upload_fails(
-    client: TestClient, mock_db_client: MagicMock, valid_obj_file: dict
-) -> None:
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-    with (
-        patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
-        patch(f"{TARGET_MODULE}._cleanup_temps"),
-        patch(f"{TARGET_MODULE}._prepare_mesh_assets", side_effect=HTTPException(status_code=500)),
-    ):
-        response = client.post(ROUTE, files=valid_obj_file)
-    client.app.dependency_overrides.pop(get_client, None)
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR  # noqa: S101
-
-
-def test_register_mesh_task_config_creation_fails(
-    client: TestClient, mock_db_client: MagicMock, valid_obj_file: dict
-) -> None:
-    client.app.dependency_overrides[get_client] = lambda: mock_db_client
-    with (
-        patch(f"{TARGET_MODULE}._save_upload_to_tempfile", return_value=FAKE_TEMP_PATH),
-        patch(f"{TARGET_MODULE}._cleanup_temps"),
-        patch(f"{TARGET_MODULE}._prepare_mesh_assets", return_value=FAKE_PREPARE_OBJ_RESULT),
-        patch(f"{TARGET_MODULE}._register_task_config", side_effect=HTTPException(status_code=500)),
-    ):
-        response = client.post(ROUTE, files=valid_obj_file)
-    client.app.dependency_overrides.pop(get_client, None)
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR  # noqa: S101
-
-
-def test_register_task_config_success() -> None:
-    mock_client = MagicMock()
-    config_entity = MagicMock()
-    config_entity.id = uuid4()
-    mock_client.register_entity.return_value = config_entity
-    result = _register_task_config(mock_client, uuid4(), uuid4(), "obj")
-    assert result == config_entity.id  # noqa: S101
-    mock_client.register_entity.assert_called_once()
-    mock_client.upload_file.assert_called_once()
-
-
-def test_register_task_config_register_fails() -> None:
-    mock_client = MagicMock()
-    mock_client.register_entity.side_effect = EntitySDKError("register failed")
-    with pytest.raises(EntitySDKError):
-        _register_task_config(mock_client, uuid4(), uuid4(), "obj")
+    except Exception as exc:
+        L.error(f"Registration failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
