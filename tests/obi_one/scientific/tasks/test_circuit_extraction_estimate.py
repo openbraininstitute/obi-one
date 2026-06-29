@@ -4,7 +4,6 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import entitysdk
-import numpy as np
 
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
 

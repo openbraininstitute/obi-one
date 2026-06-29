@@ -8,6 +8,7 @@ import pytest
 from bluepysnap import Circuit
 
 import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.population import VirtualPopulationNeuronSet
 
 from tests.utils import CIRCUIT_DIR
 
@@ -226,8 +227,6 @@ def test_circuit_extraction(tmp_path):
 
 def test_circuit_extraction_rejects_virtual_neuron_set():
     """CircuitExtractionScanConfig should not accept virtual neuron sets."""
-    from obi_one.scientific.blocks.neuron_sets.population import VirtualPopulationNeuronSet
-
     virtual_nset = VirtualPopulationNeuronSet(population="VPM")
 
     with pytest.raises(pydantic.ValidationError, match="union_tag_invalid"):
