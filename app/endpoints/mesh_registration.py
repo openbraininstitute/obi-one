@@ -101,7 +101,12 @@ async def register_mesh(
     temp_mesh_path = pathlib.Path(_save_upload_to_tempfile(file, suffix=".glb"))
     unique_filename = f"{entity_id}_{uuid4().hex[:8]}.glb"
 
+    # Validation
     _ensure_project_context(client)
+    # Re-assign for type narrowing: this is now safe because _ensure_project_context raises on None
+    project_context = client.project_context
+    if project_context is None:
+        raise HTTPException(status_code=500, detail="Project context missing")
 
     try:
         glb_asset = await run_in_threadpool(
@@ -124,7 +129,7 @@ async def register_mesh(
             ls_client=ls_client,
             callback_url=callback_url,
             config_id=config_id,
-            project_context=client.project_context,
+            project_context=project_context,
             task_definition=TASK_DEFINITIONS[TaskType.mesh_lod_generation],
             callbacks=[],
         )
