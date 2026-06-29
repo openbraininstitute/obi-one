@@ -1,12 +1,12 @@
 import json
 import pathlib
 import tempfile
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID, uuid4
 
 import entitysdk.client
 from entitysdk.models import EMCellMesh, TaskConfig
-from entitysdk.types import ContentType
+from entitysdk.types import AssetLabel, ContentType, TaskConfigType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -32,12 +32,18 @@ class MeshRegistrationResponse(BaseModel):
     status: str
 
 
+def _ensure_project_context(client: entitysdk.client.Client) -> None:
+    """Helper to validate project context existence, satisfying TRY301."""
+    if client.project_context is None:
+        raise HTTPException(status_code=500, detail="Project context missing")
+
+
 def _register_task_config(
     client: entitysdk.client.Client, entity_id: UUID, mesh_asset_id: UUID, mesh_format: str
 ) -> UUID:
     lod_config = MeshLodGenerationSingleConfig(
-        entity_id=str(entity_id),
-        mesh_asset_id=str(mesh_asset_id),
+        entity_id=entity_id,
+        mesh_asset_id=mesh_asset_id,
         mesh_format=mesh_format,
     )
 
@@ -55,7 +61,7 @@ def _register_task_config(
         TaskConfig(
             name=f"LOD Generation for {entity_id}",
             description="Auto-generated LOD configuration",
-            task_config_type="mesh_lod_generation__config",
+            task_config_type=TaskConfigType("mesh_lod_generation__config"),
             meta={"scan_parameters": config_payload},
             inputs=[],
         )
@@ -69,17 +75,17 @@ def _register_task_config(
 
     try:
         client.upload_file(
-            entity_id=config_entity.id,
+            entity_id=cast("UUID", config_entity.id),
             entity_type=TaskConfig,
-            file_path=tmp_path,
+            file_path=pathlib.Path(tmp_path),
             file_name="task_config.json",
-            file_content_type="application/json",
-            asset_label="task_config",
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel("task_config"),
         )
     finally:
-        pathlib.Path(tmp_path).unlink()  # Clean up temp file
+        pathlib.Path(tmp_path).unlink()
 
-    return config_entity.id
+    return cast("UUID", config_entity.id)
 
 
 @router.post("/{entity_id}/register-mesh")
@@ -93,8 +99,9 @@ async def register_mesh(
 ) -> MeshRegistrationResponse:
 
     temp_mesh_path = pathlib.Path(_save_upload_to_tempfile(file, suffix=".glb"))
-
     unique_filename = f"{entity_id}_{uuid4().hex[:8]}.glb"
+
+    _ensure_project_context(client)
 
     try:
         glb_asset = await run_in_threadpool(
@@ -103,12 +110,12 @@ async def register_mesh(
             entity_type=EMCellMesh,
             file_path=temp_mesh_path,
             file_name=unique_filename,
-            file_content_type=ContentType.model_gltf_binary.value,
-            asset_label="cell_surface_mesh",
+            file_content_type=ContentType.model_gltf_binary,
+            asset_label=AssetLabel("cell_surface_mesh"),
         )
 
         config_id = await run_in_threadpool(
-            _register_task_config, client, entity_id, glb_asset.id, lod_mesh_format
+            _register_task_config, client, entity_id, cast("UUID", glb_asset.id), lod_mesh_format
         )
 
         task_info = await run_in_threadpool(
@@ -122,11 +129,11 @@ async def register_mesh(
             callbacks=[],
         )
 
-        activity_id = None
-        if isinstance(task_info, dict):
-            activity_id = task_info.get("activity_id")
-        else:
-            activity_id = getattr(task_info, "activity_id", None)
+        activity_id = (
+            getattr(task_info, "activity_id", None)
+            if not isinstance(task_info, dict)
+            else task_info.get("activity_id")
+        )
 
         return MeshRegistrationResponse(
             entity_id=str(entity_id),
