@@ -34,6 +34,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
 
@@ -44,6 +45,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
         },
     )
 
