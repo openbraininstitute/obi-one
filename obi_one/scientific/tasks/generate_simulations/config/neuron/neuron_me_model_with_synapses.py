@@ -16,6 +16,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion, MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
@@ -64,6 +65,19 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology Locations",
+        description="Parameterized locations on the neurites of the morphology.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: MorphologyLocationsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Morphology Location",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
