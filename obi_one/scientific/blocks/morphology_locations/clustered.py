@@ -19,7 +19,8 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     """Clustered random locations."""
 
     n_clusters: int | list[int] = Field(
-        title="Number of clusters", description="Number of location clusters to generate",
+        title="Number of clusters",
+        description="Number of location clusters to generate",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
     cluster_max_distance: float | list[float] = Field(
@@ -108,7 +109,6 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         title="Number of groups per cluster",
         description="Number of conceptual groups per location cluster to generate",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
-
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:

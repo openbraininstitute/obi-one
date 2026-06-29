@@ -26,8 +26,8 @@ MorphologyLocationUnion = Annotated[
     Discriminator("type"),
 ]
 
+
 class MorphologyLocationsReference(BlockReference):
     """A reference to a MorphologyLocationUnion block."""
 
     allowed_block_types: ClassVar[Any] = MorphologyLocationUnion
-

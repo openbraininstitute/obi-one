@@ -17,7 +17,9 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
 
     random_seed: int | list[int] = Field(
-        default=0, title="Random seed", description="Seed for the random generation of locations",
+        default=0,
+        title="Random seed",
+        description="Seed for the random generation of locations",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
     number_of_locations: int | list[int] = Field(

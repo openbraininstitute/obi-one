@@ -16,7 +16,10 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion, MorphologyLocationsReference
+from obi_one.scientific.unions.unions_morphology_locations import (
+    MorphologyLocationsReference,
+    MorphologyLocationUnion,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     MEModelWithSynapsesNeuronSetUnion,
     NeuronSetReference,
