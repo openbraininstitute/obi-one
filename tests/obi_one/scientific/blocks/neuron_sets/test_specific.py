@@ -1,13 +1,13 @@
-"""Tests for neuron_sets specific (AllNeurons) neuron sets."""
+"""Tests for neuron_sets specific neuron sets."""
 
 import pytest
 
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
-    AllNeurons,
     AllNonVirtualNeurons,
     AllPointNeurons,
+    AllPopulationNeurons,
     AllVirtualNeurons,
 )
 
@@ -25,9 +25,9 @@ def circuit():
     )
 
 
-def test_all_neurons(circuit):
-    """Test AllNeurons returns all populations and IDs."""
-    nset = AllNeurons()
+def test_all_population_neurons(circuit):
+    """Test AllPopulationNeurons returns all populations and IDs."""
+    nset = AllPopulationNeurons()
     nset.set_block_name("all")
 
     pops = nset.get_populations(circuit)
@@ -40,9 +40,9 @@ def test_all_neurons(circuit):
     assert total > 0
 
 
-def test_all_neurons_symbolic(circuit):
-    """Test AllNeurons symbolic node set definition."""
-    nset = AllNeurons()
+def test_all_population_neurons_symbolic(circuit):
+    """Test AllPopulationNeurons symbolic node set definition."""
+    nset = AllPopulationNeurons()
     nset.set_block_name("all_sym")
 
     nset_def, combined = nset.get_node_set_definition(circuit)
@@ -53,9 +53,9 @@ def test_all_neurons_symbolic(circuit):
     assert len(combined) == len(pops)
 
 
-def test_all_neurons_force_resolve(circuit):
-    """Test AllNeurons force_resolve_ids."""
-    nset = AllNeurons()
+def test_all_population_neurons_force_resolve(circuit):
+    """Test AllPopulationNeurons force_resolve_ids."""
+    nset = AllPopulationNeurons()
     nset.set_block_name("all_resolve")
 
     nset_def, combined = nset.get_node_set_definition(circuit, force_resolve_ids=True)
@@ -120,9 +120,9 @@ def test_all_point_neurons(circuit):
     assert "S1nonbarrel_neurons" not in pops
 
 
-def test_all_neurons_no_block_name(circuit):
+def test_all_population_neurons_no_block_name(circuit):
     """Test that get_node_set_definition raises without block name."""
-    nset = AllNeurons()
+    nset = AllPopulationNeurons()
 
     with pytest.raises(ValueError, match="Block name must be set"):
         nset.get_node_set_definition(circuit)

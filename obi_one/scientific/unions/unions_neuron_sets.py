@@ -155,6 +155,12 @@ class PointNeuronSetReference(BaseNeuronSetReference):
     }
 
 
+_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE = (
+    "NeuronSetReference is deprecated. Use BiophysicalNeuronSetReference, "
+    "VirtualNeuronSetReference, or PointNeuronSetReference instead."
+)
+
+
 class NeuronSetReference(BlockReference):
     """NeuronSetReference is Deprecated."""
 
@@ -166,11 +172,15 @@ class NeuronSetReference(BlockReference):
 
     @property
     def block(self) -> NeuronSet:
-        msg = (
-            "NeuronSetReference is deprecated. Use BiophysicalNeuronSetReference, "
-            "VirtualNeuronSetReference, or PointNeuronSetReference instead."
-        )
-        raise DeprecationWarning(msg)
+        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
+
+    @block.setter
+    def block(self, value: NeuronSet) -> None:  # noqa: ARG002, PLR6301
+        # The setter is invoked while deserializing legacy configs (the model validator
+        # `fill_block_references_and_names` assigns resolved blocks to references). Raising here
+        # ensures that loading any config containing a deprecated NeuronSetReference fails with a
+        # clear migration message instead of a confusing "has no setter" AttributeError.
+        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
 
 ALL_NEURON_SETS_REFERENCE_UNION = (
@@ -205,7 +215,10 @@ VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
     VirtualNeuronSetReference.__name__,
     NeuronSetReference.__name__,
 ]
-POINT_NEURON_SETS_REFERENCE_TYPES = [PointNeuronSetReference.__name__, NeuronSetReference.__name__]
+# NeuronSetReference is intentionally excluded: it only references deprecated biophysical/virtual
+# neuron sets (never point sets), so it must not be offered for a point-only reference field. This
+# keeps the list aligned with POINT_NEURON_SETS_REFERENCE_UNION above.
+POINT_NEURON_SETS_REFERENCE_TYPES = [PointNeuronSetReference.__name__]
 
 
 def resolve_neuron_set_ref_to_node_set(

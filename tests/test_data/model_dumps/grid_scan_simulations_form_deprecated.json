@@ -1,9 +1,9 @@
 {
-    "obi_one_version": "2025.9.4.dev126",
-    "type": "GridScanGenerationTask",
+    "obi_one_version": "2025.9.4.dev117",
+    "type": "GridScan",
     "output_root": "../../../../obi-output/circuit_simulations/grid_scan",
     "form": {
-        "type": "CircuitSimulationScanConfig",
+        "type": "SimulationsForm",
         "timestamps": {
             "RegularTimestamps": {
                 "type": "RegularTimestamps",
@@ -23,12 +23,12 @@
                 "source_neuron_set": {
                     "block_dict_name": "neuron_sets",
                     "block_name": "L1All",
-                    "type": "BiophysicalNeuronSetReference"
+                    "type": "NeuronSetReference"
                 },
                 "targeted_neuron_set": {
                     "block_dict_name": "neuron_sets",
                     "block_name": "L1All",
-                    "type": "BiophysicalNeuronSetReference"
+                    "type": "NeuronSetReference"
                 },
                 "timestamp_offset": 0.0,
                 "duration": 800.0,
@@ -45,12 +45,12 @@
                 "source_neuron_set": {
                     "block_dict_name": "neuron_sets",
                     "block_name": "ID3",
-                    "type": "BiophysicalNeuronSetReference"
+                    "type": "NeuronSetReference"
                 },
                 "targeted_neuron_set": {
                     "block_dict_name": "neuron_sets",
                     "block_name": "L1All",
-                    "type": "BiophysicalNeuronSetReference"
+                    "type": "NeuronSetReference"
                 },
                 "timestamp_offset": 0.0
             },
@@ -64,7 +64,7 @@
                 "neuron_set": {
                     "block_dict_name": "neuron_sets",
                     "block_name": "L1All",
-                    "type": "BiophysicalNeuronSetReference"
+                    "type": "NeuronSetReference"
                 },
                 "timestamp_offset": 0.0,
                 "duration": 1.0,
@@ -77,7 +77,7 @@
                 "neuron_set": {
                     "block_dict_name": "neuron_sets",
                     "block_name": "L1All",
-                    "type": "BiophysicalNeuronSetReference"
+                    "type": "NeuronSetReference"
                 },
                 "dt": 0.1
             },
@@ -86,24 +86,16 @@
                 "neuron_set": {
                     "block_dict_name": "neuron_sets",
                     "block_name": "L1All",
-                    "type": "BiophysicalNeuronSetReference"
+                    "type": "NeuronSetReference"
                 },
                 "dt": 0.1,
                 "start_time": 0.0,
                 "end_time": 2000.0
             }
         },
-        "info": {
-            "type": "Info",
-            "campaign_name": "O1 Simulation",
-            "campaign_description": "Simulation of O1 circuit with predefined neuron set and constant current stimulus"
-        },
         "neuron_sets": {
-            "All Biophysical Neurons": {
-                "type": "AllBiophysicalNeurons"
-            },
             "L1All": {
-                "type": "BiophysicalPopulationIDNeuronSet",
+                "type": "IDNeuronSet",
                 "sample_percentage": 100.0,
                 "sample_seed": 1,
                 "neuron_ids": {
@@ -113,17 +105,23 @@
                         1,
                         2,
                         3,
-                        4
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        9
                     ],
                     "type": "NamedTuple"
-                },
-                "population": "S1nonbarrel_neurons"
+                }
             },
             "AllNeurons": {
-                "type": "AllBiophysicalNeurons"
+                "type": "AllNeurons",
+                "sample_percentage": 100.0,
+                "sample_seed": 1
             },
             "ID3": {
-                "type": "BiophysicalPopulationIDNeuronSet",
+                "type": "IDNeuronSet",
                 "sample_percentage": 100.0,
                 "sample_seed": 1,
                 "neuron_ids": {
@@ -134,31 +132,37 @@
                         2
                     ],
                     "type": "NamedTuple"
-                },
-                "population": "S1nonbarrel_neurons"
+                }
             },
             "nbS1VPMInputs": {
-                "type": "AllVirtualNeurons"
+                "type": "nbS1VPMInputs",
+                "sample_percentage": 100.0,
+                "sample_seed": 1
             }
         },
         "synaptic_manipulations": {},
         "initialize": {
-            "type": "CircuitSimulationScanConfig.Initialize",
+            "type": "SimulationsForm.Initialize",
             "circuit": {
                 "name": "N_10__top_nodes_dim6",
                 "path": "examples/data/tiny_circuits/N_10__top_nodes_dim6/circuit_config.json",
                 "matrix_path": null,
                 "type": "Circuit"
             },
-            "simulation_length": 3000.0,
-            "extracellular_calcium_concentration": 1.1,
-            "v_init": -80.0,
-            "random_seed": 1,
             "node_set": {
                 "block_dict_name": "neuron_sets",
                 "block_name": "L1All",
-                "type": "BiophysicalNeuronSetReference"
-            }
+                "type": "NeuronSetReference"
+            },
+            "simulation_length": 3000.0,
+            "extracellular_calcium_concentration": 1.1,
+            "v_init": -80.0,
+            "random_seed": 1
+        },
+        "info": {
+            "type": "Info",
+            "campaign_name": "O1 Simulation",
+            "campaign_description": "Simulation of O1 circuit with predefined neuron set and constant current stimulus"
         }
     },
     "coordinate_directory_option": "ZERO_INDEX"

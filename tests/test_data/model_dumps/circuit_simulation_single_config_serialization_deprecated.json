@@ -51,7 +51,7 @@
             "neuron_set": {
                 "block_dict_name": "neuron_sets",
                 "block_name": "POM_input",
-                "type": "BiophysicalNeuronSetReference"
+                "type": "NeuronSetReference"
             },
             "timestamp_offset": 0.0,
             "duration": 5.0,
@@ -67,7 +67,7 @@
             "neuron_set": {
                 "block_dict_name": "neuron_sets",
                 "block_name": "POM_input",
-                "type": "BiophysicalNeuronSetReference"
+                "type": "NeuronSetReference"
             },
             "timestamp_offset": 0.0,
             "duration": 100.0,
@@ -83,12 +83,12 @@
             "source_neuron_set": {
                 "block_dict_name": "neuron_sets",
                 "block_name": "POM_input",
-                "type": "BiophysicalNeuronSetReference"
+                "type": "NeuronSetReference"
             },
             "targeted_neuron_set": {
                 "block_dict_name": "neuron_sets",
                 "block_name": "POM_input",
-                "type": "BiophysicalNeuronSetReference"
+                "type": "NeuronSetReference"
             },
             "timestamp_offset": 0.0,
             "duration": 800.0,
@@ -102,26 +102,36 @@
             "neuron_set": {
                 "block_dict_name": "neuron_sets",
                 "block_name": "POM_input",
-                "type": "BiophysicalNeuronSetReference"
+                "type": "NeuronSetReference"
             },
             "dt": 0.1
         }
     },
     "neuron_sets": {
         "SimNeurons": {
-            "type": "AllBiophysicalNeurons"
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
         },
         "StimNeurons": {
-            "type": "AllBiophysicalNeurons"
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
         },
         "RecNeurons": {
-            "type": "AllBiophysicalNeurons"
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
         },
         "PropertyNeuronSet": {
-            "type": "AllBiophysicalNeurons"
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
         },
         "POM_input": {
-            "type": "AllBiophysicalNeurons"
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
         }
     },
     "synaptic_manipulations": {},
@@ -136,7 +146,7 @@
         "node_set": {
             "block_dict_name": "neuron_sets",
             "block_name": "POM_input",
-            "type": "BiophysicalNeuronSetReference"
+            "type": "NeuronSetReference"
         },
         "simulation_length": 3000.0,
         "extracellular_calcium_concentration": 1.1,
