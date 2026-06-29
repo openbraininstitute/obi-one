@@ -74,8 +74,11 @@ class SpikeStimulus(StimulusWithTimestamps):
             self.targeted_neuron_set, default_target_neuron_set_reference
         )
 
-        if target_neuron_set.has_biophysical_neurons(circuit) is False:  # ty:ignore[unresolved-attribute]
-            msg = "Target Neuron Set of Spike Stimulus must be biophysical."
+        if (
+            not target_neuron_set.has_biophysical_neurons(circuit)  # ty:ignore[unresolved-attribute]
+            and not target_neuron_set.has_point_neurons(circuit)  # ty:ignore[unresolved-attribute]
+        ):
+            msg = "Target Neuron Set of Spike Stimulus must be biophysical or point."
             raise OBIONEError(msg)
 
         spike_file_relative_path = self.generate_spikes(
