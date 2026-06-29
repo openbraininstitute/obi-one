@@ -23,11 +23,13 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.unions.unions_combined_neuron_sets import (
     CombinedBiophysicalNeuronSetReference,
+    SPECIAL_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
+    BiophysicalNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -110,11 +112,6 @@ class StimulusWithDuration(BaseStimulus):
     )
 
 
-from obi_one.scientific.blocks.neuron_sets.combined import (
-    BiophysicalCombinedNeuronSet,
-)
-
-
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
@@ -123,16 +120,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-        },
-    )
-
-    ns2: CombinedBiophysicalNeuronSetReference | None = Field(
-        default=None,
-        title="NS2",
-        description="NS2 block associated with the stimulus.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [BiophysicalCombinedNeuronSet.__name__],
         },
     )
 
@@ -184,6 +171,16 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
+
+    ns2: BiophysicalNeuronSetReference | CombinedBiophysicalNeuronSetReference | None = Field(
+        default=None,
+        title="NS2",
+        description="NS2 block associated with the stimulus.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: SPECIAL_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
 
     amplitude: float | list[float] | FloatRange = Field(
         default=0.1,
