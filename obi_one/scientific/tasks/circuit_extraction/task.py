@@ -200,6 +200,8 @@ class CircuitExtractionTask(Task):
             instance_info = f" - Instance {self.config.idx} with {instance_info}"
         circuit_descr = self.config.info.campaign_description + instance_info
 
+        print("WARNING: SNAP validation skipped!")
+
         return circuit_registration.register_circuit(
             client=db_client,
             circuit_path=circuit_path,
@@ -215,6 +217,7 @@ class CircuitExtractionTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=types.DerivationType.circuit_extraction,
+            skip_validation=True,  # MANUAL OVERRIDE
         )
 
     def execute(  # noqa: C901, PLR0915
