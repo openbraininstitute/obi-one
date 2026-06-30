@@ -283,7 +283,7 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
         (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
     ]
 
-    node_ids, timestamps = zip(*spikes, strict=True) if spikes else ([], [])
+    node_ids, timestamps = zip(*spikes, strict=True) if spikes else ((), ())
     L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
     (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     spikes_path = _write_spikes(
