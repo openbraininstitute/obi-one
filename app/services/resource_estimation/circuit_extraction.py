@@ -128,7 +128,7 @@ def estimate_task_resources(  # noqa: PLR0914
    # MANUAL OVERRIDE
     ncpu = 4
     mem_gb = 30
-    time_h = 2
+    time_h = 4
 
     print(f"WARNING: Manual resource allocation override({ncpu}/{mem_gb}; {time_h}h)!")
 
