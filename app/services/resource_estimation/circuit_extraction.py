@@ -83,47 +83,54 @@ def estimate_task_resources(  # noqa: PLR0914
     json_dict = json.loads(json_str)
     single_config = deserialize_obi_object_from_json_data(json_dict)
 
-    # Get parent circuit metrics
-    circuit_id = config.inputs[0].id  # ty:ignore[not-subscriptable]
-    level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
-    level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
-    circuit_metrics = get_circuit_metrics(
-        circuit_id=str(circuit_id),
-        db_client=db_client,
-        level_of_detail_nodes=level_of_detail_nodes_dict,
-        level_of_detail_edges=level_of_detail_edges_dict,
-    )
+    # # Get parent circuit metrics
+    # circuit_id = config.inputs[0].id  # ty:ignore[not-subscriptable]
+    # level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
+    # level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
+    # circuit_metrics = get_circuit_metrics(
+    #     circuit_id=str(circuit_id),
+    #     db_client=db_client,
+    #     level_of_detail_nodes=level_of_detail_nodes_dict,
+    #     level_of_detail_edges=level_of_detail_edges_dict,
+    # )
 
-    # Estimate memory based on the number of input neurons
-    nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
-    nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])  # ty:ignore[unresolved-attribute]
-    input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio  # ty:ignore[unresolved-attribute]
+    # # Estimate memory based on the number of input neurons
+    # nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
+    # nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])  # ty:ignore[unresolved-attribute]
+    # input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio  # ty:ignore[unresolved-attribute]
 
-    mem_gb_required = 1 + 55e-6 * input_size_neurons
-    ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
+    # mem_gb_required = 1 + 55e-6 * input_size_neurons
+    # ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
 
-    # Estimate time limit based on the number input neurons
-    time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
+    # # Estimate time limit based on the number input neurons
+    # time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
 
-    # Estimate disk space based in the number of input synapses
-    sbio = np.sum(
-        [
-            epop.number_of_edges  # ty:ignore[unresolved-attribute]
-            for epop in circuit_metrics.chemical_edge_populations
-            if epop.source_name in circuit_metrics.names_of_biophys_node_populations  # ty:ignore[unresolved-attribute]
-        ]
-    )
-    svirt = np.sum(
-        [
-            epop.number_of_edges  # ty:ignore[unresolved-attribute]
-            for epop in circuit_metrics.chemical_edge_populations
-            if epop.source_name in circuit_metrics.names_of_virtual_node_populations  # ty:ignore[unresolved-attribute]
-        ]
-    )
-    input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio  # ty:ignore[unresolved-attribute]
-    output_size_synapses = input_size_synapses  # Using maximum output count
-    output_size_gb = 1 + output_size_synapses * 1.85e-7
-    _check_available_disk_space(output_size_gb)
+    # # Estimate disk space based in the number of input synapses
+    # sbio = np.sum(
+    #     [
+    #         epop.number_of_edges  # ty:ignore[unresolved-attribute]
+    #         for epop in circuit_metrics.chemical_edge_populations
+    #         if epop.source_name in circuit_metrics.names_of_biophys_node_populations  # ty:ignore[unresolved-attribute]
+    #     ]
+    # )
+    # svirt = np.sum(
+    #     [
+    #         epop.number_of_edges  # ty:ignore[unresolved-attribute]
+    #         for epop in circuit_metrics.chemical_edge_populations
+    #         if epop.source_name in circuit_metrics.names_of_virtual_node_populations  # ty:ignore[unresolved-attribute]
+    #     ]
+    # )
+    # input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio  # ty:ignore[unresolved-attribute]
+    # output_size_synapses = input_size_synapses  # Using maximum output count
+    # output_size_gb = 1 + output_size_synapses * 1.85e-7
+    # _check_available_disk_space(output_size_gb)
+
+   # MANUAL OVERRIDE
+    ncpu = 4
+    mem_gb = 30
+    time_h = 2
+
+    print(f"WARNING: Manual resource allocation override({ncpu}/{mem_gb}; {time_h}h)!")
 
     # Update resources
     return task_definition.resources.model_copy(
