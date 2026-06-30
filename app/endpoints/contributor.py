@@ -123,7 +123,7 @@ def _person_preview(
     orcid: str, metadata: OrcidMetadata, db_client: DatabaseClientDep
 ) -> ContributorPreview:
     """Build a ContributorPreview for a person."""
-    existing = db_client.search_entity(entity_type=models.Person, query={"orcid": orcid}).all()
+    existing = db_client.search_entity(entity_type=models.Person, query={"orcid": orcid}).one_or_none()
 
     return ContributorPreview(
         identifier=orcid,
