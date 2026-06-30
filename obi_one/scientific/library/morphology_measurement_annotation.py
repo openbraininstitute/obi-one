@@ -6,7 +6,7 @@ import logging
 from collections import defaultdict
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import neurom as nm
 import numpy as np
@@ -20,6 +20,7 @@ TARGET_NEURITE_DOMAINS = ("apical_dendrite", "axon")
 
 MIN_MEASUREMENT_ITEM_ENTRIES = 2
 EMPTY_NAME_SET = {None, ""}
+AGGREGATE_ITEM_NAMES = {"minimum", "maximum", "median", "mean", "standard_deviation"}
 
 _TEMPLATE_PATH = Path(__file__).with_name("morphology_template.json")
 
@@ -330,17 +331,51 @@ def fill_json(
     return template
 
 
+def _is_valid_measurement_value(value: Any) -> bool:
+    """Return True when a measurement item value should be kept."""
+    if value is None:
+        return False
+    return not (isinstance(value, (float, np.floating)) and not np.isfinite(value))
+
+
+def _filter_valid_measurement_kinds(
+    measurement_kinds: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop measurement kinds containing null/NaN/non-finite aggregate values."""
+    valid_measurement_kinds = []
+
+    for measurement_kind in measurement_kinds:
+        original_items = measurement_kind.get("measurement_items", [])
+        original_item_names = {item.get("name") for item in original_items}
+
+        measurement_items = [
+            item for item in original_items if _is_valid_measurement_value(item.get("value"))
+        ]
+        measurement_item_names = {item.get("name") for item in measurement_items}
+
+        if AGGREGATE_ITEM_NAMES.issubset(original_item_names) and not AGGREGATE_ITEM_NAMES.issubset(
+            measurement_item_names
+        ):
+            continue
+
+        if measurement_items:
+            valid_measurement_kinds.append(
+                {
+                    **measurement_kind,
+                    "measurement_items": measurement_items,
+                }
+            )
+
+    return valid_measurement_kinds
+
+
 def compute_morphometrics(morphology_path: str | Path) -> list[MeasurementKind]:
     """Compute morphometric measurements for a morphology file."""
     neuron = nm.load_morphology(str(morphology_path))
     results_dict = build_results_dict(get_morphology_analysis_dict(), neuron)
     filled = fill_json(copy.deepcopy(get_morphology_template()), results_dict, entity_id="temp_id")
     measurement_kinds = filled["data"][0]["measurement_kinds"]
-    return [
-        mk
-        for mk in measurement_kinds
-        if any(mi.get("value") is not None for mi in mk.get("measurement_items", []))
-    ]
+    return cast("list[MeasurementKind]", _filter_valid_measurement_kinds(measurement_kinds))
 
 
 def _has_neurite_type(neuron: Morphology, neurite_type: int) -> bool:
