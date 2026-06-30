@@ -1,17 +1,52 @@
+import functools
+from collections.abc import Callable
 from typing import ClassVar
 
 import numpy  # NOQA: ICN001
 import pandas  # NOQA: ICN001
-from caveclient import CAVEclient
+import requests
+from caveclient import CAVEclient, set_session_defaults
 from entitysdk import Client
 from entitysdk.models import EMDenseReconstructionDataset
 from entitysdk.models.entity import Entity
 from pydantic import PrivateAttr
 
+from obi_one.config import settings
 from obi_one.core.entity_from_id import EntityFromID
+from obi_one.core.exception import OBIONEError
 
 _C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
 _NM_to_UM = 1e-3
+
+
+def _graceful_materialize_errors[T](func: Callable[..., T]) -> Callable[..., T]:
+    """Convert exhausted CAVEClient request failures into a clean OBIONEError.
+
+    The CAVEClient materialization engine intermittently returns transient errors
+    (e.g. 503). caveclient retries these at the HTTP-session layer (see
+    ``_make_cave_client``); once retries are exhausted it raises a ``requests``
+    exception. This decorator translates that into an actionable ``OBIONEError``
+    so the task fails gracefully rather than with a raw traceback.
+
+    Args:
+        func: The materialize-backed method to wrap.
+
+    Returns:
+        The wrapped method.
+    """
+
+    @functools.wraps(func)
+    def wrapper(self: "EMDataSetFromID", *args: object, **kwargs: object) -> T:
+        try:
+            return func(self, *args, **kwargs)
+        except requests.exceptions.RequestException as e:
+            msg = (
+                "The EM materialization engine is temporarily unavailable after "
+                f"retries; please try again later (underlying error: {e})."
+            )
+            raise OBIONEError(msg) from e
+
+    return wrapper
 
 
 class EMDataSetFromID(EntityFromID):
@@ -20,6 +55,7 @@ class EMDataSetFromID(EntityFromID):
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
     auth_token: str | None = None
 
+    @_graceful_materialize_errors
     def synapse_info_df(
         self,
         pt_root_id: int,
@@ -48,6 +84,7 @@ class EMDataSetFromID(EntityFromID):
         )
         return syns, notice_text
 
+    @_graceful_materialize_errors
     def neuron_info_df(
         self, table_name: str, cave_version: int, db_client: Client | None = None
     ) -> tuple[pandas.DataFrame, str]:
@@ -59,10 +96,12 @@ class EMDataSetFromID(EntityFromID):
         notice_text = client.materialize.get_table_metadata(table_name).get("notice_text")  # ty:ignore[unresolved-attribute]
         return tbl, notice_text
 
+    @_graceful_materialize_errors
     def get_versions(self, db_client: Client | None = None) -> list:
         client = self._make_cave_client(db_client)  # ty:ignore[invalid-argument-type]
         return client.materialize.get_versions()  # ty:ignore[unresolved-attribute]
 
+    @_graceful_materialize_errors
     def get_tables(self, cave_version: int, db_client: Client | None = None) -> dict:
         client = self._make_cave_client(db_client, cave_version=cave_version)  # ty:ignore[invalid-argument-type]
         tables = {}
@@ -74,6 +113,7 @@ class EMDataSetFromID(EntityFromID):
             }
         return tables
 
+    @_graceful_materialize_errors
     def viewer_resolution(self, db_client: Client | None = None) -> list:
         if self._viewer_resolution is None:
             self._viewer_resolution = self._make_cave_client(
@@ -85,6 +125,18 @@ class EMDataSetFromID(EntityFromID):
         entity = self.entity(db_client=db_client)
         datastack_name_ = entity.cave_datastack  # ty:ignore[unresolved-attribute]
         cave_client_url_ = entity.cave_client_url  # ty:ignore[unresolved-attribute]
+
+        # Widen caveclient's retry behaviour so transient materialization-engine
+        # errors (e.g. 503) are ridden out. set_session_defaults() only mutates a
+        # module-level dict and applies to every client/session created afterwards,
+        # so it is cheap and idempotent to (re)apply here before each client build.
+        cfg = settings.cave_client_config
+        set_session_defaults(
+            max_retries=cfg.max_retries,
+            backoff_factor=cfg.retry_backoff_factor,
+            backoff_max=cfg.retry_backoff_max,
+            status_forcelist=cfg.retry_status_forcelist,
+        )
 
         cave_client = CAVEclient(
             datastack_name_, server_address=cave_client_url_, auth_token=self.auth_token
