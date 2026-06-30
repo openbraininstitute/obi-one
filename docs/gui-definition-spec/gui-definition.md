@@ -100,6 +100,8 @@ There are two major types of such UI elements:
 
         - [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
 
+        - [morphology_section_type_selection](components/morphology_section_type_selection/morphology_section_type_selection.md)
+
         - [variable_modification](components/neuronal_modification/BySectionListMechanismVariableNeuronalManipulation.md)
 
     - Legacy block elements:
