@@ -6,7 +6,10 @@ import requests
 
 from obi_one.config import settings
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
+from obi_one.scientific.from_id.em_dataset_from_id import (
+    EMDataSetFromID,
+    _configure_caveclient_retries,
+)
 
 _MODULE = "obi_one.scientific.from_id.em_dataset_from_id"
 
@@ -22,17 +25,10 @@ def _http_error(status=503):
 
 
 class TestRetryConfiguration:
-    def test_make_cave_client_widens_retry_defaults_from_settings(self):
-        """_make_cave_client should configure caveclient retries from settings."""
-        ds = _make_dataset()
-        entity = SimpleNamespace(cave_datastack="stack", cave_client_url="http://cave")
-
-        with (
-            patch.object(EMDataSetFromID, "entity", return_value=entity),
-            patch(f"{_MODULE}.CAVEclient"),
-            patch(f"{_MODULE}.set_session_defaults") as mock_set_defaults,
-        ):
-            ds._make_cave_client(Mock(), cave_version=3)
+    def test_configure_caveclient_retries_from_settings(self):
+        """Retry session defaults should be sourced from settings.cave_client_config."""
+        with patch(f"{_MODULE}.set_session_defaults") as mock_set_defaults:
+            _configure_caveclient_retries()
 
         cfg = settings.cave_client_config
         mock_set_defaults.assert_called_once_with(
@@ -50,7 +46,6 @@ class TestRetryConfiguration:
         with (
             patch.object(EMDataSetFromID, "entity", return_value=entity),
             patch(f"{_MODULE}.CAVEclient") as mock_cave,
-            patch(f"{_MODULE}.set_session_defaults"),
         ):
             ds._make_cave_client(Mock(), cave_version=7)
 
@@ -63,41 +58,26 @@ class TestRetryConfiguration:
 
 
 class TestGracefulMaterializeErrors:
-    def test_get_versions_wraps_request_error(self):
-        """A transient request failure on get_versions surfaces as OBIONEError."""
+    @pytest.mark.parametrize(
+        ("method_name", "kwargs", "make_error"),
+        [
+            ("get_versions", {}, lambda: _http_error(503)),
+            ("get_tables", {"cave_version": 3}, lambda: _http_error(503)),
+            ("get_versions", {}, lambda: requests.exceptions.ConnectionError("boom")),
+        ],
+        ids=["get_versions-http-503", "get_tables-http-503", "get_versions-connection"],
+    )
+    def test_request_errors_wrapped_in_obi_error(self, method_name, kwargs, make_error):
+        """Transient request failures surface as a clean OBIONEError."""
         ds = _make_dataset()
         client = Mock()
-        client.materialize.get_versions.side_effect = _http_error(503)
+        getattr(client.materialize, method_name).side_effect = make_error()
 
         with (
             patch.object(EMDataSetFromID, "_make_cave_client", return_value=client),
             pytest.raises(OBIONEError, match="temporarily unavailable"),
         ):
-            ds.get_versions()
-
-    def test_get_tables_wraps_request_error(self):
-        """A transient request failure on get_tables surfaces as OBIONEError."""
-        ds = _make_dataset()
-        client = Mock()
-        client.materialize.get_tables.side_effect = _http_error(503)
-
-        with (
-            patch.object(EMDataSetFromID, "_make_cave_client", return_value=client),
-            pytest.raises(OBIONEError, match="temporarily unavailable"),
-        ):
-            ds.get_tables(cave_version=3)
-
-    def test_connection_error_is_wrapped(self):
-        """Non-HTTP request errors (e.g. connection errors) are also wrapped."""
-        ds = _make_dataset()
-        client = Mock()
-        client.materialize.get_versions.side_effect = requests.exceptions.ConnectionError("boom")
-
-        with (
-            patch.object(EMDataSetFromID, "_make_cave_client", return_value=client),
-            pytest.raises(OBIONEError),
-        ):
-            ds.get_versions()
+            getattr(ds, method_name)(**kwargs)
 
     def test_non_request_errors_propagate_unchanged(self):
         """Errors unrelated to the request layer must not be masked as OBIONEError."""

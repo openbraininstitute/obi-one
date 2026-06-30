@@ -36,9 +36,9 @@ def _graceful_materialize_errors[T](func: Callable[..., T]) -> Callable[..., T]:
     """
 
     @functools.wraps(func)
-    def wrapper(self: "EMDataSetFromID", *args: object, **kwargs: object) -> T:
+    def wrapper(*args: object, **kwargs: object) -> T:
         try:
-            return func(self, *args, **kwargs)
+            return func(*args, **kwargs)
         except requests.exceptions.RequestException as e:
             msg = (
                 "The EM materialization engine is temporarily unavailable after "
@@ -47,6 +47,27 @@ def _graceful_materialize_errors[T](func: Callable[..., T]) -> Callable[..., T]:
             raise OBIONEError(msg) from e
 
     return wrapper
+
+
+def _configure_caveclient_retries() -> None:
+    """Widen caveclient's process-global retry behaviour from settings.
+
+    The CAVEClient materialization engine intermittently returns transient errors
+    (e.g. 503). caveclient retries 502/503/504 at the HTTP-session layer but with
+    weak defaults; this widens them so transient outages are ridden out before
+    failing. ``set_session_defaults`` mutates a process-global dict that applies to
+    every client created afterwards, so it is invoked once at import time below.
+    """
+    cfg = settings.cave_client_config
+    set_session_defaults(
+        max_retries=cfg.max_retries,
+        backoff_factor=cfg.retry_backoff_factor,
+        backoff_max=cfg.retry_backoff_max,
+        status_forcelist=cfg.retry_status_forcelist,
+    )
+
+
+_configure_caveclient_retries()
 
 
 class EMDataSetFromID(EntityFromID):
@@ -125,18 +146,6 @@ class EMDataSetFromID(EntityFromID):
         entity = self.entity(db_client=db_client)
         datastack_name_ = entity.cave_datastack  # ty:ignore[unresolved-attribute]
         cave_client_url_ = entity.cave_client_url  # ty:ignore[unresolved-attribute]
-
-        # Widen caveclient's retry behaviour so transient materialization-engine
-        # errors (e.g. 503) are ridden out. set_session_defaults() only mutates a
-        # module-level dict and applies to every client/session created afterwards,
-        # so it is cheap and idempotent to (re)apply here before each client build.
-        cfg = settings.cave_client_config
-        set_session_defaults(
-            max_retries=cfg.max_retries,
-            backoff_factor=cfg.retry_backoff_factor,
-            backoff_max=cfg.retry_backoff_max,
-            status_forcelist=cfg.retry_status_forcelist,
-        )
 
         cave_client = CAVEclient(
             datastack_name_, server_address=cave_client_url_, auth_token=self.auth_token
