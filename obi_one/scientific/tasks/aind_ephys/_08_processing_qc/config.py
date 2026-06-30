@@ -80,8 +80,7 @@ class AINDEPhysProcessingQCScanConfig(ScanConfig):
             default=0.0,
             title="Min duration to allow failed",
             description=(
-                "Recordings shorter than this duration may fail without"
-                " breaking the run."
+                "Recordings shorter than this duration may fail without breaking the run."
             ),
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -128,9 +127,7 @@ class AINDEPhysProcessingQCScanConfig(ScanConfig):
         return None
 
 
-class AINDEPhysProcessingQCSingleConfig(
-    AINDEPhysProcessingQCScanConfig, SingleConfigMixin
-):
+class AINDEPhysProcessingQCSingleConfig(AINDEPhysProcessingQCScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysProcessingQCScanConfig`."""
 
     def create_single_entity_with_config(

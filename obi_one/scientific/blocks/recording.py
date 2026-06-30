@@ -13,7 +13,7 @@ from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.constants import _MIN_TIME_STEP_MILLISECONDS
+from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -45,8 +45,8 @@ class IonChannelVariableForRecording(OBIBaseModel):
     def validate_model_and_set_unit(self, db_client: entitysdk.client.Client | None = None) -> Self:
         """Check that the model exists, checks it has the variable name and sets the unit."""
         # this will raise an error if the model is not present
-        model = db_client.get_entity(
-            entity_id=self.ion_channel_id,
+        model = db_client.get_entity(  # ty:ignore[unresolved-attribute]
+            entity_id=self.ion_channel_id,  # ty:ignore[invalid-argument-type]
             entity_type=IonChannelModel,
         )
 
@@ -104,9 +104,9 @@ class Recording(Block, ABC):
     _end_time: PositiveFloat = 100.0
 
     dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
-        | Annotated[NonNegativeFloatRange, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
+        Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
+        | Annotated[NonNegativeFloatRange, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
     ) = Field(
         default=0.1,
         title="Timestep",
@@ -130,7 +130,8 @@ class Recording(Block, ABC):
         self._default_node_set = default_node_set
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+            self.neuron_set.block.population_type(circuit, population)
+            not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
@@ -211,11 +212,11 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     @model_validator(mode="after")
     def check_start_end_time(self) -> Self:
         """Check that end time is later than start time."""
-        if self.end_time <= self.start_time:
-            recording_name = f" '{self.block_name}'" if self.has_name() else ""
+        if self.end_time <= self.start_time:  # ty:ignore[unsupported-operator]
+            recording_name = f" '{self.block_name}'" if self.has_name() else ""  # ty:ignore[unresolved-attribute]
 
-            if self.neuron_set.has_block() and self.neuron_set.block.has_name():
-                neuron_set_name = f" '{self.neuron_set.block.block_name}'"
+            if self.neuron_set.has_block() and self.neuron_set.block.has_name():  # ty:ignore[unresolved-attribute]
+                neuron_set_name = f" '{self.neuron_set.block.block_name}'"  # ty:ignore[unresolved-attribute]
             else:
                 neuron_set_name = ""
 
@@ -227,8 +228,8 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         return self
 
     def _generate_config(self, db_client: entitysdk.client.Client | None = None) -> dict:
-        self._start_time = self.start_time
-        self._end_time = self.end_time
+        self._start_time = self.start_time  # ty:ignore[invalid-assignment]
+        self._end_time = self.end_time  # ty:ignore[invalid-assignment]
 
         return super()._generate_config(db_client=db_client)
 

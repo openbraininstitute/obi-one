@@ -295,9 +295,7 @@ class AINDEPhysPostprocessingScanConfig(ScanConfig):
         return None
 
 
-class AINDEPhysPostprocessingSingleConfig(
-    AINDEPhysPostprocessingScanConfig, SingleConfigMixin
-):
+class AINDEPhysPostprocessingSingleConfig(AINDEPhysPostprocessingScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysPostprocessingScanConfig`."""
 
     def create_single_entity_with_config(

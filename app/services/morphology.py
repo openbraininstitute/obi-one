@@ -2,12 +2,16 @@ import logging
 from collections.abc import Iterable
 from http import HTTPStatus
 from pathlib import Path
+from typing import Any, Final
 
 import morph_tool
 import morphio
 import neurom
+import neurom.check.morphology_checks as morph_checks
 from fastapi import HTTPException
+from neurom.check.runner import CheckRunner
 from neurom.exceptions import NeuroMError
+from pydantic import BaseModel
 
 from app.errors import ApiErrorCode
 
@@ -21,6 +25,84 @@ SOMA_RADIUS_THRESHOLD = 100.0
 
 L = logging.getLogger(__name__)
 
+_QUALITY_CHECK_CONFIG: Final[dict] = {
+    "checks": {
+        "morphology_checks": [
+            "has_axon",
+            "has_basal_dendrite",
+            "has_apical_dendrite",
+            "has_no_jumps",
+            "has_no_fat_ends",
+            "has_nonzero_soma_radius",
+            "has_all_nonzero_neurite_radii",
+            "has_all_nonzero_section_lengths",
+            "has_all_nonzero_segment_lengths",
+            "has_no_flat_neurites",
+            "has_no_narrow_start",
+            "has_no_dangling_branch",
+        ]
+    },
+    "options": {
+        "has_nonzero_soma_radius": 0.0,
+        "has_all_nonzero_neurite_radii": 0.007,
+        "has_all_nonzero_segment_lengths": 0.01,
+        "has_all_nonzero_section_lengths": 0.01,
+    },
+}
+
+_quality_check_runner = CheckRunner(_QUALITY_CHECK_CONFIG)
+
+
+class MorphologyFiles(BaseModel):
+    swc: Path | None = None
+    hdf5: Path | None = None
+    asc: Path | None = None  # ADD THIS
+
+    def paths(self) -> list[Path]:
+        return [p for p in (self.swc, self.hdf5, self.asc) if p is not None]  # add self.asc
+
+
+def run_quality_checks(file_path: Path) -> dict[str, Any]:
+    """Run standard morphology quality checks and return a structured result.
+
+    Returns a dict with:
+      - "ran_to_completion": bool
+      - "failed_checks": list[str]  - names of checks that returned False
+      - "passed_checks": list[str]  - names of checks that returned True
+    """
+    try:
+        neuron = neurom.load_morphology(file_path)
+
+        failed_checks = []
+        passed_checks = []
+
+        for check_name in _QUALITY_CHECK_CONFIG["checks"]["morphology_checks"]:
+            check_func = getattr(morph_checks, check_name, None)
+
+            if check_func is not None:
+                if bool(check_func(neuron)):
+                    passed_checks.append(check_name)
+                else:
+                    failed_checks.append(check_name)
+            else:
+                L.warning(
+                    f"Check function '{check_name}' not found in neurom.check.morphology_checks"
+                )
+                failed_checks.append(check_name)
+    except Exception as exc:  # noqa: BLE001
+        L.warning(f"run_quality_checks: could not complete checks for {file_path}: {exc}")
+        return {
+            "ran_to_completion": False,
+            "failed_checks": [],
+            "passed_checks": [],
+        }
+    else:
+        return {
+            "ran_to_completion": True,
+            "failed_checks": failed_checks,
+            "passed_checks": passed_checks,
+        }
+
 
 def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
     warnings = warning_handler.get_all()
@@ -30,10 +112,6 @@ def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
 
 
 def load_morphio_morphology(file_path: Path, *, raise_warnings: bool) -> morphio.Morphology:
-    """Load a morphology with MorphIO and return the result.
-
-    Raises an error if it fails, or if `raise_warnings` is True and any warning is produced.
-    """
     warning_handler = morphio.WarningHandlerCollector()
     try:
         morphology = morphio.Morphology(file_path, warning_handler=warning_handler)
@@ -57,11 +135,6 @@ def _check_soma_radius(radius: float | None, threshold: float) -> None:
 
 
 def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRESHOLD) -> None:
-    """Validate the soma diameter of the given morphology.
-
-    Raises an HTTPException if the morphology cannot be loaded or if the soma diameter is
-    outside the acceptable range.
-    """
     try:
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
@@ -82,22 +155,13 @@ def convert_morphology(
     single_point_soma_by_ext: dict[str, bool],
     target_exts: Iterable[str] | None = None,
     output_stem: str | None = None,
-) -> list[Path]:
-    """Convert a morphology to other formats.
-
-    Args:
-        input_file: input morphology.
-        output_dir: directory where to save the generated morphologies.
-        single_point_soma_by_ext: map the extensions to single_point_soma (bool).
-        target_exts: iterable of formats to generate, given as extensions (e.g. [".h5", ".asc"]).
-            If None, generate all the formats different from the original.
-        output_stem: stem of the output files. If None, use the same as the input file.
-    """
+) -> MorphologyFiles:
     try:
         file_extension = input_file.suffix
         output_stem = output_stem or input_file.stem
         target_exts = target_exts or ALLOWED_EXTENSIONS - {file_extension}
-        output_files = []
+
+        output_paths = {}
         for ext in target_exts:
             output_file = output_dir / f"{output_stem}{ext}"
             single_point_soma = single_point_soma_by_ext.get(ext, False)
@@ -106,7 +170,12 @@ def convert_morphology(
                 output_file=str(output_file),
                 single_point_soma=single_point_soma,
             )
-            output_files.append(output_file)
+            if ext == ".swc":
+                output_paths["swc"] = output_file
+            elif ext == ".h5":
+                output_paths["hdf5"] = output_file
+            elif ext == ".asc":
+                output_paths["asc"] = output_file
 
     except Exception as e:
         raise HTTPException(
@@ -116,7 +185,7 @@ def convert_morphology(
                 "detail": f"Failed to convert the file: {e!s}",
             },
         ) from e
-    return output_files
+    return MorphologyFiles(**output_paths)
 
 
 def validate_and_convert_morphology(
@@ -126,11 +195,7 @@ def validate_and_convert_morphology(
     single_point_soma_by_ext: dict[str, bool],
     target_exts: Iterable[str] | None = None,
     output_stem: str | None = None,
-) -> list[Path]:
-    """Validate the morphology with MorphIO and return the morphologies converted.
-
-    Note: warnings in MorphIO are ignored!
-    """
+) -> MorphologyFiles:
     load_morphio_morphology(input_file, raise_warnings=False)
     return convert_morphology(
         input_file,

@@ -16,11 +16,11 @@ from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
-    _DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
-    _DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MIN_NON_NEGATIVE_FLOAT_VALUE,
-    _MIN_TIME_STEP_MILLISECONDS,
+    DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+    DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MIN_NON_NEGATIVE_FLOAT_VALUE,
+    MIN_TIMESTEP_MILLISECONDS,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     NeuronSetReference,
@@ -47,7 +47,7 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
 
 class BaseStimulus(Block, ABC):
     _default_node_set: str = PrivateAttr(default="All")
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))
+    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))  # ty:ignore[invalid-assignment]
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -69,13 +69,14 @@ class StimulusWithTimestamps(BaseStimulus):
 
     def _offset_timestamps(self) -> list[float]:
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps, self._default_timestamps
+            self.timestamps,
+            self._default_timestamps,  # ty:ignore[invalid-argument-type]
         )
 
         offset_timestamps = [
             offset_timestamp
             for _, offset_timestamp in timestamps_block.enumerate_non_negative_offset_timestamps(
-                self.timestamp_offset
+                self.timestamp_offset  # ty:ignore[invalid-argument-type]
             )
         ]
 
@@ -89,14 +90,14 @@ class StimulusWithTimestamps(BaseStimulus):
             offset_timestamp,
         ) in enumerate(self._offset_timestamps()):
             sonata_config[self.block_name + "_" + str(t_ind)] = (
-                self._single_timestamp_stimulus_config(offset_timestamp)
+                self._single_timestamp_stimulus_config(offset_timestamp)  # ty:ignore[unresolved-attribute]
             )
         return sonata_config
 
 
 class StimulusWithDuration(BaseStimulus):
     duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time duration in milliseconds for how long input is activated.",
         json_schema_extra={
@@ -135,7 +136,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         circuit: Circuit,
         population: str | None = None,
         default_node_set: str = "All",
-        default_timestamps: TimestampsReference = None,
+        default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
     ) -> dict:
         self._default_node_set = default_node_set
         if default_timestamps is None:
@@ -143,7 +144,8 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         self._default_timestamps = default_timestamps
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population) != "biophysical"
+            self.neuron_set.block.population_type(circuit, population)
+            not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
@@ -419,10 +421,10 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     width: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
-        default=_DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
         title="Pulse Width",
         json_schema_extra={
@@ -431,8 +433,8 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     frequency: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
         default=1.0,
         description="The frequency of pulse trains. Given in Hertz (Hz).",
@@ -476,8 +478,8 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     frequency: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
     ) = Field(
         default=1.0,
         description="The frequency of the waveform. Given in Hertz (Hz).",
@@ -488,8 +490,8 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
     dt: (
-        Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=_MIN_TIME_STEP_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
     ) = Field(
         default=0.025,
         description="Timestep of generated signal in milliseconds (ms).",
@@ -584,7 +586,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     _input_type: str = "voltage_clamp"
 
     level1_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
+        default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 1 Duration",
         description="Duration 1 of SEClamp stimulus (in ms)",
         json_schema_extra={
@@ -604,7 +606,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     )
 
     level2_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
+        default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
         title="Level 2 Duration",
         description="Duration 2 of SEClamp stimulus (in ms)",
         json_schema_extra={
@@ -624,7 +626,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     )
 
     level3_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=_DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
+        default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
         title="Level 3 Duration",
         description="Duration 3 of SEClamp stimulus (in ms)",
         json_schema_extra={
@@ -648,7 +650,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         sonata_config[self.block_name] = {
             # cannot have any delay with SEClamp, so timestamps are used in duration_levels
             "delay": 0,
-            "duration": self.level1_duration + self.level2_duration + self.level3_duration,
+            "duration": self.level1_duration + self.level2_duration + self.level3_duration,  # ty:ignore[unsupported-operator]
             "voltage": self.level1_voltage,
             "duration_levels": [0, self.level1_duration, self.level2_duration],
             "voltage_levels": [self.level1_voltage, self.level2_voltage, self.level3_voltage],

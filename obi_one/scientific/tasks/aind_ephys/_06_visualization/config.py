@@ -78,8 +78,7 @@ class AINDEPhysVisualizationScanConfig(ScanConfig):
         curation_output_path: Path = Field(
             title="Curation output path",
             description=(
-                "Directory containing ``qc_<name>.npy`` and"
-                " ``unit_classifier_<name>.csv``."
+                "Directory containing ``qc_<name>.npy`` and ``unit_classifier_<name>.csv``."
             ),
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
         )
@@ -167,9 +166,7 @@ class AINDEPhysVisualizationScanConfig(ScanConfig):
         return None
 
 
-class AINDEPhysVisualizationSingleConfig(
-    AINDEPhysVisualizationScanConfig, SingleConfigMixin
-):
+class AINDEPhysVisualizationSingleConfig(AINDEPhysVisualizationScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysVisualizationScanConfig`."""
 
     def create_single_entity_with_config(

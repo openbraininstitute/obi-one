@@ -239,9 +239,7 @@ class IsiHistograms(Block):
 class UnitLocations(Block):
     """``unit_locations`` extension parameters."""
 
-    method: Literal[
-        "monopolar_triangulation", "center_of_mass", "grid_convolution"
-    ] = Field(
+    method: Literal["monopolar_triangulation", "center_of_mass", "grid_convolution"] = Field(
         default="monopolar_triangulation",
         title="Method",
         description="Unit-localization method.",
@@ -255,9 +253,7 @@ class UnitLocations(Block):
 class SpikeLocations(Block):
     """``spike_locations`` extension parameters."""
 
-    method: Literal[
-        "monopolar_triangulation", "center_of_mass", "grid_convolution"
-    ] = Field(
+    method: Literal["monopolar_triangulation", "center_of_mass", "grid_convolution"] = Field(
         default="grid_convolution",
         title="Method",
         description="Spike-localization method.",
@@ -459,9 +455,7 @@ class QualityMetrics(Block):
         on unknown / removed metrics (e.g. ``nn_isolation`` was deprecated).
         """
         cfg: dict = {k: dict(v) for k, v in _DEFAULT_QUALITY_METRICS.items()}
-        cfg.setdefault("presence_ratio", {})["bin_duration_s"] = (
-            self.presence_ratio_bin_duration_s
-        )
+        cfg.setdefault("presence_ratio", {})["bin_duration_s"] = self.presence_ratio_bin_duration_s
         cfg.setdefault("firing_range", {})["bin_size_s"] = self.firing_range_bin_size_s
         cfg.setdefault("amplitude_cv", {})["min_num_bins"] = self.amplitude_cv_min_num_bins
         cfg.setdefault("amplitude_cv", {})["average_num_spikes_per_bin"] = (

@@ -27,4 +27,4 @@ def resolve_timestamps_ref_to_timestamps_block(
             raise ValueError(msg)
         return default_timestamps
 
-    return timestamps_reference.block
+    return timestamps_reference.block  # ty:ignore[invalid-return-type]

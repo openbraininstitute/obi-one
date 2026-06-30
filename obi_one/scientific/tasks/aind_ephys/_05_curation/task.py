@@ -38,11 +38,7 @@ def _seed_data_dir(data_dir: Path, source: Path) -> int:
     """
     n = 0
     for entry in source.iterdir():
-        if (
-            entry.is_dir()
-            and entry.name.startswith("postprocessed_")
-            and entry.suffix == ".zarr"
-        ):
+        if entry.is_dir() and entry.name.startswith("postprocessed_") and entry.suffix == ".zarr":
             shutil.copytree(entry, data_dir / entry.name)
             n += 1
     return n

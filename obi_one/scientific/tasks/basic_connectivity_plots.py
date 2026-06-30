@@ -12,6 +12,7 @@ import entitysdk.client
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from conntility import ConnectivityMatrix
 from pydantic import model_validator
 
@@ -27,9 +28,14 @@ from obi_one.core.task import Task
 
 with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     from obi_one.scientific.library.basic_connectivity_plots_helpers import (
+        CANONICAL_EXC,
+        CANONICAL_INH,
+        assemble_property_colormapping,
         compute_global_connectivity,
         connection_probability_pathway,
         connection_probability_within_pathway,
+        find_canonical_synapse_classes,
+        in_out_degree,
         plot_connection_probability_pathway_stats,
         plot_connection_probability_stats,
         plot_network_legends,
@@ -41,7 +47,6 @@ with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     )
 
 with contextlib.suppress(ImportError):  # Connalysis (optional)
-    from connalysis.network.topology import node_degree
     from connalysis.randomization import ER_model
 
 L = logging.getLogger(__name__)
@@ -91,7 +96,7 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
         def check_rendering_colors_for_property_table(self) -> Self:
             if "property_table" in self.plot_types:
                 if self.rendering_cmap == "custom":
-                    if not Path(self.rendering_color_file).is_file():
+                    if not Path(self.rendering_color_file).is_file():  # ty:ignore[invalid-argument-type]
                         msg = "The rendering_color_file is not an existing file."
                         raise ValueError(msg)
                 elif self.rendering_cmap is not None:
@@ -133,6 +138,10 @@ class BasicConnectivityPlotsTask(Task):
             "layer": plt.get_cmap("Dark2"),
             "mtype": plt.get_cmap("GnBu"),
         }
+        # Only keep properties that exist in the connectome's node table.
+        node_cmaps = {
+            prop: cmap for prop, cmap in node_cmaps.items() if prop in conn.vertex_properties
+        }
         fig = plot_node_stats(conn, node_cmaps, full_width)
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"node_stats.{fmt}"
@@ -146,21 +155,28 @@ class BasicConnectivityPlotsTask(Task):
         size: tuple[int, int],
         n_min_stats: int,
         conn: ConnectivityMatrix,
-        deg: dict[str, float],
-        deg_er: dict[str, float],
+        deg: pd.DataFrame,
+        deg_er: pd.DataFrame,
         dir_path: str | Path,
     ) -> None:
         if size[0] < n_min_stats:
             L.warning("Your network is likely too small for these plots to be informative.")
         conn_probs = {"full": {}, "within": {}}
-        for grouping_prop in ["synapse_class", "layer", "mtype"]:
+        # Only group by properties that exist in the connectome's node table.
+        grouping_props = [
+            prop for prop in ("synapse_class", "layer", "mtype") if prop in conn.vertex_properties
+        ]
+        for grouping_prop in grouping_props:
             conn_probs["full"][grouping_prop] = connection_probability_pathway(conn, grouping_prop)
             conn_probs["within"][grouping_prop] = connection_probability_within_pathway(
                 conn, grouping_prop, max_dist=100
             )
         # Plot network metrics
         fig_network_pathway = plot_connection_probability_pathway_stats(
-            full_width, conn_probs, deg, deg_er
+            full_width,
+            conn_probs,
+            deg,
+            deg_er,
         )
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"network_pathway_stats.{fmt}"
@@ -183,12 +199,12 @@ class BasicConnectivityPlotsTask(Task):
         # Global connection probabilities
         global_conn_probs = {"full": None, "within": None}
         global_conn_probs["full"] = compute_global_connectivity(adj, adj_er, connection_type="full")
-        global_conn_probs["widthin"] = compute_global_connectivity(
+        global_conn_probs["within"] = compute_global_connectivity(
             adj, adj_er, v=conn.vertices, connection_type="within", max_dist=100, cols=["x", "y"]
         )
 
         # Plot network metrics
-        fig_network_global = plot_connection_probability_stats(full_width, global_conn_probs)
+        fig_network_global = plot_connection_probability_stats(full_width, global_conn_probs)  # ty:ignore[invalid-argument-type]
         for fmt in plot_formats:
             output_file = Path(dir_path) / f"network_global_stats.{fmt}"
             fig_network_global.savefig(output_file, dpi=dpi, bbox_inches="tight")
@@ -265,9 +281,11 @@ class BasicConnectivityPlotsTask(Task):
 
             # Setup colors
             cmap = mcolors.LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"])
-            color_map_nodes = {"INH": cmap(0), "EXC": cmap(cmap.N)}
-            color_map_edges = {"INH": cmap(0), "EXC": cmap(cmap.N)}
             color_property = "synapse_class"
+            color_map_nodes = assemble_property_colormapping(
+                conn, cmap, color_property=color_property
+            )
+            color_map_edges = color_map_nodes.copy()
 
             # Plot circular projection
             plot_small_network(
@@ -286,7 +304,7 @@ class BasicConnectivityPlotsTask(Task):
                 projection="circular",
                 coord_names=None,
                 axis_fontsize=14,
-                title=None,
+                title=None,  # ty:ignore[invalid-argument-type]
                 title_fontsize=14,
             )
 
@@ -294,13 +312,22 @@ class BasicConnectivityPlotsTask(Task):
             ax_main.set_aspect("equal")
 
             # Add network legends
+            try:
+                canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
+                axes_specs = [
+                    (ax_exc, "EXC", color_map_nodes[canon_map[CANONICAL_EXC]]),
+                    (ax_inh, "INH", color_map_nodes[canon_map[CANONICAL_INH]]),
+                ]
+            except ValueError:
+                axes_specs = [
+                    (ax_, label, color_map_nodes[label])
+                    for ax_, label in zip([ax_exc, ax_inh], color_map_nodes.keys(), strict=False)
+                ]
             plot_network_legends(
                 fig=fig,
                 ax_edge=ax_edge,
                 ax_node_size=ax_node_size,
-                ax_exc=ax_exc,
-                ax_inh=ax_inh,
-                cmap=cmap,
+                axes_tuples=axes_specs,
                 node_size_label="Total degree",
                 edge_label="Number of synapses",
             )
@@ -329,8 +356,8 @@ class BasicConnectivityPlotsTask(Task):
             fig_property_table = plot_node_table(
                 conn,
                 figsize=figsize,
-                colors_cmap=colors_cmap,
-                colors_file=colors_file,
+                colors_cmap=colors_cmap,  # ty:ignore[invalid-argument-type]
+                colors_file=colors_file,  # ty:ignore[invalid-argument-type]
                 h_scale=2.5,
                 v_scale=2.5,
             )
@@ -369,17 +396,18 @@ class BasicConnectivityPlotsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # noqa: ARG002  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> None:
         # Check for connectivity dependencies
         if (  # pragma: no cover
-            "compute_global_connectivity" not in globals() or "node_degree" not in globals()
+            "compute_global_connectivity" not in globals() or "ER_model" not in globals()
         ):
             msg = (
                 "Connectivity plotting requires connectome-analysis (connalysis). "
-                "Install with: pip install obi-one[connectivity]"
+                "Install with: pip install obi-one[connectivity] or"
+                " make install-connectivity"
             )
             raise ValueError(msg)
 
@@ -396,7 +424,7 @@ class BasicConnectivityPlotsTask(Task):
 
         # Load matrix
         L.info(f"Info: Loading matrix '{self.config.initialize.matrix_path}'")
-        conn = ConnectivityMatrix.from_h5(self.config.initialize.matrix_path.path)
+        conn = ConnectivityMatrix.from_h5(self.config.initialize.matrix_path.path)  # ty:ignore[unresolved-attribute]
 
         # Size metrics
         size = np.array([len(conn.vertices), conn.matrix.nnz, conn.matrix.sum()])
@@ -412,8 +440,8 @@ class BasicConnectivityPlotsTask(Task):
         # Degrees of matrix and control
         adj = conn.matrix.astype(bool)
         adj_er = ER_model(adj)
-        deg = node_degree(adj, direction=("IN", "OUT"))
-        deg_er = node_degree(adj_er, direction=("IN", "OUT"))
+        deg = in_out_degree(adj)
+        deg_er = in_out_degree(adj_er)
 
         n_min_stats = 50  # Minimum number of nodes for statistics
         n_max_2d_plot = 20  # Maximum number of nodes for 2D plots and table
@@ -425,7 +453,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_min_stats,
                 conn,
                 deg,
@@ -439,7 +467,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_min_stats,
                 adj,
                 adj_er,
@@ -454,7 +482,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
@@ -466,7 +494,7 @@ class BasicConnectivityPlotsTask(Task):
                 full_width,
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
@@ -477,7 +505,7 @@ class BasicConnectivityPlotsTask(Task):
             self.network_in_2D_circular_plot(
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
@@ -488,12 +516,12 @@ class BasicConnectivityPlotsTask(Task):
             self.property_table_plot(
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
-                colors_cmap=self.config.initialize.rendering_cmap,
-                colors_file=self.config.initialize.rendering_color_file,
+                colors_cmap=self.config.initialize.rendering_cmap,  # ty:ignore[invalid-argument-type]
+                colors_file=self.config.initialize.rendering_color_file,  # ty:ignore[invalid-argument-type]
                 figsize=(5, 2),
             )
 
@@ -502,7 +530,7 @@ class BasicConnectivityPlotsTask(Task):
             self.property_table_extra_plot(
                 plot_formats,
                 dpi,
-                size,
+                size,  # ty:ignore[invalid-argument-type]
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,

@@ -13,9 +13,14 @@ from entitysdk.models.asset import Asset
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
+
+OVERVIEW_IMAGE_NAME = "circuit_visualization"
+SIM_DESIGNER_IMAGE_NAME = "simulation_designer_image"
 
 
 def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: AssetLabel) -> Asset:
@@ -26,7 +31,7 @@ def get_entity_asset_by_label(*, client: Client, config: Entity, asset_label: As
         msg = (
             f"Could not find asset with label '{asset_label}' "
             f"in Config(id={config.id}, type=config.type)\n"
-            f"Assets: {config.assets}",
+            f"Assets: {config.assets}"
         )
         raise OBIONEError(msg) from e
 
@@ -67,13 +72,13 @@ def select_asset_content(
 ) -> bytes:
     """Select an asset from an entity and fetch its content."""
     if entity is None:
-        entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)
+        entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
     asset = client.select_assets(
         entity=entity,
         selection=selection,
     ).one()
     return client.fetch_content(
-        entity_id=entity.id,
+        entity_id=entity.id,  # ty:ignore[invalid-argument-type]
         entity_type=type(entity),
         asset_or_id=asset,
     )
@@ -203,7 +208,7 @@ def register_task_config_entity(
         TaskConfig(
             name=name,
             description=description,
-            task_config_type=task_config_type,
+            task_config_type=task_config_type,  # ty:ignore[invalid-argument-type]
             meta=multiple_value_parameters_dictionary,
             inputs=input_entities,
             task_config_generator_id=task_config_generator_id,
@@ -221,7 +226,7 @@ def upload_task_config_asset(
     """Uploads the given task configuration as an asset and returns it."""
     L.info("-- Upload task_config asset for TaskConfig")
     asset = client.upload_file(
-        entity_id=entity.id,
+        entity_id=entity.id,  # ty:ignore[invalid-argument-type]
         entity_type=TaskConfig,
         file_path=file_path,
         file_content_type=ContentType.application_json,
@@ -249,7 +254,7 @@ def register_task_config_with_asset(
         description=description,
         task_config_type=task_config_type,
         multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
-        input_entities=input_entities,
+        input_entities=input_entities,  # ty:ignore[invalid-argument-type]
         task_config_generator_id=task_config_generator_id,
     )
     asset = upload_task_config_asset(
@@ -314,11 +319,11 @@ def add_circuit_folder_asset(
 
     # Upload asset
     directory_asset = client.upload_directory(
-        label=asset_label,
+        label=asset_label,  # ty:ignore[invalid-argument-type]
         name=asset_label,
-        entity_id=registered_circuit.id,
+        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.Circuit,
-        paths=circuit_files,
+        paths=circuit_files,  # ty:ignore[invalid-argument-type]
     )
     L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
     return directory_asset
@@ -337,11 +342,11 @@ def add_compressed_circuit_asset(
     # Upload compressed file asset
     transfer_config = MultipartUploadTransferConfig()
     compressed_asset = client.upload_file(
-        entity_id=registered_circuit.id,
+        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.Circuit,
         file_path=compressed_file,
-        file_content_type="application/gzip",
-        asset_label=asset_label,
+        file_content_type="application/gzip",  # ty:ignore[invalid-argument-type]
+        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
         transfer_config=transfer_config,
     )
     L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
@@ -366,11 +371,11 @@ def add_connectivity_matrix_asset(
 
     # Upload directory asset
     matrix_asset = client.upload_directory(
-        label=asset_label,
+        label=asset_label,  # ty:ignore[invalid-argument-type]
         name=asset_label,
-        entity_id=registered_circuit.id,
+        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
         entity_type=models.Circuit,
-        paths=matrix_files,
+        paths=matrix_files,  # ty:ignore[invalid-argument-type]
     )
     L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
     return matrix_asset
@@ -392,8 +397,8 @@ def add_image_assets(
         "small_network_in_2D": ("network_stats_b", "webp"),
         "network_global_stats": ("network_stats_a", "webp"),
         "network_pathway_stats": ("network_stats_b", "webp"),
-        "circuit_visualization": ("circuit_visualization", "webp"),
-        "simulation_designer_image": ("simulation_designer_image", "png"),
+        OVERVIEW_IMAGE_NAME: ("circuit_visualization", "webp"),
+        SIM_DESIGNER_IMAGE_NAME: ("simulation_designer_image", "png"),
     }
     if not plot_dir.is_dir():
         msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
@@ -417,12 +422,60 @@ def add_image_assets(
             msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
             raise ValueError(msg)
         plot_asset = client.upload_file(
-            entity_id=registered_circuit.id,
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
             entity_type=models.Circuit,
             file_path=file_path,
-            file_content_type=f"image/{fmt}",
-            asset_label=asset_label,
+            file_content_type=f"image/{fmt}",  # ty:ignore[invalid-argument-type]
+            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
         )
         L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
         plot_assets.append(plot_asset)
     return plot_assets
+
+
+def resolve_circuit(
+    circuit: Circuit | CircuitFromID,
+    *,
+    db_client: Client,
+    entity_cache: bool,
+    cache_root: Path,
+    temp_dir: Path,
+) -> tuple[Circuit, models.Circuit | None]:
+    """Resolve a circuit object into a staged local circuit.
+
+    Handles both local Circuit instances and CircuitFromID references that
+    need to be staged from entitycore.
+
+    Args:
+        circuit: A Circuit instance (local) or CircuitFromID (remote).
+        db_client: The entitycore SDK client.
+        entity_cache: If True, stage into a persistent cache directory under
+            cache_root; otherwise stage into temp_dir.
+        cache_root: Root path for the entity cache (e.g., scan_output_root).
+        temp_dir: Temporary directory path to use when entity_cache is False.
+
+    Returns:
+        Tuple of (resolved Circuit, circuit entity or None).
+    """
+    if isinstance(circuit, Circuit):
+        L.info("Circuit is a local Circuit instance.")
+        return circuit, None
+
+    if isinstance(circuit, CircuitFromID):
+        L.info("Circuit is a CircuitFromID instance.")
+        circuit_id = circuit.id_str
+
+        if entity_cache:
+            L.info("Use entity cache")
+            dest_dir = cache_root / "entity_cache" / "sonata_circuit" / circuit_id
+        else:
+            dest_dir = temp_dir / "sonata_circuit"
+
+        staged_circuit = circuit.stage_circuit(
+            db_client=db_client, dest_dir=dest_dir, entity_cache=entity_cache
+        )
+        circuit_entity = circuit.entity(db_client=db_client)
+        return staged_circuit, circuit_entity  # ty:ignore[invalid-return-type]
+
+    msg = f"Unsupported circuit type: {type(circuit)}"
+    raise OBIONEError(msg)

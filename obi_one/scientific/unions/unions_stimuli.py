@@ -3,6 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.electric_field import (
     SpatiallyUniformElectricFieldStimulus,
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
@@ -17,6 +18,12 @@ from obi_one.scientific.blocks.stimuli.spike import (
     FullySynchronousSpikeStimulus,
     PoissonSpikeStimulus,
     SinusoidalPoissonSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
+    SpikeTimeDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
@@ -56,7 +63,11 @@ _RELATIVE_INJECTION_STIMULI = (
 _INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
 
 _SPIKE_STIMULI = (
-    PoissonSpikeStimulus | FullySynchronousSpikeStimulus | SinusoidalPoissonSpikeStimulus
+    PoissonSpikeStimulus
+    | FullySynchronousSpikeStimulus
+    | SinusoidalPoissonSpikeStimulus
+    | InterSpikeIntervalDistributionSpikeStimulus
+    | SpikeTimeDistributionSpikeStimulus
 )
 
 _FIELD_STIMULI = (
@@ -80,6 +91,29 @@ MEModelStimulusUnion = Annotated[
 
 IonChannelModelStimulusUnion = Annotated[
     SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
+    Discriminator("type"),
+]
+
+"""Brian2-specific stimulus types."""
+
+Brian2CircuitStimulusUnion = Annotated[
+    Brian2DirectPoissonStimulus,
+    Discriminator("type"),
+]
+
+
+"""Learning Engine-specific stimulus types."""
+
+_LE_ABSOLUTE_INJECTION_STIMULI = (
+    ConstantCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
+)
+
+LearningEngineCircuitStimulusUnion = Annotated[
+    _LE_ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
 

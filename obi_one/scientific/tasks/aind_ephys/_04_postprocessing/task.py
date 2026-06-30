@@ -61,8 +61,10 @@ def _seed_data_dir(
         ):
             shutil.copytree(entry, data_dir / entry.name)
             n_pre += 1
-        elif entry.is_file() and entry.suffix == ".json" and (
-            entry.name.startswith("binary_") or entry.name.startswith("preprocessed_")
+        elif (
+            entry.is_file()
+            and entry.suffix == ".json"
+            and (entry.name.startswith("binary_") or entry.name.startswith("preprocessed_"))
         ):
             shutil.copy2(entry, data_dir / entry.name)
 

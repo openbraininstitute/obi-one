@@ -86,9 +86,7 @@ class AINDEPhysQCCollectorScanConfig(ScanConfig):
         return None
 
 
-class AINDEPhysQCCollectorSingleConfig(
-    AINDEPhysQCCollectorScanConfig, SingleConfigMixin
-):
+class AINDEPhysQCCollectorSingleConfig(AINDEPhysQCCollectorScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysQCCollectorScanConfig`."""
 
     def create_single_entity_with_config(

@@ -63,8 +63,7 @@ class AINDEPhysCurationScanConfig(ScanConfig):
 
         query: str = Field(
             default=(
-                "isi_violations_ratio < 0.5 and presence_ratio > 0.8"
-                " and amplitude_cutoff < 0.1"
+                "isi_violations_ratio < 0.5 and presence_ratio > 0.8 and amplitude_cutoff < 0.1"
             ),
             title="QC query",
             description=(

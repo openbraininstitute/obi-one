@@ -37,13 +37,9 @@ def _ensure_units_nwb_repo(repo_path: Path = UNITS_NWB_REPO_DEFAULT_PATH) -> Pat
         # contains the original substring, so we must guard against repeat
         # runs compounding underscores.
         if "add_electrodes_info_to_nwbfile" in patched:
-            patched = patched.replace(
-                "add_electrodes_info_to_nwbfile", "add_electrodes_to_nwbfile"
-            )
+            patched = patched.replace("add_electrodes_info_to_nwbfile", "add_electrodes_to_nwbfile")
         if "_add_units_table_to_nwbfile" not in patched:
-            patched = patched.replace(
-                "add_units_table_to_nwbfile", "_add_units_table_to_nwbfile"
-            )
+            patched = patched.replace("add_units_table_to_nwbfile", "_add_units_table_to_nwbfile")
         if patched != src:
             utils_py.write_text(patched)
             L.info("Patched utils.py for neuroconv API drift")

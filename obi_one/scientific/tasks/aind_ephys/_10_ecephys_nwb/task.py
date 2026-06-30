@@ -30,12 +30,12 @@ def _ensure_nwb_repo(repo_path: Path = NWB_REPO_DEFAULT_PATH) -> Path:
     capsule_py = repo_path / "code" / "run_capsule.py"
     if capsule_py.is_file():
         src = capsule_py.read_text()
-        patched = src.replace(
-            "add_electrodes_info_to_nwbfile", "add_electrodes_to_nwbfile"
-        )
+        patched = src.replace("add_electrodes_info_to_nwbfile", "add_electrodes_to_nwbfile")
         if patched != src:
             capsule_py.write_text(patched)
-            L.info("Patched run_capsule.py: add_electrodes_info_to_nwbfile -> add_electrodes_to_nwbfile")
+            L.info(
+                "Patched run_capsule.py: add_electrodes_info_to_nwbfile -> add_electrodes_to_nwbfile"
+            )
     return repo_path
 
 

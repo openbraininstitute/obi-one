@@ -11,7 +11,7 @@ DEFAULT_NODE_SPECS = {
             "column": "classification_system",
             "default": "extrinsic_neuron",
         },
-        "cell_type": {
+        "mtype": {
             "table": "aibs_metamodel_mtypes_v661_v2",
             "column": "cell_type",
             "default": "extrinsic_neuron",
@@ -27,6 +27,8 @@ DEFAULT_NODE_SPECS = {
             "column": "status_dendrite",
             "default": False,
         },
+        "layer": {"table": None, "default": "N/A"},
+        "etype": {"table": None, "default": "N/A"},
         "__position": {"table": "aibs_metamodel_mtypes_v661_v2", "column": "pt_position"},
     }
 }
@@ -48,14 +50,14 @@ SYNAPTOME_SONATA_CONFIG = {
 
 
 def default_node_spec_for(em_dataset: EMDataSetFromID, db_client: Client) -> dict:
-    node_specs = DEFAULT_NODE_SPECS[em_dataset._entity.name].copy()  # NOQA: SLF001
+    node_specs = DEFAULT_NODE_SPECS[em_dataset._entity.name].copy()  # NOQA: SLF001  # ty:ignore[invalid-argument-type, unresolved-attribute]
 
     resolution = em_dataset.viewer_resolution(db_client)
     node_specs["__position"]["resolution"] = {
         "x": resolution[0] * 1e-3,
         "y": resolution[1] * 1e-3,
         "z": resolution[2] * 1e-3,
-    }
+    }  # ty:ignore[invalid-assignment]
     return node_specs
 
 
@@ -87,7 +89,7 @@ def sonata_config_for(
 
     # Edge populations
     if edge_populations:
-        cfg["networks"]["edges"].append(
+        cfg["networks"]["edges"].append(  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
             {"edges_file": "$BASE_DIR/" + fn_edges_out, "populations": edge_populations}
         )
 
@@ -98,8 +100,8 @@ def sonata_config_for(
         "type": "biophysical",
     }
     if alternate_morphologies_h5 is not None:
-        bio_props["alternate_morphologies"] = {"h5v1": "$BASE_DIR/" + alternate_morphologies_h5}
-    cfg["networks"]["nodes"].append(
+        bio_props["alternate_morphologies"] = {"h5v1": "$BASE_DIR/" + alternate_morphologies_h5}  # ty:ignore[invalid-assignment]
+    cfg["networks"]["nodes"].append(  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
         {
             "nodes_file": "$BASE_DIR/" + fn_nodes_out,
             "populations": {biophysical_population: bio_props},
@@ -108,7 +110,7 @@ def sonata_config_for(
 
     # Virtual node population
     if virtual_population is not None:
-        cfg["networks"]["nodes"].append(
+        cfg["networks"]["nodes"].append(  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
             {
                 "nodes_file": "$BASE_DIR/" + fn_nodes_out,
                 "populations": {virtual_population: {"type": "virtual"}},

@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 from uuid import UUID
 
 import entitysdk
@@ -17,6 +18,7 @@ from entitysdk.types import (
 import app.services.resource_estimation.circuit_extraction
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
+from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import (
@@ -64,7 +66,7 @@ def submit_task_job(
         ).id
 
     failure_callback = _generate_failure_callback(
-        activity_id=activity_id,
+        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
         task_type=task_definition.task_type,
         callback_url=callback_url,
         project_context=project_context,
@@ -72,13 +74,23 @@ def submit_task_job(
     all_callbacks = [failure_callback, *callbacks]
 
     match task_definition.task_type:
+        case TaskType.circuit_simulation_brian2_machine:
+            executor_type = ExecutorType.single_node_job
+            job_data = _brian2_job_data(
+                simulation_id=config_id,
+                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
+                project_id=project_context.project_id,
+                virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
+                callbacks=all_callbacks,
+                task_definition=task_definition,
+            )
         case TaskType.circuit_simulation_inait_machine:
             executor_type = ExecutorType.single_node_job
             job_data = _inait_job_data(
                 simulation_id=config_id,
-                simulation_execution_id=activity_id,
+                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
                 project_id=project_context.project_id,
-                virtual_lab_id=project_context.virtual_lab_id,
+                virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
                 callbacks=all_callbacks,
                 task_definition=task_definition,
             )
@@ -86,7 +98,7 @@ def submit_task_job(
             executor_type = ExecutorType.distributed_job
             job_data = _circuit_simulation_job_data(
                 simulation_id=config_id,
-                simulation_execution_id=activity_id,
+                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
                 project_id=project_context.project_id,
                 callbacks=all_callbacks,
                 task_definition=task_definition,
@@ -96,11 +108,11 @@ def submit_task_job(
             job_data = _generic_job_data(
                 entity_cache=True,
                 config_id=config_id,
-                activity_id=activity_id,
+                activity_id=activity_id,  # ty:ignore[invalid-argument-type]
                 callbacks=all_callbacks,
                 task_definition=task_definition,
                 project_id=project_context.project_id,
-                virtual_lab_id=project_context.virtual_lab_id,
+                virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
                 output_root=settings.LAUNCH_SYSTEM_OUTPUT_DIR,
             )
 
@@ -109,7 +121,7 @@ def submit_task_job(
     if not response.is_success:
         db_sdk.update_activity_status(
             client=db_client,
-            activity_id=activity_id,
+            activity_id=activity_id,  # ty:ignore[invalid-argument-type]
             activity_type=activity_type,
             status=ActivityStatus.error,
         )
@@ -121,7 +133,7 @@ def submit_task_job(
 
     db_sdk.update_activity_executor(
         client=db_client,
-        activity_id=activity_id,
+        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
         activity_type=activity_type,
         execution_id=job_id,
         executor=executor_type,
@@ -129,7 +141,7 @@ def submit_task_job(
     return TaskLaunchInfo(
         task_type=task_definition.task_type,
         config_id=config_id,
-        activity_id=activity_id,
+        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
         job_id=job_id,
     )
 
@@ -151,6 +163,31 @@ def _circuit_simulation_job_data(
             str(simulation_id),
             "--simulation-execution-id",
             str(simulation_execution_id),
+        ],
+        "project_id": str(project_id),
+        "callbacks": [c.model_dump(mode="json") for c in callbacks],
+    }
+
+
+def _brian2_job_data(
+    *,
+    simulation_id: UUID,
+    simulation_execution_id: UUID,
+    project_id: UUID,
+    virtual_lab_id: UUID,
+    callbacks: list[CallBack],
+    task_definition: TaskDefinition,
+) -> dict:
+    resources = task_definition.resources.model_dump(mode="json")
+    return {
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": resources,
+        "inputs": [
+            "sonata-simulation-task",
+            f" --project-id {project_id}",
+            f" --virtual-lab-id {virtual_lab_id}",
+            f" --simulation-id {simulation_id}",
+            f" --simulation-execution-id {simulation_execution_id}",
         ],
         "project_id": str(project_id),
         "callbacks": [c.model_dump(mode="json") for c in callbacks],
@@ -308,7 +345,7 @@ def estimate_task_resources(
 def select_simulation_task(
     *, db_client: entitysdk.Client, config_id: UUID, config_type: models.Entity
 ) -> TaskType:
-    simulation = db_client.get_entity(entity_id=config_id, entity_type=config_type)
+    simulation = db_client.get_entity(entity_id=config_id, entity_type=config_type)  # ty:ignore[invalid-argument-type]
 
     simulation_config_content = db_sdk.select_asset_content(
         client=db_client,
@@ -318,16 +355,27 @@ def select_simulation_task(
             "content_type": ContentType.application_json,
         },
     )
-    simulation_config = libsonata.SimulationConfig(simulation_config_content, ".")
 
-    target_simulator = None
+    try:
+        simulation_config = libsonata.SimulationConfig(simulation_config_content, ".")
+    except libsonata.SonataError as e:
+        raise ApiError(
+            message=(
+                f"Simulation {simulation.id} config format "
+                f"is not supported by libsonata=={libsonata.version}."
+            ),
+            error_code=ApiErrorCode.INVALID_CONFIG_FORMAT,
+            http_status_code=HTTPStatus.BAD_REQUEST,
+            details=str(e),
+        ) from e
 
-    if simulation_config.target_simulator is not None:
+    if simulation_config.target_simulator != libsonata.SimulatorType.UNSPECIFIED:
         target_simulator = TargetSimulator(simulation_config.target_simulator.name)
         msg = f"Using target simulator '{target_simulator}' from simulation config."
         L.info(msg)
     else:
-        L.info("No `target_simulator` found in simulation config.")
+        target_simulator = None
+        L.info("`target_simulator` in unspecified in simulation config.")
 
     circuit = db_client.get_entity(
         entity_id=simulation.entity_id,
@@ -343,6 +391,8 @@ def select_simulation_task(
     L.info(msg)
 
     match target_simulator:
+        case TargetSimulator.Brian2:
+            return TaskType.circuit_simulation_brian2_machine
         case TargetSimulator.LearningEngine:
             return TaskType.circuit_simulation_inait_machine
         case TargetSimulator.NEURON | TargetSimulator.CORENEURON:

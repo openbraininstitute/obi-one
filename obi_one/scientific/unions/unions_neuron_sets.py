@@ -1,8 +1,9 @@
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
 from obi_one.scientific.blocks.neuron_sets.pair import PairMotifNeuronSet
@@ -56,6 +57,16 @@ SimulationNeuronSetUnion = Annotated[
     Discriminator("type"),
 ]
 
+Brian2SimulationNeuronSetUnion = Annotated[
+    IDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
+LearningEngineNeuronSetUnion = Annotated[
+    IDNeuronSet | AllNeurons | PredefinedNeuronSet,
+    Discriminator("type"),
+]
+
 
 CircuitExtractionNeuronSetUnion = Annotated[
     AllNeurons
@@ -70,6 +81,8 @@ CircuitExtractionNeuronSetUnion = Annotated[
     Discriminator("type"),
 ]
 
+SynapseParameterizationNeuronSetUnion = CircuitExtractionNeuronSetUnion
+
 
 MEModelWithSynapsesNeuronSetUnion = Annotated[
     nbS1VPMInputs | nbS1POmInputs,
@@ -81,6 +94,15 @@ class NeuronSetReference(BlockReference):
     """A reference to a NeuronSet block."""
 
     allowed_block_types: ClassVar[Any] = NeuronSetUnion
+
+    @property
+    def block(self) -> AbstractNeuronSet:
+        """Returns the NeuronSet block associated with this reference."""
+        return cast("AbstractNeuronSet", super().block)  # Ensure block is resolved and cached
+
+    @block.setter
+    def block(self, value: AbstractNeuronSet) -> None:
+        BlockReference.block.fset(self, value)
 
 
 def resolve_neuron_set_ref_to_node_set(
@@ -104,6 +126,6 @@ def resolve_neuron_set_ref_to_neuron_set(
             )
             raise ValueError(msg)
 
-        return default_neuron_set_reference.block
+        return default_neuron_set_reference.block  # ty:ignore[invalid-return-type]
 
-    return neuron_set_reference.block
+    return neuron_set_reference.block  # ty:ignore[invalid-return-type]

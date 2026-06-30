@@ -1,6 +1,6 @@
 """ScanConfig for the aind-ephys-results-collector capsule."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
@@ -132,9 +132,7 @@ class AINDEPhysResultsCollectorScanConfig(ScanConfig):
         return None
 
 
-class AINDEPhysResultsCollectorSingleConfig(
-    AINDEPhysResultsCollectorScanConfig, SingleConfigMixin
-):
+class AINDEPhysResultsCollectorSingleConfig(AINDEPhysResultsCollectorScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysResultsCollectorScanConfig`."""
 
     def create_single_entity_with_config(
@@ -149,14 +147,12 @@ class AINDEPhysResultsCollectorSingleConfig(
         return {
             "name": self.initialize.session_name,
             "schema_version": "2.0.0",
-            "creation_time": datetime.now(timezone.utc).isoformat(),
+            "creation_time": datetime.now(UTC).isoformat(),
             "institution": {
                 "name": "Allen Institute for Neural Dynamics",
                 "abbreviation": "AIND",
             },
-            "modalities": [
-                {"name": "Extracellular electrophysiology", "abbreviation": "ecephys"}
-            ],
+            "modalities": [{"name": "Extracellular electrophysiology", "abbreviation": "ecephys"}],
             "subject_id": self.initialize.subject_id,
             "investigators": [{"name": "unknown"}],
             "funding_source": [

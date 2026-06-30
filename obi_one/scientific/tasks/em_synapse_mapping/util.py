@@ -1,6 +1,4 @@
 import logging
-import os
-import subprocess  # NOQA: S404
 from pathlib import Path
 
 import h5py
@@ -8,22 +6,10 @@ import h5py
 L = logging.getLogger(__name__)
 
 
-def compress_output(
-    out_root: Path,
-    files: list[str],
-) -> os.PathLike:
-    tar_path = out_root / "sonata.tar"
-    gz_path = out_root / "sonata.tar.gz"
-    Path(tar_path).write_bytes(
-        subprocess.check_output(["tar", "-cf", "-", *files])  # NOQA: S607, S603
-    )
-    subprocess.check_call(["gzip", "-1", "-f", str(tar_path)])  # NOQA: S607, S603
-    return str(gz_path)
-
-
 def merge_spiny_morphologies(
     source_files: list[Path],
     output_path: Path,
+    neuron_id_strings: list[str],
     *,
     include_meshes: bool = True,
 ) -> None:
@@ -36,6 +22,8 @@ def merge_spiny_morphologies(
     Args:
         source_files: list of morphology-with-spines HDF5 files to merge.
         output_path: path to write the combined HDF5 file. For simplicity, must be a new file.
+        neuron_id_strings: List of string that identify the neurons within the merged file.
+           Same order (and length) as soiurce_files.
         include_meshes: if True (default), include soma and spine mesh datasets.
             Otherwise, skip mesh datasets for a smaller file size.
     """
@@ -45,12 +33,15 @@ def merge_spiny_morphologies(
     spine_library_groups = ["spines/skeletons"]
     if include_meshes:
         spine_library_groups.append("spines/meshes")
+    if len(source_files) != len(neuron_id_strings):
+        err_str = "Must provide an identifier for each input."
+        raise ValueError(err_str)
 
     with h5py.File(output_path, "w") as h5_out:
-        for src_path in source_files:
+        for src_path, dest_str in zip(source_files, neuron_id_strings, strict=True):
             with h5py.File(src_path, "r") as h5_in:
                 _merge_one_source(
-                    h5_in, h5_out, src_path, neuron_keyed_groups, spine_library_groups
+                    h5_in, h5_out, src_path, dest_str, neuron_keyed_groups, spine_library_groups
                 )
 
 
@@ -58,6 +49,7 @@ def _merge_one_source(
     h5_in: h5py.File,
     h5_out: h5py.File,
     src_path: Path,
+    morph_key_out: str,
     neuron_keyed_groups: list[str],
     spine_library_groups: list[str],
 ) -> None:
@@ -69,7 +61,9 @@ def _merge_one_source(
     src_names = list(h5_in["morphology"].keys())
 
     for morph_key in src_names:
-        _copy_neuron_groups(h5_in, h5_out, morph_key, src_path, neuron_keyed_groups)
+        # If there is more than one morphology in the input file this will lead to an error.
+        # That is intended! Could check for len(src_names) == 1 here..?
+        _copy_neuron_groups(h5_in, h5_out, morph_key, morph_key_out, src_path, neuron_keyed_groups)
 
     for grp_path in spine_library_groups:
         src_grp = _navigate_h5_path(h5_in, grp_path)
@@ -89,27 +83,28 @@ def _merge_one_source(
 def _copy_neuron_groups(
     h5_in: h5py.File,
     h5_out: h5py.File,
-    morph_key: str,
+    morph_key_in: str,
+    morph_key_out: str,
     src_path: Path,
     neuron_keyed_groups: list[str],
 ) -> None:
     """Copy neuron-keyed groups for one morphology key, raising on duplicates."""
     for grp_path in neuron_keyed_groups:
         src_grp = _navigate_h5_path(h5_in, grp_path)
-        if src_grp is None or morph_key not in src_grp:
+        if src_grp is None or morph_key_in not in src_grp:
             continue
         dst_parent = h5_out.require_group(grp_path)
-        if morph_key in dst_parent:
+        if morph_key_out in dst_parent:
             err_str = (
-                f"Duplicate morphology key '{morph_key}' in "
+                f"Duplicate morphology key '{morph_key_out}' in "
                 f"output group '{grp_path}' (from {src_path})"
             )
             raise ValueError(err_str)
-        h5_in.copy(src_grp[morph_key], dst_parent, name=morph_key)
+        h5_in.copy(src_grp[morph_key_in], dst_parent, name=morph_key_out)
         if grp_path == "edges":
-            metadata_path = f"{grp_path}/{morph_key}/metadata"
+            metadata_path = f"{grp_path}/{morph_key_in}/metadata"
             if metadata_path in h5_in:
-                dst_grp = dst_parent[morph_key]
+                dst_grp = dst_parent[morph_key_out]
                 if "metadata" not in dst_grp:
                     h5_in.copy(h5_in[metadata_path], dst_grp, name="metadata")
 
