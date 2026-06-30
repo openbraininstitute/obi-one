@@ -58,7 +58,7 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
     # return max(1, len(neuron_ids))
 
     # n_neurons = 30190
-    n_neurons = 846986
+    n_neurons = 80727
     print(f"WARNING: Manual accounting override(N={n_neurons})!")
 
     return n_neurons
