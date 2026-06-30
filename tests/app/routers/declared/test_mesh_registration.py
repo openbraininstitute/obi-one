@@ -67,7 +67,6 @@ def test_register_task_config_success():
     config_entity.id = uuid4()
     mock_client.register_entity.return_value = config_entity
 
-    # Mock NamedTemporaryFile and path operations to avoid real FS access
     with (
         patch("tempfile.NamedTemporaryFile") as mock_tmp,
         patch("pathlib.Path.unlink") as mock_unlink,
@@ -80,8 +79,7 @@ def test_register_task_config_success():
     assert result == config_entity.id
     mock_client.register_entity.assert_called_once()
     mock_client.upload_file.assert_called_once()
-    # Ensure cleanup was attempted by implementation
-    mock_unlink.assert_called()
+    mock_unlink.assert_called_once()
 
 
 def test_register_task_config_register_fails():

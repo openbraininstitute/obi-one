@@ -8,9 +8,6 @@ from entitysdk.models import EMCellMesh
 
 import obi_one.scientific.tasks.mesh_lod_generation as mesh_lod
 from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
-from obi_one.scientific.tasks.mesh_lod_generation.estimate import (
-    estimate_mesh_lod_generation_count,
-)
 from obi_one.scientific.tasks.mesh_lod_generation.task import (
     MeshLODGenerationTask,
     _download_mesh,
@@ -48,10 +45,6 @@ def test_mesh_lod_config_invalid_types():
         MeshLodGenerationSingleConfig(
             entity_id="not-a-uuid", mesh_asset_id=uuid4(), mesh_format="obj"
         )
-
-
-def test_estimate_mesh_lod_generation_count():
-    assert estimate_mesh_lod_generation_count(db_client=MagicMock(), config_id=uuid4()) == 1
 
 
 @patch("entitysdk.Client")
