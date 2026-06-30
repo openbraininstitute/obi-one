@@ -335,31 +335,40 @@ def _is_valid_measurement_value(value: Any) -> bool:
     """Return True when a measurement item value should be kept."""
     if value is None:
         return False
-    return not (isinstance(value, (float, np.floating)) and np.isnan(value))
+    return not (isinstance(value, (float, np.floating)) and not np.isfinite(value))
 
 
 def _filter_valid_measurement_kinds(
     measurement_kinds: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Drop null/NaN measurement items, then drop empty measurement kinds."""
+    """Drop measurement kinds containing null/NaN/non-finite aggregate values."""
     valid_measurement_kinds = []
+
     for measurement_kind in measurement_kinds:
-        original_item_names = {
-            item.get("name") for item in measurement_kind.get("measurement_items", [])
-        }
+        original_items = measurement_kind.get("measurement_items", [])
+        original_item_names = {item.get("name") for item in original_items}
+
         measurement_items = [
             item
-            for item in measurement_kind.get("measurement_items", [])
+            for item in original_items
             if _is_valid_measurement_value(item.get("value"))
         ]
         measurement_item_names = {item.get("name") for item in measurement_items}
-        if AGGREGATE_ITEM_NAMES.issubset(original_item_names) and not AGGREGATE_ITEM_NAMES.issubset(
-            measurement_item_names
+
+        if (
+            AGGREGATE_ITEM_NAMES.issubset(original_item_names)
+            and not AGGREGATE_ITEM_NAMES.issubset(measurement_item_names)
         ):
             continue
+
         if measurement_items:
-            measurement_kind["measurement_items"] = measurement_items
-            valid_measurement_kinds.append(measurement_kind)
+            valid_measurement_kinds.append(
+                {
+                    **measurement_kind,
+                    "measurement_items": measurement_items,
+                }
+            )
+
     return valid_measurement_kinds
 
 
