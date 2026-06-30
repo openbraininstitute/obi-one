@@ -164,10 +164,12 @@ def _write_spikes(
     sorting_dict = {"none": 0, "by_id": 1, "by_time": 2}
     sorting_type = h5py.enum_dtype(sorting_dict)
     sorting_value = sorting_dict[sorting]
-    if sorting == "by_time":
+
+    if node_ids and sorting == "by_time":
         timestamps, node_ids = zip(*sorted(zip(timestamps, node_ids, strict=True)), strict=True)
-    elif sorting == "by_id":
+    elif node_ids and sorting == "by_id":
         node_ids, timestamps = zip(*sorted(zip(node_ids, timestamps, strict=True)), strict=True)
+
     with h5py.File(filepath, "w") as h5f:
         h5f.create_group("spikes")
         gpop_spikes = h5f.create_group(f"/spikes/{population_name}")
@@ -250,8 +252,8 @@ def _create_synapses(circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup) -
     return syn
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
-    """Returns the path to the spikes file, None if there were no spikes."""
+def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
+    """Returns the path to the spikes file."""
     simulation = bluepysnap.Simulation(simulation_config_path)
     circuit = simulation.circuit
 
@@ -280,11 +282,8 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
     spikes = [
         (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
     ]
-    if not spikes:
-        L.info("No neurons spiked in the simulation")
-        return None
 
-    node_ids, timestamps = zip(*spikes, strict=True)
+    node_ids, timestamps = zip(*spikes, strict=True) if spikes else ([], [])
     L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
     (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     spikes_path = _write_spikes(
