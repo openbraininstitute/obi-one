@@ -1,1 +1,1 @@
-obi-one[connectivity]
+obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@9e52d52b4b7e55979415b5bf0aeb78059c41522e
