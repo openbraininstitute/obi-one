@@ -2,6 +2,35 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import AINDEPhysDispatchTask
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import AINDEPhysPreprocessingTask
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.task import (
+    AINDEPhysSpikesortKilosort4Task,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.task import (
+    AINDEPhysPostprocessingTask,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.task import (
+    AINDEPhysCurationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.task import (
+    AINDEPhysVisualizationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.task import (
+    AINDEPhysResultsCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.task import (
+    AINDEPhysProcessingQCTask,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.task import (
+    AINDEPhysQCCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.task import (
+    AINDEcephysNWBTask,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.task import (
+    AINDUnitsNWBTask,
+)
 from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
@@ -32,6 +61,17 @@ TasksUnion = Annotated[
     | MorphologyContainerizationTask
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask
+    | AINDEPhysDispatchTask
+    | AINDEPhysPreprocessingTask
+    | AINDEPhysSpikesortKilosort4Task
+    | AINDEPhysPostprocessingTask
+    | AINDEPhysCurationTask
+    | AINDEPhysVisualizationTask
+    | AINDEPhysResultsCollectorTask
+    | AINDEPhysProcessingQCTask
+    | AINDEPhysQCCollectorTask
+    | AINDEcephysNWBTask
+    | AINDUnitsNWBTask
     | CreateExtracellularRecordingArrayScanConfig
     | MorphologyLocationsTask,
     Discriminator("type"),

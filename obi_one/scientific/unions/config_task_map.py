@@ -1,6 +1,73 @@
 from entitysdk.types import AssetLabel
 
 from obi_one.core.registry import task_registry
+
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import (
+    AINDEPhysDispatchSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import (
+    AINDEPhysDispatchTask,
+)
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
+    AINDEPhysPreprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import (
+    AINDEPhysPreprocessingTask,
+)
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
+    AINDEPhysSpikesortKilosort4SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.task import (
+    AINDEPhysSpikesortKilosort4Task,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
+    AINDEPhysPostprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.task import (
+    AINDEPhysPostprocessingTask,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.config import (
+    AINDEPhysCurationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation.task import (
+    AINDEPhysCurationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
+    AINDEPhysVisualizationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.task import (
+    AINDEPhysVisualizationTask,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
+    AINDEPhysResultsCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.task import (
+    AINDEPhysResultsCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.config import (
+    AINDEPhysProcessingQCSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._08_processing_qc.task import (
+    AINDEPhysProcessingQCTask,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.config import (
+    AINDEPhysQCCollectorSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._09_qc_collector.task import (
+    AINDEPhysQCCollectorTask,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config import (
+    AINDEcephysNWBSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.task import (
+    AINDEcephysNWBTask,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.config import (
+    AINDUnitsNWBSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._11_units_nwb.task import (
+    AINDUnitsNWBTask,
+)
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
@@ -190,6 +257,61 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.morphology_metrics: (
         MorphologyMetricsTask,
         MorphologyMetricsSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_dispatch: (
+        AINDEPhysDispatchTask,
+        AINDEPhysDispatchSingleConfig,
+        AssetLabel.task_config,
+    ),
+    TaskType.aind_ephys_preprocessing: (
+        AINDEPhysPreprocessingTask,
+        AINDEPhysPreprocessingSingleConfig,
+        AssetLabel.task_config,
+    ),
+    TaskType.aind_ephys_spikesorting: (
+        AINDEPhysSpikesortKilosort4Task,
+        AINDEPhysSpikesortKilosort4SingleConfig,
+        AssetLabel.task_config,
+    ),
+    TaskType.aind_ephys_postprocessing: (
+        AINDEPhysPostprocessingTask,
+        AINDEPhysPostprocessingSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_curation: (
+        AINDEPhysCurationTask,
+        AINDEPhysCurationSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_visualization: (
+        AINDEPhysVisualizationTask,
+        AINDEPhysVisualizationSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_results_collector: (
+        AINDEPhysResultsCollectorTask,
+        AINDEPhysResultsCollectorSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_processing_qc: (
+        AINDEPhysProcessingQCTask,
+        AINDEPhysProcessingQCSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_qc_collector: (
+        AINDEPhysQCCollectorTask,
+        AINDEPhysQCCollectorSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_cephys_nwb: (
+        AINDEcephysNWBTask,
+        AINDEcephysNWBSingleConfig,
+        None,
+    ),
+    TaskType.aind_ephys_units_nwb: (
+        AINDUnitsNWBTask,
+        AINDUnitsNWBSingleConfig,
         None,
     ),
 }
