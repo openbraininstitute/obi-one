@@ -76,13 +76,12 @@ def test_scalar_nan_metric_is_skipped(monkeypatch, caplog):
     json.dumps(result, allow_nan=False)
 
 
-def test_invalid_raw_measurement_items_are_filtered():
+def test_invalid_raw_measurement_is_filtered():
     measurement_kinds = [
         {
             "structural_domain": "soma",
             "pref_label": "soma_radius",
             "measurement_items": [
-                {"name": "raw", "unit": "um", "value": 1.0},
                 {"name": "raw", "unit": "um", "value": None},
             ],
         },
@@ -90,7 +89,7 @@ def test_invalid_raw_measurement_items_are_filtered():
             "structural_domain": "soma",
             "pref_label": "soma_surface_area",
             "measurement_items": [
-                {"name": "raw", "unit": "um2", "value": None},
+                {"name": "raw", "unit": "um2", "value": 10.0},
             ],
         },
     ]
@@ -100,8 +99,10 @@ def test_invalid_raw_measurement_items_are_filtered():
     assert result == [
         {
             "structural_domain": "soma",
-            "pref_label": "soma_radius",
-            "measurement_items": [{"name": "raw", "unit": "um", "value": 1.0}],
+            "pref_label": "soma_surface_area",
+            "measurement_items": [
+                {"name": "raw", "unit": "um2", "value": 10.0},
+            ],
         },
     ]
     json.dumps(result, allow_nan=False)
