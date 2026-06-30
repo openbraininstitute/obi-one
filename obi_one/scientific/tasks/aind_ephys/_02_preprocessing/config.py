@@ -53,8 +53,12 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
         SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.PREPROCESSING],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.aind_ephys_preprocessing__campaign
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = TaskActivityType.aind_ephys_preprocessing__campaign_generation
+    _campaign_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.aind_ephys_preprocessing__campaign
+    )
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.aind_ephys_preprocessing__campaign_generation
+    )
 
     def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
         return []
@@ -254,7 +258,9 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
 class AINDEPhysPreprocessingSingleConfig(AINDEPhysPreprocessingScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysPreprocessingScanConfig`."""
 
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.aind_ephys_preprocessing__config
+    _single_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.aind_ephys_preprocessing__config
+    )
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.aind_ephys_preprocessing__execution
     )
