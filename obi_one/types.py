@@ -44,6 +44,7 @@ class TaskType(StrEnum):
     morphology_decontainerization = auto()
     morphology_locations = auto()
     morphology_metrics = auto()
+    aind_ephys_dispatch = auto()
     aind_ephys_postprocessing = auto()
     aind_ephys_curation = auto()
     aind_ephys_visualization = auto()

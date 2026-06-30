@@ -1,6 +1,13 @@
 from entitysdk.types import AssetLabel
 
 from obi_one.core.registry import task_registry
+
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import (
+    AINDEPhysDispatchSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import (
+    AINDEPhysDispatchTask,
+)
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingSingleConfig,
 )
@@ -251,6 +258,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         MorphologyMetricsTask,
         MorphologyMetricsSingleConfig,
         None,
+    ),
+    TaskType.aind_ephys_dispatch: (
+        AINDEPhysDispatchTask,
+        AINDEPhysDispatchSingleConfig,
+        AssetLabel.task_config,
     ),
     TaskType.aind_ephys_preprocessing: (
         AINDEPhysPreprocessingTask,

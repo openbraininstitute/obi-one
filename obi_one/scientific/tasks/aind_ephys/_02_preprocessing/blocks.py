@@ -128,7 +128,7 @@ class BandpassFilterParams(Block):
 
 
 class DetectBadChannels(Block):
-    """``detect_bad_channels`` parameters."""
+    """``detect_and_remove_bad_channels`` parameters."""
 
     method: Literal["coherence+psd", "std", "mad"] = Field(
         default="coherence+psd",
@@ -181,6 +181,9 @@ class DetectBadChannels(Block):
             "outside_channel_threshold": self.outside_channel_threshold,
             "outside_channels_location": self.outside_channels_location,
             "n_neighbors": self.n_neighbors,
+            # The capsule prunes this list per remove_out_channels / remove_bad_channels,
+            # so emit the full set and let run_capsule.py drop the entries it doesn't need.
+            "channel_filters": ["noise", "dead", "out"],
             "seed": self.seed,
         }
 

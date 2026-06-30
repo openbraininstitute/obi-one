@@ -13,11 +13,22 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingSingleConfig,
 )
+from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_python
 
 L = logging.getLogger(__name__)
 
 PREPROCESSING_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing.git"
 PREPROCESSING_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-preprocessing")  # noqa: S108
+
+# macOS-installable subset of the capsule's environment/Dockerfile, sufficient for a
+# local toy run. Omits Linux-only/native (wavpack-numcodecs), cloud (s3fs), and the
+# heavy GPU torch / spikeinterface[full] extras, which the toy path (motion off) skips.
+CAPSULE_DEPS = [
+    "aind-data-schema==2.8.1",
+    "spikeinterface==0.104.7",
+    "scikit-learn",
+    "scipy==1.17.1",
+]
 
 
 def _ensure_preprocessing_repo(repo_path: Path = PREPROCESSING_REPO_DEFAULT_PATH) -> Path:
@@ -58,6 +69,7 @@ class AINDEPhysPreprocessingTask(Task):
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
         repo = _ensure_preprocessing_repo()
+        capsule_python = ensure_capsule_python(repo, CAPSULE_DEPS)
         code_dir = repo / "code"
         data_dir = repo / "data"
         results_dir = repo / "results"
@@ -91,7 +103,7 @@ class AINDEPhysPreprocessingTask(Task):
             motion_arg = "apply" if self.config.motion_correction.apply else "compute"
 
         argv: list[str] = [
-            "python",
+            capsule_python,
             "-u",
             "run_capsule.py",
             "--params",

@@ -48,10 +48,10 @@ class AINDEPhysSpikesortKilosort4ScanConfig(ScanConfig):
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.aind_ephys_spikesort_kilosort4__campaign
+        TaskConfigType.aind_ephys_spikesorting__campaign
     )
     _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.aind_ephys_spikesort_kilosort4__campaign_generation
+        TaskActivityType.aind_ephys_spikesorting__config_generation
     )
 
     def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
@@ -163,10 +163,10 @@ class AINDEPhysSpikesortKilosort4SingleConfig(
     """Single-coordinate variant of :class:`AINDEPhysSpikesortKilosort4ScanConfig`."""
 
     _single_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.aind_ephys_spikesort_kilosort4__config
+        TaskConfigType.aind_ephys_spikesorting__config
     )
     _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.aind_ephys_spikesort_kilosort4__execution
+        TaskActivityType.aind_ephys_spikesorting__execution
     )
 
     def create_single_entity_with_config(

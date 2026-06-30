@@ -9,11 +9,20 @@ import entitysdk
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchSingleConfig
+from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_python
 
 L = logging.getLogger(__name__)
 
 DISPATCH_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch.git"
 DISPATCH_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-job-dispatch")  # noqa: S108
+
+# macOS-installable subset of the capsule's environment/Dockerfile, sufficient for a
+# local toy run. The dispatch capsule only imports spikeinterface (+ probeinterface and
+# numpy, both pulled by it) for the spikeinterface-reader path; aind-log-utils / pynwb /
+# hdmf-zarr (NWB input) and wavpack-numcodecs (no macOS wheel) are not needed here.
+CAPSULE_DEPS = [
+    "spikeinterface==0.104.7",
+]
 
 
 def _ensure_dispatch_repo(repo_path: Path = DISPATCH_REPO_DEFAULT_PATH) -> Path:
@@ -54,6 +63,7 @@ class AINDEPhysDispatchTask(Task):
         L.info(command)
 
         repo = _ensure_dispatch_repo()
+        capsule_python = ensure_capsule_python(repo, CAPSULE_DEPS)
         code_dir = repo / "code"
         data_dir = repo / "data"
         results_dir = repo / "results"
@@ -67,6 +77,9 @@ class AINDEPhysDispatchTask(Task):
         # strip the prefix so the script's relative `../data` / `../results`
         # paths resolve.
         argv = [a.removeprefix("code/") for a in shlex.split(command)]
+        # command_line_representation() always starts with "python"; run the capsule
+        # in its isolated env rather than obi-one's interpreter.
+        argv[0] = capsule_python
         result = subprocess.run(  # noqa: S603
             argv,
             cwd=code_dir,

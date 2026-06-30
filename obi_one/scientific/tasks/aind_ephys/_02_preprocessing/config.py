@@ -57,7 +57,7 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
         TaskConfigType.aind_ephys_preprocessing__campaign
     )
     _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.aind_ephys_preprocessing__campaign_generation
+        TaskActivityType.aind_ephys_preprocessing__config_generation
     )
 
     def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
@@ -273,7 +273,13 @@ class AINDEPhysPreprocessingSingleConfig(AINDEPhysPreprocessingScanConfig, Singl
         return None
 
     def params_dict(self) -> dict:
-        """Build the params.json payload the capsule expects."""
+        """Build the params.json payload the capsule expects.
+
+        The capsule nests the ordered preprocessing steps under
+        ``default_preprocessing_pipeline`` (with ``custom_preprocessing_pipeline``
+        as the alternative); ``run_capsule.py`` asserts that at least one of the
+        two is present.
+        """
         return {
             "job_kwargs": self.job_kwargs.to_dict(),
             "denoising_strategy": self.initialize.denoising_strategy,
@@ -282,11 +288,14 @@ class AINDEPhysPreprocessingSingleConfig(AINDEPhysPreprocessingScanConfig, Singl
             "remove_out_channels": self.initialize.remove_out_channels,
             "remove_bad_channels": self.initialize.remove_bad_channels,
             "max_bad_channel_fraction": self.initialize.max_bad_channel_fraction,
-            "phase_shift": self.phase_shift.to_dict(),
-            "highpass_filter": self.highpass_filter.to_dict(),
-            "bandpass_filter": self.bandpass_filter.to_dict(),
-            "detect_bad_channels": self.detect_bad_channels.to_dict(),
-            "common_reference": self.common_reference.to_dict(),
-            "highpass_spatial_filter": self.highpass_spatial_filter.to_dict(),
+            "default_preprocessing_pipeline": {
+                "phase_shift": self.phase_shift.to_dict(),
+                "highpass_filter": self.highpass_filter.to_dict(),
+                "bandpass_filter": self.bandpass_filter.to_dict(),
+                "detect_and_remove_bad_channels": self.detect_bad_channels.to_dict(),
+                "common_reference": self.common_reference.to_dict(),
+                "highpass_spatial_filter": self.highpass_spatial_filter.to_dict(),
+            },
+            "custom_preprocessing_pipeline": None,
             "motion_correction": self.motion_correction.to_dict(),
         }

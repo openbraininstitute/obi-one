@@ -13,11 +13,24 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
     AINDEPhysSpikesortKilosort4SingleConfig,
 )
+from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_python
 
 L = logging.getLogger(__name__)
 
 KS4_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4.git"
 KS4_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-spikesort-kilosort4")  # noqa: S108
+
+# macOS-installable subset of the capsule's environment/Dockerfile, sufficient for a
+# local toy run. The capsule's FROM ...kilosort4-base image ships kilosort + torch
+# (not in the Dockerfile pip block), so add kilosort here; it pulls a CPU torch.
+CAPSULE_DEPS = [
+    "aind-data-schema==2.8.1",
+    "spikeinterface==0.104.7",
+    "scikit-learn",
+    "scipy==1.17.1",
+    "kilosort==4.0.30",
+    "pandas",  # spikeinterface's Phy/Kilosort result extractor needs it (in [full] on Linux)
+]
 
 
 def _ensure_ks4_repo(repo_path: Path = KS4_REPO_DEFAULT_PATH) -> Path:
@@ -81,6 +94,7 @@ class AINDEPhysSpikesortKilosort4Task(Task):
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
         repo = _ensure_ks4_repo()
+        capsule_python = ensure_capsule_python(repo, CAPSULE_DEPS)
         code_dir = repo / "code"
         data_dir = repo / "data"
         results_dir = repo / "results"
@@ -104,7 +118,7 @@ class AINDEPhysSpikesortKilosort4Task(Task):
         params_path.write_text(json.dumps(self.config.params_dict(), indent=2))
 
         argv: list[str] = [
-            "python",
+            capsule_python,
             "-u",
             "run_capsule.py",
             "--params",
