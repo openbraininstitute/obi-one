@@ -277,7 +277,9 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path | None:
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    spikes = [(k, float(v)) for k, vs in spike_monitor.spike_trains().items() for v in vs]
+    spikes = [
+        (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
+    ]
     if not spikes:
         L.info("No neurons spiked in the simulation")
         return None
