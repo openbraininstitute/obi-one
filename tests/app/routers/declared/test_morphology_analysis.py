@@ -74,3 +74,62 @@ def test_scalar_nan_metric_is_skipped(monkeypatch, caplog):
     assert result == ["soma_radius", None, "um"]
     assert "Skipping NaN value for morphology metric soma_radius" in caplog.text
     json.dumps(result, allow_nan=False)
+
+
+def test_invalid_raw_measurement_items_are_filtered():
+    measurement_kinds = [
+        {
+            "structural_domain": "soma",
+            "pref_label": "soma_radius",
+            "measurement_items": [
+                {"name": "raw", "unit": "um", "value": 1.0},
+                {"name": "raw", "unit": "um", "value": None},
+            ],
+        },
+        {
+            "structural_domain": "soma",
+            "pref_label": "soma_surface_area",
+            "measurement_items": [
+                {"name": "raw", "unit": "um2", "value": None},
+            ],
+        },
+    ]
+
+    result = uf._filter_valid_measurement_kinds(measurement_kinds)
+
+    assert result == [
+        {
+            "structural_domain": "soma",
+            "pref_label": "soma_radius",
+            "measurement_items": [{"name": "raw", "unit": "um", "value": 1.0}],
+        },
+    ]
+    json.dumps(result, allow_nan=False)
+
+
+def test_incomplete_aggregate_measurement_is_filtered():
+    measurement_kinds = [
+        {
+            "structural_domain": "axon",
+            "pref_label": "section_lengths",
+            "measurement_items": [
+                {"name": "minimum", "unit": "um", "value": 1.0},
+                {"name": "maximum", "unit": "um", "value": None},
+                {"name": "median", "unit": "um", "value": 2.0},
+                {"name": "mean", "unit": "um", "value": None},
+                {"name": "standard_deviation", "unit": "um", "value": None},
+            ],
+        },
+        {
+            "structural_domain": "axon",
+            "pref_label": "local_bifurcation_angles",
+            "measurement_items": [
+                {"name": "minimum", "unit": "radian", "value": None},
+            ],
+        },
+    ]
+
+    result = uf._filter_valid_measurement_kinds(measurement_kinds)
+
+    assert result == []
+    json.dumps(result, allow_nan=False)
