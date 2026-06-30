@@ -13,6 +13,9 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
     AINDEPhysSpikesortKilosort4SingleConfig,
 )
+from obi_one.scientific.tasks.aind_ephys._03_kilosort4.materialize import (
+    materialize_preprocessing_output,
+)
 from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_python
 
 L = logging.getLogger(__name__)
@@ -65,6 +68,23 @@ def _seed_data_dir(data_dir: Path, source: Path) -> int:
     return n
 
 
+def _resolve_preprocessing_source(config: AINDEPhysSpikesortKilosort4SingleConfig) -> Path:
+    """Return the directory of preprocessed recordings to seed the capsule from.
+
+    When ``preprocessing_output_path`` is ``None`` the inputs are materialized on
+    the fly; otherwise the provided path is used (and must exist).
+    """
+    source_path = config.initialize.preprocessing_output_path
+    if source_path is None:
+        L.info("No preprocessing_output_path given; materializing inputs on the fly.")
+        return materialize_preprocessing_output()
+    source = Path(source_path)
+    if not source.exists():
+        msg = f"preprocessing_output_path does not exist: {source}"
+        raise FileNotFoundError(msg)
+    return source
+
+
 class AINDEPhysSpikesortKilosort4Task(Task):
     """Run the aind-ephys-spikesort-kilosort4 capsule on preprocessed ephys recordings.
 
@@ -104,10 +124,7 @@ class AINDEPhysSpikesortKilosort4Task(Task):
         for stale in list(data_dir.iterdir()) + list(results_dir.iterdir()):
             shutil.rmtree(stale) if stale.is_dir() else stale.unlink()
 
-        source = Path(self.config.initialize.preprocessing_output_path)
-        if not source.exists():
-            msg = f"preprocessing_output_path does not exist: {source}"
-            raise FileNotFoundError(msg)
+        source = _resolve_preprocessing_source(self.config)
         n_recordings = _seed_data_dir(data_dir, source)
         if n_recordings == 0:
             msg = f"No preprocessed_<name>/ directories found in {source}"

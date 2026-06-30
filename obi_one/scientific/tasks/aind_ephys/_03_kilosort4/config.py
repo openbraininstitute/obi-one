@@ -60,13 +60,16 @@ class AINDEPhysSpikesortKilosort4ScanConfig(ScanConfig):
     class Initialize(Block):
         """Top-level CLI / control parameters for the Kilosort4 capsule."""
 
-        preprocessing_output_path: Path = Field(
+        preprocessing_output_path: Path | None = Field(
+            default=None,
             title="Preprocessing output path",
             description=(
                 "Directory containing one or more ``preprocessed_<name>/`` directories"
                 " and matching ``binary_<name>.json`` files (the output of"
                 " AINDEPhysPreprocessingTask). Every preprocessed recording in this"
-                " folder will be spike-sorted by the capsule."
+                " folder will be spike-sorted by the capsule. If ``None``, the task"
+                " materializes everything it needs on the fly (a toy recording run"
+                " through the dispatch and preprocessing stages)."
             ),
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
         )
