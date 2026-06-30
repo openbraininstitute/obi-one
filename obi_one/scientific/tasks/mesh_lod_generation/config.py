@@ -1,16 +1,16 @@
 """Configuration schemas for the level-of-detail (LOD) mesh generation pipeline."""
 
-from typing import ClassVar
+from pathlib import Path
+from typing import Any, ClassVar
 from uuid import UUID
 
 from entitysdk.types import TaskActivityType, TaskConfigType
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.core.single import SingleConfigMixin, SingleCoordinateScanParams
 
 
-class MeshLodGenerationSingleConfig(OBIBaseModel, SingleConfigMixin):
+class MeshLodGenerationSingleConfig(OBIBaseModel):
     """Configuration schema for processing LOD mesh scans."""
 
     _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.mesh_lod_generation__config
@@ -18,25 +18,28 @@ class MeshLodGenerationSingleConfig(OBIBaseModel, SingleConfigMixin):
         TaskActivityType.mesh_lod_generation__execution
     )
 
-    # SingleConfigMixin declares this as `SingleCoordinateScanParams = None` which
-    # works fine as a plain class attribute but fails Pydantic validation when None
-    # is passed (annotation doesn't include None). Override with an explicit Optional.
-    single_coordinate_scan_params: SingleCoordinateScanParams | None = Field(default=None)
+    idx: int = -1
+    scan_output_root: Path = Path()
+    coordinate_output_root: Path = Path()
+
+    _single_entity: Any = PrivateAttr(default=None)
 
     entity_id: UUID = Field(
-        ...,
-        description="The unique identifier of the target EMCellMesh entity.",
+        ..., description="The unique identifier of the target EMCellMesh entity."
     )
     mesh_asset_id: UUID = Field(
-        ...,
-        description="The specific asset ID corresponding to the source mesh payload data.",
+        ..., description="The specific asset ID corresponding to the source mesh payload data."
     )
     mesh_format: str = Field(
-        ...,
-        description="The format of the source mesh asset ('obj' or 'glb').",
+        ..., description="The format of the source mesh asset ('obj' or 'glb')."
     )
 
+    @property
+    def single_entity(self) -> Any:
+        return self._single_entity
 
-__all__ = [
-    "MeshLodGenerationSingleConfig",
-]
+    def set_single_entity(self, entity: Any) -> None:
+        self._single_entity = entity
+
+
+__all__ = ["MeshLodGenerationSingleConfig"]
