@@ -349,15 +349,12 @@ def _filter_valid_measurement_kinds(
         original_item_names = {item.get("name") for item in original_items}
 
         measurement_items = [
-            item
-            for item in original_items
-            if _is_valid_measurement_value(item.get("value"))
+            item for item in original_items if _is_valid_measurement_value(item.get("value"))
         ]
         measurement_item_names = {item.get("name") for item in measurement_items}
 
-        if (
-            AGGREGATE_ITEM_NAMES.issubset(original_item_names)
-            and not AGGREGATE_ITEM_NAMES.issubset(measurement_item_names)
+        if AGGREGATE_ITEM_NAMES.issubset(original_item_names) and not AGGREGATE_ITEM_NAMES.issubset(
+            measurement_item_names
         ):
             continue
 
