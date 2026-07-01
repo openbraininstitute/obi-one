@@ -332,12 +332,18 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
+                neuron_set_.add_node_set_definition_to_sonata_circuit(
+                    self._circuit, sonata_circuit, force_resolve_ids=True
+                )
 
         else:
             neuron_set = self.config.default_neuron_set_type()
             neuron_set.set_block_name(self.config.default_node_set_name)
-            neuron_set.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)  # ty:ignore[invalid-argument-type]
+            neuron_set.add_node_set_definition_to_sonata_circuit(
+                self._circuit,  # ty:ignore[invalid-argument-type]
+                sonata_circuit,
+                force_resolve_ids=True,
+            )
 
         # 3. Write node sets from SONATA circuit object to .json file
         write_circuit_node_set_file(
