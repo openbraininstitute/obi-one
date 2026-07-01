@@ -34,7 +34,10 @@ def check_structure(hoc_path: str | Path) -> None:
 
 
 def check_mechanisms(hoc_path: str | Path, expected_suffixes: set[str]) -> None:
-    """Checks that the mechanisms declared in the hoc file are in the expected set."""
+    """Checks that the mechanisms declared in the hoc file are in the expected set.
+
+    Builtin NEURON mechanisms (pas, hh, extracellular, capacitance) are always allowed.
+    """
     hoc_content = Path(hoc_path).read_text(encoding="utf-8")
 
     declared_mechanisms = set()
@@ -43,8 +46,9 @@ def check_mechanisms(hoc_path: str | Path, expected_suffixes: set[str]) -> None:
         if len(splitted_line) == _MECHANISM_INSERT_PARTS and splitted_line[0] == "insert":
             declared_mechanisms.add(splitted_line[1])
 
+    allowed = BUILTIN_NEURON_MECHANISMS | expected_suffixes
     for suffix in declared_mechanisms:
-        if suffix not in expected_suffixes:
+        if suffix not in allowed:
             msg = (
                 f"Declared mechanism '{suffix}' in {hoc_path} is not in "
                 f"expected suffixes {expected_suffixes}"
