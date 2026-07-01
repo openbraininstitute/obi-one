@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
+import re
 import contextlib
 import logging
 import os
@@ -126,7 +127,11 @@ def _make_poisson(
 def _make_linear_current(
     input_: libsonata.SimulationConfig.Linear,
     ):
-    #['amp_end', 'amp_start', 'compartment_set', 'delay', 'duration', 'input_type', 'module', 'node_set', 'represents_physical_electrode']
+    if input_.compartment_set:
+        msg = "`compartment_set` not supported"
+        raise RuntimeError(msg)
+
+    #['amp_end', 'amp_start', 'delay', 'duration', 'node_set', 'represents_physical_electrode']
 
     return []
 
@@ -144,7 +149,7 @@ def _get_inputs(
             n0, poissons = _make_poisson(simulation, input_, n0)
             inputs += poissons
         elif isinstance(input_, libsonata.SimulationConfig.Linear):
-            inputs += _make_linear(input_)
+            inputs += _make_linear_current(input_)
         else:
             breakpoint() # XXX BREAKPOINT
             msg = f"Unhandled or unknown input: `{input_.module}:{input_.input_type}`"
@@ -192,6 +197,14 @@ def _write_spikes(
 
     return filepath
 
+defaultclock = brian2.defaultclock
+sub_set_idx0 = [0, 10, 100]
+sub_set_idx1 = [1, 11, 101]
+
+num_samples = int(200*brian2.units.ms/defaultclock.dt)
+I_arr = np.zeros(num_samples)
+I_arr[0:50] = 100
+stim = brian2.TimedArray(I_arr*brian2.units.mA, dt=brian2.defaultclock.dt)
 
 def _create_neurons(circuit: bluepysnap.Circuit) -> brian2.NeuronGroup:
     assert len(circuit.nodes.population_names) == 1, "Only one population supported"
@@ -211,10 +224,21 @@ def _create_neurons(circuit: bluepysnap.Circuit) -> brian2.NeuronGroup:
     assert len(templates) == 1, "Only one template supported"
     template = next(iter(templates.values()))
 
+    mod = re.sub(r".*I_inj\s*:\s*amp.*", "", template.params.model)
+    mod += """
+    \n
+    I_inj0 = stim(t) * is_stimulated0 : amp
+    I_inj1 = stim(t) * is_stimulated1 : amp
+    I_inj = I_inj0 + I_inj1 : amp
+    is_stimulated0 : 1
+    is_stimulated1 : 1
+    """
+
     n0 = brian2.NeuronGroup(
         N=len(nodes.ids()),
         name=nodes.name,
-        model=template.params.model,
+        #model=template.params.model,
+        model=mod,
         method=template.params.method,
         threshold=template.params.threshold,
         reset=template.params.reset,
@@ -224,6 +248,9 @@ def _create_neurons(circuit: bluepysnap.Circuit) -> brian2.NeuronGroup:
 
     for name, value in template.initial.items():
         setattr(n0, name, value.get())
+
+    n0.is_stimulated0[sub_set_idx0] = 1
+    n0.is_stimulated1[sub_set_idx1] = 1
 
     return n0
 
