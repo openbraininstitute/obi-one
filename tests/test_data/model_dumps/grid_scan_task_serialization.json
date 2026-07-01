@@ -138,7 +138,8 @@
                 "population": "S1nonbarrel_neurons"
             },
             "nbS1VPMInputs": {
-                "type": "AllVirtualNeurons"
+                "type": "VirtualPopulationNeuronSet",
+                "population": "VPM"
             }
         },
         "synaptic_manipulations": {},
