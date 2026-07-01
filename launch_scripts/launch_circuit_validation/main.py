@@ -17,7 +17,14 @@ from functools import partial
 from pathlib import Path
 from uuid import UUID
 
-# Add repo root to sys.path for obi_one imports (not pip-installed, loaded from source)
+# Use pre-installed packages from the obi-one Docker image's venv.
+# The wrapper creates a bare venv, but we need NEURON, bluecellulab, etc.
+_IMAGE_SITE_PACKAGES = "/code/.venv/lib/python3.12/site-packages"
+if os.path.isdir(_IMAGE_SITE_PACKAGES):
+    sys.path.append(_IMAGE_SITE_PACKAGES)
+
+# Add repo root to sys.path for obi_one imports (not pip-installed, loaded from source).
+# This takes priority over image packages so we run the latest code from the branch.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models

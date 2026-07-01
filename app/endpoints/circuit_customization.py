@@ -467,13 +467,14 @@ def _trigger_validation_task(
         "code": {
             "type": "python_repository",
             "location": settings.OBI_ONE_REPO,
-            "ref": "commit:24ab7f763bd9f9aec6df428ec62e4006290f9b76",  # TODO: use tag after merge
+            "ref": "commit:e33cd3dc88e25f252581c2e8b4d030b86f574499",  # TODO: use tag after merge
             "path": f"{launch_path}/main.py",
             "dependencies": f"{launch_path}/dependencies/default.txt",
             "staged_directories": ["obi_one/"],
         },
         "resources": {
             "type": "machine",
+            "image_type": "obi_one",
             "cores": 1,
             "memory": 8,
             "timelimit": "00:30",

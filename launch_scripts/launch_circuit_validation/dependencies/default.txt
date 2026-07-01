@@ -1,1 +1,2 @@
-obi-one[connectivity]
+# No dependencies needed — using pre-installed packages from the obi-one image.
+# The launch script adds the image's site-packages to sys.path at runtime.
