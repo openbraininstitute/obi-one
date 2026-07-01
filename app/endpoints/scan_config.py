@@ -13,6 +13,7 @@ from obi_one import run_tasks_for_generated_scan
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks.build_synaptome import BuildSynaptomeScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
@@ -92,6 +93,10 @@ def create_endpoint_for_scan_config(
             error_msg = "SchemaExampleScanConfig endpoint is non-functional."
             raise internal_error(error_msg)
 
+        if model is BuildSynaptomeScanConfig:
+            error_msg = f"{model.__name__} endpoint is schema-only and non-functional."
+            raise internal_error(error_msg)
+
         campaign = None
         with tempfile.TemporaryDirectory() as tdir:
             try:
@@ -146,6 +151,7 @@ def activate_scan_config_endpoints() -> None:
         (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),
+        (BuildSynaptomeScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,
