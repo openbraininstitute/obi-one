@@ -58,7 +58,6 @@ _VIRTUAL_NEURON_SETS = (
     VirtualPopulationPropertyNeuronSet
     | VirtualPopulationIDNeuronSet
     | VirtualPopulationNeuronSet
-    | AllVirtualNeurons
     | VirtualPopulationPredefinedNeuronSet
     | _DEPRECATED_VIRTUAL_NEURON_SETS
 )
