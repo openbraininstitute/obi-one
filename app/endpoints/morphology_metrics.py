@@ -7,7 +7,6 @@ from uuid import UUID
 import entitysdk.client
 import entitysdk.exception
 from entitysdk.models.cell_morphology import CellMorphology
-from entitysdk.models.measurement_annotation import MeasurementKind
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -77,7 +76,7 @@ def neuron_morphology_metrics_endpoint(
 def _run_analysis_with_temp_file(
     content: bytes,
     suffix: Literal[".swc", ".h5", ".asc"],
-) -> list[MeasurementKind]:
+) -> list[dict[str, Any]]:
     with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
         tmp.write(content)
         tmp.flush()
@@ -88,7 +87,7 @@ def compute_measurement_kinds(
     cell_morphology_id: UUID,
     db_client: entitysdk.client.Client,
     morphology_format: str = "h5",
-) -> list[MeasurementKind]:
+) -> list[dict[str, Any]]:
     morphology = db_client.get_entity(
         entity_id=cell_morphology_id,
         entity_type=CellMorphology,
