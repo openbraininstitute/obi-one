@@ -58,7 +58,7 @@ def get_contributor(
                 family_name=metadata.family_name,
                 orcid=normalized,
                 already_registered=existing is not None,
-                existing_id=str(existing.id) if existing else None,
+                existing_id=existing.id if existing else None,
             )
         case IdentifierType.ror:
             metadata = fetch_ror_metadata(ror_id=normalized, http_client=http_client)
@@ -73,7 +73,7 @@ def get_contributor(
                 ),
                 ror_id=normalized,
                 already_registered=existing is not None,
-                existing_id=str(existing.id) if existing else None,
+                existing_id=existing.id if existing else None,
             )
 
 
