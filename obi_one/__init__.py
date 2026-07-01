@@ -74,6 +74,7 @@ __all__ = [
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
+    "EMSynapseMappingInputNamedTuple",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
     "EMSynapseMappingTask",
@@ -451,6 +452,7 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
     CreateExtracellularRecordingArrayTask,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    EMSynapseMappingInputNamedTuple,
     EMSynapseMappingScanConfig,
     EMSynapseMappingSingleConfig,
 )
