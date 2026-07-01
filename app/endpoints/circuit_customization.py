@@ -13,7 +13,7 @@ import h5py
 import httpx
 import numpy as np
 from entitysdk import models
-from entitysdk.types import AssetLabel, DerivationType
+from entitysdk.types import AssetLabel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -233,9 +233,27 @@ def _validate_hoc_mechanisms(
 
     for hoc_path in hoc_paths:
         try:
-            check_mechanisms(hoc_path, available)
+            check_mechanisms(hoc_path, available)  # ty:ignore[invalid-argument-type]
         except ValueError as e:
             raise HocValidationError(str(e)) from e
+
+
+def _collect_templates_from_group(
+    f: "h5py.File", group: "h5py.Group", pop_name: str, templates: set[str]
+) -> None:
+    """Extract model_template values from an HDF5 group into the templates set."""
+    if "model_template" not in group:
+        return
+    ds = group["model_template"]
+    if ds.dtype.kind in {"U", "S", "O"}:
+        # String dataset — read directly
+        templates.update(v.decode() if isinstance(v, bytes) else v for v in ds[:])
+    else:
+        # Enumerated (uint) — resolve via @library
+        lib_path = f"nodes/{pop_name}/0/@library/model_template"
+        if lib_path in f:
+            lib = f[lib_path]
+            templates.update(v.decode() if isinstance(v, bytes) else v for v in lib[:])
 
 
 def _validate_nodes_hoc_consistency(node_paths: list[Path], hoc_paths: list[Path]) -> None:
@@ -254,21 +272,7 @@ def _validate_nodes_hoc_consistency(node_paths: list[Path], hoc_paths: list[Path
             with h5.File(node_path, "r") as f:
                 for pop_name in f.get("nodes", {}):
                     group = f["nodes"][pop_name].get("0", f["nodes"][pop_name])
-                    if "model_template" in group:
-                        ds = group["model_template"]
-                        if ds.dtype.kind in ("U", "S", "O"):
-                            # String dataset — read directly
-                            templates_in_nodes.update(
-                                v.decode() if isinstance(v, bytes) else v for v in ds[:]
-                            )
-                        else:
-                            # Enumerated (uint) — resolve via @library
-                            lib_path = f"nodes/{pop_name}/0/@library/model_template"
-                            if lib_path in f:
-                                lib = f[lib_path]
-                                templates_in_nodes.update(
-                                    v.decode() if isinstance(v, bytes) else v for v in lib[:]
-                                )
+                    _collect_templates_from_group(f, group, pop_name, templates_in_nodes)
         except Exception:  # noqa: BLE001, S112
             continue
 
@@ -467,7 +471,7 @@ def _trigger_validation_task(
         "code": {
             "type": "python_repository",
             "location": settings.OBI_ONE_REPO,
-            "ref": "commit:e33cd3dc88e25f252581c2e8b4d030b86f574499",  # TODO: use tag after merge
+            "ref": f"commit:{settings.COMMIT_SHA}" if settings.COMMIT_SHA else "HEAD",
             "path": f"{launch_path}/main.py",
             "dependencies": f"{launch_path}/dependencies/default.txt",
             "staged_directories": ["obi_one/"],
@@ -496,7 +500,7 @@ def _trigger_validation_task(
         L.warning("Failed to submit validation task for circuit %s: %s", circuit_id, response.text)
 
 
-def _register_and_stage(
+def _register_and_stage(  # noqa: PLR0914
     *,
     db_client: entitysdk.client.Client,
     parent: models.Circuit,
@@ -570,7 +574,7 @@ def _register_and_stage(
         build_category=parent.build_category,
         target_simulator=parent.target_simulator,
         root_circuit_id=parent.id,
-        lifecycle_status="draft",
+        lifecycle_status="draft",  # ty:ignore[invalid-argument-type]
     )
 
     try:
@@ -595,9 +599,7 @@ def _register_and_stage(
         generate_sim_designer_image_asset,
     )
 
-    edge_pop = (
-        c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
-    )
+    edge_pop = c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
     if edge_pop is not None:
         matrix_dir = staged_dir / "__CONN_MATRIX__"
         plot_dir = staged_dir / "__BASIC_PLOTS__"
@@ -712,6 +714,18 @@ def customize_circuit_endpoint(
     if not has_overrides:
         raise HTTPException(status_code=422, detail="At least one override file must be provided.")
 
+    if circuit_config_file and (edges_files or node_files):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "circuit_config_file cannot be combined with edges_files or node_files. "
+                "Node/edge file placement is guided by the parent circuit's config "
+                "structure; supplying a replacement config alongside those files produces "
+                "inconsistent staging. Provide the config override alone, or provide file "
+                "overrides without replacing the config."
+            ),
+        )
+
     pop_map = _parse_population_manifest(emodel_population_manifest)
 
     # 1. Fetch parent circuit
@@ -738,9 +752,7 @@ def customize_circuit_endpoint(
         # Cross-validations
         if not errors:
             parent_mech_names = (
-                _get_parent_mechanism_names(db_client, parent)
-                if (mod_paths or hoc_paths)
-                else None
+                _get_parent_mechanism_names(db_client, parent) if (mod_paths or hoc_paths) else None
             )
             errors.extend(
                 _run_cross_validations(hoc_paths, mod_paths, node_paths, parent_mech_names)

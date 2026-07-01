@@ -55,14 +55,19 @@ def main() -> int:
 
         circuit_id = UUID(args.circuit_id)
 
-        token_manager = TokenFromFunction(
-            partial(
-                get_token,
-                environment=deployment,
-                auth_mode="persistent_token",
-                persistent_token_id=persistent_token_id,
-            ),
-        )
+        # Use direct token if available (local testing), otherwise persistent token auth
+        direct_token = os.getenv("ENTITYCORE_ACCESS_TOKEN")
+        if direct_token:
+            token_manager = TokenFromFunction(lambda: direct_token)
+        else:
+            token_manager = TokenFromFunction(
+                partial(
+                    get_token,
+                    environment=deployment,
+                    auth_mode="persistent_token",
+                    persistent_token_id=persistent_token_id,
+                ),
+            )
         project_context = ProjectContext(
             project_id=args.project_id,
             virtual_lab_id=args.virtual_lab_id,
@@ -75,13 +80,18 @@ def main() -> int:
             local_store=LocalAssetStore(prefix=local_store_prefix),
         )
 
-        result = run_circuit_validation(db_client=db_client, circuit_id=circuit_id)
+        circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
+        result = run_circuit_validation(
+            db_client=db_client,
+            circuit_id=circuit_id,
+            is_customization=circuit.root_circuit_id is not None,
+        )
         L.info("Validation result: valid=%s, errors=%d", result["valid"], len(result["errors"]))
 
     except Exception as e:  # noqa: BLE001
         L.exception("Circuit validation failed with unexpected error: %s", e)
         if db_client is not None and circuit_id is not None:
-            _update_lifecycle_status(db_client, circuit_id, "failed")
+            _update_lifecycle_status(db_client, circuit_id, "disqualified")
         return 1
 
     return 0

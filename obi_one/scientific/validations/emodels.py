@@ -44,7 +44,7 @@ def check_mechanisms(hoc_path: str | Path, expected_suffixes: set[str]) -> None:
             declared_mechanisms.add(splitted_line[1])
 
     for suffix in declared_mechanisms:
-        if suffix not in expected_suffixes and suffix not in BUILTIN_NEURON_MECHANISMS:
+        if suffix not in expected_suffixes:
             msg = (
                 f"Declared mechanism '{suffix}' in {hoc_path} is not in "
                 f"expected suffixes {expected_suffixes}"

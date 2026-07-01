@@ -10,7 +10,7 @@ from uuid import UUID
 import entitysdk.client
 import httpx
 from entitysdk import models
-from entitysdk.types import AssetLabel, ContentType, DerivationType
+from entitysdk.types import AssetLabel, ContentType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.config import settings
@@ -41,7 +41,7 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
     derivation_type: Annotated[str | None, Form()] = None,
     atlas_id: Annotated[UUID | None, Form()] = None,
     license_id: Annotated[UUID | None, Form()] = None,
-    contact_email: Annotated[str | None, Form()] = None,
+    contact_email: Annotated[str | None, Form()] = None,  # noqa: ARG001
     authorized_public: Annotated[bool, Form()] = False,  # noqa: FBT002
 ) -> dict:
     """Register a new circuit entity with async validation.
@@ -61,7 +61,7 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
         tmp = Path(tmp_dir)
 
         # 1. Extract archive
-        archive_path = tmp / circuit_archive.filename
+        archive_path = tmp / circuit_archive.filename  # ty:ignore[unsupported-operator]
         archive_path.write_bytes(circuit_archive.file.read())
         circuit_dir = _extract_archive(archive_path, tmp)
 
@@ -107,8 +107,8 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
             has_electrical_cell_models=has_electrical_cell_models,
             has_spines=has_spines,
             scale=scale,
-            build_category=build_category,
-            target_simulator=target_simulator,
+            build_category=build_category,  # ty:ignore[invalid-argument-type]
+            target_simulator=target_simulator,  # ty:ignore[invalid-argument-type]
             root_circuit_id=parent_circuit_id,
             atlas_id=atlas_id,
         )
@@ -116,20 +116,18 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
         L.info("Circuit '%s' registered as %s (draft)", registered.name, registered.id)
 
         # 6. Upload sonata_circuit asset
-        paths = {
-            p.relative_to(circuit_dir): p for p in circuit_dir.rglob("*") if p.is_file()
-        }
+        paths = {p.relative_to(circuit_dir): p for p in circuit_dir.rglob("*") if p.is_file()}
         db_client.upload_directory(
-            entity_id=registered.id,
+            entity_id=registered.id,  # ty:ignore[invalid-argument-type]
             entity_type=models.Circuit,
             name="sonata_circuit",
-            paths=paths,
+            paths=paths,  # ty:ignore[invalid-argument-type]
             label=AssetLabel.sonata_circuit,
         )
 
         # 6b. Upload original archive as compressed_sonata_circuit (skips compression stage)
         db_client.upload_file(
-            entity_id=registered.id,
+            entity_id=registered.id,  # ty:ignore[invalid-argument-type]
             entity_type=models.Circuit,
             file_path=archive_path,
             file_content_type=ContentType.application_gzip,
@@ -141,7 +139,7 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
             c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
         )
         if edge_pop is not None:
-            from obi_one.utils.circuit_registration.generate import (
+            from obi_one.utils.circuit_registration.generate import (  # noqa: PLC0415
                 generate_connectivity_matrix_asset,
                 generate_connectivity_plot_assets,
                 generate_overview_image_asset,
@@ -183,9 +181,9 @@ def register_circuit_endpoint(  # noqa: PLR0913, PLR0917, PLR0914
     # 7. Trigger validation task
     _trigger_validation_task(
         ls_client=ls_client,
-        circuit_id=registered.id,
-        project_id=db_client.project_context.project_id,
-        virtual_lab_id=db_client.project_context.virtual_lab_id,
+        circuit_id=registered.id,  # ty:ignore[invalid-argument-type]
+        project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
+        virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
     )
 
     return {
@@ -231,8 +229,8 @@ def generate_assets_endpoint(
     _trigger_asset_generation_task(
         ls_client=ls_client,
         circuit_id=circuit_id,
-        project_id=db_client.project_context.project_id,
-        virtual_lab_id=db_client.project_context.virtual_lab_id,
+        project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
+        virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
     )
 
     return {"circuit_id": str(circuit_id), "status": "generation_triggered"}
@@ -281,12 +279,14 @@ def _trigger_validation_task(
         "code": {
             "type": "python_repository",
             "location": settings.OBI_ONE_REPO,
-            "ref": f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}",
+            "ref": "commit:1ed9e654c7f51f971b5f1162b89d5766cbbb9d43",  # TODO: use tag after merge
             "path": f"{launch_path}/main.py",
             "dependencies": f"{launch_path}/dependencies/default.txt",
+            "staged_directories": ["obi_one/"],
         },
         "resources": {
             "type": "machine",
+            "image_type": "obi_one",
             "cores": 1,
             "memory": 8,
             "timelimit": "00:30",

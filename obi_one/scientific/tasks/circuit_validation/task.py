@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess  # noqa: S404
 import tempfile
 from pathlib import Path
@@ -65,7 +66,7 @@ def run_circuit_validation(
             try:
                 _compile_mechanisms(mod_dir, staged_dir)
             except RuntimeError as e:
-                _update_lifecycle_status(db_client, circuit_id, "failed")
+                _update_lifecycle_status(db_client, circuit_id, "disqualified")
                 return {"valid": False, "errors": [str(e)], "warnings": []}
 
         fatal_errors: list[str] = []
@@ -122,7 +123,7 @@ def run_circuit_validation(
             L.warning(
                 "Circuit %s validation FAILED: %d fatal errors", circuit_id, len(fatal_errors)
             )
-            _update_lifecycle_status(db_client, circuit_id, "failed")
+            _update_lifecycle_status(db_client, circuit_id, "disqualified")
             return {"valid": False, "errors": fatal_errors, "warnings": warning_messages}
 
         L.info("Circuit %s validation PASSED (%d warnings)", circuit_id, len(warning_messages))
@@ -145,6 +146,7 @@ def _validate_morphology_paths(circuit_config_path: Path) -> list[str]:
 
     Resolves per-population morphologies_dir (takes precedence over the component-level
     default). Fails if the directory is missing or not a directory.
+    Skips populations that use alternate_morphologies (H5-based) instead.
     """
     config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
     cfg = json.loads(config.expanded_json)
@@ -154,6 +156,10 @@ def _validate_morphology_paths(circuit_config_path: Path) -> list[str]:
     for entry in cfg.get("networks", {}).get("nodes", []):
         for pop_name, pop_cfg in entry.get("populations", {}).items():
             if pop_cfg.get("type") == "virtual":
+                continue
+
+            # Skip if alternate_morphologies (H5-based) is defined
+            if pop_cfg.get("alternate_morphologies"):
                 continue
 
             morph_dir_str = pop_cfg.get("morphologies_dir", "") or component_morph_dir
@@ -178,7 +184,7 @@ def _validate_morphology_paths(circuit_config_path: Path) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _validate_emodel_paths(circuit_config_path: Path) -> list[str]:
+def _validate_emodel_paths(circuit_config_path: Path) -> list[str]:  # noqa: C901
     """Check that all HOC template files referenced by biophysical populations exist.
 
     Resolves biophysical_neuron_models_dir per population (population-level override
@@ -187,6 +193,7 @@ def _validate_emodel_paths(circuit_config_path: Path) -> list[str]:
     config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
     cfg = json.loads(config.expanded_json)
     component_hoc_dir = cfg.get("components", {}).get("biophysical_neuron_models_dir", "")
+    config_dir = circuit_config_path.parent
     errors = []
 
     for entry in cfg.get("networks", {}).get("nodes", []):
@@ -199,6 +206,8 @@ def _validate_emodel_paths(circuit_config_path: Path) -> list[str]:
             if not hoc_dir_str:
                 continue
             hoc_dir = Path(hoc_dir_str)
+            if not hoc_dir.is_absolute():
+                hoc_dir = config_dir / hoc_dir
 
             if not hoc_dir.exists():
                 errors.append(
@@ -623,6 +632,13 @@ def _write_dynamics_to_h5(
     nodes_path = Path(nodes_file)
     if not nodes_path.is_absolute():
         nodes_path = circuit_config_path.parent / nodes_path
+
+    # Break the symlink before writing — a symlink here means the file is still
+    # EFS-backed from the parent circuit; h5py r+ follows it and would corrupt the parent.
+    if nodes_path.is_symlink():
+        real = nodes_path.resolve()
+        nodes_path.unlink()
+        shutil.copy2(real, nodes_path)
 
     L.info("Writing dynamic params to %s (population: %s)", nodes_path, population_name)
 
