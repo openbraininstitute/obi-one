@@ -11,7 +11,15 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions.unions_synaptic_models import (
+    SynapticModelReference,
+    SynapticModelUnion,
+)
 
 
 class BlockGroup(StrEnum):
@@ -19,6 +27,7 @@ class BlockGroup(StrEnum):
 
     INFO = "Info"
     ME_MODEL = "ME-model"
+    SYNAPTIC_PHYSIOLOGY = "Synaptic physiology"
     SYNAPSE_GROUPS = "Synapse groups"
 
 
@@ -54,6 +63,15 @@ class AfferentSynapseGroupBase(Block):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+        },
+    )
+    synaptic_model: SynapticModelReference | None = Field(
+        default=None,
+        title="Synaptic model",
+        description="Synaptic physiology model assigned to this incoming synapse group.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
         },
     )
 
@@ -112,10 +130,13 @@ class BuildSynaptomeScanConfig(ScanConfig):
         SchemaKey.GROUP_ORDER: [
             BlockGroup.INFO,
             BlockGroup.ME_MODEL,
+            BlockGroup.SYNAPTIC_PHYSIOLOGY,
             BlockGroup.SYNAPSE_GROUPS,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             AfferentSynapseGroupReference.__name__: "Default: Synapse Group",
+            SynapticModelReference.__name__: "Default: Synaptic Model",
+            AllDistributionsReference.__name__: "Default: Distribution",
         },
     }
 
@@ -135,6 +156,30 @@ class BuildSynaptomeScanConfig(ScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.ME_MODEL,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+    synaptic_models: dict[str, SynapticModelUnion] = Field(
+        default_factory=dict,
+        title="Synaptic models",
+        description="Synaptic physiology models available for incoming synapse groups.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Synaptic Model",
+            SchemaKey.GROUP: BlockGroup.SYNAPTIC_PHYSIOLOGY,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+    distributions: dict[str, AllDistributionsUnion] = Field(
+        default_factory=dict,
+        title="Distributions",
+        description="Distributions used by synaptic physiology models.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.SINGULAR_NAME: "Distribution",
+            SchemaKey.GROUP: BlockGroup.SYNAPTIC_PHYSIOLOGY,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     afferent_synapse_groups: dict[str, AfferentSynapseGroupUnion] = Field(
