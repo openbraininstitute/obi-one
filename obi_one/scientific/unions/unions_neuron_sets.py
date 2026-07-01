@@ -37,7 +37,6 @@ from obi_one.scientific.blocks.neuron_sets.property import (
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
     AllPointNeurons,
-    AllVirtualNeurons,
 )
 
 _DEPRECATED_BIOPHYSICAL_NEURON_SETS = (
