@@ -128,15 +128,70 @@ def _get_inputs(
 ) -> tuple[brian2.NeuronGroup, list]:
 
     inputs = []
-    for input_ in simulation.inputs.values():
+    for name, input_ in simulation.inputs.items():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
-            msg = "`SynapseReplay not handled`"
+            msg = "`SynapseReplay` not handled"
             raise TypeError(msg)
         if isinstance(input_, libsonata.SimulationConfig.Poisson):
             n0, poissons = _make_poisson(simulation, input_, n0)
             inputs += poissons
+        else:
+            msg = f"`{type(input_)}` input type not handled, named {name}"
+            raise TypeError(msg)
 
     return n0, inputs
+
+
+def _write_soma_report(output_path, name, node_ids, values, unit, start, end, dt):
+    index_pointers = np.arange(0, (values.shape[0] + 1) * values.shape[1], values.shape[1])
+    string_dtype = h5py.special_dtype(vlen=str)
+    with h5py.File(output_path, "w") as h5f:
+        g = h5f.create_group(f"/report/{name}")
+        g.create_dataset("data", data=values / unit, dtype=np.float32).attrs.create(
+            "units", data=str(unit), dtype=string_dtype
+        )
+        mapping = h5f.create_group(f"/report/{name}/mapping")
+        mapping.create_dataset("node_ids", data=node_ids, dtype=np.uint64)
+        mapping.create_dataset("index_pointers", data=index_pointers, dtype=np.uint64)
+        mapping.create_dataset("element_ids", data=np.zeros(20), dtype=np.uint32)
+        mapping.create_dataset("time", data=(start, end, dt / brian2.units.ms), dtype=np.double).attrs.create(
+            "units", data="ms", dtype=string_dtype
+        )
+
+
+def _get_reports(
+    simulation: bluepysnap.Simulation,
+) -> list:
+    reports = []
+    breakpoint() # XXX BREAKPOINT
+    for name, report in simulation.reports.items():
+        if isinstance(report, bluepysnap.frame_report.SomaReport):
+            config = report.to_libsonata
+            if config.compartment_set:
+                msg = "`compartment_set` not supported"
+                raise RuntimeError(msg)
+            node_set = config.cells
+            config.variable_name
+            breakpoint() # XXX BREAKPOINT
+            #['cells'
+            # 'compartment_set'
+            # 'compartments'
+            # 'dt'
+            # 'electrodes_file'
+            # 'enabled'
+            # 'end_time'
+            # 'file_name'
+            # 'scaling'
+            # 'sections'
+            # 'start_time'
+            # 'type'
+            # 'unit'
+            # 'variable_name']
+
+        else:
+            msg = f"`{type(report)}` report type not handled, named {name}"
+            raise TypeError(msg)
+    return reports
 
 
 def _write_spikes(
@@ -272,9 +327,18 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
 
     neurons, inputs = _get_inputs(simulation, neurons)
 
-    net = brian2.Network(neurons, synapses, spike_monitor, *inputs)
+    #reports = _get_reports(simulation)
+    ids = [2,4,8]
+    M = brian2.StateMonitor(neurons, ['v', ], record=ids) # dt=...
+
+    net = brian2.Network(neurons, synapses, spike_monitor, M, *inputs)
     L.info("Running simulation")
     net.run(duration=simulation.run.tstop * brian2.units.ms)
+
+    start, end = 0, 10
+    _write_soma_report("output_path.h5", "name", ids, M.v, unit=brian2.units.mV, start=start, end=end, dt=M.clock.dt)
+    breakpoint() # XXX BREAKPOINT
+
 
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
