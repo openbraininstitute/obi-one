@@ -79,8 +79,8 @@ def create_endpoint_for_scan_config(
         L.info("generate_grid_scan")
         L.info(db_client)
 
-        if model in (SchemaExampleScanConfig, BuildSynaptomeScanConfig):
-            error_msg = f"{model.__name__} endpoint is schema-only and non-functional."
+        if model is SchemaExampleScanConfig:
+            error_msg = f"{model.__name__} endpoint is non-functional."
             raise HTTPException(status_code=500, detail=error_msg)
 
         campaign = None
