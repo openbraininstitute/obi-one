@@ -596,9 +596,12 @@ def validate_block_union(schema: dict, param: str, ref: str) -> None:
         block_ref = block_schema.get("$ref")
 
         if block_ref:
-            block_schema = {**block_schema, **resolve_ref(openapi_schema, block_ref)}
+            resolved_block_schema = {
+                **block_schema,
+                **resolve_ref(openapi_schema, block_ref),
+            }
 
-        validate_block(block_schema, block_ref)
+        validate_block(resolved_block_schema, block_ref)
 
 
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
