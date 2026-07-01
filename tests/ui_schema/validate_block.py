@@ -813,7 +813,10 @@ def validate_block_union(schema: dict, param: str, ref: str) -> None:
         resolved_block_schema = block_schema
 
         if block_ref:
-            resolved_block_schema = {**block_schema, **resolve_ref(openapi_schema, block_ref)}
+            resolved_block_schema = {
+                **block_schema,
+                **resolve_ref(openapi_schema, block_ref),
+            }
 
         validate_block(resolved_block_schema, block_ref)
 
