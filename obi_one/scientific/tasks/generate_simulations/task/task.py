@@ -310,12 +310,6 @@ class GenerateSimulationTask(Task):
         PredefinedNeuronSet, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
-
-        Resolve node set based on current coordinate circuit's default node population
-        TODO: Better handling of (default) node population in case there is more than one
-        TODO: Inconsistency possible in case a node set definition would span multiple
-        populations. May consider force_resolve_ids=False to enforce resolving into given
-        population (but which won't be a human-readable representation any more).
         """
         sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
 
