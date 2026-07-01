@@ -1,6 +1,7 @@
 """Schemas for the contributor registration endpoints."""
 
 from typing import Annotated, Literal
+from uuid import UUID
 
 from entitysdk.types import AgentType
 from pydantic import BaseModel, Field
@@ -17,7 +18,7 @@ class PersonPreview(BaseModel):
     family_name: str | None = None
     orcid: str
     already_registered: bool = False
-    existing_id: str | None = None
+    existing_id: UUID | None = None
 
 
 class OrganizationPreview(BaseModel):
@@ -30,7 +31,7 @@ class OrganizationPreview(BaseModel):
     alternative_name: str | None = None
     ror_id: str
     already_registered: bool = False
-    existing_id: str | None = None
+    existing_id: UUID | None = None
 
 
 ContributorPreview = Annotated[
