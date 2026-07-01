@@ -25,6 +25,8 @@ TYPE_MAP: dict[str, str] = {
     # Scan configs and single configs
     "BasicConnectivityPlotsScanConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
     "BasicConnectivityPlotsSingleConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
+    "BuildSynaptomeScanConfig": "obi_one.scientific.tasks.build_synaptome",
+    "BuildSynaptomeSingleConfig": "obi_one.scientific.tasks.build_synaptome",
     "CircuitExtractionScanConfig": "obi_one.scientific.tasks.circuit_extraction",
     "CircuitExtractionSingleConfig": "obi_one.scientific.tasks.circuit_extraction",
     "CircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
