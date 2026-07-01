@@ -50,21 +50,21 @@ def get_contributor(
             metadata = fetch_orcid_metadata(orcid=normalized, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Person, query={"orcid": normalized}
-            ).all()
+            ).one_or_none()
             return PersonPreview(
                 identifier=normalized,
                 name=metadata.pref_label,
                 given_name=metadata.given_name,
                 family_name=metadata.family_name,
                 orcid=normalized,
-                already_registered=bool(existing),
-                existing_id=str(existing[0].id) if existing else None,
+                already_registered=existing is not None,
+                existing_id=str(existing.id) if existing else None,
             )
         case IdentifierType.ror:
             metadata = fetch_ror_metadata(ror_id=normalized, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Organization, query={"ror_id": normalized}
-            ).all()
+            ).one_or_none()
             return OrganizationPreview(
                 identifier=normalized,
                 name=metadata.name,
@@ -72,8 +72,8 @@ def get_contributor(
                     metadata.alternative_names[0] if metadata.alternative_names else None
                 ),
                 ror_id=normalized,
-                already_registered=bool(existing),
-                existing_id=str(existing[0].id) if existing else None,
+                already_registered=existing is not None,
+                existing_id=str(existing.id) if existing else None,
             )
 
 
@@ -103,12 +103,12 @@ def register_contributor(
             metadata = fetch_orcid_metadata(orcid=normalized, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Person, query={"orcid": normalized}
-            ).all()
+            ).one_or_none()
             if existing:
                 raise ApiError(
                     message=(
                         f"Person '{metadata.pref_label}' is already registered "
-                        f"(id={existing[0].id})"
+                        f"(id={existing.id})"
                     ),
                     error_code=ApiErrorCode.INVALID_REQUEST,
                     http_status_code=HTTPStatus.CONFLICT,
@@ -124,12 +124,12 @@ def register_contributor(
             metadata = fetch_ror_metadata(ror_id=normalized, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Organization, query={"ror_id": normalized}
-            ).all()
+            ).one_or_none()
             if existing:
                 raise ApiError(
                     message=(
                         f"Organization '{metadata.name}' is already registered "
-                        f"(id={existing[0].id})"
+                        f"(id={existing.id})"
                     ),
                     error_code=ApiErrorCode.INVALID_REQUEST,
                     http_status_code=HTTPStatus.CONFLICT,

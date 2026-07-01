@@ -34,7 +34,7 @@ ROR_METADATA = RorMetadata(
 def _make_mock_db_client(existing_entities=None):
     mock_client = MagicMock()
     mock_search_result = MagicMock()
-    mock_search_result.all.return_value = existing_entities or []
+    mock_search_result.one_or_none.return_value = existing_entities[0] if existing_entities else None
     mock_client.search_entity.return_value = mock_search_result
     return mock_client
 
@@ -90,7 +90,7 @@ class TestGetContributorOrcid:
         """GET for ORCID already in DB returns already_registered=True."""
         existing = MagicMock()
         existing.id = uuid4()
-        mock_db_client.search_entity.return_value.all.return_value = [existing]
+        mock_db_client.search_entity.return_value.one_or_none.return_value = existing
 
         with patch(
             "app.endpoints.contributor.fetch_orcid_metadata",
@@ -141,7 +141,7 @@ class TestGetContributorRor:
         """GET for ROR already in DB returns already_registered=True."""
         existing = MagicMock()
         existing.id = uuid4()
-        mock_db_client.search_entity.return_value.all.return_value = [existing]
+        mock_db_client.search_entity.return_value.one_or_none.return_value = existing
 
         with patch(
             "app.endpoints.contributor.fetch_ror_metadata",
@@ -183,7 +183,7 @@ class TestRegisterContributorOrcid:
         """POST for existing ORCID returns 409."""
         existing = MagicMock()
         existing.id = uuid4()
-        mock_db_client.search_entity.return_value.all.return_value = [existing]
+        mock_db_client.search_entity.return_value.one_or_none.return_value = existing
 
         with patch(
             "app.endpoints.contributor.fetch_orcid_metadata",
@@ -223,7 +223,7 @@ class TestRegisterContributorRor:
         """POST for existing ROR returns 409."""
         existing = MagicMock()
         existing.id = uuid4()
-        mock_db_client.search_entity.return_value.all.return_value = [existing]
+        mock_db_client.search_entity.return_value.one_or_none.return_value = existing
 
         with patch(
             "app.endpoints.contributor.fetch_ror_metadata",
