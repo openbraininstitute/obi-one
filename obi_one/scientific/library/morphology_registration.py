@@ -3,6 +3,7 @@
 import logging
 import pathlib
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from entitysdk import Client
@@ -73,13 +74,16 @@ def upload_morphology_content(
 def register_morphometrics(
     client: Client,
     entity_id: UUID,
-    measurement_kinds: list[MeasurementKind],
+    measurement_kinds: list[dict[str, Any]],
 ) -> MeasurementAnnotation:
     """Register morphometric measurements for a CellMorphology entity."""
     measurement_annotation = MeasurementAnnotation(
         entity_id=entity_id,
         entity_type=MeasurableEntity.cell_morphology,
-        measurement_kinds=measurement_kinds,
+        measurement_kinds=[
+            MeasurementKind.model_validate(measurement_kind)
+            for measurement_kind in measurement_kinds
+        ],
     )
     return client.register_entity(entity=measurement_annotation)
 
