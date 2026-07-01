@@ -83,6 +83,7 @@ class TestGetContributorOrcid:
         assert data["given_name"] == "Jane"
         assert data["family_name"] == "Doe"
         assert data["agent_type"] == "person"
+        assert data["orcid"] == VALID_ORCID
         assert data["already_registered"] is False
 
     def test_existing_person(self, client, mock_db_client):
@@ -133,6 +134,7 @@ class TestGetContributorRor:
         assert data["name"] == "Open Brain Institute"
         assert data["alternative_name"] == "Open Brain Platform"
         assert data["agent_type"] == "organization"
+        assert data["ror_id"] == VALID_ROR
         assert data["already_registered"] is False
 
     def test_existing_organization(self, client, mock_db_client):
