@@ -90,11 +90,7 @@ def create_endpoint_for_scan_config(
         L.info(db_client)
 
         if model is SchemaExampleScanConfig:
-            error_msg = "SchemaExampleScanConfig endpoint is non-functional."
-            raise internal_error(error_msg)
-
-        if model is BuildSynaptomeScanConfig:
-            error_msg = f"{model.__name__} endpoint is schema-only and non-functional."
+            error_msg = f"{model.__name__} endpoint is non-functional."
             raise internal_error(error_msg)
 
         campaign = None
