@@ -2,19 +2,16 @@
 
 from http import HTTPStatus
 
-import httpx
 from entitysdk import models
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
 from starlette.requests import Request
 
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
+from app.schemas.contributor import OrganizationPreview, PersonPreview
 from app.services.contributor_metadata import (
     IdentifierType,
-    OrcidMetadata,
-    RorMetadata,
     fetch_orcid_metadata,
     fetch_ror_metadata,
     resolve_identifier,
@@ -25,20 +22,6 @@ router = APIRouter(
     tags=["declared"],
     dependencies=[Depends(user_verified)],
 )
-
-
-class ContributorPreview(BaseModel):
-    """Preview of a contributor resolved from an identifier."""
-
-    identifier: str
-    identifier_type: str
-    name: str
-    given_name: str | None = None
-    family_name: str | None = None
-    alternative_name: str | None = None
-    agent_type: str  # "person" or "organization"
-    already_registered: bool = False
-    existing_id: str | None = None
 
 
 @router.get(
@@ -57,12 +40,41 @@ def get_contributor(
     db_client: DatabaseClientDep,
     user_context: UserContextDep,  # noqa: ARG001
     request: Request,
-) -> ContributorPreview:
+) -> PersonPreview | OrganizationPreview:
     """Look up a contributor by ORCID or ROR ID."""
-    http_client = request.state.http_client
     id_type, normalized = resolve_identifier(identifier)
-    preview = _build_preview(id_type, normalized, db_client, http_client)
-    return preview
+    http_client = request.state.http_client
+
+    match id_type:
+        case IdentifierType.orcid:
+            metadata = fetch_orcid_metadata(orcid=normalized, http_client=http_client)
+            existing = db_client.search_entity(
+                entity_type=models.Person, query={"orcid": normalized}
+            ).all()
+            return PersonPreview(
+                identifier=normalized,
+                name=metadata.pref_label,
+                given_name=metadata.given_name,
+                family_name=metadata.family_name,
+                orcid=normalized,
+                already_registered=bool(existing),
+                existing_id=str(existing[0].id) if existing else None,
+            )
+        case IdentifierType.ror:
+            metadata = fetch_ror_metadata(ror_id=normalized, http_client=http_client)
+            existing = db_client.search_entity(
+                entity_type=models.Organization, query={"ror_id": normalized}
+            ).all()
+            return OrganizationPreview(
+                identifier=normalized,
+                name=metadata.name,
+                alternative_name=(
+                    metadata.alternative_names[0] if metadata.alternative_names else None
+                ),
+                ror_id=normalized,
+                already_registered=bool(existing),
+                existing_id=str(existing[0].id) if existing else None,
+            )
 
 
 @router.post(
@@ -83,92 +95,52 @@ def register_contributor(
     request: Request,
 ) -> dict:
     """Register a contributor by resolving metadata and creating it in entitycore."""
-    http_client = request.state.http_client
     id_type, normalized = resolve_identifier(identifier)
-    preview = _build_preview(id_type, normalized, db_client, http_client)
+    http_client = request.state.http_client
 
-    if preview.already_registered:
-        raise ApiError(
-            message=(
-                f"{preview.agent_type.capitalize()} '{preview.name}' is already registered "
-                f"(id={preview.existing_id})"
-            ),
-            error_code=ApiErrorCode.INVALID_REQUEST,
-            http_status_code=HTTPStatus.CONFLICT,
-        )
+    match id_type:
+        case IdentifierType.orcid:
+            metadata = fetch_orcid_metadata(orcid=normalized, http_client=http_client)
+            existing = db_client.search_entity(
+                entity_type=models.Person, query={"orcid": normalized}
+            ).all()
+            if existing:
+                raise ApiError(
+                    message=(
+                        f"Person '{metadata.pref_label}' is already registered "
+                        f"(id={existing[0].id})"
+                    ),
+                    error_code=ApiErrorCode.INVALID_REQUEST,
+                    http_status_code=HTTPStatus.CONFLICT,
+                )
+            entity = models.Person(
+                pref_label=metadata.pref_label,
+                given_name=metadata.given_name,
+                family_name=metadata.family_name,
+                orcid=normalized,  # ty:ignore[unknown-argument]
+            )
 
-    entity = _create_entity(id_type, preview)
+        case IdentifierType.ror:
+            metadata = fetch_ror_metadata(ror_id=normalized, http_client=http_client)
+            existing = db_client.search_entity(
+                entity_type=models.Organization, query={"ror_id": normalized}
+            ).all()
+            if existing:
+                raise ApiError(
+                    message=(
+                        f"Organization '{metadata.name}' is already registered "
+                        f"(id={existing[0].id})"
+                    ),
+                    error_code=ApiErrorCode.INVALID_REQUEST,
+                    http_status_code=HTTPStatus.CONFLICT,
+                )
+            entity = models.Organization(
+                pref_label=metadata.name,
+                alternative_name=(
+                    metadata.alternative_names[0] if metadata.alternative_names else None
+                ),
+                ror_id=normalized,  # ty:ignore[unknown-argument]
+            )
+
     registered = db_client.register_entity(entity=entity)
     return registered.model_dump(mode="json")
-
-
-def _build_preview(
-    id_type: IdentifierType,
-    identifier: str,
-    db_client: DatabaseClientDep,
-    http_client: httpx.Client,
-) -> ContributorPreview:
-    """Fetch metadata and check for existing records."""
-    # ORCID
-    if id_type == IdentifierType.orcid:
-        metadata = fetch_orcid_metadata(orcid=identifier, http_client=http_client)
-        return _person_preview(identifier, metadata, db_client)
-
-    # ROR ID
-    metadata = fetch_ror_metadata(ror_id=identifier, http_client=http_client)
-    return _organization_preview(identifier, metadata, db_client)
-
-
-def _person_preview(
-    orcid: str, metadata: OrcidMetadata, db_client: DatabaseClientDep
-) -> ContributorPreview:
-    """Build a ContributorPreview for a person."""
-    existing = db_client.search_entity(entity_type=models.Person, query={"orcid": orcid}).one_or_none()
-
-    return ContributorPreview(
-        identifier=orcid,
-        identifier_type="orcid",
-        name=metadata.pref_label,
-        given_name=metadata.given_name,
-        family_name=metadata.family_name,
-        agent_type="person",
-        already_registered=bool(existing),
-        existing_id=str(existing[0].id) if existing else None,
-    )
-
-
-def _organization_preview(
-    ror_id: str, metadata: RorMetadata, db_client: DatabaseClientDep
-) -> ContributorPreview:
-    """Build a ContributorPreview for an organization."""
-    existing = db_client.search_entity(
-        entity_type=models.Organization, query={"ror_id": ror_id}
-    ).all()
-
-    return ContributorPreview(
-        identifier=ror_id,
-        identifier_type="ror",
-        name=metadata.name,
-        alternative_name=metadata.alternative_names[0] if metadata.alternative_names else None,
-        agent_type="organization",
-        already_registered=bool(existing),
-        existing_id=str(existing[0].id) if existing else None,
-    )
-
-
-def _create_entity(
-    id_type: IdentifierType, preview: ContributorPreview
-) -> models.Person | models.Organization:
-    """Create the entitysdk model from preview data."""
-    if id_type == IdentifierType.orcid:
-        return models.Person(
-            pref_label=preview.name,
-            given_name=preview.given_name,
-            family_name=preview.family_name,
-            orcid=preview.identifier,
-        )
-    return models.Organization(
-        pref_label=preview.name,
-        alternative_name=preview.alternative_name,
-        ror_id=preview.identifier,
-    )
