@@ -62,7 +62,7 @@ class GenerateSimulationTask(Task):
         if isinstance(circuit, Circuit):
             L.info("initialize.circuit is a Circuit instance.")
             self._circuit = circuit
-            self._sonata_config["network"] = circuit.path
+            self._sonata_config["network"] = str(Path(circuit.path).resolve())
 
         elif isinstance(
             circuit,
