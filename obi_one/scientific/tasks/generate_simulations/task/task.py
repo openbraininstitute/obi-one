@@ -160,7 +160,6 @@ class GenerateSimulationTask(Task):
             mechanisms: dict = {}
             for modification in getattr(self.config, "neuronal_manipulations", {}).values():
                 result = modification.config(
-                    self._circuit.default_population_name,  # ty:ignore[unresolved-attribute]
                     self.config.default_node_set_name,
                 )
                 if isinstance(result, list):
