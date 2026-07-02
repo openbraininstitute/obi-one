@@ -36,11 +36,11 @@ dependencies = [
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
-    "bluecellulab>=2.6.98",
+    "bluecellulab>=2.6.99",
     "blueetl",
     "bluepyefe>=2.3.57",
     "bluepysnap>=3.0.5",
-    "brainbuilder>=0.20.2",
+    "brainbuilder>=0.20.4",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
@@ -52,7 +52,7 @@ dependencies = [
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.6.2",
+    "obp-accounting-sdk>=0.6.3",
     "numpy",
 ]
 
@@ -66,6 +66,7 @@ connectivity = [
 # MESHING - optional, private dependency needed to create meshes from morphologies
 meshing = [
     "neuromorphomesh",
+    "ultraliser>=2.1.9"
 ]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
@@ -100,7 +101,7 @@ all = [
 # Requires MPI-enabled h5py and NEURON built from source.
 # Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
 bluerecording = [
-    "bluerecording>=0.4.5",
+    "bluerecording>=0.4.6",
 ]
 
 [dependency-groups]
@@ -139,6 +140,8 @@ include = ["obi_one*"]
 "obi_one.scientific.library" = ["*.json"]
 
 [tool.setuptools_scm]
+tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
+version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.uv]
@@ -152,6 +155,7 @@ explicit = true
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
 neuromorphomesh = { index = "obi-codeartifact" }
+ultraliser = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100

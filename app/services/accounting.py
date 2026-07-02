@@ -24,6 +24,8 @@ from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletoni
 from obi_one.utils.db_sdk import select_json_asset_content
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
+    CircuitScale.single: ServiceSubtype.SINGLE_SIM,
+    CircuitScale.pair: ServiceSubtype.PAIR_SIM,
     CircuitScale.small: ServiceSubtype.SMALL_SIM,
     CircuitScale.microcircuit: ServiceSubtype.MICROCIRCUIT_SIM,
     CircuitScale.region: ServiceSubtype.REGION_SIM,
@@ -118,20 +120,25 @@ def _evaluate_accounting_parameters(
     and uses the neuron_count from the simulation entity for the count.
     """
     match task_definition.task_type:
+        case TaskType.mesh_lod_generation:
+            count = 1
+            service_subtype = ServiceSubtype.NEURON_MESH_SKELETONIZATION
         case TaskType.circuit_extraction:
-            return AccountingParameters(
-                count=estimate_circuit_extraction_count(db_client=db_client, config_id=config_id),
-                service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
-            )
+            count = estimate_circuit_extraction_count(db_client=db_client, config_id=config_id)
+            service_subtype = ServiceSubtype.CIRCUIT_EXTRACTION
         case (
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_cluster
             | TaskType.circuit_simulation_inait_machine
-            | TaskType.circuit_simulation_brian2_machine
         ):
             return _evaluate_circuit_simulation_parameters(
                 db_client=db_client,
                 simulation_id=config_id,
+            )
+        case TaskType.circuit_simulation_brian2_machine:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.BRIAN2_CIRCUIT_SIMULATION,
             )
         case TaskType.em_synapse_mapping:
             return AccountingParameters(
@@ -139,21 +146,20 @@ def _evaluate_accounting_parameters(
                 service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
             )
         case TaskType.ion_channel_model_simulation_execution:
-            return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.ION_CHANNEL_SIM,
-            )
+            count = 1
+            service_subtype = ServiceSubtype.ION_CHANNEL_SIM
         case TaskType.morphology_skeletonization:
-            return AccountingParameters(
-                count=estimate_skeletonization_count(db_client=db_client, config_id=config_id),
-                service_subtype=ServiceSubtype.NEURON_MESH_SKELETONIZATION,
-            )
+            count = estimate_skeletonization_count(db_client=db_client, config_id=config_id)
+            service_subtype = ServiceSubtype.NEURON_MESH_SKELETONIZATION
         case _:
             # For other task types, use the default mapping
-            return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.SMALL_SIM,
-            )
+            count = 1
+            service_subtype = ServiceSubtype.SMALL_SIM
+
+    return AccountingParameters(
+        count=count,
+        service_subtype=service_subtype,
+    )
 
 
 _DURATION_BILLING_SCALES = {

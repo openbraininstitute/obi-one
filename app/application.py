@@ -26,6 +26,7 @@ from app.endpoints import (
     count_scan_coordinates,
     ephys_metrics,
     ion_channel_properties,
+    mesh_registration,
     mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
@@ -176,6 +177,7 @@ app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(ephys_metrics.router)
 app.include_router(ion_channel_properties.router)
+app.include_router(mesh_registration.router)
 app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
 app.include_router(morphology_validation.router)

@@ -60,6 +60,10 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
 )
+from obi_one.scientific.tasks.mesh_lod_generation.config import (
+    MeshLodGenerationSingleConfig,
+)
+from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationTask
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationSingleConfig,
     MorphologyContainerizationTask,
@@ -111,6 +115,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         IonChannelModelSimulationExecutionSingleConfig,
         None,
     ),
+    TaskType.mesh_lod_generation: (
+        MeshLODGenerationTask,
+        MeshLodGenerationSingleConfig,
+        AssetLabel.task_config,
+    ),
     TaskType.morphology_skeletonization: (
         SkeletonizationTask,
         SkeletonizationSingleConfig,
@@ -135,11 +144,6 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.contribute_morphology: (
         ContributeMorphologyTask,
         ContributeMorphologySingleConfig,
-        None,
-    ),
-    TaskType.create_extracellular_recording_array: (
-        CreateExtracellularRecordingArrayTask,
-        CreateExtracellularRecordingArraySingleConfig,
         None,
     ),
     TaskType.electrophysiology_metrics: (

@@ -13,7 +13,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_NODE_SET_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
@@ -56,7 +55,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            NeuronSetReference.__name__: DEFAULT_NODE_SET_NAME,
+            NeuronSetReference.__name__: "Default: Sugar gustatory receptor neurons",
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
@@ -80,6 +79,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
+                SchemaKey.UI_HIDDEN: True,
             },
         )
 
