@@ -161,6 +161,13 @@ ultraliser = { index = "obi-codeartifact" }
 line-length = 100
 target-version = "py312"
 include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
+# Legacy modules kept for reference; excluded from formatting and linting.
+extend-exclude = [
+    "obi_one/scientific/blocks/neuron_sets/old",
+    "obi_one/scientific/blocks/synaptic_model_assigners",
+]
+# Honour the exclusion even when files are passed explicitly (e.g. `make format FILE=...`).
+force-exclude = true
 
 [tool.ruff.lint]
 preview = true
@@ -209,7 +216,7 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/blocks/neuron_sets/pair.py" = [
+"obi_one/scientific/blocks/neuron_sets/old/pair.py" = [
     "SLF001"
 ]
 
@@ -223,6 +230,15 @@ max-returns = 6
 max-branches = 12
 max-statements = 50
 max-public-methods = 60
+
+[tool.ty.src]
+# Legacy modules kept for reference; excluded from ty type checking.
+# (ty has no config-level force-exclude; this is honoured when ty walks a parent dir,
+# which is how `make lint` invokes it: `ty check app obi_one`.)
+exclude = [
+    "obi_one/scientific/blocks/neuron_sets/old",
+    "obi_one/scientific/blocks/synaptic_model_assigners",
+]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

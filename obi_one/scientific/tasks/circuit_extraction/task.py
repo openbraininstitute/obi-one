@@ -246,13 +246,14 @@ class CircuitExtractionTask(Task):
         # (will raise an error in case already existing)
         with BenchmarkTracker.section("add_node_set"):
             nset_name = self.config.neuron_set.__class__.__name__
-            nset_def = self.config.neuron_set.get_node_set_definition(
+            nset_def, nset_combined = self.config.neuron_set.get_node_set_definition(
                 self._circuit,
-                self._circuit.default_population_name,
             )
             sonata_circuit = self._circuit.sonata_circuit
             add_node_set_to_circuit(
-                sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
+                sonata_circuit,
+                nset_combined | {nset_name: nset_def},
+                overwrite_if_exists=False,
             )
 
         # Create subcircuit using "brainbuilder"

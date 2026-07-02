@@ -3,10 +3,12 @@ import re
 from pathlib import Path
 
 import numpy as np
+import pydantic
 import pytest
 from bluepysnap import Circuit
 
 import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.population import VirtualPopulationNeuronSet
 
 from tests.utils import CIRCUIT_DIR
 
@@ -34,15 +36,15 @@ def _get_population_ids(circuit, neuron_set, with_virtual, with_external):
         src = edges.source
         tgt = edges.target
         if _is_virtual_epop(circuit, epop_name):
-            tgt_nids = neuron_set.get_neuron_ids(circuit, population=tgt.name)
+            tgt_nids = neuron_set.get_neuron_ids(circuit)[tgt.name]
             etab = edges.pathway_edges(target=tgt_nids, properties=["@source_node", "@target_node"])
             if with_virtual:
                 _update_ids(npop_dict, src.name, etab["@source_node"].to_numpy())
                 _update_ids(epop_dict, epop_name, etab.index.to_numpy())
             _update_ids(npop_dict, tgt.name, etab["@target_node"].to_numpy())
         else:
-            src_nids = neuron_set.get_neuron_ids(circuit, population=src.name)
-            tgt_nids = neuron_set.get_neuron_ids(circuit, population=tgt.name)
+            src_nids = neuron_set.get_neuron_ids(circuit)[src.name]
+            tgt_nids = neuron_set.get_neuron_ids(circuit)[tgt.name]
             etab = edges.pathway_edges(
                 source=src_nids, target=tgt_nids, properties=["@source_node", "@target_node"]
             )
@@ -162,7 +164,9 @@ def test_circuit_extraction(tmp_path):
                 do_virtual=do_virtual,
                 create_external=create_external,
             )
-            neuron_set = obi.PredefinedNeuronSet(node_set=["L6_IPC", "L6_TPC:A"])
+            neuron_set = obi.BiophysicalPopulationPredefinedNeuronSet(
+                node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+            )
             info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
 
             circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
@@ -219,3 +223,20 @@ def test_circuit_extraction(tmp_path):
 
                 # Check HOC files
                 _check_hoc(npop_dict, c_res)
+
+
+def test_circuit_extraction_rejects_virtual_neuron_set():
+    """CircuitExtractionScanConfig should not accept virtual neuron sets."""
+    virtual_nset = VirtualPopulationNeuronSet(population="VPM")
+
+    with pytest.raises(pydantic.ValidationError, match="union_tag_invalid"):
+        obi.CircuitExtractionScanConfig(
+            initialize=obi.CircuitExtractionScanConfig.Initialize(
+                circuit=obi.Circuit(
+                    name="N_10__top_nodes_dim6",
+                    path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+                ),
+            ),
+            neuron_set=virtual_nset,
+            info=obi.Info(campaign_name="Test", campaign_description="Should fail"),
+        )
