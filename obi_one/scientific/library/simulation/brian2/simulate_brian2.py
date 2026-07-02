@@ -35,7 +35,7 @@ POPULATION_NAME = "drosophila"
 
 
 def _convert_to_known_unit(v: str) -> brian2.Unit | int:
-    if v == "1":
+    if v == "1":  # unitless is `1` in brian2
         return int(v)
     if v not in KNOWN_UNITS:
         msg = f"Expecting a known brian2 unit, got: `{v}`"
