@@ -1764,7 +1764,7 @@ wheels = [
 
 [[package]]
 name = "morph-spines"
-version = "0.7.0"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -1772,15 +1772,12 @@ dependencies = [
     { name = "neurom" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
     { name = "scipy" },
-    { name = "tables" },
     { name = "trimesh" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/ce/3ba6c9b3ef987d02dbab339099ce36a7d2d3600ced2c0f3a815bba3cf63c/morph_spines-0.7.0.tar.gz", hash = "sha256:9844188aad7d4cceaedc4bba8bee250f86a533e4cdd9e3439e4440d373d40b12", size = 1124723, upload-time = "2026-02-06T10:39:15.129Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/46/f546554344a5cc2f918dcb463ca34f4cc11356f7c649a5c891344f427b2b/morph_spines-1.1.0.tar.gz", hash = "sha256:fba112f32392775891351f34f3428c28acae287c2137b5b96d8865aacd97ef31", size = 1396114, upload-time = "2026-06-23T10:26:22.257Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5e/8c/a1827944c648566028b7ece21af7d9cdf7e4da42d95506e5cad86a1cbc79/morph_spines-0.7.0-py3-none-any.whl", hash = "sha256:8af2a9170b4eeccfea02c97bd82635639e22a57690e3911f85c165880a58827f", size = 16155, upload-time = "2026-02-06T10:39:13.576Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/11/c2453af42fbd06d10d1843c8a62030109ceade0879768a0d1c68d3347134/morph_spines-1.1.0-py3-none-any.whl", hash = "sha256:e2b651c5f5bfc901c518af714c189c11b49dbc211b7c7c76eb5ba68afaf47531", size = 37254, upload-time = "2026-06-23T10:26:20.87Z" },
 ]
 
 [[package]]
@@ -2184,6 +2181,7 @@ all = [
     { name = "pyjwt" },
     { name = "python-multipart" },
     { name = "starlette" },
+    { name = "ultraliser" },
     { name = "uvicorn" },
 ]
 bluerecording = [
@@ -2195,6 +2193,7 @@ connectivity = [
 ]
 meshing = [
     { name = "neuromorphomesh" },
+    { name = "ultraliser" },
 ]
 notebooks = [
     { name = "ipykernel" },
@@ -2274,6 +2273,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "starlette", marker = "extra == 'service'" },
+    { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
 provides-extras = ["connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
@@ -3391,6 +3391,26 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ba/19/1b9b0e29f30c6d35cb345486df41110984ea67ae69dddbc0e8a100999493/tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10", size = 198254, upload-time = "2026-04-24T15:22:08.651Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/e4/dccd7f47c4b64213ac01ef921a1337ee6e30e8c6466046018326977efd95/tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7", size = 349321, upload-time = "2026-04-24T15:22:05.876Z" },
+]
+
+[[package]]
+name = "ultraliser"
+version = "2.2.4"
+source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
+dependencies = [
+    { name = "connectome-utilities" },
+    { name = "h5py" },
+    { name = "matplotlib" },
+    { name = "morph-spines" },
+    { name = "morphio" },
+    { name = "neurom" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+wheels = [
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.2.4/ultraliser-2.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4120f998a7bcdaf09d9b7f46cc7790bb3b60160913d91e658b440a62adb5641a", upload-time = "2026-06-30T14:21:56.758Z" },
 ]
 
 [[package]]
