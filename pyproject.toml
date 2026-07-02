@@ -44,7 +44,7 @@ dependencies = [
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
-    "morph_spines",
+    "morph_spines>=1.1.0",
     "morph-tool",
     "neurom",
     "libsonata>=0.1.36",
