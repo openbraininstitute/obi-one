@@ -44,6 +44,13 @@ def validate_string(schema: dict, prop: str, ref: str) -> None:
         raise ValueError(msg)
 
 
+def validate_list_strings(schema: dict, prop: str, ref: str) -> None:
+    value = schema.get(prop, [])
+    if type(value) is not list or not all(isinstance(item, str) for item in value):
+        msg = f"Validation error at {ref}: {prop} must be a list of strings. Got: {value}"
+        raise ValueError(msg)
+
+
 def validate_type(schema: dict, ref: str) -> None:
     if not isinstance(schema, dict):
         msg = f"Validation error at {ref}: 'type' schema must be a dictionary"
@@ -195,28 +202,37 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
 
 
 def validate_reference(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, SchemaKey.REFERENCE_TYPES, f"{param} at {ref}")
+    validate_list_strings(schema, SchemaKey.REFERENCE_TYPES, f"{param} at {ref}")
 
-    reference_type = schema.get(SchemaKey.REFERENCE_TYPES)
+    reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
     schema_union = schema.get("anyOf", [])
 
-    if len(schema_union) != 2 or (refref := schema_union[0].get("$ref")) is None:
+    if (refref := schema_union[0].get("$ref")) is None:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
             "be a union with a 'BlockReference' as first element"
         )
         raise ValidationError(msg) from None
 
-    ref_schema = resolve_ref(openapi_schema, refref)
+    # Each non-null member of the union is a $ref to a BlockReference whose
+    # default `type` is its class name. Collect these and check they correspond
+    # exactly to the declared `reference_types`.
+    union_reference_types = []
+    for union_member in schema_union:
+        if (member_ref := union_member.get("$ref")) is None:
+            # Skip the `null` member of a nullable reference union.
+            continue
+        member_schema = resolve_ref(openapi_schema, member_ref)
+        union_reference_types.append(
+            member_schema.get("properties", {}).get("type", {}).get("default")
+        )
 
-    if (
-        ref_type := ref_schema.get("properties", [{}]).get("type", {}).get("default")
-    ) != reference_type:
+    if set(union_reference_types) != set(reference_types):
         msg = (
-            f"Validation error at {ref}: reference param {param} should "
-            "contain a default type consistent with 'reference_type': "
-            f"Expected {reference_type}, got {ref_type}"
+            f"Validation error at {ref}: reference param {param} should reference "
+            "BlockReferences whose default 'type' values match 'reference_types': "
+            f"Expected {reference_types}, got {union_reference_types}"
         )
         raise ValidationError(msg) from None
 
@@ -571,6 +587,9 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case UIElement.VOLTAGE_DURATION:
             validate_voltage_duration(schema, param, ref)
+        case UIElement.NEURON_PROPERTY_FILTER:
+            # Validation not yet implemented
+            pass
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"

@@ -16,8 +16,8 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
     CircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONMEModelWithSynapsesNeuronSetUnion,
-    NeuronSetReference,
 )
 
 L = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

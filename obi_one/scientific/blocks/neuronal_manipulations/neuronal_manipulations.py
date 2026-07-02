@@ -125,7 +125,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict]:
+    def config(self, default_node_set: str) -> list[dict]:
         """Generate SONATA conditions.modifications entries for each section list.
 
         Returns:
@@ -184,7 +184,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict] | dict:
+    def config(self, default_node_set: str) -> list[dict] | dict:
         """Generate SONATA config entry.
 
         Returns:

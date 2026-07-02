@@ -10,6 +10,7 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     ALL_NEURON_SETS_REFERENCE_UNION,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
@@ -33,16 +34,18 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
 
-    postsynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Postsynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
         },
     )
 

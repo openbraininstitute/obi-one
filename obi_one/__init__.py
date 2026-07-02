@@ -24,14 +24,15 @@ __all__ = [
     "AllBiophysicalNeurons",
     "AllDistributionsReference",
     "AllDistributionsUnion",
-    "AllNeurons",
     "AllNonVirtualNeurons",
     "AllPairsSynapticModelAssigner",
     "AllPointNeurons",
+    "AllPopulationNeurons",
     "AllVirtualNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
+    "BiophysicalNeuronSetReference",
     "BiophysicalPopulationIDNeuronSet",
     "BiophysicalPopulationNeuronSet",
     "BiophysicalPopulationPredefinedNeuronSet",
@@ -73,6 +74,7 @@ __all__ = [
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
+    "EMSynapseMappingInputNamedTuple",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
     "EMSynapseMappingTask",
@@ -161,6 +163,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PointNeuronSetReference",
     "PointPopulationIDNeuronSet",
     "PointPopulationNeuronSet",
     "PointPopulationPredefinedNeuronSet",
@@ -217,6 +220,7 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
     "VirtualPopulationPredefinedNeuronSet",
@@ -329,9 +333,9 @@ from obi_one.scientific.blocks.neuron_sets.property import (
 )
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
-    AllNeurons,
     AllNonVirtualNeurons,
     AllPointNeurons,
+    AllPopulationNeurons,
     AllVirtualNeurons,
 )
 from obi_one.scientific.blocks.recording import (
@@ -448,6 +452,7 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
     CreateExtracellularRecordingArrayTask,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    EMSynapseMappingInputNamedTuple,
     EMSynapseMappingScanConfig,
     EMSynapseMappingSingleConfig,
 )
@@ -536,6 +541,11 @@ from obi_one.scientific.unions.unions_distributions import (
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion

@@ -29,7 +29,10 @@ L = logging.getLogger("obi-one")
 
 
 class NeuronPropertyFilter(OBIBaseModel):
-    filter_dict: dict[str, list[str] | list[int]] = Field(
+    filter_dict: dict[
+        str,
+        Annotated[list[str], Field(min_length=1)] | Annotated[list[int], Field(min_length=1)],
+    ] = Field(
         title="Filter",
         description=(
             "Filter dictionary. Note: this is NOT a Block and the list here is not to"

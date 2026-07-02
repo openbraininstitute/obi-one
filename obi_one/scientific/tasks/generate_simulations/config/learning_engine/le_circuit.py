@@ -19,8 +19,9 @@ from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+    POINT_NEURON_SETS_REFERENCE_TYPES,
+    POINT_NEURON_SETS_REFERENCE_UNION,
     LearningEngineNeuronSetUnion,
-    NeuronSetReference,
     PointNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
@@ -66,13 +67,13 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             },
         )
 
-        node_set: NeuronSetReference | None = Field(
+        node_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
             default=None,
             title="Neuron Set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+                SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
             },
         )
@@ -105,7 +106,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [PointNeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

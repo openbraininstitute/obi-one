@@ -29,7 +29,10 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
+    NEURONSimulationNeuronSetUnion,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
@@ -79,17 +82,15 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
-        node_set: BiophysicalNeuronSetReference | CombinedBiophysicalNeuronSetReference | None = (
-            Field(
-                default=None,
-                title="Neuron Set",
-                description="Neuron set to simulate.",
-                json_schema_extra={
-                    SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-                    SchemaKey.REFERENCE_TYPES: SPECIAL_ALL_NEURON_SETS_REFERENCE_TYPES,
-                    SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
-                },
-            )
+        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+            default=None,
+            title="Neuron Set",
+            description="Neuron set to simulate.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+                SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
+            },
         )
 
     initialize: Initialize = Field(

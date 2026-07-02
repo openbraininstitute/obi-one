@@ -13,6 +13,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.constants import (
     DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
@@ -120,6 +121,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
 
@@ -147,11 +149,15 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
 
         if (self.neuron_set is not None) and (
             self.neuron_set.block.get_neuron_set_population_type()
-            not in {"biophysical", "inait_point_neuron_lif", "brian2_point"}
+            not in {
+                NeuronSetPopulationType.BIOPHYSICAL,
+                NeuronSetPopulationType.POINT,
+                NeuronSetPopulationType.NONVIRTUAL,
+            }
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
-                f"'{self.block_name}' should be biophysical!"
+                f"'{self.block_name}' should be non-virtual (biophysical or point)!"
             )
             raise OBIONEError(msg)
 

@@ -74,7 +74,10 @@ A single `NeuronPropertyFilter` is one row in the UI panel. Its data model is:
 
 ```py
 class NeuronPropertyFilter(OBIBaseModel):
-    filter_dict: dict[str, list] = Field(
+    filter_dict: dict[
+        str,
+        Annotated[list[str], Field(min_length=1)] | Annotated[list[int], Field(min_length=1)],
+    ] = Field(
         title="Filter",
         description="Filter dictionary. The list per key is NOT a multi-dimensional "
                     "parameter sweep but the set of accepted values for the property, "
@@ -84,7 +87,9 @@ class NeuronPropertyFilter(OBIBaseModel):
 
 class PropertyNeuronSet(PopulationNeuronSet):
 
-    property_filter: NeuronPropertyFilter | list[NeuronPropertyFilter] = Field(
+    property_filter: (
+        NeuronPropertyFilter | Annotated[list[NeuronPropertyFilter], Field(min_length=1)]
+    ) = Field(
         title="Neuron property filter",
         description="NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
         json_schema_extra={

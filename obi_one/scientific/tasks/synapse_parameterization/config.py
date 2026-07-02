@@ -10,12 +10,15 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+    ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONSynapseParameterizationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
@@ -55,6 +58,9 @@ class SynapseParameterizationScanConfig(ScanConfig):
             BlockGroup.SYNAPSE_PARAMETERS,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
     }
 
     class Initialize(Block):
@@ -126,7 +132,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

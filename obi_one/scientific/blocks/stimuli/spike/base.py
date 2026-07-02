@@ -35,6 +35,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
 
@@ -45,6 +46,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
         },
     )
 
@@ -74,8 +76,11 @@ class SpikeStimulus(StimulusWithTimestamps):
             self.targeted_neuron_set, default_target_neuron_set_reference
         )
 
-        if target_neuron_set.has_biophysical_neurons(circuit) is False:  # ty:ignore[unresolved-attribute]
-            msg = "Target Neuron Set of Spike Stimulus must be biophysical."
+        if (
+            not target_neuron_set.has_biophysical_neurons(circuit)  # ty:ignore[unresolved-attribute]
+            and not target_neuron_set.has_point_neurons(circuit)  # ty:ignore[unresolved-attribute]
+        ):
+            msg = "Target Neuron Set of Spike Stimulus must be biophysical or point."
             raise OBIONEError(msg)
 
         spike_file_relative_path = self.generate_spikes(
