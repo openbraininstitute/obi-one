@@ -1,11 +1,17 @@
 """Unit tests for circuit registration endpoint helpers."""
 
 import tarfile
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
 
-from app.endpoints.circuit_registration import _extract_archive
+from app.endpoints.circuit_registration import (
+    _extract_archive,
+    _trigger_asset_generation_task,
+    _trigger_validation_task,
+)
 
 
 class TestExtractArchive:
@@ -50,5 +56,122 @@ class TestExtractArchive:
         dest.mkdir()
         result = _extract_archive(archive_path, dest)
         assert result.exists()
-        # Directory exists but is empty
         assert list(result.iterdir()) == []
+
+
+class TestTriggerValidationTask:
+    @patch("app.endpoints.circuit_registration.settings")
+    def test_success(self, mock_settings):
+        mock_settings.API_URL = "http://localhost:8100"
+        mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
+
+        ls_client = MagicMock()
+        response = MagicMock()
+        response.is_success = True
+        ls_client.post.return_value = response
+
+        circuit_id = uuid4()
+        project_id = uuid4()
+        virtual_lab_id = uuid4()
+
+        _trigger_validation_task(
+            ls_client=ls_client,
+            circuit_id=circuit_id,
+            project_id=project_id,
+            virtual_lab_id=virtual_lab_id,
+        )
+
+        ls_client.post.assert_called_once()
+        call_kwargs = ls_client.post.call_args[1]
+        assert call_kwargs["url"] == "/job"
+        job_data = call_kwargs["json"]
+        assert f"--circuit_id {circuit_id}" in job_data["inputs"]
+        assert str(project_id) == job_data["project_id"]
+
+    @patch("app.endpoints.circuit_registration.settings")
+    def test_failure_logs_warning(self, mock_settings):
+        mock_settings.API_URL = "http://localhost:8100"
+        mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
+
+        ls_client = MagicMock()
+        response = MagicMock()
+        response.is_success = False
+        response.text = "server error"
+        ls_client.post.return_value = response
+
+        _trigger_validation_task(
+            ls_client=ls_client,
+            circuit_id=uuid4(),
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+        )
+        ls_client.post.assert_called_once()
+
+
+class TestTriggerAssetGenerationTask:
+    @patch("app.endpoints.circuit_registration.settings")
+    def test_success(self, mock_settings):
+        mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
+        mock_settings.APP_VERSION = "1.2.3-dev"
+
+        ls_client = MagicMock()
+        response = MagicMock()
+        response.is_success = True
+        ls_client.post.return_value = response
+
+        circuit_id = uuid4()
+        project_id = uuid4()
+        virtual_lab_id = uuid4()
+
+        _trigger_asset_generation_task(
+            ls_client=ls_client,
+            circuit_id=circuit_id,
+            project_id=project_id,
+            virtual_lab_id=virtual_lab_id,
+        )
+
+        ls_client.post.assert_called_once()
+        call_kwargs = ls_client.post.call_args[1]
+        job_data = call_kwargs["json"]
+        assert "tag:1.2.3" in job_data["code"]["ref"]
+        assert f"--circuit_id {circuit_id}" in job_data["inputs"]
+
+    @patch("app.endpoints.circuit_registration.settings")
+    def test_none_app_version(self, mock_settings):
+        mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
+        mock_settings.APP_VERSION = None
+
+        ls_client = MagicMock()
+        response = MagicMock()
+        response.is_success = True
+        ls_client.post.return_value = response
+
+        _trigger_asset_generation_task(
+            ls_client=ls_client,
+            circuit_id=uuid4(),
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+        )
+
+        call_kwargs = ls_client.post.call_args[1]
+        job_data = call_kwargs["json"]
+        assert "tag:0.0.0" in job_data["code"]["ref"]
+
+    @patch("app.endpoints.circuit_registration.settings")
+    def test_failure_logs_warning(self, mock_settings):
+        mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
+        mock_settings.APP_VERSION = "2.0.0"
+
+        ls_client = MagicMock()
+        response = MagicMock()
+        response.is_success = False
+        response.text = "internal error"
+        ls_client.post.return_value = response
+
+        _trigger_asset_generation_task(
+            ls_client=ls_client,
+            circuit_id=uuid4(),
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+        )
+        ls_client.post.assert_called_once()
