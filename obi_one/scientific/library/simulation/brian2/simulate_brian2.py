@@ -31,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_path=True)
 L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
+POPULATION_NAME = "drosophila"
 
 brian2.BrianLogger.log_level_debug()
 
@@ -108,7 +109,7 @@ def _make_poisson(
 ) -> tuple[brian2.NeuronGroup, list]:
     L.info("Making Poisson Stimulus: rate: %f Hz, weight: %f mV", config.rate, config.weight)
     exc_node_ids = simulation.node_sets.to_libsonata.materialize(
-        config.node_set, simulation.circuit.nodes["drosophila"].to_libsonata
+        config.node_set, simulation.circuit.nodes[POPULATION_NAME].to_libsonata
     ).flatten()
 
     poisson_inputs = []
@@ -148,16 +149,15 @@ def _get_spike_replay(
     n0: brian2.NeuronGroup,
     synapses: brian2.Synapses,
     synapse_template: SynapseTemplate,
-):
-    #XXX check population matches
-    #input_.reader.get_population_names()
-    population = 'drosophila'
+) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses]:
+    assert len(input_.reader.get_population_names()) == 1
+    assert next(iter(input_.reader.get_population_names())) == POPULATION_NAME
 
     node_ids = simulation.node_sets.to_libsonata.materialize(
-        input_.node_set, simulation.circuit.nodes["drosophila"].to_libsonata
+        input_.node_set, simulation.circuit.nodes[POPULATION_NAME].to_libsonata
     ).flatten()
 
-    spikes = input_.reader[population].get_dict()
+    spikes = input_.reader[POPULATION_NAME].get_dict()
     spikes, times = spikes["node_ids"], spikes["timestamps"]
     mask = np.isin(spikes, node_ids)
     spikes, times = spikes[mask], times[mask]
@@ -177,7 +177,7 @@ def _get_spike_replay(
     times = input_.delay + times
 
     L.info("Replaying %d spikes from population `%s`, node_set: `%s`",
-           len(times), population, input_.node_set)
+           len(times), POPULATION_NAME, input_.node_set)
 
     replay = brian2.SpikeGeneratorGroup(
         len(n0), indices=spikes, times=times * brian2.units.ms
@@ -187,9 +187,6 @@ def _get_spike_replay(
         replay,
         n0,
         model=synapse_template.params.model,
-        # "on_pre": "g += w"
-        #on_pre="v += 0.1 * mV",
-        #on_pre="g += 0.1 * mV",
         on_pre=synapse_template.params.on_pre,
         delay=None
         if synapse_template.params.delay is None
@@ -205,14 +202,14 @@ def _get_spike_replay(
         values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
         setattr(replay_connectivity, name, values)
 
-    return [replay, replay_connectivity]
-
-#ValueError: Using a dt of <spikegeneratorgroup.dt: 100. * usecond>, some neurons of SpikeGeneratorGroup 'spikegeneratorgroup' spike more than once during a time step.
+    return (replay, replay_connectivity)
 
 
 def _get_inputs(
-    simulation: bluepysnap.Simulation, n0: brian2.NeuronGroup,
-    synapses, synapse_template: SynapseTemplate
+    simulation: bluepysnap.Simulation,
+    n0: brian2.NeuronGroup,
+    synapses: brian2.Synapses,
+    synapse_template: SynapseTemplate
 ) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
     inputs = []
     for input_ in simulation.inputs.values():
@@ -267,7 +264,8 @@ def _write_spikes(
     return filepath
 
 
-def _create_neurons(circuit: bluepysnap.Circuit, simulation) -> brian2.NeuronGroup:
+def _create_neurons(simulation: bluepysnap.Simulation) -> brian2.NeuronGroup:
+    circuit = simulation.circuit
     assert len(circuit.nodes.population_names) == 1, "Only one population supported"
     nodes = circuit.nodes[next(iter(circuit.nodes.population_names))]
     L.info("Loading neuron population: `%s`, with %d ids", nodes.name, len(nodes.ids()))
@@ -294,7 +292,6 @@ def _create_neurons(circuit: bluepysnap.Circuit, simulation) -> brian2.NeuronGro
         reset=template.params.reset,
         refractory=template.params.refractory,
         namespace={k: v.get() for k, v in template.namespace.items()},
-        dt=simulation.run.dt * brian2.units.ms
     )
 
     # Override the initial membrane potential with `v_init` (mV) from the simulation config,
@@ -350,24 +347,18 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
     simulation = bluepysnap.Simulation(simulation_config_path)
     circuit = simulation.circuit
 
-    assert circuit.nodes.population_names == ["drosophila"]
+    assert circuit.nodes.population_names == [POPULATION_NAME]
 
+    brian2.defaultclock.dt = simulation.run.dt * brian2.units.ms
     brian2.seed(simulation.run.random_seed)
     brian2.start_scope()
 
-    neurons = _create_neurons(circuit, simulation)
+    neurons = _create_neurons(simulation)
     synapses, synapse_template = _create_synapses(circuit, neurons)
 
     spike_monitor = brian2.SpikeMonitor(neurons)
 
     neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
-
-    #id_ = 0
-    #id_ = 11916
-    #id_ = 102632 # spike replay
-    #statemon = brian2.StateMonitor(neurons, 'v', record=[id_])
-    #statemon0 = brian2.StateMonitor(neurons, 'g', record=[id_])
-    #net = brian2.Network(neurons, synapses, spike_monitor, statemon, statemon0, *inputs)
 
     net = brian2.Network(neurons, synapses, spike_monitor, *inputs)
 
@@ -377,16 +368,6 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
     )
 
     net.run(duration=simulation.run.tstop * brian2.units.ms)
-
-    #import matplotlib.pyplot as plt
-    #plt.figure(figsize=(9, 4))
-    ##axhline(El/mV, ls='-', c='lightgray', lw=3)
-    #plt.plot(statemon.t/brian2.units.ms, statemon.v[0]/brian2.units.mV, '-b')
-    #plt.plot(statemon0.t/brian2.units.ms, statemon0.g[0]/brian2.units.mV, '-b')
-    ##plot(spikemon.t/ms, spikemon.v/mV, 'ob')
-    #plt.xlabel('Time (ms)')
-    #plt.ylabel('v (mV)');
-    #plt.savefig("test.png")
 
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
