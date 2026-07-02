@@ -40,7 +40,7 @@ dependencies = [
     "blueetl",
     "bluepyefe>=2.3.57",
     "bluepysnap>=3.0.5",
-    "brainbuilder>=0.20.2",
+    "brainbuilder>=0.20.4",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
@@ -101,7 +101,7 @@ all = [
 # Requires MPI-enabled h5py and NEURON built from source.
 # Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
 bluerecording = [
-    "bluerecording>=0.4.5",
+    "bluerecording>=0.4.6",
 ]
 
 [dependency-groups]
