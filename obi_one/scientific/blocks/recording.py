@@ -20,7 +20,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
 class IonChannelVariableForRecording(OBIBaseModel):

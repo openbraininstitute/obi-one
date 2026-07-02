@@ -17,7 +17,6 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base imp
 )
 from obi_one.scientific.unions.unions_combined_neuron_sets import (
     SPECIAL_ALL_NEURON_SETS_REFERENCE_TYPES,
-    CombinedBiophysicalNeuronSetReference,
     SpecialNEURONSimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_distributions import (
@@ -32,7 +31,6 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
-    NEURONSimulationNeuronSetUnion,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
