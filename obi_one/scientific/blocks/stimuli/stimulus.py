@@ -22,9 +22,14 @@ from obi_one.scientific.library.constants import (
     MIN_NON_NEGATIVE_FLOAT_VALUE,
     MIN_TIMESTEP_MILLISECONDS,
 )
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    SPECIAL_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    CombinedBiophysicalNeuronSetReference,
+)
 from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    BiophysicalNeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions.unions_timestamps import (
@@ -172,6 +177,16 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
+
+    ns2: BiophysicalNeuronSetReference | CombinedBiophysicalNeuronSetReference | None = Field(
+        default=None,
+        title="NS2",
+        description="NS2 block associated with the stimulus.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: SPECIAL_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
 
     amplitude: float | list[float] | FloatRange = Field(
         default=0.1,

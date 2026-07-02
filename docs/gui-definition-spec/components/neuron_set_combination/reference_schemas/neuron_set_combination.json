@@ -1,0 +1,43 @@
+{
+  "title": "Combine With",
+  "description": "List of neuron sets and set operations to combine with the base neuron set.",
+  "ui_element": "neuron_set_combination",
+  "reference_types": ["BiophysicalNeuronSetReference"],
+  "type": "array",
+  "maxItems": 5,
+  "items": {
+    "type": "array",
+    "prefixItems": [
+      {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "block_dict_name": {
+                "type": "string",
+                "title": "Block Dict Name",
+                "default": ""
+              },
+              "block_name": {
+                "type": "string",
+                "title": "Block Name"
+              },
+              "type": {
+                "type": "string",
+                "title": "Type"
+              }
+            },
+            "required": ["block_name", "type"]
+          }
+        ]
+      },
+      {
+        "type": "string",
+        "enum": ["union", "intersect", "diff"]
+      }
+    ],
+    "minItems": 2,
+    "maxItems": 2
+  },
+  "default": []
+}
