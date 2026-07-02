@@ -6,11 +6,10 @@ import logging
 from collections import defaultdict
 from functools import cache
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import neurom as nm
 import numpy as np
-from entitysdk.models.measurement_annotation import MeasurementKind
 from neurom.core import Morphology
 
 L = logging.getLogger(__name__)
@@ -369,13 +368,13 @@ def _filter_valid_measurement_kinds(
     return valid_measurement_kinds
 
 
-def compute_morphometrics(morphology_path: str | Path) -> list[MeasurementKind]:
+def compute_morphometrics(morphology_path: str | Path) -> list[dict[str, Any]]:
     """Compute morphometric measurements for a morphology file."""
     neuron = nm.load_morphology(str(morphology_path))
     results_dict = build_results_dict(get_morphology_analysis_dict(), neuron)
     filled = fill_json(copy.deepcopy(get_morphology_template()), results_dict, entity_id="temp_id")
     measurement_kinds = filled["data"][0]["measurement_kinds"]
-    return cast("list[MeasurementKind]", _filter_valid_measurement_kinds(measurement_kinds))
+    return _filter_valid_measurement_kinds(measurement_kinds)
 
 
 def _has_neurite_type(neuron: Morphology, neurite_type: int) -> bool:

@@ -20,7 +20,6 @@ from entitysdk.models import (
     Subject,
 )
 from entitysdk.models.core import Identifiable
-from entitysdk.models.measurement_annotation import MeasurementKind
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -103,7 +102,7 @@ def _validate_file_extension(filename: str | None) -> str:
     return file_extension
 
 
-def run_morphology_analysis(morphology_path: str) -> list[MeasurementKind]:
+def run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
     try:
         return compute_morphometrics(morphology_path)
     except Exception as e:
