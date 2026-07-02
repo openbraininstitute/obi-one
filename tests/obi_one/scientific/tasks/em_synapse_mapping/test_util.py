@@ -27,9 +27,7 @@ def _create_spiny_h5(path, morph_name, *, with_meshes=True, spine_keys=None):
                 dtype=np.float32,
             ),
         )
-        morph_grp.create_dataset(
-            "structure", data=np.array([[0, 2, -1]], dtype=np.int32)
-        )
+        morph_grp.create_dataset("structure", data=np.array([[0, 2, -1]], dtype=np.int32))
 
         # --- /edges/{name} with all mandatory columns ---
         edges_grp = f.create_group(f"edges/{morph_name}")
@@ -57,30 +55,18 @@ def _create_spiny_h5(path, morph_name, *, with_meshes=True, spine_keys=None):
         edges_grp.create_dataset("spine_rotation_y", data=np.zeros(n_spines, dtype=np.float64))
         edges_grp.create_dataset("spine_rotation_z", data=np.zeros(n_spines, dtype=np.float64))
         edges_grp.create_dataset("spine_rotation_w", data=np.ones(n_spines, dtype=np.float64))
-        edges_grp.create_dataset(
-            "afferent_surface_x", data=np.zeros(n_spines, dtype=np.float64)
-        )
-        edges_grp.create_dataset(
-            "afferent_surface_y", data=np.zeros(n_spines, dtype=np.float64)
-        )
-        edges_grp.create_dataset(
-            "afferent_surface_z", data=np.zeros(n_spines, dtype=np.float64)
-        )
+        edges_grp.create_dataset("afferent_surface_x", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset("afferent_surface_y", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset("afferent_surface_z", data=np.zeros(n_spines, dtype=np.float64))
         edges_grp.create_dataset("afferent_center_x", data=np.zeros(n_spines, dtype=np.float64))
         edges_grp.create_dataset("afferent_center_y", data=np.zeros(n_spines, dtype=np.float64))
         edges_grp.create_dataset("afferent_center_z", data=np.zeros(n_spines, dtype=np.float64))
-        edges_grp.create_dataset(
-            "afferent_section_id", data=np.ones(n_spines, dtype=np.uint32)
-        )
-        edges_grp.create_dataset(
-            "afferent_segment_id", data=np.zeros(n_spines, dtype=np.int32)
-        )
+        edges_grp.create_dataset("afferent_section_id", data=np.ones(n_spines, dtype=np.uint32))
+        edges_grp.create_dataset("afferent_segment_id", data=np.zeros(n_spines, dtype=np.int32))
         edges_grp.create_dataset(
             "afferent_segment_offset", data=np.zeros(n_spines, dtype=np.float64)
         )
-        edges_grp.create_dataset(
-            "afferent_section_pos", data=np.zeros(n_spines, dtype=np.float64)
-        )
+        edges_grp.create_dataset("afferent_section_pos", data=np.zeros(n_spines, dtype=np.float64))
 
         # --- /spines/skeletons/{key} ---
         for sk in spine_keys:
@@ -96,8 +82,9 @@ def _create_spiny_h5(path, morph_name, *, with_meshes=True, spine_keys=None):
             soma_grp = f.create_group(f"soma/meshes/{morph_name}")
             soma_grp.create_dataset(
                 "vertices",
-                data=np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-                              dtype=np.float32),
+                data=np.array(
+                    [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=np.float32
+                ),
             )
             soma_grp.create_dataset("triangles", data=np.array([[0, 1, 2]], dtype=np.int32))
 
@@ -110,8 +97,12 @@ def _create_spiny_h5(path, morph_name, *, with_meshes=True, spine_keys=None):
                     "vertices",
                     data=np.array(
                         [
-                            [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
-                            [2.0, 0.0, 0.0], [3.0, 0.0, 0.0], [2.0, 1.0, 0.0],
+                            [0.0, 0.0, 0.0],
+                            [1.0, 0.0, 0.0],
+                            [0.0, 1.0, 0.0],
+                            [2.0, 0.0, 0.0],
+                            [3.0, 0.0, 0.0],
+                            [2.0, 1.0, 0.0],
                         ],
                         dtype=np.float32,
                     ),
