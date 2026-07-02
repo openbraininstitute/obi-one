@@ -1,2 +1,2 @@
-obi-one @ git+https://github.com/openbraininstitute/obi-one.git@mesh_registration_endpoint
+obi-one
 ultraliser>=2.1.9
