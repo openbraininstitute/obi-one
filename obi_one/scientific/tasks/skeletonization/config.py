@@ -67,7 +67,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
         cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
             title="EM Cell Mesh",
             description="EM cell mesh to use for skeletonization.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
         )
 
         neuron_voxel_size: (
