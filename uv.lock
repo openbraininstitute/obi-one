@@ -2245,7 +2245,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.16.0" },
+    { name = "entitysdk", specifier = ">=0.18.0" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },

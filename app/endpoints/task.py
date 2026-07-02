@@ -1,6 +1,9 @@
 from http import HTTPStatus
 from uuid import UUID
 
+import entitysdk.client
+import entitysdk.exception
+from entitysdk import models
 from fastapi import APIRouter, Depends, Response
 from starlette.responses import StreamingResponse
 
@@ -24,6 +27,30 @@ from app.schemas.task import (
 )
 from app.services import accounting as accounting_service, job as job_service, task as task_service
 from app.types import TaskType
+
+
+def _check_circuit_is_active(db_client: entitysdk.client.Client, config_id: UUID) -> None:
+    """Block simulation launch if the circuit is a customized circuit not yet validated."""
+    try:
+        simulation = db_client.get_entity(entity_id=config_id, entity_type=models.Simulation)
+        circuit = db_client.get_entity(entity_id=simulation.entity_id, entity_type=models.Circuit)
+    except entitysdk.exception.EntitySDKError:
+        return
+
+    if circuit.root_circuit_id is None:
+        return
+
+    lifecycle_status = getattr(circuit, "lifecycle_status", None)
+    if lifecycle_status != "active":
+        raise ApiError(
+            message=(
+                f"Circuit is not ready for simulation (lifecycle_status={lifecycle_status!r})."
+                " Validation may still be pending or may have failed."
+            ),
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
+
 
 router = APIRouter(
     prefix="/declared/task",
@@ -64,6 +91,14 @@ def task_launch_endpoint(
         L.info(msg)
 
     task_definition = TASK_DEFINITIONS[json_model.task_type]
+
+    # Gate: block simulation of customized circuits still in "draft" status
+    if json_model.task_type in {
+        TaskType.circuit_simulation,
+        TaskType.circuit_simulation_neuron,
+        TaskType.circuit_simulation_neurodamus_cluster,
+    }:
+        _check_circuit_is_active(db_client, json_model.config_id)
 
     accounting_info = accounting_service.estimate_task_cost(
         db_client=db_client,

@@ -32,7 +32,7 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.16.0",
+    "entitysdk>=0.18.0",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
@@ -249,10 +249,14 @@ addopts = [
     "--cov=app",
     "--durations=10",
     "--durations-min=1.0",
+    "-m not integration",
 ]
 testpaths = [
     "tests",
     "examples",
+]
+markers = [
+    "integration: integration tests requiring a running API (deselected by default)",
 ]
 filterwarnings = [
     "error::pydantic.warnings.PydanticDeprecationWarning",
