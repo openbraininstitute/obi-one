@@ -6,65 +6,122 @@ from obi_one.scientific.tasks.em_synapse_mapping.util import merge_spiny_morphol
 
 
 def _create_spiny_h5(path, morph_name, *, with_meshes=True, spine_keys=None):
-    """Create a minimal but valid morphology-with-spines HDF5 file.
+    """Create a fully valid morphology-with-spines HDF5 file.
 
-    Creates a file that passes merge_morphologies_with_spines validation:
-    - /morphology/{name} with points and structure
-    - /edges/{name} with spine_morphology column + metadata
-    - /spines/skeletons/{key} for each spine key
-    - optionally /soma/meshes/{name} and /spines/meshes/{key}
+    Produces a file that passes the morph-spines validator (structural checks):
+    - /morphology/{name} with points (N,4) float32 and structure (M,3) int32
+    - /edges/{name} with all mandatory columns + metadata group with version=(1,0)
+    - /spines/skeletons/{key} with points and structure
+    - optionally /soma/meshes/{name} and /spines/meshes/{key} (with offsets)
     """
     spine_keys = spine_keys or [morph_name]
+    n_spines = 2
+
     with h5py.File(path, "w") as f:
-        # Morphology skeleton
-        f.create_dataset(
-            f"morphology/{morph_name}/points",
-            data=np.array([[0.0, 0.0, 0.0, 0.5]], dtype=np.float64),
+        # --- /morphology/{name} ---
+        morph_grp = f.create_group(f"morphology/{morph_name}")
+        morph_grp.create_dataset(
+            "points",
+            data=np.array(
+                [[0.0, 0.0, 0.0, 0.5], [1.0, 0.0, 0.0, 0.4], [2.0, 0.0, 0.0, 0.3]],
+                dtype=np.float32,
+            ),
         )
-        f.create_dataset(
-            f"morphology/{morph_name}/structure",
-            data=np.array([[0, 2, -1]], dtype=np.int32),
+        morph_grp.create_dataset(
+            "structure", data=np.array([[0, 2, -1]], dtype=np.int32)
         )
 
-        # Edges (spine table) - spine_morphology references first spine key
+        # --- /edges/{name} with all mandatory columns ---
         edges_grp = f.create_group(f"edges/{morph_name}")
-        dt = h5py.string_dtype(encoding="utf-8")
+        meta = edges_grp.create_group("metadata")
+        meta.attrs["version"] = np.array([1, 0], dtype=np.uint32)
+
+        dt_str = h5py.string_dtype(encoding="utf-8")
         edges_grp.create_dataset(
-            "spine_morphology", data=np.array([spine_keys[0]], dtype=object), dtype=dt
+            "spine_morphology",
+            data=np.array([spine_keys[0]] * n_spines, dtype=object),
+            dtype=dt_str,
         )
-        edges_grp.create_dataset("spine_id", data=np.array([0], dtype=np.uint32))
-        meta_grp = edges_grp.create_group("metadata")
-        meta_grp.attrs["version"] = np.array([1, 0], dtype=np.uint32)
+        edges_grp.create_dataset("spine_id", data=np.arange(n_spines, dtype=np.uint32))
+        edges_grp.create_dataset("spine_length", data=np.ones(n_spines, dtype=np.float64))
+        edges_grp.create_dataset(
+            "spine_orientation_vector_x", data=np.zeros(n_spines, dtype=np.float64)
+        )
+        edges_grp.create_dataset(
+            "spine_orientation_vector_y", data=np.zeros(n_spines, dtype=np.float64)
+        )
+        edges_grp.create_dataset(
+            "spine_orientation_vector_z", data=np.ones(n_spines, dtype=np.float64)
+        )
+        edges_grp.create_dataset("spine_rotation_x", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset("spine_rotation_y", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset("spine_rotation_z", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset("spine_rotation_w", data=np.ones(n_spines, dtype=np.float64))
+        edges_grp.create_dataset(
+            "afferent_surface_x", data=np.zeros(n_spines, dtype=np.float64)
+        )
+        edges_grp.create_dataset(
+            "afferent_surface_y", data=np.zeros(n_spines, dtype=np.float64)
+        )
+        edges_grp.create_dataset(
+            "afferent_surface_z", data=np.zeros(n_spines, dtype=np.float64)
+        )
+        edges_grp.create_dataset("afferent_center_x", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset("afferent_center_y", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset("afferent_center_z", data=np.zeros(n_spines, dtype=np.float64))
+        edges_grp.create_dataset(
+            "afferent_section_id", data=np.ones(n_spines, dtype=np.uint32)
+        )
+        edges_grp.create_dataset(
+            "afferent_segment_id", data=np.zeros(n_spines, dtype=np.int32)
+        )
+        edges_grp.create_dataset(
+            "afferent_segment_offset", data=np.zeros(n_spines, dtype=np.float64)
+        )
+        edges_grp.create_dataset(
+            "afferent_section_pos", data=np.zeros(n_spines, dtype=np.float64)
+        )
 
-        # Spine skeletons
+        # --- /spines/skeletons/{key} ---
         for sk in spine_keys:
-            f.create_dataset(
-                f"spines/skeletons/{sk}/points",
-                data=np.array([[0.0, 1.0, 2.0, 0.3]], dtype=np.float64),
+            sk_grp = f.create_group(f"spines/skeletons/{sk}")
+            sk_grp.create_dataset(
+                "points",
+                data=np.array([[0.0, 0.0, 0.0, 0.3], [1.0, 0.0, 0.0, 0.2]], dtype=np.float32),
             )
-            f.create_dataset(
-                f"spines/skeletons/{sk}/structure",
-                data=np.array([[0, 2, -1]], dtype=np.int32),
-            )
+            sk_grp.create_dataset("structure", data=np.array([[0, 2, -1]], dtype=np.int32))
 
-        # Meshes (optional)
+        # --- /soma/meshes/{name} (optional) ---
         if with_meshes:
-            f.create_dataset(
-                f"soma/meshes/{morph_name}/vertices",
-                data=np.array([[1.0, 2.0, 3.0]], dtype=np.float32),
+            soma_grp = f.create_group(f"soma/meshes/{morph_name}")
+            soma_grp.create_dataset(
+                "vertices",
+                data=np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                              dtype=np.float32),
             )
-            f.create_dataset(
-                f"soma/meshes/{morph_name}/triangles",
-                data=np.array([[0, 0, 0]], dtype=np.int32),
-            )
+            soma_grp.create_dataset("triangles", data=np.array([[0, 1, 2]], dtype=np.int32))
+
+        # --- /spines/meshes/{key} (optional, with offsets) ---
+        if with_meshes:
             for sk in spine_keys:
-                f.create_dataset(
-                    f"spines/meshes/{sk}/vertices",
-                    data=np.array([[3.0, 4.0, 5.0]], dtype=np.float32),
+                sm_grp = f.create_group(f"spines/meshes/{sk}")
+                # 2 spines, 3 vertices each, 1 triangle each
+                sm_grp.create_dataset(
+                    "vertices",
+                    data=np.array(
+                        [
+                            [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
+                            [2.0, 0.0, 0.0], [3.0, 0.0, 0.0], [2.0, 1.0, 0.0],
+                        ],
+                        dtype=np.float32,
+                    ),
                 )
-                f.create_dataset(
-                    f"spines/meshes/{sk}/triangles",
-                    data=np.array([[0, 0, 0]], dtype=np.int32),
+                sm_grp.create_dataset(
+                    "triangles", data=np.array([[0, 1, 2], [0, 1, 2]], dtype=np.int32)
+                )
+                # offsets: (n_spines+1, 2) -> vertex_offset, triangle_offset
+                sm_grp.create_dataset(
+                    "offsets", data=np.array([[0, 0], [3, 1], [6, 2]], dtype=np.int32)
                 )
 
 
@@ -150,9 +207,15 @@ class TestMergeSpinyMorphologies:
     def test_multi_morph_file_raises(self, tmp_path):
         """A file with more than one morphology is rejected."""
         f1 = tmp_path / "multi.h5"
-        with h5py.File(f1, "w") as f:
-            f.create_dataset("morphology/a/points", data=np.array([[0.0, 0.0, 0.0, 0.5]]))
-            f.create_dataset("morphology/b/points", data=np.array([[0.0, 0.0, 0.0, 0.5]]))
+        # Create file with two morphologies (invalid for this wrapper)
+        _create_spiny_h5(f1, "first")
+        with h5py.File(f1, "a") as f:
+            # Add a second morphology group
+            morph_grp = f.create_group("morphology/second")
+            morph_grp.create_dataset(
+                "points", data=np.array([[0.0, 0.0, 0.0, 0.5]], dtype=np.float32)
+            )
+            morph_grp.create_dataset("structure", data=np.array([[0, 2, -1]], dtype=np.int32))
 
         out = tmp_path / "merged.h5"
         with pytest.raises(ValueError, match="Expected exactly 1 morphology"):
