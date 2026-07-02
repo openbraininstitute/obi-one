@@ -44,7 +44,7 @@ class SynapseModelAssigner(Block):
         " neuron sets.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
         },
     )
 
