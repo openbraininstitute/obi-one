@@ -33,8 +33,6 @@ L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 POPULATION_NAME = "drosophila"
 
-brian2.BrianLogger.log_level_debug()
-
 
 def _convert_to_known_unit(v: str) -> brian2.Unit | int:
     if v == "1":
@@ -431,6 +429,8 @@ def sonata_simulation(
 
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
     logging.basicConfig(level=log_level, force=True)
+    if verbose:
+        brian2.BrianLogger.log_level_debug()
 
     run_sonata_brian2_trial(Path(simulation_path))
 
@@ -569,7 +569,9 @@ def sonata_simulation_task(
 
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
     logging.basicConfig(level=log_level, force=True)
-    L.setLevel(log_level)  # set only the log level in the script
+    L.setLevel(log_level)
+    if verbose:
+        brian2.BrianLogger.log_level_debug()
 
     client = _init_entitysdk_client(
         virtual_lab_id=virtual_lab_id,
