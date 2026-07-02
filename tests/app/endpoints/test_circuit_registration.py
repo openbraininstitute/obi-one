@@ -175,3 +175,66 @@ class TestTriggerAssetGenerationTask:
             virtual_lab_id=uuid4(),
         )
         ls_client.post.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# generate_assets_endpoint unit test
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateAssetsEndpoint:
+    """Test generate_assets_endpoint via TestClient."""
+
+    def test_rejects_non_active_circuit(self, client):
+        """Circuit with lifecycle_status != active should be rejected."""
+        from unittest.mock import patch  # noqa: PLC0415
+
+        circuit_id = uuid4()
+        mock_circuit = MagicMock()
+        mock_circuit.lifecycle_status = "draft"
+        mock_circuit.assets = []
+
+        with patch("app.endpoints.circuit_registration.get_client") as mock_get_client:
+            mock_db = MagicMock()
+            mock_db.get_entity.return_value = mock_circuit
+            mock_get_client.return_value = mock_db
+
+            from app.application import app  # noqa: PLC0415
+            from app.dependencies.entitysdk import get_client  # noqa: PLC0415
+
+            app.dependency_overrides[get_client] = lambda: mock_db
+
+            try:
+                resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
+                assert resp.status_code == 409
+                assert "lifecycle_status" in resp.json()["detail"]
+            finally:
+                app.dependency_overrides.pop(get_client, None)
+
+    def test_returns_already_exists(self, client):
+        """If assets already exist and not force, returns message."""
+
+        circuit_id = uuid4()
+        mock_circuit = MagicMock()
+        mock_circuit.lifecycle_status = "active"
+
+        # Fake assets with the required labels
+        asset1 = MagicMock()
+        asset1.label = "compressed_sonata_circuit"
+        asset2 = MagicMock()
+        asset2.label = "circuit_connectivity_matrices"
+        mock_circuit.assets = [asset1, asset2]
+
+        from app.application import app  # noqa: PLC0415
+        from app.dependencies.entitysdk import get_client  # noqa: PLC0415
+
+        mock_db = MagicMock()
+        mock_db.get_entity.return_value = mock_circuit
+        app.dependency_overrides[get_client] = lambda: mock_db
+
+        try:
+            resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
+            assert resp.status_code == 200
+            assert "already exist" in resp.json()["message"]
+        finally:
+            app.dependency_overrides.pop(get_client, None)

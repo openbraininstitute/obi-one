@@ -2,7 +2,13 @@
 
 import json
 
+import h5py
+import numpy as np
+import pytest
+
 from obi_one.utils.circuit_customization.staging import (
+    _apply_emodel_overrides,
+    _apply_file_overrides,
     _apply_node_sets_override,
     _copy_into,
     _network_file_names,
@@ -288,3 +294,167 @@ class TestRemoveStaleNetworkFiles:
 
         _remove_stale_network_files(circuit_dir, config_path, parent_config)
         assert real_file.exists()  # not removed because it's not a symlink
+
+
+# ---------------------------------------------------------------------------
+# _apply_file_overrides
+# ---------------------------------------------------------------------------
+
+
+class TestApplyFileOverrides:
+    def _make_parent_edges(self, circuit_dir, pop_name="pop_a"):
+        """Create a parent edges H5 file with a population."""
+        edges_file = circuit_dir / "edges.h5"
+        with h5py.File(edges_file, "w") as f:
+            pop = f.create_group(f"edges/{pop_name}")
+            n = 3
+            pop.create_dataset("source_node_id", data=np.arange(n, dtype=np.int64))
+            pop.create_dataset("target_node_id", data=np.arange(n, dtype=np.int64))
+            pop.create_dataset("edge_type_id", data=np.zeros(n, dtype=np.int32))
+        return edges_file
+
+    def test_replaces_matching_population(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        parent_edges = self._make_parent_edges(circuit_dir, "pop_a")
+
+        # Create override with same population but different data
+        override = tmp_path / "new_edges.h5"
+        with h5py.File(override, "w") as f:
+            pop = f.create_group("edges/pop_a")
+            n = 10
+            pop.create_dataset("source_node_id", data=np.arange(n, dtype=np.int64))
+            pop.create_dataset("target_node_id", data=np.arange(n, dtype=np.int64))
+            pop.create_dataset("edge_type_id", data=np.zeros(n, dtype=np.int32))
+
+        config = {
+            "networks": {"edges": [{"edges_file": str(parent_edges)}]},
+        }
+
+        _apply_file_overrides([override], circuit_dir, config, component_type="edges")
+
+        # Verify the file was replaced by checking the data length
+        with h5py.File(parent_edges, "r") as f:
+            assert f["edges/pop_a/source_node_id"].shape[0] == 10
+
+    def test_unknown_population_raises(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        self._make_parent_edges(circuit_dir, "pop_a")
+
+        override = tmp_path / "new_edges.h5"
+        with h5py.File(override, "w") as f:
+            f.create_group("edges/unknown_pop")
+
+        config = {
+            "networks": {"edges": [{"edges_file": str(circuit_dir / "edges.h5")}]},
+        }
+
+        with pytest.raises(ValueError, match="unknown_pop"):
+            _apply_file_overrides([override], circuit_dir, config, component_type="edges")
+
+    def test_nodes_override(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+
+        nodes_file = circuit_dir / "nodes.h5"
+        with h5py.File(nodes_file, "w") as f:
+            f.create_group("nodes/pop_a")
+            f["nodes/pop_a"].create_dataset("node_type_id", data=np.zeros(5, dtype=np.int32))
+
+        override = tmp_path / "new_nodes.h5"
+        with h5py.File(override, "w") as f:
+            f.create_group("nodes/pop_a")
+            f["nodes/pop_a"].create_dataset("node_type_id", data=np.ones(10, dtype=np.int32))
+
+        config = {
+            "networks": {"nodes": [{"nodes_file": str(nodes_file)}]},
+        }
+
+        _apply_file_overrides([override], circuit_dir, config, component_type="nodes")
+
+        # Verify the file was replaced (10 nodes instead of 5)
+        with h5py.File(nodes_file, "r") as f:
+            assert f["nodes/pop_a/node_type_id"].shape[0] == 10
+
+
+# ---------------------------------------------------------------------------
+# _apply_emodel_overrides
+# ---------------------------------------------------------------------------
+
+
+class TestApplyEmodelOverrides:
+    def test_falls_back_to_component_dir(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        hoc_dir = circuit_dir / "hoc"
+        hoc_dir.mkdir()
+
+        hoc_file = tmp_path / "MyCell.hoc"
+        hoc_file.write_text("begintemplate MyCell\nendtemplate MyCell\n")
+
+        config = {
+            "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
+            "networks": {"nodes": [{"populations": {"pop_a": {}}}]},
+        }
+
+        _apply_emodel_overrides([hoc_file], {}, config, circuit_dir)
+        assert (hoc_dir / "MyCell.hoc").exists()
+
+    def test_places_in_population_dir(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        pop_dir = circuit_dir / "pop_hoc"
+        pop_dir.mkdir()
+
+        hoc_file = tmp_path / "PopCell.hoc"
+        hoc_file.write_text("begintemplate PopCell\nendtemplate PopCell\n")
+
+        config = {
+            "components": {"biophysical_neuron_models_dir": str(circuit_dir / "hoc")},
+            "networks": {
+                "nodes": [
+                    {
+                        "populations": {
+                            "pop_a": {
+                                "biophysical_neuron_models_dir": str(pop_dir),
+                            }
+                        }
+                    }
+                ]
+            },
+        }
+
+        _apply_emodel_overrides([hoc_file], {"PopCell.hoc": "pop_a"}, config, circuit_dir)
+        assert (pop_dir / "PopCell.hoc").exists()
+
+    def test_unmapped_file_goes_to_component(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        hoc_dir = circuit_dir / "hoc"
+        hoc_dir.mkdir()
+        pop_dir = circuit_dir / "pop_hoc"
+        pop_dir.mkdir()
+
+        hoc_file = tmp_path / "Generic.hoc"
+        hoc_file.write_text("begintemplate Generic\nendtemplate Generic\n")
+
+        config = {
+            "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
+            "networks": {
+                "nodes": [
+                    {
+                        "populations": {
+                            "pop_a": {
+                                "biophysical_neuron_models_dir": str(pop_dir),
+                            }
+                        }
+                    }
+                ]
+            },
+        }
+
+        # File not in population_map → goes to component dir
+        _apply_emodel_overrides([hoc_file], {}, config, circuit_dir)
+        assert (hoc_dir / "Generic.hoc").exists()
+        assert not (pop_dir / "Generic.hoc").exists()
