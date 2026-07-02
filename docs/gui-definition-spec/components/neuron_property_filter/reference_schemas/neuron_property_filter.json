@@ -1,0 +1,43 @@
+{
+  "anyOf": [
+    {
+      "$ref": "#/$defs/NeuronPropertyFilter"
+    },
+    {
+      "items": {
+        "$ref": "#/$defs/NeuronPropertyFilter"
+      },
+      "type": "array"
+    }
+  ],
+  "title": "Neuron property filter",
+  "description": "NeuronPropertyFilter object or list of NeuronPropertyFilter objects",
+  "property_group": "Circuit",
+  "property": "NodePropertyUniqueValuesByPopulation",
+  "ui_element": "neuron_property_filter",
+  "$defs": {
+    "NeuronPropertyFilter": {
+      "type": "object",
+      "title": "NeuronPropertyFilter",
+      "description": "A single property filter: a mapping from node property name to a non-empty list of accepted values.",
+      "properties": {
+        "filter_dict": {
+          "type": "object",
+          "title": "Filter",
+          "description": "Filter dictionary. The list per key is NOT a multi-dimensional parameter sweep; it is the set of accepted values for the property (e.g. {'layer': ['2', '3']}).",
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1
+          }
+        },
+        "type": {
+          "type": "string",
+          "const": "NeuronPropertyFilter",
+          "title": "Type"
+        }
+      },
+      "required": ["filter_dict", "type"],
+      "additionalProperties": false
+    }
+  }
+}
