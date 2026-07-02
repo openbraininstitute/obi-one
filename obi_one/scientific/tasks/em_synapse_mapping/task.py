@@ -125,9 +125,10 @@ class EMSynapseMappingTask(Task):
         if advanced.include_spiny_morphologies:
             L.info("Merging spiny morphologies into combined file...")
             merge_spiny_morphologies(
-                source_files=[spiny_dir / rn.fn_morph_h5 for rn in resolved_neurons],
+                source_files_with_neuron_names=[
+                    (spiny_dir / rn.fn_morph_h5, rn.name_in_circuit) for rn in resolved_neurons
+                ],
                 output_path=out_root / fn_merged_h5,
-                neuron_id_strings=[rn.name_in_circuit for rn in resolved_neurons],
                 include_meshes=True,
             )
 
