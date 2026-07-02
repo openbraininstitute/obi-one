@@ -36,7 +36,9 @@ POPULATION_NAME = "drosophila"
 brian2.BrianLogger.log_level_debug()
 
 
-def _convert_to_known_unit(v: str) -> brian2.Unit:
+def _convert_to_known_unit(v: str) -> brian2.Unit | int:
+    if v == "1":
+        return int(v)
     if v not in KNOWN_UNITS:
         msg = f"Expecting a known brian2 unit, got: `{v}`"
         raise RuntimeError(msg)
@@ -62,7 +64,7 @@ class FloatUnit(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     value: float
-    unit: brian2.Unit
+    unit: brian2.Unit | int
 
     def get(self) -> brian2.Quantity:
         return brian2.Quantity(self.value * self.unit)
@@ -94,11 +96,11 @@ class SynapseTemplate(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     params: SynapseParams
-    dynamics: dict[str, brian2.Unit]
+    dynamics: dict[str, brian2.Unit | int]
 
     @field_validator("dynamics", mode="before")
     @classmethod
-    def convert_list(cls, v: dict[str, str]) -> dict[str, brian2.Unit]:
+    def convert_list(cls, v: dict[str, str]) -> dict[str, brian2.Unit | int]:
         return {k: _convert_to_known_unit(v) for k, v in v.items()}
 
 
@@ -176,12 +178,14 @@ def _get_spike_replay(
 
     times = input_.delay + times
 
-    L.info("Replaying %d spikes from population `%s`, node_set: `%s`",
-           len(times), POPULATION_NAME, input_.node_set)
-
-    replay = brian2.SpikeGeneratorGroup(
-        len(n0), indices=spikes, times=times * brian2.units.ms
+    L.info(
+        "Replaying %d spikes from population `%s`, node_set: `%s`",
+        len(times),
+        POPULATION_NAME,
+        input_.node_set,
     )
+
+    replay = brian2.SpikeGeneratorGroup(len(n0), indices=spikes, times=times * brian2.units.ms)
 
     replay_connectivity = brian2.Synapses(
         replay,
@@ -209,7 +213,7 @@ def _get_inputs(
     simulation: bluepysnap.Simulation,
     n0: brian2.NeuronGroup,
     synapses: brian2.Synapses,
-    synapse_template: SynapseTemplate
+    synapse_template: SynapseTemplate,
 ) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
     inputs = []
     for input_ in simulation.inputs.values():
@@ -322,16 +326,22 @@ def _create_synapses(
         template = edge_pop.enumeration_values("model_template")
         assert len(template) == 1
         template = next(iter(template))
-        ext, name = template.split(":")
-        with (models_dir / f"{name}.{ext}").open() as fd:
-            synapse_template = SynapseTemplate.model_validate_json(fd.read())
+    else:
+        template = set(edge_pop.get_attribute("model_template", edge_pop.select_all()))
+        template = next(iter(template))
+
+    ext, name = template.split(":")
+    with (models_dir / f"{name}.{ext}").open() as fd:
+        synapse_template = SynapseTemplate.model_validate_json(fd.read())
 
     syn = brian2.Synapses(
         neurons,
         neurons,
         model=synapse_template.params.model,
         on_pre=synapse_template.params.on_pre,
-        delay=None if synapse_template.params.delay is None else synapse_template.params.delay.get(),
+        delay=None
+        if synapse_template.params.delay is None
+        else synapse_template.params.delay.get(),
     )
     syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
 
@@ -342,16 +352,22 @@ def _create_synapses(
     return syn, synapse_template
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
-    """Returns the path to the spikes file."""
-    simulation = bluepysnap.Simulation(simulation_config_path)
+class Brian2Network(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    neurons: list[brian2.NeuronGroup]
+    synapses: list[brian2.Synapses]
+    spike_monitor: brian2.SpikeMonitor
+    inputs: list[brian2.Group]
+
+
+def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     circuit = simulation.circuit
 
     assert circuit.nodes.population_names == [POPULATION_NAME]
 
     brian2.defaultclock.dt = simulation.run.dt * brian2.units.ms
     brian2.seed(simulation.run.random_seed)
-    brian2.start_scope()
 
     neurons = _create_neurons(simulation)
     synapses, synapse_template = _create_synapses(circuit, neurons)
@@ -360,28 +376,40 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
 
     neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
 
-    net = brian2.Network(neurons, synapses, spike_monitor, *inputs)
+    return Brian2Network(
+        neurons=[neurons], synapses=[synapses], spike_monitor=spike_monitor, inputs=inputs
+    )
+
+
+def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
+    """Returns the path to the spikes file."""
+    simulation = bluepysnap.Simulation(simulation_config_path)
+
+    brian2.start_scope()
+    net = _build_brian2_network(simulation)
+
+    network = brian2.Network(net.neurons, net.synapses, net.spike_monitor, *net.inputs)
 
     L.info(
         "Running simulation with `%s` backend",
         brian2.prefs.codegen.target,
     )
 
-    net.run(duration=simulation.run.tstop * brian2.units.ms)
+    network.run(duration=simulation.run.tstop * brian2.units.ms)
 
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
     spikes = [
-        (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
+        (k, v / brian2.units.ms) for k, vs in net.spike_monitor.spike_trains().items() for v in vs
     ]
 
     node_ids, timestamps = zip(*spikes, strict=True) if spikes else ((), ())
-    L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
+    L.info("%d neurons spiked %d times", len(net.spike_monitor.spike_trains()), len(node_ids))
     (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     spikes_path = _write_spikes(
         filepath=output_dir / simulation.output.spikes_file,
-        population_name=circuit.nodes.population_names[0],
+        population_name=simulation.circuit.nodes.population_names[0],
         timestamps=timestamps,
         node_ids=node_ids,
     )
