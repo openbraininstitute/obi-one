@@ -13,7 +13,28 @@
         },
         "type": {
           "type": "string",
-          "const": "NeuronSetReference",
+          "const": "BiophysicalNeuronSetReference",
+          "title": "Type"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": ["block_name", "type"]
+    },
+    {
+      "properties": {
+        "block_dict_name": {
+          "type": "string",
+          "title": "Block Dict Name",
+          "default": ""
+        },
+        "block_name": {
+          "type": "string",
+          "title": "Block Name"
+        },
+        "type": {
+          "type": "string",
+          "const": "PointNeuronSetReference",
           "title": "Type"
         }
       },
@@ -26,7 +47,7 @@
     }
   ],
   "title": "Neuron Set",
-  "description": "Neuron set to simulate.",
+  "description": "Neuron set to record from.",
   "ui_element": "reference",
-  "reference_type": "NeuronSetReference"
+  "reference_types": ["BiophysicalNeuronSetReference", "PointNeuronSetReference"]
 }
