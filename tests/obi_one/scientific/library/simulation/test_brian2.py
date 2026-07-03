@@ -152,10 +152,10 @@ def test_current_stim(tmp_path):
                 "amp_start": 3000,
                 "delay": 0.1,
                 "duration": 4,
-                "node_set": "0"
-                }
+                "node_set": "0",
             }
-        }
+        },
+    }
 
     spike_monitor = _run_simulation(tmp_path, config, plot=True)
     spikes = dict(spike_monitor.spike_trains().items())
@@ -176,18 +176,18 @@ def test_linear_current_stim():
                 "amp_end": 4,
                 "delay": 0,
                 "duration": 4,
-                "node_set": "0"
-                }
+                "node_set": "0",
             }
-        }
+        },
+    }
 
     sc = libsonata.SimulationConfig(json.dumps(config), ".")
     t = test_module.Linear(sc.input("linear"))
     res = t._get_currents(dt=1, simulation_length=5)
-    npt.assert_array_equal(res, [0., 1., 2., 3., 4., 0.])
+    npt.assert_array_equal(res, [0.0, 1.0, 2.0, 3.0, 4.0, 0.0])
 
     config["inputs"]["linear"]["delay"] = 1
     sc = libsonata.SimulationConfig(json.dumps(config), ".")
     t = test_module.Linear(sc.input("linear"))
     res = t._get_currents(dt=1, simulation_length=5)
-    npt.assert_array_equal(res, [0., 0., 1., 2., 3., 4.])
+    npt.assert_array_equal(res, [0.0, 0.0, 1.0, 2.0, 3.0, 4.0])

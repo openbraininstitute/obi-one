@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
-from abc import ABC, abstractmethod
 import contextlib
 import logging
 import math
@@ -8,6 +7,7 @@ import os
 import re
 import tempfile
 import uuid
+from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from datetime import UTC, datetime, timezone
 from functools import partial, singledispatch
@@ -47,7 +47,8 @@ class Brian2Network(BaseModel):
 
 
 class CurrentStimulator(ABC):
-    def __init__(self, config):
+    def __init__(self, config: libsonata.SimulationConfig.InputBase) -> None:
+        """Ibid."""
         if config.compartment_set:
             msg = "`compartment_set` not supported"
             raise RuntimeError(msg)
@@ -61,11 +62,7 @@ class CurrentStimulator(ABC):
             return population.select_all()
         return node_sets.materialize(self.config.node_set, population)
 
-    def get_currents(
-        self,
-        dt: float,
-        simulation_length: float
-    ) -> brian2.TimedArray:
+    def get_currents(self, dt: float, simulation_length: float) -> brian2.TimedArray:
         v = self._get_currents(dt, simulation_length)
         return brian2.TimedArray(v * brian2.units.mA, dt=dt * brian2.units.ms)
 
@@ -91,7 +88,7 @@ class Linear(CurrentStimulator):
             ) / self.config.duration * (self.config.amp_end - self.config.amp_start)
 
         n_ramp = min(n_ramp, n_total - n_delay)
-        ret[n_delay:(n_delay + n_ramp)] = np.linspace(self.config.amp_start, amp_end, n_ramp)
+        ret[n_delay : (n_delay + n_ramp)] = np.linspace(self.config.amp_start, amp_end, n_ramp)
         return ret
 
 
@@ -103,7 +100,7 @@ def _create_input(conf: libsonata.SimulationConfig.InputBase) -> CurrentStimulat
 
 STIMULATION_TYPES = {
     libsonata.SimulationConfig.Linear: Linear,
-    }
+}
 
 for type_, klass in STIMULATION_TYPES.items():
     _create_input.register(type_, klass)
@@ -201,14 +198,6 @@ def _make_poisson(
     return n0, poisson_inputs
 
 
-def _make_linear_current(
-    input_: libsonata.SimulationConfig.Linear,
-    ):
-    #['amp_end', 'amp_start', 'delay', 'duration', 'node_set', 'represents_physical_electrode']
-
-    return []
-
-
 def _get_close_spikes(ids: np.ndarray, times: np.ndarray, window: float) -> np.ndarray:
     """Return mask of spikes where the same cell has another spike within `window`.
 
@@ -291,7 +280,8 @@ def _get_spike_replay(
 
 
 class Inputs:
-    def __init__(self, simulation: bluepysnap.Simulation):
+    def __init__(self, simulation: bluepysnap.Simulation) -> None:
+        """Ibid."""
         self.simulation = simulation
         # `injectors` need the `I_inj` variable in the template, and require that
         # the equations of NeuronGroup includes changes
@@ -301,7 +291,7 @@ class Inputs:
             if type(input_) in STIMULATION_TYPES
         ]
 
-    def update_model_and_get_stims(self, model: str, neuron_count) -> tuple[str, dict, dict]:
+    def update_model_and_get_stims(self, model: str, neuron_count: int) -> tuple[str, dict, dict]:
         """Ibid."""
         if "I_inj" not in model:
             msg = f"Missing `I_inj` in equations: {model}; needed for current injection"
@@ -315,15 +305,17 @@ class Inputs:
         injection_sum = "\nI_inj = 0 * amp"
         for i, injection in enumerate(self._injectors):
             injection_sum += f" + I_inj{i}"
-            lines.extend((
-                f"I_inj{i} = stim{i}(t) * is_stimulated{i} : amp",
-                f"is_stimulated{i} : 1",
-                 ))
+            lines.extend(
+                (
+                    f"I_inj{i} = stim{i}(t) * is_stimulated{i} : amp",
+                    f"is_stimulated{i} : 1",
+                )
+            )
             idx = injection.get_selection(
                 population=self.simulation.circuit.nodes[POPULATION_NAME].to_libsonata,
-                node_sets=self.simulation.node_sets.to_libsonata
-                ).flatten()
-            mask = np.zeros((neuron_count, ), dtype=bool)
+                node_sets=self.simulation.node_sets.to_libsonata,
+            ).flatten()
+            mask = np.zeros((neuron_count,), dtype=bool)
             mask[idx] = True
             indicators[f"is_stimulated{i}"] = mask
             objs[f"stim{i}"] = injection.get_currents(self.simulation.dt, self.simulation.run.tstop)
@@ -340,25 +332,6 @@ class Inputs:
         """
 
         return model, objs, indicators
-
-    def update_network(self, net):
-        breakpoint() # XXX BREAKPOINT
-
-        sub_set_idx0 = [0, 10, 100]
-        sub_set_idx1 = [1, 11, 101]
-
-        #net.neurons[0].is_stimulated0[sub_set_idx0] = 1
-        #net.neurons[0].is_stimulated1[sub_set_idx1] = 1
-
-        #net.inputs.append(stim)
-
-    def asdf():
-        for f in input_factory():
-            sel = input_factory.get_selection()
-            currents = input_factory.get_currents()
-
-
-            inputs += ""
 
 
 def _get_inputs(
@@ -440,7 +413,9 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
     template = next(iter(templates.values()))
 
     neuron_count = len(nodes.ids())
-    model, stims, indicators = inputs.update_model_and_get_stims(template.params.model, neuron_count)
+    model, stims, indicators = inputs.update_model_and_get_stims(
+        template.params.model, neuron_count
+    )
 
     n0 = brian2.NeuronGroup(
         N=neuron_count,
@@ -531,7 +506,6 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     net = Brian2Network(
         neurons=[neurons], synapses=[synapses], spike_monitor=spike_monitor, inputs=inputs
     )
-    #current_inputs.update_network(net)
 
     return net
 
