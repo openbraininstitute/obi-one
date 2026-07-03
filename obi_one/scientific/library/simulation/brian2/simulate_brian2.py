@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
-import re
 import contextlib
 import logging
 import os
+import re
 import tempfile
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timezone
-from functools import partial
+from functools import partial, singledispatch
 from pathlib import Path
 
 import bluepysnap
@@ -33,6 +33,65 @@ REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_p
 L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 POPULATION_NAME = "drosophila"
+
+
+class Brian2Network(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    neurons: list[brian2.NeuronGroup]
+    synapses: list[brian2.Synapses]
+    spike_monitor: brian2.SpikeMonitor
+    inputs: list[brian2.Group | brian2.PoissonInput]
+
+
+class CurrentStimulator:
+    def __init__(self, config):
+        if config.compartment_set:
+            msg = "`compartment_set` not supported"
+            raise RuntimeError(msg)
+        self.config = config
+
+    def get_selection(
+        self, node_sets: libsonata.NodeSets, population: libsonata.NodePopulation
+    ) -> libsonata.Selection:
+        """Return the selection of neurons from `population` that this stimulus applies to."""
+        if self.config.node_set == "All":
+            return population.select_all()
+        return node_sets.materialize(self.config.node_set, population)
+
+    def get_currents(
+        self,
+        dt: float,
+        simulation_length: float
+    ) -> brian2.TimedArray:
+        raise NotImplementedError
+
+
+class Linear(CurrentStimulator):
+    """A continuous injection of current."""
+
+    def get_currents(self, dt: float, simulation_length: float) -> brian2.TimedArray:
+        end_time = min(self.config.delay + self.config.duration, simulation_length)
+        n_delay = round(self.config.delay / dt)
+        n_ramp = round((end_time - self.config.delay) / dt) + 1
+        delay_part = np.full(n_delay, 0)  # self.config.amp_start)
+        ramp_part = np.linspace(self.config.amp_start, self.config.amp_start, n_ramp)
+        v = np.concatenate([delay_part, ramp_part])
+        return brian2.TimedArray(v * brian2.units.mA, dt=dt * brian2.units.ms)
+
+
+@singledispatch
+def _create_input(conf: libsonata.SimulationConfig.InputBase) -> CurrentStimulator:
+    msg = f"Unsupported input config: {type(conf)}"
+    raise RuntimeError(msg)
+
+
+STIMULATION_TYPES = {
+    libsonata.SimulationConfig.Linear: Linear,
+    }
+
+for type_, klass in STIMULATION_TYPES.items():
+    _create_input.register(type_, klass)
 
 
 def _convert_to_known_unit(v: str) -> brian2.Unit | int:
@@ -130,13 +189,11 @@ def _make_poisson(
 def _make_linear_current(
     input_: libsonata.SimulationConfig.Linear,
     ):
-    if input_.compartment_set:
-        msg = "`compartment_set` not supported"
-        raise RuntimeError(msg)
-
     #['amp_end', 'amp_start', 'delay', 'duration', 'node_set', 'represents_physical_electrode']
 
     return []
+
+
 def _get_close_spikes(ids: np.ndarray, times: np.ndarray, window: float) -> np.ndarray:
     """Return mask of spikes where the same cell has another spike within `window`.
 
@@ -218,6 +275,76 @@ def _get_spike_replay(
     return (replay, replay_connectivity)
 
 
+class Inputs:
+    def __init__(self, simulation: bluepysnap.Simulation):
+        self.simulation = simulation
+        # `injectors` need the `I_inj` variable in the template, and require that
+        # the equations of NeuronGroup includes changes
+        self._injectors = [
+            _create_input(input_)
+            for input_ in self.simulation.inputs.values()
+            if type(input_) in STIMULATION_TYPES
+        ]
+
+    def update_model_and_get_stims(self, model: str, neuron_count) -> tuple[str, dict]:
+        """Ibid."""
+        if "I_inj" not in model:
+            msg = f"Missing `I_inj` in equations: {model}; needed for current injection"
+            raise RuntimeError(msg)
+
+        model = re.sub(r".*I_inj\s*:\s*amp.*", "", model)
+
+        lines = []
+        objs = {}
+        injection_sum = "\nI_inj = "
+        for i, injection in enumerate(self._injectors):
+            injection_sum += f" + I_inj{i}"
+            lines.extend((
+                f"I_inj{i} = stim{i}(t) * is_stimulated{i} : amp",
+                f"is_stimulated{i} : 1",
+                 ))
+            idx = injection.get_selection(
+                population=self.simulation.circuit.nodes[POPULATION_NAME].to_libsonata,
+                node_sets=self.simulation.node_sets.to_libsonata
+                ).flatten()
+            mask = np.zeros((neuron_count, ), dtype=bool)
+            mask[idx] = True
+            objs[f"is_stimulated{i}"] = mask
+            objs[f"stim{i}"] = injection.get_currents(self.simulation.dt, self.simulation.run.tstop)
+
+        model += "\n".join(lines) + injection_sum + ": amp\n"
+
+        """
+        \n
+        I_inj0 = stim(t) * is_stimulated0 : amp
+        I_inj1 = stim(t) * is_stimulated1 : amp
+        I_inj = I_inj0 + I_inj1 : amp
+        is_stimulated0 : 1
+        is_stimulated1 : 1
+        """
+
+        return model, objs
+
+    def update_network(self, net):
+        breakpoint() # XXX BREAKPOINT
+
+        sub_set_idx0 = [0, 10, 100]
+        sub_set_idx1 = [1, 11, 101]
+
+        #net.neurons[0].is_stimulated0[sub_set_idx0] = 1
+        #net.neurons[0].is_stimulated1[sub_set_idx1] = 1
+
+        #net.inputs.append(stim)
+
+    def asdf():
+        for f in input_factory():
+            sel = input_factory.get_selection()
+            currents = input_factory.get_currents()
+
+
+            inputs += ""
+
+
 def _get_inputs(
     simulation: bluepysnap.Simulation,
     n0: brian2.NeuronGroup,
@@ -231,12 +358,6 @@ def _get_inputs(
         elif isinstance(input_, libsonata.SimulationConfig.Poisson):
             n0, poissons = _make_poisson(simulation, input_, n0)
             inputs += poissons
-        elif isinstance(input_, libsonata.SimulationConfig.Linear):
-            inputs += _make_linear_current(input_)
-        else:
-            breakpoint() # XXX BREAKPOINT
-            msg = f"Unhandled or unknown input: `{input_.module}:{input_.input_type}`"
-            raise TypeError(msg)
 
     return n0, inputs
 
@@ -283,17 +404,7 @@ def _write_spikes(
     return filepath
 
 
-defaultclock = brian2.defaultclock
-sub_set_idx0 = [0, 10, 100]
-sub_set_idx1 = [1, 11, 101]
-
-num_samples = int(200*brian2.units.ms/defaultclock.dt)
-I_arr = np.zeros(num_samples)
-I_arr[0:50] = 100
-stim = brian2.TimedArray(I_arr*brian2.units.mA, dt=brian2.defaultclock.dt)
-
-
-def _create_neurons(simulation: bluepysnap.Simulation) -> brian2.NeuronGroup:
+def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2.NeuronGroup:
     circuit = simulation.circuit
     assert len(circuit.nodes.population_names) == 1, "Only one population supported"
     nodes = circuit.nodes[next(iter(circuit.nodes.population_names))]
@@ -312,26 +423,18 @@ def _create_neurons(simulation: bluepysnap.Simulation) -> brian2.NeuronGroup:
     assert len(templates) == 1, "Only one template supported"
     template = next(iter(templates.values()))
 
-    mod = re.sub(r".*I_inj\s*:\s*amp.*", "", template.params.model)
-    mod += """
-    \n
-    I_inj0 = stim(t) * is_stimulated0 : amp
-    I_inj1 = stim(t) * is_stimulated1 : amp
-    I_inj = I_inj0 + I_inj1 : amp
-    is_stimulated0 : 1
-    is_stimulated1 : 1
-    """
+    neuron_count = len(nodes.ids())
+    model, stims = inputs.update_model_and_get_stims(template.params.model, neuron_count)
 
     n0 = brian2.NeuronGroup(
-        N=len(nodes.ids()),
+        N=neuron_count,
         name=nodes.name,
-        #model=template.params.model,
-        model=mod,
+        model=model,
         method=template.params.method,
         threshold=template.params.threshold,
         reset=template.params.reset,
         refractory=template.params.refractory,
-        namespace={k: v.get() for k, v in template.namespace.items()},
+        namespace={**{k: v.get() for k, v in template.namespace.items()}, **stims},
     )
 
     # Override the initial membrane potential with `v_init` (mV) from the simulation config,
@@ -340,9 +443,6 @@ def _create_neurons(simulation: bluepysnap.Simulation) -> brian2.NeuronGroup:
 
     for name, value in template.initial.items():
         setattr(n0, name, value.get())
-
-    n0.is_stimulated0[sub_set_idx0] = 1
-    n0.is_stimulated1[sub_set_idx1] = 1
 
     return n0
 
@@ -391,15 +491,6 @@ def _create_synapses(
     return syn, synapse_template
 
 
-class Brian2Network(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    neurons: list[brian2.NeuronGroup]
-    synapses: list[brian2.Synapses]
-    spike_monitor: brian2.SpikeMonitor
-    inputs: list[brian2.Group]
-
-
 def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     circuit = simulation.circuit
 
@@ -408,16 +499,22 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     brian2.defaultclock.dt = simulation.run.dt * brian2.units.ms
     brian2.seed(simulation.run.random_seed)
 
-    neurons = _create_neurons(simulation)
+    current_inputs = Inputs(simulation)
+
+    neurons = _create_neurons(simulation, current_inputs)
+
     synapses, synapse_template = _create_synapses(circuit, neurons)
 
     spike_monitor = brian2.SpikeMonitor(neurons)
 
     neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
 
-    return Brian2Network(
+    net = Brian2Network(
         neurons=[neurons], synapses=[synapses], spike_monitor=spike_monitor, inputs=inputs
     )
+    #current_inputs.update_network(net)
+
+    return net
 
 
 def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:

@@ -137,3 +137,27 @@ def test_spike_replay(tmp_path):
     # so it needs another 3 dts
     npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
     assert spikes[1] == spikes[2]
+
+
+def test_current_stim(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 0.15,
+                "delay": 0,
+                "duration": 15,
+                "node_set": "0"
+                }
+            }
+        }
+
+    spike_monitor = _run_simulation(tmp_path, config, plot=True)
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 0
+    npt.assert_allclose(spikes[1], np.array([0.9]) * brian2.units.msecond)
+    assert spikes[1] == spikes[2]
