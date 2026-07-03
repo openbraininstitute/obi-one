@@ -10,15 +10,11 @@ from obi_one.scientific.blocks.neuron_sets.combined import (
     VirtualCombinedNeuronSet,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_BIOPHYSICAL_NEURON_SETS,
-    ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_POINT_NEURON_SETS,
-    ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_VIRTUAL_NEURON_SETS,
-    ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BaseNeuronSetReference,
 )
@@ -30,7 +26,9 @@ Useful private unions
 _BIOPHYSICAL_NEURON_SETS = ATOMIC_BIOPHYSICAL_NEURON_SETS | BiophysicalCombinedNeuronSet
 _POINT_NEURON_SETS = ATOMIC_POINT_NEURON_SETS | PointCombinedNeuronSet
 _VIRTUAL_NEURON_SETS = ATOMIC_VIRTUAL_NEURON_SETS | VirtualCombinedNeuronSet
-_NON_VIRTUAL_NEURON_SETS = NonVirtualCombinedNeuronSet
+_NON_VIRTUAL_NEURON_SETS = (
+    _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS | NonVirtualCombinedNeuronSet
+)
 _ALL_NEURON_SETS = (
     _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS | _VIRTUAL_NEURON_SETS | _NON_VIRTUAL_NEURON_SETS
 )
@@ -119,7 +117,7 @@ class CombinedNonVirtualNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Combined Non-Virtual NeuronSet block."""
 
     allowed_block_types: ClassVar[Any] = Annotated[
-        _NON_VIRTUAL_NEURON_SETS,
+        NonVirtualCombinedNeuronSet,
         Discriminator("type"),
     ]
 
@@ -160,36 +158,30 @@ ALL_NEURON_SETS_REFERENCE_UNION = (
 
 """
 Lists of reference types
+
+Derived directly from the reference unions above so the two can never drift apart.
+The `|` unions are already flattened and de-duplicated (e.g. the deprecated
+`NeuronSetReference`, which is a member of several atomic unions, appears only once),
+so `get_class_names` simply reads off the member class names.
 """
 
-BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
-    *ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
-    CombinedBiophysicalNeuronSetReference.__name__,
-]
+BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION
+)
 
-POINT_NEURON_SETS_REFERENCE_TYPES = [
-    *ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
-    CombinedPointNeuronSetReference.__name__,
-]
+POINT_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    POINT_NEURON_SETS_REFERENCE_UNION
+)
 
-VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
-    *ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    CombinedVirtualNeuronSetReference.__name__,
-]
+VIRTUAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    VIRTUAL_NEURON_SETS_REFERENCE_UNION
+)
 
-NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
-    *BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
-    *POINT_NEURON_SETS_REFERENCE_TYPES,
-    CombinedNonVirtualNeuronSetReference.__name__,
-]
+NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION
+)
 
-ALL_NEURON_SETS_REFERENCE_TYPES = [
-    *ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
-    CombinedBiophysicalNeuronSetReference.__name__,
-    CombinedPointNeuronSetReference.__name__,
-    CombinedVirtualNeuronSetReference.__name__,
-    CombinedNonVirtualNeuronSetReference.__name__,
-]
+ALL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(ALL_NEURON_SETS_REFERENCE_UNION)
 
 """
 Resolve functions
