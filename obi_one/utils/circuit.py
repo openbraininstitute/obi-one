@@ -20,6 +20,7 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_metrics import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
@@ -166,16 +167,6 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
                 rebase_config(v, old_base, new_base)
 
 
-def copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None:
-    """Copy mod files from circuit directory to output root."""
-    mod_folder = "mod"
-    source_dir = Path(os.path.split(circuit_path)[0]) / mod_folder
-    if Path(source_dir).exists():
-        L.info("Copying mod files")
-        dest_dir = Path(output_root) / mod_folder
-        shutil.copytree(source_dir, dest_dir)
-
-
 def run_validation(circuit_path: str | Path) -> None:
     """Run SONATA circuit validation."""
     errors = snap.circuit_validation.validate(
@@ -312,6 +303,36 @@ def copy_hoc_files(
             shutil.copyfile(src_file, dest_file)
 
 
+def copy_mod_files(
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
+) -> None:
+    """Copy mechanisms (.mod) files for a node population."""
+    source_dir = original_circuit.nodes[pop_name].config.get("mechanisms_dir")
+    if not source_dir or not Path(source_dir).exists():
+        return
+
+    mod_file_list = [p.name for p in Path(source_dir).glob("*.mod")]
+    if len(mod_file_list) == 0:
+        return
+
+    L.info(
+        f"Copying {len(mod_file_list)} mechanisms (.mod) for population '{pop_name}' ({pop.size})"
+    )
+
+    dest_dir = pop.config.get("mechanisms_dir")
+    Path(dest_dir).mkdir(parents=True, exist_ok=True)
+
+    for mod_file in mod_file_list:
+        src_file = Path(source_dir) / mod_file
+        dest_file = Path(dest_dir) / mod_file
+        if not Path(dest_file).exists():
+            # Copy only, if not yet existing (could happen for shared mod files
+            # among populations)
+            shutil.copyfile(src_file, dest_file)
+
+
 def _any_not_empty(data_series: pd.Series) -> bool:
     """Checks if any value in a data series is not empty, 'none', or 'null'."""
     values = data_series.apply(lambda x: x.strip(" -_").lower()).to_numpy()
@@ -347,8 +368,7 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue
-        if npop.type.startswith("point_"):
-            # E.g., point_neuron, point_process
+        if npop.type in TYPES_OF_POINT_NODES:
             has_point_neurons = True
             break
 

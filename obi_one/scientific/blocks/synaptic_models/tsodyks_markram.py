@@ -29,7 +29,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         " of synaptic efficacy (u).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
@@ -39,7 +39,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Distribution of synaptic conductance (g_syn).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
@@ -51,7 +51,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         "outside of the range of the conductance distribution.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
@@ -61,7 +61,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Fascilitation Time Distribution",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -72,7 +72,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Depression Time Distribution",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -83,7 +83,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Distribution of the number of readily releasable pool (RRP) vesicles.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
@@ -93,7 +93,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Decay Time Distribution",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -105,7 +105,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         "the first spike in a spike train.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
@@ -115,7 +115,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Distribution for the synaptic delay (from the presyn spike).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )

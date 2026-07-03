@@ -14,8 +14,8 @@ from entitysdk.types import AssetLabel, ContentType
 L = logging.getLogger(__name__)
 
 try:
-    from nmm.common import NEURON_COLORS  # ty:ignore[unresolved-import]
-    from nmm.morphology import NeuronMorphology  # ty:ignore[unresolved-import]
+    from nmm.common import NEURON_COLORS
+    from nmm.morphology import NeuronMorphology
 
     HAS_MESHING = True
 except ImportError:

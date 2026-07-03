@@ -77,10 +77,10 @@ def add_competing_mesh_distances(
     )
     mask = competitor_dists < 0
     mask_idx = competitor_dists[mask].index
-    k = 100
-    max_k = 1e6
+    max_k = len(mesh_pt_df)
+    k = numpy.minimum(100, max_k)
 
-    while (len(mask_idx) > 0) and (k < max_k):
+    while len(mask_idx) > 0:
         dist, idx = tree.query(pts.loc[mask_idx], k=k)
         competitor_ids = mesh_pt_df.spine_sharing_id.to_numpy()[idx]
         is_different = competitor_ids[:, 0] != competitor_ids[:, -1]
@@ -94,7 +94,9 @@ def add_competing_mesh_distances(
 
         mask = competitor_dists < 0
         mask_idx = competitor_dists[mask].index
-        k *= 4
+        if k == max_k:
+            break
+        k = numpy.minimum(k * 4, max_k)
     return competitor_dists
 
 
