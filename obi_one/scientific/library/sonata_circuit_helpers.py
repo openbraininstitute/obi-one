@@ -1,8 +1,11 @@
 import json
+import logging
 import os
 from pathlib import Path
 
 import bluepysnap as snap
+
+L = logging.getLogger(__name__)
 
 
 def add_node_set_to_circuit(
@@ -29,6 +32,7 @@ def write_circuit_node_set_file(
     overwrite_if_exists: bool = False,
 ) -> None:
     """Writes a new node set file of a given SONATA circuit object."""
+    L.info("sonata_circuit.node_sets.content: %s", sonata_circuit.node_sets.content)
     if file_name is None:
         # Use circuit's node set file name by default
         file_name = os.path.split(sonata_circuit.config["node_sets_file"])[1]
