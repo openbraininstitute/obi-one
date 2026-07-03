@@ -1,3 +1,10 @@
+"""Tests for brian2 simulator
+
+* using a synthetic `drosophila` model, 3 neurons, w/ all to all connectivity
+* see `tests/obi_one/scientific/library/simulation/data/create_data.py`
+* model is a simple exponential decay, where spikes cause an increase of `w` to the voltage
+"""
+
 import json
 from pathlib import Path
 
@@ -77,7 +84,7 @@ def test_no_stim_or_report(tmp_path):
 
 
 def test_spike_replay(tmp_path):
-    timestamps = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    timestamps = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1)
     path = test_module._write_spikes(
         tmp_path / "spikes.h5",
         population_name="drosophila",
@@ -100,8 +107,33 @@ def test_spike_replay(tmp_path):
         },
     }
 
-    spike_monitor = _run_simulation(tmp_path, config, plot=True)
+    spike_monitor = _run_simulation(tmp_path, config)
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
     npt.assert_allclose(spikes[1], np.array([0.9]) * brian2.units.msecond)
+    assert spikes[1] == spikes[2]
+
+    # limit duration, should have no spikes
+    config["inputs"]["replay"]["duration"] = 0.1
+    spike_monitor = _run_simulation(tmp_path, config)
+    spikes = dict(spike_monitor.spike_trains().items())
+    for i in range(3):
+        assert not spikes[i].any()
+
+    # delay spike start until there wouldn't be enough to fire
+    config["inputs"]["replay"]["duration"] = 400
+    config["inputs"]["replay"]["delay"] = 1.9
+    spike_monitor = _run_simulation(tmp_path, config)
+    spikes = dict(spike_monitor.spike_trains().items())
+    for i in range(3):
+        assert not spikes[i].any()
+
+    # run sim for longer, should spike now
+    config["run"]["tstop"] = 4
+    spike_monitor = _run_simulation(tmp_path, config)
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 0
+    # 1.9 since delayed by 1.9, 0.3 since the voltage has decayed in the meantime,
+    # so it needs another 3 dts
+    npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
     assert spikes[1] == spikes[2]
