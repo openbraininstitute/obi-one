@@ -35,6 +35,7 @@ __all__ = [
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
+    "BiophysicalCombinedNeuronSet",
     "BiophysicalPopulationIDNeuronSet",
     "BiophysicalPopulationNeuronSet",
     "BiophysicalPopulationPredefinedNeuronSet",
@@ -59,6 +60,9 @@ __all__ = [
     "ClusteredPathDistanceMorphologyLocations",
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
+    "BiophysicalCombinedNeuronSet",
+    "PointCombinedNeuronSet",
+    "VirtualCombinedNeuronSet",
     "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
@@ -154,6 +158,7 @@ __all__ = [
     "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NonVirtualCombinedNeuronSet",
     "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
@@ -165,6 +170,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PointPopulationCombinedNeuronSet",
     "PointPopulationIDNeuronSet",
     "PointPopulationNeuronSet",
     "PointPopulationPredefinedNeuronSet",
@@ -221,6 +227,7 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "VirtualPopulationCombinedNeuronSet",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
     "VirtualPopulationPredefinedNeuronSet",
@@ -301,6 +308,13 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+    CombinedNeuronSet,
+    NonVirtualCombinedNeuronSet,
+    PointCombinedNeuronSet,
+    VirtualCombinedNeuronSet,
+)
 from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
