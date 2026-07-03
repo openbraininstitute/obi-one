@@ -14,17 +14,18 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES, ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES, ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES, ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES, ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES, AtomicBiophysicalNeuronSetReference, AtomicPointNeuronSetReference, AtomicVirtualNeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import (
+    ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    AtomicBiophysicalNeuronSetReference,
+    AtomicPointNeuronSetReference,
+    AtomicVirtualNeuronSetReference,
+)
 
 L = logging.getLogger("obi-one")
-
-# Reference type names as strings to avoid circular imports with unions module.
-# These must match the class names defined in unions_neuron_sets.py.
-_BIOPHYSICAL_REF = "AtomicBiophysicalNeuronSetReference"
-_VIRTUAL_REF = "AtomicVirtualNeuronSetReference"
-_POINT_REF = "AtomicPointNeuronSetReference"
-
-_ALL_REFERENCE_TYPES = [_BIOPHYSICAL_REF, _VIRTUAL_REF, _POINT_REF]
 
 _MAX_COMBINED_DEPTH = 10
 
@@ -224,7 +225,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: _ALL_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
@@ -239,7 +240,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
-            SchemaKey.REFERENCE_TYPES: _ALL_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 

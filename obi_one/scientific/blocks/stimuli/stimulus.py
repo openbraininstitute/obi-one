@@ -173,16 +173,6 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
-    # ns2: AtomicBiophysicalNeuronSetReference | CombinedBiophysicalNeuronSetReference | None = Field(
-    #     default=None,
-    #     title="NS2",
-    #     description="NS2 block associated with the stimulus.",
-    #     json_schema_extra={
-    #         SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-    #         SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
-    #     },
-    # )
-
     amplitude: float | list[float] | FloatRange = Field(
         default=0.1,
         description="The injected current. Given in nanoamps.",
