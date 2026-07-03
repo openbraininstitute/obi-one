@@ -16,8 +16,10 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base imp
     NeuronSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_combined_neuron_sets import (
-    SPECIAL_ALL_NEURON_SETS_REFERENCE_TYPES,
-    SpecialNEURONSimulationNeuronSetUnion,
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    NEURONSimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
@@ -28,8 +30,6 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     AtomicBiophysicalNeuronSetReference,
     AtomicPointNeuronSetReference,
     AtomicVirtualNeuronSetReference,
@@ -139,12 +139,12 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SpecialNEURONSimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: SPECIAL_ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
