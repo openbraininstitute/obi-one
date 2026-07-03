@@ -20,12 +20,12 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base import (
     Brian2SimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
-    AtomicPointNeuronSetReference,
     Brian2SimulationNeuronSetUnion,
 )
+from obi_one.scientific.unions.unions_neuron_sets import AtomicPointNeuronSetReference
 from obi_one.scientific.unions.unions_stimuli import (
     Brian2CircuitStimulusUnion,
     StimulusReference,
@@ -57,7 +57,9 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            AtomicPointNeuronSetReference.__name__: Brian2SimulationScanConfig.default_node_set_name,  # JI come back to
+            AtomicPointNeuronSetReference.__name__: (
+                Brian2SimulationScanConfig.default_node_set_name,  # JI come back to
+            ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }
