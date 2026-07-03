@@ -178,28 +178,32 @@ ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = (
     AtomicBiophysicalNeuronSetReference | NeuronSetReference
 )
 ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION = AtomicVirtualNeuronSetReference | NeuronSetReference
+# NeuronSetReference is intentionally excluded from the point union: it only references deprecated
+# biophysical/virtual neuron sets (never point sets), so it must not be offered for a point-only
+# reference field.
 ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION = AtomicPointNeuronSetReference
 
-ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES = [
-    AtomicBiophysicalNeuronSetReference.__name__,
-    AtomicVirtualNeuronSetReference.__name__,
-    AtomicPointNeuronSetReference.__name__,
-    NeuronSetReference.__name__,
-]
-ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
-    AtomicBiophysicalNeuronSetReference.__name__,
-    AtomicPointNeuronSetReference.__name__,
-    NeuronSetReference.__name__,
-]
-ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
-    AtomicBiophysicalNeuronSetReference.__name__,
-    NeuronSetReference.__name__,
-]
-ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
-    AtomicVirtualNeuronSetReference.__name__,
-    NeuronSetReference.__name__,
-]
-# NeuronSetReference is intentionally excluded: it only references deprecated biophysical/virtual
-# neuron sets (never point sets), so it must not be offered for a point-only reference field. This
-# keeps the list aligned with POINT_NEURON_SETS_REFERENCE_UNION above.
-ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES = [AtomicPointNeuronSetReference.__name__]
+"""
+Lists of reference types
+
+Derived directly from the reference unions above so the two can never drift apart.
+The `|` unions are already flattened and de-duplicated (`NeuronSetReference` is a member of
+several of them but appears only once), and a bare (non-union) reference such as
+`ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION` yields a single-element list.
+"""
+
+ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION
+)
+ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION
+)
+ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION
+)
+ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION
+)
+ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION
+)
