@@ -17,12 +17,13 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    AtomicBiophysicalNeuronSetReference,
-    AtomicPointNeuronSetReference,
-    AtomicVirtualNeuronSetReference,
+    ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
 )
 
 L = logging.getLogger("obi-one")
@@ -266,7 +267,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: AtomicBiophysicalNeuronSetReference | None = Field(
+    base_neuron_set: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -278,7 +279,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: list[
         tuple[
-            AtomicBiophysicalNeuronSetReference,
+            ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ]
     ] = Field(
@@ -311,7 +312,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: AtomicVirtualNeuronSetReference | None = Field(
+    base_neuron_set: ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -323,7 +324,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: list[
         tuple[
-            AtomicVirtualNeuronSetReference,
+            ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ]
     ] = Field(
@@ -358,7 +359,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: AtomicPointNeuronSetReference | None = Field(
+    base_neuron_set: ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -370,7 +371,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: list[
         tuple[
-            AtomicPointNeuronSetReference,
+            ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ]
     ] = Field(
@@ -403,7 +404,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: AtomicPointNeuronSetReference | None = Field(
+    base_neuron_set: ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -415,7 +416,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: list[
         tuple[
-            AtomicPointNeuronSetReference,
+            ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ]
     ] = Field(
