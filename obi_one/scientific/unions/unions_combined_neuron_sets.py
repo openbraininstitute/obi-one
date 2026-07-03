@@ -1,16 +1,15 @@
-import abc
-from typing import Annotated, Any, ClassVar, cast
+from typing import Annotated, Any, ClassVar
 
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.neuron_sets.combined import BiophysicalCombinedNeuronSet
 from obi_one.scientific.unions.unions_neuron_sets import (
     _ALL_NEURON_SETS,
     _BIOPHYSICAL_NEURON_SETS,
     ALL_NEURON_SETS_REFERENCE_TYPES,
     BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    BaseNeuronSetReference,
 )
 
 _COMBINED_BIOPHYSICAL_NEURON_SETS = BiophysicalCombinedNeuronSet
@@ -37,22 +36,7 @@ SpecialBiophysicalNeuronSetUnion = Annotated[
 SpecialNEURONSimulationNeuronSetUnion = SpecialAllNeuronSetUnion
 
 
-# COPY OF NeuronSetReference IN unions_neuron_sets.py for now
-class NeuronSetReference(BlockReference, abc.ABC):
-    @property
-    def block(self) -> NeuronSet:
-        """Returns the block associated with this reference."""
-        if isinstance(super().block, NeuronSet):
-            return cast("NeuronSet", super().block)
-        msg = f"Expected block of type NeuronSet, but got {type(super().block)}"
-        raise TypeError(msg)
-
-    @block.setter
-    def block(self, value: NeuronSet) -> None:
-        BlockReference.block.fset(self, value)
-
-
-class CombinedBiophysicalNeuronSetReference(NeuronSetReference):
+class CombinedBiophysicalNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Combined Biophysical NeuronSet block."""
 
     allowed_block_types: ClassVar[Any] = CombinedBiophysicalNeuronSetUnion
