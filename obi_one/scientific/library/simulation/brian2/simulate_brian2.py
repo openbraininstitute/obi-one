@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
+from abc import ABC, abstractmethod
 import contextlib
 import logging
+import math
 import os
 import re
 import tempfile
@@ -44,7 +46,7 @@ class Brian2Network(BaseModel):
     inputs: list[brian2.Group | brian2.PoissonInput]
 
 
-class CurrentStimulator:
+class CurrentStimulator(ABC):
     def __init__(self, config):
         if config.compartment_set:
             msg = "`compartment_set` not supported"
@@ -64,20 +66,33 @@ class CurrentStimulator:
         dt: float,
         simulation_length: float
     ) -> brian2.TimedArray:
-        raise NotImplementedError
+        v = self._get_currents(dt, simulation_length)
+        return brian2.TimedArray(v * brian2.units.mA, dt=dt * brian2.units.ms)
+
+    @abstractmethod
+    def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:
+        pass
 
 
 class Linear(CurrentStimulator):
-    """A continuous injection of current."""
+    """A continuous linear injection of current."""
 
-    def get_currents(self, dt: float, simulation_length: float) -> brian2.TimedArray:
-        end_time = min(self.config.delay + self.config.duration, simulation_length)
+    def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:
+        n_total = math.ceil(simulation_length / dt) + 1
+        ret = np.zeros(n_total, dtype=np.float32)
         n_delay = round(self.config.delay / dt)
-        n_ramp = round((end_time - self.config.delay) / dt) + 1
-        delay_part = np.full(n_delay, 0)  # self.config.amp_start)
-        ramp_part = np.linspace(self.config.amp_start, self.config.amp_start, n_ramp)
-        v = np.concatenate([delay_part, ramp_part])
-        return brian2.TimedArray(v * brian2.units.mA, dt=dt * brian2.units.ms)
+        if self.config.delay + self.config.duration <= simulation_length:
+            n_ramp = round((self.config.delay + self.config.duration) / dt) + 1
+            amp_end = self.config.amp_end
+        else:
+            n_ramp = round((simulation_length - self.config.delay) / dt) + 1
+            amp_end = self.config.amp_start + (
+                simulation_length - self.config.delay
+            ) / self.config.duration * (self.config.amp_end - self.config.amp_start)
+
+        n_ramp = min(n_ramp, n_total - n_delay)
+        ret[n_delay:(n_delay + n_ramp)] = np.linspace(self.config.amp_start, amp_end, n_ramp)
+        return ret
 
 
 @singledispatch
@@ -286,7 +301,7 @@ class Inputs:
             if type(input_) in STIMULATION_TYPES
         ]
 
-    def update_model_and_get_stims(self, model: str, neuron_count) -> tuple[str, dict]:
+    def update_model_and_get_stims(self, model: str, neuron_count) -> tuple[str, dict, dict]:
         """Ibid."""
         if "I_inj" not in model:
             msg = f"Missing `I_inj` in equations: {model}; needed for current injection"
@@ -296,7 +311,8 @@ class Inputs:
 
         lines = []
         objs = {}
-        injection_sum = "\nI_inj = "
+        indicators = {}
+        injection_sum = "\nI_inj = 0 * amp"
         for i, injection in enumerate(self._injectors):
             injection_sum += f" + I_inj{i}"
             lines.extend((
@@ -309,10 +325,10 @@ class Inputs:
                 ).flatten()
             mask = np.zeros((neuron_count, ), dtype=bool)
             mask[idx] = True
-            objs[f"is_stimulated{i}"] = mask
+            indicators[f"is_stimulated{i}"] = mask
             objs[f"stim{i}"] = injection.get_currents(self.simulation.dt, self.simulation.run.tstop)
 
-        model += "\n".join(lines) + injection_sum + ": amp\n"
+        model += "\n" + "\n".join(lines) + injection_sum + ": amp\n"
 
         """
         \n
@@ -323,7 +339,7 @@ class Inputs:
         is_stimulated1 : 1
         """
 
-        return model, objs
+        return model, objs, indicators
 
     def update_network(self, net):
         breakpoint() # XXX BREAKPOINT
@@ -424,7 +440,7 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
     template = next(iter(templates.values()))
 
     neuron_count = len(nodes.ids())
-    model, stims = inputs.update_model_and_get_stims(template.params.model, neuron_count)
+    model, stims, indicators = inputs.update_model_and_get_stims(template.params.model, neuron_count)
 
     n0 = brian2.NeuronGroup(
         N=neuron_count,
@@ -443,6 +459,9 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
 
     for name, value in template.initial.items():
         setattr(n0, name, value.get())
+
+    for name, value in indicators.items():
+        setattr(n0, name, value)
 
     return n0
 

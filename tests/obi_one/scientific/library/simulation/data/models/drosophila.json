@@ -1,7 +1,8 @@
 {
   "params": {
     "model": [
-      "dv/dt = -v / tau : volt",
+      "dv/dt = (I_inj * R_membrane - v) / tau : volt",
+      "I_inj            : amp",
       "rfc              : second"
     ],
     "method": "linear",
@@ -10,6 +11,10 @@
     "refractory": "rfc"
   },
   "namespace": {
+    "R_membrane": [
+      1,
+      "ohm"
+    ],
     "tau": [
       5.0,
       "ms"

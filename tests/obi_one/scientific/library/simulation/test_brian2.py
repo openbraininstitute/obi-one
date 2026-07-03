@@ -12,6 +12,7 @@ import bluepysnap
 import brian2
 import brian2.devices
 import brian2.units
+import libsonata
 import numpy as np
 import numpy.testing as npt
 import pytest
@@ -148,9 +149,9 @@ def test_current_stim(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 0.15,
-                "delay": 0,
-                "duration": 15,
+                "amp_start": 3000,
+                "delay": 0.1,
+                "duration": 4,
                 "node_set": "0"
                 }
             }
@@ -158,6 +159,35 @@ def test_current_stim(tmp_path):
 
     spike_monitor = _run_simulation(tmp_path, config, plot=True)
     spikes = dict(spike_monitor.spike_trains().items())
-    assert len(spikes[0]) == 0
-    npt.assert_allclose(spikes[1], np.array([0.9]) * brian2.units.msecond)
-    assert spikes[1] == spikes[2]
+    assert len(spikes[0]) == 1
+    assert 0 == len(spikes[1]) == len(spikes[2])
+
+
+def test_linear_current_stim():
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 0,
+                "amp_end": 4,
+                "delay": 0,
+                "duration": 4,
+                "node_set": "0"
+                }
+            }
+        }
+
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module.Linear(sc.input("linear"))
+    res = t._get_currents(dt=1, simulation_length=5)
+    npt.assert_array_equal(res, [0., 1., 2., 3., 4., 0.])
+
+    config["inputs"]["linear"]["delay"] = 1
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module.Linear(sc.input("linear"))
+    res = t._get_currents(dt=1, simulation_length=5)
+    npt.assert_array_equal(res, [0., 0., 1., 2., 3., 4.])
