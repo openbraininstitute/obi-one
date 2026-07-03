@@ -30,15 +30,15 @@ A field that accepts a union of reference types lists each one:
 
 ```py
 class Recording:
-    neuron_set: BiophysicalNeuronSetReference | PointNeuronSetReference | TimestampsReference | None = Field(
+    neuron_set: AtomicBiophysicalNeuronSetReference | AtomicPointNeuronSetReference | TimestampsReference | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to record from.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [
-                BiophysicalNeuronSetReference.__name__,
-                PointNeuronSetReference.__name__,
+                AtomicBiophysicalNeuronSetReference.__name__,
+                AtomicPointNeuronSetReference.__name__,
                 TimestampsReference.__name__,
             ],
         },

@@ -21,8 +21,8 @@ from obi_one.scientific.unions.unions_distributions import (
 from obi_one.scientific.unions.unions_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
+    AtomicPointNeuronSetReference,
     LearningEngineNeuronSetUnion,
-    PointNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     LearningEngineCircuitStimulusUnion,
@@ -49,7 +49,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            PointNeuronSetReference.__name__: (
+            AtomicPointNeuronSetReference.__name__: (
                 LearningEngineSimulationScanConfig.default_node_set_name
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,

@@ -29,10 +29,12 @@ __all__ = [
     "AllPointNeurons",
     "AllPopulationNeurons",
     "AllVirtualNeurons",
+    "AtomicBiophysicalNeuronSetReference",
+    "AtomicPointNeuronSetReference",
+    "AtomicVirtualNeuronSetReference",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
-    "BiophysicalNeuronSetReference",
     "BiophysicalPopulationIDNeuronSet",
     "BiophysicalPopulationNeuronSet",
     "BiophysicalPopulationPredefinedNeuronSet",
@@ -163,7 +165,6 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
-    "PointNeuronSetReference",
     "PointPopulationIDNeuronSet",
     "PointPopulationNeuronSet",
     "PointPopulationPredefinedNeuronSet",
@@ -220,7 +221,6 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
-    "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
     "VirtualPopulationPredefinedNeuronSet",
@@ -543,9 +543,9 @@ from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
-    VirtualNeuronSetReference,
+    AtomicBiophysicalNeuronSetReference,
+    AtomicPointNeuronSetReference,
+    AtomicVirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion

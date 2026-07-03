@@ -45,7 +45,7 @@ _DEPRECATED_BIOPHYSICAL_NEURON_SETS = (
 _DEPRECATED_VIRTUAL_NEURON_SETS = rCA1CA3Inputs | nbS1POmInputs | nbS1VPMInputs
 _ALL_DEPRECATED_NEURON_SETS = _DEPRECATED_BIOPHYSICAL_NEURON_SETS | _DEPRECATED_VIRTUAL_NEURON_SETS
 
-_BIOPHYSICAL_NEURON_SETS = (
+ATOMIC_BIOPHYSICAL_NEURON_SETS = (
     BiophysicalPopulationPropertyNeuronSet
     | BiophysicalPopulationIDNeuronSet
     | BiophysicalPopulationNeuronSet
@@ -53,14 +53,14 @@ _BIOPHYSICAL_NEURON_SETS = (
     | BiophysicalPopulationPredefinedNeuronSet
     | _DEPRECATED_BIOPHYSICAL_NEURON_SETS
 )
-_VIRTUAL_NEURON_SETS = (
+ATOMIC_VIRTUAL_NEURON_SETS = (
     VirtualPopulationPropertyNeuronSet
     | VirtualPopulationIDNeuronSet
     | VirtualPopulationNeuronSet
     | VirtualPopulationPredefinedNeuronSet
     | _DEPRECATED_VIRTUAL_NEURON_SETS
 )
-_POINT_NEURON_SETS = (
+ATOMIC_POINT_NEURON_SETS = (
     PointPopulationPropertyNeuronSet
     | PointPopulationIDNeuronSet
     | PointPopulationNeuronSet
@@ -68,45 +68,29 @@ _POINT_NEURON_SETS = (
     | PointPopulationPredefinedNeuronSet
 )
 
-_ALL_NEURON_SETS = _BIOPHYSICAL_NEURON_SETS | _VIRTUAL_NEURON_SETS | _POINT_NEURON_SETS
+ATOMIC_ALL_NEURON_SETS = (
+    ATOMIC_BIOPHYSICAL_NEURON_SETS | ATOMIC_VIRTUAL_NEURON_SETS | ATOMIC_POINT_NEURON_SETS
+)
 
-BiophysicalNeuronSetUnion = Annotated[
-    _BIOPHYSICAL_NEURON_SETS,
+AtomicBiophysicalNeuronSetUnion = Annotated[
+    ATOMIC_BIOPHYSICAL_NEURON_SETS,
     Discriminator("type"),
 ]
 
-VirtualNeuronSetUnion = Annotated[
-    _VIRTUAL_NEURON_SETS,
+AtomicVirtualNeuronSetUnion = Annotated[
+    ATOMIC_VIRTUAL_NEURON_SETS,
     Discriminator("type"),
 ]
 
-PointNeuronSetUnion = Annotated[
-    _POINT_NEURON_SETS,
+AtomicPointNeuronSetUnion = Annotated[
+    ATOMIC_POINT_NEURON_SETS,
     Discriminator("type"),
 ]
 
-AllNeuronSetUnion = Annotated[
-    _ALL_NEURON_SETS,
+AtomicAllNeuronSetUnion = Annotated[
+    ATOMIC_ALL_NEURON_SETS,
     Discriminator("type"),
 ]
-
-NEURONSimulationNeuronSetUnion = Annotated[
-    _ALL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-NEURONMEModelWithSynapsesNeuronSetUnion = Annotated[
-    _VIRTUAL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-Brian2SimulationNeuronSetUnion = PointNeuronSetUnion
-LearningEngineNeuronSetUnion = PointNeuronSetUnion
-CircuitExtractionNeuronSetUnion = Annotated[
-    _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS,
-    Discriminator("type"),
-]
-NEURONSynapseParameterizationNeuronSetUnion = NEURONSimulationNeuronSetUnion
 
 
 class BaseNeuronSetReference(BlockReference, abc.ABC):
@@ -123,39 +107,39 @@ class BaseNeuronSetReference(BlockReference, abc.ABC):
         BlockReference.block.fset(self, value)
 
 
-class BiophysicalNeuronSetReference(BaseNeuronSetReference):
-    """A reference to a Biophysical or Point NeuronSet2 block."""
+class AtomicBiophysicalNeuronSetReference(BaseNeuronSetReference):
+    """A reference to a Biophysical NeuronSet block."""
 
-    allowed_block_types: ClassVar[Any] = BiophysicalNeuronSetUnion
+    allowed_block_types: ClassVar[Any] = AtomicBiophysicalNeuronSetUnion
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_BIOPHYSICAL_NEURON_SETS)
+        "allowed_block_types": BlockReference.get_class_names(ATOMIC_BIOPHYSICAL_NEURON_SETS)
     }
 
 
-class VirtualNeuronSetReference(BaseNeuronSetReference):
+class AtomicVirtualNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Virtual NeuronSet2 block."""
 
-    allowed_block_types: ClassVar[Any] = VirtualNeuronSetUnion
+    allowed_block_types: ClassVar[Any] = AtomicVirtualNeuronSetUnion
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_VIRTUAL_NEURON_SETS)
+        "allowed_block_types": BlockReference.get_class_names(ATOMIC_VIRTUAL_NEURON_SETS)
     }
 
 
-class PointNeuronSetReference(BaseNeuronSetReference):
+class AtomicPointNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Point NeuronSet2 block."""
 
-    allowed_block_types: ClassVar[Any] = PointNeuronSetUnion
+    allowed_block_types: ClassVar[Any] = AtomicPointNeuronSetUnion
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_POINT_NEURON_SETS)
+        "allowed_block_types": BlockReference.get_class_names(ATOMIC_POINT_NEURON_SETS)
     }
 
 
 _DEPRECATED_NEURON_SET_REFERENCE_MESSAGE = (
-    "NeuronSetReference is deprecated. Use BiophysicalNeuronSetReference, "
-    "VirtualNeuronSetReference, or PointNeuronSetReference instead."
+    "NeuronSetReference is deprecated. Use AtomicBiophysicalNeuronSetReference, "
+    "AtomicVirtualNeuronSetReference, or AtomicPointNeuronSetReference instead."
 )
 
 
@@ -181,65 +165,41 @@ class NeuronSetReference(BlockReference):
         raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
 
-ALL_NEURON_SETS_REFERENCE_UNION = (
-    BiophysicalNeuronSetReference
-    | VirtualNeuronSetReference
-    | PointNeuronSetReference
+ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION = (
+    AtomicBiophysicalNeuronSetReference
+    | AtomicVirtualNeuronSetReference
+    | AtomicPointNeuronSetReference
     | NeuronSetReference
 )
-NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
-    BiophysicalNeuronSetReference | PointNeuronSetReference | NeuronSetReference
+ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
+    AtomicBiophysicalNeuronSetReference | AtomicPointNeuronSetReference | NeuronSetReference
 )
-BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | NeuronSetReference
-VIRTUAL_NEURON_SETS_REFERENCE_UNION = VirtualNeuronSetReference | NeuronSetReference
-POINT_NEURON_SETS_REFERENCE_UNION = PointNeuronSetReference
+ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = (
+    AtomicBiophysicalNeuronSetReference | NeuronSetReference
+)
+ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION = AtomicVirtualNeuronSetReference | NeuronSetReference
+ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION = AtomicPointNeuronSetReference
 
-ALL_NEURON_SETS_REFERENCE_TYPES = [
-    BiophysicalNeuronSetReference.__name__,
-    VirtualNeuronSetReference.__name__,
-    PointNeuronSetReference.__name__,
+ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES = [
+    AtomicBiophysicalNeuronSetReference.__name__,
+    AtomicVirtualNeuronSetReference.__name__,
+    AtomicPointNeuronSetReference.__name__,
     NeuronSetReference.__name__,
 ]
-NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
-    BiophysicalNeuronSetReference.__name__,
-    PointNeuronSetReference.__name__,
+ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+    AtomicBiophysicalNeuronSetReference.__name__,
+    AtomicPointNeuronSetReference.__name__,
     NeuronSetReference.__name__,
 ]
-BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
-    BiophysicalNeuronSetReference.__name__,
+ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
+    AtomicBiophysicalNeuronSetReference.__name__,
     NeuronSetReference.__name__,
 ]
-VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
-    VirtualNeuronSetReference.__name__,
+ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+    AtomicVirtualNeuronSetReference.__name__,
     NeuronSetReference.__name__,
 ]
 # NeuronSetReference is intentionally excluded: it only references deprecated biophysical/virtual
 # neuron sets (never point sets), so it must not be offered for a point-only reference field. This
 # keeps the list aligned with POINT_NEURON_SETS_REFERENCE_UNION above.
-POINT_NEURON_SETS_REFERENCE_TYPES = [PointNeuronSetReference.__name__]
-
-
-def resolve_neuron_set_ref_to_node_set(
-    neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None, default_node_set: str
-) -> str:
-    if neuron_set_reference is None:
-        return default_node_set
-
-    return neuron_set_reference.block.block_name
-
-
-def resolve_neuron_set_ref_to_neuron_set(
-    neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
-    default_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
-) -> AllNeuronSetUnion | None:
-    if neuron_set_reference is None:
-        if default_neuron_set_reference is None:
-            msg = (
-                "NeuronSet2Reference is None and no default_neuron_set provided. "
-                "Cannot resolve to a NeuronSet."
-            )
-            raise ValueError(msg)
-
-        return default_neuron_set_reference.block  # ty:ignore[invalid-return-type]
-
-    return neuron_set_reference.block  # ty:ignore[invalid-return-type]
+ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES = [AtomicPointNeuronSetReference.__name__]

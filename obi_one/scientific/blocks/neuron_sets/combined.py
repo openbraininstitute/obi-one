@@ -14,15 +14,15 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import BiophysicalNeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import AtomicBiophysicalNeuronSetReference
 
 L = logging.getLogger("obi-one")
 
 # Reference type names as strings to avoid circular imports with unions module.
 # These must match the class names defined in unions_neuron_sets.py.
-_BIOPHYSICAL_REF = "BiophysicalNeuronSetReference"
-_VIRTUAL_REF = "VirtualNeuronSetReference"
-_POINT_REF = "PointNeuronSetReference"
+_BIOPHYSICAL_REF = "AtomicBiophysicalNeuronSetReference"
+_VIRTUAL_REF = "AtomicVirtualNeuronSetReference"
+_POINT_REF = "AtomicPointNeuronSetReference"
 
 _ALL_REFERENCE_TYPES = [_BIOPHYSICAL_REF, _VIRTUAL_REF, _POINT_REF]
 _NON_VIRTUAL_REFERENCE_TYPES = [_BIOPHYSICAL_REF, _POINT_REF]
@@ -269,7 +269,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: BiophysicalNeuronSetReference | None = Field(
+    base_neuron_set: AtomicBiophysicalNeuronSetReference | None = Field(
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -281,7 +281,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: list[
         tuple[
-            BiophysicalNeuronSetReference,
+            AtomicBiophysicalNeuronSetReference,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ]
     ] = Field(

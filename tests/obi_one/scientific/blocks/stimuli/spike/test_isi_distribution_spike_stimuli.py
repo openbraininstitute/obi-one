@@ -7,7 +7,7 @@ import obi_one as obi
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
 )
-from obi_one.scientific.unions.unions_neuron_sets import VirtualNeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import AtomicVirtualNeuronSetReference
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 
@@ -25,7 +25,7 @@ def _make_isi_distribution_stimulus(
             block_dict_name="distributions",
             block_name="constant_dist",
         ),
-        source_neuron_set=VirtualNeuronSetReference(
+        source_neuron_set=AtomicVirtualNeuronSetReference(
             block_dict_name="neuron_sets",
             block_name="test_neurons",
         ),

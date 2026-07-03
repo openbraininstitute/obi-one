@@ -16,7 +16,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    BiophysicalNeuronSetReference,
+    AtomicBiophysicalNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import (
     RecordingReference,
@@ -38,9 +38,9 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
 
     @property
-    def default_neuron_set_reference(self) -> BiophysicalNeuronSetReference:
+    def default_neuron_set_reference(self) -> AtomicBiophysicalNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
-        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
+        default_neuron_set_block_reference = AtomicBiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
 

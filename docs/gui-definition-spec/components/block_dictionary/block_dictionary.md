@@ -38,7 +38,7 @@ A dictionary that provides multiple reference types — one per block class in t
 ```py
 class Config:
 
-    neuron_sets: dict[str, AllNeuronSetUnion] = Field(
+    neuron_sets: dict[str, AtomicAllNeuronSetUnion] = Field(
         default_factory=dict,
         title="Neuron Sets",
         description="Neuron sets for the simulation.",
@@ -48,9 +48,9 @@ class Config:
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.REFERENCE_TYPES: [
-                BiophysicalNeuronSetReference.__name__,
-                VirtualNeuronSetReference.__name__,
-                PointNeuronSetReference.__name__,
+                AtomicBiophysicalNeuronSetReference.__name__,
+                AtomicVirtualNeuronSetReference.__name__,
+                AtomicPointNeuronSetReference.__name__,
             ],
         }
     )

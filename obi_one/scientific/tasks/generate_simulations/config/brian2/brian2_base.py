@@ -12,7 +12,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    PointNeuronSetReference,
+    AtomicPointNeuronSetReference,
 )
 
 
@@ -27,9 +27,9 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     default_neuron_set_type: ClassVar[type[AllPointNeurons]] = AllPointNeurons
 
     @property
-    def default_neuron_set_reference(self) -> PointNeuronSetReference:
+    def default_neuron_set_reference(self) -> AtomicPointNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
-        default_neuron_set_block_reference = PointNeuronSetReference(
+        default_neuron_set_block_reference = AtomicPointNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
 
