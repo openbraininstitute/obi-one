@@ -27,75 +27,48 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 Useful private unions
 """
 
-_COMBINED_BIOPHYSICAL_NEURON_SETS = BiophysicalCombinedNeuronSet
-_COMBINED_POINT_NEURON_SETS = PointCombinedNeuronSet
-_COMBINED_VIRTUAL_NEURON_SETS = VirtualCombinedNeuronSet
-_COMBINED_NON_VIRTUAL_NEURON_SETS = (
-    BiophysicalCombinedNeuronSet | PointCombinedNeuronSet | NonVirtualCombinedNeuronSet
-)
-_BIOPHYSICAL_NEURON_SETS = ATOMIC_BIOPHYSICAL_NEURON_SETS | _COMBINED_BIOPHYSICAL_NEURON_SETS
-_POINT_NEURON_SETS = ATOMIC_POINT_NEURON_SETS | _COMBINED_POINT_NEURON_SETS
-_VIRTUAL_NEURON_SETS = ATOMIC_VIRTUAL_NEURON_SETS | _COMBINED_VIRTUAL_NEURON_SETS
-_NON_VIRTUAL_NEURON_SETS = _COMBINED_NON_VIRTUAL_NEURON_SETS
+_BIOPHYSICAL_NEURON_SETS = ATOMIC_BIOPHYSICAL_NEURON_SETS | BiophysicalCombinedNeuronSet
+_POINT_NEURON_SETS = ATOMIC_POINT_NEURON_SETS | PointCombinedNeuronSet
+_VIRTUAL_NEURON_SETS = ATOMIC_VIRTUAL_NEURON_SETS | VirtualCombinedNeuronSet
+_NON_VIRTUAL_NEURON_SETS = NonVirtualCombinedNeuronSet
 _ALL_NEURON_SETS = (
     _BIOPHYSICAL_NEURON_SETS | _POINT_NEURON_SETS | _VIRTUAL_NEURON_SETS | _NON_VIRTUAL_NEURON_SETS
 )
 
 """
-Annotated unions
+Annotated private unions
 """
 
-CombinedBiophysicalNeuronSetUnion = Annotated[
-    _COMBINED_BIOPHYSICAL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-CombinedPointNeuronSetUnion = Annotated[
-    _COMBINED_POINT_NEURON_SETS,
-    Discriminator("type"),
-]
-
-CombinedVirtualNeuronSetUnion = Annotated[
-    _COMBINED_VIRTUAL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-CombinedNonVirtualNeuronSetUnion = Annotated[
-    _COMBINED_NON_VIRTUAL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-AllNeuronSetUnion = Annotated[
+_AllNeuronSetUnion = Annotated[
     _ALL_NEURON_SETS,
     Discriminator("type"),
 ]
 
-BiophysicalNeuronSetUnion = Annotated[
-    _BIOPHYSICAL_NEURON_SETS,
-    Discriminator("type"),
-]
-
-VirtualNeuronSetUnion = Annotated[
+_VirtualNeuronSetUnion = Annotated[
     _VIRTUAL_NEURON_SETS,
     Discriminator("type"),
 ]
 
-PointNeuronSetUnion = Annotated[
+_PointNeuronSetUnion = Annotated[
     _POINT_NEURON_SETS,
     Discriminator("type"),
 ]
 
-NonVirtualNeuronSetUnion = Annotated[
+_NonVirtualNeuronSetUnion = Annotated[
     _NON_VIRTUAL_NEURON_SETS,
     Discriminator("type"),
 ]
 
-NEURONSimulationNeuronSetUnion = AllNeuronSetUnion
-CircuitExtractionNeuronSetUnion = NonVirtualNeuronSetUnion
-NEURONMEModelWithSynapsesNeuronSetUnion = VirtualNeuronSetUnion
-Brian2SimulationNeuronSetUnion = PointNeuronSetUnion
-LearningEngineNeuronSetUnion = PointNeuronSetUnion
-NEURONSynapseParameterizationNeuronSetUnion = AllNeuronSetUnion
+"""
+Annotated public unions
+"""
+
+NEURONSimulationNeuronSetUnion = _AllNeuronSetUnion
+CircuitExtractionNeuronSetUnion = _NonVirtualNeuronSetUnion
+NEURONMEModelWithSynapsesNeuronSetUnion = _VirtualNeuronSetUnion
+Brian2SimulationNeuronSetUnion = _PointNeuronSetUnion
+LearningEngineNeuronSetUnion = _PointNeuronSetUnion
+NEURONSynapseParameterizationNeuronSetUnion = _AllNeuronSetUnion
 
 
 """
@@ -106,40 +79,52 @@ Reference classes
 class CombinedBiophysicalNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Combined Biophysical NeuronSet block."""
 
-    allowed_block_types: ClassVar[Any] = CombinedBiophysicalNeuronSetUnion
+    allowed_block_types: ClassVar[Any] = Annotated[
+        BiophysicalCombinedNeuronSet,
+        Discriminator("type"),
+    ]
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_COMBINED_BIOPHYSICAL_NEURON_SETS)
+        "allowed_block_types": BlockReference.get_class_names(BiophysicalCombinedNeuronSet)
     }
 
 
 class CombinedPointNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Combined Point NeuronSet block."""
 
-    allowed_block_types: ClassVar[Any] = CombinedPointNeuronSetUnion
+    allowed_block_types: ClassVar[Any] = Annotated[
+        PointCombinedNeuronSet,
+        Discriminator("type"),
+    ]
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_COMBINED_POINT_NEURON_SETS)
+        "allowed_block_types": BlockReference.get_class_names(PointCombinedNeuronSet)
     }
 
 
 class CombinedVirtualNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Combined Virtual NeuronSet block."""
 
-    allowed_block_types: ClassVar[Any] = CombinedVirtualNeuronSetUnion
+    allowed_block_types: ClassVar[Any] = Annotated[
+        VirtualCombinedNeuronSet,
+        Discriminator("type"),
+    ]
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_COMBINED_VIRTUAL_NEURON_SETS)
+        "allowed_block_types": BlockReference.get_class_names(VirtualCombinedNeuronSet)
     }
 
 
 class CombinedNonVirtualNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Combined Non-Virtual NeuronSet block."""
 
-    allowed_block_types: ClassVar[Any] = CombinedNonVirtualNeuronSetUnion
+    allowed_block_types: ClassVar[Any] = Annotated[
+        _NON_VIRTUAL_NEURON_SETS,
+        Discriminator("type"),
+    ]
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_COMBINED_NON_VIRTUAL_NEURON_SETS)
+        "allowed_block_types": BlockReference.get_class_names(NonVirtualCombinedNeuronSet)
     }
 
 
@@ -157,6 +142,8 @@ VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
 POINT_NEURON_SETS_REFERENCE_UNION = (
     ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION | CombinedPointNeuronSetReference
 )
+
+
 NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION
     | POINT_NEURON_SETS_REFERENCE_UNION
@@ -172,51 +159,37 @@ ALL_NEURON_SETS_REFERENCE_UNION = (
 
 
 """
-List of reference types
+Lists of reference types
 """
 
-COMBINED_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
+BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
+    *ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     CombinedBiophysicalNeuronSetReference.__name__,
 ]
 
-COMBINED_POINT_NEURON_SETS_REFERENCE_TYPES = [
+POINT_NEURON_SETS_REFERENCE_TYPES = [
+    *ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
     CombinedPointNeuronSetReference.__name__,
 ]
 
-COMBINED_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+    *ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     CombinedVirtualNeuronSetReference.__name__,
 ]
 
-COMBINED_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = [
+    *BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    *POINT_NEURON_SETS_REFERENCE_TYPES,
     CombinedNonVirtualNeuronSetReference.__name__,
 ]
 
-ALL_NEURON_SETS_REFERENCE_TYPES = (
-    ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES + COMBINED_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES
-)
-
-BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = (
-    ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES
-    + COMBINED_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES
-)
-
-POINT_NEURON_SETS_REFERENCE_TYPES = (
-    ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES + COMBINED_POINT_NEURON_SETS_REFERENCE_TYPES
-)
-
-VIRTUAL_NEURON_SETS_REFERENCE_TYPES = (
-    ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES + COMBINED_VIRTUAL_NEURON_SETS_REFERENCE_TYPES
-)
-
-NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = (
-    BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES
-    + POINT_NEURON_SETS_REFERENCE_TYPES
-    + COMBINED_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES
-)
-
-ALL_NEURON_SETS_REFERENCE_TYPES = (
-    ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES + COMBINED_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES
-)
+ALL_NEURON_SETS_REFERENCE_TYPES = [
+    *ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
+    CombinedBiophysicalNeuronSetReference.__name__,
+    CombinedPointNeuronSetReference.__name__,
+    CombinedVirtualNeuronSetReference.__name__,
+    CombinedNonVirtualNeuronSetReference.__name__,
+]
 
 """
 Resolve functions
@@ -235,7 +208,7 @@ def resolve_neuron_set_ref_to_node_set(
 def resolve_neuron_set_ref_to_neuron_set(
     neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
     default_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
-) -> AllNeuronSetUnion | None:
+) -> _AllNeuronSetUnion | None:
     if neuron_set_reference is None:
         if default_neuron_set_reference is None:
             msg = (
