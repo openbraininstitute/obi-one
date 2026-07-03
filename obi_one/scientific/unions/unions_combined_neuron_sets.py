@@ -23,7 +23,9 @@ from obi_one.scientific.unions.unions_neuron_sets import (
 _COMBINED_BIOPHYSICAL_NEURON_SETS = BiophysicalCombinedNeuronSet
 _COMBINED_POINT_NEURON_SETS = PointCombinedNeuronSet
 _COMBINED_VIRTUAL_NEURON_SETS = VirtualCombinedNeuronSet
-_COMBINED_NON_VIRTUAL_NEURON_SETS = NonVirtualCombinedNeuronSet
+_COMBINED_NON_VIRTUAL_NEURON_SETS = (
+    BiophysicalCombinedNeuronSet | PointCombinedNeuronSet | NonVirtualCombinedNeuronSet
+)
 
 CombinedBiophysicalNeuronSetUnion = Annotated[
     _COMBINED_BIOPHYSICAL_NEURON_SETS,
@@ -53,7 +55,27 @@ BiophysicalNeuronSetUnion = Annotated[
     Discriminator("type"),
 ]
 
+VirtualNeuronSetUnion = Annotated[
+    _VIRTUAL_NEURON_SETS,
+    Discriminator("type"),
+]
+
+PointNeuronSetUnion = Annotated[
+    _POINT_NEURON_SETS,
+    Discriminator("type"),
+]
+
+NonVirtualNeuronSetUnion = Annotated[
+    _NON_VIRTUAL_NEURON_SETS,
+    Discriminator("type"),
+]
+
 NEURONSimulationNeuronSetUnion = AllNeuronSetUnion
+CircuitExtractionNeuronSetUnion = NonVirtualNeuronSetUnion
+NEURONMEModelWithSynapsesNeuronSetUnion = VirtualNeuronSetUnion
+Brian2SimulationNeuronSetUnion = PointNeuronSetUnion
+LearningEngineNeuronSetUnion = PointNeuronSetUnion
+NEURONSynapseParameterizationNeuronSetUnion = AllNeuronSetUnion
 
 ALL_NEURON_SETS_REFERENCE_UNION = (ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,)
 
@@ -80,25 +102,6 @@ BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = (
 ALL_NEURON_SETS_REFERENCE_TYPES = (
     ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES + COMBINED_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES
 )
-
-
-# NEURONSimulationNeuronSetUnion = Annotated[
-#     ATOMIC_ALL_NEURON_SETS,
-#     Discriminator("type"),
-# ]
-
-# NEURONMEModelWithSynapsesNeuronSetUnion = Annotated[
-#     ATOMIC_VIRTUAL_NEURON_SETS,
-#     Discriminator("type"),
-# ]
-
-# Brian2SimulationNeuronSetUnion = AtomicPointNeuronSetUnion
-# LearningEngineNeuronSetUnion = AtomicPointNeuronSetUnion
-# CircuitExtractionNeuronSetUnion = Annotated[
-#     ATOMIC_BIOPHYSICAL_NEURON_SETS | ATOMIC_POINT_NEURON_SETS,
-#     Discriminator("type"),
-# ]
-# NEURONSynapseParameterizationNeuronSetUnion = NEURONSimulationNeuronSetUnion
 
 
 def resolve_neuron_set_ref_to_node_set(
