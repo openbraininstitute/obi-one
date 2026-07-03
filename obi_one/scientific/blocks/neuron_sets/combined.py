@@ -16,6 +16,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
@@ -220,7 +221,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: BlockReference | None = Field(
+    base_neuron_set: ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -232,7 +233,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: list[
         tuple[
-            BlockReference,
+            ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ]
     ] = Field(

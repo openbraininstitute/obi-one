@@ -1,6 +1,10 @@
+import copy
 import logging
 from collections import defaultdict
 from typing import Any
+
+import pytest
+from jsonschema import ValidationError
 
 from obi_one.core.schema import SchemaKey, UIElement
 
@@ -9,6 +13,7 @@ from .validate_block import (
     resolve_ref,
     validate_block,
     validate_hidden_refs_not_required,
+    validate_neuron_set_combination,
     validate_string,
     validate_type,
 )
@@ -244,3 +249,62 @@ def test_schema() -> None:
 
         schema = resolve_ref(openapi_schema, schema_ref)
         validate_config(schema, schema_ref)
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `neuron_set_combination` UI element validator.
+# ---------------------------------------------------------------------------
+
+# Concrete blocks whose `combined_with` field uses UIElement.NEURON_SET_COMBINATION.
+# BiophysicalCombinedNeuronSet exercises the multi-reference (anyOf) neuron set slot, while
+# PointCombinedNeuronSet exercises the single-reference ($ref) slot.
+COMBINATION_BLOCKS = ["BiophysicalCombinedNeuronSet", "PointCombinedNeuronSet"]
+
+
+def _combination_schema(block_name: str) -> dict:
+    """Return a deep copy of a real `combined_with` (neuron_set_combination) field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][block_name]["properties"]["combined_with"]
+    )
+
+
+@pytest.mark.parametrize("block_name", COMBINATION_BLOCKS)
+def test_neuron_set_combination_valid_schema_passes(block_name):
+    # The real, generated schema must validate for both the single-$ref and anyOf neuron set slots.
+    validate_neuron_set_combination(_combination_schema(block_name), "combined_with", block_name)
+
+
+def test_neuron_set_combination_rejects_non_array():
+    schema = _combination_schema("BiophysicalCombinedNeuronSet")
+    schema["type"] = "object"
+    with pytest.raises(ValidationError, match="should be of type 'array'"):
+        validate_neuron_set_combination(schema, "combined_with", "ref")
+
+
+def test_neuron_set_combination_rejects_wrong_tuple_arity():
+    schema = _combination_schema("BiophysicalCombinedNeuronSet")
+    schema["items"]["maxItems"] = 3
+    with pytest.raises(ValidationError, match="2-tuples"):
+        validate_neuron_set_combination(schema, "combined_with", "ref")
+
+
+def test_neuron_set_combination_rejects_reference_types_mismatch():
+    schema = _combination_schema("BiophysicalCombinedNeuronSet")
+    schema["reference_types"] = [*schema["reference_types"], "NonExistentReference"]
+    with pytest.raises(ValidationError, match="match 'reference_types'"):
+        validate_neuron_set_combination(schema, "combined_with", "ref")
+
+
+def test_neuron_set_combination_rejects_bad_operation_enum():
+    schema = _combination_schema("BiophysicalCombinedNeuronSet")
+    # Drop an operation so the enum no longer matches the SetOperation members.
+    schema["items"]["prefixItems"][1]["enum"] = ["union", "intersect"]
+    with pytest.raises(ValidationError, match="set operations"):
+        validate_neuron_set_combination(schema, "combined_with", "ref")
+
+
+def test_neuron_set_combination_rejects_non_list_reference_types():
+    schema = _combination_schema("BiophysicalCombinedNeuronSet")
+    schema["reference_types"] = "AtomicBiophysicalNeuronSetReference"
+    with pytest.raises(ValueError, match="must be a list of strings"):
+        validate_neuron_set_combination(schema, "combined_with", "ref")
