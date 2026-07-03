@@ -5,8 +5,8 @@ from pydantic import Discriminator
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
-    PointCombinedNeuronSet,
     NonVirtualCombinedNeuronSet,
+    PointCombinedNeuronSet,
     VirtualCombinedNeuronSet,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
@@ -15,10 +15,8 @@ from obi_one.scientific.unions.unions_neuron_sets import (
     ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_BIOPHYSICAL_NEURON_SETS,
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
-    ATOMIC_VIRTUAL_NEURON_SETS,
-    ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_POINT_NEURON_SETS,
-    ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_VIRTUAL_NEURON_SETS,
     BaseNeuronSetReference,
 )
 
@@ -38,8 +36,8 @@ _POINT_NEURON_SETS = ATOMIC_POINT_NEURON_SETS | _COMBINED_POINT_NEURON_SETS
 _VIRTUAL_NEURON_SETS = ATOMIC_VIRTUAL_NEURON_SETS | _COMBINED_VIRTUAL_NEURON_SETS
 _NON_VIRTUAL_NEURON_SETS = _COMBINED_NON_VIRTUAL_NEURON_SETS
 _ALL_NEURON_SETS = (
-    ATOMIC_ALL_NEURON_SETS 
-    | _BIOPHYSICAL_NEURON_SETS 
+    ATOMIC_ALL_NEURON_SETS
+    | _BIOPHYSICAL_NEURON_SETS
     | _POINT_NEURON_SETS
     | _VIRTUAL_NEURON_SETS
     | _NON_VIRTUAL_NEURON_SETS
@@ -60,7 +58,7 @@ NEURONSimulationNeuronSetUnion = AllNeuronSetUnion
 ALL_NEURON_SETS_REFERENCE_UNION = (ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,)
 
 
-class CombinedAtomicBiophysicalNeuronSetReference(BaseNeuronSetReference):
+class CombinedBiophysicalNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Combined Biophysical NeuronSet block."""
 
     allowed_block_types: ClassVar[Any] = CombinedBiophysicalNeuronSetUnion
@@ -71,7 +69,7 @@ class CombinedAtomicBiophysicalNeuronSetReference(BaseNeuronSetReference):
 
 
 COMBINED_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = [
-    CombinedAtomicBiophysicalNeuronSetReference.__name__,
+    CombinedBiophysicalNeuronSetReference.__name__,
 ]
 
 BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES = (

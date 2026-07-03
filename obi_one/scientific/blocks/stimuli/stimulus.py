@@ -24,13 +24,13 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.unions.unions_combined_neuron_sets import (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
-    CombinedAtomicBiophysicalNeuronSetReference,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
-    AtomicBiophysicalNeuronSetReference,
+    CombinedBiophysicalNeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    AtomicBiophysicalNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -178,9 +178,7 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
-    ns2: (
-        AtomicBiophysicalNeuronSetReference | CombinedAtomicBiophysicalNeuronSetReference | None
-    ) = Field(
+    ns2: AtomicBiophysicalNeuronSetReference | CombinedBiophysicalNeuronSetReference | None = Field(
         default=None,
         title="NS2",
         description="NS2 block associated with the stimulus.",

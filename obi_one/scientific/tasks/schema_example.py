@@ -14,9 +14,9 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
-    AtomicAllNeuronSetUnion,
+    AllNeuronSetUnion,
 )
 
 
@@ -147,7 +147,7 @@ class SchemaExampleScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    neuron_set: AtomicAllNeuronSetUnion = Field(
+    neuron_set: AllNeuronSetUnion = Field(
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
@@ -158,7 +158,7 @@ class SchemaExampleScanConfig(ScanConfig):
         },
     )
 
-    neuron_sets: dict[str, AtomicAllNeuronSetUnion] = Field(
+    neuron_sets: dict[str, AllNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

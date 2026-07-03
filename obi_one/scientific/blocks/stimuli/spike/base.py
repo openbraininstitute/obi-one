@@ -15,7 +15,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import SONATA
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     ALL_NEURON_SETS_REFERENCE_UNION,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,

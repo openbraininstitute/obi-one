@@ -15,15 +15,15 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_base import (
     LearningEngineSimulationScanConfig,
 )
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    POINT_NEURON_SETS_REFERENCE_TYPES,
+    POINT_NEURON_SETS_REFERENCE_UNION,
+    LearningEngineNeuronSetUnion,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    POINT_NEURON_SETS_REFERENCE_TYPES,
-    POINT_NEURON_SETS_REFERENCE_UNION,
-    AtomicPointNeuronSetReference,
-    LearningEngineNeuronSetUnion,
-)
+from obi_one.scientific.unions.unions_neuron_sets import AtomicPointNeuronSetReference
 from obi_one.scientific.unions.unions_stimuli import (
     LearningEngineCircuitStimulusUnion,
     StimulusReference,
@@ -49,7 +49,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            AtomicPointNeuronSetReference.__name__: (
+            AtomicPointNeuronSetReference.__name__: (  # JI come back to
                 LearningEngineSimulationScanConfig.default_node_set_name
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
