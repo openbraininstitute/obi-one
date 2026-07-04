@@ -1,19 +1,47 @@
 """Block holding the list of protocols with per-protocol feature selections."""
 
+from dataclasses import fields as dataclass_fields
+
 from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: E501
+    IV,
+    SAHP,
     APWaveform,
     IDrest,
     IDthresh,
-    IV,
     Protocol,
     ProtocolUnion,
-    SAHP,
     available_features_by_protocol_name,
 )
+
+
+def _efel_settings_defaults() -> dict[str, dict]:
+    """Introspect ``efel.settings.Settings`` for the frontend's "add setting" picker.
+
+    Returns ``{setting_name: {"default": value, "type": "float"|"int"|"str"|"bool"}}``
+    for every field on the eFEL ``Settings`` dataclass.
+    """
+    try:
+        from efel.settings import Settings  # noqa: PLC0415
+    except ImportError:
+        return {}
+
+    result: dict[str, dict] = {}
+    for f in dataclass_fields(Settings):
+        type_name: str
+        if f.type is float or f.type == "float":
+            type_name = "float"
+        elif f.type is int or f.type == "int":
+            type_name = "int"
+        elif f.type is bool or f.type == "bool":
+            type_name = "bool"
+        else:
+            type_name = "str"
+        result[f.name] = {"default": f.default, "type": type_name}
+    return result
 
 
 def _default_protocols() -> tuple[Protocol, ...]:
@@ -57,15 +85,18 @@ def _default_protocols() -> tuple[Protocol, ...]:
 
 
 class ProtocolAndFeatureSelection(Block):
-    """Per-protocol picker for timing, amplitudes, and chosen efeatures.
+    """Per-protocol picker for timing, LJP, and chosen efeatures.
 
     Each entry in ``protocols`` is a concrete :class:`Protocol` instance
-    carrying its own timing (``ton``/``toff``/``tmid``/``tmid2``), amplitudes,
-    and one typed field per valid :class:`EFeature`. Whether each feature is
-    actually extracted is controlled by its own ``extract`` flag. The
-    catalogue of features available per protocol lives in
-    ``protocols_and_features`` and is advertised to the frontend via the
-    ``available_efeatures_by_protocol`` key on the field's ``json_schema_extra``.
+    carrying its own stimulus timing (``ton``/``toff``/``tmid``/``tmid2``),
+    liquid junction potential (``ljp``), and one typed field per valid
+    :class:`EFeature`. Whether each feature is actually extracted is
+    controlled by its own ``extract`` flag. The catalogue of features
+    available per protocol lives in ``protocols_and_features`` and is
+    advertised to the frontend via the ``available_efeatures_by_protocol``
+    key on the field's ``json_schema_extra``. The full list of eFEL settings
+    (for the "add setting" picker) is advertised via
+    ``available_efel_settings``.
 
     ``protocols`` is a tuple — not a list — so the obi-one scan framework
     leaves it alone instead of expanding it as a parameter-scan dimension.
@@ -106,5 +137,6 @@ class ProtocolAndFeatureSelection(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,
             "available_efeatures_by_protocol": available_features_by_protocol_name(),
+            "available_efel_settings": _efel_settings_defaults(),
         },
     )

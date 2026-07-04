@@ -11,7 +11,7 @@ that influence experimental e-feature extraction.
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.initialize import (
     ExtractionInitialize,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.protocol_and_feature_selection import (
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.protocol_and_feature_selection import (  # noqa: E501
     ProtocolAndFeatureSelection,
 )
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.rheobase import (

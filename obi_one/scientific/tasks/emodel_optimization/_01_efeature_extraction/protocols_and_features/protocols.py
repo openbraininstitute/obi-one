@@ -1,10 +1,11 @@
 """Ephys protocol Pydantic models.
 
 Each :class:`Protocol` subclass declares its valid eFEL features as typed
-Pydantic fields (one per feature subclass from :mod:`.efeatures`), plus the
-per-protocol timing (``ton``/``toff``/``tmid``/``tmid2``) and ``amplitudes``
-inherited from the base. Whether each feature is actually extracted is decided
-by its own ``extract`` flag, surfaced through :meth:`Protocol.selected_efeatures`.
+Pydantic fields (one per feature subclass from :mod:`.efeatures`), plus
+user-editable stimulus timing (``ton``/``toff``/``tmid``/``tmid2``) and
+liquid junction potential (``ljp``) on the base. Whether each feature is
+actually extracted is decided by its own ``extract`` flag, surfaced through
+:meth:`Protocol.selected_efeatures`.
 
 :data:`ProtocolUnion` is the discriminated union used by
 ``ProtocolAndFeatureSelection.protocols``.
@@ -16,7 +17,8 @@ from pydantic import Discriminator, Field, PositiveFloat
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (
+from obi_one.core.units import Units
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
     ISICV,
     AdaptationIndex,
     AHPDepth,
@@ -59,53 +61,119 @@ class Protocol(OBIBaseModel):
 
     Subclasses declare ``name`` (the protocol identifier used in bluepyefe
     target rows and the recordings' NWB metadata) and one typed field per
-    valid eFEL feature. Protocol-level metadata (stimulus timing, step
-    amplitudes, liquid junction potential) is read from each
-    ``ElectricalCellRecording``'s NWB asset at task execution time, so it
-    isn't exposed here as a user parameter.
+    valid eFEL feature. Protocol-level stimulus timing (``ton``/``toff``/
+    ``tmid``/``tmid2``) and liquid junction potential (``ljp``) can be
+    user-specified; when left ``None`` they are auto-detected from each
+    ``ElectricalCellRecording``'s NWB asset at task execution time.
+
+    The three always-present eFEL settings (``Threshold``,
+    ``strict_stiminterval``, ``interp_step``) default to eFEL's own defaults
+    and are always emitted in ``efel_settings_override()``. Additional eFEL
+    settings can be added via ``custom_efel_settings``.
     """
 
     name: ClassVar[str]
 
-    # Per-protocol eFEL overrides applied to every feature extracted from this
-    # protocol. ``None`` inherits the global :class:`Settings` value; a set value
-    # is overridden in turn by a feature that sets the same field
-    # (global -> protocol -> feature).
-    threshold: float | None = Field(
+    # ------------------------------------------------------------------
+    # Stimulus timing & LJP — user-editable, None = auto-detect from NWB
+    # ------------------------------------------------------------------
+    ton: float | None = Field(
         default=None,
+        title="Stimulus onset (ton)",
+        description="Stimulus onset time (ms). Leave empty to auto-detect from the NWB.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+    toff: float | None = Field(
+        default=None,
+        title="Stimulus end (toff)",
+        description="Stimulus end time (ms). Leave empty to auto-detect from the NWB.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+    tmid: float | None = Field(
+        default=None,
+        title="Mid-transition 1 (tmid)",
+        description=(
+            "First mid-transition point for two-step protocols (ms)."
+            " Leave empty to auto-detect."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+    tmid2: float | None = Field(
+        default=None,
+        title="Mid-transition 2 (tmid2)",
+        description=(
+            "Second mid-transition point for two-step protocols (ms)."
+            " Leave empty to auto-detect."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+    ljp: float | None = Field(
+        default=None,
+        title="Liquid junction potential (LJP)",
+        description=(
+            "Liquid junction potential correction (mV)."
+            " Leave empty to use the recording's LJP."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
+    )
+
+    # ------------------------------------------------------------------
+    # Always-present eFEL settings with eFEL defaults pre-filled
+    # ------------------------------------------------------------------
+    threshold: float = Field(
+        default=-20.0,
         title="Threshold",
-        description="Per-protocol override of eFEL's ``Threshold`` (spike detection, mV).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        description="eFEL ``Threshold``: voltage above which a spike is detected (mV).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
     )
-    stim_start: float | None = Field(
-        default=None,
-        title="Stim start",
-        description="Per-protocol override of eFEL's ``stim_start`` (ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    stim_end: float | None = Field(
-        default=None,
-        title="Stim end",
-        description="Per-protocol override of eFEL's ``stim_end`` (ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    strict_stiminterval: bool | None = Field(
-        default=None,
+    strict_stiminterval: bool = Field(
+        default=True,
         title="Strict stim interval",
-        description="Per-protocol override of eFEL's ``strict_stiminterval``.",
+        description=(
+            "eFEL ``strict_stiminterval``: only count spikes strictly within"
+            " [stim_start, stim_end]."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-    interp_step: PositiveFloat | None = Field(
-        default=None,
+    interp_step: PositiveFloat = Field(
+        default=0.025,
         title="Interpolation step",
-        description="Per-protocol override of eFEL's ``interp_step`` (ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        description=(
+            "eFEL ``interp_step``: time step the trace is resampled to before"
+            " extraction (ms)."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
     )
-    derivative_threshold: float | None = Field(
+    # Additional eFEL settings beyond the 3 always-present ones.
+    custom_efel_settings: dict[str, float | bool] | None = Field(
         default=None,
-        title="Derivative threshold",
-        description="Per-protocol override of eFEL's ``DerivativeThreshold`` (mV/ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        title="Custom eFEL settings",
+        description=(
+            "Additional eFEL settings beyond the always-present Threshold,"
+            " strict_stiminterval, and interp_step. Keys are eFEL setting names."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
     )
 
     def selected_efeatures(self) -> list["EFeature"]:
@@ -120,24 +188,33 @@ class Protocol(OBIBaseModel):
     def efel_settings_override(self) -> dict:
         """Build the per-protocol ``efel_settings`` overrides.
 
-        Only fields the user explicitly set (non-``None``) are emitted; each one
-        overrides the global eFEL setting for every feature of this protocol, and
-        is itself overridden by a feature that sets the same field.
+        The 3 always-present settings are always emitted. Additional settings
+        from ``custom_efel_settings`` are merged on top. Each setting overrides
+        the global eFEL setting for every feature of this protocol, and is
+        itself overridden by a feature that sets the same field.
         """
-        overrides: dict[str, float | bool] = {}
-        if self.threshold is not None:
-            overrides["Threshold"] = self.threshold
-        if self.stim_start is not None:
-            overrides["stim_start"] = self.stim_start
-        if self.stim_end is not None:
-            overrides["stim_end"] = self.stim_end
-        if self.strict_stiminterval is not None:
-            overrides["strict_stiminterval"] = self.strict_stiminterval
-        if self.interp_step is not None:
-            overrides["interp_step"] = self.interp_step
-        if self.derivative_threshold is not None:
-            overrides["DerivativeThreshold"] = self.derivative_threshold
+        overrides: dict[str, float | bool] = {
+            "Threshold": self.threshold,
+            "strict_stiminterval": self.strict_stiminterval,
+            "interp_step": self.interp_step,
+        }
+        if self.custom_efel_settings:
+            overrides.update(self.custom_efel_settings)
         return overrides
+
+    def timing_override(self) -> dict:
+        """Return user-set timing/LJP fields as a dict (None fields omitted).
+
+        Keys are ``ton``, ``toff``, ``tmid``, ``tmid2``, ``ljp`` — only
+        non-``None`` values are included. Used by the extraction task to
+        override auto-detected NWB timing.
+        """
+        result: dict[str, float] = {}
+        for key in ("ton", "toff", "tmid", "tmid2", "ljp"):
+            value = getattr(self, key)
+            if value is not None:
+                result[key] = value
+        return result
 
 
 class IDrest(Protocol):

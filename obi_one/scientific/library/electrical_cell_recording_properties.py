@@ -12,7 +12,7 @@ from pathlib import Path
 
 import entitysdk.client
 import h5py
-import numpy
+import numpy as np
 from entitysdk.models import ElectricalCellRecording
 from entitysdk.types import ContentType
 from scipy.ndimage import median_filter
@@ -51,7 +51,10 @@ def _read_protocols_from_nwb(nwb_path: Path) -> list[str]:
 
 
 def _stim_key_for_trace(trace_name: str) -> str | None:
-    """Map a BBP voltage trace name to its sibling current trace key in ``stimulus/presentation``."""
+    """Map a BBP voltage trace name to its sibling current trace key.
+
+    The key is in ``stimulus/presentation``.
+    """
     if "ccs_" in trace_name:
         return trace_name.replace("ccs_", "ccss_")
     if "ic_" in trace_name:
@@ -59,7 +62,7 @@ def _stim_key_for_trace(trace_name: str) -> str | None:
     return None
 
 
-def _step_amplitude_na(current_a: numpy.ndarray) -> float:
+def _step_amplitude_na(current_a: np.ndarray) -> float:
     """Estimate the step amplitude (nA) of a current trace.
 
     Baseline = median of the first 5%, step = median of the middle 40%, amp
@@ -69,8 +72,8 @@ def _step_amplitude_na(current_a: numpy.ndarray) -> float:
     n = len(current_a)
     if n == 0:
         return 0.0
-    baseline = float(numpy.median(current_a[: max(1, n // 20)]))
-    step = float(numpy.median(current_a[int(n * 0.3) : int(n * 0.7)]))
+    baseline = float(np.median(current_a[: max(1, n // 20)]))
+    step = float(np.median(current_a[int(n * 0.3) : int(n * 0.7)]))
     return (step - baseline) * 1e9
 
 
@@ -90,7 +93,7 @@ def _read_amplitudes_from_nwb(
     """
     requested = set(protocol_names)
     amps: dict[str, set[float]] = {p: set() for p in protocol_names}
-    with h5py.File(str(nwb_path), "r") as f:
+    with h5py.File(str(nwb_path), "r") as f:  # noqa: PLR1702
         if "data_organization" not in f or "stimulus" not in f:
             return {p: [] for p in protocol_names}
         stim_pres = f["stimulus"]["presentation"]
@@ -107,13 +110,13 @@ def _read_amplitudes_from_nwb(
                                 continue
                             data = stim_pres[key_current]["data"]
                             conversion = data.attrs.get("conversion", 1.0)
-                            current_a = numpy.asarray(data[()]) * conversion
+                            current_a = np.asarray(data[()]) * conversion
                             amp_na = _step_amplitude_na(current_a)
                             amps[protocol_name].add(round(amp_na, round_decimals))
     return {p: sorted(v) for p, v in amps.items()}
 
 
-def _detect_ton_ms(current_na: numpy.ndarray, dt_ms: float) -> float | None:
+def _detect_ton_ms(current_na: np.ndarray, dt_ms: float) -> float | None:
     """Stimulus onset (ms) à la ``bluepyefe.ecode.step``.
 
     Returns the time of the first sample where the smoothed current departs the
@@ -124,20 +127,18 @@ def _detect_ton_ms(current_na: numpy.ndarray, dt_ms: float) -> float | None:
     if n < _MIN_ONSET_SAMPLES or dt_ms <= 0:
         return None
     smooth = median_filter(current_na, size=_ONSET_SMOOTH_WIDTH)
-    edges = numpy.concatenate(
+    edges = np.concatenate(
         (current_na[:_ONSET_NOISE_SAMPLES], current_na[-_ONSET_NOISE_SAMPLES:]),
     )
-    threshold = max(_ONSET_THRESHOLD_FACTOR * float(numpy.std(edges)), _ONSET_THRESHOLD_FLOOR_NA)
+    threshold = max(_ONSET_THRESHOLD_FACTOR * float(np.std(edges)), _ONSET_THRESHOLD_FLOOR_NA)
     buffer_idx = max(1, int(_ONSET_BUFFER_MS / dt_ms))
     baseline = float(
-        numpy.median(
-            median_filter(current_na[: min(_BASELINE_WINDOW, n)], size=_ONSET_SMOOTH_WIDTH)
-        ),
+        np.median(median_filter(current_na[: min(_BASELINE_WINDOW, n)], size=_ONSET_SMOOTH_WIDTH)),
     )
-    above = numpy.abs(numpy.asarray(smooth[buffer_idx:]) - baseline) > threshold
+    above = np.abs(np.asarray(smooth[buffer_idx:]) - baseline) > threshold
     if not above.any():
         return None
-    return (buffer_idx + int(numpy.argmax(above))) * dt_ms
+    return (buffer_idx + int(np.argmax(above))) * dt_ms
 
 
 def _detect_protocol_ton_ms(protocol_group: h5py.Group, stim_pres: h5py.Group) -> float | None:
@@ -158,7 +159,7 @@ def _detect_protocol_ton_ms(protocol_group: h5py.Group, stim_pres: h5py.Group) -
                     continue
                 data = series["data"]
                 conversion = data.attrs.get("conversion", 1.0)
-                current_na = numpy.asarray(data[()]) * conversion * 1e9
+                current_na = np.asarray(data[()]) * conversion * 1e9
                 ton = _detect_ton_ms(current_na, 1000.0 / float(rate))
                 if ton is not None:
                     return ton
