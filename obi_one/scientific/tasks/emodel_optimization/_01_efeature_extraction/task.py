@@ -78,25 +78,28 @@ def _partition_protocols(
     """Split protocols into ``(extractable, ecode_metadata, skipped)``.
 
     ``ecode_metadata`` maps each extractable protocol to the per-protocol config
-    passed to bluepyefe (``{"ton": ms}`` for ``Ramp``, else ``{}``). Protocols
-    whose eCode needs timing we can't supply are returned in ``skipped``.
+    passed to bluepyefe. User-provided timing (``protocol.timing_override()``)
+    takes priority; for ``Ramp`` protocols that don't auto-detect, the
+    auto-detected ``ton_by_protocol`` is used as a fallback. Protocols whose
+    eCode needs timing we can't supply are returned in ``skipped``.
     """
     extractable: list = []
     ecode_metadata: dict[str, dict] = {}
     skipped: list[str] = []
     for protocol in protocols:
         ecode = _ecode_class_name(protocol.name, ecodes)
+        user_timing = protocol.timing_override()
         if ecode in _TON_ONLY_ECODES:
-            ton = ton_by_protocol.get(protocol.name)
+            ton = user_timing.get("ton", ton_by_protocol.get(protocol.name))
             if ton is None:
                 skipped.append(protocol.name)
                 continue
-            ecode_metadata[protocol.name] = {"ton": ton}
+            ecode_metadata[protocol.name] = {**user_timing, "ton": ton}
         elif ecode in _TIMING_UNSUPPORTED_ECODES:
             skipped.append(protocol.name)
             continue
         else:
-            ecode_metadata[protocol.name] = {}
+            ecode_metadata[protocol.name] = user_timing
         extractable.append(protocol)
     return extractable, ecode_metadata, skipped
 
@@ -109,13 +112,17 @@ def _build_files_metadata(
     """Build files_metadata rows for NWB datasets (one file per cell).
 
     Each recording carries its own LJP (read from the ``ElectricalCellRecording``
-    entity), so it's merged into the per-ecode metadata of that recording's row.
+    entity). If the user set a per-protocol LJP override (via
+    ``protocol.timing_override()``), it takes priority over the recording's LJP.
     """
     return [
         {
             "cell_name": path.stem,
             "filepath": str(path),
-            "ecodes": {ecode: {**meta, "ljp": ljp} for ecode, meta in ecodes_metadata_dict.items()},
+            "ecodes": {
+                ecode: {**meta, "ljp": meta.get("ljp", ljp)}
+                for ecode, meta in ecodes_metadata_dict.items()
+            },
         }
         for path, ljp in sorted(nwb_paths_with_ljp, key=operator.itemgetter(0))
     ]
@@ -393,7 +400,7 @@ class EModelEFeatureExtractionTask(Task):
 
         return coord_root
 
-    def _build_figures_manifest(self, figures_dir: Path) -> dict:
+    def _build_figures_manifest(self, figures_dir: Path) -> dict:  # noqa: PLR6301
         """Build a manifest.json describing all PDF figure files in the directory."""
         import re  # noqa: PLC0415
 
@@ -411,7 +418,7 @@ class EModelEFeatureExtractionTask(Task):
                 # parts[0] = <cell>_<protocol>
                 last_underscore = parts[0].rfind("_")
                 if last_underscore > 0:
-                    entry["protocol"] = parts[0][last_underscore + 1:]
+                    entry["protocol"] = parts[0][last_underscore + 1 :]
                     entry["cell"] = parts[0][:last_underscore]
                 entry["type"] = "recordings_plot"
             elif "_amp" in name:
@@ -438,14 +445,14 @@ class EModelEFeatureExtractionTask(Task):
         db_client: entitysdk.client.Client,
     ) -> None:
         """Register a TaskResult entity and upload extraction output assets."""
+        import json  # noqa: PLC0415
+
         from entitysdk.models import TaskResult  # noqa: PLC0415
         from entitysdk.types import (  # noqa: PLC0415
             AssetLabel,
             ContentType,
             TaskResultType,
         )
-
-        import json  # noqa: PLC0415
 
         campaign_name = getattr(self.config, "campaign_name", "EFeature Extraction")
 

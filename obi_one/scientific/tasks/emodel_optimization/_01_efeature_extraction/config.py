@@ -118,7 +118,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         db_client: Client = None,
     ) -> None:
         if db_client is None:
-            return None
+            return
 
         L.info("Registering efeature extraction campaign TaskConfig entity.")
         campaign = db_client.register_entity(
@@ -142,7 +142,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             asset_label=AssetLabel.task_config,
         )
         L.info("Campaign entity registered: %s", campaign.id)
-        return None
+        return
 
     def create_campaign_generation_entity(  # noqa: PLR6301
         self,
@@ -161,7 +161,7 @@ class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, S
         db_client: Client,
     ) -> None:
         if db_client is None:
-            return None
+            return
 
         L.info("Registering efeature extraction single TaskConfig entity.")
         single_config_entity = db_client.register_entity(
@@ -187,4 +187,4 @@ class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, S
 
         self.set_single_entity(single_config_entity)
         L.info("Single config entity registered: %s", single_config_entity.id)
-        return None
+        return

@@ -1,7 +1,6 @@
 """Tests for the EModelEFeatureExtractionScanConfig and SingleConfig."""
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -13,9 +12,7 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks
     AbsoluteRheobase,
     ExtractionInitialize,
     FlushRheobase,
-    InterpolationRheobase,
     ProtocolAndFeatureSelection,
-    Settings,
 )
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
@@ -54,7 +51,7 @@ class TestScanConfigClassVars:
         )
 
     def test_campaign_task_config_type(self):
-        from entitysdk.types import TaskConfigType
+        from entitysdk.types import TaskConfigType  # noqa: PLC0415
 
         assert (
             EModelEFeatureExtractionScanConfig._campaign_task_config_type
@@ -62,7 +59,7 @@ class TestScanConfigClassVars:
         )
 
     def test_campaign_generation_task_activity_type(self):
-        from entitysdk.types import TaskActivityType
+        from entitysdk.types import TaskActivityType  # noqa: PLC0415
 
         assert (
             EModelEFeatureExtractionScanConfig._campaign_generation_task_activity_type
@@ -77,9 +74,9 @@ class TestScanConfigCreation:
         assert len(scan_config.initialize.electrical_cell_recording) == 2
 
     def test_default_settings(self, scan_config):
-        assert scan_config.settings.threshold == -20.0
+        assert scan_config.settings.threshold == -20.0  # noqa: RUF069
         assert scan_config.settings.plot_extraction is True
-        assert scan_config.settings.interp_step == 0.025
+        assert scan_config.settings.interp_step == 0.025  # noqa: RUF069
 
     def test_default_rheobase(self, scan_config):
         assert isinstance(scan_config.rheobase, AbsoluteRheobase)
@@ -97,9 +94,7 @@ class TestScanConfigCreation:
                 campaign_description="Test",
             ),
             initialize=ExtractionInitialize(
-                electrical_cell_recording=(
-                    ElectricalCellRecordingFromID(id_str=recording_ids[0]),
-                ),
+                electrical_cell_recording=(ElectricalCellRecordingFromID(id_str=recording_ids[0]),),
             ),
             rheobase=FlushRheobase(flush_length=2, protocols=("IDthresh", "IDrest")),
         )
@@ -119,9 +114,7 @@ class TestAutoselect:
                 campaign_description="Auto",
             ),
             initialize=ExtractionInitialize(
-                electrical_cell_recording=(
-                    ElectricalCellRecordingFromID(id_str=recording_ids[0]),
-                ),
+                electrical_cell_recording=(ElectricalCellRecordingFromID(id_str=recording_ids[0]),),
             ),
             efeatures_by_protocol=ProtocolAndFeatureSelection(autoselect=True),
         )
@@ -141,9 +134,7 @@ class TestAutoselect:
                 campaign_description="Custom",
             ),
             initialize=ExtractionInitialize(
-                electrical_cell_recording=(
-                    ElectricalCellRecordingFromID(id_str=recording_ids[0]),
-                ),
+                electrical_cell_recording=(ElectricalCellRecordingFromID(id_str=recording_ids[0]),),
             ),
             efeatures_by_protocol=ProtocolAndFeatureSelection(
                 autoselect=True,
@@ -176,9 +167,7 @@ class TestSerialization:
                 campaign_description="T",
             ),
             initialize=ExtractionInitialize(
-                electrical_cell_recording=(
-                    ElectricalCellRecordingFromID(id_str=recording_ids[0]),
-                ),
+                electrical_cell_recording=(ElectricalCellRecordingFromID(id_str=recording_ids[0]),),
             ),
             efeatures_by_protocol=ProtocolAndFeatureSelection(autoselect=True),
         )
@@ -189,7 +178,7 @@ class TestSerialization:
 class TestCreateCampaignEntity:
     def test_no_db_client_returns_none(self, scan_config):
         result = scan_config.create_campaign_entity_with_config(
-            output_root="/tmp/test",
+            output_root="/tmp/test",  # noqa: S108
             db_client=None,
         )
         assert result is None
@@ -201,7 +190,7 @@ class TestCreateCampaignEntity:
         mock_client.register_entity.return_value = mock_entity
 
         scan_config.create_campaign_entity_with_config(
-            output_root="/tmp/test",
+            output_root="/tmp/test",  # noqa: S108
             db_client=mock_client,
         )
 

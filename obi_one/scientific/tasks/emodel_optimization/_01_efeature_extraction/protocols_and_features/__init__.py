@@ -7,7 +7,8 @@ parameters (in :mod:`.efeatures`), and each protocol is a subclass of
 :mod:`.protocols`).
 """
 
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
+    ISICV,
     AdaptationIndex,
     AHPDepth,
     AHPTimeFromPeak,
@@ -26,7 +27,6 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protoc
     InvThirdISI,
     InvTimeToFirstSpike,
     IrregularityIndex,
-    ISICV,
     ISILogSlope,
     MeanFrequency,
     MinAHPValues,
@@ -43,22 +43,24 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protoc
     VoltageAfterStim,
     VoltageBase,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.protocols import (
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501
+    IV,
+    PROTOCOL_CATALOGUE,
+    SAHP,
     APWaveform,
     IDhyperpol,
     IDrest,
     IDthresh,
-    IV,
-    PROTOCOL_CATALOGUE,
     Protocol,
     ProtocolUnion,
-    SAHP,
     available_features_by_protocol_name,
 )
 
 __all__ = [
+    "ISICV",
+    "IV",
     "PROTOCOL_CATALOGUE",
-    "APWaveform",
+    "SAHP",
     "AHPDepth",
     "AHPTimeFromPeak",
     "AP1Amp",
@@ -66,17 +68,16 @@ __all__ = [
     "APBeginVoltage",
     "APBeginWidth",
     "APDurationHalfWidth",
+    "APWaveform",
     "AdaptationIndex",
     "DecayTimeConstantAfterStim",
     "DepolBlockBool",
     "DoubletISI",
     "EFeature",
-    "ISICV",
-    "ISILogSlope",
     "IDhyperpol",
     "IDrest",
     "IDthresh",
-    "IV",
+    "ISILogSlope",
     "InvFirstISI",
     "InvLastISI",
     "InvSecondISI",
@@ -89,7 +90,6 @@ __all__ = [
     "OhmicInputResistanceVbSsse",
     "Protocol",
     "ProtocolUnion",
-    "SAHP",
     "SagAmplitude",
     "SagRatio1",
     "SagRatio2",

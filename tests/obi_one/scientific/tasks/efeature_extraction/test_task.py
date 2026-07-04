@@ -1,25 +1,16 @@
 """Tests for the EModelEFeatureExtractionTask."""
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
-import pytest
-
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
-    EModelEFeatureExtractionTask,
-    _build_extraction_recipes,
-    _build_figures_manifest,
-    _build_files_metadata,
-    _build_targets_formatted,
-    _discover_amplitudes,
-    _ecode_class_name,
-    _partition_protocols,
-)
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
     AbsoluteRheobase,
     Settings,
+)
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
+    _build_extraction_recipes,
+    _build_files_metadata,
 )
 
 
@@ -33,11 +24,11 @@ class TestBuildExtractionRecipes:
         ps = recipes["emodel"]["pipeline_settings"]
         assert ps["extract_absolute_amplitudes"] is True
         assert ps["plot_extraction"] is True
-        assert ps["default_std_value"] == 0.01
+        assert ps["default_std_value"] == 0.01  # noqa: RUF069
         assert ps["rheobase_strategy_extraction"] == "absolute"
         assert ps["rheobase_settings_extraction"] == {"spike_threshold": 1}
-        assert ps["efel_settings"]["Threshold"] == -20.0
-        assert ps["efel_settings"]["interp_step"] == 0.025
+        assert ps["efel_settings"]["Threshold"] == -20.0  # noqa: RUF069
+        assert ps["efel_settings"]["interp_step"] == 0.025  # noqa: RUF069
 
     def test_custom_settings(self):
         settings = Settings(
@@ -50,7 +41,7 @@ class TestBuildExtractionRecipes:
         recipes = _build_extraction_recipes(settings, rheobase)
 
         ps = recipes["emodel"]["pipeline_settings"]
-        assert ps["efel_settings"]["Threshold"] == -30.0
+        assert ps["efel_settings"]["Threshold"] == -30.0  # noqa: RUF069
         assert ps["plot_extraction"] is False
         assert ps["pickle_cells_extraction"] is True
         assert ps["name_Rin_protocol"] == "IV_-20"
@@ -87,6 +78,26 @@ class TestBuildFilesMetadata:
         )
         assert len(files) == 1
         assert files[0]["ecodes"] == {}
+
+    def test_user_ljp_override(self, tmp_path):
+        path1 = tmp_path / "cell1.nwb"
+        path1.touch()
+
+        files = _build_files_metadata(
+            nwb_paths_with_ljp=[(path1, 14.0)],
+            ecodes_metadata_dict={"IDrest": {"ljp": 5.0}},
+        )
+        assert files[0]["ecodes"]["IDrest"]["ljp"] == 5.0  # noqa: RUF069
+
+    def test_no_user_ljp_falls_back_to_recording(self, tmp_path):
+        path1 = tmp_path / "cell1.nwb"
+        path1.touch()
+
+        files = _build_files_metadata(
+            nwb_paths_with_ljp=[(path1, 14.0)],
+            ecodes_metadata_dict={"IDrest": {"ton": 700.0}},
+        )
+        assert files[0]["ecodes"]["IDrest"]["ljp"] == 14.0  # noqa: RUF069
 
 
 class TestBuildFiguresManifest:
@@ -153,14 +164,14 @@ class TestAutoselect:
 
     def test_autoselect_calls_auto_targets(self):
         """When autoselect=True, _build_targets_configuration should use auto_targets."""
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
+        from obi_one.scientific.from_id.electrical_cell_recording_from_id import (  # noqa: PLC0415
+            ElectricalCellRecordingFromID,
+        )
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (  # noqa: PLC0415
             ExtractionInitialize,
             ProtocolAndFeatureSelection,
         )
-        from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
-            ElectricalCellRecordingFromID,
-        )
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (  # noqa: PLC0415
             EModelEFeatureExtractionSingleConfig,
         )
 
@@ -171,9 +182,7 @@ class TestAutoselect:
                 campaign_description="T",
             ),
             initialize=ExtractionInitialize(
-                electrical_cell_recording=(
-                    ElectricalCellRecordingFromID(id_str="fake-id"),
-                ),
+                electrical_cell_recording=(ElectricalCellRecordingFromID(id_str="fake-id"),),
             ),
             efeatures_by_protocol=ProtocolAndFeatureSelection(
                 autoselect=True,
@@ -185,12 +194,12 @@ class TestAutoselect:
 
         # Mock the imports that _build_targets_configuration uses
         mock_targets_config = MagicMock()
-        fake_downloaded = [(Path("/tmp/fake.nwb"), 14.0)]
+        fake_downloaded = [(Path("/tmp/fake.nwb"), 14.0)]  # noqa: S108
 
         with (
             patch(
                 "obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task._build_files_metadata",
-                return_value=[{"cell_name": "fake", "filepath": "/tmp/fake.nwb", "ecodes": {}}],
+                return_value=[{"cell_name": "fake", "filepath": "/tmp/fake.nwb", "ecodes": {}}],  # noqa: S108
             ),
             patch(
                 "bluepyemodel.efeatures_extraction.auto_targets.get_auto_target_from_presets",
@@ -201,10 +210,107 @@ class TestAutoselect:
                 return_value=mock_targets_config,
             ) as mock_tc,
         ):
-            result = task._build_targets_configuration(fake_downloaded)
+            task._build_targets_configuration(fake_downloaded)
 
         mock_auto.assert_called_once_with(["firing_pattern", "iv"])
         # TargetsConfiguration should be called with auto_targets, not targets
         call_kwargs = mock_tc.call_args[1]
         assert "auto_targets" in call_kwargs
         assert "targets" not in call_kwargs
+
+
+class TestProtocolTimingOverride:
+    """Test Protocol.timing_override() and Protocol.efel_settings_override()."""
+
+    def test_timing_override_empty(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+            IDrest,
+        )
+
+        protocol = IDrest()
+        assert protocol.timing_override() == {}
+
+    def test_timing_override_with_values(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+            IDrest,
+        )
+
+        protocol = IDrest(ton=700.0, toff=2700.0, ljp=14.0)
+        override = protocol.timing_override()
+        assert override == {"ton": 700.0, "toff": 2700.0, "ljp": 14.0}
+
+    def test_timing_override_partial(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+            SAHP,
+        )
+
+        protocol = SAHP(tmid=520.0, tmid2=720.0)
+        override = protocol.timing_override()
+        assert override == {"tmid": 520.0, "tmid2": 720.0}
+
+    def test_protocol_efel_settings_defaults(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+            IDrest,
+        )
+
+        protocol = IDrest()
+        overrides = protocol.efel_settings_override()
+        assert overrides == {
+            "Threshold": -20.0,
+            "strict_stiminterval": True,
+            "interp_step": 0.025,
+        }
+
+    def test_protocol_efel_settings_with_custom(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+            IDrest,
+        )
+
+        protocol = IDrest(
+            threshold=-30.0,
+            custom_efel_settings={"DerivativeThreshold": 15.0, "stim_start": 700.0},
+        )
+        overrides = protocol.efel_settings_override()
+        assert overrides["Threshold"] == -30.0  # noqa: RUF069
+        assert overrides["DerivativeThreshold"] == 15.0  # noqa: RUF069
+        assert overrides["stim_start"] == 700.0  # noqa: RUF069
+        assert overrides["strict_stiminterval"] is True
+
+
+class TestEFeatureSettings:
+    """Test EFeature.efel_settings_override() with new 3-field + custom dict."""
+
+    def test_efeature_defaults(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
+            Spikecount,
+        )
+
+        feature = Spikecount()
+        overrides = feature.efel_settings_override()
+        assert overrides == {
+            "Threshold": -20.0,
+            "strict_stiminterval": True,
+            "interp_step": 0.025,
+        }
+
+    def test_efeature_custom_settings(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
+            MeanFrequency,
+        )
+
+        feature = MeanFrequency(
+            threshold=-15.0,
+            custom_efel_settings={"DerivativeThreshold": 20.0},
+        )
+        overrides = feature.efel_settings_override()
+        assert overrides["Threshold"] == -15.0  # noqa: RUF069
+        assert overrides["DerivativeThreshold"] == 20.0  # noqa: RUF069
+        assert overrides["strict_stiminterval"] is True
+        assert overrides["interp_step"] == 0.025  # noqa: RUF069
+
+    def test_efeature_doc_url(self):
+        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
+            Spikecount,
+        )
+
+        assert Spikecount.efel_doc_url == "https://efel.readthedocs.io/en/latest/eFeatures.html"

@@ -130,19 +130,26 @@ Shared by all: `protocols` (protocols whose recordings drive the rheobase search
 
 ## Per-protocol overrides (`Protocol`)
 
-Optional (`None` = inherit `Settings`); apply to every feature of the protocol,
-overridden in turn by a feature that sets the same field. Limited to the eFEL
-settings that genuinely vary by protocol:
+Always-present eFEL settings (default to eFEL's own defaults; override the
+global `Settings` value, overridden in turn by a feature that sets the same
+field):
 
-`threshold` (`Threshold`), `stim_start`, `stim_end`, `strict_stiminterval`,
-`interp_step`, `derivative_threshold` (`DerivativeThreshold`).
+`threshold` (`Threshold`, default -20.0), `strict_stiminterval` (default True),
+`interp_step` (default 0.025).
+
+Additional eFEL settings can be added via `custom_efel_settings` (a dict of
+key-value pairs using eFEL's native setting names).
+
+User-editable stimulus timing and LJP (None = auto-detect from NWB):
+
+`ton`, `toff`, `tmid`, `tmid2`, `ljp`.
 
 ---
 
 ## Per-feature settings (`EFeature`)
 
-Structural target fields plus per-feature eFEL overrides (`None` = inherit
-protocol/global):
+Structural target fields plus per-feature eFEL settings (always-present with
+eFEL defaults, overridden in turn by `custom_efel_settings`):
 
 | Field | Role |
 |---|---|
@@ -150,18 +157,24 @@ protocol/global):
 | `weight` | fitness weight (bluepyefe `Target.weight`) |
 | `tolerance` | amplitude tolerance for matching recordings |
 | `efeature_name` | custom target alias (bluepyefe `efeature_name`) |
-| `threshold` / `stim_start` / `stim_end` | eFEL `Threshold` / `stim_start` / `stim_end` overrides |
-| `strict_stiminterval` / `interp_step` / `derivative_threshold` | further eFEL overrides |
+| `threshold` | eFEL `Threshold` (default -20.0) |
+| `strict_stiminterval` | eFEL `strict_stiminterval` (default True) |
+| `interp_step` | eFEL `interp_step` (default 0.025) |
+| `custom_efel_settings` | additional eFEL settings as a key-value dict |
+
+The `efel_doc_url` ClassVar on each `EFeature` subclass links to the eFEL
+documentation for that feature.
 
 ---
 
-## Read from the NWB (intentionally never exposed)
+## Read from the NWB (auto-detected when not user-specified)
 
 These per-protocol/per-recording values are read from each
-`ElectricalCellRecording`'s NWB asset at execution time, so they are not
-user-facing schema:
+`ElectricalCellRecording`'s NWB asset at execution time. The timing fields
+(`ton`, `toff`, `tmid`, `tmid2`) and `ljp` can be overridden by the user on
+the `Protocol` class; when left `None`, they are auto-detected from the NWB.
 
 - **Stimulus timing:** `ton`, `toff`, `tmid`, `tmid2`, `tend`, `t1`–`t4`
 - **Amplitudes:** `amp`, `hypamp`, `amp2` (discovered per protocol, in nA)
 - **Units / sampling:** `i_unit`, `v_unit`, `t_unit`, `dt`
-- **Liquid junction potential:** `ljp` (read from the entity / NWB)
+- **Liquid junction potential:** `ljp` (read from the entity / NWB, or user-set)

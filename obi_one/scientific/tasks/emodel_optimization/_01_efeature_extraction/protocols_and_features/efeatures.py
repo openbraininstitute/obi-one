@@ -14,6 +14,7 @@ from pydantic import Field, PositiveFloat
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 
 
 class EFeature(OBIBaseModel):
@@ -22,12 +23,22 @@ class EFeature(OBIBaseModel):
     Subclasses declare ``efel_name`` (the eFEL feature key used in bluepyefe
     target rows). Fields mirror the per-target tunable parameters of
     ``bluepyefe.target.EFeatureTarget``: ``tolerance`` and ``efel_settings``
-    overrides (``Threshold``, ``stim_start``, ``stim_end``). ``weight`` is
-    forwarded downstream to the fitness-calculator configuration. ``extract``
-    is the on/off switch consumed by ``Protocol.selected_efeatures``.
+    overrides. ``weight`` is forwarded downstream to the fitness-calculator
+    configuration. ``extract`` is the on/off switch consumed by
+    ``Protocol.selected_efeatures``.
+
+    The three always-present eFEL settings (``Threshold``,
+    ``strict_stiminterval``, ``interp_step``) default to eFEL's own defaults
+    and are always emitted in ``efel_settings_override()``. Additional eFEL
+    settings can be added via ``custom_efel_settings``.
     """
 
     efel_name: ClassVar[str]
+    efel_doc_url: ClassVar[str] = "https://efel.readthedocs.io/en/latest/eFeatures.html"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "efel_doc_url": "https://efel.readthedocs.io/en/latest/eFeatures.html",
+    }
 
     extract: bool = Field(
         default=False,
@@ -65,64 +76,66 @@ class EFeature(OBIBaseModel):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
-    # Per-feature eFEL overrides. ``None`` inherits the protocol- then global-level
-    # value; a set value wins over both (global -> protocol -> feature).
-    threshold: float | None = Field(
-        default=None,
+    # Always-present eFEL settings with eFEL defaults pre-filled. These are
+    # always emitted in ``efel_settings_override()`` and override the protocol-
+    # and global-level values (global -> protocol -> feature).
+    threshold: float = Field(
+        default=-20.0,
         title="Threshold",
-        description="Per-feature override of eFEL's ``Threshold`` (spike detection, mV).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        description="eFEL ``Threshold``: voltage above which a spike is detected (mV).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
     )
-    stim_start: float | None = Field(
-        default=None,
-        title="Stim start",
-        description="Per-feature override of eFEL's ``stim_start`` (ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    stim_end: float | None = Field(
-        default=None,
-        title="Stim end",
-        description="Per-feature override of eFEL's ``stim_end`` (ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    strict_stiminterval: bool | None = Field(
-        default=None,
+    strict_stiminterval: bool = Field(
+        default=True,
         title="Strict stim interval",
-        description="Per-feature override of eFEL's ``strict_stiminterval``.",
+        description=(
+            "eFEL ``strict_stiminterval``: only count spikes strictly within"
+            " [stim_start, stim_end]."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-    interp_step: PositiveFloat | None = Field(
-        default=None,
+    interp_step: PositiveFloat = Field(
+        default=0.025,
         title="Interpolation step",
-        description="Per-feature override of eFEL's ``interp_step`` (ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        description=(
+            "eFEL ``interp_step``: time step the trace is resampled to before"
+            " extraction (ms)."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
     )
-    derivative_threshold: float | None = Field(
+    # Additional eFEL settings beyond the 3 always-present ones. Keys are eFEL
+    # setting names (e.g. ``"DerivativeThreshold"``, ``"stim_start"``); values
+    # are ``float`` or ``bool``. ``None`` means no custom settings.
+    custom_efel_settings: dict[str, float | bool] | None = Field(
         default=None,
-        title="Derivative threshold",
-        description="Per-feature override of eFEL's ``DerivativeThreshold`` (mV/ms).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        title="Custom eFEL settings",
+        description=(
+            "Additional eFEL settings beyond the always-present Threshold,"
+            " strict_stiminterval, and interp_step. Keys are eFEL setting names."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
     )
 
     def efel_settings_override(self) -> dict:
         """Build the per-feature ``efel_settings`` overrides for this target row.
 
-        Only fields the user explicitly set (non-``None``) are emitted; each one
-        overrides the protocol- and global-level eFEL setting for this feature.
+        The 3 always-present settings are always emitted. Additional settings
+        from ``custom_efel_settings`` are merged on top. Each setting overrides
+        the protocol- and global-level eFEL setting for this feature.
         """
-        overrides: dict[str, float | bool] = {}
-        if self.threshold is not None:
-            overrides["Threshold"] = self.threshold
-        if self.stim_start is not None:
-            overrides["stim_start"] = self.stim_start
-        if self.stim_end is not None:
-            overrides["stim_end"] = self.stim_end
-        if self.strict_stiminterval is not None:
-            overrides["strict_stiminterval"] = self.strict_stiminterval
-        if self.interp_step is not None:
-            overrides["interp_step"] = self.interp_step
-        if self.derivative_threshold is not None:
-            overrides["DerivativeThreshold"] = self.derivative_threshold
+        overrides: dict[str, float | bool] = {
+            "Threshold": self.threshold,
+            "strict_stiminterval": self.strict_stiminterval,
+            "interp_step": self.interp_step,
+        }
+        if self.custom_efel_settings:
+            overrides.update(self.custom_efel_settings)
         return overrides
 
 
