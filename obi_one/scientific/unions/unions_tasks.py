@@ -12,11 +12,8 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task i
 from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
     EModelOptimizationTask,
 )
-from obi_one.scientific.tasks.emodel_optimization._03_analysis_and_validation.task import (
-    EModelAnalysisAndValidationTask,
-)
-from obi_one.scientific.tasks.emodel_optimization._04_export_final_model.task import (
-    EModelExportFinalModelTask,
+from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.task import (
+    EModelExportAndValidationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
@@ -37,8 +34,7 @@ TasksUnion = Annotated[
     | ElectrophysiologyMetricsTask
     | EModelEFeatureExtractionTask
     | EModelOptimizationTask
-    | EModelAnalysisAndValidationTask
-    | EModelExportFinalModelTask
+    | EModelExportAndValidationTask
     | FolderCompressionTask
     | IonChannelFittingTask
     | SkeletonizationTask

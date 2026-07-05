@@ -30,17 +30,11 @@ from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.config
 from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
     EModelOptimizationTask,
 )
-from obi_one.scientific.tasks.emodel_optimization._03_analysis_and_validation.config import (
-    EModelAnalysisAndValidationSingleConfig,
+from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.config import (
+    EModelExportAndValidationSingleConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization._03_analysis_and_validation.task import (
-    EModelAnalysisAndValidationTask,
-)
-from obi_one.scientific.tasks.emodel_optimization._04_export_final_model.config import (
-    EModelExportFinalModelSingleConfig,
-)
-from obi_one.scientific.tasks.emodel_optimization._04_export_final_model.task import (
-    EModelExportFinalModelTask,
+from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.task import (
+    EModelExportAndValidationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
@@ -114,8 +108,7 @@ _config_tasks_map = {
     EMSynapseMappingSingleConfig: EMSynapseMappingTask,
     EModelEFeatureExtractionSingleConfig: EModelEFeatureExtractionTask,
     EModelOptimizationSingleConfig: EModelOptimizationTask,
-    EModelAnalysisAndValidationSingleConfig: EModelAnalysisAndValidationTask,
-    EModelExportFinalModelSingleConfig: EModelExportFinalModelTask,
+    EModelExportAndValidationSingleConfig: EModelExportAndValidationTask,
     IonChannelModelSimulationSingleConfig: GenerateSimulationTask,
 }
 _task_type_task_map = {

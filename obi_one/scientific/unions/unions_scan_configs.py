@@ -15,11 +15,8 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config
 from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.config import (
     EModelOptimizationScanConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization._03_analysis_and_validation.config import (
-    EModelAnalysisAndValidationScanConfig,
-)
-from obi_one.scientific.tasks.emodel_optimization._04_export_final_model.config import (
-    EModelExportFinalModelScanConfig,
+from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.config import (
+    EModelExportAndValidationScanConfig,
 )
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
@@ -52,8 +49,7 @@ ScanConfigsUnion = Annotated[
     | EMSynapseMappingScanConfig
     | EModelEFeatureExtractionScanConfig
     | EModelOptimizationScanConfig
-    | EModelAnalysisAndValidationScanConfig
-    | EModelExportFinalModelScanConfig
+    | EModelExportAndValidationScanConfig
     | BasicConnectivityPlotsScanConfig
     | ConnectivityMatrixExtractionScanConfig
     | ContributeMorphologyScanConfig

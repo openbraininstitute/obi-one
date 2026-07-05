@@ -514,18 +514,21 @@ class EModelEFeatureExtractionTask(Task):
             )
             L.info("Uploaded figures directory (%d files).", len(paths))
 
-        # Upload cells pickle (optional).
-        # bluepyefe writes pickles under the extraction output directory.
-        for pickle_candidate in coord_root.rglob("*.pkl"):
+        # Upload targets configuration JSON.
+        targets_path = coord_root / TARGETS_CONFIG_RELPATH
+        if targets_path.exists():
             db_client.upload_assets(
                 entity_id=task_result.id,
                 entity_type=TaskResult,
-                asset_path=pickle_candidate,
-                asset_label=AssetLabel.efeature_extraction_cells,
-                content_type=ContentType.application_octet_stream,
+                asset_path=targets_path,
+                asset_label=AssetLabel.efeature_extraction_targets,
+                content_type=ContentType.application_json,
             )
-            L.info("Uploaded cells pickle: %s", pickle_candidate.name)
-            break  # Only upload the first pickle found
+            L.info("Uploaded targets configuration JSON.")
+
+        # Note: bluepyefe cells pickle (.pkl) is not uploaded because
+        # entitycore expects HDF5 for efeature_extraction_cells. The pickle
+        # format is not compatible with the allowed content type.
 
         # Link input ElectricalCellRecording entities to the TaskResult via Derivation.
         from entitysdk.models import Derivation  # noqa: PLC0415

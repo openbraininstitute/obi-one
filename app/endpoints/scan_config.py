@@ -17,6 +17,15 @@ from obi_one.scientific.tasks.contribute import (
     ContributeSubjectScanConfig,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
+    EModelEFeatureExtractionScanConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.config import (
+    EModelExportAndValidationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.circuit import (
     CircuitSimulationScanConfig,
 )
@@ -121,6 +130,9 @@ def activate_scan_config_endpoints() -> None:
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
         (EMSynapseMappingScanConfig, "generate", "", False),
+        (EModelEFeatureExtractionScanConfig, "generate", "", False),
+        (EModelOptimizationScanConfig, "generate", "", False),
+        (EModelExportAndValidationScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,

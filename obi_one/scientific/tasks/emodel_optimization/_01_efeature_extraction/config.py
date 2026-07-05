@@ -48,7 +48,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: False,
+        SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION, BlockGroup.TARGETS],
     }
 
@@ -121,13 +121,14 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             return
 
         L.info("Registering efeature extraction campaign TaskConfig entity.")
+        input_entities = self.input_entities(db_client)
         campaign = db_client.register_entity(
             TaskConfig(
                 name=self.campaign_name,
                 description=self.campaign_description,
                 task_config_type=TaskConfigType.efeature_extraction__campaign,
                 meta={},
-                inputs=[],
+                inputs=input_entities,
             )
         )
         self._campaign = campaign
@@ -164,6 +165,7 @@ class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, S
             return
 
         L.info("Registering efeature extraction single TaskConfig entity.")
+        input_entities = self.input_entities(db_client)
         single_config_entity = db_client.register_entity(
             TaskConfig(
                 name=f"EFeature Extraction Config {self.idx}",
@@ -171,7 +173,7 @@ class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, S
                 task_config_type=TaskConfigType.efeature_extraction__config,
                 meta={},
                 task_config_generator_id=campaign.id if campaign else None,
-                inputs=[],
+                inputs=input_entities,
             )
         )
 
