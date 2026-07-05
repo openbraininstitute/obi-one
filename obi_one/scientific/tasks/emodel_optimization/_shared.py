@@ -159,3 +159,40 @@ def compile_mechanisms(mechanisms_dir: Path) -> None:
         cwd=parent,
         check=True,
     )
+
+
+def determine_core_count(
+    offspring_size: int,
+    max_ngen: int,
+    *,
+    max_cpus: int | None = None,
+) -> int:
+    """Deterministically compute the number of CPU cores for an optimisation run.
+
+    The formula is::
+
+        cores = min(offspring_size, max_cpus if given else offspring_size)
+
+    Rationale:
+        - Each individual in a generation is evaluated independently, so
+          ``offspring_size`` is the natural upper bound for parallelism.
+        - Capping at ``max_cpus`` (default: ``os.cpu_count()``) avoids
+          oversubscription when the job is allocated fewer cores than the
+          offspring size.
+        - ``max_ngen`` does not affect core count (generations run
+          sequentially), but is accepted as a parameter for future extensions
+          (e.g. adaptive resource allocation).
+
+    The result is always at least 1.
+    """
+    if offspring_size < 1:
+        msg = f"offspring_size must be >= 1, got {offspring_size}"
+        raise ValueError(msg)
+    if max_ngen < 1:
+        msg = f"max_ngen must be >= 1, got {max_ngen}"
+        raise ValueError(msg)
+
+    if max_cpus is None:
+        max_cpus = os.cpu_count() or 1
+
+    return max(1, min(offspring_size, max_cpus))
