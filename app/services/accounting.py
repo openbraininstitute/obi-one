@@ -120,9 +120,6 @@ def _evaluate_accounting_parameters(
     and uses the neuron_count from the simulation entity for the count.
     """
     match task_definition.task_type:
-        case TaskType.mesh_lod_generation:
-            count = 1
-            service_subtype = ServiceSubtype.NEURON_MESH_SKELETONIZATION
         case TaskType.circuit_extraction:
             count = estimate_circuit_extraction_count(db_client=db_client, config_id=config_id)
             service_subtype = ServiceSubtype.CIRCUIT_EXTRACTION
