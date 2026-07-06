@@ -76,18 +76,55 @@ class Linear(CurrentStimulator):
     def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:
         n_total = math.ceil(simulation_length / dt) + 1
         ret = np.zeros(n_total, dtype=np.float32)
-        n_delay = round(self.config.delay / dt)
+        n_delay = math.ceil(self.config.delay / dt)
         if self.config.delay + self.config.duration <= simulation_length:
-            n_ramp = round((self.config.delay + self.config.duration) / dt) + 1
+            n_ramp = math.ceil((self.config.delay + self.config.duration) / dt) + 1
             amp_end = self.config.amp_end
         else:
-            n_ramp = round((simulation_length - self.config.delay) / dt) + 1
+            n_ramp = math.ceil((simulation_length - self.config.delay) / dt) + 1
             amp_end = self.config.amp_start + (
                 simulation_length - self.config.delay
             ) / self.config.duration * (self.config.amp_end - self.config.amp_start)
 
         n_ramp = min(n_ramp, n_total - n_delay)
         ret[n_delay : (n_delay + n_ramp)] = np.linspace(self.config.amp_start, amp_end, n_ramp)
+        return ret
+
+
+class Pulse(CurrentStimulator):
+    """Series of current pulse injections."""
+
+    def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:
+        n_total = math.ceil(simulation_length / dt) + 1
+        ret = np.zeros(n_total, dtype=np.float32)
+
+        n_delay = math.ceil(self.config.delay / dt)
+        n_end = min(math.ceil((self.config.delay + self.config.duration) / dt), n_total)
+        pulse_samples = math.ceil(self.config.width / dt)
+        period_samples = math.ceil(1.0 / (self.config.frequency * dt))
+
+        for start in range(n_delay, n_end, period_samples):
+            end = min(start + pulse_samples, n_end)
+            ret[start:end] = self.config.amp_start
+
+        return ret
+
+
+class Sinusoidal(CurrentStimulator):
+    """A generated sinusoidal current."""
+
+    def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:
+        assert dt == self.config.dt, f"simulation dt: {dt} != input dt: {self.config.dt}"
+
+        n_total = math.ceil(simulation_length / dt) + 1
+        ret = np.zeros(n_total, dtype=np.float32)
+
+        n_delay = math.ceil(self.config.delay / dt)
+        n_end = min(math.ceil((self.config.delay + self.config.duration) / dt), n_total)
+
+        t = np.arange(n_end - n_delay) * dt
+        ret[n_delay:n_end] = self.config.amp_start * np.sin(2 * np.pi * self.config.frequency * t)
+
         return ret
 
 
@@ -99,6 +136,8 @@ def _create_input(conf: libsonata.SimulationConfig.InputBase) -> CurrentStimulat
 
 STIMULATION_TYPES = {
     libsonata.SimulationConfig.Linear: Linear,
+    libsonata.SimulationConfig.Pulse: Pulse,
+    libsonata.SimulationConfig.Sinusoidal: Sinusoidal,
 }
 
 for type_, klass in STIMULATION_TYPES.items():
@@ -300,14 +339,21 @@ class Inputs:
         ]
 
     def update_model_and_get_stims(self, model: str, neuron_count: int) -> tuple[str, dict, dict]:
-        """Ibid."""
+        """Update model from template with requirements for Inputs.
+
+        Strategy is to create "injectors" which are `brian2.TimedArray`'s with the values
+        that are played to the particular neurons.  The neurons use an `indicator` which
+        is a boolean mask where `True` is set if the particular neuron is set.
+
+        Thus, the memory usage is O(Neurons_count + simulation_duration / dt) per input
+        """
         if "I_inj" not in model:
             msg = f"Missing `I_inj` in equations: {model}; needed for current injection"
             raise RuntimeError(msg)
 
         model = re.sub(r".*I_inj\s*:\s*amp.*", "", model)
-        population = self.simulation.circuit.nodes[
 
+        population = self.simulation.circuit.nodes[
             _get_single_node_population(self.simulation.circuit)
         ].to_libsonata
         node_sets = self.simulation.node_sets.to_libsonata
@@ -331,15 +377,6 @@ class Inputs:
             objs[f"stim{i}"] = injection.get_currents(self.simulation.dt, self.simulation.run.tstop)
 
         model += "\n" + "\n".join(lines) + injection_sum + ": amp\n"
-
-        """
-        \n
-        I_inj0 = stim(t) * is_stimulated0 : amp
-        I_inj1 = stim(t) * is_stimulated1 : amp
-        I_inj = I_inj0 + I_inj1 : amp
-        is_stimulated0 : 1
-        is_stimulated1 : 1
-        """
 
         return model, objs, indicators
 

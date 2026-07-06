@@ -210,6 +210,74 @@ def test_linear_current_stim():
 
     config["inputs"]["linear"]["delay"] = 1
     sc = libsonata.SimulationConfig(json.dumps(config), ".")
-    t = test_module.Linear(sc.input("linear"))
+    t = test_module._create_input(sc.input("linear"))
     res = t._get_currents(dt=1, simulation_length=5)
     npt.assert_array_equal(res, [0.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+
+
+@pytest.mark.parametrize(
+    ("delay", "width", "frequency", "duration", "expected"),
+    [
+        (0, 0.2, 2, 2, [1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1]),
+        (0.1, 0.2, 2, 2, [0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0]),
+        (0.4, 0.2, 2, 2, [0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1]),
+        (0.3, 0.2, 0.5, 2, [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]),
+        (0, 0.1, 2, 2, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
+        (0, 0.1, 2, 0.5, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    ],
+)
+def test_pulse_current_stim(delay, width, frequency, duration, expected):
+    config = {
+        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "pulse": {
+                "input_type": "current_clamp",
+                "module": "pulse",
+                "frequency": frequency,
+                "amp_start": 1,
+                "width": width,
+                "delay": delay,
+                "duration": duration,
+                "node_set": "sugar",
+            },
+        },
+    }
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module._create_input(sc.input("pulse"))
+    res = t._get_currents(dt=config["run"]["dt"], simulation_length=config["run"]["tstop"])
+    npt.assert_array_equal(res, expected)
+
+
+@pytest.mark.parametrize(
+    ("delay", "frequency", "duration", "expected"),
+    [
+        (0, 1, 2, [0, 1, 0, -1, 0, 1, 0, -1, 0]),
+        (0.25, 1, 2, [0, 0, 1, 0, -1, 0, 1, 0, -1]),
+        (0, 1, 1, [0, 1, 0, -1, 0, 0, 0, 0, 0]),
+        (0.25, 1, 0.5, [0, 0, 1, 0, 0, 0, 0, 0, 0]),
+    ],
+)
+def test_sinusoidal_current_stim(delay, frequency, duration, expected):
+    config = {
+        "run": {"tstop": 2, "dt": 0.25, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "sinusoidal": {
+                "input_type": "current_clamp",
+                "module": "sinusoidal",
+                "frequency": frequency,
+                "amp_start": 1,
+                "dt": 0.25,
+                "delay": delay,
+                "duration": duration,
+                "node_set": "Mosaic",
+            },
+        },
+    }
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module._create_input(sc.input("sinusoidal"))
+    res = t._get_currents(dt=config["run"]["dt"], simulation_length=config["run"]["tstop"])
+    npt.assert_almost_equal(res, expected)
