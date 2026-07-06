@@ -57,9 +57,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            PointNeuronSetReference.__name__: (
-                Brian2SimulationScanConfig.default_node_set_name,
-            ),
+            PointNeuronSetReference.__name__: (Brian2SimulationScanConfig.default_node_set_name,),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },
     }

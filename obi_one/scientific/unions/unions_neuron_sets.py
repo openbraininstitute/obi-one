@@ -174,9 +174,7 @@ ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION = (
 ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
     BiophysicalNeuronSetReference | PointNeuronSetReference | NeuronSetReference
 )
-ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = (
-    BiophysicalNeuronSetReference | NeuronSetReference
-)
+ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | NeuronSetReference
 ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION = VirtualNeuronSetReference | NeuronSetReference
 # NeuronSetReference is intentionally excluded from the point union: it only references deprecated
 # biophysical/virtual neuron sets (never point sets), so it must not be offered for a point-only
