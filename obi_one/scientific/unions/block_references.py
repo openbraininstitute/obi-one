@@ -7,9 +7,9 @@ from obi_one.scientific.unions.unions_distributions import (
 )
 from obi_one.scientific.unions.unions_manipulations import SynapticManipulationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
-    AtomicBiophysicalNeuronSetReference,
-    AtomicPointNeuronSetReference,
-    AtomicVirtualNeuronSetReference,
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference
 from obi_one.scientific.unions.unions_stimuli import StimulusReference
@@ -21,9 +21,9 @@ from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 AllBlockReferenceTypes = [
     CombinedBiophysicalNeuronSetReference,
-    AtomicBiophysicalNeuronSetReference,
-    AtomicVirtualNeuronSetReference,
-    AtomicPointNeuronSetReference,
+    BiophysicalNeuronSetReference,
+    VirtualNeuronSetReference,
+    PointNeuronSetReference,
     StimulusReference,
     SynapticManipulationsReference,
     RecordingReference,

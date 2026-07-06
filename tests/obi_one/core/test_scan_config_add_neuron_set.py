@@ -16,8 +16,8 @@ from obi_one.scientific.blocks.neuron_sets.population import (
     VirtualPopulationNeuronSet,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    AtomicBiophysicalNeuronSetReference,
-    AtomicVirtualNeuronSetReference,
+    BiophysicalNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 
 
@@ -27,7 +27,7 @@ def sim_conf():
 
 
 def test_add_biophysical_neuron_set(sim_conf):
-    """Adding a biophysical neuron set resolves to AtomicBiophysicalNeuronSetReference."""
+    """Adding a biophysical neuron set resolves to BiophysicalNeuronSetReference."""
     nset = BiophysicalPopulationIDNeuronSet(
         neuron_ids=obi.NamedTuple(name="ids", elements=(0, 1, 2)),
         population="pop_A",
@@ -40,18 +40,18 @@ def test_add_biophysical_neuron_set(sim_conf):
     assert nset.block_name == "bio_nset"
     # Check that the reference is the correct type
     ref = nset.ref
-    assert isinstance(ref, AtomicBiophysicalNeuronSetReference)
+    assert isinstance(ref, BiophysicalNeuronSetReference)
     assert ref.block_name == "bio_nset"
 
 
 def test_add_virtual_neuron_set(sim_conf):
-    """Adding a virtual neuron set resolves to AtomicVirtualNeuronSetReference."""
+    """Adding a virtual neuron set resolves to VirtualNeuronSetReference."""
     nset = VirtualPopulationNeuronSet(population="virt_pop")
     sim_conf.add(nset, name="virt_nset")
 
     assert "virt_nset" in sim_conf.neuron_sets
     ref = nset.ref
-    assert isinstance(ref, AtomicVirtualNeuronSetReference)
+    assert isinstance(ref, VirtualNeuronSetReference)
 
 
 def test_add_multiple_neuron_sets_different_types(sim_conf):
@@ -62,8 +62,8 @@ def test_add_multiple_neuron_sets_different_types(sim_conf):
     sim_conf.add(bio, name="bio")
     sim_conf.add(virt, name="virt")
 
-    assert isinstance(bio.ref, AtomicBiophysicalNeuronSetReference)
-    assert isinstance(virt.ref, AtomicVirtualNeuronSetReference)
+    assert isinstance(bio.ref, BiophysicalNeuronSetReference)
+    assert isinstance(virt.ref, VirtualNeuronSetReference)
 
 
 def test_add_duplicate_name_raises(sim_conf):

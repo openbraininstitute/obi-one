@@ -107,7 +107,7 @@ class BaseNeuronSetReference(BlockReference, abc.ABC):
         BlockReference.block.fset(self, value)
 
 
-class AtomicBiophysicalNeuronSetReference(BaseNeuronSetReference):
+class BiophysicalNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Biophysical NeuronSet block."""
 
     allowed_block_types: ClassVar[Any] = AtomicBiophysicalNeuronSetUnion
@@ -117,7 +117,7 @@ class AtomicBiophysicalNeuronSetReference(BaseNeuronSetReference):
     }
 
 
-class AtomicVirtualNeuronSetReference(BaseNeuronSetReference):
+class VirtualNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Virtual NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = AtomicVirtualNeuronSetUnion
@@ -127,7 +127,7 @@ class AtomicVirtualNeuronSetReference(BaseNeuronSetReference):
     }
 
 
-class AtomicPointNeuronSetReference(BaseNeuronSetReference):
+class PointNeuronSetReference(BaseNeuronSetReference):
     """A reference to a Point NeuronSet2 block."""
 
     allowed_block_types: ClassVar[Any] = AtomicPointNeuronSetUnion
@@ -138,8 +138,8 @@ class AtomicPointNeuronSetReference(BaseNeuronSetReference):
 
 
 _DEPRECATED_NEURON_SET_REFERENCE_MESSAGE = (
-    "NeuronSetReference is deprecated. Use AtomicBiophysicalNeuronSetReference, "
-    "AtomicVirtualNeuronSetReference, or AtomicPointNeuronSetReference instead."
+    "NeuronSetReference is deprecated. Use BiophysicalNeuronSetReference, "
+    "VirtualNeuronSetReference, or PointNeuronSetReference instead."
 )
 
 
@@ -166,22 +166,22 @@ class NeuronSetReference(BlockReference):
 
 
 ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION = (
-    AtomicBiophysicalNeuronSetReference
-    | AtomicVirtualNeuronSetReference
-    | AtomicPointNeuronSetReference
+    BiophysicalNeuronSetReference
+    | VirtualNeuronSetReference
+    | PointNeuronSetReference
     | NeuronSetReference
 )
 ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
-    AtomicBiophysicalNeuronSetReference | AtomicPointNeuronSetReference | NeuronSetReference
+    BiophysicalNeuronSetReference | PointNeuronSetReference | NeuronSetReference
 )
 ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = (
-    AtomicBiophysicalNeuronSetReference | NeuronSetReference
+    BiophysicalNeuronSetReference | NeuronSetReference
 )
-ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION = AtomicVirtualNeuronSetReference | NeuronSetReference
+ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION = VirtualNeuronSetReference | NeuronSetReference
 # NeuronSetReference is intentionally excluded from the point union: it only references deprecated
 # biophysical/virtual neuron sets (never point sets), so it must not be offered for a point-only
 # reference field.
-ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION = AtomicPointNeuronSetReference
+ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION = PointNeuronSetReference
 
 """
 Lists of reference types

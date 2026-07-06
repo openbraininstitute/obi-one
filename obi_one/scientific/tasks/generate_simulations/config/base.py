@@ -35,7 +35,7 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.unions.unions_neuron_sets import (
-    AtomicBiophysicalNeuronSetReference,
+    BiophysicalNeuronSetReference,
 )
 
 SONATA_VERSION = 2.4
@@ -75,9 +75,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     @property
     def default_neuron_set_reference(
         self,
-    ) -> AtomicBiophysicalNeuronSetReference:
+    ) -> BiophysicalNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
-        default_neuron_set_block_reference = AtomicBiophysicalNeuronSetReference(
+        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
 

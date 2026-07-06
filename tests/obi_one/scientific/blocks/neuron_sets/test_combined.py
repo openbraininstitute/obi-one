@@ -7,7 +7,7 @@ import pytest
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet, SetOperation
 from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
-from obi_one.scientific.unions.unions_neuron_sets import AtomicBiophysicalNeuronSetReference
+from obi_one.scientific.unions.unions_neuron_sets import BiophysicalNeuronSetReference
 
 from tests.utils import CIRCUIT_DIR
 
@@ -28,14 +28,14 @@ def circuit():
 
 def _resolved_ref(
     neuron_set: PredefinedNeuronSet, name: str
-) -> AtomicBiophysicalNeuronSetReference:
+) -> BiophysicalNeuronSetReference:
     """Return a resolved reference to a named neuron set.
 
     Mirrors what a Task/config wiring (``fill_block_references_and_names``) produces: the block
     name is set and the reference's block is resolved so that ``_resolve_refs`` can read it back.
     """
     neuron_set.set_block_name(name)
-    ref = AtomicBiophysicalNeuronSetReference(block_name=name, block_dict_name="neuron_sets")
+    ref = BiophysicalNeuronSetReference(block_name=name, block_dict_name="neuron_sets")
     ref.block = neuron_set
     return ref
 

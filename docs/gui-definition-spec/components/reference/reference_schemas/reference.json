@@ -13,7 +13,7 @@
         },
         "type": {
           "type": "string",
-          "const": "AtomicBiophysicalNeuronSetReference",
+          "const": "BiophysicalNeuronSetReference",
           "title": "Type"
         }
       },
@@ -34,7 +34,7 @@
         },
         "type": {
           "type": "string",
-          "const": "AtomicPointNeuronSetReference",
+          "const": "PointNeuronSetReference",
           "title": "Type"
         }
       },
@@ -49,5 +49,5 @@
   "title": "Neuron Set",
   "description": "Neuron set to record from.",
   "ui_element": "reference",
-  "reference_types": ["AtomicBiophysicalNeuronSetReference", "AtomicPointNeuronSetReference"]
+  "reference_types": ["BiophysicalNeuronSetReference", "PointNeuronSetReference"]
 }

@@ -29,9 +29,9 @@ __all__ = [
     "AllPointNeurons",
     "AllPopulationNeurons",
     "AllVirtualNeurons",
-    "AtomicBiophysicalNeuronSetReference",
-    "AtomicPointNeuronSetReference",
-    "AtomicVirtualNeuronSetReference",
+    "BiophysicalNeuronSetReference",
+    "PointNeuronSetReference",
+    "VirtualNeuronSetReference",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
@@ -555,9 +555,9 @@ from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    AtomicBiophysicalNeuronSetReference,
-    AtomicPointNeuronSetReference,
-    AtomicVirtualNeuronSetReference,
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion

@@ -59,7 +59,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         description="List of neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
-            SchemaKey.REFERENCE_TYPES: [AtomicBiophysicalNeuronSetReference.__name__],
+            SchemaKey.REFERENCE_TYPES: [BiophysicalNeuronSetReference.__name__],
         },
     )
 ```

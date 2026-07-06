@@ -305,6 +305,6 @@ def test_neuron_set_combination_rejects_bad_operation_enum():
 
 def test_neuron_set_combination_rejects_non_list_reference_types():
     schema = _combination_schema("BiophysicalCombinedNeuronSet")
-    schema["reference_types"] = "AtomicBiophysicalNeuronSetReference"
+    schema["reference_types"] = "BiophysicalNeuronSetReference"
     with pytest.raises(ValueError, match="must be a list of strings"):
         validate_neuron_set_combination(schema, "combined_with", "ref")

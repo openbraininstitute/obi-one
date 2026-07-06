@@ -48,9 +48,9 @@ class Config:
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.REFERENCE_TYPES: [
-                AtomicBiophysicalNeuronSetReference.__name__,
-                AtomicVirtualNeuronSetReference.__name__,
-                AtomicPointNeuronSetReference.__name__,
+                BiophysicalNeuronSetReference.__name__,
+                VirtualNeuronSetReference.__name__,
+                PointNeuronSetReference.__name__,
             ],
         }
     )

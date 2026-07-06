@@ -30,9 +30,9 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    AtomicBiophysicalNeuronSetReference,
-    AtomicPointNeuronSetReference,
-    AtomicVirtualNeuronSetReference,
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_stimuli import (
     CircuitStimulusUnion,
@@ -61,13 +61,13 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            AtomicBiophysicalNeuronSetReference.__name__: (
+            BiophysicalNeuronSetReference.__name__: (
                 NeuronSimulationScanConfig.default_node_set_name
             ),
-            AtomicVirtualNeuronSetReference.__name__: (
+            VirtualNeuronSetReference.__name__: (
                 NeuronSimulationScanConfig.default_node_set_name,
             ),
-            AtomicPointNeuronSetReference.__name__: (
+            PointNeuronSetReference.__name__: (
                 NeuronSimulationScanConfig.default_node_set_name,
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,

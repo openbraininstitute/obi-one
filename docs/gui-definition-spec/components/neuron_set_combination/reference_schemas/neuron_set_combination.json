@@ -2,7 +2,7 @@
   "title": "Combine With",
   "description": "List of neuron sets and set operations to combine with the base neuron set.",
   "ui_element": "neuron_set_combination",
-  "reference_types": ["AtomicBiophysicalNeuronSetReference"],
+  "reference_types": ["BiophysicalNeuronSetReference"],
   "type": "array",
   "maxItems": 5,
   "items": {

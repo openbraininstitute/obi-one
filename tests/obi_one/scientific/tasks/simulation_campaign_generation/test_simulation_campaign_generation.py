@@ -225,17 +225,17 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     vpm_ref = {
         "block_dict_name": "neuron_sets",
         "block_name": "VPM_input",
-        "type": "AtomicVirtualNeuronSetReference",
+        "type": "VirtualNeuronSetReference",
     }
     id3_ref = {
         "block_dict_name": "neuron_sets",
         "block_name": "ID3",
-        "type": "AtomicBiophysicalNeuronSetReference",
+        "type": "BiophysicalNeuronSetReference",
     }
     id10_ref = {
         "block_dict_name": "neuron_sets",
         "block_name": "ID10",
-        "type": "AtomicBiophysicalNeuronSetReference",
+        "type": "BiophysicalNeuronSetReference",
     }
     poisson_dict = {
         "type": "PoissonSpikeStimulus",
@@ -400,17 +400,17 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         vpm_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "VPM_input",
-            "type": "AtomicVirtualNeuronSetReference",
+            "type": "VirtualNeuronSetReference",
         }
         id3_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "ID3",
-            "type": "AtomicBiophysicalNeuronSetReference",
+            "type": "BiophysicalNeuronSetReference",
         }
         id10_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "ID10",
-            "type": "AtomicBiophysicalNeuronSetReference",
+            "type": "BiophysicalNeuronSetReference",
         }
         poisson_dict = {
             "type": "PoissonSpikeStimulus",
