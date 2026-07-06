@@ -58,7 +58,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             AtomicPointNeuronSetReference.__name__: (
-                Brian2SimulationScanConfig.default_node_set_name,  # JI come back to
+                Brian2SimulationScanConfig.default_node_set_name,
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },

@@ -49,7 +49,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            AtomicPointNeuronSetReference.__name__: (  # JI come back to
+            AtomicPointNeuronSetReference.__name__: (
                 LearningEngineSimulationScanConfig.default_node_set_name
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
