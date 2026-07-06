@@ -174,7 +174,9 @@ def test_register_mesh_upload_failure_returns_500(client, mock_db_client, valid_
     assert not temp_mesh_path.exists()
 
 
-def test_register_mesh_obj_upload_failure_returns_500(client, mock_db_client, valid_obj_file, tmp_path):
+def test_register_mesh_obj_upload_failure_returns_500(
+    client, mock_db_client, valid_obj_file, tmp_path
+):
     client.app.dependency_overrides[get_client] = lambda: mock_db_client
 
     temp_mesh_path = tmp_path / "mesh.obj"
@@ -383,10 +385,9 @@ def test_generate_lods_background_task_cleans_up_on_error(tmp_path):
         f"{TARGET_MODULE}.try_generate_and_upload_lods",
         new_callable=AsyncMock,
         side_effect=RuntimeError("boom"),
-    ):
-        with pytest.raises(RuntimeError):
-            asyncio.run(
-                _generate_lods_background_task(mock_client, uuid4(), lod_source_path, "obj")
-            )
+    ), pytest.raises(RuntimeError):
+        asyncio.run(
+            _generate_lods_background_task(mock_client, uuid4(), lod_source_path, "obj")
+        )
 
     assert not lod_source_path.exists()

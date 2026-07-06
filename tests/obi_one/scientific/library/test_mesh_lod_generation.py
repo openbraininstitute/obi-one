@@ -30,7 +30,7 @@ class _ImmediateExecutor:
             future.set_result(result)
         return future
 
-    def shutdown(self, wait=True):
+    def shutdown(self, *, wait=True):
         pass
 
 
@@ -38,12 +38,12 @@ class _BrokenPoolExecutor:
     def __init__(self, *args, **kwargs):
         pass
 
-    def submit(self, fn, *args, **kwargs):
+    def submit(self, _fn, *_args, **_kwargs):
         future = concurrent.futures.Future()
         future.set_exception(BrokenProcessPool("subprocess died"))
         return future
 
-    def shutdown(self, wait=True):
+    def shutdown(self, *, wait=True):
         pass
 
 
@@ -51,10 +51,10 @@ class _HangingExecutor:
     def __init__(self, *args, **kwargs):
         pass
 
-    def submit(self, fn, *args, **kwargs):
+    def submit(self, _fn, *_args, **_kwargs):
         return concurrent.futures.Future()
 
-    def shutdown(self, wait=True):
+    def shutdown(self, *, wait=True):
         pass
 
 
@@ -96,29 +96,29 @@ def test_collect_lod_files(tmp_path):
 
 
 def test_generate_lods_not_installed_raises(tmp_path):
-    with patch.object(mod, "HAS_MESHING", False):
-        with pytest.raises(RuntimeError, match="ultraliser not installed"):
-            asyncio.run(
-                mod._generate_lods(tmp_path / "mesh.obj", "obj", tmp_path / "output_lods")
-            )
+    with (
+        patch.object(mod, "HAS_MESHING", new=False),
+        pytest.raises(RuntimeError, match="ultraliser not installed"),
+    ):
+        asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "obj", tmp_path / "output_lods"))
 
 
 def test_generate_lods_unsupported_format_raises(tmp_path):
-    with patch.object(mod, "HAS_MESHING", True):
-        with pytest.raises(RuntimeError, match="Unsupported mesh format"):
-            asyncio.run(
-                mod._generate_lods(tmp_path / "mesh.obj", "stl", tmp_path / "output_lods")
-            )
+    with (
+        patch.object(mod, "HAS_MESHING", new=True),
+        pytest.raises(RuntimeError, match="Unsupported mesh format"),
+    ):
+        asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "stl", tmp_path / "output_lods"))
 
 
 def test_generate_lods_success(tmp_path):
     output_dir = tmp_path / "output_lods"
 
-    def _fake_worker(mesh_path, out_dir):
+    def _fake_worker(_mesh_path, out_dir):
         pathlib.Path(out_dir, "lod0.obj").write_bytes(b"fake-lod-content")
 
     with (
-        patch.object(mod, "HAS_MESHING", True),
+        patch.object(mod, "HAS_MESHING", new=True),
         patch.object(mod, "_generate_lods_worker", side_effect=_fake_worker),
         patch.object(mod, "ProcessPoolExecutor", _ImmediateExecutor),
     ):
@@ -132,35 +132,35 @@ def test_generate_lods_no_output_files_raises(tmp_path):
     output_dir = tmp_path / "output_lods"
 
     with (
-        patch.object(mod, "HAS_MESHING", True),
+        patch.object(mod, "HAS_MESHING", new=True),
         patch.object(mod, "_generate_lods_worker", MagicMock()),
         patch.object(mod, "ProcessPoolExecutor", _ImmediateExecutor),
+        pytest.raises(RuntimeError, match="produced no LOD output files"),
     ):
-        with pytest.raises(RuntimeError, match="produced no LOD output files"):
-            asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "obj", output_dir))
+        asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "obj", output_dir))
 
 
 def test_generate_lods_broken_process_pool_raises(tmp_path):
     output_dir = tmp_path / "output_lods"
 
     with (
-        patch.object(mod, "HAS_MESHING", True),
+        patch.object(mod, "HAS_MESHING", new=True),
         patch.object(mod, "ProcessPoolExecutor", _BrokenPoolExecutor),
+        pytest.raises(RuntimeError, match="ultraliser crashed"),
     ):
-        with pytest.raises(RuntimeError, match="ultraliser crashed"):
-            asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "obj", output_dir))
+        asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "obj", output_dir))
 
 
 def test_generate_lods_timeout_raises(tmp_path):
     output_dir = tmp_path / "output_lods"
 
     with (
-        patch.object(mod, "HAS_MESHING", True),
+        patch.object(mod, "HAS_MESHING", new=True),
         patch.object(mod, "LOD_GENERATION_TIMEOUT_S", 0.05),
         patch.object(mod, "ProcessPoolExecutor", _HangingExecutor),
+        pytest.raises(RuntimeError, match="timed out"),
     ):
-        with pytest.raises(RuntimeError, match="timed out"):
-            asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "obj", output_dir))
+        asyncio.run(mod._generate_lods(tmp_path / "mesh.obj", "obj", output_dir))
 
 
 def test_delete_existing_asset_by_path_deletes_match():
@@ -201,7 +201,7 @@ def test_upload_lod_directory_deletes_then_uploads():
     mock_client.get_entity.return_value = entity
 
     entity_id = uuid4()
-    lod_files = {pathlib.Path("a.obj"): pathlib.Path("/tmp/a.obj")}
+    lod_files = {pathlib.Path("a.obj"): pathlib.Path("/tmp/a.obj")}  # noqa: S108
 
     result = mod._upload_lod_directory(mock_client, entity_id, lod_files)
 
@@ -213,11 +213,9 @@ def test_upload_lod_directory_deletes_then_uploads():
 
 
 def test_try_generate_and_upload_lods_disabled():
-    with patch.object(mod, "HAS_MESHING", False):
+    with patch.object(mod, "HAS_MESHING", new=False):
         result = asyncio.run(
-            mod.try_generate_and_upload_lods(
-                MagicMock(), uuid4(), pathlib.Path("mesh.obj"), "obj"
-            )
+            mod.try_generate_and_upload_lods(MagicMock(), uuid4(), pathlib.Path("mesh.obj"), "obj")
         )
 
     assert result is None
@@ -226,10 +224,10 @@ def test_try_generate_and_upload_lods_disabled():
 def test_try_generate_and_upload_lods_success():
     mock_client = MagicMock()
     entity_id = uuid4()
-    lod_files = {pathlib.Path("a.obj"): pathlib.Path("/tmp/a.obj")}
+    lod_files = {pathlib.Path("a.obj"): pathlib.Path("/tmp/a.obj")}  # noqa: S108
 
     with (
-        patch.object(mod, "HAS_MESHING", True),
+        patch.object(mod, "HAS_MESHING", new=True),
         patch.object(mod, "_generate_lods", new_callable=AsyncMock, return_value=lod_files),
         patch.object(mod, "_upload_lod_directory", return_value=str(entity_id)) as mock_upload,
     ):
@@ -245,15 +243,13 @@ def test_try_generate_and_upload_lods_success():
 
 def test_try_generate_and_upload_lods_handles_failure():
     with (
-        patch.object(mod, "HAS_MESHING", True),
+        patch.object(mod, "HAS_MESHING", new=True),
         patch.object(
             mod, "_generate_lods", new_callable=AsyncMock, side_effect=RuntimeError("boom")
         ),
     ):
         result = asyncio.run(
-            mod.try_generate_and_upload_lods(
-                MagicMock(), uuid4(), pathlib.Path("mesh.obj"), "obj"
-            )
+            mod.try_generate_and_upload_lods(MagicMock(), uuid4(), pathlib.Path("mesh.obj"), "obj")
         )
 
     assert result is None
