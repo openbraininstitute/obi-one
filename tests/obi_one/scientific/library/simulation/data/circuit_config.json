@@ -1,0 +1,1 @@
+{"components": {"point_neuron_models_dir": "models"}, "node_sets_file": "node_sets.json", "target_simulator": "Brian2", "networks": {"nodes": [{"nodes_file": "nodes.h5", "populations": {"drosophila": {"type": "brian2_point"}}}], "edges": [{"edges_file": "edges.h5", "populations": {"drosophila__drosophila__brian2_synapse": {"type": "brian2_synapse"}}}]}}

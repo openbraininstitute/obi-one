@@ -1,0 +1,169 @@
+{
+    "obi_one_version": "2025.9.4.dev126",
+    "type": "GridScanGenerationTask",
+    "output_root": "../../../../obi-output/circuit_simulations/grid_scan",
+    "form": {
+        "type": "CircuitSimulationScanConfig",
+        "timestamps": {
+            "RegularTimestamps": {
+                "type": "RegularTimestamps",
+                "start_time": 0.0,
+                "interval": 3000.0,
+                "number_of_repetitions": 3
+            }
+        },
+        "stimuli": {
+            "PoissonInputStimulus": {
+                "type": "PoissonSpikeStimulus",
+                "timestamps": {
+                    "block_dict_name": "timestamps",
+                    "block_name": "RegularTimestamps",
+                    "type": "TimestampsReference"
+                },
+                "source_neuron_set": {
+                    "block_dict_name": "neuron_sets",
+                    "block_name": "L1All",
+                    "type": "NeuronSetReference"
+                },
+                "targeted_neuron_set": {
+                    "block_dict_name": "neuron_sets",
+                    "block_name": "L1All",
+                    "type": "NeuronSetReference"
+                },
+                "timestamp_offset": 0.0,
+                "duration": 800.0,
+                "frequency": 20.0,
+                "random_seed": 0
+            },
+            "SynchronousInputStimulus": {
+                "type": "FullySynchronousSpikeStimulus",
+                "timestamps": {
+                    "block_dict_name": "timestamps",
+                    "block_name": "RegularTimestamps",
+                    "type": "TimestampsReference"
+                },
+                "source_neuron_set": {
+                    "block_dict_name": "neuron_sets",
+                    "block_name": "ID3",
+                    "type": "NeuronSetReference"
+                },
+                "targeted_neuron_set": {
+                    "block_dict_name": "neuron_sets",
+                    "block_name": "L1All",
+                    "type": "NeuronSetReference"
+                },
+                "timestamp_offset": 0.0
+            },
+            "ConstantCurrentClampSomaticStimulus": {
+                "type": "ConstantCurrentClampSomaticStimulus",
+                "timestamps": {
+                    "block_dict_name": "timestamps",
+                    "block_name": "RegularTimestamps",
+                    "type": "TimestampsReference"
+                },
+                "neuron_set": {
+                    "block_dict_name": "neuron_sets",
+                    "block_name": "L1All",
+                    "type": "NeuronSetReference"
+                },
+                "timestamp_offset": 0.0,
+                "duration": 1.0,
+                "amplitude": 0.1
+            }
+        },
+        "recordings": {
+            "VoltageRecording": {
+                "type": "SomaVoltageRecording",
+                "neuron_set": {
+                    "block_dict_name": "neuron_sets",
+                    "block_name": "L1All",
+                    "type": "NeuronSetReference"
+                },
+                "dt": 0.1
+            },
+            "TimeWindowVoltageRecording": {
+                "type": "TimeWindowSomaVoltageRecording",
+                "neuron_set": {
+                    "block_dict_name": "neuron_sets",
+                    "block_name": "L1All",
+                    "type": "NeuronSetReference"
+                },
+                "dt": 0.1,
+                "start_time": 0.0,
+                "end_time": 2000.0
+            }
+        },
+        "info": {
+            "type": "Info",
+            "campaign_name": "O1 Simulation",
+            "campaign_description": "Simulation of O1 circuit with predefined neuron set and constant current stimulus"
+        },
+        "neuron_sets": {
+            "All Biophysical Neurons": {
+                "type": "AllNeurons",
+                "sample_percentage": 100.0,
+                "sample_seed": 1
+            },
+            "L1All": {
+                "type": "IDNeuronSet",
+                "sample_percentage": 100.0,
+                "sample_seed": 1,
+                "neuron_ids": {
+                    "name": "IDNeuronSet1",
+                    "elements": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4
+                    ],
+                    "type": "NamedTuple"
+                }
+            },
+            "AllNeurons": {
+                "type": "AllNeurons",
+                "sample_percentage": 100.0,
+                "sample_seed": 1
+            },
+            "ID3": {
+                "type": "IDNeuronSet",
+                "sample_percentage": 100.0,
+                "sample_seed": 1,
+                "neuron_ids": {
+                    "name": "IDNeuronSet2",
+                    "elements": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "type": "NamedTuple"
+                }
+            },
+            "nbS1VPMInputs": {
+                "type": "nbS1VPMInputs",
+                "sample_percentage": 100.0,
+                "sample_seed": 1
+            }
+        },
+        "synaptic_manipulations": {},
+        "initialize": {
+            "type": "CircuitSimulationScanConfig.Initialize",
+            "circuit": {
+                "name": "N_10__top_nodes_dim6",
+                "path": "examples/data/tiny_circuits/N_10__top_nodes_dim6/circuit_config.json",
+                "matrix_path": null,
+                "type": "Circuit"
+            },
+            "simulation_length": 3000.0,
+            "extracellular_calcium_concentration": 1.1,
+            "v_init": -80.0,
+            "random_seed": 1,
+            "node_set": {
+                "block_dict_name": "neuron_sets",
+                "block_name": "L1All",
+                "type": "NeuronSetReference"
+            }
+        }
+    },
+    "coordinate_directory_option": "ZERO_INDEX"
+}
