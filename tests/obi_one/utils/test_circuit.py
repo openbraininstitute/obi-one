@@ -231,28 +231,26 @@ def test_run_validation_invalid_circuit():
         run_validation(circuit_path)
 
 
-def test_generate_overview_figure_fallback_template(tmp_path):
-    """Test that template is used when no plots directory is provided."""
+def test_generate_overview_figure_skipped_when_no_plots_dir(tmp_path):
+    """Test that None is returned when no plots directory is provided (skip overview)."""
     output_file = tmp_path / "overview.png"
 
     result = generate_overview_figure(basic_plots_dir=None, output_file=output_file)
 
-    assert result == output_file
-    assert output_file.exists()
-    assert output_file.stat().st_size > 0
+    assert result is None
+    assert not output_file.exists()
 
 
-def test_generate_overview_figure_fallback_when_no_circular_plot(tmp_path):
-    """Test that template is used when plots dir exists but has no circular plot."""
+def test_generate_overview_figure_skipped_when_no_circular_plot(tmp_path):
+    """Test that None is returned when plots dir exists but has no circular plot."""
     plots_dir = tmp_path / "plots"
     plots_dir.mkdir()
     output_file = tmp_path / "overview.png"
 
     result = generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
 
-    assert result == output_file
-    assert output_file.exists()
-    assert output_file.stat().st_size > 0
+    assert result is None
+    assert not output_file.exists()
 
 
 def test_generate_overview_figure_with_circular_plot(tmp_path):
@@ -294,14 +292,34 @@ def test_generate_overview_figure_with_circular_and_table(tmp_path):
 
 
 def test_generate_overview_figure_raises_if_output_exists(tmp_path):
-    """Test that error is raised when output file already exists."""
-    # Create a dummy output image
-    output_file = tmp_path / "overview.png"
+    """Test that error is raised when output file already exists and a figure is available."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    # Create a circular plot so the function proceeds past the early return
     img = Image.new("RGB", (123, 123), color="blue")
+    img.save(plots_dir / "small_network_in_2D_circular.png")
+
+    # Create a dummy output image that already exists
+    output_file = tmp_path / "overview.png"
     img.save(output_file)
 
     with pytest.raises(OBIONEError, match="already exists"):
-        generate_overview_figure(basic_plots_dir=None, output_file=output_file)
+        generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
+
+
+def test_generate_overview_figure_raises_on_extension_mismatch(tmp_path):
+    """Test that error is raised when output extension doesn't match figure extension."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    # Create a circular plot (png)
+    img = Image.new("RGB", (123, 123), color="blue")
+    img.save(plots_dir / "small_network_in_2D_circular.png")
+
+    # Request a .jpg output — mismatch with .png source
+    output_file = tmp_path / "overview.jpg"
+
+    with pytest.raises(OBIONEError, match="does not match"):
+        generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
 
 
 def test_get_circuit_properties_small_circuit():

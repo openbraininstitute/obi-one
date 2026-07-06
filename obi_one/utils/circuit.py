@@ -397,13 +397,12 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
     return has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines
 
 
-def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:
+def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path | None:
     """Generate an overview figure of the circuit.
 
-    Uses the circular 2D network plot if available, otherwise falls back to a template.
+    Uses the circular 2D network plot if available. Returns None if no suitable
+    figure is found.
     """
-    from importlib.resources import files  # noqa: PLC0415
-
     from PIL import Image  # noqa: PLC0415
 
     from obi_one.core.exception import OBIONEError  # noqa: PLC0415
@@ -421,9 +420,10 @@ def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) ->
     else:
         fig_paths = None
 
-    # Use template figure from library if no circular plot available
+    # No figure available — skip without error
     if fig_paths is None:
-        fig_paths = Path(str(files("obi_one.scientific.library").joinpath("circuit_template.png")))
+        L.info("No overview figure available; skipping generation.")
+        return None
 
     # Check that output file does not exist yet
     if output_file.exists():
