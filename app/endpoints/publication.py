@@ -1,39 +1,20 @@
 """Endpoint for user-driven publication registration via DOI lookup."""
 
-import re
-
 from entitysdk import models
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, field_validator
 from starlette.requests import Request
 
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
+from app.schemas.publication import PublicationRegisterRequest
 from app.services.doi_metadata import fetch_publication_metadata
-
-DOI_REGEX = re.compile(r"^10.\d{4,9}/[-._;()/:A-Z0-9]+$", re.IGNORECASE)
 
 router = APIRouter(
     prefix="/declared/publication",
     tags=["declared"],
     dependencies=[Depends(user_verified)],
 )
-
-
-class PublicationRegisterRequest(BaseModel):
-    """Request body for registering a publication by DOI."""
-
-    DOI: str
-
-    @field_validator("DOI", mode="before")
-    @classmethod
-    def validate_doi(cls, value: str) -> str:
-        """Validate that the provided string is a valid DOI."""
-        if not DOI_REGEX.match(value):
-            msg = f"Invalid DOI format: {value}"
-            raise ValueError(msg)
-        return value
 
 
 @router.post(
@@ -58,10 +39,12 @@ def register_publication(
     doi = json_model.DOI
 
     # Check if publication already exists
-    existing = db_client.search_entity(entity_type=models.Publication, query={"DOI": doi}).all()
+    existing = db_client.search_entity(
+        entity_type=models.Publication, query={"DOI": doi}
+    ).one_or_none()
     if existing:
         raise ApiError(
-            message=f"Publication with DOI {doi} is already registered (id={existing[0].id})",
+            message=f"Publication with DOI {doi} is already registered (id={existing.id})",
             error_code=ApiErrorCode.INVALID_REQUEST,
             http_status_code=409,
         )
