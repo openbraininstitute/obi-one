@@ -364,7 +364,7 @@ class Brian2Network(BaseModel):
     neurons: list[brian2.NeuronGroup]
     synapses: list[brian2.Synapses]
     spike_monitor: brian2.SpikeMonitor
-    inputs: list[brian2.Group | brian2.PoissonInput]
+    inputs: list
 
 
 def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
