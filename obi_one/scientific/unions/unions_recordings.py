@@ -14,8 +14,9 @@ _SOMA_VOLTAGE_RECORDINGS = SomaVoltageRecording | TimeWindowSomaVoltageRecording
 
 RecordingUnion = Annotated[_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
 
+_RECORDINGS = IonChannelVariableRecording | _SOMA_VOLTAGE_RECORDINGS
 IonChannelModelRecordingUnion = Annotated[
-    IonChannelVariableRecording | _SOMA_VOLTAGE_RECORDINGS,
+    _RECORDINGS,
     Discriminator("type"),
 ]
 
@@ -24,3 +25,7 @@ class RecordingReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
     allowed_block_types: ClassVar[Any] = IonChannelModelRecordingUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_RECORDINGS)
+    }

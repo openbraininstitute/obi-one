@@ -159,9 +159,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     field_info = self.__pydantic_fields__[attr_name]
                     if (
                         field_info.json_schema_extra
-                        and SchemaKey.REFERENCE_TYPE in field_info.json_schema_extra
+                        and SchemaKey.REFERENCE_TYPES in field_info.json_schema_extra
                     ):
-                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPE]
+                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPES]
                     else:
                         msg = (
                             f"Attribute '{attr_name}' does not have a 'reference_type'"
@@ -199,7 +199,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                         # Otherwise initialize a new dictionary for this block class in the mapping
                         self._block_mapping[block_class.__name__] = {
                             "block_dict_name": attr_name,
-                            SchemaKey.REFERENCE_TYPE: reference_type,
+                            SchemaKey.REFERENCE_TYPES: reference_type,
                         }
 
         return self._block_mapping
@@ -270,16 +270,36 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPE]
+        reference_type_names = self.block_mapping[block.__class__.__name__][
+            SchemaKey.REFERENCE_TYPES
+        ]
 
         if name in self.__dict__.get(block_dict_name):  # ty:ignore[unsupported-operator]
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 
-        # Find the class in the registry whose name matches reference_type_name
-        reference_type = block_ref_registry.get_by_name(reference_type_name)
+        # Find the reference type that accepts this block class
+        block_class_name = block.__class__.__name__
+        reference_type = None
+        for ref_name in reference_type_names:
+            ref_cls = block_ref_registry.get_by_name(ref_name)
+            if ref_cls is None:
+                continue
+            extras = getattr(ref_cls, "json_schema_extra_additions", None)
+            if extras is None:
+                # No restrictions — accept any block
+                reference_type = ref_cls
+                break
+            allowed = extras.get("allowed_block_types", [])
+            if not allowed or block_class_name in allowed:
+                reference_type = ref_cls
+                break
+
         if reference_type is None:
-            msg = f"Reference type '{reference_type_name}' not found in block reference registry."
+            msg = (
+                f"No reference type from {reference_type_names}"
+                f" accepts block class '{block_class_name}'."
+            )
             raise OBIONEError(msg)
 
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)
