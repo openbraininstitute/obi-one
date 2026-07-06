@@ -211,14 +211,14 @@ def test_generate_lods_background_task_cleans_up_on_error(tmp_path):
 
     mock_client = MagicMock()
 
-    with patch(
-        f"{TARGET_MODULE}.try_generate_and_upload_lods",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("boom"),
+    with (
+        patch(
+            f"{TARGET_MODULE}.try_generate_and_upload_lods",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ),
+        pytest.raises(RuntimeError),
     ):
-        with pytest.raises(RuntimeError):
-            asyncio.run(
-                _generate_lods_background_task(mock_client, uuid4(), lod_source_path, "obj")
-            )
+        asyncio.run(_generate_lods_background_task(mock_client, uuid4(), lod_source_path, "obj"))
 
     assert not lod_source_path.exists()
