@@ -31,7 +31,6 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_path=True)
 L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
-POPULATION_NAME = "drosophila"
 
 
 def _convert_to_known_unit(v: str) -> brian2.Unit | int:
@@ -102,18 +101,26 @@ class SynapseTemplate(BaseModel):
         return {k: _convert_to_known_unit(v) for k, v in v.items()}
 
 
+def _get_single_node_population(circuit: bluepysnap.Circuit) -> str:
+    """Make sure there is only one node population, and retrieve its name."""
+    assert len(circuit.nodes.population_names) == 1
+    return next(iter(circuit.nodes.population_names))
+
+
 def _make_poisson(
     simulation: bluepysnap.Simulation,
     config: libsonata.SimulationConfig.Poisson,
     n0: brian2.NeuronGroup,
 ) -> tuple[brian2.NeuronGroup, list]:
     L.info("Making Poisson Stimulus: rate: %f Hz, weight: %f mV", config.rate, config.weight)
-    exc_node_ids = simulation.node_sets.to_libsonata.materialize(
-        config.node_set, simulation.circuit.nodes[POPULATION_NAME].to_libsonata
+
+    population_name = _get_single_node_population(simulation.circuit)
+    node_ids = simulation.node_sets.to_libsonata.materialize(
+        config.node_set, simulation.circuit.nodes[population_name].to_libsonata
     ).flatten()
 
     poisson_inputs = []
-    for i in exc_node_ids:
+    for i in node_ids:
         p = brian2.PoissonInput(
             target=n0[i : i + 1],
             target_var="v",
@@ -123,6 +130,7 @@ def _make_poisson(
         )
         n0[i].rfc = 0 * brian2.units.ms  # no refractory period for Poisson targets
         poisson_inputs.append(p)
+
     return n0, poisson_inputs
 
 
@@ -151,13 +159,13 @@ def _get_spike_replay(
     synapse_template: SynapseTemplate,
 ) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses]:
     assert len(input_.reader.get_population_names()) == 1
-    assert next(iter(input_.reader.get_population_names())) == POPULATION_NAME
+    population_name = next(iter(input_.reader.get_population_names()))
 
     node_ids = simulation.node_sets.to_libsonata.materialize(
-        input_.node_set, simulation.circuit.nodes[POPULATION_NAME].to_libsonata
+        input_.node_set, simulation.circuit.nodes[population_name].to_libsonata
     ).flatten()
 
-    spikes = input_.reader[POPULATION_NAME].get_dict()
+    spikes = input_.reader[population_name].get_dict()
     spikes, times = spikes["node_ids"], spikes["timestamps"]
     mask = np.isin(spikes, node_ids)
     spikes, times = spikes[mask], times[mask]
@@ -179,7 +187,7 @@ def _get_spike_replay(
     L.info(
         "Replaying %d spikes from population `%s`, node_set: `%s`",
         len(times),
-        POPULATION_NAME,
+        population_name,
         input_.node_set,
     )
 
@@ -360,15 +368,11 @@ class Brian2Network(BaseModel):
 
 
 def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
-    circuit = simulation.circuit
-
-    assert circuit.nodes.population_names == [POPULATION_NAME]
-
     brian2.defaultclock.dt = simulation.run.dt * brian2.units.ms
     brian2.seed(simulation.run.random_seed)
 
     neurons = _create_neurons(simulation)
-    synapses, synapse_template = _create_synapses(circuit, neurons)
+    synapses, synapse_template = _create_synapses(simulation.circuit, neurons)
 
     spike_monitor = brian2.SpikeMonitor(neurons)
 
@@ -407,7 +411,7 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
     (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     spikes_path = _write_spikes(
         filepath=output_dir / simulation.output.spikes_file,
-        population_name=simulation.circuit.nodes.population_names[0],
+        population_name=_get_single_node_population(simulation.circuit),
         timestamps=timestamps,
         node_ids=node_ids,
     )
