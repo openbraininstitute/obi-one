@@ -307,6 +307,21 @@ def test_generate_overview_figure_raises_if_output_exists(tmp_path):
         generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
 
 
+def test_generate_overview_figure_raises_on_extension_mismatch(tmp_path):
+    """Test that error is raised when output extension doesn't match figure extension."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    # Create a circular plot (png)
+    img = Image.new("RGB", (123, 123), color="blue")
+    img.save(plots_dir / "small_network_in_2D_circular.png")
+
+    # Request a .jpg output — mismatch with .png source
+    output_file = tmp_path / "overview.jpg"
+
+    with pytest.raises(OBIONEError, match="does not match"):
+        generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
+
+
 def test_get_circuit_properties_small_circuit():
     """Test properties for a small biophysical circuit with morphologies and e-models."""
     circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
