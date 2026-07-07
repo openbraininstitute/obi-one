@@ -177,7 +177,9 @@ class CreateExtracellularRecordingArrayTask(Task):
             temp_dir=self._create_temp_dir(),
         )
 
-        electrode_xyz_locations = self.config.electrode_locations.get_xyz_locations()
+        electrode_xyz_locations = (
+            self.config.electrode_locations.get_global_electrode_xyz_locations()
+        )
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method

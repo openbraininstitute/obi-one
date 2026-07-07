@@ -1,9 +1,27 @@
+import math
 from abc import ABC
+from typing import Annotated
 
 from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
+
+# If the array direction is (anti-)parallel to the reference axis used to construct the
+# electrode plane, the cross product degenerates; fall back to a different reference axis.
+_DIRECTION_PARALLEL_TOLERANCE = 0.999
+
+
+def _cross(
+    a: tuple[float, float, float], b: tuple[float, float, float]
+) -> tuple[float, float, float]:
+    """Return the cross product ``a x b`` of two 3-vectors."""
+    return (
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    )
 
 
 class ExtracellularLocations(Block):
@@ -19,7 +37,11 @@ class XYZExtracellularLocations(ExtracellularLocations):
 class PatternedExtracellularLocations(ExtracellularLocations, ABC):
     """Base class for patterned extracellular locations.
 
-    The locations are determined by a specific pattern and parameters.
+    The locations are determined by a specific pattern and parameters. Subclasses define the
+    pattern in a *local* frame via :meth:`get_local_electrode_xyz_locations` (origin at
+    ``(0, 0, 0)`` with the array running along the local ``+Y`` axis). That pattern is then
+    rigidly placed into world space by rotating the local ``+Y`` axis onto ``direction`` and
+    translating by ``origin`` (see :meth:`get_global_electrode_xyz_locations`).
     """
 
     origin_x: float | list[float] = Field(
@@ -72,104 +94,149 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         },
     )
 
-    def get_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Calculate the XYZ locations of the electrodes based on the pattern parameters."""
-        msg = "Subclasses of must implement get_xyz_locations method."
+    def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
+        """Return the electrode locations in the array's local frame.
+
+        The local frame has its origin at ``(0, 0, 0)`` with the array running along the ``+Y``
+        axis; ``origin`` and ``direction`` are *not* applied here (see
+        :meth:`get_global_electrode_xyz_locations`).
+        """
+        msg = "Subclasses must implement get_local_electrode_xyz_locations()."
         raise NotImplementedError(msg)
 
-    def xyz_locations_with_origin_and_direction_applied(self) -> list[tuple[float, float, float]]:
-        """Calculate the XYZ locations of the electrodes based on the origin and direction."""
-        initial_xyz_locations = self.get_xyz_locations()
-        xyz_locations = []
+    def get_global_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
+        """Return the electrode locations in world coordinates.
 
-        unit_direction_x = (
-            self.direction_x
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # ty:ignore[unsupported-operator]
-        )
-        unit_direction_y = (
-            self.direction_y
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # ty:ignore[unsupported-operator]
-        )
-        unit_direction_z = (
-            self.direction_z
-            / (self.direction_x**2 + self.direction_y**2 + self.direction_z**2) ** 0.5  # ty:ignore[unsupported-operator]
+        The local pattern from :meth:`get_local_electrode_xyz_locations` is rigidly transformed
+        into world space: its local ``+Y`` axis is rotated onto the (normalised) ``direction``
+        vector and its local origin is translated to ``origin``. For the default ``direction`` of
+        ``(0, 1, 0)`` this reduces to a pure translation by ``origin``.
+        """
+        # These methods are only meaningful on single (expanded) configs, where every parameter
+        # is a scalar rather than a parameter-sweep list.
+        origin_x = float(self.origin_x)  # ty:ignore[invalid-argument-type]
+        origin_y = float(self.origin_y)  # ty:ignore[invalid-argument-type]
+        origin_z = float(self.origin_z)  # ty:ignore[invalid-argument-type]
+        direction_x = float(self.direction_x)  # ty:ignore[invalid-argument-type]
+        direction_y = float(self.direction_y)  # ty:ignore[invalid-argument-type]
+        direction_z = float(self.direction_z)  # ty:ignore[invalid-argument-type]
+
+        direction_norm = (direction_x**2 + direction_y**2 + direction_z**2) ** 0.5
+        if direction_norm <= 0.0:  # a norm is non-negative, so this catches the zero vector
+            msg = "Direction vector must be non-zero."
+            raise ValueError(msg)
+        forward = (
+            direction_x / direction_norm,
+            direction_y / direction_norm,
+            direction_z / direction_norm,
         )
 
-        for x, y, z in initial_xyz_locations:
-            new_x = self.origin_x + (x * unit_direction_x)
-            new_y = self.origin_y + (y * unit_direction_y)
-            new_z = self.origin_z + (z * unit_direction_z)
-            xyz_locations.append((new_x, new_y, new_z))
-        return xyz_locations
+        # Build an orthonormal basis (right, forward, out) mapping the local (X, +Y, Z) axes into
+        # world space. Pick a reference axis that is not (anti-)parallel to `forward`.
+        reference = (0.0, 0.0, 1.0)
+        if abs(forward[2]) > _DIRECTION_PARALLEL_TOLERANCE:
+            reference = (1.0, 0.0, 0.0)
+
+        right = _cross(forward, reference)
+        right_norm = (right[0] ** 2 + right[1] ** 2 + right[2] ** 2) ** 0.5
+        right = (right[0] / right_norm, right[1] / right_norm, right[2] / right_norm)
+        out = _cross(right, forward)
+
+        world_locations = []
+        for local_x, local_y, local_z in self.get_local_electrode_xyz_locations():
+            world_locations.append(
+                (
+                    origin_x + local_x * right[0] + local_y * forward[0] + local_z * out[0],
+                    origin_y + local_x * right[1] + local_y * forward[1] + local_z * out[1],
+                    origin_z + local_x * right[2] + local_y * forward[2] + local_z * out[2],
+                )
+            )
+        return world_locations
 
 
 class LinearExtracellularLocations(PatternedExtracellularLocations):
     """Extracellular locations arranged in a linear pattern."""
 
-    n_electrodes: int | list[int] = Field(
+    n_electrodes: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=16,
         title="Number of Electrodes",
         description="Number of electrodes in the linear array.",
-        ge=1,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-    spacing: float | list[float] = Field(
+    spacing: Annotated[float, Field(gt=0.0)] | list[Annotated[float, Field(gt=0.0)]] = Field(
         default=20.0,
         title="Spacing",
         description="Spacing between electrodes in micrometers.",
-        gt=0.0,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
-    def get_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Calculate the XYZ locations of the electrodes based on electrode count and spacing."""
-        xyz_locations = []
-        for electrode_i in range(self.n_electrodes):  # ty:ignore[invalid-argument-type]
-            x = self.origin_x + (electrode_i * self.spacing)  # ty:ignore[unsupported-operator]
-            y = self.origin_y + (electrode_i * self.spacing)  # ty:ignore[unsupported-operator]
-            z = self.origin_z + (electrode_i * self.spacing)  # ty:ignore[unsupported-operator]
-            xyz_locations.append((x, y, z))
-        return xyz_locations
+    def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
+        """Return electrodes evenly spaced along the local ``+Y`` axis."""
+        n_electrodes = int(self.n_electrodes)  # ty:ignore[invalid-argument-type]
+        spacing = float(self.spacing)  # ty:ignore[invalid-argument-type]
+        return [(0.0, electrode_i * spacing, 0.0) for electrode_i in range(n_electrodes)]
 
 
 class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
     """Extracellular locations for Neuropixels 1.0 probe."""
 
-    n_electrodes: int | list[int] = Field(
+    n_electrodes: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=384,
         title="Number of Electrodes",
         description="Number of electrodes in the Neuropixels 1.0 probe.",
-        ge=1,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
+    axial_rotation: (
+        Annotated[float, Field(ge=0.0, le=360.0)] | list[Annotated[float, Field(ge=0.0, le=360.0)]]
+    ) = Field(
+        default=0.0,
+        title="Axial Rotation",
+        description=(
+            "Rotation of the probe about its long axis (the origin/direction line), in degrees. "
+            "At 0 the electrode columns lie in the local X-Y plane; increasing it rolls the "
+            "shank's width out of that plane into local Z."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
+        },
+    )
 
-    def get_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Calculate the XYZ locations of the electrodes based on vertical repetitions."""
-        # Neuropixels 1.0 probe has a specific pattern of electrode locations.
-        # For simplicity, we will assume a linear arrangement with a fixed spacing.
+    def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
+        """Return Neuropixels 1.0 electrodes in the local frame (staggered two-column layout).
+
+        The staggered layout is built in the local X-Y plane and then rolled about the local ``+Y``
+        (long) axis by ``axial_rotation`` degrees, so the shank's width tilts out of that plane
+        into local Z.
+        """
         vertical_spacing = 20.0  # micrometers
         horizontal_spacing = 16.0  # micrometers
         alternate_horizontal_stride = horizontal_spacing
 
+        n_electrodes = int(self.n_electrodes)  # ty:ignore[invalid-argument-type]
+        roll = math.radians(float(self.axial_rotation))  # ty:ignore[invalid-argument-type]
+        cos_roll = math.cos(roll)
+        sin_roll = math.sin(roll)
+
         xyz_locations = []
-        for electrode_i in range(self.n_electrodes):  # ty:ignore[invalid-argument-type]
+        for electrode_i in range(n_electrodes):
             horizontal_position = electrode_i % 2
-            x = self.origin_x + (horizontal_position * horizontal_spacing)  # ty:ignore[unsupported-operator]
-            # Every 2nd pair of electrodes, the horizontal position shifts by an additional stride
+            x = horizontal_position * horizontal_spacing
+            # Every 2nd pair of electrodes, the horizontal position shifts by an additional stride.
             if electrode_i % 4 in {2, 3}:
                 x += alternate_horizontal_stride
 
-            vertical_position = electrode_i % (self.n_electrodes // 2)  # ty:ignore[unsupported-operator]
-            y = self.origin_y + (vertical_position * vertical_spacing)
+            # Two electrodes share each vertical level, so the row index advances every 2 sites.
+            vertical_position = electrode_i // 2
+            y = vertical_position * vertical_spacing
 
-            z = self.origin_z
-
-            xyz_locations.append((x, y, z))
+            # Roll the flat (local +X) width offset about the local +Y axis into local Z.
+            xyz_locations.append((x * cos_roll, y, -x * sin_roll))
 
         return xyz_locations
