@@ -163,9 +163,13 @@ class Circuit(OBIBaseModel):
         if len(intrinsic_epops) == 0:
             return None  # ty:ignore[invalid-return-type]
         if len(intrinsic_epops) > 1:
+            # Try to infer from population name
+            intrinsic_epops = [pop for pop in intrinsic_epops if pop.startswith(f"{default_npop}__{default_npop}")]
+        if len(intrinsic_epops) == 1:
+            return intrinsic_epops[0]
+        else:
             msg = "Default edge population unknown!"
             raise ValueError(msg)
-        return intrinsic_epops[0]
 
     @property
     def default_edge_population_name(self) -> str:
