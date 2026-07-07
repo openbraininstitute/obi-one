@@ -32,6 +32,18 @@ def _ensure_project_context(client: entitysdk.client.Client) -> None:
         raise HTTPException(status_code=500, detail="Project context missing")
 
 
+def _delete_existing_assets(
+    client: entitysdk.client.Client,
+    entity_id: UUID,
+    label: AssetLabel,
+) -> None:
+    """Delete any existing assets with the given label so the new upload replaces them."""
+    entity = client.get_entity(entity_id=entity_id, entity_type=EMCellMesh)
+    for asset in client.select_assets(entity=entity, selection={"label": label}):
+        L.info(f"Deleting existing asset {asset.id} (label={label}) on entity {entity_id}")
+        client.delete_asset(entity_id=entity_id, entity_type=EMCellMesh, asset_id=asset.id)
+
+
 def _trigger_mesh_lod_generation_task(
     *,
     ls_client: httpx.Client,
@@ -49,7 +61,9 @@ def _trigger_mesh_lod_generation_task(
             "location": settings.OBI_ONE_REPO,
             "ref": f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}",
             "path": f"{launch_path}/main.py",
-            "dependencies": f"{launch_path}/dependencies/mesh_lod_generation.txt",
+            "dependencies": (
+                "launch_task_for_single_config_asset/dependencies/mesh_lod_generation.txt"
+            ),
             "capabilities": {"private_packages": True},
         },
         "resources": {
@@ -95,6 +109,10 @@ async def register_mesh(
         raise HTTPException(status_code=500, detail="Project context missing")
 
     try:
+        await run_in_threadpool(
+            _delete_existing_assets, client, entity_id, AssetLabel("cell_surface_mesh")
+        )
+
         glb_asset = await run_in_threadpool(
             client.upload_file,
             entity_id=entity_id,
