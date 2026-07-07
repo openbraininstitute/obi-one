@@ -261,12 +261,11 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
     reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
     schema_union = schema.get("anyOf")
-    if schema_union is None:
-        schema_union = [{"$ref": schema.get("$ref")}]
-    else:
-        schema_union = list(schema_union)
+    schema_union = [{"$ref": schema.get("$ref")}] if schema_union is None else list(schema_union)
 
-    non_null_refs = [union_member.get("$ref") for union_member in schema_union if union_member.get("$ref")]
+    non_null_refs = [
+        union_member.get("$ref") for union_member in schema_union if union_member.get("$ref")
+    ]
     if not non_null_refs:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
@@ -301,7 +300,8 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {non_null_refs[0]}: 'reference' param {param} failed to validate a "
+            f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+            "failed to validate a "
             f"reference object {validated_ref}"
         )
         raise ValidationError(msg) from None
@@ -313,7 +313,8 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
         except ValidationError:
             msg = (
-                f"Validation error at {non_null_refs[0]}: 'reference' param {param} failed to validate a "
+                f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+                "failed to validate a "
                 "'null' value"
             )
             raise ValidationError(msg) from None
