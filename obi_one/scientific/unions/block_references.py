@@ -1,5 +1,4 @@
 from obi_one.core.registry import block_ref_registry
-from obi_one.scientific.tasks.build_synaptome import AfferentSynapseGroupReference
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
@@ -22,7 +21,6 @@ AllBlockReferenceTypes = [
     AllDistributionsReference,
     SynapticModelReference,
     SynapticModelAssignerReference,
-    AfferentSynapseGroupReference,
 ]
 
 

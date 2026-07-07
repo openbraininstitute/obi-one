@@ -161,14 +161,19 @@ def validate_scan_config_dependendent_block_components(block_schema, ref, form):
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
-    if schema.get("additionalProperties", {}).get("oneOf") is None:
-        msg = (
-            f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
-            "in additionalProperties"
-        )
-        raise ValueError(msg)
+    additional_properties = schema.get("additionalProperties", {})
+    block_schemas = additional_properties.get("oneOf")
+    if block_schemas is None:
+        block_ref = additional_properties.get("$ref")
+        if block_ref is None:
+            msg = (
+                f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
+                " or '$ref' in additionalProperties"
+            )
+            raise ValueError(msg)
+        block_schemas = [{"$ref": block_ref}]
 
-    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
+    for block_schema in block_schemas:
         ref = block_schema.get("$ref")
 
         if ref:

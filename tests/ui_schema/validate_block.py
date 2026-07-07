@@ -253,12 +253,18 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     reference_type = schema.get(SchemaKey.REFERENCE_TYPE)
 
-    schema_union = schema.get("anyOf", [])
+    allows_null = False
+    schema_union = schema.get("anyOf")
+    if schema_union is None:
+        refref = schema.get("$ref")
+    else:
+        allows_null = len(schema_union) == 2 and schema_union[1].get("type") == "null"
+        refref = schema_union[0].get("$ref") if len(schema_union) == 2 else None
 
-    if len(schema_union) != 2 or (refref := schema_union[0].get("$ref")) is None:
+    if refref is None:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
-            "be a union with a 'BlockReference' as first element"
+            "be a BlockReference or a union with a BlockReference as first element"
         )
         raise ValidationError(msg) from None
 
@@ -288,15 +294,16 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
-    try:
-        validator.validate(None, schema)
+    if allows_null:
+        try:
+            validator.validate(None, schema)
 
-    except ValidationError:
-        msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
-            "'null' value"
-        )
-        raise ValidationError(msg) from None
+        except ValidationError:
+            msg = (
+                f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+                "'null' value"
+            )
+            raise ValidationError(msg) from None
 
 
 def validate_string_selection(schema: dict, param: str, ref: str) -> None:
