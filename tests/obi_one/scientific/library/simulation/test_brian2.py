@@ -179,7 +179,7 @@ def test_current_stim(tmp_path):
         },
     }
 
-    spike_monitor = _run_simulation(tmp_path, config, plot=True).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 1
     assert 0 == len(spikes[1]) == len(spikes[2])
