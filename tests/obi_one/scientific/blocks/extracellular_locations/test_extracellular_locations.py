@@ -37,6 +37,24 @@ class TestLinearExtracellularLocations:
         probe = obi.LinearExtracellularLocations(n_electrodes=32)
         assert len(probe.get_local_electrode_xyz_locations()) == 32
 
+    def test_local_independent_of_placement(self):
+        """Local coordinates depend only on the pattern, not on origin or direction."""
+        default = obi.LinearExtracellularLocations(n_electrodes=6, spacing=10.0)
+        moved = obi.LinearExtracellularLocations(
+            n_electrodes=6,
+            spacing=10.0,
+            origin_x=100.0,
+            origin_y=-50.0,
+            origin_z=5.0,
+            direction_x=1.0,
+            direction_y=2.0,
+            direction_z=3.0,
+        )
+        assert np.allclose(
+            _as_array(default.get_local_electrode_xyz_locations()),
+            _as_array(moved.get_local_electrode_xyz_locations()),
+        )
+
 
 class TestNeuropixels1ExtracellularLocations:
     def test_default_electrode_count(self):
@@ -76,6 +94,22 @@ class TestNeuropixels1ExtracellularLocations:
         """384 electrodes span ~3.82 mm (192 rows x 20 um)."""
         local = _npx_local(n_electrodes=384)
         assert local[:, 1].max() - local[:, 1].min() == pytest.approx(3820.0)
+
+    def test_local_independent_of_placement(self):
+        """Local layout depends on n_electrodes/axial_rotation only, not origin or direction."""
+        moved = obi.Neuropixels1ExtracellularLocations(
+            n_electrodes=64,
+            origin_x=10.0,
+            origin_y=20.0,
+            origin_z=30.0,
+            direction_x=1.0,
+            direction_y=1.0,
+            direction_z=1.0,
+        )
+        assert np.allclose(
+            _npx_local(n_electrodes=64),
+            _as_array(moved.get_local_electrode_xyz_locations()),
+        )
 
 
 class TestAxialRotation:
@@ -164,6 +198,61 @@ class TestGlobalTransform:
         probe = obi.Neuropixels1ExtracellularLocations(n_electrodes=[8, 16])
         with pytest.raises(TypeError):
             probe.get_global_electrode_xyz_locations()
+
+    def test_linear_global_follows_unit_direction(self):
+        """Linear electrode i sits at origin + i * spacing * unit(direction), for any direction."""
+        direction = np.array([1.0, 2.0, -2.0])
+        origin = np.array([7.0, -1.0, 4.0])
+        probe = obi.LinearExtracellularLocations(
+            n_electrodes=6,
+            spacing=15.0,
+            origin_x=origin[0],
+            origin_y=origin[1],
+            origin_z=origin[2],
+            direction_x=direction[0],
+            direction_y=direction[1],
+            direction_z=direction[2],
+        )
+        world = _as_array(probe.get_global_electrode_xyz_locations())
+        unit = direction / np.linalg.norm(direction)
+        expected = origin + np.outer(np.arange(6) * 15.0, unit)
+        assert np.allclose(world, expected)
+
+    def test_direction_magnitude_invariance(self):
+        """Only the direction's orientation matters, not its magnitude."""
+        common = {
+            "n_electrodes": 8,
+            "spacing": 12.0,
+            "origin_x": 1.0,
+            "origin_y": 2.0,
+            "origin_z": 3.0,
+        }
+        unit_probe = obi.LinearExtracellularLocations(
+            direction_x=1.0, direction_y=2.0, direction_z=-2.0, **common
+        )
+        scaled_probe = obi.LinearExtracellularLocations(
+            direction_x=5.0, direction_y=10.0, direction_z=-10.0, **common
+        )
+        assert np.allclose(
+            _as_array(unit_probe.get_global_electrode_xyz_locations()),
+            _as_array(scaled_probe.get_global_electrode_xyz_locations()),
+        )
+
+    def test_neuropixels_identity_for_default_placement(self):
+        """Default direction (0, 1, 0) with zero origin leaves the 2D layout unchanged."""
+        probe = obi.Neuropixels1ExtracellularLocations(n_electrodes=64)
+        local = _as_array(probe.get_local_electrode_xyz_locations())
+        world = _as_array(probe.get_global_electrode_xyz_locations())
+        assert np.allclose(world, local)
+
+    def test_global_count_matches_local(self):
+        for probe in (
+            obi.LinearExtracellularLocations(n_electrodes=7, spacing=10.0),
+            obi.Neuropixels1ExtracellularLocations(n_electrodes=50),
+        ):
+            n_local = len(probe.get_local_electrode_xyz_locations())
+            n_global = len(probe.get_global_electrode_xyz_locations())
+            assert n_global == n_local
 
 
 class TestZeroDirectionValidator:
