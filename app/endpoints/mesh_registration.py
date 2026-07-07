@@ -11,6 +11,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from app.config import settings
+from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.mesh_validation import _save_upload_to_tempfile
@@ -52,6 +53,7 @@ def _trigger_mesh_lod_generation_task(
     mesh_format: str,
     project_id: UUID,
     virtual_lab_id: UUID,
+    compute_cell: str,
 ) -> UUID:
     """Submit a mesh LOD generation job directly to the launch-system."""
     launch_path = "launch_scripts/launch_mesh_lod_generation"
@@ -71,7 +73,7 @@ def _trigger_mesh_lod_generation_task(
             "cores": 4,
             "memory": 8,
             "timelimit": "01:00",
-            "compute_cell": "local",
+            "compute_cell": compute_cell,
         },
         "inputs": [
             f"--entity_id {entity_id}",
@@ -97,6 +99,7 @@ async def register_mesh(
     entity_id: UUID,
     client: Annotated[entitysdk.client.Client, Depends(get_client)],
     ls_client: LaunchSystemClientDep,
+    compute_cell: ComputeCellDep,
     file: Annotated[UploadFile, File()],
     lod_mesh_format: Annotated[str, Form()] = "obj",
 ) -> MeshRegistrationResponse:
@@ -131,6 +134,7 @@ async def register_mesh(
             mesh_format=lod_mesh_format,
             project_id=project_context.project_id,  # ty:ignore[invalid-argument-type]
             virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
+            compute_cell=compute_cell,
         )
 
         return MeshRegistrationResponse(
