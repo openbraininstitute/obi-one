@@ -44,6 +44,13 @@ def validate_string(schema: dict, prop: str, ref: str) -> None:
         raise ValueError(msg)
 
 
+def validate_list_strings(schema: dict, prop: str, ref: str) -> None:
+    value = schema.get(prop, [])
+    if type(value) is not list or not all(isinstance(item, str) for item in value):
+        msg = f"Validation error at {ref}: {prop} must be a list of strings. Got: {value}"
+        raise ValueError(msg)
+
+
 def validate_type(schema: dict, ref: str) -> None:
     if not isinstance(schema, dict):
         msg = f"Validation error at {ref}: 'type' schema must be a dictionary"
@@ -249,34 +256,39 @@ def validate_morphology_section_type_selection(schema: dict, param: str, ref: st
 
 
 def validate_reference(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, SchemaKey.REFERENCE_TYPE, f"{param} at {ref}")
+    validate_list_strings(schema, SchemaKey.REFERENCE_TYPES, f"{param} at {ref}")
 
-    reference_type = schema.get(SchemaKey.REFERENCE_TYPE)
+    reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
-    allows_null = False
     schema_union = schema.get("anyOf")
     if schema_union is None:
-        refref = schema.get("$ref")
+        schema_union = [{"$ref": schema.get("$ref")}]
     else:
-        allows_null = len(schema_union) == 2 and schema_union[1].get("type") == "null"
-        refref = schema_union[0].get("$ref") if len(schema_union) == 2 else None
+        schema_union = list(schema_union)
 
-    if refref is None:
+    non_null_refs = [union_member.get("$ref") for union_member in schema_union if union_member.get("$ref")]
+    if not non_null_refs:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
             "be a BlockReference or a union with a BlockReference as first element"
         )
         raise ValidationError(msg) from None
 
-    ref_schema = resolve_ref(openapi_schema, refref)
+    # Each non-null member of the union is a $ref to a BlockReference whose
+    # default `type` is its class name. Collect these and check they correspond
+    # exactly to the declared `reference_types`.
+    union_reference_types = []
+    for member_ref in non_null_refs:
+        member_schema = resolve_ref(openapi_schema, member_ref)
+        union_reference_types.append(
+            member_schema.get("properties", {}).get("type", {}).get("default")
+        )
 
-    if (
-        ref_type := ref_schema.get("properties", [{}]).get("type", {}).get("default")
-    ) != reference_type:
+    if set(union_reference_types) != set(reference_types):
         msg = (
-            f"Validation error at {ref}: reference param {param} should "
-            "contain a default type consistent with 'reference_type': "
-            f"Expected {reference_type}, got {ref_type}"
+            f"Validation error at {ref}: reference param {param} should reference "
+            "BlockReferences whose default 'type' values match 'reference_types': "
+            f"Expected {reference_types}, got {union_reference_types}"
         )
         raise ValidationError(msg) from None
 
@@ -289,18 +301,19 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+            f"Validation error at {non_null_refs[0]}: 'reference' param {param} failed to validate a "
             f"reference object {validated_ref}"
         )
         raise ValidationError(msg) from None
 
+    allows_null = any(union_member.get("type") == "null" for union_member in schema_union)
     if allows_null:
         try:
             validator.validate(None, schema)
 
         except ValidationError:
             msg = (
-                f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+                f"Validation error at {non_null_refs[0]}: 'reference' param {param} failed to validate a "
                 "'null' value"
             )
             raise ValidationError(msg) from None
@@ -653,6 +666,9 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case UIElement.VOLTAGE_DURATION:
             validate_voltage_duration(schema, param, ref)
+        case UIElement.NEURON_PROPERTY_FILTER:
+            # Validation not yet implemented
+            pass
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"

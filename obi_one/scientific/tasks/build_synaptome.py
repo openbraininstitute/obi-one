@@ -46,7 +46,7 @@ class SynapseGroup(Block):
         description="Synaptic physiology model assigned to this incoming synapse group.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
         },
     )
     placement_strategy: MorphologyLocationUnion = Field(
@@ -118,7 +118,7 @@ class BuildSynaptomeScanConfig(ScanConfig):
         description="Synaptic physiology models available for incoming synapse groups.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Model",
             SchemaKey.GROUP: BlockGroup.SYNAPTIC_PHYSIOLOGY,
             SchemaKey.GROUP_ORDER: 0,
@@ -130,7 +130,7 @@ class BuildSynaptomeScanConfig(ScanConfig):
         description="Distributions used by synaptic physiology models.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Distribution",
             SchemaKey.GROUP: BlockGroup.SYNAPTIC_PHYSIOLOGY,
             SchemaKey.GROUP_ORDER: 1,

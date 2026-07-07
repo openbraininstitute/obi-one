@@ -20,6 +20,7 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_metrics import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
@@ -367,8 +368,7 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue
-        if npop.type.startswith("point_"):
-            # E.g., point_neuron, point_process
+        if npop.type in TYPES_OF_POINT_NODES:
             has_point_neurons = True
             break
 
@@ -397,13 +397,12 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
     return has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines
 
 
-def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:
+def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path | None:
     """Generate an overview figure of the circuit.
 
-    Uses the circular 2D network plot if available, otherwise falls back to a template.
+    Uses the circular 2D network plot if available. Returns None if no suitable
+    figure is found.
     """
-    from importlib.resources import files  # noqa: PLC0415
-
     from PIL import Image  # noqa: PLC0415
 
     from obi_one.core.exception import OBIONEError  # noqa: PLC0415
@@ -421,9 +420,10 @@ def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) ->
     else:
         fig_paths = None
 
-    # Use template figure from library if no circular plot available
+    # No figure available — skip without error
     if fig_paths is None:
-        fig_paths = Path(str(files("obi_one.scientific.library").joinpath("circuit_template.png")))
+        L.info("No overview figure available; skipping generation.")
+        return None
 
     # Check that output file does not exist yet
     if output_file.exists():

@@ -136,6 +136,10 @@ def generate_overview_image_asset(
             plot_dir, output_dir / f"{OVERVIEW_IMAGE_NAME}.png"
         )
 
+    if viz_path is None:
+        L.info("No overview image generated; skipping registration.")
+        return
+
     if client and circuit_entity:
         db_sdk.add_image_assets(
             client=client,
@@ -172,6 +176,17 @@ def generate_sim_designer_image_asset(
         viz_path = circuit_utils.generate_overview_figure(
             plot_dir, output_dir / f"{SIM_DESIGNER_IMAGE_NAME}.png"
         )
+
+        # Fall back to template if no figure was generated
+        if viz_path is None:
+            from importlib.resources import files  # noqa: PLC0415
+
+            template = Path(
+                str(files("obi_one.scientific.library").joinpath("circuit_template.png"))
+            )
+            output_dir.mkdir(parents=True, exist_ok=True)
+            viz_path = output_dir / f"{SIM_DESIGNER_IMAGE_NAME}.png"
+            shutil.copy(template, viz_path)
 
     if client and circuit_entity:
         db_sdk.add_image_assets(
