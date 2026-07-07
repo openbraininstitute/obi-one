@@ -1,8 +1,8 @@
 import math
 from abc import ABC
-from typing import Annotated
+from typing import Annotated, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
@@ -93,6 +93,22 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
+
+    @model_validator(mode="after")
+    def _reject_zero_direction(self) -> Self:
+        """Reject a zero direction vector: it gives no orientation to place the array along.
+
+        Each component may be a scalar or a parameter-sweep list, so the zero vector is reachable
+        only when zero appears among the values of all three components.
+        """
+        components = (self.direction_x, self.direction_y, self.direction_z)
+        zero_reachable = [
+            0.0 in (values if isinstance(values, list) else [values]) for values in components
+        ]
+        if all(zero_reachable):
+            msg = "direction_x, direction_y and direction_z must not all be zero."
+            raise ValueError(msg)
+        return self
 
     def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
         """Return the electrode locations in the array's local frame.
