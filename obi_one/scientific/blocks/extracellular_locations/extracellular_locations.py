@@ -209,15 +209,18 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
     )
 
     def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Return Neuropixels 1.0 electrodes in the local frame (staggered two-column layout).
+        """Return Neuropixels 1.0 electrodes in the local frame (staggered layout).
 
-        The staggered layout is built in the local X-Y plane and then rolled about the local ``+Y``
-        (long) axis by ``axial_rotation`` degrees, so the shank's width tilts out of that plane
-        into local Z.
+        Matches the imec Neuropixels 1.0 geometry: two sites per row 32 um apart, rows 20 um apart,
+        with alternate rows offset by a 16 um stagger (four columns at a 16 um pitch). The pattern
+        is centred on the local ``+Y`` (long) axis so ``origin`` is the centre of the top of the
+        shank, then rolled about that axis by ``axial_rotation`` degrees into local Z.
         """
-        vertical_spacing = 20.0  # micrometers
-        horizontal_spacing = 16.0  # micrometers
-        alternate_horizontal_stride = horizontal_spacing
+        row_pitch = 20.0  # vertical spacing between rows (electrode_pitch_vert_um)
+        within_row_spacing = 32.0  # horizontal spacing between the two sites in a row (horz pitch)
+        row_stagger = 16.0  # horizontal offset applied to alternate rows
+        # X of the shank-width centre, so `origin` sits at the centre rather than an edge.
+        horizontal_centre = (within_row_spacing + row_stagger) / 2.0
 
         n_electrodes = int(self.n_electrodes)  # ty:ignore[invalid-argument-type]
         roll = math.radians(float(self.axial_rotation))  # ty:ignore[invalid-argument-type]
@@ -226,17 +229,13 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
 
         xyz_locations = []
         for electrode_i in range(n_electrodes):
-            horizontal_position = electrode_i % 2
-            x = horizontal_position * horizontal_spacing
-            # Every 2nd pair of electrodes, the horizontal position shifts by an additional stride.
-            if electrode_i % 4 in {2, 3}:
-                x += alternate_horizontal_stride
+            row = electrode_i // 2  # two sites share each row
+            column = electrode_i % 2  # 0 or 1 within the row
+            # Centre the staggered width on the local +Y axis so the origin is at the centre-top.
+            x = column * within_row_spacing + (row % 2) * row_stagger - horizontal_centre
+            y = row * row_pitch
 
-            # Two electrodes share each vertical level, so the row index advances every 2 sites.
-            vertical_position = electrode_i // 2
-            y = vertical_position * vertical_spacing
-
-            # Roll the flat (local +X) width offset about the local +Y axis into local Z.
+            # Roll the (centred) width offset about the local +Y axis into local Z.
             xyz_locations.append((x * cos_roll, y, -x * sin_roll))
 
         return xyz_locations
