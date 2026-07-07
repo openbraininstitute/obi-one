@@ -1,0 +1,28 @@
+{
+  "params": {
+    "model": [
+      "dv/dt = -v / tau : volt",
+      "rfc              : second"
+    ],
+    "method": "linear",
+    "threshold": "v > 1*volt",
+    "reset": "v = 0*volt",
+    "refractory": "rfc"
+  },
+  "namespace": {
+    "tau": [
+      5.0,
+      "ms"
+    ]
+  },
+  "initial": {
+    "rfc": [
+      0.0,
+      "ms"
+    ],
+    "v": [
+      0.5,
+      "volt"
+    ]
+  }
+}
