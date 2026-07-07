@@ -54,8 +54,16 @@ def _run_simulation(tmp_path, config, *, plot=False) -> test_module.Brian2Networ
         statemon = brian2.StateMonitor(net.neurons[0], "v", record=True)
         net.inputs.append(statemon)
 
-    network = brian2.Network(net.neurons, net.synapses, net.spike_monitor, *net.inputs)
+    network = brian2.Network(
+        net.neurons,
+        net.synapses,
+        net.spike_monitor,
+        *net.inputs,
+        *([] if net.state_monitor is None else [net.state_monitor]),
+    )
     network.run(duration=simulation.run.tstop * brian2.units.ms)
+
+    test_module._write_reports(simulation, net.spike_monitor, net.state_monitor)
 
     if plot:
         import matplotlib.pyplot as plt  # noqa: PLC0415
@@ -179,7 +187,7 @@ def test_current_stim(tmp_path):
         },
     }
 
-    spike_monitor = _run_simulation(tmp_path, config, plot=True).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 1
     assert 0 == len(spikes[1]) == len(spikes[2])
@@ -281,3 +289,35 @@ def test_sinusoidal_current_stim(delay, frequency, duration, expected):
     t = test_module._create_input(sc.input("sinusoidal"))
     res = t._get_currents(dt=config["run"]["dt"], simulation_length=config["run"]["tstop"])
     npt.assert_almost_equal(res, expected)
+
+
+def test_current_stim_report(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 3000,
+                "delay": 0.1,
+                "duration": 4,
+                "node_set": "0",
+            }
+        },
+        "reports": {
+            "soma": {
+                "sections": "soma",
+                "type": "compartment",
+                "variable_name": "v",
+                "unit": "mV",
+                "dt": 0.1,
+                "start_time": 0,
+                "end_time": 500,
+            },
+        },
+    }
+    net = _run_simulation(tmp_path, config)
+    breakpoint() # XXX BREAKPOINT
+    pass

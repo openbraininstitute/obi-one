@@ -427,7 +427,10 @@ def _get_reports(
             if not config.enabled:
                 L.warning("Skipping report: `%s` since not enabled", name)
 
-            selection |= node_sets.materialize(config.cells, population)
+            if node_set := config.cells or simulation.to_libsonata.node_set:
+                selection |= node_sets.materialize(node_set, population)
+            else:
+                selection = population.select_all()
         else:
             msg = f"`{type(report)}` report type not handled, named {name}"
             raise TypeError(msg)
@@ -634,8 +637,9 @@ def _write_reports(
     state_monitor: brian2.StateMonitor | None,
 ) -> None:
     """Ibid."""
-    output_dir = Path(simulation.output.output_dir)
+    output_dir = Path(simulation.to_libsonata.base_path) / Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
+    breakpoint() # XXX BREAKPOINT
 
     spikes = [
         (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
@@ -651,6 +655,7 @@ def _write_reports(
         node_ids=node_ids,
     )
 
+    breakpoint() # XXX BREAKPOINT
     if state_monitor is None:
         return
 
@@ -666,7 +671,12 @@ def _write_reports(
         if not config.enabled:
             continue
 
-        ids = np.sort(node_sets.materialize(config.cells, population).flatten())
+        if node_set := config.cells or simulation.to_libsonata.node_set:
+            selection = node_sets.materialize(node_set, population)
+        else:
+            selection = population.select_all()
+
+        ids = np.sort(selection.flatten())
 
         _write_soma_report(
             config.file_name,
