@@ -121,8 +121,10 @@ def test_generate_lods_unsupported_format(tmp_path):
         _generate_lods(input_mesh, "stl", out_dir)
 
 
-def test_upload_lod_directory_returns_entity_id(tmp_path):
+def test_upload_lod_directory_no_existing_assets(tmp_path):
     mock_client = MagicMock()
+    mock_client.get_entity.return_value = MagicMock()
+    mock_client.select_assets.return_value = []
     mock_client.upload_directory.return_value = MagicMock()
 
     entity_id = uuid4()
@@ -130,7 +132,36 @@ def test_upload_lod_directory_returns_entity_id(tmp_path):
     files = {pathlib.Path("lod_1.gltf"): dummy_file}
 
     result = _upload_lod_directory(mock_client, entity_id, files)
+
     assert result == str(entity_id)
+    mock_client.delete_asset.assert_not_called()
+    mock_client.upload_directory.assert_called_once()
+
+
+def test_upload_lod_directory_replaces_existing_assets(tmp_path):
+    mock_client = MagicMock()
+    mock_client.get_entity.return_value = MagicMock()
+
+    existing_asset = MagicMock()
+    existing_asset.id = uuid4()
+    mock_client.select_assets.return_value = [existing_asset]
+    mock_client.upload_directory.return_value = MagicMock()
+
+    entity_id = uuid4()
+    dummy_file = tmp_path / "lod_1.gltf"
+    files = {pathlib.Path("lod_1.gltf"): dummy_file}
+
+    result = _upload_lod_directory(mock_client, entity_id, files)
+
+    assert result == str(entity_id)
+    mock_client.delete_asset.assert_called_once_with(
+        entity_id=entity_id, entity_type=EMCellMesh, asset_id=existing_asset.id
+    )
+    mock_client.upload_directory.assert_called_once()
+
+    delete_call = next(c for c in mock_client.mock_calls if c[0] == "delete_asset")
+    upload_call = next(c for c in mock_client.mock_calls if c[0] == "upload_directory")
+    assert mock_client.mock_calls.index(delete_call) < mock_client.mock_calls.index(upload_call)
 
 
 @patch("obi_one.scientific.tasks.mesh_lod_generation.task._upload_lod_directory")

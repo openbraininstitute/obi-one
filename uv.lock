@@ -386,30 +386,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0e/e4/fcf1b46d5bfded51e4011a977cd9ea8484dc31645d60eaad3642f3a4ebab/brainbuilder-0.20.4.tar.gz", hash = "sha256:f24a73caae94aff3e50648e87416cc0536babaf725c833b4197fbb0eb5f3f0a1", size = 247760, upload-time = "2026-06-22T18:47:14.44Z" }
 
 [[package]]
-name = "brian2"
-version = "2.10.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cython" },
-    { name = "jinja2" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "py-cpuinfo", marker = "sys_platform == 'win32'" },
-    { name = "pyparsing" },
-    { name = "setuptools" },
-    { name = "sympy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/00/4c/2a3663887acf4a7bcc86e0d229352fd5e036dcd079753888516caff92daf/brian2-2.10.1.tar.gz", hash = "sha256:c1d21d7b092192362419d76fc871feab9ff0bb3d00e9265d8cd4086cc2e11b4f", size = 1566342, upload-time = "2025-12-05T09:28:53.758Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/34/fb/60031b8693d878743c33d5590735434ce1b9230a951deb17651fcc630c19/brian2-2.10.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:07f2addd22214f35e8d812f7d376bd52c4beeb22cd0724846502a670fe3e82de", size = 1116992, upload-time = "2025-12-05T09:28:15.769Z" },
-    { url = "https://files.pythonhosted.org/packages/cd/c6/34cf6eda664749aded0b67c008c0da09ac3d922df2dfc4923faba1192ab3/brian2-2.10.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:995a61fda2c5ec1c7be86fec154928f940ed1fe3025bd2b9968d47addf00450c", size = 1106069, upload-time = "2025-12-05T09:28:19.591Z" },
-    { url = "https://files.pythonhosted.org/packages/6d/e7/ffa48c80f0c330abc090f14d8d28e6221d801a0242513f8ae2081ddd364d/brian2-2.10.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:53f162e4edd0079614a16a95b5b27a23201a668dee2943d4a02e5f263078d823", size = 2411781, upload-time = "2025-12-05T09:28:21.048Z" },
-    { url = "https://files.pythonhosted.org/packages/6a/37/d456af7ec24af91ce28b58dc927e6d747a479b8a8c3f08e685c4170fa600/brian2-2.10.1-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:df1d1547d61fff7402def5d0099f183ed0b0fb5f2ca6a3d9a488dfdd76755e0a", size = 2442567, upload-time = "2025-12-05T09:28:22.602Z" },
-    { url = "https://files.pythonhosted.org/packages/71/b4/1f6534da8ab11768b8462d46414a16fc390ecc25e7f5b4b2693a973dd7d9/brian2-2.10.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:2778421876d14cb27b32435f5288060a6fb736cce9b7e6da12e55996a9c7506f", size = 3494980, upload-time = "2025-12-05T09:28:24.103Z" },
-    { url = "https://files.pythonhosted.org/packages/13/e2/5795f255da55a2c8d57df77374973dfc3f8affb76a71c253d315049bc05b/brian2-2.10.1-cp312-cp312-win_amd64.whl", hash = "sha256:e0785da2ff557598ac7cd5a9bdf4f43858a3fe07f3369341f6a2ad0a9058b4a3", size = 1082219, upload-time = "2025-12-05T09:28:25.776Z" },
-]
-
-[[package]]
 name = "cached-property"
 version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -705,25 +681,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cython"
-version = "3.1.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/ab/915337fb39ab4f4539a313df38fc69938df3bf14141b90d61dfd5c2919de/cython-3.1.3.tar.gz", hash = "sha256:10ee785e42328924b78f75a74f66a813cb956b4a9bc91c44816d089d5934c089", size = 3186689, upload-time = "2025-08-13T06:19:13.619Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/26/f433fdfd5182b9231819a99acc49a1f856669532306e7a38dce63ba7297e/cython-3.1.3-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:849ef3d15d4354e5f74cdb6d3c80d80b03209b3bf1f4ff93315890b19da18944", size = 3014237, upload-time = "2025-08-13T06:20:13.77Z" },
-    { url = "https://files.pythonhosted.org/packages/e5/6c/1bebf44f5f177f8c750e608f82c08cd699b8f28cc233e799379bfcf2a2c2/cython-3.1.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:93dd0f62a3f8e93166d8584f8b243180d681ba8fed1f530b55d5f70c348c5797", size = 2844261, upload-time = "2025-08-13T06:20:15.619Z" },
-    { url = "https://files.pythonhosted.org/packages/c7/74/983005ce5954f6dc8360b105a561e51a60ea619c53296afac98253d1c9d7/cython-3.1.3-cp312-cp312-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:ff4a2cb84798faffb3988bd94636c3ad31a95ff44ef017f09121abffc56f84cf", size = 3388846, upload-time = "2025-08-13T06:20:17.679Z" },
-    { url = "https://files.pythonhosted.org/packages/68/50/dbe7edefe9b652bc72d49da07785173e89197b9a2d64a2ac45da9795eccf/cython-3.1.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4b05319e36f34d5388deea5cc2bcfd65f9ebf76f4ea050829421a69625dbba4a", size = 3167022, upload-time = "2025-08-13T06:20:19.863Z" },
-    { url = "https://files.pythonhosted.org/packages/4a/55/b50548b77203e22262002feae23a172f95282b4b8deb5ad104f08e3dc20d/cython-3.1.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7ac902a17934a6da46f80755f49413bc4c03a569ae3c834f5d66da7288ba7e6c", size = 3317782, upload-time = "2025-08-13T06:20:21.962Z" },
-    { url = "https://files.pythonhosted.org/packages/f6/1b/20a97507d528dc330d67be4fbad6bc767c681d56192bce8f7117a187b2ad/cython-3.1.3-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:7d7a555a864b1b08576f9e8a67f3789796a065837544f9f683ebf3188012fdbd", size = 3179818, upload-time = "2025-08-13T06:20:24.419Z" },
-    { url = "https://files.pythonhosted.org/packages/43/a5/7b32a19c4c6bb0e2cc7ae52269b6b23a42f67f730e4abd4f8dca63660f7a/cython-3.1.3-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:b827ce7d97ef8624adcf2bdda594b3dcb6c9b4f124d8f72001d8aea27d69dc1c", size = 3403206, upload-time = "2025-08-13T06:20:26.846Z" },
-    { url = "https://files.pythonhosted.org/packages/ba/e1/08cfd4c5e99f79e62d4a7b0009bbd906748633270935c8a55eee51fead76/cython-3.1.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:7851107204085f4f02d0eb6b660ddcad2ce4846e8b7a1eaba724a0bd3cd68a6b", size = 3327837, upload-time = "2025-08-13T06:20:28.946Z" },
-    { url = "https://files.pythonhosted.org/packages/23/1b/f3d384be86fa2a6e110b42f42bf97295a513197aaa5532f451c73bf5b48e/cython-3.1.3-cp312-cp312-win32.whl", hash = "sha256:ed20f1b45b2da5a4f8e71a80025bca1cdc96ba35820b0b17658a4a025be920b0", size = 2485990, upload-time = "2025-08-13T06:20:31.517Z" },
-    { url = "https://files.pythonhosted.org/packages/de/f0/17cff75e3c141bda73d770f7412632f53e55778d3bfdadfeec4dd3a7d1d6/cython-3.1.3-cp312-cp312-win_amd64.whl", hash = "sha256:dc4ca0f4dec55124cd79ddcfc555be1cbe0092cc99bcf1403621d17b9c6218bb", size = 2704002, upload-time = "2025-08-13T06:20:33.773Z" },
-    { url = "https://files.pythonhosted.org/packages/56/c8/46ac27096684f33e27dab749ef43c6b0119c6a0d852971eaefb73256dc4c/cython-3.1.3-py3-none-any.whl", hash = "sha256:d13025b34f72f77bf7f65c1cd628914763e6c285f4deb934314c922b91e6be5a", size = 1225725, upload-time = "2025-08-13T06:19:09.593Z" },
-]
-
-[[package]]
 name = "dask"
 version = "2026.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -906,14 +863,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.0"
+version = "0.19.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/06/d50d5e370b6d9ca9b5dbfc96da75a776d4fb067ce7f71c97bd46555e7d66/entitysdk-0.19.0.tar.gz", hash = "sha256:81577eec48031a91f38572771cd55281e00d62f32c968443145ca0309b5219e6", size = 91357, upload-time = "2026-07-02T09:03:01.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/7d/206c0182356d33ac87a14e5a3c1b4cbd532f761b342128f5f6a261005cf4/entitysdk-0.19.1.tar.gz", hash = "sha256:c54e97201f2ca4a675375384379a1c435e98b1c77ff1e27b6ba6b65e0ba911c5", size = 90822, upload-time = "2026-07-06T18:07:22.782Z" }
 
 [[package]]
 name = "executing"
@@ -2188,7 +2145,6 @@ dependencies = [
     { name = "bluepyefe" },
     { name = "bluepysnap" },
     { name = "brainbuilder" },
-    { name = "brian2" },
     { name = "caveclient" },
     { name = "connectome-manipulator" },
     { name = "connectome-utilities" },
@@ -2225,7 +2181,6 @@ all = [
     { name = "pyjwt" },
     { name = "python-multipart" },
     { name = "starlette" },
-    { name = "ultraliser" },
     { name = "uvicorn" },
 ]
 bluerecording = [
@@ -2237,7 +2192,6 @@ connectivity = [
 ]
 meshing = [
     { name = "neuromorphomesh" },
-    { name = "ultraliser" },
 ]
 notebooks = [
     { name = "ipykernel" },
@@ -2278,13 +2232,12 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.99" },
+    { name = "bluecellulab", specifier = ">=2.6.87" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepysnap", specifier = ">=3.0.5" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
-    { name = "brainbuilder", specifier = ">=0.20.4" },
-    { name = "brian2" },
+    { name = "bluepysnap", specifier = ">=3.0.2" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.5" },
+    { name = "brainbuilder", specifier = ">=0.20.2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
@@ -2307,8 +2260,8 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.3" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.2" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.0" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.1" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2318,7 +2271,6 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "starlette", marker = "extra == 'service'" },
-    { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
 provides-extras = ["connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
@@ -3436,26 +3388,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ba/19/1b9b0e29f30c6d35cb345486df41110984ea67ae69dddbc0e8a100999493/tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10", size = 198254, upload-time = "2026-04-24T15:22:08.651Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/e4/dccd7f47c4b64213ac01ef921a1337ee6e30e8c6466046018326977efd95/tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7", size = 349321, upload-time = "2026-04-24T15:22:05.876Z" },
-]
-
-[[package]]
-name = "ultraliser"
-version = "2.2.4"
-source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
-dependencies = [
-    { name = "connectome-utilities" },
-    { name = "h5py" },
-    { name = "matplotlib" },
-    { name = "morph-spines" },
-    { name = "morphio" },
-    { name = "neurom" },
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "scipy" },
-    { name = "tqdm" },
-]
-wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.2.4/ultraliser-2.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4120f998a7bcdaf09d9b7f46cc7790bb3b60160913d91e658b440a62adb5641a", upload-time = "2026-06-30T14:21:56.758Z" },
 ]
 
 [[package]]
