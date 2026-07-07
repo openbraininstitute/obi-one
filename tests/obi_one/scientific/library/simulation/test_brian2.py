@@ -38,7 +38,7 @@ def test_get_close_spikes(ids, times, expected):
     )
 
 
-def _run_simulation(tmp_path, config, *, plot=False):
+def _run_simulation(tmp_path, config, *, plot=False) -> test_module.Brian2Network:
     path = tmp_path / "simulation_config.json"
     with path.open("w") as fd:
         json.dump(config, fd)
@@ -68,7 +68,7 @@ def _run_simulation(tmp_path, config, *, plot=False):
         plt.ylabel("v (mV)")
         plt.savefig("test.png")
 
-    return net.spike_monitor
+    return net
 
 
 def test_no_stim_or_report(tmp_path):
@@ -77,7 +77,7 @@ def test_no_stim_or_report(tmp_path):
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
     }
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -107,7 +107,7 @@ def test_spike_replay(tmp_path):
         },
     }
 
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
     npt.assert_allclose(spikes[1], np.array([0.9]) * brian2.units.msecond)
@@ -115,7 +115,7 @@ def test_spike_replay(tmp_path):
 
     # limit duration, should have no spikes
     config["inputs"]["replay"]["duration"] = 0.1
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -123,17 +123,39 @@ def test_spike_replay(tmp_path):
     # delay spike start until there wouldn't be enough to fire
     config["inputs"]["replay"]["duration"] = 400
     config["inputs"]["replay"]["delay"] = 1.9
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
 
     # run sim for longer, should spike now
     config["run"]["tstop"] = 4
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
     # 1.9 since delayed by 1.9, 0.3 since the voltage has decayed in the meantime,
     # so it needs another 3 dts
     npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
     assert spikes[1] == spikes[2]
+
+
+def test_poisson(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "poisson": {
+                "input_type": "spikes",
+                "module": "poisson",
+                "node_set": "sugar",
+                "delay": 0,
+                "duration": 1000,
+                "rate": 150,
+                "weight": 68.75,
+            }
+        },
+    }
+    net = _run_simulation(tmp_path, config)
+    assert len(net.inputs) == 1
+    assert isinstance(net.inputs[0], brian2.PoissonInput)
