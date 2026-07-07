@@ -49,11 +49,12 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     """Abstract base class for combining neuron sets within and across node populations."""
 
     base_neuron_set: BlockReference | None
-    combined_with: list[
+    combined_with: tuple[
         tuple[
             BlockReference,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
-        ]
+        ],
+        ...,
     ]
 
     def _resolve_refs(self) -> tuple[NeuronSet, list[tuple[NeuronSet, SetOperation]]]:
@@ -232,13 +233,14 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: list[
+    combined_with: tuple[
         tuple[
             ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
-        ]
+        ],
+        ...,
     ] = Field(
-        default_factory=list,
+        default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
@@ -279,13 +281,14 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: list[
+    combined_with: tuple[
         tuple[
             ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
-        ]
+        ],
+        ...,
     ] = Field(
-        default_factory=list,
+        default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
@@ -324,13 +327,14 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: list[
+    combined_with: tuple[
         tuple[
             ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
-        ]
+        ],
+        ...,
     ] = Field(
-        default_factory=list,
+        default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
@@ -371,13 +375,14 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: list[
+    combined_with: tuple[
         tuple[
             ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
-        ]
+        ],
+        ...,
     ] = Field(
-        default_factory=list,
+        default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
@@ -416,13 +421,14 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     )
 
-    combined_with: list[
+    combined_with: tuple[
         tuple[
             ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
-        ]
+        ],
+        ...,
     ] = Field(
-        default_factory=list,
+        default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
