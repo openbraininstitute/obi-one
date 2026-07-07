@@ -27,7 +27,7 @@ from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationT
 
 L = logging.getLogger(__name__)
 
-HTTP_TIMEOUT = httpx.Timeout(connect=10.0, read=600.0, write=300.0, pool=10.0)
+HTTP_TIMEOUT = httpx.Timeout(connect=15.0, read=900.0, write=900.0, pool=15.0)
 
 
 def main() -> int:
