@@ -361,8 +361,17 @@ class Inputs:
         lines = []
         objs = {}
         indicators = {}
+        seen_node_set = {}
         injection_sum = "\nI_inj = 0 * amp"
         for i, injection in enumerate(self._injectors):
+            if injection.config.node_set in seen_node_set:
+                objs[
+                    f"stim{seen_node_set[injection.config.node_set]}"
+                ].values += injection.get_currents(
+                    self.simulation.dt, self.simulation.run.tstop
+                ).values
+                continue
+
             injection_sum += f" + I_inj{i}"
             lines.extend(
                 (
@@ -375,6 +384,7 @@ class Inputs:
             mask[idx] = True
             indicators[f"is_stimulated{i}"] = mask
             objs[f"stim{i}"] = injection.get_currents(self.simulation.dt, self.simulation.run.tstop)
+            seen_node_set[injection.config.node_set] = i
 
         model += "\n" + "\n".join(lines) + injection_sum + ": amp\n"
 
