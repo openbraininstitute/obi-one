@@ -64,7 +64,7 @@ def _trigger_mesh_lod_generation_task(
             "ref": f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}",
             "path": f"{launch_path}/main.py",
             "dependencies": (
-                "launch_task_for_single_config_asset/dependencies/mesh_lod_generation.txt"
+                "launch_scripts/launch_mesh_lod_generation/dependencies/mesh_lod_generation.txt"
             ),
             "capabilities": {"private_packages": True},
         },

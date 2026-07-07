@@ -1,2 +1,0 @@
-obi-one @ git+https://github.com/openbraininstitute/obi-one.git@remove_lod_task_config
-ultraliser>=2.1.9
