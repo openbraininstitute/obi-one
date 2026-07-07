@@ -339,20 +339,20 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
-    allows_null = False
     schema_union = schema.get("anyOf")
-    if schema_union is None:
-        refref = schema.get("$ref")
-    else:
-        allows_null = len(schema_union) == 2 and schema_union[1].get("type") == "null"
-        refref = schema_union[0].get("$ref") if len(schema_union) == 2 else None
+    schema_union = [{"$ref": schema.get("$ref")}] if schema_union is None else list(schema_union)
 
-    if refref is None:
+    non_null_refs = [
+        union_member.get("$ref") for union_member in schema_union if union_member.get("$ref")
+    ]
+    if not non_null_refs:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
             "be a BlockReference or a union with a BlockReference as first element"
         )
         raise ValidationError(msg) from None
+
+    allows_null = len(schema_union) == 2 and schema_union[1].get("type") == "null"
 
     # Each non-null member of the union is a $ref to a BlockReference whose
     # default `type` is its class name. Collect these and check they correspond
@@ -376,7 +376,8 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+            f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+            "failed to validate a "
             f"reference object {validated_ref}"
         )
         raise ValidationError(msg) from None
@@ -387,7 +388,8 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
         except ValidationError:
             msg = (
-                f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+                f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+                "failed to validate a "
                 "'null' value"
             )
             raise ValidationError(msg) from None
