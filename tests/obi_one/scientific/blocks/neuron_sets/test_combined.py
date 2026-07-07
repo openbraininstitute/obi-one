@@ -215,3 +215,27 @@ def test_write_to_node_set_file_preserves_symbolic_compound(circuit, tmp_path):
     assert node_sets["L123"] == ["__CombinedNeuronSet__L6_BPC", "__CombinedNeuronSet__L6_TPC:A"]
     assert node_sets["__CombinedNeuronSet__L6_BPC"] == ["L6_BPC"]
     assert node_sets["__CombinedNeuronSet__L6_TPC:A"] == ["L6_TPC:A"]
+
+
+@pytest.mark.parametrize(
+    ("base_node_set", "combined_with"),
+    [
+        # Same population
+        ("L6_BPC", [("L6_TPC:A", SetOperation.UNION)]),
+        ("Layer6", [("L6_IPC", SetOperation.INTERSECT)]),
+        ("Layer6", [("L6_IPC", SetOperation.DIFF)]),
+        # Chained operations
+        ("L6_BPC", [("L6_IPC", SetOperation.UNION), ("L6_TPC:A", SetOperation.DIFF)]),
+        # Cross-population union (triggers empty-list fallback per population)
+        (
+            "proj_Thalamocortical_VPM_Source",
+            [("proj_Thalamocortical_POM_Source", SetOperation.UNION)],
+        ),
+    ],
+)
+def test_combined_neuron_ids_are_int(circuit, base_node_set, combined_with):
+    """All neuron IDs returned by get_neuron_ids must be Python int, never float."""
+    neuron_set = _combined_neuron_set(base_node_set, combined_with)
+    ids_per_pop = neuron_set.get_neuron_ids(circuit)
+    for pop, ids in ids_per_pop.items():
+        assert all(isinstance(i, int) for i in ids), f"Non-int IDs in population '{pop}': {ids}"

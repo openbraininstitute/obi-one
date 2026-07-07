@@ -112,10 +112,11 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
         operation: SetOperation,
     ) -> dict[str, list[int]]:
         op_fct = _OPERATION_MAP[operation]
+        empty_ids = np.array([], dtype=int)
         npop_names = set(list(neuron_ids1) + list(neuron_ids2))
         combined = {}
         for npop in npop_names:
-            comb_ids = op_fct(neuron_ids1.get(npop, []), neuron_ids2.get(npop, []))
+            comb_ids = op_fct(neuron_ids1.get(npop, empty_ids), neuron_ids2.get(npop, empty_ids))
             combined[npop] = comb_ids.tolist()
         return combined
 
