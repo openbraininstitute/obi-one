@@ -20,6 +20,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
 from obi_one.utils import db_sdk
@@ -107,14 +108,17 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
         },
     )
 
-    electrode_locations: ExtracellularLocationsUnion = Field(
+    electrode_locations: dict[str, ExtracellularLocationsUnion] = Field(
+        default_factory=dict,
         title="Electrode Locations",
         description=(
             "Parameters defining the locations of the electrodes for the"
-            " extracellular recording array."
+            " extracellular recording array. Each entry contributes its electrodes to the array."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [ExtracellularLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Electrode Locations",
             SchemaKey.GROUP: BlockGroup.ELECTRODE_POSITIONS,
             SchemaKey.GROUP_ORDER: 0,
         },
@@ -177,10 +181,6 @@ class CreateExtracellularRecordingArrayTask(Task):
             temp_dir=self._create_temp_dir(),
         )
 
-        electrode_xyz_locations = (
-            self.config.electrode_locations.get_global_electrode_xyz_locations()
-        )
-
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
         import numpy as np  # noqa: PLC0415
@@ -191,13 +191,17 @@ class CreateExtracellularRecordingArrayTask(Task):
             save_weights,
         )
 
+        # Build the electrode array from every electrode-locations block in the dictionary, using
+        # each block's global coordinates (origin and direction applied). Electrode names are
+        # prefixed with the block name so electrodes from different blocks stay distinct.
         electrodes = [
             Electrode(
-                name=f"electrode_{i}",
+                name=f"{block_name}_electrode_{i}",
                 position=np.array(loc, dtype=float),
                 type=BlueRecordingElectrodeType.POINT_SOURCE,
             )
-            for i, loc in enumerate(electrode_xyz_locations)
+            for block_name, locations in self.config.electrode_locations.items()
+            for i, loc in enumerate(locations.get_global_electrode_xyz_locations())
         ]
 
         circuit_config_path = Path(self._circuit.path)

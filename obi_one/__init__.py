@@ -86,6 +86,7 @@ __all__ = [
     "ExcitatoryTsodyksMarkramSynapticModel",
     "ExponentialDistribution",
     "ExtracellularLocations",
+    "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
     "FloatConstantDistribution",
     "FloatRange",
@@ -540,6 +541,7 @@ from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
