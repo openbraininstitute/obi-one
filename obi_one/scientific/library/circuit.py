@@ -144,7 +144,7 @@ class Circuit(OBIBaseModel):
         return popul_names
 
     @staticmethod
-    def _default_edge_population_name(c: snap.Circuit) -> str:
+    def _default_edge_population_name(c: snap.Circuit) -> str | None:
         """Returns the default edge population name of a SONATA circuit c."""
         try:
             default_npop = Circuit._default_population_name(c)
@@ -161,18 +161,19 @@ class Circuit(OBIBaseModel):
             and c.edges[epop].target.name == default_npop
         ]
         if len(intrinsic_epops) == 0:
-            return None  # ty:ignore[invalid-return-type]
+            return None
         if len(intrinsic_epops) > 1:
             # Try to infer from population name
-            intrinsic_epops = [pop for pop in intrinsic_epops if pop.startswith(f"{default_npop}__{default_npop}")]
+            intrinsic_epops = [
+                pop for pop in intrinsic_epops if pop.startswith(f"{default_npop}__{default_npop}")
+            ]
         if len(intrinsic_epops) == 1:
             return intrinsic_epops[0]
-        else:
-            msg = "Default edge population unknown!"
-            raise ValueError(msg)
+        msg = "Default edge population unknown!"
+        raise ValueError(msg)
 
     @property
-    def default_edge_population_name(self) -> str:
+    def default_edge_population_name(self) -> str | None:
         """Returns the default edge population name."""
         return self._default_edge_population_name(self.sonata_circuit)
 
