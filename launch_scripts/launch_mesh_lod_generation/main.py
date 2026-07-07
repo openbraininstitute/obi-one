@@ -17,8 +17,8 @@ import sys
 from functools import partial
 from uuid import UUID
 
-import httpx
 from entitysdk import Client, LocalAssetStore, ProjectContext
+from entitysdk.config import settings as entitysdk_settings
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
@@ -27,7 +27,10 @@ from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationT
 
 L = logging.getLogger(__name__)
 
-HTTP_TIMEOUT = httpx.Timeout(connect=30.0, read=3000.0, write=3000.0, pool=15.0)
+entitysdk_settings.connect_timeout = 30
+entitysdk_settings.read_timeout = 900
+entitysdk_settings.write_timeout = 900
+entitysdk_settings.pool_timeout = 30
 
 
 def main() -> int:
@@ -62,7 +65,6 @@ def main() -> int:
             project_context=project_context,
             token_manager=token_manager,
             local_store=LocalAssetStore(prefix=local_store_prefix),
-            http_client=httpx.Client(timeout=HTTP_TIMEOUT),
         )
 
         config = MeshLodGenerationSingleConfig(
