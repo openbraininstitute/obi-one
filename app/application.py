@@ -39,9 +39,6 @@ from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
 
-os.environ["ENTITYSDK_READ_TIMEOUT"] = "300.0"
-os.environ["ENTITYSDK_CONNECT_TIMEOUT"] = "30.0"
-
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
