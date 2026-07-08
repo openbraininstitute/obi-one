@@ -410,7 +410,7 @@ def _get_inputs(
     return n0, inputs
 
 
-def _get_reports(  # noqa: C901
+def _get_reports(
     simulation: bluepysnap.Simulation, neurons: brian2.NeuronGroup
 ) -> brian2.StateMonitor | None:
     """Get voltage reports."""
@@ -423,10 +423,6 @@ def _get_reports(  # noqa: C901
     for name, report in simulation.reports.items():
         if isinstance(report, bluepysnap.frame_report.SomaReport):
             config = report.to_libsonata
-            for attr in ("compartment_set", "electrodes_file"):
-                if hasattr(config, attr) and getattr(config, attr):
-                    msg = f"`{attr}` not supported"
-                    raise RuntimeError(msg)
             if config.sections != libsonata.SimulationConfig.Report.Sections.soma:
                 msg = f"only sections == `soma` is supported, found: `{config.sections}`"
                 raise RuntimeError(msg)

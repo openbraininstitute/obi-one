@@ -5,6 +5,7 @@
 * model is a simple exponential decay, where spikes cause an increase of `w` to the voltage
 """
 
+import copy
 import json
 from pathlib import Path
 
@@ -394,3 +395,41 @@ def test_current_stim_report(tmp_path):
     soma1 = simulation.reports["soma1"].filter().report.copy()
     assert soma1.shape == (20, 1)
     npt.assert_allclose(soma1["drosophila", 0], soma0["drosophila", 0])
+
+
+def test_current_stim_report_failure(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "reports": {
+            "soma0": {
+                "sections": "soma",
+                "type": "compartment",
+                "variable_name": "v",
+                "unit": "mV",
+                "dt": 0.1,
+                "start_time": 0,
+                "end_time": 5,
+            },
+        },
+    }
+
+    c = copy.deepcopy(config)
+    c["reports"]["soma0"]["sections"] = "all"
+    with pytest.raises(TypeError):
+        _run_simulation(tmp_path, c)
+
+    c = copy.deepcopy(config)
+    c["reports"]["soma0"]["variable_name"] = "i"
+    with pytest.raises(RuntimeError):
+        _run_simulation(tmp_path, c)
+
+    c = copy.deepcopy(config)
+    c["reports"]["soma0"]["dt"] = 1
+    with pytest.raises(RuntimeError):
+        _run_simulation(tmp_path, c)
+
+    c = copy.deepcopy(config)
+    c["reports"]["soma0"]["enabled"] = False
+    _run_simulation(tmp_path, c)
