@@ -93,8 +93,7 @@ def _select_morphology_asset(
         (
             asset
             for asset in morphology.assets
-            if asset.content_type == expected_content_type
-            and asset.label == AssetLabel.morphology
+            if asset.content_type == expected_content_type and asset.label == AssetLabel.morphology
         ),
         None,
     )
