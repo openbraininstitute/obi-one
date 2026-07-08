@@ -255,3 +255,78 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
             xyz_locations.append((x * cos_roll, y, -x * sin_roll))
 
         return xyz_locations
+
+
+class UtahArrayExtracellularLocations(PatternedExtracellularLocations):
+    """Extracellular locations for a classic Utah array.
+
+    The Utah array (Blackrock Microsystems) is a square grid of penetrating micro-electrodes: the
+    classic device is a 10x10 grid on a 400 um pitch whose recording sites sit at the tips of
+    uniform-length silicon shanks. In the local frame the shanks run along the ``+Y`` (insertion)
+    axis, so the tips form the grid in the local X-Z plane at ``+Y = shank_length``, centred on the
+    ``+Y`` axis; ``origin`` is then the centre of the array base and ``direction`` the insertion
+    direction.
+    """
+
+    grid_rows: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
+        default=10,
+        title="Grid Rows",
+        description="Number of electrode rows in the array.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
+    )
+    grid_columns: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
+        default=10,
+        title="Grid Columns",
+        description="Number of electrode columns in the array.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
+    )
+    electrode_pitch: Annotated[float, Field(gt=0.0)] | list[Annotated[float, Field(gt=0.0)]] = (
+        Field(
+            default=400.0,
+            title="Electrode Pitch",
+            description="Centre-to-centre spacing between neighbouring electrodes in micrometers.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            },
+        )
+    )
+    shank_length: Annotated[float, Field(ge=0.0)] | list[Annotated[float, Field(ge=0.0)]] = Field(
+        default=1500.0,
+        title="Shank Length",
+        description=(
+            "Length of the electrode shanks in micrometers; the recording tips sit this far along "
+            "the insertion direction from the origin."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
+    )
+
+    def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
+        """Return the Utah-array tip grid in the local frame.
+
+        The tips form a ``grid_rows`` by ``grid_columns`` grid on an ``electrode_pitch`` spacing in
+        the local X-Z plane, centred on the local ``+Y`` axis and offset to ``+Y = shank_length``
+        (the shank tips).
+        """
+        grid_rows = int(self.grid_rows)  # ty:ignore[invalid-argument-type]
+        grid_columns = int(self.grid_columns)  # ty:ignore[invalid-argument-type]
+        electrode_pitch = float(self.electrode_pitch)  # ty:ignore[invalid-argument-type]
+        shank_length = float(self.shank_length)  # ty:ignore[invalid-argument-type]
+
+        # Centre the grid on the local +Y axis.
+        row_centre = (grid_rows - 1) / 2.0
+        column_centre = (grid_columns - 1) / 2.0
+        return [
+            (
+                (column - column_centre) * electrode_pitch,
+                shank_length,
+                (row - row_centre) * electrode_pitch,
+            )
+            for row in range(grid_rows)
+            for column in range(grid_columns)
+        ]
