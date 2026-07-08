@@ -235,6 +235,41 @@ class TestGridExtracellularLocations:
             )
 
 
+class TestUTAHArrayExtracellularLocations:
+    def test_fixed_10x10_400um_grid(self):
+        """The Utah array is a fixed 10x10 grid at 400 um spacing, flat in the local X-Y plane."""
+        array = obi.UTAHArrayExtracellularLocations()
+        local = _as_array(array.get_local_electrode_xyz_locations())
+        assert local.shape == (100, 3)
+        xs = np.unique(np.round(local[:, 0], 6))
+        ys = np.unique(np.round(local[:, 1], 6))
+        assert len(xs) == 10
+        assert len(ys) == 10
+        assert np.allclose(np.diff(xs), 400.0)
+        assert np.allclose(np.diff(ys), 400.0)
+        assert np.ptp(local[:, 0]) == pytest.approx(3600.0)
+        assert np.ptp(local[:, 1]) == pytest.approx(3600.0)
+        assert np.allclose(local[:, 2], 0.0)
+
+    def test_grid_configuration_is_fixed(self):
+        """The grid dimensions and spacing are fixed, not constructor parameters."""
+        dumped = obi.UTAHArrayExtracellularLocations().model_dump()
+        assert "grid_rows" not in dumped
+        assert "x_offset" not in dumped
+        with pytest.raises(ValidationError):
+            obi.UTAHArrayExtracellularLocations(grid_rows=5)
+
+    def test_shares_placement_and_axial_rotation(self):
+        """Placement and axial_rotation are inherited from the 2D base and applied."""
+        array = obi.UTAHArrayExtracellularLocations(
+            origin_x=1000.0, origin_y=2000.0, origin_z=-500.0, axial_rotation=90.0
+        )
+        assert "axial_rotation" in array.model_dump()
+        local = _as_array(array.get_local_electrode_xyz_locations())
+        assert np.allclose(local[:, 0], 0.0, atol=1e-9)  # rolled X -> Z
+        assert _as_array(array.get_global_electrode_xyz_locations()).shape == (100, 3)
+
+
 class TestGlobalTransform:
     def test_default_direction_is_translation(self):
         """With the default (0, 1, 0) direction, global = local + origin."""
@@ -450,6 +485,12 @@ class TestExtracellularLocationsUnion:
         )
         assert isinstance(block, obi.GridExtracellularLocations)
         assert block.grid_rows == 8
+
+    def test_discriminated_parse_utah(self):
+        adapter = TypeAdapter(obi.ExtracellularLocationsUnion)
+        block = adapter.validate_python({"type": "UTAHArrayExtracellularLocations"})
+        assert isinstance(block, obi.UTAHArrayExtracellularLocations)
+        assert len(block.get_local_electrode_xyz_locations()) == 100
 
 
 class TestXYZExtracellularLocations:

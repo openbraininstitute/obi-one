@@ -7,10 +7,14 @@ from obi_one.scientific.blocks.extracellular_locations.extracellular_locations i
     GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
+    UTAHArrayExtracellularLocations,
 )
 
 _EXTRACELLULAR_LOCATION_BLOCKS = (
-    LinearExtracellularLocations | Neuropixels1ExtracellularLocations | GridExtracellularLocations
+    LinearExtracellularLocations
+    | Neuropixels1ExtracellularLocations
+    | GridExtracellularLocations
+    | UTAHArrayExtracellularLocations
 )
 
 ExtracellularLocationsUnion = Annotated[_EXTRACELLULAR_LOCATION_BLOCKS, Discriminator("type")]

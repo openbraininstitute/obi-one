@@ -1,6 +1,6 @@
 import math
 from abc import ABC
-from typing import Annotated, Self
+from typing import Annotated, ClassVar, Self
 
 from pydantic import Field, model_validator
 
@@ -341,4 +341,29 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
             ((column - column_centre) * x_offset, (row - row_centre) * y_offset)
             for row in range(grid_rows)
             for column in range(grid_columns)
+        ]
+
+
+class UTAHArrayExtracellularLocations(TwoDPatternedExtracellularLocations):
+    """Blackrock Utah array: a fixed 10x10 grid of electrodes at 400 um spacing.
+
+    The grid dimensions and spacing are fixed (unlike :class:`GridExtracellularLocations`); only the
+    placement (``origin``/``direction``) and ``axial_rotation`` are configurable.
+    """
+
+    GRID_ROWS: ClassVar[int] = 10
+    GRID_COLUMNS: ClassVar[int] = 10
+    ELECTRODE_SPACING: ClassVar[float] = 400.0
+
+    def get_local_electrode_xy_locations(self) -> list[tuple[float, float]]:
+        """Return the fixed 10x10 Utah-array grid (400 um spacing) in the local X-Y plane."""
+        row_centre = (self.GRID_ROWS - 1) / 2.0
+        column_centre = (self.GRID_COLUMNS - 1) / 2.0
+        return [
+            (
+                (column - column_centre) * self.ELECTRODE_SPACING,
+                (row - row_centre) * self.ELECTRODE_SPACING,
+            )
+            for row in range(self.GRID_ROWS)
+            for column in range(self.GRID_COLUMNS)
         ]

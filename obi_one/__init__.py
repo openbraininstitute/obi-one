@@ -222,6 +222,7 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "UTAHArrayExtracellularLocations",
     "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
@@ -289,6 +290,7 @@ from obi_one.scientific.blocks.extracellular_locations.extracellular_locations i
     GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
+    UTAHArrayExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (
