@@ -64,8 +64,12 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             BiophysicalNeuronSetReference.__name__: (
                 NeuronSimulationScanConfig.default_node_set_name
             ),
-            VirtualNeuronSetReference.__name__: (NeuronSimulationScanConfig.default_node_set_name,),
-            PointNeuronSetReference.__name__: (NeuronSimulationScanConfig.default_node_set_name,),
+            VirtualNeuronSetReference.__name__: (
+                NeuronSimulationScanConfig.default_virtual_node_set_name,
+            ),
+            PointNeuronSetReference.__name__: (
+                NeuronSimulationScanConfig.default_point_node_set_name,
+            ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
         },
