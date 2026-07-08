@@ -1,6 +1,7 @@
-"""Plotting helpers for extracellular-electrode-location arrays."""
+"""Helpers for extracellular-electrode-location arrays."""
 
 from dataclasses import dataclass
+from typing import Any
 
 import bluepysnap as snap
 import matplotlib.pyplot as plt
@@ -32,6 +33,31 @@ def _soma_marker_style(n_somas: int) -> tuple[float, float]:
     if n_somas <= _MEDIUM_CIRCUIT:
         return 14.0, 0.35
     return 4.0, 0.12
+
+
+def electrode_locations_summary_dict(
+    electrode_locations: dict[str, ExtracellularLocationsUnion],
+) -> dict[str, dict[str, Any]]:
+    """Summarise a dict of extracellular-location blocks as JSON-serialisable data.
+
+    Each block name maps to its world-space electrode ``locations`` (``[x, y, z]`` lists, with the
+    block's origin and direction applied) followed by all of the block's properties (from
+    ``model_dump``: ``type``, ``origin_*``/``direction_*`` and the subclass-specific parameters, so
+    the key set varies by block type).
+
+    Args:
+        electrode_locations: mapping of block name to an extracellular-locations block.
+
+    Returns:
+        ``{block_name: {"locations": [[x, y, z], ...], **block_properties}}``.
+    """
+    return {
+        name: {
+            "locations": [list(xyz) for xyz in block.get_global_electrode_xyz_locations()],
+            **block.model_dump(),
+        }
+        for name, block in electrode_locations.items()
+    }
 
 
 def plot_extracellular_arrays(  # noqa: C901, PLR0914, PLR0915

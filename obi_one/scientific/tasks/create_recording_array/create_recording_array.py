@@ -1,3 +1,4 @@
+import json
 import logging
 import tempfile
 import typing
@@ -185,6 +186,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         import matplotlib.pyplot as plt  # noqa: PLC0415
 
         from obi_one.scientific.library.extracellular_locations import (  # noqa: PLC0415
+            electrode_locations_summary_dict,
             plot_extracellular_arrays,
         )
 
@@ -260,6 +262,23 @@ class CreateExtracellularRecordingArrayTask(Task):
             file_content_type=ContentType.image_png,
             asset_label=AssetLabel.electrode_array_image,
         )
+
+        # Write the electrode locations + each block's properties to a JSON asset.
+        locations_path = self.config.coordinate_output_root / "electrode_locations.json"
+        with locations_path.open("w") as locations_file:
+            json.dump(
+                electrode_locations_summary_dict(self.config.electrode_locations),
+                locations_file,
+                indent=2,
+            )
+        db_client.upload_file(
+            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_type=SimulatableExtracellularRecordingArray,
+            file_path=locations_path,
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.electrode_locations,
+        )
+        L.info("Uploaded electrode locations to recording array %s.", entity.id)
 
         # _ = db_client.upload_file(
         #     entity_id=entity.id,  # ty:ignore[invalid-argument-type]
