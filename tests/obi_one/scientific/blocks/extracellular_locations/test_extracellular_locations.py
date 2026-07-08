@@ -136,6 +136,22 @@ class TestAxialRotation:
         assert local[:, 2].min() == pytest.approx(-24.0)
         assert local[:, 2].max() == pytest.approx(24.0)
 
+    def test_grid_shares_axial_rotation(self):
+        """axial_rotation is shared by the 2D patterns: it rolls the grid's X extent into Z."""
+        flat = _as_array(
+            obi.GridExtracellularLocations(
+                grid_rows=3, grid_columns=3
+            ).get_local_electrode_xyz_locations()
+        )
+        rolled = _as_array(
+            obi.GridExtracellularLocations(
+                grid_rows=3, grid_columns=3, axial_rotation=90.0
+            ).get_local_electrode_xyz_locations()
+        )
+        assert np.allclose(flat[:, 2], 0.0)
+        assert np.allclose(rolled[:, 0], 0.0, atol=1e-9)
+        assert np.ptp(rolled[:, 2]) == pytest.approx(np.ptp(flat[:, 0]))
+
     def test_rotation_360_equals_0(self):
         assert np.allclose(_npx_local(48, 0.0), _npx_local(48, 360.0), atol=1e-9)
 

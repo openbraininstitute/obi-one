@@ -197,7 +197,51 @@ class LinearExtracellularLocations(PatternedExtracellularLocations):
         return [(0.0, electrode_i * spacing, 0.0) for electrode_i in range(n_electrodes)]
 
 
-class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
+class TwoDPatternedExtracellularLocations(PatternedExtracellularLocations, ABC):
+    """Base class for planar (2D) patterned extracellular locations.
+
+    Subclasses define the pattern in the local X-Y plane via
+    :meth:`get_local_electrode_xy_locations`; this base then rolls that pattern about the local
+    ``+Y`` axis by ``axial_rotation`` degrees (rotating the local X extent into local Z) to give
+    the full 3D local pattern used by :meth:`get_global_electrode_xyz_locations`.
+    """
+
+    axial_rotation: (
+        Annotated[float, Field(ge=0.0, le=360.0)] | list[Annotated[float, Field(ge=0.0, le=360.0)]]
+    ) = Field(
+        default=0.0,
+        title="Axial Rotation",
+        description=(
+            "Rotation of the pattern about its long axis (the origin/direction line), in "
+            "degrees. At 0 the pattern lies in the local X-Y plane; increasing it rolls the "
+            "local X extent out of that plane into local Z."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
+        },
+    )
+
+    def get_local_electrode_xy_locations(self) -> list[tuple[float, float]]:
+        """Return the electrode pattern in the local X-Y plane, before axial rotation.
+
+        Subclasses implement this; the base applies ``axial_rotation`` (rolling the local X extent
+        into local Z) around it.
+        """
+        msg = "Subclasses must implement get_local_electrode_xy_locations()."
+        raise NotImplementedError(msg)
+
+    def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
+        """Roll the local X-Y pattern about the local ``+Y`` axis by ``axial_rotation`` degrees."""
+        roll = math.radians(float(self.axial_rotation))  # ty:ignore[invalid-argument-type]
+        cos_roll = math.cos(roll)
+        sin_roll = math.sin(roll)
+        return [
+            (x * cos_roll, y, -x * sin_roll) for x, y in self.get_local_electrode_xy_locations()
+        ]
+
+
+class Neuropixels1ExtracellularLocations(TwoDPatternedExtracellularLocations):
     """Extracellular locations for Neuropixels 1.0 probe."""
 
     n_electrodes: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
@@ -208,29 +252,14 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-    axial_rotation: (
-        Annotated[float, Field(ge=0.0, le=360.0)] | list[Annotated[float, Field(ge=0.0, le=360.0)]]
-    ) = Field(
-        default=0.0,
-        title="Axial Rotation",
-        description=(
-            "Rotation of the probe about its long axis (the origin/direction line), in degrees. "
-            "At 0 the electrode columns lie in the local X-Y plane; increasing it rolls the "
-            "shank's width out of that plane into local Z."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.DEGREES,
-        },
-    )
 
-    def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Return Neuropixels 1.0 electrodes in the local frame (staggered layout).
+    def get_local_electrode_xy_locations(self) -> list[tuple[float, float]]:
+        """Return Neuropixels 1.0 electrodes in the local X-Y plane (staggered layout).
 
         Matches the imec Neuropixels 1.0 geometry: two sites per row 32 um apart, rows 20 um apart,
         with alternate rows offset by a 16 um stagger (four columns at a 16 um pitch). The pattern
         is centred on the local ``+Y`` (long) axis so ``origin`` is the centre of the top of the
-        shank, then rolled about that axis by ``axial_rotation`` degrees into local Z.
+        shank; the axial roll about that axis is applied by the base class.
         """
         row_pitch = 20.0  # vertical spacing between rows (electrode_pitch_vert_um)
         within_row_spacing = 32.0  # horizontal spacing between the two sites in a row (horz pitch)
@@ -239,31 +268,27 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
         horizontal_centre = (within_row_spacing + row_stagger) / 2.0
 
         n_electrodes = int(self.n_electrodes)  # ty:ignore[invalid-argument-type]
-        roll = math.radians(float(self.axial_rotation))  # ty:ignore[invalid-argument-type]
-        cos_roll = math.cos(roll)
-        sin_roll = math.sin(roll)
 
-        xyz_locations = []
+        xy_locations = []
         for electrode_i in range(n_electrodes):
             row = electrode_i // 2  # two sites share each row
             column = electrode_i % 2  # 0 or 1 within the row
             # Centre the staggered width on the local +Y axis so the origin is at the centre-top.
             x = column * within_row_spacing + (row % 2) * row_stagger - horizontal_centre
             y = row * row_pitch
+            xy_locations.append((x, y))
 
-            # Roll the (centred) width offset about the local +Y axis into local Z.
-            xyz_locations.append((x * cos_roll, y, -x * sin_roll))
-
-        return xyz_locations
+        return xy_locations
 
 
-class GridExtracellularLocations(PatternedExtracellularLocations):
+class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
     """Extracellular locations arranged in a rectangular grid of electrodes.
 
-    The electrodes form a ``grid_rows`` by ``grid_columns`` grid in the local X-Y plane (``Z = 0``),
-    centred on the local origin, with ``x_offset`` spacing between columns (along local X) and
-    ``y_offset`` spacing between rows (along local Y). ``origin`` positions the grid centre and
-    ``direction`` orients it (the local ``+Y`` axis is rotated onto ``direction``).
+    The electrodes form a ``grid_rows`` by ``grid_columns`` grid in the local X-Y plane, centred on
+    the local origin, with ``x_offset`` spacing between columns (along local X) and ``y_offset``
+    spacing between rows (along local Y). ``origin`` positions the grid centre, ``direction``
+    orients it (the local ``+Y`` axis is rotated onto ``direction``) and ``axial_rotation`` rolls
+    it about that axis.
     """
 
     grid_rows: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
@@ -299,26 +324,21 @@ class GridExtracellularLocations(PatternedExtracellularLocations):
         },
     )
 
-    def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Return the grid electrodes in the local frame.
+    def get_local_electrode_xy_locations(self) -> list[tuple[float, float]]:
+        """Return the grid electrodes in the local X-Y plane, before axial rotation.
 
-        Electrodes lie in the local X-Y plane (``Z = 0``), centred on the origin, spaced
-        ``x_offset`` between columns (X) and ``y_offset`` between rows (Y).
+        Electrodes are centred on the origin, spaced ``x_offset`` between columns (X) and
+        ``y_offset`` between rows (Y).
         """
         grid_rows = int(self.grid_rows)  # ty:ignore[invalid-argument-type]
         grid_columns = int(self.grid_columns)  # ty:ignore[invalid-argument-type]
         x_offset = float(self.x_offset)  # ty:ignore[invalid-argument-type]
         y_offset = float(self.y_offset)  # ty:ignore[invalid-argument-type]
 
-        # Centre the grid on the local origin in the X-Y plane.
         row_centre = (grid_rows - 1) / 2.0
         column_centre = (grid_columns - 1) / 2.0
         return [
-            (
-                (column - column_centre) * x_offset,
-                (row - row_centre) * y_offset,
-                0.0,
-            )
+            ((column - column_centre) * x_offset, (row - row_centre) * y_offset)
             for row in range(grid_rows)
             for column in range(grid_columns)
         ]

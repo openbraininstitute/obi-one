@@ -60,9 +60,11 @@ class TestBlockSummary:
         )
         assert "spacing" in linear
         assert "grid_rows" not in linear
+        assert "axial_rotation" not in linear
         assert "axial_rotation" in neuropixels
         assert "spacing" not in neuropixels
-        assert {"grid_rows", "grid_columns", "x_offset", "y_offset"} <= set(grid)
+        # axial_rotation is shared by the 2D patterns (Neuropixels + Grid).
+        assert {"grid_rows", "grid_columns", "x_offset", "y_offset", "axial_rotation"} <= set(grid)
 
 
 class TestBlockDictionarySummary:
