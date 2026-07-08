@@ -186,7 +186,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         import matplotlib.pyplot as plt  # noqa: PLC0415
 
         from obi_one.scientific.library.extracellular_locations import (  # noqa: PLC0415
-            electrode_locations_summary_dict,
+            extracellular_locations_block_dictionary_summary,
             plot_extracellular_arrays,
         )
 
@@ -201,9 +201,9 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         # # Use BlueRecording to generate a weights file for the circuit and test locations
         # # Using the value of self.config.initialize.calculation_method
-        # import numpy as np  # noqa: PLC0415
-        # from bluerecording import compute_weights  # noqa: PLC0415 # ty:ignore[unresolved-import]
-        # from bluerecording.weights import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
+        # import numpy as np
+        # from bluerecording import compute_weights  # ty:ignore[unresolved-import]
+        # from bluerecording.weights import (  # ty:ignore[unresolved-import]
         #     Electrode,
         #     ElectrodeType as BlueRecordingElectrodeType,
         #     save_weights,
@@ -267,7 +267,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         locations_path = self.config.coordinate_output_root / "electrode_locations.json"
         with locations_path.open("w") as locations_file:
             json.dump(
-                electrode_locations_summary_dict(self.config.electrode_locations),
+                extracellular_locations_block_dictionary_summary(self.config.electrode_locations),
                 locations_file,
                 indent=2,
             )

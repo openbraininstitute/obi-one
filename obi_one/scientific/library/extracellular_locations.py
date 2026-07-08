@@ -35,15 +35,32 @@ def _soma_marker_style(n_somas: int) -> tuple[float, float]:
     return 4.0, 0.12
 
 
-def electrode_locations_summary_dict(
+def extracellular_locations_block_summary(block: ExtracellularLocationsUnion) -> dict[str, Any]:
+    """Summarise a single extracellular-location block as JSON-serialisable data.
+
+    Returns the block's world-space electrode ``locations`` (``[x, y, z]`` lists, with the block's
+    origin and direction applied) followed by all of its properties (from ``model_dump``: ``type``,
+    ``origin_*``/``direction_*`` and the subclass-specific parameters, so the key set varies by
+    block type).
+
+    Args:
+        block: an extracellular-locations block.
+
+    Returns:
+        ``{"locations": [[x, y, z], ...], **block_properties}``.
+    """
+    return {
+        "locations": [list(xyz) for xyz in block.get_global_electrode_xyz_locations()],
+        **block.model_dump(),
+    }
+
+
+def extracellular_locations_block_dictionary_summary(
     electrode_locations: dict[str, ExtracellularLocationsUnion],
 ) -> dict[str, dict[str, Any]]:
-    """Summarise a dict of extracellular-location blocks as JSON-serialisable data.
+    """Summarise a dict of extracellular-location blocks, keyed by block name.
 
-    Each block name maps to its world-space electrode ``locations`` (``[x, y, z]`` lists, with the
-    block's origin and direction applied) followed by all of the block's properties (from
-    ``model_dump``: ``type``, ``origin_*``/``direction_*`` and the subclass-specific parameters, so
-    the key set varies by block type).
+    Each block name maps to its :func:`extracellular_locations_block_summary`.
 
     Args:
         electrode_locations: mapping of block name to an extracellular-locations block.
@@ -52,10 +69,7 @@ def electrode_locations_summary_dict(
         ``{block_name: {"locations": [[x, y, z], ...], **block_properties}}``.
     """
     return {
-        name: {
-            "locations": [list(xyz) for xyz in block.get_global_electrode_xyz_locations()],
-            **block.model_dump(),
-        }
+        name: extracellular_locations_block_summary(block)
         for name, block in electrode_locations.items()
     }
 
