@@ -48,13 +48,14 @@ from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
 
 class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
-    combined_with: list[
+    combined_with: tuple[
         tuple[
             BlockReference,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
-        ]
+        ],
+        ...,
     ] = Field(
-        default_factory=list,
+        default=(),
         title="Combine With",
         description="List of neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
