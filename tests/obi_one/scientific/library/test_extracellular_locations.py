@@ -62,7 +62,7 @@ class TestBlockSummary:
         assert "grid_rows" not in linear
         assert "axial_rotation" in neuropixels
         assert "spacing" not in neuropixels
-        assert {"grid_rows", "grid_columns", "electrode_pitch", "shank_length"} <= set(grid)
+        assert {"grid_rows", "grid_columns", "x_offset", "y_offset"} <= set(grid)
 
 
 class TestBlockDictionarySummary:

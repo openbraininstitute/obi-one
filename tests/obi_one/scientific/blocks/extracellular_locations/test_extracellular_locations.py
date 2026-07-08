@@ -142,44 +142,46 @@ class TestAxialRotation:
 
 class TestGridExtracellularLocations:
     def test_default_is_10x10_grid(self):
-        """The classic Utah array is a 10x10 grid of 100 electrodes."""
+        """The default is a 10x10 grid of 100 electrodes."""
         array = obi.GridExtracellularLocations()
         assert array.grid_rows == 10
         assert array.grid_columns == 10
         local = _as_array(array.get_local_electrode_xyz_locations())
         assert local.shape == (100, 3)
 
-    def test_grid_pitch(self):
-        """Columns run along local X and rows along local Z, one pitch apart."""
-        array = obi.GridExtracellularLocations(grid_rows=4, grid_columns=5, electrode_pitch=400.0)
+    def test_grid_offsets(self):
+        """Columns run along local X (x_offset) and rows along local Y (y_offset)."""
+        array = obi.GridExtracellularLocations(
+            grid_rows=4, grid_columns=5, x_offset=300.0, y_offset=500.0
+        )
         local = _as_array(array.get_local_electrode_xyz_locations())
         assert local.shape == (20, 3)
         xs = np.unique(np.round(local[:, 0], 6))
-        zs = np.unique(np.round(local[:, 2], 6))
+        ys = np.unique(np.round(local[:, 1], 6))
         assert len(xs) == 5
-        assert len(zs) == 4
-        assert np.allclose(np.diff(xs), 400.0)
-        assert np.allclose(np.diff(zs), 400.0)
+        assert len(ys) == 4
+        assert np.allclose(np.diff(xs), 300.0)
+        assert np.allclose(np.diff(ys), 500.0)
+        assert np.allclose(local[:, 2], 0.0)
 
-    def test_tips_lie_in_plane_at_shank_length(self):
-        """All recording tips share one +Y (the shank length); the grid spans local X and Z."""
-        array = obi.GridExtracellularLocations(shank_length=1500.0)
-        local = _as_array(array.get_local_electrode_xyz_locations())
-        assert np.allclose(local[:, 1], 1500.0)
+    def test_grid_lies_in_xy_plane(self):
+        """The grid lies in the local X-Y plane (Z = 0) and spans both X and Y."""
+        local = _as_array(obi.GridExtracellularLocations().get_local_electrode_xyz_locations())
+        assert np.allclose(local[:, 2], 0.0)
         assert np.ptp(local[:, 0]) > 0.0
-        assert np.ptp(local[:, 2]) > 0.0
+        assert np.ptp(local[:, 1]) > 0.0
 
-    def test_grid_centred_on_y_axis(self):
-        """The tip grid is centred on the local +Y axis (symmetric in X and Z)."""
+    def test_grid_centred_on_origin(self):
+        """The grid is centred on the local origin (symmetric in X and Y)."""
         local = _as_array(obi.GridExtracellularLocations().get_local_electrode_xyz_locations())
         assert local[:, 0].mean() == pytest.approx(0.0)
-        assert local[:, 2].mean() == pytest.approx(0.0)
+        assert local[:, 1].mean() == pytest.approx(0.0)
 
     def test_default_footprint(self):
-        """A 10x10 grid at 400 um pitch spans 3600 um (the classic 4 mm array) in X and Z."""
+        """A default 10x10 grid at 400 um offsets spans 3600 um in X and Y."""
         local = _as_array(obi.GridExtracellularLocations().get_local_electrode_xyz_locations())
         assert np.ptp(local[:, 0]) == pytest.approx(3600.0)
-        assert np.ptp(local[:, 2]) == pytest.approx(3600.0)
+        assert np.ptp(local[:, 1]) == pytest.approx(3600.0)
 
     def test_local_independent_of_placement(self):
         default = obi.GridExtracellularLocations()
@@ -387,7 +389,7 @@ class TestParameterSweepConstraints:
         """Constrained fields accept parameter-sweep lists (regression)."""
         obi.LinearExtracellularLocations(n_electrodes=[8, 16], spacing=[10.0, 20.0])
         obi.Neuropixels1ExtracellularLocations(n_electrodes=[8, 16], axial_rotation=[0.0, 90.0])
-        obi.GridExtracellularLocations(grid_rows=[8, 10], electrode_pitch=[300.0, 400.0])
+        obi.GridExtracellularLocations(grid_rows=[8, 10], x_offset=[300.0, 400.0])
 
     def test_sweep_list_element_constraints_enforced(self):
         with pytest.raises(ValidationError):
@@ -403,11 +405,11 @@ class TestParameterSweepConstraints:
         with pytest.raises(ValidationError):
             obi.GridExtracellularLocations(grid_columns=0)
 
-    def test_grid_pitch_and_shank_constraints(self):
+    def test_grid_offset_constraints(self):
         with pytest.raises(ValidationError):
-            obi.GridExtracellularLocations(electrode_pitch=0.0)
+            obi.GridExtracellularLocations(x_offset=0.0)
         with pytest.raises(ValidationError):
-            obi.GridExtracellularLocations(shank_length=-1.0)
+            obi.GridExtracellularLocations(y_offset=0.0)
 
 
 class TestExtracellularLocationsUnion:

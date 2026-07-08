@@ -258,14 +258,12 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
 
 
 class GridExtracellularLocations(PatternedExtracellularLocations):
-    """Extracellular locations arranged in a rectangular grid of penetrating electrodes.
+    """Extracellular locations arranged in a rectangular grid of electrodes.
 
-    A ``grid_rows`` by ``grid_columns`` grid on an ``electrode_pitch`` spacing whose recording sites
-    sit at the tips of uniform-length shanks; the defaults give the classic 10x10, 400 um, 1.5 mm
-    Utah array (Blackrock Microsystems). In the local frame the shanks run along the ``+Y``
-    (insertion) axis, so the tips form the grid in the local X-Z plane at ``+Y = shank_length``,
-    centred on the ``+Y`` axis; ``origin`` is then the centre of the array base and ``direction``
-    the insertion direction.
+    The electrodes form a ``grid_rows`` by ``grid_columns`` grid in the local X-Y plane (``Z = 0``),
+    centred on the local origin, with ``x_offset`` spacing between columns (along local X) and
+    ``y_offset`` spacing between rows (along local Y). ``origin`` positions the grid centre and
+    ``direction`` orients it (the local ``+Y`` axis is rotated onto ``direction``).
     """
 
     grid_rows: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
@@ -284,48 +282,42 @@ class GridExtracellularLocations(PatternedExtracellularLocations):
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-    electrode_pitch: Annotated[float, Field(gt=0.0)] | list[Annotated[float, Field(gt=0.0)]] = (
-        Field(
-            default=400.0,
-            title="Electrode Pitch",
-            description="Centre-to-centre spacing between neighbouring electrodes in micrometers.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            },
-        )
+    x_offset: Annotated[float, Field(gt=0.0)] | list[Annotated[float, Field(gt=0.0)]] = Field(
+        default=400.0,
+        title="X Offset",
+        description="Spacing between columns along the local X axis, in micrometers.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
-    shank_length: Annotated[float, Field(ge=0.0)] | list[Annotated[float, Field(ge=0.0)]] = Field(
-        default=1500.0,
-        title="Shank Length",
-        description=(
-            "Length of the electrode shanks in micrometers; the recording tips sit this far along "
-            "the insertion direction from the origin."
-        ),
+    y_offset: Annotated[float, Field(gt=0.0)] | list[Annotated[float, Field(gt=0.0)]] = Field(
+        default=400.0,
+        title="Y Offset",
+        description="Spacing between rows along the local Y axis, in micrometers.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
     )
 
     def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Return the tip grid in the local frame.
+        """Return the grid electrodes in the local frame.
 
-        The tips form a ``grid_rows`` by ``grid_columns`` grid on an ``electrode_pitch`` spacing in
-        the local X-Z plane, centred on the local ``+Y`` axis and offset to ``+Y = shank_length``
-        (the shank tips).
+        Electrodes lie in the local X-Y plane (``Z = 0``), centred on the origin, spaced
+        ``x_offset`` between columns (X) and ``y_offset`` between rows (Y).
         """
         grid_rows = int(self.grid_rows)  # ty:ignore[invalid-argument-type]
         grid_columns = int(self.grid_columns)  # ty:ignore[invalid-argument-type]
-        electrode_pitch = float(self.electrode_pitch)  # ty:ignore[invalid-argument-type]
-        shank_length = float(self.shank_length)  # ty:ignore[invalid-argument-type]
+        x_offset = float(self.x_offset)  # ty:ignore[invalid-argument-type]
+        y_offset = float(self.y_offset)  # ty:ignore[invalid-argument-type]
 
-        # Centre the grid on the local +Y axis.
+        # Centre the grid on the local origin in the X-Y plane.
         row_centre = (grid_rows - 1) / 2.0
         column_centre = (grid_columns - 1) / 2.0
         return [
             (
-                (column - column_centre) * electrode_pitch,
-                shank_length,
-                (row - row_centre) * electrode_pitch,
+                (column - column_centre) * x_offset,
+                (row - row_centre) * y_offset,
+                0.0,
             )
             for row in range(grid_rows)
             for column in range(grid_columns)
