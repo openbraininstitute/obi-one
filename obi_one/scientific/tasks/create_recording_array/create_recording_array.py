@@ -243,14 +243,23 @@ class CreateExtracellularRecordingArrayTask(Task):
         # )
         # L.info("Weights saved to: %s", weights_output_path)
 
-        # entity = SimulatableExtracellularRecordingArray(
-        #     name=f"Extracellular Recording Array for {population_name}",
-        #     description="Temp description.",
-        #     electrode_type=ElectrodeType.custom,
-        #     authorized_public=False,
-        #     circuit_id=self._circuit_entity.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
-        # )
-        # entity = db_client.register_entity(entity)
+        entity = SimulatableExtracellularRecordingArray(
+            name=f"Extracellular Recording Array for {self._circuit.name}",
+            description="Temp description.",
+            electrode_type=ElectrodeType.custom,
+            authorized_public=False,
+            circuit_id=self._circuit_entity.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
+        )
+        entity = db_client.register_entity(entity)
+
+        # Upload the electrode-array plot as the entity's electrode_array_image asset.
+        db_client.upload_file(
+            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_type=SimulatableExtracellularRecordingArray,
+            file_path=image_path,
+            file_content_type=ContentType.image_png,
+            asset_label=AssetLabel.electrode_array_image,
+        )
 
         # _ = db_client.upload_file(
         #     entity_id=entity.id,  # ty:ignore[invalid-argument-type]
