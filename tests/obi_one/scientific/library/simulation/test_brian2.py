@@ -193,6 +193,58 @@ def test_current_stim(tmp_path):
     assert 0 == len(spikes[1]) == len(spikes[2])
 
 
+def test_current_stim_groupby(tmp_path):
+    # current stims with the same target node_set will have their currents summed
+    # this assumes the dt is constant, but this is true since they are compared to the simulation dt
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 3000,
+                "node_set": "0",
+                "delay": 0,
+                "duration": 4,
+            }
+        },
+    }
+
+    spikes0 = dict(_run_simulation(tmp_path, config).spike_monitor.spike_trains().items())
+
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear0": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 1500,
+                "node_set": "0",
+                "delay": 0,
+                "duration": 4,
+            },
+            "linear1": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 1500,
+                "node_set": "0",
+                "delay": 0,
+                "duration": 4,
+            },
+        },
+    }
+    spikes1 = dict(_run_simulation(tmp_path, config).spike_monitor.spike_trains().items())
+
+    assert len(spikes0[0]) == 1 == len(spikes1[0])
+    npt.assert_equal(spikes0[0], spikes1[0])
+    assert 0 == len(spikes0[1]) == len(spikes0[2])
+    assert 0 == len(spikes1[1]) == len(spikes1[2])
+
+
 def test_linear_current_stim():
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
@@ -291,33 +343,33 @@ def test_sinusoidal_current_stim(delay, frequency, duration, expected):
     npt.assert_almost_equal(res, expected)
 
 
-def test_current_stim_report(tmp_path):
-    config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
-        "target_simulator": "Brian2",
-        "network": str(DATA / "circuit_config.json"),
-        "inputs": {
-            "linear": {
-                "input_type": "current_clamp",
-                "module": "linear",
-                "amp_start": 3000,
-                "delay": 0.1,
-                "duration": 4,
-                "node_set": "0",
-            }
-        },
-        "reports": {
-            "soma": {
-                "sections": "soma",
-                "type": "compartment",
-                "variable_name": "v",
-                "unit": "mV",
-                "dt": 0.1,
-                "start_time": 0,
-                "end_time": 500,
-            },
-        },
-    }
-    net = _run_simulation(tmp_path, config)
-    breakpoint() # XXX BREAKPOINT
-    pass
+#def test_current_stim_report(tmp_path):
+#    config = {
+#        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+#        "target_simulator": "Brian2",
+#        "network": str(DATA / "circuit_config.json"),
+#        "inputs": {
+#            "linear": {
+#                "input_type": "current_clamp",
+#                "module": "linear",
+#                "amp_start": 3000,
+#                "delay": 0.1,
+#                "duration": 4,
+#                "node_set": "0",
+#            }
+#        },
+#        "reports": {
+#            "soma": {
+#                "sections": "soma",
+#                "type": "compartment",
+#                "variable_name": "v",
+#                "unit": "mV",
+#                "dt": 0.1,
+#                "start_time": 0,
+#                "end_time": 500,
+#            },
+#        },
+#    }
+#    net = _run_simulation(tmp_path, config)
+#    breakpoint() # XXX BREAKPOINT
+#    pass

@@ -42,8 +42,8 @@ class Brian2Network(BaseModel):
     neurons: list[brian2.NeuronGroup]
     synapses: list[brian2.Synapses]
     spike_monitor: brian2.SpikeMonitor
-    inputs: list
     state_monitor: brian2.StateMonitor | None
+    inputs: list
 
 
 class CurrentStimulator(ABC):
@@ -362,8 +362,17 @@ class Inputs:
         lines = []
         objs = {}
         indicators = {}
+        seen_node_set = {}
         injection_sum = "\nI_inj = 0 * amp"
         for i, injection in enumerate(self._injectors):
+            if injection.config.node_set in seen_node_set:
+                objs[
+                    f"stim{seen_node_set[injection.config.node_set]}"
+                ].values += injection.get_currents(
+                    self.simulation.dt, self.simulation.run.tstop
+                ).values
+                continue
+
             injection_sum += f" + I_inj{i}"
             lines.extend(
                 (
@@ -376,6 +385,7 @@ class Inputs:
             mask[idx] = True
             indicators[f"is_stimulated{i}"] = mask
             objs[f"stim{i}"] = injection.get_currents(self.simulation.dt, self.simulation.run.tstop)
+            seen_node_set[injection.config.node_set] = i
 
         model += "\n" + "\n".join(lines) + injection_sum + ": amp\n"
 
@@ -639,7 +649,6 @@ def _write_reports(
     """Ibid."""
     output_dir = Path(simulation.to_libsonata.base_path) / Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
-    breakpoint() # XXX BREAKPOINT
 
     spikes = [
         (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
@@ -655,7 +664,6 @@ def _write_reports(
         node_ids=node_ids,
     )
 
-    breakpoint() # XXX BREAKPOINT
     if state_monitor is None:
         return
 
