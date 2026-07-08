@@ -28,6 +28,9 @@
               }
             },
             "required": ["block_name", "type"]
+          },
+          {
+            "type": "null"
           }
         ]
       },

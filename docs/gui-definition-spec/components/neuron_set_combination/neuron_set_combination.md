@@ -14,7 +14,7 @@ Reference schema:
 
 - Should accept as input an `array` of objects, where each object contains:
     - A neuron set **reference** (object with `block_name` and `block_dict_name`
-      string fields).
+      string fields), or `null` if not yet assigned.
     - A **set operation** string, one of `"union"`, `"intersect"`, or `"diff"`.
 - The array may be empty (no combinations applied).
 - Should have the following non-validating properties in `json_schema_extra`:
@@ -28,7 +28,7 @@ array with exactly 2 items):
 
 | Index | Type | Description |
 |-------|------|-------------|
-| 0 | reference object | The neuron set to combine with |
+| 0 | reference object \| `null` | The neuron set to combine with |
 | 1 | `"union"` \| `"intersect"` \| `"diff"` | The set operation to apply |
 
 The operations are applied sequentially in list order against the running
@@ -50,7 +50,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: tuple[
         tuple[
-            BlockReference,
+            BlockReference | None,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,

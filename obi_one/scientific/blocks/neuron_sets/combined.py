@@ -51,7 +51,7 @@ class CombinedBaseNeuronSet(NeuronSet, abc.ABC):
     base_neuron_set: BlockReference | None
     combined_with: tuple[
         tuple[
-            BlockReference,
+            BlockReference | None,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
@@ -235,7 +235,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: tuple[
         tuple[
-            ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,
+            ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION | None,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
@@ -283,7 +283,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: tuple[
         tuple[
-            ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+            ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
@@ -329,7 +329,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: tuple[
         tuple[
-            ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+            ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
@@ -377,7 +377,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: tuple[
         tuple[
-            ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+            ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
@@ -423,7 +423,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
 
     combined_with: tuple[
         tuple[
-            ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION,
+            ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION | None,
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
