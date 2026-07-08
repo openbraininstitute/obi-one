@@ -181,6 +181,22 @@ class CreateExtracellularRecordingArrayTask(Task):
             temp_dir=self._create_temp_dir(),
         )
 
+        # Plot the configured electrode array relative to the circuit's somas and save the image.
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+
+        from obi_one.scientific.library.extracellular_locations import (  # noqa: PLC0415
+            plot_extracellular_arrays,
+        )
+
+        figure = plot_extracellular_arrays(
+            self._circuit.sonata_circuit, self.config.electrode_locations
+        )
+        image_path = self.config.coordinate_output_root / "electrode_array.png"
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(image_path, dpi=150, bbox_inches="tight")
+        plt.close(figure)
+        L.info("Saved electrode-array plot to: %s", image_path)
+
         # # Use BlueRecording to generate a weights file for the circuit and test locations
         # # Using the value of self.config.initialize.calculation_method
         # import numpy as np  # noqa: PLC0415
