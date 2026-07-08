@@ -98,6 +98,7 @@ __all__ = [
     "GammaDistribution",
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
+    "GridExtracellularLocations",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -221,7 +222,6 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
-    "UtahArrayExtracellularLocations",
     "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
@@ -286,9 +286,9 @@ from obi_one.scientific.blocks.distributions.uniform import (
 )
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
-    UtahArrayExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (

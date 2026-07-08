@@ -140,10 +140,10 @@ class TestAxialRotation:
         assert np.allclose(_npx_local(48, 0.0), _npx_local(48, 360.0), atol=1e-9)
 
 
-class TestUtahArrayExtracellularLocations:
+class TestGridExtracellularLocations:
     def test_default_is_10x10_grid(self):
         """The classic Utah array is a 10x10 grid of 100 electrodes."""
-        array = obi.UtahArrayExtracellularLocations()
+        array = obi.GridExtracellularLocations()
         assert array.grid_rows == 10
         assert array.grid_columns == 10
         local = _as_array(array.get_local_electrode_xyz_locations())
@@ -151,9 +151,7 @@ class TestUtahArrayExtracellularLocations:
 
     def test_grid_pitch(self):
         """Columns run along local X and rows along local Z, one pitch apart."""
-        array = obi.UtahArrayExtracellularLocations(
-            grid_rows=4, grid_columns=5, electrode_pitch=400.0
-        )
+        array = obi.GridExtracellularLocations(grid_rows=4, grid_columns=5, electrode_pitch=400.0)
         local = _as_array(array.get_local_electrode_xyz_locations())
         assert local.shape == (20, 3)
         xs = np.unique(np.round(local[:, 0], 6))
@@ -165,7 +163,7 @@ class TestUtahArrayExtracellularLocations:
 
     def test_tips_lie_in_plane_at_shank_length(self):
         """All recording tips share one +Y (the shank length); the grid spans local X and Z."""
-        array = obi.UtahArrayExtracellularLocations(shank_length=1500.0)
+        array = obi.GridExtracellularLocations(shank_length=1500.0)
         local = _as_array(array.get_local_electrode_xyz_locations())
         assert np.allclose(local[:, 1], 1500.0)
         assert np.ptp(local[:, 0]) > 0.0
@@ -173,19 +171,19 @@ class TestUtahArrayExtracellularLocations:
 
     def test_grid_centred_on_y_axis(self):
         """The tip grid is centred on the local +Y axis (symmetric in X and Z)."""
-        local = _as_array(obi.UtahArrayExtracellularLocations().get_local_electrode_xyz_locations())
+        local = _as_array(obi.GridExtracellularLocations().get_local_electrode_xyz_locations())
         assert local[:, 0].mean() == pytest.approx(0.0)
         assert local[:, 2].mean() == pytest.approx(0.0)
 
     def test_default_footprint(self):
         """A 10x10 grid at 400 um pitch spans 3600 um (the classic 4 mm array) in X and Z."""
-        local = _as_array(obi.UtahArrayExtracellularLocations().get_local_electrode_xyz_locations())
+        local = _as_array(obi.GridExtracellularLocations().get_local_electrode_xyz_locations())
         assert np.ptp(local[:, 0]) == pytest.approx(3600.0)
         assert np.ptp(local[:, 2]) == pytest.approx(3600.0)
 
     def test_local_independent_of_placement(self):
-        default = obi.UtahArrayExtracellularLocations()
-        moved = obi.UtahArrayExtracellularLocations(
+        default = obi.GridExtracellularLocations()
+        moved = obi.GridExtracellularLocations(
             origin_x=100.0,
             origin_y=-50.0,
             origin_z=5.0,
@@ -200,7 +198,7 @@ class TestUtahArrayExtracellularLocations:
 
     def test_global_transform_preserves_grid_shape(self):
         """A rigid placement leaves the inter-electrode distances unchanged."""
-        array = obi.UtahArrayExtracellularLocations(
+        array = obi.GridExtracellularLocations(
             grid_rows=4,
             grid_columns=4,
             origin_x=1000.0,
@@ -389,7 +387,7 @@ class TestParameterSweepConstraints:
         """Constrained fields accept parameter-sweep lists (regression)."""
         obi.LinearExtracellularLocations(n_electrodes=[8, 16], spacing=[10.0, 20.0])
         obi.Neuropixels1ExtracellularLocations(n_electrodes=[8, 16], axial_rotation=[0.0, 90.0])
-        obi.UtahArrayExtracellularLocations(grid_rows=[8, 10], electrode_pitch=[300.0, 400.0])
+        obi.GridExtracellularLocations(grid_rows=[8, 10], electrode_pitch=[300.0, 400.0])
 
     def test_sweep_list_element_constraints_enforced(self):
         with pytest.raises(ValidationError):
@@ -399,17 +397,17 @@ class TestParameterSweepConstraints:
         with pytest.raises(ValidationError):
             obi.Neuropixels1ExtracellularLocations(axial_rotation=[0.0, 400.0])
 
-    def test_utah_grid_min(self):
+    def test_grid_dims_min(self):
         with pytest.raises(ValidationError):
-            obi.UtahArrayExtracellularLocations(grid_rows=0)
+            obi.GridExtracellularLocations(grid_rows=0)
         with pytest.raises(ValidationError):
-            obi.UtahArrayExtracellularLocations(grid_columns=0)
+            obi.GridExtracellularLocations(grid_columns=0)
 
-    def test_utah_pitch_and_shank_constraints(self):
+    def test_grid_pitch_and_shank_constraints(self):
         with pytest.raises(ValidationError):
-            obi.UtahArrayExtracellularLocations(electrode_pitch=0.0)
+            obi.GridExtracellularLocations(electrode_pitch=0.0)
         with pytest.raises(ValidationError):
-            obi.UtahArrayExtracellularLocations(shank_length=-1.0)
+            obi.GridExtracellularLocations(shank_length=-1.0)
 
 
 class TestExtracellularLocationsUnion:
@@ -427,12 +425,12 @@ class TestExtracellularLocationsUnion:
         assert isinstance(block, obi.LinearExtracellularLocations)
         assert block.spacing == pytest.approx(15.0)
 
-    def test_discriminated_parse_utah(self):
+    def test_discriminated_parse_grid(self):
         adapter = TypeAdapter(obi.ExtracellularLocationsUnion)
         block = adapter.validate_python(
-            {"type": "UtahArrayExtracellularLocations", "grid_rows": 8, "grid_columns": 8}
+            {"type": "GridExtracellularLocations", "grid_rows": 8, "grid_columns": 8}
         )
-        assert isinstance(block, obi.UtahArrayExtracellularLocations)
+        assert isinstance(block, obi.GridExtracellularLocations)
         assert block.grid_rows == 8
 
 

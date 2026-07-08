@@ -4,15 +4,13 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
+    GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
-    UtahArrayExtracellularLocations,
 )
 
 _EXTRACELLULAR_LOCATION_BLOCKS = (
-    LinearExtracellularLocations
-    | Neuropixels1ExtracellularLocations
-    | UtahArrayExtracellularLocations
+    LinearExtracellularLocations | Neuropixels1ExtracellularLocations | GridExtracellularLocations
 )
 
 ExtracellularLocationsUnion = Annotated[_EXTRACELLULAR_LOCATION_BLOCKS, Discriminator("type")]

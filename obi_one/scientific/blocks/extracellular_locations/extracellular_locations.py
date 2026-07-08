@@ -257,15 +257,15 @@ class Neuropixels1ExtracellularLocations(PatternedExtracellularLocations):
         return xyz_locations
 
 
-class UtahArrayExtracellularLocations(PatternedExtracellularLocations):
-    """Extracellular locations for a classic Utah array.
+class GridExtracellularLocations(PatternedExtracellularLocations):
+    """Extracellular locations arranged in a rectangular grid of penetrating electrodes.
 
-    The Utah array (Blackrock Microsystems) is a square grid of penetrating micro-electrodes: the
-    classic device is a 10x10 grid on a 400 um pitch whose recording sites sit at the tips of
-    uniform-length silicon shanks. In the local frame the shanks run along the ``+Y`` (insertion)
-    axis, so the tips form the grid in the local X-Z plane at ``+Y = shank_length``, centred on the
-    ``+Y`` axis; ``origin`` is then the centre of the array base and ``direction`` the insertion
-    direction.
+    A ``grid_rows`` by ``grid_columns`` grid on an ``electrode_pitch`` spacing whose recording sites
+    sit at the tips of uniform-length shanks; the defaults give the classic 10x10, 400 um, 1.5 mm
+    Utah array (Blackrock Microsystems). In the local frame the shanks run along the ``+Y``
+    (insertion) axis, so the tips form the grid in the local X-Z plane at ``+Y = shank_length``,
+    centred on the ``+Y`` axis; ``origin`` is then the centre of the array base and ``direction``
+    the insertion direction.
     """
 
     grid_rows: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
@@ -307,7 +307,7 @@ class UtahArrayExtracellularLocations(PatternedExtracellularLocations):
     )
 
     def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Return the Utah-array tip grid in the local frame.
+        """Return the tip grid in the local frame.
 
         The tips form a ``grid_rows`` by ``grid_columns`` grid on an ``electrode_pitch`` spacing in
         the local X-Z plane, centred on the local ``+Y`` axis and offset to ``+Y = shank_length``
