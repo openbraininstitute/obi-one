@@ -297,9 +297,11 @@ class GenerateSimulationTask(Task):
                 self.config.default_neuron_set_type,
             )
         ):
-            msg = f"Default neuron set name '{default_neuron_set_ref.block_name}' \
-                already exists in neuron_sets but is not an \
-                {self.config.default_neuron_set_type.__name__} set!"
+            msg = (
+                f"Default neuron set name '{default_neuron_set_ref.block_name}' already exists "
+                f"in neuron_sets but is not an "
+                f"{self.config.default_neuron_set_type.__name__} set!"
+            )
             raise OBIONEError(msg)
 
         if default_neuron_set_ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
