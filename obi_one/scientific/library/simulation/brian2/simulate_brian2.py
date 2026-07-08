@@ -14,6 +14,7 @@ from functools import partial, singledispatch
 from pathlib import Path
 
 import bluepysnap
+import bluepysnap.frame_report
 import bluepysnap.input
 import brian2  # ty:ignore[unresolved-import]
 import brian2.units  # ty:ignore[unresolved-import]
@@ -409,9 +410,10 @@ def _get_inputs(
     return n0, inputs
 
 
-def _get_reports(
+def _get_reports(  # noqa: C901
     simulation: bluepysnap.Simulation, neurons: brian2.NeuronGroup
 ) -> brian2.StateMonitor | None:
+    """Get voltage reports."""
     node_sets = simulation.node_sets.to_libsonata
     population = simulation.circuit.nodes[
         _get_single_node_population(simulation.circuit)
@@ -623,22 +625,22 @@ def _write_soma_report(
     dt: float,
 ) -> None:
     """Ibid."""
-    values = values[:, math.floor(start / dt) : math.ceil(end / dt)]
-
-    index_pointers = np.arange(0, (values.shape[0] + 1) * values.shape[1], values.shape[1])
+    values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
     string_dtype = h5py.special_dtype(vlen=str)
     with h5py.File(output_path, "w") as h5f:
         g = h5f.create_group(f"/report/{name}")
-        g.create_dataset("data", data=values / unit, dtype=np.float32).attrs.create(
+        g.create_dataset("data", data=values.T / unit, dtype=np.float32).attrs.create(
             "units", data=str(unit), dtype=string_dtype
         )
         mapping = h5f.create_group(f"/report/{name}/mapping")
         mapping.create_dataset("node_ids", data=node_ids, dtype=np.uint64)
-        mapping.create_dataset("index_pointers", data=index_pointers, dtype=np.uint64)
-        mapping.create_dataset("element_ids", data=np.zeros(20), dtype=np.uint32)
         mapping.create_dataset(
-            "time", data=(start, end, dt / brian2.units.ms), dtype=np.double
-        ).attrs.create("units", data="ms", dtype=string_dtype)
+            "index_pointers", data=np.arange(values.shape[0] + 1), dtype=np.uint64
+        )
+        mapping.create_dataset("element_ids", data=np.zeros(values.shape[0]), dtype=np.uint32)
+        mapping.create_dataset("time", data=(start, end, dt), dtype=np.double).attrs.create(
+            "units", data="ms", dtype=string_dtype
+        )
 
 
 def _write_reports(
@@ -647,7 +649,7 @@ def _write_reports(
     state_monitor: brian2.StateMonitor | None,
 ) -> None:
     """Ibid."""
-    output_dir = Path(simulation.to_libsonata.base_path) / Path(simulation.output.output_dir)
+    output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
     spikes = [
@@ -656,9 +658,9 @@ def _write_reports(
 
     node_ids, timestamps = zip(*spikes, strict=True) if spikes else ((), ())
     L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
-    (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
+    Path(simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     _write_spikes(
-        filepath=output_dir / simulation.output.spikes_file,
+        filepath=simulation.output.spikes_file,
         population_name=_get_single_node_population(simulation.circuit),
         timestamps=timestamps,
         node_ids=node_ids,
@@ -686,14 +688,16 @@ def _write_reports(
 
         ids = np.sort(selection.flatten())
 
+        Path(config.file_name).parent.mkdir(exist_ok=True, parents=True)
+
         _write_soma_report(
             config.file_name,
             population_name,
             ids,
-            state_monitor.v,
+            state_monitor.v[ids, :],
             unit=brian2.units.mV,
             start=config.start_time,
-            end=config.end_time,
+            end=min(config.end_time, simulation.run.tstop),
             dt=simulation.run.dt,
         )
 

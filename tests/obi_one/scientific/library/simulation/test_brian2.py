@@ -39,7 +39,9 @@ def test_get_close_spikes(ids, times, expected):
     )
 
 
-def _run_simulation(tmp_path, config, *, plot=False) -> test_module.Brian2Network:
+def _run_simulation(
+    tmp_path, config, *, plot_voltage=False
+) -> tuple[bluepysnap.Simulation, test_module.Brian2Network]:
     path = tmp_path / "simulation_config.json"
     with path.open("w") as fd:
         json.dump(config, fd)
@@ -50,7 +52,7 @@ def _run_simulation(tmp_path, config, *, plot=False) -> test_module.Brian2Networ
 
     net = test_module._build_brian2_network(simulation)
 
-    if plot:
+    if plot_voltage:
         statemon = brian2.StateMonitor(net.neurons[0], "v", record=True)
         net.inputs.append(statemon)
 
@@ -65,7 +67,7 @@ def _run_simulation(tmp_path, config, *, plot=False) -> test_module.Brian2Networ
 
     test_module._write_reports(simulation, net.spike_monitor, net.state_monitor)
 
-    if plot:
+    if plot_voltage:
         import matplotlib.pyplot as plt  # noqa: PLC0415
 
         plt.figure(figsize=(9, 4))
@@ -77,7 +79,7 @@ def _run_simulation(tmp_path, config, *, plot=False) -> test_module.Brian2Networ
         plt.ylabel("v (mV)")
         plt.savefig("test.png")
 
-    return net
+    return simulation, net
 
 
 def test_no_stim_or_report(tmp_path):
@@ -86,7 +88,7 @@ def test_no_stim_or_report(tmp_path):
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
     }
-    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -116,7 +118,7 @@ def test_spike_replay(tmp_path):
         },
     }
 
-    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
     npt.assert_allclose(spikes[1], np.array([0.9]) * brian2.units.msecond)
@@ -124,7 +126,7 @@ def test_spike_replay(tmp_path):
 
     # limit duration, should have no spikes
     config["inputs"]["replay"]["duration"] = 0.1
-    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -132,14 +134,14 @@ def test_spike_replay(tmp_path):
     # delay spike start until there wouldn't be enough to fire
     config["inputs"]["replay"]["duration"] = 400
     config["inputs"]["replay"]["delay"] = 1.9
-    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
 
     # run sim for longer, should spike now
     config["run"]["tstop"] = 4
-    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
     # 1.9 since delayed by 1.9, 0.3 since the voltage has decayed in the meantime,
@@ -165,7 +167,7 @@ def test_poisson(tmp_path):
             }
         },
     }
-    net = _run_simulation(tmp_path, config)
+    _, net = _run_simulation(tmp_path, config)
     assert len(net.inputs) == 1
     assert isinstance(net.inputs[0], brian2.PoissonInput)
 
@@ -187,7 +189,7 @@ def test_current_stim(tmp_path):
         },
     }
 
-    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 1
     assert 0 == len(spikes[1]) == len(spikes[2])
@@ -212,7 +214,7 @@ def test_current_stim_groupby(tmp_path):
         },
     }
 
-    spikes0 = dict(_run_simulation(tmp_path, config).spike_monitor.spike_trains().items())
+    spikes0 = dict(_run_simulation(tmp_path, config)[1].spike_monitor.spike_trains().items())
 
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
@@ -237,7 +239,7 @@ def test_current_stim_groupby(tmp_path):
             },
         },
     }
-    spikes1 = dict(_run_simulation(tmp_path, config).spike_monitor.spike_trains().items())
+    spikes1 = dict(_run_simulation(tmp_path, config)[1].spike_monitor.spike_trains().items())
 
     assert len(spikes0[0]) == 1 == len(spikes1[0])
     npt.assert_equal(spikes0[0], spikes1[0])
@@ -343,33 +345,52 @@ def test_sinusoidal_current_stim(delay, frequency, duration, expected):
     npt.assert_almost_equal(res, expected)
 
 
-#def test_current_stim_report(tmp_path):
-#    config = {
-#        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
-#        "target_simulator": "Brian2",
-#        "network": str(DATA / "circuit_config.json"),
-#        "inputs": {
-#            "linear": {
-#                "input_type": "current_clamp",
-#                "module": "linear",
-#                "amp_start": 3000,
-#                "delay": 0.1,
-#                "duration": 4,
-#                "node_set": "0",
-#            }
-#        },
-#        "reports": {
-#            "soma": {
-#                "sections": "soma",
-#                "type": "compartment",
-#                "variable_name": "v",
-#                "unit": "mV",
-#                "dt": 0.1,
-#                "start_time": 0,
-#                "end_time": 500,
-#            },
-#        },
-#    }
-#    net = _run_simulation(tmp_path, config)
-#    breakpoint() # XXX BREAKPOINT
-#    pass
+def test_current_stim_report(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 3000,
+                "delay": 0.1,
+                "duration": 4,
+                "node_set": "0",
+            }
+        },
+        "reports": {
+            "soma0": {
+                "sections": "soma",
+                "type": "compartment",
+                "variable_name": "v",
+                "unit": "mV",
+                "dt": 0.1,
+                "start_time": 0,
+                "end_time": 5,
+            },
+            "soma1": {
+                "sections": "soma",
+                "type": "compartment",
+                "variable_name": "v",
+                "unit": "mV",
+                "dt": 0.1,
+                "start_time": 0,
+                "end_time": 5,
+                "cells": "0",
+            },
+        },
+    }
+    simulation, _ = _run_simulation(tmp_path, config)
+    soma0 = simulation.reports["soma0"].filter().report.copy()
+    assert soma0.shape == (20, 3)
+    assert (soma0.iloc[0] == [500, 500, 500]).all()  # all cells start at 500mv
+    assert np.all(soma0.iloc[1] == soma0.iloc[1].iloc[0])  # no stimulus yet, all remain the same
+    assert soma0.iloc[2].iloc[0] != soma0.iloc[2].iloc[1]  # 0 is being stimulated
+    assert soma0.iloc[2].iloc[1] == soma0.iloc[2].iloc[2]
+
+    # record a nodeset of a single cell
+    soma1 = simulation.reports["soma1"].filter().report.copy()
+    assert soma1.shape == (20, 1)
+    npt.assert_allclose(soma1["drosophila", 0], soma0["drosophila", 0])
