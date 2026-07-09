@@ -15,6 +15,12 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    NEURONSimulationNeuronSetUnion,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
@@ -24,10 +30,7 @@ from obi_one.scientific.unions.unions_manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     BiophysicalNeuronSetReference,
-    NEURONSimulationNeuronSetUnion,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
@@ -61,8 +64,12 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             BiophysicalNeuronSetReference.__name__: (
                 NeuronSimulationScanConfig.default_node_set_name
             ),
-            VirtualNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
-            PointNeuronSetReference.__name__: NeuronSimulationScanConfig.default_node_set_name,
+            VirtualNeuronSetReference.__name__: (
+                NeuronSimulationScanConfig.default_virtual_node_set_name,
+            ),
+            PointNeuronSetReference.__name__: (
+                NeuronSimulationScanConfig.default_point_node_set_name,
+            ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
         },
@@ -141,11 +148,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [
-                BiophysicalNeuronSetReference.__name__,
-                VirtualNeuronSetReference.__name__,
-                PointNeuronSetReference.__name__,
-            ],
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,

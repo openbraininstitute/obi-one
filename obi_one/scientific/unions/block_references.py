@@ -1,4 +1,10 @@
 from obi_one.core.registry import block_ref_registry
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    CombinedBiophysicalNeuronSetReference,
+    CombinedNonVirtualNeuronSetReference,
+    CombinedPointNeuronSetReference,
+    CombinedVirtualNeuronSetReference,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
@@ -17,6 +23,10 @@ from obi_one.scientific.unions.unions_synaptic_models import SynapticModelRefere
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference
 
 AllBlockReferenceTypes = [
+    CombinedBiophysicalNeuronSetReference,
+    CombinedNonVirtualNeuronSetReference,
+    CombinedPointNeuronSetReference,
+    CombinedVirtualNeuronSetReference,
     BiophysicalNeuronSetReference,
     VirtualNeuronSetReference,
     PointNeuronSetReference,
