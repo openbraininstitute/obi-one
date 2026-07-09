@@ -7,19 +7,23 @@ from uuid import uuid4
 
 import pytest
 from entitysdk.models import EMCellMesh
+from entitysdk.types import ContentType
 from fastapi import HTTPException
 
 from app.dependencies.compute_cell import get_compute_cell
 from app.dependencies.entitysdk import get_client
 from app.endpoints.mesh_registration import (
     _delete_existing_assets,
+    _resolve_source_mesh_asset,
     _trigger_mesh_lod_generation_task,
 )
 
 ENTITY_ID = str(uuid4())
 TARGET_MODULE = "app.endpoints.mesh_registration"
 ROUTE = f"/declared/{ENTITY_ID}/register-mesh"
+LOD_ROUTE = f"/declared/{ENTITY_ID}/generate-lod"
 FAKE_GLB_ASSET_ID = uuid4()
+FAKE_OBJ_ASSET_ID = uuid4()
 FAKE_JOB_ID = uuid4()
 FAKE_COMPUTE_CELL = "cell_a"
 
@@ -37,6 +41,13 @@ def mock_db_client():
 def valid_obj_file():
     content = BytesIO(b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3")
     return {"file": ("mesh.obj", content, "application/octet-stream")}
+
+
+def _make_asset(asset_id, content_type):
+    asset = MagicMock()
+    asset.id = asset_id
+    asset.content_type = content_type
+    return asset
 
 
 def test_register_mesh_success(client, mock_db_client, valid_obj_file):
@@ -176,3 +187,113 @@ def test_trigger_mesh_lod_generation_task_failure():
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert "boom" in exc_info.value.detail
+
+
+def test_resolve_source_mesh_asset_prefers_obj():
+    mock_client = MagicMock()
+    mock_client.get_entity.return_value = MagicMock()
+    mock_client.select_assets.return_value = [
+        _make_asset(FAKE_GLB_ASSET_ID, ContentType.model_gltf_binary),
+        _make_asset(FAKE_OBJ_ASSET_ID, ContentType.application_obj),
+    ]
+
+    asset_id, mesh_format = _resolve_source_mesh_asset(mock_client, uuid4())
+
+    assert asset_id == FAKE_OBJ_ASSET_ID
+    assert mesh_format == "obj"
+
+
+def test_resolve_source_mesh_asset_falls_back_to_glb():
+    mock_client = MagicMock()
+    mock_client.get_entity.return_value = MagicMock()
+    mock_client.select_assets.return_value = [
+        _make_asset(FAKE_GLB_ASSET_ID, ContentType.model_gltf_binary),
+    ]
+
+    asset_id, mesh_format = _resolve_source_mesh_asset(mock_client, uuid4())
+
+    assert asset_id == FAKE_GLB_ASSET_ID
+    assert mesh_format == "glb"
+
+
+def test_resolve_source_mesh_asset_no_mesh_assets():
+    mock_client = MagicMock()
+    mock_client.get_entity.return_value = MagicMock()
+    mock_client.select_assets.return_value = []
+
+    with pytest.raises(HTTPException) as exc_info:
+        _resolve_source_mesh_asset(mock_client, uuid4())
+
+    assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_generate_lod_from_entity_success(client, mock_db_client):
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+    client.app.dependency_overrides[get_compute_cell] = lambda: FAKE_COMPUTE_CELL
+
+    with (
+        patch(f"{TARGET_MODULE}._ensure_project_context"),
+        patch(
+            f"{TARGET_MODULE}.run_in_threadpool",
+            side_effect=[(FAKE_OBJ_ASSET_ID, "obj"), FAKE_JOB_ID],
+        ),
+    ):
+        response = client.post(LOD_ROUTE)
+
+    client.app.dependency_overrides.pop(get_client, None)
+    client.app.dependency_overrides.pop(get_compute_cell, None)
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    assert body["status"] == "pending"
+    assert body["source_asset_id"] == str(FAKE_OBJ_ASSET_ID)
+    assert body["source_mesh_format"] == "obj"
+    assert body["task_job_id"] == str(FAKE_JOB_ID)
+
+
+def test_generate_lod_from_entity_missing_project_context(client, mock_db_client):
+    mock_db_client.project_context = None
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+    client.app.dependency_overrides[get_compute_cell] = lambda: FAKE_COMPUTE_CELL
+
+    response = client.post(LOD_ROUTE)
+
+    client.app.dependency_overrides.pop(get_client, None)
+    client.app.dependency_overrides.pop(get_compute_cell, None)
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+
+
+def test_generate_lod_from_entity_no_source_asset_propagates_404(client, mock_db_client):
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+    client.app.dependency_overrides[get_compute_cell] = lambda: FAKE_COMPUTE_CELL
+
+    not_found = HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="no mesh asset")
+
+    with (
+        patch(f"{TARGET_MODULE}._ensure_project_context"),
+        patch(f"{TARGET_MODULE}.run_in_threadpool", side_effect=not_found),
+    ):
+        response = client.post(LOD_ROUTE)
+
+    client.app.dependency_overrides.pop(get_client, None)
+    client.app.dependency_overrides.pop(get_compute_cell, None)
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_generate_lod_from_entity_unexpected_failure(client, mock_db_client):
+    client.app.dependency_overrides[get_client] = lambda: mock_db_client
+    client.app.dependency_overrides[get_compute_cell] = lambda: FAKE_COMPUTE_CELL
+
+    with (
+        patch(f"{TARGET_MODULE}._ensure_project_context"),
+        patch(f"{TARGET_MODULE}.run_in_threadpool", side_effect=RuntimeError("boom")),
+    ):
+        response = client.post(LOD_ROUTE)
+
+    client.app.dependency_overrides.pop(get_client, None)
+    client.app.dependency_overrides.pop(get_compute_cell, None)
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert "boom" in response.json()["detail"]
