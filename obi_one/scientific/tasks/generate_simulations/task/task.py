@@ -33,6 +33,7 @@ from obi_one.scientific.unions.unions_combined_neuron_sets import (
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
     BaseNeuronSetReference,
+    NeuronSetReference,
 )
 from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
 from obi_one.utils.sonata import write_simulation_config
@@ -186,13 +187,18 @@ class GenerateSimulationTask(Task):
         """
 
         def is_optional_neuronsetreference(attr_value: type) -> bool:
-            args_len = 2
+            none_type = type(None)
             args = get_args(attr_value)
+            none_args = [arg for arg in args if arg is none_type]
+            reference_args = [arg for arg in args if arg is not none_type]
             return (
-                len(args) == args_len
-                and isinstance(args[0], type)
-                and issubclass(args[0], BaseNeuronSetReference)
-                and args[1] is type(None)
+                len(none_args) == 1
+                and len(reference_args) >= 1
+                and all(
+                    isinstance(arg, type)
+                    and issubclass(arg, (BaseNeuronSetReference, NeuronSetReference))
+                    for arg in reference_args
+                )
             )
 
         if hasattr(self.config, "neuron_sets"):
