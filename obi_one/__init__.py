@@ -32,6 +32,7 @@ __all__ = [
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
+    "BiophysicalCombinedNeuronSet",
     "BiophysicalNeuronSetReference",
     "BiophysicalPopulationIDNeuronSet",
     "BiophysicalPopulationNeuronSet",
@@ -57,6 +58,7 @@ __all__ = [
     "ClusteredPathDistanceMorphologyLocations",
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
+    "CombinedNeuronSet",
     "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
@@ -152,6 +154,7 @@ __all__ = [
     "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NonVirtualCombinedNeuronSet",
     "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
@@ -163,6 +166,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PointCombinedNeuronSet",
     "PointNeuronSetReference",
     "PointPopulationIDNeuronSet",
     "PointPopulationNeuronSet",
@@ -220,6 +224,7 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "VirtualCombinedNeuronSet",
     "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
@@ -301,6 +306,13 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+    CombinedNeuronSet,
+    NonVirtualCombinedNeuronSet,
+    PointCombinedNeuronSet,
+    VirtualCombinedNeuronSet,
+)
 from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,

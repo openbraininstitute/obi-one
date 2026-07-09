@@ -73,7 +73,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
 
     @property
-    def default_neuron_set_reference(self) -> BiophysicalNeuronSetReference:
+    def default_neuron_set_reference(
+        self,
+    ) -> BiophysicalNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
