@@ -2,6 +2,7 @@ import math
 from abc import ABC
 from typing import Annotated, ClassVar, Self
 
+import numpy as np
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
@@ -13,15 +14,17 @@ from obi_one.core.units import Units
 _DIRECTION_PARALLEL_TOLERANCE = 0.999
 
 
-def _cross(
-    a: tuple[float, float, float], b: tuple[float, float, float]
-) -> tuple[float, float, float]:
-    """Return the cross product ``a x b`` of two 3-vectors."""
-    return (
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    )
+def _unit(vector: tuple[float, float, float] | np.ndarray) -> list[float]:
+    """Return the unit vector along ``vector``.
+
+    Raises:
+        ValueError: if ``vector`` has zero length (no direction to normalise).
+    """
+    norm = np.linalg.norm(vector)
+    if norm <= 0.0:
+        msg = "Cannot normalise a zero-length vector."
+        raise ValueError(msg)
+    return (np.asarray(vector, dtype=float) / norm).tolist()
 
 
 class ExtracellularLocations(Block):
@@ -137,15 +140,9 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         direction_y = float(self.direction_y)  # ty:ignore[invalid-argument-type]
         direction_z = float(self.direction_z)  # ty:ignore[invalid-argument-type]
 
-        direction_norm = (direction_x**2 + direction_y**2 + direction_z**2) ** 0.5
-        if direction_norm <= 0.0:  # a norm is non-negative, so this catches the zero vector
-            msg = "Direction vector must be non-zero."
-            raise ValueError(msg)
-        forward = (
-            direction_x / direction_norm,
-            direction_y / direction_norm,
-            direction_z / direction_norm,
-        )
+        # Local +Y maps onto the (normalised) direction (a zero direction is rejected at
+        # construction; _unit guards it defensively here too).
+        forward = _unit((direction_x, direction_y, direction_z))
 
         # Build an orthonormal basis (right, forward, out) mapping the local (X, +Y, Z) axes into
         # world space. Pick a reference axis that is not (anti-)parallel to `forward`.
@@ -153,10 +150,8 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         if abs(forward[2]) > _DIRECTION_PARALLEL_TOLERANCE:
             reference = (1.0, 0.0, 0.0)
 
-        right = _cross(forward, reference)
-        right_norm = (right[0] ** 2 + right[1] ** 2 + right[2] ** 2) ** 0.5
-        right = (right[0] / right_norm, right[1] / right_norm, right[2] / right_norm)
-        out = _cross(right, forward)
+        right = _unit(np.cross(forward, reference))
+        out = np.cross(right, forward).tolist()
 
         world_locations = []
         for local_x, local_y, local_z in self.get_local_electrode_xyz_locations():
