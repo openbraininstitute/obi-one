@@ -12,6 +12,7 @@ import bluepysnap
 import brian2
 import brian2.devices
 import brian2.units
+import libsonata
 import numpy as np
 import numpy.testing as npt
 import pytest
@@ -38,7 +39,7 @@ def test_get_close_spikes(ids, times, expected):
     )
 
 
-def _run_simulation(tmp_path, config, *, plot=False):
+def _run_simulation(tmp_path, config, *, plot=False) -> test_module.Brian2Network:
     path = tmp_path / "simulation_config.json"
     with path.open("w") as fd:
         json.dump(config, fd)
@@ -68,7 +69,7 @@ def _run_simulation(tmp_path, config, *, plot=False):
         plt.ylabel("v (mV)")
         plt.savefig("test.png")
 
-    return net.spike_monitor
+    return net
 
 
 def test_no_stim_or_report(tmp_path):
@@ -77,7 +78,7 @@ def test_no_stim_or_report(tmp_path):
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
     }
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -107,7 +108,7 @@ def test_spike_replay(tmp_path):
         },
     }
 
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
     npt.assert_allclose(spikes[1], np.array([0.9]) * brian2.units.msecond)
@@ -115,7 +116,7 @@ def test_spike_replay(tmp_path):
 
     # limit duration, should have no spikes
     config["inputs"]["replay"]["duration"] = 0.1
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -123,17 +124,212 @@ def test_spike_replay(tmp_path):
     # delay spike start until there wouldn't be enough to fire
     config["inputs"]["replay"]["duration"] = 400
     config["inputs"]["replay"]["delay"] = 1.9
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
 
     # run sim for longer, should spike now
     config["run"]["tstop"] = 4
-    spike_monitor = _run_simulation(tmp_path, config)
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
     # 1.9 since delayed by 1.9, 0.3 since the voltage has decayed in the meantime,
     # so it needs another 3 dts
     npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
     assert spikes[1] == spikes[2]
+
+
+def test_poisson(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "poisson": {
+                "input_type": "spikes",
+                "module": "poisson",
+                "node_set": "0",
+                "delay": 0,
+                "duration": 1000,
+                "rate": 150,
+                "weight": 68.75,
+            }
+        },
+    }
+    net = _run_simulation(tmp_path, config)
+    assert len(net.inputs) == 1
+    assert isinstance(net.inputs[0], brian2.PoissonInput)
+
+
+def test_current_stim(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 3000,
+                "delay": 0.1,
+                "duration": 4,
+                "node_set": "0",
+            }
+        },
+    }
+
+    spike_monitor = _run_simulation(tmp_path, config).spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 1
+    assert 0 == len(spikes[1]) == len(spikes[2])
+
+
+def test_current_stim_groupby(tmp_path):
+    # current stims with the same target node_set will have their currents summed
+    # this assumes the dt is constant, but this is true since they are compared to the simulation dt
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 3000,
+                "node_set": "0",
+                "delay": 0,
+                "duration": 4,
+            }
+        },
+    }
+
+    spikes0 = dict(_run_simulation(tmp_path, config).spike_monitor.spike_trains().items())
+
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear0": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 1500,
+                "node_set": "0",
+                "delay": 0,
+                "duration": 4,
+            },
+            "linear1": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 1500,
+                "node_set": "0",
+                "delay": 0,
+                "duration": 4,
+            },
+        },
+    }
+    spikes1 = dict(_run_simulation(tmp_path, config).spike_monitor.spike_trains().items())
+
+    assert len(spikes0[0]) == 1 == len(spikes1[0])
+    npt.assert_equal(spikes0[0], spikes1[0])
+    assert 0 == len(spikes0[1]) == len(spikes0[2])
+    assert 0 == len(spikes1[1]) == len(spikes1[2])
+
+
+def test_linear_current_stim():
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 0,
+                "amp_end": 4,
+                "delay": 0,
+                "duration": 4,
+                "node_set": "0",
+            }
+        },
+    }
+
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module.Linear(sc.input("linear"))
+    res = t._get_currents(dt=1, simulation_length=5)
+    npt.assert_array_equal(res, [0.0, 1.0, 2.0, 3.0, 4.0, 0.0])
+
+    config["inputs"]["linear"]["delay"] = 1
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module._create_input(sc.input("linear"))
+    res = t._get_currents(dt=1, simulation_length=5)
+    npt.assert_array_equal(res, [0.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+
+
+@pytest.mark.parametrize(
+    ("delay", "width", "frequency", "duration", "expected"),
+    [
+        (0, 0.2, 2, 2, [1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1]),
+        (0.1, 0.2, 2, 2, [0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0]),
+        (0.4, 0.2, 2, 2, [0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1]),
+        (0.3, 0.2, 0.5, 2, [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]),
+        (0, 0.1, 2, 2, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
+        (0, 0.1, 2, 0.5, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    ],
+)
+def test_pulse_current_stim(delay, width, frequency, duration, expected):
+    config = {
+        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "pulse": {
+                "input_type": "current_clamp",
+                "module": "pulse",
+                "frequency": frequency,
+                "amp_start": 1,
+                "width": width,
+                "delay": delay,
+                "duration": duration,
+                "node_set": "sugar",
+            },
+        },
+    }
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module._create_input(sc.input("pulse"))
+    res = t._get_currents(dt=config["run"]["dt"], simulation_length=config["run"]["tstop"])
+    npt.assert_array_equal(res, expected)
+
+
+@pytest.mark.parametrize(
+    ("delay", "frequency", "duration", "expected"),
+    [
+        (0, 1, 2, [0, 1, 0, -1, 0, 1, 0, -1, 0]),
+        (0.25, 1, 2, [0, 0, 1, 0, -1, 0, 1, 0, -1]),
+        (0, 1, 1, [0, 1, 0, -1, 0, 0, 0, 0, 0]),
+        (0.25, 1, 0.5, [0, 0, 1, 0, 0, 0, 0, 0, 0]),
+    ],
+)
+def test_sinusoidal_current_stim(delay, frequency, duration, expected):
+    config = {
+        "run": {"tstop": 2, "dt": 0.25, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "sinusoidal": {
+                "input_type": "current_clamp",
+                "module": "sinusoidal",
+                "frequency": frequency,
+                "amp_start": 1,
+                "dt": 0.25,
+                "delay": delay,
+                "duration": duration,
+                "node_set": "Mosaic",
+            },
+        },
+    }
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    t = test_module._create_input(sc.input("sinusoidal"))
+    res = t._get_currents(dt=config["run"]["dt"], simulation_length=config["run"]["tstop"])
+    npt.assert_almost_equal(res, expected)

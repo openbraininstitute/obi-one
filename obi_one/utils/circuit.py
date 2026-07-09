@@ -536,6 +536,9 @@ def run_connectivity_matrix_extraction(
     )
     if edge_population is None:
         edge_population = circuit.default_edge_population_name
+    if edge_population is None:
+        msg = "No edge population specified and circuit has no default edge population."
+        raise OBIONEError(msg)
 
     # Only request node properties that exist in the circuit's point or biophysical
     # node populations (excluding virtual ones), since not all circuits (e.g.
