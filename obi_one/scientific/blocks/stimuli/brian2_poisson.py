@@ -27,7 +27,7 @@ from obi_one.scientific.library.constants import (
     MAX_SIMULATION_LENGTH_MILLISECONDS,
     MIN_NON_NEGATIVE_FLOAT_VALUE,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_neuron_set,

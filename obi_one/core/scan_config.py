@@ -207,34 +207,41 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     def fill_block_reference_for_block(self, block: Block) -> None:
         """Fill the block reference with the actual Block object it references."""
         for block_attr_value in block.__dict__.values():
-            # If the Block instance has a `BlockReference` attribute,
-            # set it to the object it references
-            if isinstance(block_attr_value, BlockReference):
-                block_reference = block_attr_value
+            self._resolve_references_in(block_attr_value)
 
-                if block_reference.block_dict_name and block_reference.block_name:
-                    try:
-                        block_reference.block = self.__dict__[block_reference.block_dict_name][
-                            block_reference.block_name
-                        ]
-                    except KeyError:
-                        msg = (
-                            f"Block '{block_reference.block_name}' not found in "
-                            f"'{block_reference.block_dict_name}'. `block_dict_name` must "
-                            f"correspond to the name of the root level dictionary which contains "
-                            f"the block you are referencing, or should be an empty string to "
-                            f"reference a root level block."
-                        )
-                        raise KeyError(msg) from None
+    def _resolve_references_in(self, value: object) -> None:
+        """Recursively resolve BlockReference instances in a value."""
+        if isinstance(value, BlockReference):
+            self._resolve_block_reference(value)
+        elif isinstance(value, (tuple, list)):
+            for item in value:
+                self._resolve_references_in(item)
 
-                elif not block_reference.block_dict_name and block_reference.block_name:
-                    # If the block_dict_name is empty, we assume the block_name
-                    # is a direct reference to a Block instance
-                    if block_reference.block_name == "neuron_set_extra":
-                        block_reference.block = self.__dict__[block_reference.block_name]
-                else:
-                    msg = "BlockReference must have a non-empty block_dict_name and block_name."
-                    raise ValueError(msg)
+    def _resolve_block_reference(self, block_reference: BlockReference) -> None:
+        """Resolve a single block reference to its actual Block object."""
+        if block_reference.block_dict_name and block_reference.block_name:
+            try:
+                block_reference.block = self.__dict__[block_reference.block_dict_name][
+                    block_reference.block_name
+                ]
+            except KeyError:
+                msg = (
+                    f"Block '{block_reference.block_name}' not found in "
+                    f"'{block_reference.block_dict_name}'. `block_dict_name` must "
+                    f"correspond to the name of the root level dictionary which contains "
+                    f"the block you are referencing, or should be an empty string to "
+                    f"reference a root level block."
+                )
+                raise KeyError(msg) from None
+
+        elif not block_reference.block_dict_name and block_reference.block_name:
+            # If the block_dict_name is empty, we assume the block_name
+            # is a direct reference to a Block instance
+            if block_reference.block_name == "neuron_set_extra":
+                block_reference.block = self.__dict__[block_reference.block_name]
+        else:
+            msg = "BlockReference must have a non-empty block_dict_name and block_name."
+            raise ValueError(msg)
 
     @model_validator(mode="after")
     def fill_block_references_and_names(self) -> "ScanConfig":
