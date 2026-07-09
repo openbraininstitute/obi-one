@@ -193,7 +193,7 @@ async def generate_lod_from_entity(
     ls_client: LaunchSystemClientDep,
     compute_cell: ComputeCellDep,
 ) -> LodGenerationResponse:
-    """Generate and register the LOD mesh directory for an already-registered EMCellMesh.
+    """Generate and register the LOD mesh directory for already-registered EMCellMesh.
 
     Prefers the entity's obj asset if one exists; falls back to its glb asset otherwise.
     """
@@ -231,4 +231,3 @@ async def generate_lod_from_entity(
     except Exception as exc:
         L.error(f"LOD generation from entity failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    
