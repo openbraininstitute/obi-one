@@ -27,6 +27,14 @@ class MeshRegistrationResponse(BaseModel):
     status: str
 
 
+class LodGenerationResponse(BaseModel):
+    entity_id: str
+    source_asset_id: str
+    source_mesh_format: str
+    task_job_id: str
+    status: str
+
+
 def _ensure_project_context(client: entitysdk.client.Client) -> None:
     """Helper to validate project context existence, satisfying TRY301."""
     if client.project_context is None:
@@ -43,6 +51,35 @@ def _delete_existing_assets(
     for asset in client.select_assets(entity=entity, selection={"label": label}):
         L.info(f"Deleting existing asset {asset.id} (label={label}) on entity {entity_id}")
         client.delete_asset(entity_id=entity_id, entity_type=EMCellMesh, asset_id=asset.id)
+
+
+def _resolve_source_mesh_asset(
+    client: entitysdk.client.Client,
+    entity_id: UUID,
+) -> tuple[UUID, str]:
+    """Pick the source mesh asset to generate LODs from.
+
+    Prefers an existing obj asset; falls back to glb if no obj is present.
+    """
+    entity = client.get_entity(entity_id=entity_id, entity_type=EMCellMesh)
+    mesh_assets = list(
+        client.select_assets(entity=entity, selection={"label": AssetLabel("cell_surface_mesh")})
+    )
+
+    obj_asset = next(
+        (a for a in mesh_assets if a.content_type == ContentType.application_obj), None
+    )
+    if obj_asset is not None:
+        return cast("UUID", obj_asset.id), "obj"
+
+    glb_asset = next(
+        (a for a in mesh_assets if a.content_type == ContentType.model_gltf_binary), None
+    )
+    if glb_asset is not None:
+        return cast("UUID", glb_asset.id), "glb"
+
+    msg = f"Entity {entity_id} has no obj or glb cell_surface_mesh asset"
+    raise HTTPException(status_code=404, detail=msg)
 
 
 def _trigger_mesh_lod_generation_task(
@@ -147,3 +184,51 @@ async def register_mesh(
     except Exception as exc:
         L.error(f"Registration failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/{entity_id}/generate-lod")
+async def generate_lod_from_entity(
+    entity_id: UUID,
+    client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    ls_client: LaunchSystemClientDep,
+    compute_cell: ComputeCellDep,
+) -> LodGenerationResponse:
+    """Generate and register the LOD mesh directory for an already-registered EMCellMesh.
+
+    Prefers the entity's obj asset if one exists; falls back to its glb asset otherwise.
+    """
+    _ensure_project_context(client)
+    project_context = client.project_context
+    if project_context is None:
+        raise HTTPException(status_code=500, detail="Project context missing")
+
+    try:
+        mesh_asset_id, mesh_format = await run_in_threadpool(
+            _resolve_source_mesh_asset, client, entity_id
+        )
+
+        job_id = await run_in_threadpool(
+            _trigger_mesh_lod_generation_task,
+            ls_client=ls_client,
+            entity_id=entity_id,
+            mesh_asset_id=mesh_asset_id,
+            mesh_format=mesh_format,
+            project_id=project_context.project_id,  # ty:ignore[invalid-argument-type]
+            virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
+            compute_cell=compute_cell,
+        )
+
+        return LodGenerationResponse(
+            entity_id=str(entity_id),
+            source_asset_id=str(mesh_asset_id),
+            source_mesh_format=mesh_format,
+            task_job_id=str(job_id),
+            status="pending",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        L.error(f"LOD generation from entity failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    
