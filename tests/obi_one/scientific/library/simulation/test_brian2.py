@@ -47,6 +47,8 @@ def _run_simulation(
     with path.open("w") as fd:
         json.dump(config, fd)
 
+    return bluepysnap.Simulation(path), test_module.run_sonata_brian2_trial(path)
+
     simulation = bluepysnap.Simulation(path)
     brian2.start_scope()
     brian2.devices.reinit_and_delete()
@@ -75,7 +77,7 @@ def _run_simulation(
         plt.plot(statemon.t / brian2.units.ms, statemon.v[0] / brian2.units.mV, c="r")
         plt.plot(statemon.t / brian2.units.ms, statemon.v[1] / brian2.units.mV, c="g")
         plt.plot(statemon.t / brian2.units.ms, statemon.v[2] / brian2.units.mV, c="b")
-        # plot(spikemon.t/ms, spikemon.v/mV, 'ob')
+        #plt.plot(net.spike_monitor.t / brian2.units.ms, net.spike_monitor.v / brian2.units.mV, "ob")
         plt.xlabel("Time (ms)")
         plt.ylabel("v (mV)")
         plt.savefig("test.png")
@@ -433,3 +435,36 @@ def test_current_stim_report_failure(tmp_path):
     c = copy.deepcopy(config)
     c["reports"]["soma0"]["enabled"] = False
     _run_simulation(tmp_path, c)
+
+
+def test_connection_override(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.25, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            # will cause spikes in `0`, which will make 1 & 2 spike, normally...
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 12000,
+                "delay": 0,
+                "duration": 4,
+                "node_set": "0",
+                },
+            },
+        "connection_overrides": [
+            # ...but disconnect 0 from other neurons
+            {
+                "name": "Disconnect0",
+                "source": "0",
+                "target": "All",
+                "delay": 0.0,
+                "weight": 0.0
+                }
+            ],
+        }
+    spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert not spikes[1].any()
+    assert not spikes[2].any()
