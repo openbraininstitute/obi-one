@@ -45,12 +45,9 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
                 dest_dir=Path(temp_dir) / "sonata_circuit",
                 entity_cache=False,
             )
-            neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=staged_circuit)[
-                staged_circuit.default_population_name
-            ]
-            return max(1, len(neuron_ids))
+            neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=staged_circuit)
+    else:
+        neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=parent_circuit)
 
-    neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=parent_circuit)[  # ty:ignore[invalid-argument-type]
-        parent_circuit.default_population_name  # ty:ignore[unresolved-attribute]
-    ]
-    return max(1, len(neuron_ids))
+    neuron_count = sum(len(v) for v in neuron_ids.values())
+    return neuron_count
