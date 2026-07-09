@@ -643,7 +643,7 @@ class ConnectionOverride:
         edges = circuit.edges[next(iter(circuit.edges.population_names))]
         edge_pop = edges.to_libsonata
         selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
-        net.synapses[0][selection.flatten()].w = self.config.weight
+        net.synapses[0].w[selection.flatten()] = self.config.weight * brian2.units.mV
 
 
 def gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Event]:
