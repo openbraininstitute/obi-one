@@ -3,22 +3,20 @@ from typing import Annotated, ClassVar
 
 import numpy as np
 from pydantic import Field
+from scipy.spatial.transform import Rotation
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 
 
-def _rotation_matrix(x_deg: float, y_deg: float, z_deg: float) -> np.ndarray:
-    """Return the rotation matrix ``Rz(z) @ Rx(x) @ Ry(y)`` (degrees).
+def _rotation(x_deg: float, y_deg: float, z_deg: float) -> Rotation:
+    """Return the rotation ``Rz(z) · Rx(x) · Ry(y)`` for angles in degrees.
 
-    ``Ry`` (roll about the local ``+Y`` axis) is applied first, then ``Rx`` and ``Rz`` aim ``+Y``.
+    ``Ry`` (roll about the local ``+Y`` axis) is applied first, then ``Rx`` and ``Rz`` aim ``+Y``;
+    equivalently, the intrinsic ``ZXY`` Euler sequence with angles ``[z, x, y]``.
     """
-    x, y, z = np.radians([x_deg, y_deg, z_deg])
-    rx = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(x), -np.sin(x)], [0.0, np.sin(x), np.cos(x)]])
-    ry = np.array([[np.cos(y), 0.0, np.sin(y)], [0.0, 1.0, 0.0], [-np.sin(y), 0.0, np.cos(y)]])
-    rz = np.array([[np.cos(z), -np.sin(z), 0.0], [np.sin(z), np.cos(z), 0.0], [0.0, 0.0, 1.0]])
-    return rz @ rx @ ry
+    return Rotation.from_euler("ZXY", [z_deg, x_deg, y_deg], degrees=True)
 
 
 class ExtracellularLocations(Block):
@@ -124,13 +122,13 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
                 float(self.origin_z),  # ty:ignore[invalid-argument-type]
             ]
         )
-        rotation = _rotation_matrix(
+        rotation = _rotation(
             float(self.rotation_x),  # ty:ignore[invalid-argument-type]
             self._roll_degrees(),
             float(self.rotation_z),  # ty:ignore[invalid-argument-type]
         )
         local = np.asarray(self.get_local_electrode_xyz_locations(), dtype=float)
-        world = local @ rotation.T + origin
+        world = rotation.apply(local) + origin
         return [tuple(position) for position in world.tolist()]
 
 

@@ -259,6 +259,27 @@ class TestGlobalTransform:
             [[0, 0, 0], [0, 0, 10], [0, 0, 20]],
         )
 
+    def test_rotation_y_90_rolls_width_into_z(self):
+        """rotation_y = 90 rolls a planar array about its long (+Y) axis: local X width moves to Z.
+
+        rotation_y is the roll and only exists on 2-D arrays; a 1-D linear array has none. Use a
+        grid whose X width (5 columns) differs from its Y length (2 rows) so the moved extent is
+        unambiguous.
+        """
+        array = obi.GridExtracellularLocations(
+            grid_rows=2, grid_columns=5, x_offset=100.0, y_offset=100.0, rotation_y=90.0
+        )
+        local = _as_array(array.get_local_electrode_xyz_locations())
+        world = _as_array(array.get_global_electrode_xyz_locations())
+        # the local layout is planar: 400 um of width along X, flat in Z.
+        assert np.ptp(local[:, 0]) == pytest.approx(400.0)
+        assert np.ptp(local[:, 2]) == pytest.approx(0.0)
+        # a +90 roll about +Y sends local (x, y, 0) -> world (0, y, -x): the X width now spans Z.
+        assert np.allclose(world[:, 0], 0.0)
+        assert np.allclose(world[:, 1], local[:, 1])
+        assert np.allclose(world[:, 2], -local[:, 0])
+        assert np.ptp(world[:, 2]) == pytest.approx(400.0)
+
     def test_rotation_is_rigid(self):
         """A rotation preserves the configured spacing (rigid motion, no inflation)."""
         probe = obi.LinearExtracellularLocations(
