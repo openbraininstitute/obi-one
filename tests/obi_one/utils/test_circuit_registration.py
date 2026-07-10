@@ -1083,6 +1083,69 @@ def test_register_circuit_skip_additional_assets():
     mock_gen.assert_not_called()
 
 
+def test_register_circuit_skip_validation():
+    """Test that skip_validation=True skips run_validation."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.run_validation") as mock_validation,
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            dry_run=False,
+        )
+
+    mock_validation.assert_not_called()
+
+
+def test_register_circuit_runs_validation_by_default():
+    """Test that run_validation is called when skip_validation is not set."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.run_validation") as mock_validation,
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            dry_run=False,
+        )
+
+    mock_validation.assert_called_once()
+
+
 def test_register_circuit_invalid_path():
     """Test that non-existent circuit path raises."""
     client = MagicMock()
@@ -1336,6 +1399,55 @@ def test_generate_overview_image_asset_no_registration_without_client(tmp_path):
 
     mock_add.assert_not_called()
     assert (output_dir / "circuit_visualization.png").exists()
+
+
+def test_generate_overview_image_asset_skipped_when_no_figure_available(tmp_path):
+    """Test that overview image generation is skipped when no figure is available."""
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+        generate_overview_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=None,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    # No image should be registered or created
+    mock_add.assert_not_called()
+    assert not (output_dir / "circuit_visualization.png").exists()
+
+
+def test_generate_sim_designer_image_asset_falls_back_to_template(tmp_path):
+    """Test that sim designer image falls back to template when no figure is available."""
+    output_dir = tmp_path / "output"
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+        generate_sim_designer_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=None,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    # Template should be copied as the sim designer image
+    assert (output_dir / "simulation_designer_image.png").exists()
+    assert (output_dir / "simulation_designer_image.png").stat().st_size > 0
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["simulation_designer_image.png"],
+        registered_circuit=circuit_entity,
+    )
 
 
 # --- authorized_public + license check ---

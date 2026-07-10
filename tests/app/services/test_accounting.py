@@ -29,7 +29,7 @@ def db_client():
 
 @pytest.fixture
 def accounting_parameters():
-    return AccountingParameters(count=10, service_subtype=ServiceSubtype.SMALL_SIM)
+    return AccountingParameters(count=1, service_subtype=ServiceSubtype.SMALL_SIM)
 
 
 @pytest.fixture
@@ -119,7 +119,7 @@ def test_estimate_task_cost(project_context, accounting_parameters, task_definit
         )
 
     assert isinstance(info, TaskAccountingInfo)
-    assert info.cost == 100.0  # noqa: RUF069
+    assert info.cost == pytest.approx(100.0)
     assert info.parameters == accounting_parameters
 
 
@@ -158,10 +158,230 @@ def test_evaluate_circuit_simulation_parameters(db_client, httpx_mock):
     )
 
     assert res.service_subtype == ServiceSubtype.SMALL_SIM
-    assert res.count == 3
+    assert res.count == 1
 
 
-def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
+def test_evaluate_circuit_simulation_parameters__with_duration(db_client, httpx_mock):
+    config_id = uuid4()
+    entity_id = uuid4()
+    simulation_campaign_id = uuid4()
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "simulation_campaign_id": str(simulation_campaign_id),
+            "entity_id": str(entity_id),
+            "number_neurons": 100,
+            "scan_parameters": {},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{entity_id}",
+        method="GET",
+        json={
+            "id": str(entity_id),
+            "number_neurons": 100,
+            "number_synapses": 10,
+            "number_connections": 12,
+            "scale": "microcircuit",
+            "build_category": "computational_model",
+        },
+    )
+
+    with patch(
+        "app.services.accounting.select_json_asset_content",
+        return_value={"run": {"tstop": 5000}},
+    ):
+        res = test_module._evaluate_circuit_simulation_parameters(
+            db_client=db_client,
+            simulation_id=config_id,
+        )
+
+    assert res.service_subtype == ServiceSubtype.MICROCIRCUIT_SIM
+    # 100 neurons * 5 seconds = 500
+    assert res.count == 500
+
+
+def test_evaluate_circuit_simulation_parameters__small_scale_ignores_duration(
+    db_client, httpx_mock
+):
+    """For small scale circuits, duration should not factor into the count."""
+    config_id = uuid4()
+    entity_id = uuid4()
+    simulation_campaign_id = uuid4()
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "simulation_campaign_id": str(simulation_campaign_id),
+            "entity_id": str(entity_id),
+            "number_neurons": 10,
+            "scan_parameters": {},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{entity_id}",
+        method="GET",
+        json={
+            "id": str(entity_id),
+            "number_neurons": 10,
+            "number_synapses": 10,
+            "number_connections": 12,
+            "scale": "small",
+            "build_category": "computational_model",
+        },
+    )
+
+    res = test_module._evaluate_circuit_simulation_parameters(
+        db_client=db_client,
+        simulation_id=config_id,
+    )
+
+    assert res.service_subtype == ServiceSubtype.SMALL_SIM
+    assert res.count == 1
+
+
+def test_evaluate_circuit_simulation_parameters__fallback_to_scan_parameters(db_client, httpx_mock):
+    """When SONATA config asset is unavailable, fall back to scan_parameters."""
+    config_id = uuid4()
+    entity_id = uuid4()
+    simulation_campaign_id = uuid4()
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "simulation_campaign_id": str(simulation_campaign_id),
+            "entity_id": str(entity_id),
+            "number_neurons": 200,
+            "scan_parameters": {"initialize.simulation_length": 3000},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{entity_id}",
+        method="GET",
+        json={
+            "id": str(entity_id),
+            "number_neurons": 200,
+            "number_synapses": 10,
+            "number_connections": 12,
+            "scale": "microcircuit",
+            "build_category": "computational_model",
+        },
+    )
+
+    with patch(
+        "app.services.accounting.select_json_asset_content",
+        side_effect=Exception("asset not found"),
+    ):
+        res = test_module._evaluate_circuit_simulation_parameters(
+            db_client=db_client,
+            simulation_id=config_id,
+        )
+
+    assert res.service_subtype == ServiceSubtype.MICROCIRCUIT_SIM
+    # 200 neurons * 3 seconds = 600
+    assert res.count == 600
+
+
+def test_evaluate_circuit_simulation_parameters__default_duration(db_client, httpx_mock):
+    """When no duration source is available, default to 1000 ms."""
+    config_id = uuid4()
+    entity_id = uuid4()
+    simulation_campaign_id = uuid4()
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "simulation_campaign_id": str(simulation_campaign_id),
+            "entity_id": str(entity_id),
+            "number_neurons": 419,
+            "scan_parameters": {},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{entity_id}",
+        method="GET",
+        json={
+            "id": str(entity_id),
+            "number_neurons": 419,
+            "number_synapses": 10,
+            "number_connections": 12,
+            "scale": "microcircuit",
+            "build_category": "computational_model",
+        },
+    )
+
+    with patch(
+        "app.services.accounting.select_json_asset_content",
+        side_effect=Exception("no asset"),
+    ):
+        res = test_module._evaluate_circuit_simulation_parameters(
+            db_client=db_client,
+            simulation_id=config_id,
+        )
+
+    assert res.service_subtype == ServiceSubtype.MICROCIRCUIT_SIM
+    # 419 neurons * 1 second (default) = 419
+    assert res.count == 419
+
+
+@pytest.mark.parametrize(
+    ("scale", "number_neurons", "expected_subtype"),
+    [
+        ("single", 1, ServiceSubtype.SINGLE_SIM),
+        ("pair", 2, ServiceSubtype.PAIR_SIM),
+    ],
+)
+def test_evaluate_circuit_simulation_parameters__single_pair_scale_ignores_duration(
+    db_client, httpx_mock, scale, number_neurons, expected_subtype
+):
+    """For single/pair scale circuits, duration should not factor into the count."""
+    config_id = uuid4()
+    entity_id = uuid4()
+    simulation_campaign_id = uuid4()
+
+    httpx_mock.add_response(
+        url=f"http://my-url/simulation/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "simulation_campaign_id": str(simulation_campaign_id),
+            "entity_id": str(entity_id),
+            "number_neurons": number_neurons,
+            "scan_parameters": {},
+        },
+    )
+    httpx_mock.add_response(
+        url=f"http://my-url/circuit/{entity_id}",
+        method="GET",
+        json={
+            "id": str(entity_id),
+            "number_neurons": number_neurons,
+            "number_synapses": 10,
+            "number_connections": 12,
+            "scale": scale,
+            "build_category": "computational_model",
+        },
+    )
+
+    res = test_module._evaluate_circuit_simulation_parameters(
+        db_client=db_client,
+        simulation_id=config_id,
+    )
+
+    assert res.service_subtype == expected_subtype
+    assert res.count == 1
+
+
+def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, monkeypatch):
     config_id = uuid4()
     entity_id = uuid4()
     simulation_campaign_id = uuid4()
@@ -189,6 +409,10 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock):
             "build_category": "computational_model",
         },
     )
+
+    # Simulate a circuit scale with no service-subtype mapping to exercise the defensive
+    # fallback (e.g. a new scale added to entitysdk but not yet mapped here).
+    monkeypatch.setattr(test_module, "CIRCUIT_SCALE_TO_SERVICE_SUBTYPE", {})
 
     with pytest.raises(HTTPException, match="Unsupported circuit scale"):
         test_module._evaluate_circuit_simulation_parameters(
@@ -219,17 +443,17 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.circuit_simulation_neurodamus_cluster: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_inait_machine: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_neuron: ServiceSubtype.SMALL_SIM,
-        TaskType.circuit_simulation_brian2_machine: ServiceSubtype.SMALL_SIM,
+        TaskType.circuit_simulation_brian2_machine: ServiceSubtype.BRIAN2_CIRCUIT_SIMULATION,
         TaskType.ion_channel_model_simulation_execution: ServiceSubtype.ION_CHANNEL_SIM,
         TaskType.morphology_skeletonization: ServiceSubtype.NEURON_MESH_SKELETONIZATION,
-        TaskType.em_synapse_mapping: ServiceSubtype.SMALL_CIRCUIT_SIM,
+        TaskType.em_synapse_mapping: ServiceSubtype.EM_SYNAPSE_MAPPING,
     }
     expected_count = {
         TaskType.circuit_extraction: 1,
-        TaskType.circuit_simulation_neurodamus_cluster: 10,
-        TaskType.circuit_simulation_inait_machine: 10,
-        TaskType.circuit_simulation_neuron: 10,
-        TaskType.circuit_simulation_brian2_machine: 10,
+        TaskType.circuit_simulation_neurodamus_cluster: 1,
+        TaskType.circuit_simulation_inait_machine: 1,
+        TaskType.circuit_simulation_neuron: 1,
+        TaskType.circuit_simulation_brian2_machine: 1,
         TaskType.ion_channel_model_simulation_execution: 1,
         TaskType.morphology_skeletonization: 800,
         TaskType.em_synapse_mapping: 1,

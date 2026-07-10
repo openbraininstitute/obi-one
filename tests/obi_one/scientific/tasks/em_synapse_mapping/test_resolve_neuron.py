@@ -35,6 +35,10 @@ def source_mesh():
     )
 
 
+def spiny_morph():
+    return Mock(morphology=_mock_morphio_chain())
+
+
 @pytest.fixture
 def source_dataset(source_mesh):
     return SimpleNamespace(id=source_mesh.em_dense_reconstruction_dataset.id, name="dataset")
@@ -54,17 +58,19 @@ class TestResolveNeuron:
 
         with patch(
             "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.load_morphology_with_spines",
-            return_value="spiny_mock",
+            return_value=spiny_morph(),
         ):
-            result = resolve_neuron(morph_ref, mock_db_client, tmp_path)
+            result = resolve_neuron(morph_ref, mock_db_client, tmp_path, tmp_path)
 
         assert result.pt_root_id == 42
         assert result.morph_entity is morph_entity
         assert result.use_me_model is False
-        assert result.spiny_morph == "spiny_mock"
+        assert isinstance(result.spiny_morph, Mock)
         assert result.cave_version == 3
-        assert result.fn_morph_h5 == Path("morphologies") / (morph_entity.name + ".h5")
-        assert result.fn_morph_swc == Path("morphologies/morphology") / (morph_entity.name + ".swc")
+        assert result.fn_morph_h5 == Path(str(morph_entity.id) + ".h5")
+        assert result.fn_morph_swc == Path("morphologies/morphology") / (
+            str(morph_entity.id) + ".swc"
+        )
 
     def test_resolve_memodel(
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
@@ -89,7 +95,7 @@ class TestResolveNeuron:
         with (
             patch(
                 "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.load_morphology_with_spines",
-                return_value="spiny_mock",
+                return_value=spiny_morph(),
             ),
             patch(
                 "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.download_memodel",
@@ -106,7 +112,7 @@ class TestResolveNeuron:
             mock_cm.neurom_morphology.return_value = _mock_morphio_chain()
             mock_cm.source_mesh_entity.return_value = source_mesh
 
-            result = resolve_neuron(memodel_ref, mock_db_client, tmp_path)
+            result = resolve_neuron(memodel_ref, mock_db_client, tmp_path, tmp_path)
 
         assert result.pt_root_id == 42
         assert result.use_me_model is True

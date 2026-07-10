@@ -34,6 +34,9 @@ from obi_one.scientific.tasks.folder_compression import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -57,6 +60,10 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
 )
+from obi_one.scientific.tasks.mesh_lod_generation.config import (
+    MeshLodGenerationSingleConfig,
+)
+from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationTask
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationSingleConfig,
     MorphologyContainerizationTask,
@@ -108,6 +115,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         IonChannelModelSimulationExecutionSingleConfig,
         None,
     ),
+    TaskType.mesh_lod_generation: (
+        MeshLODGenerationTask,
+        MeshLodGenerationSingleConfig,
+        AssetLabel.task_config,
+    ),
     TaskType.morphology_skeletonization: (
         SkeletonizationTask,
         SkeletonizationSingleConfig,
@@ -134,11 +146,6 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         ContributeMorphologySingleConfig,
         None,
     ),
-    TaskType.create_extracellular_recording_array: (
-        CreateExtracellularRecordingArrayTask,
-        CreateExtracellularRecordingArraySingleConfig,
-        None,
-    ),
     TaskType.electrophysiology_metrics: (
         ElectrophysiologyMetricsTask,
         ElectrophysiologyMetricsSingleConfig,
@@ -162,6 +169,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.me_model_simulation: (
         GenerateSimulationTask,
         MEModelSimulationSingleConfig,
+        None,
+    ),
+    TaskType.learning_engine_circuit_simulation: (
+        GenerateSimulationTask,
+        LearningEngineCircuitSimulationSingleConfig,
         None,
     ),
     TaskType.me_model_with_synapses_circuit_simulation: (

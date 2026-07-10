@@ -23,6 +23,17 @@ _MULTILOC_MAP = {
     "all": ["apical", "basal", "somatic", "axonal"],
 }
 
+# All recognized section list names (concrete names + aliases).
+# Used to detect when the second part of a parameter name is NOT a section list,
+# which indicates a distribution meta-parameter (e.g. "constant.distribution_decay").
+_VALID_SECTION_LISTS: set[str] = {
+    "somatic",
+    "basal",
+    "apical",
+    "axonal",
+    *_MULTILOC_MAP.keys(),
+}
+
 
 def _expand_section_list(section_list: str) -> list[str]:
     """Expand a section-list alias into concrete section lists."""
@@ -211,7 +222,13 @@ def _parse_optimization_parameters(
 
     Each parameter name follows the format "<neuron_variable>.<section_list>"
     (e.g. "decay_CaDynamics_DC0.somatic", "g_pas.all").
+
+    Parameters whose second part is not a recognized section list AND whose first
+    part has no ion channel suffix are treated as GLOBAL distribution parameters
+    (e.g. "constant.distribution_decay").
     """
+    known_suffixes = [icm.nmodl_suffix for icm in emodel.ion_channel_models or []]
+
     parsed = []
     for param in parameters_json:
         name = param.get("name", "")
@@ -225,6 +242,17 @@ def _parse_optimization_parameters(
 
         # Add limits for variables starting with 'g'
         limits = [0.0, 10.0] if neuron_variable.startswith("g") else None
+
+        # Skip distribution meta-parameters (e.g. "constant.distribution_decay").
+        # These are optimization parameters for spatial distribution formulas
+        # (like exp(distance * constant) * value) that are already substituted into
+        # the final HOC file. They are not runtime-modifiable NEURON variables.
+        # Detection: section_list is not a recognized name AND variable has no
+        # ion channel suffix.
+        if section_list not in _VALID_SECTION_LISTS and not _extract_channel_suffix(
+            neuron_variable, known_suffixes
+        ):
+            continue
 
         # Determine variable type: GLOBAL only if in neuron_block.global_, otherwise RANGE
         variable_type = "GLOBAL" if _is_global_variable(emodel, neuron_variable) else "RANGE"

@@ -57,7 +57,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
@@ -117,7 +117,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
                         rng=rng,
                     )
                     relative_spikes = self._sample_spike_times_from_distribution(
-                        distribution,  # ty:ignore[invalid-argument-type]
+                        distribution,
                         number_of_spikes=number_of_spikes,
                         duration=self.duration,  # ty:ignore[invalid-argument-type]
                         rng=rng,
@@ -131,7 +131,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
                     rng=rng,
                 )
                 relative_spikes = self._sample_spike_times_from_distribution(
-                    distribution,  # ty:ignore[invalid-argument-type]
+                    distribution,
                     number_of_spikes=number_of_spikes,
                     duration=self.duration,  # ty:ignore[invalid-argument-type]
                     rng=rng,

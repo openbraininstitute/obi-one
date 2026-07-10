@@ -36,6 +36,7 @@ class ResolvedNeuron:
     source_dataset: EMDenseReconstructionDataset
     cave_version: int
     use_me_model: bool
+    name_in_circuit: str
     phys_node_props: dict = field(default_factory=dict)
     fn_morph_h5: Path | None = None
     fn_morph_swc: Path | None = None
@@ -53,17 +54,20 @@ def resolve_provenance(
     return pt_root_id, source_mesh_entity, source_dataset
 
 
-def resolve_neuron(
+def resolve_neuron(  # NOQA: PLR0914
     neuron_ref: CellMorphologyFromID | MEModelFromID,
     db_client: Client,
     out_root: Path,
+    spiny_morph_out_root: Path,
 ) -> ResolvedNeuron:
     """Resolve a neuron reference into morphology files, provenance, and ME model properties.
 
     Args:
         neuron_ref: A CellMorphologyFromID or MEModelFromID reference.
         db_client: Entity SDK client.
-        out_root: Root output directory for morphology files.
+        out_root: Root output directory for smooth morphology files and emodel hoc files,
+        if applicable.
+        spiny_morph_out_root: Root output directory for spiny morphology files.
 
     Returns:
         A ResolvedNeuron with all resolved information.
@@ -77,14 +81,21 @@ def resolve_neuron(
         morph_entity = neuron_ref.entity(db_client)
         morph_from_id = neuron_ref
 
+    entity_id_str = str(morph_entity.id)
     # Place and load morphologies
     L.info("Placing morphologies...")
-    fn_morphology_out_h5 = Path("morphologies") / (morph_entity.name + ".h5")  # ty:ignore[unsupported-operator]
-    fn_morphology_out_swc = Path("morphologies/morphology") / (morph_entity.name + ".swc")  # ty:ignore[unsupported-operator]
-    morph_from_id.write_spiny_neuron_h5(out_root / fn_morphology_out_h5, db_client=db_client)
+    fn_morphology_out_swc = Path("morphologies/morphology") / (entity_id_str + ".swc")
+    fn_morphology_out_h5 = Path("morphologies/morphology") / (entity_id_str + ".h5")
+    fn_spiny_morph = Path(entity_id_str + ".h5")
+    if (out_root / fn_morphology_out_swc).exists():
+        err_str = f"Duplicate entity in input: {entity_id_str}"
+        raise ValueError(err_str)
+
     smooth_morph = morph_from_id.neurom_morphology(db_client)
     smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
-    spiny_morph = load_morphology_with_spines(str(out_root / fn_morphology_out_h5))
+    morph_from_id.write_spiny_neuron_h5(spiny_morph_out_root / fn_spiny_morph, db_client=db_client)
+    spiny_morph = load_morphology_with_spines(str(spiny_morph_out_root / fn_spiny_morph))
+    spiny_morph.morphology.to_morphio().as_mutable().write(out_root / fn_morphology_out_h5)
 
     phys_node_props = {}
     if use_me_model:
@@ -120,9 +131,10 @@ def resolve_neuron(
         smooth_morph=smooth_morph,
         source_mesh_entity=source_mesh_entity,
         source_dataset=source_dataset,
+        name_in_circuit=entity_id_str,
         cave_version=source_mesh_entity.release_version,
         use_me_model=use_me_model,
         phys_node_props=phys_node_props,
-        fn_morph_h5=fn_morphology_out_h5,
+        fn_morph_h5=fn_spiny_morph,
         fn_morph_swc=fn_morphology_out_swc,
     )

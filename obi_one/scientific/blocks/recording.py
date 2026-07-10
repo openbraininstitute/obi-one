@@ -12,11 +12,12 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import EntityType, IonChannelPropertyType
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -90,13 +91,13 @@ class IonChannelVariableForRecording(OBIBaseModel):
 
 
 class Recording(Block, ABC):
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to record from.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
@@ -121,8 +122,6 @@ class Recording(Block, ABC):
 
     def config(
         self,
-        circuit: Circuit,
-        population: str | None = None,
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
@@ -130,12 +129,16 @@ class Recording(Block, ABC):
         self._default_node_set = default_node_set
 
         if (self.neuron_set is not None) and (
-            self.neuron_set.block.population_type(circuit, population)  # ty:ignore[unresolved-attribute]
-            not in {"biophysical", "inait_point_neuron_lif"}
+            self.neuron_set.block.get_neuron_set_population_type()
+            not in {
+                NeuronSetPopulationType.BIOPHYSICAL,
+                NeuronSetPopulationType.POINT,
+                NeuronSetPopulationType.NONVIRTUAL,
+            }
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
-                f"'{self.block_name}' should be biophysical!"
+                f"'{self.block_name}' should be non-virtual (biophysical or point)!"
             )
             raise OBIONEError(msg)
 

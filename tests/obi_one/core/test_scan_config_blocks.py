@@ -28,6 +28,9 @@ BlockUnion = Annotated[BlockTypeA | BlockTypeB, Discriminator("type")]
 
 class TestRef(BlockReference):
     allowed_block_types: ClassVar[Any] = BlockUnion
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": ["BlockTypeA", "BlockTypeB"]
+    }
 
 
 class SimpleConfig(ScanConfig):
@@ -59,7 +62,7 @@ class DictBlockConfig(ScanConfig):
 
     blocks: dict[str, BlockUnion] = Field(
         default_factory=dict,
-        json_schema_extra={"reference_type": "TestRef"},
+        json_schema_extra={"reference_types": ["TestRef"]},
     )
 
 
@@ -84,7 +87,7 @@ class ConfigWithRefBlock(ScanConfig):
 
     blocks: dict[str, BlockUnion] = Field(
         default_factory=dict,
-        json_schema_extra={"reference_type": "TestRef"},
+        json_schema_extra={"reference_types": ["TestRef"]},
     )
 
     ref_holder: RefHolder = Field(default_factory=RefHolder)
@@ -121,7 +124,7 @@ class TestBlockMappingDict:
             initialize=DictBlockConfig.Initialize(),
         )
         mapping = config.block_mapping
-        assert mapping["BlockTypeA"]["reference_type"] == "TestRef"
+        assert mapping["BlockTypeA"]["reference_types"] == ["TestRef"]
 
     def test_mapping_cached_on_second_call(self):
         config = DictBlockConfig(
@@ -271,10 +274,10 @@ class TestAddBlockUnknownReferenceType:
 
             blocks: dict[str, BlockUnion] = Field(
                 default_factory=dict,
-                json_schema_extra={"reference_type": "NonExistentRef"},
+                json_schema_extra={"reference_types": ["NonExistentRef"]},
             )
 
         config = UnregisteredRefConfig(initialize=UnregisteredRefConfig.Initialize())
         block = BlockTypeA(val_a=42)
-        with pytest.raises(OBIONEError, match="not found in block reference registry"):
+        with pytest.raises(OBIONEError, match="No reference type from"):
             config.add(block, name="test_block")
