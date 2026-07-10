@@ -12,7 +12,8 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_combined_neuron_sets import (
-    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -107,7 +108,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Variable Modification by Section List"
 
-    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -166,7 +167,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Full Neuron Variable Modification"
 
-    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -249,13 +250,13 @@ class CircuitBySectionListMechanismVariableNeuronalManipulation(
 
     title: ClassVar[str] = "Variable Modification by Section List"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
@@ -278,13 +279,13 @@ class CircuitByNeuronMechanismVariableNeuronalManipulation(
 
     title: ClassVar[str] = "Full Neuron Variable Modification"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
