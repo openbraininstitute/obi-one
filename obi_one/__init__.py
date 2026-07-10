@@ -88,6 +88,7 @@ __all__ = [
     "ExcitatoryTsodyksMarkramSynapticModel",
     "ExponentialDistribution",
     "ExtracellularLocations",
+    "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
     "FloatConstantDistribution",
     "FloatRange",
@@ -99,6 +100,7 @@ __all__ = [
     "GammaDistribution",
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
+    "GridExtracellularLocations",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -224,6 +226,7 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "UTAHArrayExtracellularLocations",
     "VirtualCombinedNeuronSet",
     "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
@@ -289,8 +292,10 @@ from obi_one.scientific.blocks.distributions.uniform import (
 )
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
+    UTAHArrayExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (
@@ -552,6 +557,7 @@ from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
