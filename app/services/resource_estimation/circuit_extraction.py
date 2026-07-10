@@ -4,7 +4,9 @@ import entitysdk
 import numpy as np
 from entitysdk import models
 
+from app.schemas.accounting import AccountingParameters
 from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
+from app.types import MachineExecutorImageType
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.core.registry import task_registry
 from obi_one.scientific.library.circuit_metrics import (
@@ -38,18 +40,25 @@ def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
     raise ValueError(msg)
 
 
-def _check_available_disk_space(disk_space_gb_required: float) -> None:
-    """Checks if the required disk space is available."""
+def _get_required_extra_storage_space(disk_space_gb_required: float) -> int | None:
+    """Return the required extra storage space."""
     # From launch-system
-    disk_space_limit_gb = 20
+    default_disk_space_limit_gb = 20
+    extra_disk_space_limit_gb = 200
 
-    if disk_space_gb_required > disk_space_limit_gb:
-        msg = (
-            f"Not enough disk space"
-            f" (required: {disk_space_gb_required:.1f} GB,"
-            f" available: {disk_space_limit_gb:.1f} GB)!"
-        )
-        raise ValueError(msg)
+    if disk_space_gb_required <= default_disk_space_limit_gb:
+        # No extra space requires, use default
+        return None
+    if disk_space_gb_required <= extra_disk_space_limit_gb:
+        # Allocate extra space
+        return np.ceil(disk_space_gb_required).astype(int)
+
+    msg = (
+        f"Not enough disk space"
+        f" (required: {disk_space_gb_required:.1f} GB,"
+        f" available: {extra_disk_space_limit_gb:.1f} GB)!"
+    )
+    raise ValueError(msg)
 
 
 def estimate_task_resources(  # noqa: PLR0914
@@ -57,6 +66,7 @@ def estimate_task_resources(  # noqa: PLR0914
     db_client: entitysdk.Client,
     task_definition: TaskDefinition,
     compute_cell: str,
+    accounting_parameters: AccountingParameters | None = None,
 ) -> Resources:
     """Estimate machine resources for a circuit extraction task."""
     # Get extraction config
@@ -105,7 +115,7 @@ def estimate_task_resources(  # noqa: PLR0914
     # Estimate time limit based on the number input neurons
     time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
 
-    # Estimate disk space based in the number of input synapses
+    # Estimate storage space based on the number of output synapses
     sbio = np.sum(
         [
             epop.number_of_edges  # ty:ignore[unresolved-attribute]
@@ -121,9 +131,10 @@ def estimate_task_resources(  # noqa: PLR0914
         ]
     )
     input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio  # ty:ignore[unresolved-attribute]
-    output_size_synapses = input_size_synapses  # Using maximum output count
+    output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
+    output_size_synapses = input_size_synapses * output_fraction
     output_size_gb = 1 + output_size_synapses * 1.85e-7
-    _check_available_disk_space(output_size_gb)
+    storage_gb = _get_required_extra_storage_space(output_size_gb)
 
     # Update resources
     return task_definition.resources.model_copy(
@@ -132,5 +143,7 @@ def estimate_task_resources(  # noqa: PLR0914
             "memory": mem_gb,
             "timelimit": f"{time_h:02d}:00",
             "compute_cell": compute_cell,
+            "image_type": MachineExecutorImageType.python_3_12_compiler,
+            "ephemeral_storage": storage_gb,
         }
     )
