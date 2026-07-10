@@ -17,9 +17,9 @@ _PLACED = {
     "origin_x": 3900.0,
     "origin_y": -1600.0,
     "origin_z": -2400.0,
-    "direction_x": 0.3,
-    "direction_y": 1.0,
-    "direction_z": -0.5,
+    "rotation_x": 15.0,
+    "rotation_y": -20.0,
+    "rotation_z": 30.0,
 }
 
 
@@ -42,29 +42,23 @@ class TestBlockSummary:
         assert all(len(position) == 3 for position in summary["locations"])
 
     def test_json_serialisable(self):
-        block = obi.Neuropixels1ExtracellularLocations(
-            n_electrodes=96, axial_rotation=30.0, **_PLACED
-        )
+        block = obi.Neuropixels1ExtracellularLocations(n_electrodes=96, **_PLACED)
         # Round-trips through JSON without error (used as an entitycore asset / endpoint body).
         json.loads(json.dumps(extracellular_locations_block_summary(block)))
 
     def test_properties_vary_by_block_type(self):
-        linear = extracellular_locations_block_summary(
-            obi.LinearExtracellularLocations(direction_y=1.0)
-        )
+        linear = extracellular_locations_block_summary(obi.LinearExtracellularLocations())
         neuropixels = extracellular_locations_block_summary(
-            obi.Neuropixels1ExtracellularLocations(direction_y=1.0)
+            obi.Neuropixels1ExtracellularLocations()
         )
-        grid = extracellular_locations_block_summary(
-            obi.GridExtracellularLocations(direction_y=1.0)
-        )
+        grid = extracellular_locations_block_summary(obi.GridExtracellularLocations())
         assert "spacing" in linear
         assert "grid_rows" not in linear
-        assert "axial_rotation" not in linear
-        assert "axial_rotation" in neuropixels
+        assert "n_electrodes" in neuropixels
         assert "spacing" not in neuropixels
-        # axial_rotation is shared by the 2D patterns (Neuropixels + Grid).
-        assert {"grid_rows", "grid_columns", "x_offset", "y_offset", "axial_rotation"} <= set(grid)
+        # every pattern shares the placement (origin + rotations).
+        assert {"rotation_x", "rotation_y", "rotation_z"} <= set(linear)
+        assert {"grid_rows", "grid_columns", "x_offset", "y_offset"} <= set(grid)
 
 
 class TestBlockDictionarySummary:

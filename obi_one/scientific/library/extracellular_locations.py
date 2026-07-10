@@ -254,7 +254,7 @@ def plot_extracellular_arrays(  # noqa: C901, PLR0914, PLR0915
             + chr(10)
             + f"origin: {b.origin_x:.0f}, {b.origin_y:.0f}, {b.origin_z:.0f}"
             + chr(10)
-            + f"dir: {b.direction_x:.2f}, {b.direction_y:.2f}, {b.direction_z:.2f}",
+            + f"rot: {b.rotation_x:.0f}, {b.rotation_y:.0f}, {b.rotation_z:.0f}",
             fontsize=7,
         )
 

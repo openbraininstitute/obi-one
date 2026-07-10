@@ -1,30 +1,21 @@
-import math
 from abc import ABC
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar
 
 import numpy as np
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 
-# If the array direction is (anti-)parallel to the reference axis used to construct the
-# electrode plane, the cross product degenerates; fall back to a different reference axis.
-_DIRECTION_PARALLEL_TOLERANCE = 0.999
 
-
-def _unit(vector: tuple[float, float, float] | np.ndarray) -> list[float]:
-    """Return the unit vector along ``vector``.
-
-    Raises:
-        ValueError: if ``vector`` has zero length (no direction to normalise).
-    """
-    norm = np.linalg.norm(vector)
-    if norm <= 0.0:
-        msg = "Cannot normalise a zero-length vector."
-        raise ValueError(msg)
-    return (np.asarray(vector, dtype=float) / norm).tolist()
+def _rotation_matrix(x_deg: float, y_deg: float, z_deg: float) -> np.ndarray:
+    """Return the rotation matrix for rotations about the world X, then Y, then Z axes (degrees)."""
+    x, y, z = np.radians([x_deg, y_deg, z_deg])
+    rx = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(x), -np.sin(x)], [0.0, np.sin(x), np.cos(x)]])
+    ry = np.array([[np.cos(y), 0.0, np.sin(y)], [0.0, 1.0, 0.0], [-np.sin(y), 0.0, np.cos(y)]])
+    rz = np.array([[np.cos(z), -np.sin(z), 0.0], [np.sin(z), np.cos(z), 0.0], [0.0, 0.0, 1.0]])
+    return rz @ ry @ rx
 
 
 class ExtracellularLocations(Block):
@@ -40,11 +31,11 @@ class XYZExtracellularLocations(ExtracellularLocations):
 class PatternedExtracellularLocations(ExtracellularLocations, ABC):
     """Base class for patterned extracellular locations.
 
-    The locations are determined by a specific pattern and parameters. Subclasses define the
-    pattern in a *local* frame via :meth:`get_local_electrode_xyz_locations` (origin at
-    ``(0, 0, 0)`` with the array running along the local ``+Y`` axis). That pattern is then
-    rigidly placed into world space by rotating the local ``+Y`` axis onto ``direction`` and
-    translating by ``origin`` (see :meth:`get_global_electrode_xyz_locations`).
+    Subclasses define the pattern in a *local* frame via
+    :meth:`get_local_electrode_xyz_locations` (origin at ``(0, 0, 0)``, the array running along the
+    local ``+Y`` axis). That pattern is then placed into world space by rotating it about the world
+    X, Y and Z axes (by ``rotation_x``, ``rotation_y``, ``rotation_z`` degrees) and translating by
+    ``origin`` (see :meth:`get_global_electrode_xyz_locations`).
     """
 
     origin_x: float | list[float] = Field(
@@ -72,52 +63,39 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         },
     )
 
-    direction_x: float | list[float] = Field(
+    rotation_x: float | list[float] = Field(
         default=0.0,
-        title="Direction X",
-        description="X component of the direction vector for the electrode array.",
+        title="Rotation X",
+        description="Rotation of the array about the world X axis, in degrees.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
         },
     )
-    direction_y: float | list[float] = Field(
-        default=1.0,
-        title="Direction Y",
-        description="Y component of the direction vector for the electrode array.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-        },
-    )
-    direction_z: float | list[float] = Field(
+    rotation_y: float | list[float] = Field(
         default=0.0,
-        title="Direction Z",
-        description="Z component of the direction vector for the electrode array.",
+        title="Rotation Y",
+        description="Rotation of the array about the world Y axis, in degrees.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
         },
     )
-
-    @model_validator(mode="after")
-    def _reject_zero_direction(self) -> Self:
-        """Reject a zero direction vector: it gives no orientation to place the array along.
-
-        Each component may be a scalar or a parameter-sweep list, so the zero vector is reachable
-        only when zero appears among the values of all three components.
-        """
-        components = (self.direction_x, self.direction_y, self.direction_z)
-        zero_reachable = [
-            0.0 in (values if isinstance(values, list) else [values]) for values in components
-        ]
-        if all(zero_reachable):
-            msg = "direction_x, direction_y and direction_z must not all be zero."
-            raise ValueError(msg)
-        return self
+    rotation_z: float | list[float] = Field(
+        default=0.0,
+        title="Rotation Z",
+        description="Rotation of the array about the world Z axis, in degrees.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
+        },
+    )
 
     def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
         """Return the electrode locations in the array's local frame.
 
         The local frame has its origin at ``(0, 0, 0)`` with the array running along the ``+Y``
-        axis; ``origin`` and ``direction`` are *not* applied here (see
+        axis; ``origin`` and the rotations are *not* applied here (see
         :meth:`get_global_electrode_xyz_locations`).
         """
         msg = "Subclasses must implement get_local_electrode_xyz_locations()."
@@ -126,43 +104,28 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
     def get_global_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
         """Return the electrode locations in world coordinates.
 
-        The local pattern from :meth:`get_local_electrode_xyz_locations` is rigidly transformed
-        into world space: its local ``+Y`` axis is rotated onto the (normalised) ``direction``
-        vector and its local origin is translated to ``origin``. For the default ``direction`` of
-        ``(0, 1, 0)`` this reduces to a pure translation by ``origin``.
+        The local pattern from :meth:`get_local_electrode_xyz_locations` is rotated about the world
+        X, Y and Z axes (by ``rotation_x``, ``rotation_y``, ``rotation_z`` degrees, in that order)
+        and translated by ``origin``. With the default rotations of ``0`` this is a pure
+        translation by ``origin``.
         """
         # These methods are only meaningful on single (expanded) configs, where every parameter
         # is a scalar rather than a parameter-sweep list.
-        origin_x = float(self.origin_x)  # ty:ignore[invalid-argument-type]
-        origin_y = float(self.origin_y)  # ty:ignore[invalid-argument-type]
-        origin_z = float(self.origin_z)  # ty:ignore[invalid-argument-type]
-        direction_x = float(self.direction_x)  # ty:ignore[invalid-argument-type]
-        direction_y = float(self.direction_y)  # ty:ignore[invalid-argument-type]
-        direction_z = float(self.direction_z)  # ty:ignore[invalid-argument-type]
-
-        # Local +Y maps onto the (normalised) direction (a zero direction is rejected at
-        # construction; _unit guards it defensively here too).
-        forward = _unit((direction_x, direction_y, direction_z))
-
-        # Build an orthonormal basis (right, forward, out) mapping the local (X, +Y, Z) axes into
-        # world space. Pick a reference axis that is not (anti-)parallel to `forward`.
-        reference = (0.0, 0.0, 1.0)
-        if abs(forward[2]) > _DIRECTION_PARALLEL_TOLERANCE:
-            reference = (1.0, 0.0, 0.0)
-
-        right = _unit(np.cross(forward, reference))
-        out = np.cross(right, forward).tolist()
-
-        world_locations = []
-        for local_x, local_y, local_z in self.get_local_electrode_xyz_locations():
-            world_locations.append(
-                (
-                    origin_x + local_x * right[0] + local_y * forward[0] + local_z * out[0],
-                    origin_y + local_x * right[1] + local_y * forward[1] + local_z * out[1],
-                    origin_z + local_x * right[2] + local_y * forward[2] + local_z * out[2],
-                )
-            )
-        return world_locations
+        origin = np.array(
+            [
+                float(self.origin_x),  # ty:ignore[invalid-argument-type]
+                float(self.origin_y),  # ty:ignore[invalid-argument-type]
+                float(self.origin_z),  # ty:ignore[invalid-argument-type]
+            ]
+        )
+        rotation = _rotation_matrix(
+            float(self.rotation_x),  # ty:ignore[invalid-argument-type]
+            float(self.rotation_y),  # ty:ignore[invalid-argument-type]
+            float(self.rotation_z),  # ty:ignore[invalid-argument-type]
+        )
+        local = np.asarray(self.get_local_electrode_xyz_locations(), dtype=float)
+        world = local @ rotation.T + origin
+        return [tuple(position) for position in world.tolist()]
 
 
 class LinearExtracellularLocations(PatternedExtracellularLocations):
@@ -196,44 +159,21 @@ class TwoDPatternedExtracellularLocations(PatternedExtracellularLocations, ABC):
     """Base class for planar (2D) patterned extracellular locations.
 
     Subclasses define the pattern in the local X-Y plane via
-    :meth:`get_local_electrode_xy_locations`; this base then rolls that pattern about the local
-    ``+Y`` axis by ``axial_rotation`` degrees (rotating the local X extent into local Z) to give
-    the full 3D local pattern used by :meth:`get_global_electrode_xyz_locations`.
+    :meth:`get_local_electrode_xy_locations`; this base places it at ``Z = 0`` in the local frame.
+    ``origin`` and the rotations then orient it in world space.
     """
 
-    axial_rotation: (
-        Annotated[float, Field(ge=0.0, le=360.0)] | list[Annotated[float, Field(ge=0.0, le=360.0)]]
-    ) = Field(
-        default=0.0,
-        title="Axial Rotation",
-        description=(
-            "Rotation of the pattern about its long axis (the origin/direction line), in "
-            "degrees. At 0 the pattern lies in the local X-Y plane; increasing it rolls the "
-            "local X extent out of that plane into local Z."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.DEGREES,
-        },
-    )
-
     def get_local_electrode_xy_locations(self) -> list[tuple[float, float]]:
-        """Return the electrode pattern in the local X-Y plane, before axial rotation.
+        """Return the electrode pattern in the local X-Y plane.
 
-        Subclasses implement this; the base applies ``axial_rotation`` (rolling the local X extent
-        into local Z) around it.
+        Subclasses implement this; the base places it at ``Z = 0`` in the local frame.
         """
         msg = "Subclasses must implement get_local_electrode_xy_locations()."
         raise NotImplementedError(msg)
 
     def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
-        """Roll the local X-Y pattern about the local ``+Y`` axis by ``axial_rotation`` degrees."""
-        roll = math.radians(float(self.axial_rotation))  # ty:ignore[invalid-argument-type]
-        cos_roll = math.cos(roll)
-        sin_roll = math.sin(roll)
-        return [
-            (x * cos_roll, y, -x * sin_roll) for x, y in self.get_local_electrode_xy_locations()
-        ]
+        """Return the planar pattern in the local frame (``Z = 0``)."""
+        return [(x, y, 0.0) for x, y in self.get_local_electrode_xy_locations()]
 
 
 class Neuropixels1ExtracellularLocations(TwoDPatternedExtracellularLocations):
@@ -281,9 +221,8 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
 
     The electrodes form a ``grid_rows`` by ``grid_columns`` grid in the local X-Y plane, centred on
     the local origin, with ``x_offset`` spacing between columns (along local X) and ``y_offset``
-    spacing between rows (along local Y). ``origin`` positions the grid centre, ``direction``
-    orients it (the local ``+Y`` axis is rotated onto ``direction``) and ``axial_rotation`` rolls
-    it about that axis.
+    spacing between rows (along local Y). ``origin`` positions the grid centre and the rotations
+    (``rotation_x``/``rotation_y``/``rotation_z``) orient it.
     """
 
     grid_rows: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
@@ -343,7 +282,7 @@ class UTAHArrayExtracellularLocations(TwoDPatternedExtracellularLocations):
     """Blackrock Utah array: a fixed 10x10 grid of electrodes at 400 um spacing.
 
     The grid dimensions and spacing are fixed (unlike :class:`GridExtracellularLocations`); only the
-    placement (``origin``/``direction``) and ``axial_rotation`` are configurable.
+    placement (``origin`` and the rotations) is configurable.
     """
 
     GRID_ROWS: ClassVar[int] = 10
