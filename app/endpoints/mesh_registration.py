@@ -1,153 +1,149 @@
-import json
 import pathlib
-import tempfile
-from typing import Annotated, cast
-from uuid import UUID, uuid4
+from typing import Annotated
+from uuid import UUID
 
 import entitysdk.client
-from entitysdk.models import EMCellMesh, TaskConfig
-from entitysdk.types import AssetLabel, ContentType, TaskConfigType
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+import pylmesh
+from entitysdk.models import EMCellMesh
+from entitysdk.types import AssetLabel, ContentType
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from app.dependencies.callback import CallBackUrlDep
 from app.dependencies.entitysdk import get_client
-from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.mesh_validation import _save_upload_to_tempfile
 from app.logger import L
-from app.mappings import TASK_DEFINITIONS
-from app.services import task as task_service
-from app.types import TaskType
-from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
+from obi_one.scientific.library.mesh_lod_generation import try_generate_and_upload_lods
 
 router = APIRouter(prefix="/declared", tags=["mesh-registration"])
+
+SUPPORTED_SUFFIXES = {".obj", ".glb"}
 
 
 class MeshRegistrationResponse(BaseModel):
     entity_id: str
     glb_asset_id: str
-    task_job_id: str
-    activity_id: str | None = None
+    lod_generation_status: str
     status: str
 
 
-def _ensure_project_context(client: entitysdk.client.Client) -> None:
-    """Helper to validate project context existence, satisfying TRY301."""
-    if client.project_context is None:
-        raise HTTPException(status_code=500, detail="Project context missing")
+def _convert_obj_to_glb(obj_path: pathlib.Path, glb_path: pathlib.Path) -> pathlib.Path:
+    """Convert a Wavefront .obj mesh to binary glTF (.glb) using pylmesh.
+
+    Raises:
+        RuntimeError: if the OBJ has no geometry or the conversion fails.
+    """
+    mesh = pylmesh.load_mesh(str(obj_path))
+    if mesh.is_empty():
+        msg = f"OBJ file '{obj_path}' contains no geometry"
+        raise RuntimeError(msg)
+
+    glb_path.parent.mkdir(parents=True, exist_ok=True)
+    pylmesh.save_mesh(str(glb_path), mesh)
+    return glb_path
 
 
-def _register_task_config(
-    client: entitysdk.client.Client, entity_id: UUID, mesh_asset_id: UUID, mesh_format: str
-) -> UUID:
-    lod_config = MeshLodGenerationSingleConfig(
-        entity_id=entity_id,
-        mesh_asset_id=mesh_asset_id,
-        mesh_format=mesh_format,
-    )
+def _replace_existing_asset_if_present(
+    client: entitysdk.client.Client,
+    entity_id: UUID,
+    file_name: str,
+) -> None:
+    """Delete any existing asset on this entity with the same file name, if one exists."""
+    entity = client.get_entity(entity_id=entity_id, entity_type=EMCellMesh)
+    existing = next((a for a in entity.assets if a.path.endswith(file_name)), None)
+    if existing is not None and existing.id is not None:
+        L.info(f"Replacing existing asset '{file_name}' on entity {entity_id}")
+        client.delete_asset(entity_id=entity_id, entity_type=EMCellMesh, asset_id=existing.id)
 
-    config_payload = lod_config.model_dump(mode="json")
-    config_payload.update(
-        {
-            "idx": -1,
-            "scan_output_root": ".",
-            "coordinate_output_root": ".",
-            "type": "MeshLodGenerationSingleConfig",
-        }
-    )
 
-    config_entity = client.register_entity(
-        TaskConfig(
-            name=f"LOD Generation for {entity_id}",
-            description="Auto-generated LOD configuration",
-            task_config_type=TaskConfigType("mesh_lod_generation__config"),
-            meta={"scan_parameters": config_payload},
-            inputs=[],
-        )
-    )
-
-    with tempfile.NamedTemporaryFile(
-        mode="w+", suffix=".json", delete=False, encoding="utf-8"
-    ) as tmp:
-        json.dump(config_payload, tmp)
-        tmp_path = tmp.name
-
+async def _generate_lods_background_task(
+    client: entitysdk.client.Client,
+    entity_id: UUID,
+    lod_source_path: pathlib.Path,
+    lod_mesh_format: str,
+) -> None:
+    """Runs after the HTTP response has already been sent. Owns cleanup of lod_source_path."""
     try:
-        client.upload_file(
-            entity_id=cast("UUID", config_entity.id),
-            entity_type=TaskConfig,
-            file_path=pathlib.Path(tmp_path),
-            file_name="task_config.json",
-            file_content_type=ContentType.application_json,
-            asset_label=AssetLabel("task_config"),
+        result = await try_generate_and_upload_lods(
+            client, entity_id, lod_source_path, lod_mesh_format
+        )
+        L.info(
+            f"[register-mesh] background LOD generation finished for entity {entity_id}, "
+            f"result={result}",
         )
     finally:
-        pathlib.Path(tmp_path).unlink()
-
-    return cast("UUID", config_entity.id)
+        await run_in_threadpool(lod_source_path.unlink, missing_ok=True)
 
 
 @router.post("/{entity_id}/register-mesh")
 async def register_mesh(
     entity_id: UUID,
     client: Annotated[entitysdk.client.Client, Depends(get_client)],
-    ls_client: LaunchSystemClientDep,
-    callback_url: CallBackUrlDep,
+    background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
-    lod_mesh_format: Annotated[str, Form()] = "obj",
 ) -> MeshRegistrationResponse:
 
-    temp_mesh_path = pathlib.Path(_save_upload_to_tempfile(file, suffix=".glb"))
-    unique_filename = f"{entity_id}_{uuid4().hex[:8]}.glb"
+    original_name = pathlib.Path(file.filename or "mesh")
+    original_suffix = original_name.suffix.lower()
+    if original_suffix not in SUPPORTED_SUFFIXES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported mesh file extension '{original_suffix}'. Expected .obj or .glb.",
+        )
 
-    # Validation
-    _ensure_project_context(client)
-    # Re-assign for type narrowing: this is now safe because _ensure_project_context raises on None
-    project_context = client.project_context
-    if project_context is None:
-        raise HTTPException(status_code=500, detail="Project context missing")
+    temp_mesh_path = pathlib.Path(_save_upload_to_tempfile(file, suffix=original_suffix))
+    glb_path = temp_mesh_path
+    lod_source_path = temp_mesh_path
+    lod_mesh_format = original_suffix.lstrip(".")
+    glb_file_name = original_name.with_suffix(".glb").name
 
     try:
+        if original_suffix == ".obj":
+            glb_path = temp_mesh_path.with_name(f"{temp_mesh_path.stem}_converted.glb")
+            await run_in_threadpool(_convert_obj_to_glb, temp_mesh_path, glb_path)
+            lod_source_path = temp_mesh_path
+            lod_mesh_format = "obj"
+
+        await run_in_threadpool(
+            _replace_existing_asset_if_present, client, entity_id, glb_file_name
+        )
+
         glb_asset = await run_in_threadpool(
             client.upload_file,
             entity_id=entity_id,
             entity_type=EMCellMesh,
-            file_path=temp_mesh_path,
-            file_name=unique_filename,
+            file_path=glb_path,
+            file_name=glb_file_name,
             file_content_type=ContentType.model_gltf_binary,
             asset_label=AssetLabel("cell_surface_mesh"),
         )
 
-        config_id = await run_in_threadpool(
-            _register_task_config, client, entity_id, cast("UUID", glb_asset.id), lod_mesh_format
-        )
+        if glb_path != temp_mesh_path:
+            await run_in_threadpool(glb_path.unlink, missing_ok=True)
 
-        task_info = await run_in_threadpool(
-            task_service.submit_task_job,
-            db_client=client,
-            ls_client=ls_client,
-            callback_url=callback_url,
-            config_id=config_id,
-            project_context=project_context,
-            task_definition=TASK_DEFINITIONS[TaskType.mesh_lod_generation],
-            callbacks=[],
-        )
-
-        activity_id = (
-            getattr(task_info, "activity_id", None)
-            if not isinstance(task_info, dict)
-            else task_info.get("activity_id")
+        background_tasks.add_task(
+            _generate_lods_background_task,
+            client,
+            entity_id,
+            lod_source_path,
+            lod_mesh_format,
         )
 
         return MeshRegistrationResponse(
             entity_id=str(entity_id),
             glb_asset_id=str(glb_asset.id),
-            task_job_id=str(getattr(task_info, "job_id", "unknown")),
-            activity_id=str(activity_id) if activity_id else None,
-            status="pending",
+            lod_generation_status="started",
+            status="success",
         )
 
+    except HTTPException:
+        await run_in_threadpool(temp_mesh_path.unlink, missing_ok=True)
+        if glb_path != temp_mesh_path:
+            await run_in_threadpool(glb_path.unlink, missing_ok=True)
+        raise
     except Exception as exc:
+        await run_in_threadpool(temp_mesh_path.unlink, missing_ok=True)
+        if glb_path != temp_mesh_path:
+            await run_in_threadpool(glb_path.unlink, missing_ok=True)
         L.error(f"Registration failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc)) from exc

@@ -1,2 +1,0 @@
-obi-one
-ultraliser>=2.1.9

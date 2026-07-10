@@ -39,6 +39,9 @@ from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
 
+os.environ["ENTITYSDK_READ_TIMEOUT"] = "300.0"
+os.environ["ENTITYSDK_CONNECT_TIMEOUT"] = "30.0"
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
@@ -55,7 +58,6 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
             "http_client": http_client,
         }
     except asyncio.CancelledError as err:
-        # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
         http_client.close()  # noqa: ASYNC212

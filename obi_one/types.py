@@ -24,7 +24,6 @@ class TaskType(StrEnum):
     em_synapse_mapping = auto()
     extracellular_recording_weights_calculation = auto()
     ion_channel_model_simulation_execution = auto()
-    mesh_lod_generation = auto()
     morphology_skeletonization = auto()
 
     # Task types supported for local-only execution (via scan generation / direct dispatch)
