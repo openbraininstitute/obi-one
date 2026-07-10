@@ -150,3 +150,19 @@ class Settings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
+
+    # ------------------------------------------------------------------
+    # Validation hold-out (carried forward to Workflow A via recipe)
+    # ------------------------------------------------------------------
+    validation_protocols: tuple[str, ...] = Field(
+        default=(),
+        title="Validation protocols",
+        description=(
+            "Protocol names held out from optimisation and used only for"
+            " validation. These protocols will still be extracted but marked"
+            " with validation=True in the features JSON so the optimiser"
+            " excludes them. Example: ('sAHP_220',). Leave empty to use all"
+            " protocols for optimisation."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
