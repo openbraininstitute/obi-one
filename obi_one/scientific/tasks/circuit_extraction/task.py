@@ -4,17 +4,18 @@ import os
 import tempfile
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Self
 
 import bluepysnap as snap
 import bluepysnap.circuit_validation
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
 from entitysdk.types import TaskActivityType, TaskConfigType
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PrivateAttr, model_validator
 
 from obi_one.config import settings
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
@@ -67,8 +68,8 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         " to simulate the extracted circuit."
     )
 
-    default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
-    default_point_node_set_name: ClassVar[str] = "Default: All Point Neurons"
+    default_node_set_name: ClassVar[str] = "Default: None"
+    default_point_node_set_name: ClassVar[str] = "Default: None"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -173,6 +174,25 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         },
     )
 
+    @model_validator(mode="after")
+    def neuron_set_required(self) -> Self:
+        self.check_neuron_set()
+        return self
+
+    def check_neuron_set(self) -> None:
+        """Check that a neuron set is specified in initialize.
+
+        Raises an error if neuron_set is None, since circuit extraction
+        requires an explicit neuron set defining the sub-circuit to extract.
+        """
+        if self.initialize.neuron_set is None:
+            msg = (
+                "Circuit extraction requires a neuron set to be "
+                "added to the list of neuron sets and selected "
+                "as target neuron set for extration."
+            )
+            raise OBIONEError(msg)
+
 
 class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
     """Extracts a sub-circuit of a SONATA circuit as defined by a node set.
@@ -262,6 +282,9 @@ class CircuitExtractionTask(Task):
         execution_activity = CircuitExtractionTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
+
+        # Ensure neuron set is specified
+        self.config.check_neuron_set()
 
         # Resolve parent circuit (local path or staging from ID)
         with BenchmarkTracker.section("resolve_circuit"):
