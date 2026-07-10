@@ -9,10 +9,9 @@ from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
-    AbsoluteRheobase,
     ExtractionInitialize,
-    FlushRheobase,
     ProtocolAndFeatureSelection,
+    Settings,
 )
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
@@ -79,15 +78,13 @@ class TestScanConfigCreation:
         assert scan_config.settings.interp_step == 0.025  # noqa: RUF069
 
     def test_default_rheobase(self, scan_config):
-        assert isinstance(scan_config.rheobase, AbsoluteRheobase)
-        assert scan_config.rheobase.protocols == ("IDthresh",)
-        assert scan_config.rheobase.spike_threshold == 1
+        assert scan_config.settings.compute_rheobase is True
 
     def test_default_efeatures_by_protocol(self, scan_config):
         assert scan_config.efeatures_by_protocol.autoselect is False
         assert len(scan_config.efeatures_by_protocol.protocols) == 5
 
-    def test_custom_rheobase_strategy(self, recording_ids):
+    def test_rheobase_disabled(self, recording_ids):
         config = EModelEFeatureExtractionScanConfig(
             info=EModelEFeatureExtractionScanConfig.model_fields["info"].annotation(
                 campaign_name="Test",
@@ -96,11 +93,9 @@ class TestScanConfigCreation:
             initialize=ExtractionInitialize(
                 electrical_cell_recording=(ElectricalCellRecordingFromID(id_str=recording_ids[0]),),
             ),
-            rheobase=FlushRheobase(flush_length=2, protocols=("IDthresh", "IDrest")),
+            settings=Settings(compute_rheobase=False),
         )
-        assert isinstance(config.rheobase, FlushRheobase)
-        assert config.rheobase.flush_length == 2
-        assert config.rheobase.protocols == ("IDthresh", "IDrest")
+        assert config.settings.compute_rheobase is False
 
 
 class TestAutoselect:

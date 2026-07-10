@@ -22,3 +22,6 @@ class TaskType(StrEnum):
     morphology_skeletonization = auto()
     ion_channel_model_simulation_execution = auto()
     em_synapse_mapping = auto()
+    efeature_extraction = auto()
+    emodel_optimization = auto()
+    emodel_export_and_validation = auto()

@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
-    AbsoluteRheobase,
     Settings,
 )
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
@@ -17,8 +16,7 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task i
 class TestBuildExtractionRecipes:
     def test_default_settings(self):
         settings = Settings()
-        rheobase = AbsoluteRheobase()
-        recipes = _build_extraction_recipes(settings, rheobase)
+        recipes = _build_extraction_recipes(settings)
 
         assert "emodel" in recipes
         ps = recipes["emodel"]["pipeline_settings"]
@@ -30,6 +28,14 @@ class TestBuildExtractionRecipes:
         assert ps["efel_settings"]["Threshold"] == -20.0  # noqa: RUF069
         assert ps["efel_settings"]["interp_step"] == 0.025  # noqa: RUF069
 
+    def test_rheobase_disabled(self):
+        settings = Settings(compute_rheobase=False)
+        recipes = _build_extraction_recipes(settings)
+
+        ps = recipes["emodel"]["pipeline_settings"]
+        assert "rheobase_strategy_extraction" not in ps
+        assert "rheobase_settings_extraction" not in ps
+
     def test_custom_settings(self):
         settings = Settings(
             threshold=-30.0,
@@ -37,15 +43,14 @@ class TestBuildExtractionRecipes:
             pickle_cells=True,
             name_rin_protocol="IV_-20",
         )
-        rheobase = AbsoluteRheobase(spike_threshold=3, protocols=("IDthresh", "IDrest"))
-        recipes = _build_extraction_recipes(settings, rheobase)
+        recipes = _build_extraction_recipes(settings)
 
         ps = recipes["emodel"]["pipeline_settings"]
         assert ps["efel_settings"]["Threshold"] == -30.0  # noqa: RUF069
         assert ps["plot_extraction"] is False
         assert ps["pickle_cells_extraction"] is True
         assert ps["name_Rin_protocol"] == "IV_-20"
-        assert ps["rheobase_settings_extraction"] == {"spike_threshold": 3}
+        assert ps["rheobase_settings_extraction"] == {"spike_threshold": 1}
 
 
 class TestBuildFilesMetadata:

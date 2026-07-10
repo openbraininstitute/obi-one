@@ -8,8 +8,10 @@ from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: E501
     IV,
+    PROTOCOL_CATALOGUE,
     SAHP,
     APWaveform,
+    EFeature,
     IDrest,
     IDthresh,
     Protocol,
@@ -41,6 +43,24 @@ def _efel_settings_defaults() -> dict[str, dict]:
         else:
             type_name = "str"
         result[f.name] = {"default": f.default, "type": type_name}
+    return result
+
+
+def available_efeatures_by_category() -> dict[str, list[str]]:
+    """Group all catalogue features by their ``category`` ClassVar.
+
+    Returns ``{"Spike event": ["Spikecount", ...], "Spike shape": [...], ...}``
+    for the frontend's "Add more features" modal.
+    """
+    result: dict[str, list[str]] = {}
+    seen: set[str] = set()
+    for p_cls in PROTOCOL_CATALOGUE:
+        for field_info in p_cls.model_fields.values():
+            ann = field_info.annotation
+            if isinstance(ann, type) and issubclass(ann, EFeature) and ann.efel_name not in seen:
+                seen.add(ann.efel_name)
+                category = ann.category
+                result.setdefault(category, []).append(ann.efel_name)
     return result
 
 
@@ -96,7 +116,8 @@ class ProtocolAndFeatureSelection(Block):
     advertised to the frontend via the ``available_efeatures_by_protocol``
     key on the field's ``json_schema_extra``. The full list of eFEL settings
     (for the "add setting" picker) is advertised via
-    ``available_efel_settings``.
+    ``available_efel_settings``. Features grouped by category are advertised
+    via ``available_efeatures_by_category``.
 
     ``protocols`` is a tuple — not a list — so the obi-one scan framework
     leaves it alone instead of expanding it as a parameter-scan dimension.
@@ -137,6 +158,7 @@ class ProtocolAndFeatureSelection(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,
             "available_efeatures_by_protocol": available_features_by_protocol_name(),
+            "available_efeatures_by_category": available_efeatures_by_category(),
             "available_efel_settings": _efel_settings_defaults(),
         },
     )

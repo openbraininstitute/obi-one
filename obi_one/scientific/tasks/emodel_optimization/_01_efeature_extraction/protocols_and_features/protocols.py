@@ -13,7 +13,7 @@ actually extracted is decided by its own ``extract`` flag, surfaced through
 
 from typing import Annotated, ClassVar
 
-from pydantic import Discriminator, Field, PositiveFloat
+from pydantic import Discriminator, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
@@ -66,10 +66,11 @@ class Protocol(OBIBaseModel):
     user-specified; when left ``None`` they are auto-detected from each
     ``ElectricalCellRecording``'s NWB asset at task execution time.
 
-    The three always-present eFEL settings (``Threshold``,
-    ``strict_stiminterval``, ``interp_step``) default to eFEL's own defaults
-    and are always emitted in ``efel_settings_override()``. Additional eFEL
-    settings can be added via ``custom_efel_settings``.
+    Per-protocol custom eFEL settings are available via
+    ``custom_efel_settings`` (the "Add setting" picker in the UI). Per-feature
+    eFEL detection knobs (threshold, strict_stiminterval, interp_step,
+    stim_start, stim_end) live on :class:`EFeature` and override the protocol
+    level.
     """
 
     name: ClassVar[str]
@@ -133,45 +134,29 @@ class Protocol(OBIBaseModel):
     )
 
     # ------------------------------------------------------------------
-    # Always-present eFEL settings with eFEL defaults pre-filled
+    # Per-protocol extraction amplitudes (threshold-based / relative mode)
     # ------------------------------------------------------------------
-    threshold: float = Field(
-        default=-20.0,
-        title="Threshold",
-        description="eFEL ``Threshold``: voltage above which a spike is detected (mV).",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIVOLTS,
-        },
-    )
-    strict_stiminterval: bool = Field(
-        default=True,
-        title="Strict stim interval",
+    extraction_amplitudes: tuple[float, ...] | None = Field(
+        default=None,
+        title="Extraction amplitudes",
         description=(
-            "eFEL ``strict_stiminterval``: only count spikes strictly within"
-            " [stim_start, stim_end]."
+            "Amplitudes (% of rheobase) to extract from this protocol. Only used"
+            " when global ``threshold_based`` is enabled. If empty in relative"
+            " mode, falls back to NWB-discovered amplitudes (which may be in"
+            " absolute nA — a warning is logged)."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
-    interp_step: PositiveFloat = Field(
-        default=0.025,
-        title="Interpolation step",
-        description=(
-            "eFEL ``interp_step``: time step the trace is resampled to before"
-            " extraction (ms)."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-    # Additional eFEL settings beyond the 3 always-present ones.
+
+    # ------------------------------------------------------------------
+    # Custom eFEL settings (picker)
+    # ------------------------------------------------------------------
     custom_efel_settings: dict[str, float | bool] | None = Field(
         default=None,
         title="Custom eFEL settings",
         description=(
-            "Additional eFEL settings beyond the always-present Threshold,"
-            " strict_stiminterval, and interp_step. Keys are eFEL setting names."
+            "Per-protocol eFEL settings applied to all features of this protocol."
+            " Keys are eFEL setting names. Overridden by per-feature settings."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
     )
@@ -188,19 +173,11 @@ class Protocol(OBIBaseModel):
     def efel_settings_override(self) -> dict:
         """Build the per-protocol ``efel_settings`` overrides.
 
-        The 3 always-present settings are always emitted. Additional settings
-        from ``custom_efel_settings`` are merged on top. Each setting overrides
-        the global eFEL setting for every feature of this protocol, and is
-        itself overridden by a feature that sets the same field.
+        Returns only the ``custom_efel_settings`` dict (or empty). Per-feature
+        settings override these values in the cascade (global -> protocol ->
+        feature).
         """
-        overrides: dict[str, float | bool] = {
-            "Threshold": self.threshold,
-            "strict_stiminterval": self.strict_stiminterval,
-            "interp_step": self.interp_step,
-        }
-        if self.custom_efel_settings:
-            overrides.update(self.custom_efel_settings)
-        return overrides
+        return dict(self.custom_efel_settings or {})
 
     def timing_override(self) -> dict:
         """Return user-set timing/LJP fields as a dict (None fields omitted).
