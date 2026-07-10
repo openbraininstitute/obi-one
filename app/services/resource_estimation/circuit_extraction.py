@@ -6,6 +6,7 @@ from entitysdk import models
 
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
+from app.types import MachineExecutorImageType
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.core.registry import task_registry
 from obi_one.scientific.library.circuit_metrics import (
@@ -142,7 +143,7 @@ def estimate_task_resources(  # noqa: PLR0914
             "memory": mem_gb,
             "timelimit": f"{time_h:02d}:00",
             "compute_cell": compute_cell,
-            "image_type": "python_3_12_compiler",
+            "image_type": MachineExecutorImageType.python_3_12_compiler,
             "ephemeral_storage": storage_gb,
         }
     )
