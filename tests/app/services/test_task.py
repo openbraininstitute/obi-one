@@ -702,6 +702,7 @@ def test_estimate_task_resources_circuit_extraction(db_client):
         db_client=db_client,
         task_definition=task_definition,
         compute_cell="cell_b",
+        accounting_parameters=None,
     )
 
 
