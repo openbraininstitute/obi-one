@@ -45,7 +45,6 @@ class TestLinearExtracellularLocations:
             origin_y=-50.0,
             origin_z=5.0,
             rotation_x=10.0,
-            rotation_y=20.0,
             rotation_z=30.0,
         )
         assert np.allclose(
@@ -263,7 +262,7 @@ class TestGlobalTransform:
     def test_rotation_is_rigid(self):
         """A rotation preserves the configured spacing (rigid motion, no inflation)."""
         probe = obi.LinearExtracellularLocations(
-            n_electrodes=4, spacing=10.0, rotation_x=30.0, rotation_y=45.0, rotation_z=60.0
+            n_electrodes=4, spacing=10.0, rotation_x=30.0, rotation_z=60.0
         )
         world = _as_array(probe.get_global_electrode_xyz_locations())
         steps = np.linalg.norm(np.diff(world, axis=0), axis=1)
@@ -278,7 +277,7 @@ class TestGlobalTransform:
             origin_z=2.0,
             rotation_x=20.0,
             rotation_y=30.0,
-            rotation_z=-10.0,
+            rotation_z=10.0,
         )
         local = _as_array(probe.get_local_electrode_xyz_locations())
         world = _as_array(probe.get_global_electrode_xyz_locations())
@@ -319,6 +318,15 @@ class TestParameterSweepConstraints:
         with pytest.raises(ValidationError):
             obi.LinearExtracellularLocations(spacing=0.0)
 
+    def test_rotation_range(self):
+        """Rotations are bound to [0, 360) degrees."""
+        with pytest.raises(ValidationError):
+            obi.LinearExtracellularLocations(rotation_x=-1.0)
+        with pytest.raises(ValidationError):
+            obi.LinearExtracellularLocations(rotation_z=360.0)
+        with pytest.raises(ValidationError):
+            obi.Neuropixels1ExtracellularLocations(rotation_y=360.0)
+
     def test_sweep_lists_accepted(self):
         """Constrained and rotation fields accept parameter-sweep lists (regression)."""
         obi.LinearExtracellularLocations(n_electrodes=[8, 16], spacing=[10.0, 20.0])
@@ -330,6 +338,8 @@ class TestParameterSweepConstraints:
             obi.LinearExtracellularLocations(n_electrodes=[8, 0])
         with pytest.raises(ValidationError):
             obi.LinearExtracellularLocations(spacing=[10.0, -1.0])
+        with pytest.raises(ValidationError):
+            obi.Neuropixels1ExtracellularLocations(rotation_y=[0.0, 400.0])
 
     def test_grid_dims_min(self):
         with pytest.raises(ValidationError):

@@ -18,7 +18,6 @@ _PLACED = {
     "origin_y": -1600.0,
     "origin_z": -2400.0,
     "rotation_x": 15.0,
-    "rotation_y": -20.0,
     "rotation_z": 30.0,
 }
 
@@ -56,8 +55,10 @@ class TestBlockSummary:
         assert "grid_rows" not in linear
         assert "n_electrodes" in neuropixels
         assert "spacing" not in neuropixels
-        # every pattern shares the placement (origin + rotations).
-        assert {"rotation_x", "rotation_y", "rotation_z"} <= set(linear)
+        # a 1-D line aims via rotation_x/z; only planar arrays add the roll (rotation_y).
+        assert {"rotation_x", "rotation_z"} <= set(linear)
+        assert "rotation_y" not in linear
+        assert {"rotation_x", "rotation_y", "rotation_z"} <= set(neuropixels)
         assert {"grid_rows", "grid_columns", "x_offset", "y_offset"} <= set(grid)
 
 

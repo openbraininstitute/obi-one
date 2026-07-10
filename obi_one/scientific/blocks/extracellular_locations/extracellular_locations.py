@@ -10,12 +10,15 @@ from obi_one.core.units import Units
 
 
 def _rotation_matrix(x_deg: float, y_deg: float, z_deg: float) -> np.ndarray:
-    """Return the rotation matrix for rotations about the world X, then Y, then Z axes (degrees)."""
+    """Return the rotation matrix ``Rz(z) @ Rx(x) @ Ry(y)`` (degrees).
+
+    ``Ry`` (roll about the local ``+Y`` axis) is applied first, then ``Rx`` and ``Rz`` aim ``+Y``.
+    """
     x, y, z = np.radians([x_deg, y_deg, z_deg])
     rx = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(x), -np.sin(x)], [0.0, np.sin(x), np.cos(x)]])
     ry = np.array([[np.cos(y), 0.0, np.sin(y)], [0.0, 1.0, 0.0], [-np.sin(y), 0.0, np.cos(y)]])
     rz = np.array([[np.cos(z), -np.sin(z), 0.0], [np.sin(z), np.cos(z), 0.0], [0.0, 0.0, 1.0]])
-    return rz @ ry @ rx
+    return rz @ rx @ ry
 
 
 class ExtracellularLocations(Block):
@@ -23,6 +26,11 @@ class ExtracellularLocations(Block):
 
 
 class XYZExtracellularLocations(ExtracellularLocations):
+    """Extracellular locations given as an explicit list of world-coordinate positions."""
+
+    title: ClassVar[str] = "Custom Positions"
+    description: ClassVar[str] = "An explicit list of electrode positions in world coordinates."
+
     xyz_locations: (
         tuple[tuple[float, float, float], ...] | list[tuple[tuple[float, float, float], ...]]
     ) = ((0.0, 0.0, 0.0),)
@@ -33,9 +41,9 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
 
     Subclasses define the pattern in a *local* frame via
     :meth:`get_local_electrode_xyz_locations` (origin at ``(0, 0, 0)``, the array running along the
-    local ``+Y`` axis). That pattern is then placed into world space by rotating it about the world
-    X, Y and Z axes (by ``rotation_x``, ``rotation_y``, ``rotation_z`` degrees) and translating by
-    ``origin`` (see :meth:`get_global_electrode_xyz_locations`).
+    local ``+Y`` axis). :meth:`get_global_electrode_xyz_locations` places it into world space:
+    ``rotation_x`` and ``rotation_z`` aim the local ``+Y`` axis (a 1-D line needs only these) and
+    ``origin`` translates it. Planar subclasses add ``rotation_y`` to roll about that axis.
     """
 
     origin_x: float | list[float] = Field(
@@ -63,7 +71,9 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         },
     )
 
-    rotation_x: float | list[float] = Field(
+    rotation_x: (
+        Annotated[float, Field(ge=0.0, lt=360.0)] | list[Annotated[float, Field(ge=0.0, lt=360.0)]]
+    ) = Field(
         default=0.0,
         title="Rotation X",
         description="Rotation of the array about the world X axis, in degrees.",
@@ -72,16 +82,9 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
             SchemaKey.UNITS: Units.DEGREES,
         },
     )
-    rotation_y: float | list[float] = Field(
-        default=0.0,
-        title="Rotation Y",
-        description="Rotation of the array about the world Y axis, in degrees.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.DEGREES,
-        },
-    )
-    rotation_z: float | list[float] = Field(
+    rotation_z: (
+        Annotated[float, Field(ge=0.0, lt=360.0)] | list[Annotated[float, Field(ge=0.0, lt=360.0)]]
+    ) = Field(
         default=0.0,
         title="Rotation Z",
         description="Rotation of the array about the world Z axis, in degrees.",
@@ -90,6 +93,10 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
             SchemaKey.UNITS: Units.DEGREES,
         },
     )
+
+    def _roll_degrees(self) -> float:  # noqa: PLR6301
+        """Roll about the local ``+Y`` axis, in degrees; 0 for arrays with no lateral extent."""
+        return 0.0
 
     def get_local_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
         """Return the electrode locations in the array's local frame.
@@ -104,10 +111,9 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
     def get_global_electrode_xyz_locations(self) -> list[tuple[float, float, float]]:
         """Return the electrode locations in world coordinates.
 
-        The local pattern from :meth:`get_local_electrode_xyz_locations` is rotated about the world
-        X, Y and Z axes (by ``rotation_x``, ``rotation_y``, ``rotation_z`` degrees, in that order)
-        and translated by ``origin``. With the default rotations of ``0`` this is a pure
-        translation by ``origin``.
+        The local pattern from :meth:`get_local_electrode_xyz_locations` is rotated and translated
+        by ``origin``: ``rotation_x``/``rotation_z`` aim the local ``+Y`` axis and planar arrays
+        roll about it by ``rotation_y``. With all rotations ``0`` this is a pure translation.
         """
         # These methods are only meaningful on single (expanded) configs, where every parameter
         # is a scalar rather than a parameter-sweep list.
@@ -120,7 +126,7 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         )
         rotation = _rotation_matrix(
             float(self.rotation_x),  # ty:ignore[invalid-argument-type]
-            float(self.rotation_y),  # ty:ignore[invalid-argument-type]
+            self._roll_degrees(),
             float(self.rotation_z),  # ty:ignore[invalid-argument-type]
         )
         local = np.asarray(self.get_local_electrode_xyz_locations(), dtype=float)
@@ -130,6 +136,9 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
 
 class LinearExtracellularLocations(PatternedExtracellularLocations):
     """Extracellular locations arranged in a linear pattern."""
+
+    title: ClassVar[str] = "Linear Probe"
+    description: ClassVar[str] = "A single line of evenly spaced electrodes along the probe axis."
 
     n_electrodes: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=16,
@@ -159,9 +168,25 @@ class TwoDPatternedExtracellularLocations(PatternedExtracellularLocations, ABC):
     """Base class for planar (2D) patterned extracellular locations.
 
     Subclasses define the pattern in the local X-Y plane via
-    :meth:`get_local_electrode_xy_locations`; this base places it at ``Z = 0`` in the local frame.
-    ``origin`` and the rotations then orient it in world space.
+    :meth:`get_local_electrode_xy_locations`; this base places it at ``Z = 0``. Unlike the 1-D
+    linear array, planar arrays have a lateral extent, so they expose ``rotation_y`` to roll about
+    the local ``+Y`` axis.
     """
+
+    rotation_y: (
+        Annotated[float, Field(ge=0.0, lt=360.0)] | list[Annotated[float, Field(ge=0.0, lt=360.0)]]
+    ) = Field(
+        default=0.0,
+        title="Rotation Y",
+        description="Roll of the array about its long (local +Y) axis, in degrees.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.DEGREES,
+        },
+    )
+
+    def _roll_degrees(self) -> float:
+        return float(self.rotation_y)  # ty:ignore[invalid-argument-type]
 
     def get_local_electrode_xy_locations(self) -> list[tuple[float, float]]:
         """Return the electrode pattern in the local X-Y plane.
@@ -179,6 +204,11 @@ class TwoDPatternedExtracellularLocations(PatternedExtracellularLocations, ABC):
 class Neuropixels1ExtracellularLocations(TwoDPatternedExtracellularLocations):
     """Extracellular locations for Neuropixels 1.0 probe."""
 
+    title: ClassVar[str] = "Neuropixels 1.0"
+    description: ClassVar[str] = (
+        "A Neuropixels 1.0 probe with the imec staggered electrode layout (four columns)."
+    )
+
     n_electrodes: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=384,
         title="Number of Electrodes",
@@ -194,7 +224,7 @@ class Neuropixels1ExtracellularLocations(TwoDPatternedExtracellularLocations):
         Matches the imec Neuropixels 1.0 geometry: two sites per row 32 um apart, rows 20 um apart,
         with alternate rows offset by a 16 um stagger (four columns at a 16 um pitch). The pattern
         is centred on the local ``+Y`` (long) axis so ``origin`` is the centre of the top of the
-        shank; the axial roll about that axis is applied by the base class.
+        shank.
         """
         row_pitch = 20.0  # vertical spacing between rows (electrode_pitch_vert_um)
         within_row_spacing = 32.0  # horizontal spacing between the two sites in a row (horz pitch)
@@ -222,8 +252,13 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
     The electrodes form a ``grid_rows`` by ``grid_columns`` grid in the local X-Y plane, centred on
     the local origin, with ``x_offset`` spacing between columns (along local X) and ``y_offset``
     spacing between rows (along local Y). ``origin`` positions the grid centre and the rotations
-    (``rotation_x``/``rotation_y``/``rotation_z``) orient it.
+    orient it.
     """
+
+    title: ClassVar[str] = "Rectangular Grid"
+    description: ClassVar[str] = (
+        "A configurable rectangular grid of electrodes with independent row and column spacing."
+    )
 
     grid_rows: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=10,
@@ -259,7 +294,7 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
     )
 
     def get_local_electrode_xy_locations(self) -> list[tuple[float, float]]:
-        """Return the grid electrodes in the local X-Y plane, before axial rotation.
+        """Return the grid electrodes in the local X-Y plane.
 
         Electrodes are centred on the origin, spaced ``x_offset`` between columns (X) and
         ``y_offset`` between rows (Y).
@@ -284,6 +319,11 @@ class UTAHArrayExtracellularLocations(TwoDPatternedExtracellularLocations):
     The grid dimensions and spacing are fixed (unlike :class:`GridExtracellularLocations`); only the
     placement (``origin`` and the rotations) is configurable.
     """
+
+    title: ClassVar[str] = "Utah Array"
+    description: ClassVar[str] = (
+        "The Blackrock Utah array: a fixed 10x10 grid of electrodes at 400 um spacing."
+    )
 
     GRID_ROWS: ClassVar[int] = 10
     GRID_COLUMNS: ClassVar[int] = 10
