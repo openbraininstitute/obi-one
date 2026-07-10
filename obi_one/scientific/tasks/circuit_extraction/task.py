@@ -29,7 +29,15 @@ from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_ci
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import CircuitExtractionNeuronSetUnion
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    CircuitExtractionNeuronSetUnion,
+)
+from obi_one.scientific.unions.unions_neuron_sets import (
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+)
 from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
 from obi_one.utils.benchmark import BenchmarkTracker
 
@@ -45,7 +53,7 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    EXTRACTION_TARGET = "Extraction Target"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
 
 
 class CircuitExtractionScanConfig(InfoScanConfig):
@@ -59,12 +67,24 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         " to simulate the extracted circuit."
     )
 
+    default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
+    default_point_node_set_name: ClassVar[str] = "Default: All Point Neurons"
+
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
+        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP],
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
+            BiophysicalNeuronSetReference.__name__: (
+                default_node_set_name
+            ),
+            PointNeuronSetReference.__name__: (
+                default_point_node_set_name,
+            ),
+        },
+
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (
@@ -90,6 +110,16 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             description="Parent circuit to extract a sub-circuit from.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            },
+        )
+        neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+            default=None,
+            title="Neuron Set",
+            description="Set of neurons to be extracted from the parent circuit, including their"
+            " connectivity.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+                SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
             },
         )
         do_virtual: bool = Field(
@@ -131,13 +161,14 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    neuron_set: CircuitExtractionNeuronSetUnion = Field(
-        title="Neuron Set",
-        description="Set of neurons to be extracted from the parent circuit, including their"
-        " connectivity.",
+    neuron_sets: dict[str, CircuitExtractionNeuronSetUnion] = Field(
+        default_factory=dict,
+        description="Neuron sets for the extraction.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
-            SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
@@ -245,8 +276,9 @@ class CircuitExtractionTask(Task):
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         with BenchmarkTracker.section("add_node_set"):
-            nset_name = self.config.neuron_set.__class__.__name__
-            nset_def, nset_combined = self.config.neuron_set.get_node_set_definition(
+            neuron_set = self.config.initialize.neuron_set.block
+            nset_name = neuron_set.__class__.__name__
+            nset_def, nset_combined = neuron_set.get_node_set_definition(
                 self._circuit,
             )
             sonata_circuit = self._circuit.sonata_circuit
