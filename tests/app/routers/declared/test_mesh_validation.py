@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from app.dependencies.auth import user_verified
 from app.endpoints.mesh_validation import (
     MAX_FILE_SIZE,
+    VALID_MESH_EXTENSIONS,
     FileTooLargeError,
     ValidationStatus,
     _cleanup_temp_file,
@@ -23,7 +24,7 @@ from app.endpoints.mesh_validation import (
 from app.errors import ApiErrorCode
 
 ROUTE = "/declared/test-mesh-file"
-VALID_EXTENSION = ".obj"
+VALID_EXTENSIONS = sorted(VALID_MESH_EXTENSIONS)
 
 
 def get_error_code(response_json: dict) -> str:
@@ -51,16 +52,23 @@ def client():
 
 
 @pytest.fixture
-def valid_mesh_upload() -> dict:
-    return {"file": (f"valid{VALID_EXTENSION}", BytesIO(b"v 0 0 0"), "application/octet-stream")}
+def valid_mesh_upload():
+    def _make(extension: str) -> dict:
+        return {"file": (f"valid{extension}", BytesIO(b"mesh-data"), "application/octet-stream")}
+
+    return _make
 
 
 @pytest.fixture
-def empty_mesh_upload() -> dict:
-    return {"file": (f"empty{VALID_EXTENSION}", BytesIO(b""), "application/octet-stream")}
+def empty_mesh_upload():
+    def _make(extension: str) -> dict:
+        return {"file": (f"empty{extension}", BytesIO(b""), "application/octet-stream")}
+
+    return _make
 
 
-def test_validate_mesh_file_success(client, valid_mesh_upload, tmp_path):
+@pytest.mark.parametrize("extension", VALID_EXTENSIONS)
+def test_validate_mesh_file_success(client, valid_mesh_upload, tmp_path, extension):
     saved_path = None
 
     def fake_save(_file: UploadFile, suffix: str) -> str:
@@ -77,11 +85,12 @@ def test_validate_mesh_file_success(client, valid_mesh_upload, tmp_path):
         patch("app.endpoints.mesh_validation.validate_mesh_reader", return_value=None),
         patch("app.endpoints.mesh_validation._cleanup_temp_file", side_effect=mock_cleanup),
     ):
-        response = client.post(ROUTE, files=valid_mesh_upload)
+        response = client.post(ROUTE, files=valid_mesh_upload(extension))
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()["status"] == ValidationStatus.SUCCESS
     assert response.json()["message"] == "MESH file validation successful."
+    assert saved_path.endswith(extension)
     mock_cleanup.assert_called_once_with(saved_path)
 
 
@@ -91,36 +100,42 @@ def test_validate_mesh_file_invalid_extension(client):
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
-    assert "Invalid file extension" in get_error_detail(response.json())
+    detail = get_error_detail(response.json())
+    assert "Invalid file extension" in detail
+    for extension in VALID_EXTENSIONS:
+        assert extension in detail
 
 
-def test_validate_mesh_file_empty(client, empty_mesh_upload, tmp_path):
-    saved_path = str(tmp_path / "empty.obj")
+@pytest.mark.parametrize("extension", VALID_EXTENSIONS)
+def test_validate_mesh_file_empty(client, empty_mesh_upload, tmp_path, extension):
+    saved_path = str(tmp_path / f"empty{extension}")
     Path(saved_path).write_bytes(b"")
 
     with (
         patch("app.endpoints.mesh_validation._save_upload_to_tempfile", return_value=saved_path),
         patch("app.endpoints.mesh_validation._cleanup_temp_file"),
     ):
-        response = client.post(ROUTE, files=empty_mesh_upload)
+        response = client.post(ROUTE, files=empty_mesh_upload(extension))
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "Uploaded file is empty" in get_error_detail(response.json())
 
 
-def test_validate_mesh_file_too_large(client, valid_mesh_upload):
+@pytest.mark.parametrize("extension", VALID_EXTENSIONS)
+def test_validate_mesh_file_too_large(client, valid_mesh_upload, extension):
     with patch(
         "app.endpoints.mesh_validation._save_upload_to_tempfile",
         side_effect=FileTooLargeError("Too big"),
     ):
-        response = client.post(ROUTE, files=valid_mesh_upload)
+        response = client.post(ROUTE, files=valid_mesh_upload(extension))
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "too large" in get_error_detail(response.json()).lower()
 
 
-def test_validate_mesh_file_reader_fails(client, valid_mesh_upload, tmp_path):
-    saved_path = tmp_path / "fail.obj"
+@pytest.mark.parametrize("extension", VALID_EXTENSIONS)
+def test_validate_mesh_file_reader_fails(client, valid_mesh_upload, tmp_path, extension):
+    saved_path = tmp_path / f"fail{extension}"
     saved_path.write_bytes(b"invalid data")
 
     with (
@@ -132,26 +147,30 @@ def test_validate_mesh_file_reader_fails(client, valid_mesh_upload, tmp_path):
             side_effect=RuntimeError("pylmesh load error"),
         ),
     ):
-        response = client.post(ROUTE, files=valid_mesh_upload)
+        response = client.post(ROUTE, files=valid_mesh_upload(extension))
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "MESH validation failed" in get_error_detail(response.json())
     assert not saved_path.exists()
 
 
-def test_validate_mesh_file_os_error(client, valid_mesh_upload):
+@pytest.mark.parametrize("extension", VALID_EXTENSIONS)
+def test_validate_mesh_file_os_error(client, valid_mesh_upload, extension):
     with patch(
         "app.endpoints.mesh_validation._save_upload_to_tempfile", side_effect=OSError("Disk full")
     ):
-        response = client.post(ROUTE, files=valid_mesh_upload)
+        response = client.post(ROUTE, files=valid_mesh_upload(extension))
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert get_error_code(response.json()) == "INTERNAL_ERROR"
 
 
-def test_validate_mesh_file_background_cleanup_scheduled(client, valid_mesh_upload, tmp_path):
-    saved_path = tmp_path / "test_cleanup.obj"
-    saved_path.write_bytes(b"v 0 0 0")
+@pytest.mark.parametrize("extension", VALID_EXTENSIONS)
+def test_validate_mesh_file_background_cleanup_scheduled(
+    client, valid_mesh_upload, tmp_path, extension
+):
+    saved_path = tmp_path / f"test_cleanup{extension}"
+    saved_path.write_bytes(b"mesh-data")
 
     mock_cleanup = MagicMock()
     with (
@@ -161,15 +180,16 @@ def test_validate_mesh_file_background_cleanup_scheduled(client, valid_mesh_uplo
         patch("app.endpoints.mesh_validation.validate_mesh_reader", return_value=None),
         patch("app.endpoints.mesh_validation._cleanup_temp_file", side_effect=mock_cleanup),
     ):
-        response = client.post(ROUTE, files=valid_mesh_upload)
+        response = client.post(ROUTE, files=valid_mesh_upload(extension))
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()["status"] == ValidationStatus.SUCCESS
     mock_cleanup.assert_called_once_with(str(saved_path))
 
 
-def test_validate_mesh_file_too_large_via_size_header(client):
-    large_file = {"file": (f"big{VALID_EXTENSION}", BytesIO(b"data"), "application/octet-stream")}
+@pytest.mark.parametrize("extension", VALID_EXTENSIONS)
+def test_validate_mesh_file_too_large_via_size_header(client, extension):
+    large_file = {"file": (f"big{extension}", BytesIO(b"data"), "application/octet-stream")}
 
     with patch("app.endpoints.mesh_validation.MAX_FILE_SIZE", -1):
         response = client.post(ROUTE, files=large_file)
@@ -181,7 +201,7 @@ def test_validate_mesh_file_too_large_via_size_header(client):
 def test_validate_mesh_reader_raises_on_value_error():
     with (
         patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=ValueError("bad")),
-        pytest.raises(ValueError, match="Failed to load OBJ file"),
+        pytest.raises(ValueError, match="Failed to load MESH file"),
     ):
         validate_mesh_reader("dummy.obj")
 
@@ -189,9 +209,9 @@ def test_validate_mesh_reader_raises_on_value_error():
 def test_validate_mesh_reader_raises_on_os_error():
     with (
         patch("app.endpoints.mesh_validation.pylmesh.load_mesh", side_effect=OSError("missing")),
-        pytest.raises(ValueError, match="Failed to load OBJ file"),
+        pytest.raises(ValueError, match="Failed to load MESH file"),
     ):
-        validate_mesh_reader("dummy.obj")
+        validate_mesh_reader("dummy.glb")
 
 
 def test_validate_mesh_reader_raises_on_empty_mesh():
@@ -210,7 +230,7 @@ def test_validate_mesh_reader_returns_mesh_on_success():
     mock_mesh.is_empty.return_value = False
 
     with patch("app.endpoints.mesh_validation.pylmesh.load_mesh", return_value=mock_mesh):
-        result = validate_mesh_reader("dummy.obj")
+        result = validate_mesh_reader("dummy.glb")
 
     assert result is mock_mesh
 
@@ -232,7 +252,7 @@ def test_save_upload_to_tempfile_cleans_up_on_read_error():
     mock_file.file.read = MagicMock(side_effect=OSError("read failed"))
 
     with pytest.raises(OSError, match="read failed"):
-        _save_upload_to_tempfile(mock_file, suffix=".obj")
+        _save_upload_to_tempfile(mock_file, suffix=".glb")
 
 
 def test_cleanup_temp_file_os_error_is_logged(tmp_path, caplog):
