@@ -12,12 +12,13 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.library.info_scan_config.config import (
+    BlockGroup as InfoBlockGroup,
+    InfoScanConfig,
+)
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
-    AbsoluteRheobase,
     ExtractionInitialize,
     ProtocolAndFeatureSelection,
-    RheobaseStrategyUnion,
     Settings,
 )
 
@@ -27,9 +28,9 @@ L = logging.getLogger(__name__)
 class BlockGroup(StrEnum):
     """Block groups for the extraction stage."""
 
-    SETUP = "Setup"
-    EXTRACTION = "Extraction"
-    TARGETS = "Targets"
+    INPUTS = "Inputs"
+    PROTOCOLS_FEATURES = "Protocols & features"
+    SETTINGS = "Settings"
 
 
 class EModelEFeatureExtractionScanConfig(InfoScanConfig):
@@ -49,7 +50,12 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION, BlockGroup.TARGETS],
+        SchemaKey.GROUP_ORDER: [
+            InfoBlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.INPUTS,
+            BlockGroup.PROTOCOLS_FEATURES,
+            BlockGroup.SETTINGS,
+        ],
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (
@@ -63,40 +69,18 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         return [r.entity(db_client=db_client) for r in self.initialize.electrical_cell_recording]
 
     initialize: ExtractionInitialize = Field(
-        title="Initialize",
-        description="Filesystem inputs for feature extraction.",
+        title="Inputs",
+        description="Input recordings for feature extraction.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-
-    settings: Settings = Field(
-        default_factory=Settings,
-        title="Settings",
-        description="Global eFEL and ``bluepyefe.extract`` parameters.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.EXTRACTION,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    rheobase: RheobaseStrategyUnion = Field(
-        default_factory=AbsoluteRheobase,
-        title="Rheobase",
-        description="Strategy and parameters used to estimate each cell's rheobase.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
-            SchemaKey.GROUP: BlockGroup.EXTRACTION,
-            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
     efeatures_by_protocol: ProtocolAndFeatureSelection = Field(
         default_factory=ProtocolAndFeatureSelection,
-        title="EFeatures by protocol",
+        title="Protocols & features",
         description=(
             "Per-protocol timing, amplitudes and e-feature selection. The"
             " frontend renders a ``select_efeatures_by_protocol`` picker,"
@@ -106,7 +90,18 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.TARGETS,
+            SchemaKey.GROUP: BlockGroup.PROTOCOLS_FEATURES,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    settings: Settings = Field(
+        default_factory=Settings,
+        title="Settings",
+        description="Global extraction-flow parameters and amplitude mode.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETTINGS,
             SchemaKey.GROUP_ORDER: 0,
         },
     )

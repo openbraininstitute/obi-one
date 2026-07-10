@@ -18,7 +18,6 @@ from obi_one.scientific.library.electrical_cell_recording_properties import (
 )
 from obi_one.scientific.tasks.emodel_optimization import _shared
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
-    RheobaseStrategy,
     Settings,
 )
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
@@ -33,6 +32,16 @@ EXTRACTED_FEATURES_FILENAME = "extracted_features.json"
 EMODEL_NAME = "emodel"
 RECIPES_RELPATH = "config/recipes.json"
 TARGETS_CONFIG_RELPATH = "config/extract_config/targets.json"
+
+# Global eFEL defaults passed as the recipe's ``efel_settings`` dict. In manual
+# mode, per-feature overrides (threshold/strict_stiminterval/interp_step/stim_start
+# /stim_end + custom_efel_settings) take priority via the cascade. In autoselect
+# mode these are the only eFEL settings applied.
+DEFAULT_EFEL_SETTINGS: dict[str, float | bool] = {
+    "Threshold": -20.0,
+    "strict_stiminterval": True,
+    "interp_step": 0.025,
+}
 
 # bluepyefe eCodes that don't auto-detect their stimulus timing. ``Ramp`` needs
 # only ``ton``, which this stage reads from the NWB current (``_read_timing_from_nwb``)
@@ -144,19 +153,39 @@ def _discover_amplitudes(
 def _build_targets_formatted(
     protocols: list,
     amplitudes_per_protocol: dict[str, list[float]],
+    *,
+    threshold_based: bool = False,
 ) -> list[dict]:
     """Flatten the per-protocol selection into ``bluepyefe.extract`` rows.
 
-    Amplitudes are sourced from the NWB inspection — protocols with no
-    discovered amplitudes contribute zero rows.
+    Amplitude selection (rule 7):
+    - If ``threshold_based=True`` and the protocol has ``extraction_amplitudes``
+      set, those relative (% of rheobase) amplitudes are used.
+    - Otherwise, fall back to the NWB-discovered amplitudes from
+      ``amplitudes_per_protocol``. When falling back in relative mode a warning
+      is logged (the discovered amplitudes may be absolute nA).
+
+    Protocols with no amplitudes from either source contribute zero rows.
     """
     rows: list[dict] = []
     for protocol in protocols:
         ecode = protocol.name
-        # eFEL overrides cascade global (Settings) -> protocol -> feature; the
-        # most specific level wins, so feature overrides are merged on top.
+        # eFEL overrides cascade global -> protocol -> feature.
         protocol_efel = protocol.efel_settings_override()
-        for amplitude in amplitudes_per_protocol.get(ecode, ()):
+
+        # Amplitude selection per rule 7.
+        if threshold_based and protocol.extraction_amplitudes:
+            amplitudes = list(protocol.extraction_amplitudes)
+        else:
+            amplitudes = amplitudes_per_protocol.get(ecode, ())
+            if threshold_based and not amplitudes:
+                L.warning(
+                    "Protocol %s: threshold_based=True but no extraction_amplitudes set"
+                    " and no amplitudes discovered from NWB. No rows will be generated.",
+                    ecode,
+                )
+
+        for amplitude in amplitudes:
             for feature in protocol.selected_efeatures():
                 # Same exclusion as the L5PC pipeline: skip ohmic_input_resistance for IV_0.
                 if (
@@ -179,7 +208,7 @@ def _build_targets_formatted(
     return rows
 
 
-def _build_extraction_recipes(settings: Settings, rheobase: RheobaseStrategy) -> dict:
+def _build_extraction_recipes(settings: Settings) -> dict:
     """Build a minimal BluePyEModel ``recipes.json`` for the extraction step.
 
     Only the ``pipeline_settings`` consumed by ``extract_save_features_protocols``
@@ -188,31 +217,47 @@ def _build_extraction_recipes(settings: Settings, rheobase: RheobaseStrategy) ->
     optimisation stage consumes; ``path_extract_config`` at the targets
     configuration stored through the access point at execution time.
 
-    ``extract_absolute_amplitudes`` is forced on because the amplitudes are read
-    from the NWB in absolute units (nA). Note that BluePyEModel nulls
-    ``name_rmp_protocol``/``name_Rin_protocol`` (with a warning) when absolute
-    amplitudes are used, as the threshold-based RMP/Rin protocols do not apply.
+    ``extract_absolute_amplitudes`` is the inverse of ``settings.threshold_based``:
+    - Default (threshold_based=False): absolute amplitudes from NWB (nA).
+    - threshold_based=True: relative amplitudes (% of rheobase).
+
+    R_in and RMP protocols are only emitted when ``threshold_based=True`` and the
+    corresponding protocol name is set; BluePyEModel nulls them under absolute
+    amplitudes anyway.
     """
+    # R_in / RMP protocol: [protocol_name, amplitude] or None.
+    name_rin_protocol = None
+    if settings.threshold_based and settings.rin_protocol_name:
+        name_rin_protocol = [settings.rin_protocol_name, settings.rin_protocol_amplitude]
+
+    name_rmp_protocol = None
+    if settings.threshold_based and settings.rmp_protocol_name:
+        name_rmp_protocol = [settings.rmp_protocol_name, settings.rmp_protocol_amplitude]
+
+    pipeline_settings: dict = {
+        "path_extract_config": TARGETS_CONFIG_RELPATH,
+        "extract_absolute_amplitudes": not settings.threshold_based,
+        "plot_extraction": settings.plot_extraction,
+        "default_std_value": settings.default_std_value,
+        "efel_settings": DEFAULT_EFEL_SETTINGS,
+        "name_rmp_protocol": name_rmp_protocol,
+        "name_Rin_protocol": name_rin_protocol,
+        "extraction_threshold_value_save": settings.threshold_nvalue_save,
+        "pickle_cells_extraction": settings.pickle_cells,
+        "bound_max_std": settings.bound_max_std,
+        "interpolate_RMP_extraction": settings.interpolate_rmp,
+        "threshold_efeature_std": settings.threshold_efeature_std,
+        "minimum_protocol_delay": settings.minimum_protocol_delay,
+    }
+
+    if settings.compute_rheobase:
+        pipeline_settings["rheobase_strategy_extraction"] = "absolute"
+        pipeline_settings["rheobase_settings_extraction"] = {"spike_threshold": 1}
+
     return {
         EMODEL_NAME: {
             "features": EXTRACTED_FEATURES_FILENAME,
-            "pipeline_settings": {
-                "path_extract_config": TARGETS_CONFIG_RELPATH,
-                "extract_absolute_amplitudes": True,
-                "plot_extraction": settings.plot_extraction,
-                "default_std_value": settings.default_std_value,
-                "efel_settings": settings.efel_to_dict(),
-                "name_rmp_protocol": settings.name_rmp_protocol,
-                "name_Rin_protocol": settings.name_rin_protocol,
-                "extraction_threshold_value_save": settings.threshold_nvalue_save,
-                "rheobase_strategy_extraction": rheobase.strategy,
-                "rheobase_settings_extraction": rheobase.to_dict(),
-                "pickle_cells_extraction": settings.pickle_cells,
-                "bound_max_std": settings.bound_max_std,
-                "interpolate_RMP_extraction": settings.interpolate_rmp,
-                "threshold_efeature_std": settings.threshold_efeature_std,
-                "minimum_protocol_delay": settings.minimum_protocol_delay,
-            },
+            "pipeline_settings": pipeline_settings,
         },
     }
 
@@ -314,7 +359,7 @@ class EModelEFeatureExtractionTask(Task):
             return TargetsConfiguration(
                 files=files,
                 auto_targets=auto_targets,
-                protocols_rheobase=list(self.config.rheobase.protocols),
+                protocols_rheobase=["IDthresh"] if self.config.settings.compute_rheobase else [],
             )
 
         # --- Manual mode: build targets from per-protocol feature selection ---
@@ -350,8 +395,12 @@ class EModelEFeatureExtractionTask(Task):
 
         return TargetsConfiguration(
             files=files,
-            targets=_build_targets_formatted(protocols_cfg, amplitudes_per_protocol),
-            protocols_rheobase=list(self.config.rheobase.protocols),
+            targets=_build_targets_formatted(
+                protocols_cfg,
+                amplitudes_per_protocol,
+                threshold_based=self.config.settings.threshold_based,
+            ),
+            protocols_rheobase=["IDthresh"] if self.config.settings.compute_rheobase else [],
         )
 
     def execute(
@@ -377,7 +426,7 @@ class EModelEFeatureExtractionTask(Task):
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
         _shared.write_recipes(
-            _build_extraction_recipes(self.config.settings, self.config.rheobase),
+            _build_extraction_recipes(self.config.settings),
             coord_root / RECIPES_RELPATH,
         )
 

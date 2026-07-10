@@ -14,26 +14,12 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.protocol_and_feature_selection import (  # noqa: E501
     ProtocolAndFeatureSelection,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.rheobase import (
-    AbsoluteRheobase,
-    FlushRheobase,
-    InterpolationRheobase,
-    MajorityRheobase,
-    RheobaseStrategy,
-    RheobaseStrategyUnion,
-)
 from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.settings import (
     Settings,
 )
 
 __all__ = [
-    "AbsoluteRheobase",
     "ExtractionInitialize",
-    "FlushRheobase",
-    "InterpolationRheobase",
-    "MajorityRheobase",
     "ProtocolAndFeatureSelection",
-    "RheobaseStrategy",
-    "RheobaseStrategyUnion",
     "Settings",
 ]
