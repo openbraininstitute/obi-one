@@ -248,6 +248,7 @@ def _build_extraction_recipes(settings: Settings) -> dict:
         "interpolate_RMP_extraction": settings.interpolate_rmp,
         "threshold_efeature_std": settings.threshold_efeature_std,
         "minimum_protocol_delay": settings.minimum_protocol_delay,
+        "validation_protocols": list(settings.validation_protocols),
     }
 
     if settings.compute_rheobase:

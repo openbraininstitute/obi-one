@@ -21,7 +21,7 @@ class ElectricalCellRecordingFromID(EntityFromID):
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> Path:
         output_dir = create_dir(dest_dir)
-        asset = db_client.download_assets(
+        asset = db_client.fetch_assets(
             self.entity(db_client=db_client),
             selection={"content_type": ContentType.application_nwb},
             output_path=output_dir,
