@@ -47,7 +47,7 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
             )
             neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=staged_circuit)
     else:
-        neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=parent_circuit)
+        neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=parent_circuit)  # ty:ignore[invalid-argument-type]
 
     neuron_count = sum(len(v) for v in neuron_ids.values())
     if neuron_count == 0:

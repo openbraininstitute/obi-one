@@ -131,7 +131,7 @@ def estimate_task_resources(  # noqa: PLR0914
     )
     input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio  # ty:ignore[unresolved-attribute]
     output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
-    output_size_synapses = input_size_synapses * output_fraction # Rough scaling based on fraction of neurons, if available
+    output_size_synapses = input_size_synapses * output_fraction
     output_size_gb = 1 + output_size_synapses * 1.85e-7
     storage_gb = _get_required_extra_storage_space(output_size_gb)
 
