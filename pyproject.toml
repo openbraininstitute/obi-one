@@ -57,6 +57,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
+emodel = [
+    "bluepyemodel>=1.0.43",
+]
+
 # New group for the private dependency
 meshing = [
     "neuromorphomesh",
@@ -93,7 +98,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,notebooks,service,meshing]",
+    "obi-one[connectivity,emodel,notebooks,service,meshing]",
 ]
 
 [dependency-groups]
