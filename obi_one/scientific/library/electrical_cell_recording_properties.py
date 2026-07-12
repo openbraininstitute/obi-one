@@ -202,19 +202,11 @@ def get_recording_protocols(
     result: dict[str, list[str]] = {}
     for rid in recording_ids:
         entity = db_client.get_entity(entity_id=rid, entity_type=ElectricalCellRecording)
-        with tempfile.NamedTemporaryFile(suffix=".nwb") as tmp:
-            for asset in entity.assets:
-                if asset.content_type == ContentType.application_nwb:
-                    content = db_client.download_content(
-                        entity_id=rid,  # ty:ignore[invalid-argument-type]
-                        entity_type=ElectricalCellRecording,
-                        asset_id=asset.id,
-                    )
-                    tmp.write(content)
-                    tmp.flush()
-                    break
-            else:
-                msg = f"No asset with content type 'application/nwb' found for recording {rid}."
-                raise ValueError(msg)
-            result[rid] = _read_protocols_from_nwb(Path(tmp.name))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fetched = db_client.fetch_assets(
+                entity,
+                selection={"content_type": ContentType.application_nwb},
+                output_path=Path(tmpdir),
+            ).one()
+            result[rid] = _read_protocols_from_nwb(fetched.path)
     return result
