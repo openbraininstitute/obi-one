@@ -906,14 +906,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.1"
+version = "0.19.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/7d/206c0182356d33ac87a14e5a3c1b4cbd532f761b342128f5f6a261005cf4/entitysdk-0.19.1.tar.gz", hash = "sha256:c54e97201f2ca4a675375384379a1c435e98b1c77ff1e27b6ba6b65e0ba911c5", size = 90822, upload-time = "2026-07-06T18:07:22.782Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/69/90527f90ab96b650bb88f185fa131788abe6079e44c9f4443234d6ccc46a/entitysdk-0.19.2.tar.gz", hash = "sha256:308dedc77531963ab66bd8a5ab8ad3accdce3c5db7d751c911c5acdb1122cfc7", size = 90827, upload-time = "2026-07-08T13:16:27.367Z" }
 
 [[package]]
 name = "executing"
@@ -2204,6 +2204,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pylmesh" },
     { name = "python-multipart" },
+    { name = "scipy" },
 ]
 
 [package.optional-dependencies]
@@ -2317,6 +2318,7 @@ requires-dist = [
     { name = "pylmesh" },
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
+    { name = "scipy" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },

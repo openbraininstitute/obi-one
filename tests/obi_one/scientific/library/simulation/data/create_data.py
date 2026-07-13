@@ -165,7 +165,7 @@ if __name__ == "__main__":
         json.dump(
             {
                 "All": {"population": "drosophila"},
-                "sugar": {"population": "drosophila", "node_id": [0]},
+                "0": {"population": "drosophila", "node_id": [0]},
             },
             fd,
         )

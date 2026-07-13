@@ -32,6 +32,7 @@ __all__ = [
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
+    "BiophysicalCombinedNeuronSet",
     "BiophysicalNeuronSetReference",
     "BiophysicalPopulationIDNeuronSet",
     "BiophysicalPopulationNeuronSet",
@@ -57,6 +58,7 @@ __all__ = [
     "ClusteredPathDistanceMorphologyLocations",
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
+    "CombinedNeuronSet",
     "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
@@ -87,6 +89,7 @@ __all__ = [
     "ExplicitMorphologyLocations",
     "ExponentialDistribution",
     "ExtracellularLocations",
+    "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
     "FloatConstantDistribution",
     "FloatRange",
@@ -98,6 +101,7 @@ __all__ = [
     "GammaDistribution",
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
+    "GridExtracellularLocations",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
@@ -154,6 +158,7 @@ __all__ = [
     "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NonVirtualCombinedNeuronSet",
     "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
@@ -165,6 +170,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PointCombinedNeuronSet",
     "PointNeuronSetReference",
     "PointPopulationIDNeuronSet",
     "PointPopulationNeuronSet",
@@ -222,6 +228,8 @@ __all__ = [
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
+    "UTAHArrayExtracellularLocations",
+    "VirtualCombinedNeuronSet",
     "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
@@ -257,7 +265,7 @@ from obi_one.core.scan_generation import (
     GridScanGenerationTask,
     ScanGenerationTask,
 )
-from obi_one.scientific.blocks.afferent_synapses import (
+from obi_one.scientific.blocks.afferent_synapses.afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
     ClusteredPDSynapsesByMaxDistance,
@@ -286,8 +294,10 @@ from obi_one.scientific.blocks.distributions.uniform import (
 )
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
+    UTAHArrayExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (
@@ -307,6 +317,13 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+    CombinedNeuronSet,
+    NonVirtualCombinedNeuronSet,
+    PointCombinedNeuronSet,
+    VirtualCombinedNeuronSet,
+)
 from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
@@ -344,8 +361,8 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPopulationNeurons,
     AllVirtualNeurons,
 )
-from obi_one.scientific.blocks.recording import (
-    Recording,
+from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
@@ -546,6 +563,7 @@ from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
 from obi_one.scientific.unions.unions_neuron_sets import (
