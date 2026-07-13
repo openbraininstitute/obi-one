@@ -45,7 +45,7 @@ def get_subject(
     return existing.model_dump(mode="json")
 
 
-def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> object | None:
+def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> models.Subject | None:
     """Find a duplicate subject name using normalized comparison.
 
     Normalizes the input name by lowercasing and stripping all non-alphanumeric
