@@ -1,15 +1,21 @@
 """Integration tests for the NWB validation endpoint."""
 
+import json
+import uuid
 from http import HTTPStatus
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import entitysdk.client
+import numpy as np
 import pytest
+from entitysdk.models import ElectricalCellRecording
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.testclient import TestClient
 
 from app.dependencies.auth import user_verified
+from app.dependencies.entitysdk import get_client
 
 # Import AFTER patching
 from app.endpoints.validate_electrophysiology_protocol_nwb import (
@@ -20,10 +26,13 @@ from app.endpoints.validate_electrophysiology_protocol_nwb import (
 from app.errors import ApiErrorCode
 from app.logger import L
 
+from tests.utils import DATA_DIR
+
 # -----------------------------------------------------------------
 # CONSTANTS
 # -----------------------------------------------------------------
 ROUTE = "/declared/validate-electrophysiology-protocol-nwb-file"
+INSPECT_ROUTE = "/declared/electrophysiologyrecording-inspection"
 
 
 # Helper to safely retrieve the 'code' from the response, handling nested 'detail' wrapping
@@ -400,3 +409,129 @@ def test_validate_nwb_file_background_cleanup(
     mock_cleanup.assert_called_once_with(str(saved_path))
 
     assert saved_path.exists()
+
+
+def test_inspect_electrophysiologyrecording_success(
+    client: TestClient,
+    monkeypatch,
+):
+    recording = ElectricalCellRecording.model_validate(
+        json.loads((DATA_DIR / "electrical_cell_recording.json").read_bytes())
+    )
+    db_client = MagicMock(entitysdk.client.Client)
+    db_client.get_entity.return_value = recording
+    db_client.download_content.return_value = b"mock-nwb-data"
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: db_client)
+    inspection = {
+        "reader": "ScalaNWBReader",
+        "protocols": ["Step"],
+        "traces": [
+            {
+                "id": "step_1",
+                "voltage": np.array([1.0, 2.0], dtype=np.float32),
+                "current": np.array([0.1, 0.2], dtype=np.float32),
+                "dt": np.float64(0.1),
+            }
+        ],
+        "metadata": {"nwb_version": "2.2.5"},
+    }
+    recording_id = uuid.uuid4()
+
+    with patch(
+        "app.endpoints.validate_electrophysiology_protocol_nwb.inspect_nwb_file_contents",
+        return_value=inspection,
+    ):
+        response = client.get(f"{INSPECT_ROUTE}/{recording_id}")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        "reader": "ScalaNWBReader",
+        "protocols": ["Step"],
+        "trace_count": 1,
+        "traces": [
+            {
+                "id": "step_1",
+                "voltage": [1.0, 2.0],
+                "current": [pytest.approx(0.1), pytest.approx(0.2)],
+                "dt": 0.1,
+            }
+        ],
+        "metadata": {"nwb_version": "2.2.5"},
+    }
+    db_client.get_entity.assert_called_once_with(
+        entity_id=recording_id,
+        entity_type=ElectricalCellRecording,
+    )
+    db_client.download_content.assert_called_once_with(
+        entity_id=recording_id,
+        entity_type=ElectricalCellRecording,
+        asset_id=recording.assets[0].id,
+    )
+
+
+def test_inspect_electrophysiologyrecording_without_nwb_asset(client: TestClient, monkeypatch):
+    recording = ElectricalCellRecording.model_validate(
+        json.loads((DATA_DIR / "electrical_cell_recording.json").read_bytes())
+    ).model_copy(update={"assets": []})
+    db_client = MagicMock(entitysdk.client.Client)
+    db_client.get_entity.return_value = recording
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: db_client)
+    recording_id = uuid.uuid4()
+
+    response = client.get(f"{INSPECT_ROUTE}/{recording_id}")
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
+    assert get_error_detail(response.json()) == (
+        f"No asset with content type 'application/nwb' found for recording {recording_id}."
+    )
+    db_client.download_content.assert_not_called()
+
+
+def test_inspect_electrophysiologyrecording_with_nwb_asset_without_id(
+    client: TestClient,
+    monkeypatch,
+):
+    recording = ElectricalCellRecording.model_validate(
+        json.loads((DATA_DIR / "electrical_cell_recording.json").read_bytes())
+    )
+    recording = recording.model_copy(
+        update={"assets": [recording.assets[0].model_copy(update={"id": None})]}
+    )
+    db_client = MagicMock(entitysdk.client.Client)
+    db_client.get_entity.return_value = recording
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: db_client)
+    recording_id = uuid.uuid4()
+
+    response = client.get(f"{INSPECT_ROUTE}/{recording_id}")
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
+    assert get_error_detail(response.json()) == "NWB asset is missing an id"
+    db_client.download_content.assert_not_called()
+
+
+def test_inspect_electrophysiologyrecording_reader_fails(
+    client: TestClient,
+    monkeypatch,
+):
+    recording = ElectricalCellRecording.model_validate(
+        json.loads((DATA_DIR / "electrical_cell_recording.json").read_bytes())
+    )
+    db_client = MagicMock(entitysdk.client.Client)
+    db_client.get_entity.return_value = recording
+    db_client.download_content.return_value = b"mock-nwb-data"
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: db_client)
+    recording_id = uuid.uuid4()
+
+    with patch(
+        "app.endpoints.validate_electrophysiology_protocol_nwb.inspect_nwb_file_contents",
+        side_effect=RuntimeError("No supported reader could parse the file."),
+    ):
+        response = client.get(f"{INSPECT_ROUTE}/{recording_id}")
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert get_error_code(response.json()) == ApiErrorCode.INVALID_REQUEST
+    assert get_error_detail(response.json()) == (
+        "NWB inspection failed: No supported reader could parse the file."
+    )

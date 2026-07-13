@@ -6,6 +6,9 @@ from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityP
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
 from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+)
 from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
@@ -41,6 +44,7 @@ TasksUnion = Annotated[
     | MorphologyContainerizationTask
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask
+    | CreateExtracellularRecordingArrayScanConfig
     | MorphologyLocationsTask,
     Discriminator("type"),
 ]

@@ -32,28 +32,30 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.13.3",
+    "entitysdk>=0.16.0",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
-    "bluecellulab>=2.6.87",
+    "bluecellulab>=2.6.99",
     "blueetl",
-    "bluepyefe>=2.3.53",
-    "bluepysnap>=3.0.2",
-    "brainbuilder>=0.20.2",
+    "bluepyefe>=2.3.57",
+    "bluepysnap>=3.0.5",
+    "brainbuilder>=0.20.4",
+    "brian2",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
     "morph_spines",
     "morph-tool",
     "neurom",
-    "libsonata>=0.1.33",
+    "libsonata>=0.1.36",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.6.0",
+    "obp-accounting-sdk>=0.6.3",
     "numpy",
+    "scipy",
 ]
 
 [project.optional-dependencies]
@@ -62,15 +64,16 @@ emodel = [
     "bluepyemodel>=1.0.43",
 ]
 
-# New group for the private dependency
-meshing = [
-    "neuromorphomesh",
-]
-
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
     "networkx>=3.4.2",
+]
+
+# MESHING - optional, private dependency needed to create meshes from morphologies
+meshing = [
+    "neuromorphomesh",
+    "ultraliser>=2.1.9"
 ]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
@@ -87,7 +90,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.0",
+    "obp-accounting-sdk>=0.6.2",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -98,7 +101,14 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,emodel,notebooks,service,meshing]",
+    "obi-one[connectivity,emodel,meshing,notebooks,service]",
+]
+
+# BLUERECORDING - optional, needed for extracellular recording array tasks.
+# Requires MPI-enabled h5py and NEURON built from source.
+# Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
+bluerecording = [
+    "bluerecording>=0.4.6",
 ]
 
 [dependency-groups]
@@ -133,7 +143,12 @@ Issues = "https://github.com/openbraininstitute/obi-one/issues"
 where = ["."]
 include = ["obi_one*"]
 
+[tool.setuptools.package-data]
+"obi_one.scientific.library" = ["*.json"]
+
 [tool.setuptools_scm]
+tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
+version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.uv]
@@ -147,11 +162,19 @@ explicit = true
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
 neuromorphomesh = { index = "obi-codeartifact" }
+ultraliser = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 include = ["pyproject.toml", "app/**/*.py", "tests/**/*.py", "obi_one/**/*.py"]
+# Legacy modules kept for reference; excluded from formatting and linting.
+extend-exclude = [
+    "obi_one/scientific/blocks/neuron_sets/old",
+    "obi_one/scientific/blocks/synaptic_model_assigners",
+]
+# Honour the exclusion even when files are passed explicitly (e.g. `make format FILE=...`).
+force-exclude = true
 
 [tool.ruff.lint]
 preview = true
@@ -200,7 +223,7 @@ builtins-ignorelist = ["license"]
     "S101", # Use of `assert` detected
     "SLF001", # private member access
 ]
-"obi_one/scientific/blocks/neuron_sets/pair.py" = [
+"obi_one/scientific/blocks/neuron_sets/old/pair.py" = [
     "SLF001"
 ]
 
@@ -214,6 +237,15 @@ max-returns = 6
 max-branches = 12
 max-statements = 50
 max-public-methods = 60
+
+[tool.ty.src]
+# Legacy modules kept for reference; excluded from ty type checking.
+# (ty has no config-level force-exclude; this is honoured when ty walks a parent dir,
+# which is how `make lint` invokes it: `ty check app obi_one`.)
+exclude = [
+    "obi_one/scientific/blocks/neuron_sets/old",
+    "obi_one/scientific/blocks/synaptic_model_assigners",
+]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

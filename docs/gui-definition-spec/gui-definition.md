@@ -92,6 +92,8 @@ There are two major types of such UI elements:
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 
+        - [model_identifier_multiple](components/multiple_entities/multiple_entities.md)
+
         - [numeric](components/numeric/numeric.md)
 
         - [reference](components/reference/reference.md)
@@ -99,6 +101,10 @@ There are two major types of such UI elements:
         - [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
 
         - [select_efeatures_by_protocol](components/select_efeatures_by_protocol/select_efeatures_by_protocol.md)
+
+        - [neuron_property_filter](components/neuron_property_filter/neuron_property_filter.md)
+
+        - [neuron_set_combination](components/neuron_set_combination/neuron_set_combination.md)
 
         - [variable_modification](components/neuronal_modification/BySectionListMechanismVariableNeuronalManipulation.md)
 

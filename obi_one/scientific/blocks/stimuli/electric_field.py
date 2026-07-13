@@ -6,16 +6,17 @@ from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
-    _DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
-    _MAX_EFIELD_FREQUENCY_HZ,
-    _MAX_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_EFIELD_FREQUENCY_HZ,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -48,22 +49,21 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
     duration: (
-        Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(le=_MAX_SIMULATION_LENGTH_MILLISECONDS)]]
+        Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]]
     ) = Field(
-        default=_DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+        default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
         description="Time in milliseconds (ms) for how long the main stimulus is activated. "
         + _RAMP_QAULIFIER_DESCRIPTION,
@@ -136,9 +136,9 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "ramp_up_duration": self.ramp_up_duration,
             "ramp_down_duration": self.ramp_down_duration,
             "fields": [
@@ -170,7 +170,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
         Annotated[
             NonNegativeFloat,
             Field(
-                lt=_MAX_EFIELD_FREQUENCY_HZ,
+                lt=MAX_EFIELD_FREQUENCY_HZ,
             ),
         ]
         | Annotated[
@@ -178,7 +178,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
                 Annotated[
                     NonNegativeFloat,
                     Field(
-                        lt=_MAX_EFIELD_FREQUENCY_HZ,
+                        lt=MAX_EFIELD_FREQUENCY_HZ,
                     ),
                 ]
             ],

@@ -3,6 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.electric_field import (
     SpatiallyUniformElectricFieldStimulus,
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
@@ -20,6 +21,9 @@ from obi_one.scientific.blocks.stimuli.spike import (
 )
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
+    SpikeTimeDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
     ConstantCurrentClampSomaticStimulus,
@@ -63,10 +67,23 @@ _SPIKE_STIMULI = (
     | FullySynchronousSpikeStimulus
     | SinusoidalPoissonSpikeStimulus
     | InterSpikeIntervalDistributionSpikeStimulus
+    | SpikeTimeDistributionSpikeStimulus
 )
 
 _FIELD_STIMULI = (
     SpatiallyUniformElectricFieldStimulus | TemporallyCosineSpatiallyUniformElectricFieldStimulus
+)
+
+_SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
+
+_BRIAN2_STIMULI = Brian2DirectPoissonStimulus
+
+_LE_ABSOLUTE_INJECTION_STIMULI = (
+    ConstantCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
 )
 
 StimulusUnion = Annotated[
@@ -85,12 +102,37 @@ MEModelStimulusUnion = Annotated[
 ]
 
 IonChannelModelStimulusUnion = Annotated[
-    SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
+    _SE_CLAMP_STIMULI | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
+
+Brian2CircuitStimulusUnion = Annotated[
+    _BRIAN2_STIMULI,
+    Discriminator("type"),
+]
+
+
+LearningEngineCircuitStimulusUnion = Annotated[
+    _LE_ABSOLUTE_INJECTION_STIMULI,
+    Discriminator("type"),
+]
+
+
+_ALL_STIMULI = (
+    _INJECTION_STIMULI
+    | _SPIKE_STIMULI
+    | _FIELD_STIMULI
+    | _SE_CLAMP_STIMULI
+    | _LE_ABSOLUTE_INJECTION_STIMULI
+    | _BRIAN2_STIMULI
+)
 
 
 class StimulusReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
     allowed_block_types: ClassVar[Any] = StimulusUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_ALL_STIMULI)
+    }

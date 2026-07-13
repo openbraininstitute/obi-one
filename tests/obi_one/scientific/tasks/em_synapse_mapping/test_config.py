@@ -4,7 +4,11 @@ from pydantic import ValidationError
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
+from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
+from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    AdvancedEMSynapseMappingOptions,
+    EMSynapseMappingSingleConfig,
+)
 
 _INFO = Info(campaign_name="test", campaign_description="test")
 
@@ -23,8 +27,12 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(),),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="one morph",
+                    elements=(_morph(),),
+                ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
         assert len(cfg.initialize.neurons) == 1
 
@@ -33,8 +41,12 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(), _morph("00003")),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="two morph",
+                    elements=(_morph(), _morph("00003")),
+                ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
         assert len(cfg.initialize.neurons) == 2
 
@@ -43,8 +55,12 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(), _memodel()),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="one morph, one emodel",
+                    elements=(_morph(), _memodel()),
+                ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
         assert isinstance(cfg.initialize.neurons[0], CellMorphologyFromID)
         assert isinstance(cfg.initialize.neurons[1], MEModelFromID)
@@ -57,8 +73,12 @@ class TestEMSynapseMappingConfig:
                 info=_INFO,
                 coordinate_output_root=tmp_path,
                 initialize=EMSynapseMappingSingleConfig.Initialize(
-                    neurons=(),
+                    neurons=EMSynapseMappingInputNamedTuple(
+                        name="no element - bad config",
+                        elements=(),
+                    ),
                 ),
+                advanced_options=AdvancedEMSynapseMappingOptions(),
             )
 
     def test_defaults(self, tmp_path):
@@ -66,11 +86,15 @@ class TestEMSynapseMappingConfig:
             info=_INFO,
             coordinate_output_root=tmp_path,
             initialize=EMSynapseMappingSingleConfig.Initialize(
-                neurons=(_morph(), _memodel()),
+                neurons=EMSynapseMappingInputNamedTuple(
+                    name="one morph, one emodel",
+                    elements=(_morph(), _memodel()),
+                ),
             ),
+            advanced_options=AdvancedEMSynapseMappingOptions(),
         )
-        init = cfg.initialize
-        assert init.physical_edge_population_name == "physical_connections"
-        assert init.virtual_edge_population_name == "virtual_afferents"
-        assert init.biophysical_node_population == "biophysical_neurons"
-        assert init.virtual_node_population == "virtual_afferent_neurons"
+        advanced = cfg.advanced_options
+        assert not advanced.custom_physical_edge_population_name
+        assert not advanced.custom_virtual_edge_population_name
+        assert not advanced.custom_biophysical_node_population
+        assert not advanced.custom_virtual_node_population

@@ -19,11 +19,13 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey
+from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME, SCAN_CONFIG_FILENAME
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.blocks import ion_channel_equations as equations_module
+from obi_one.scientific.blocks.ion_channel_equations import (
+    ion_channel_equations as equations_module,
+)
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
-from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME, _SCAN_CONFIG_FILENAME
 
 L = logging.getLogger(__name__)
 
@@ -163,7 +165,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.MInfReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [equations_module.MInfReference.__name__],
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 0,
         },
@@ -176,7 +178,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.MTauReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [equations_module.MTauReference.__name__],
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 1,
         },
@@ -189,7 +191,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.HInfReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [equations_module.HInfReference.__name__],
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 2,
         },
@@ -202,7 +204,7 @@ class IonChannelFittingScanConfig(ScanConfig):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPE: equations_module.HTauReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [equations_module.HTauReference.__name__],
             SchemaKey.GROUP: BlockGroup.EQUATIONS,
             SchemaKey.GROUP_ORDER: 3,
         },
@@ -242,7 +244,7 @@ class IonChannelFittingScanConfig(ScanConfig):
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
             entity_type=entitysdk.models.IonChannelModelingCampaign,  # ty:ignore[possibly-missing-submodule]
-            file_path=output_root / _SCAN_CONFIG_FILENAME,
+            file_path=output_root / SCAN_CONFIG_FILENAME,
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]
             asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
         )
@@ -312,7 +314,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=entitysdk.models.IonChannelModelingConfig,  # ty:ignore[possibly-missing-submodule]
-            file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]
             asset_label="ion_channel_modeling_generation_config",  # ty:ignore[invalid-argument-type]
         )

@@ -8,6 +8,9 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
 )
 from obi_one.scientific.tasks.contribute import ContributeMorphologyScanConfig
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
@@ -20,14 +23,22 @@ from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.co
 )
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.circuit import CircuitSimulationScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
@@ -63,6 +74,9 @@ ScanConfigsUnion = Annotated[
     | IonChannelFittingScanConfig
     | SkeletonizationScanConfig
     | MEModelWithSynapsesCircuitSimulationScanConfig
-    | IonChannelModelSimulationScanConfig,
+    | Brian2CircuitSimulationScanConfig
+    | CreateExtracellularRecordingArrayScanConfig
+    | IonChannelModelSimulationScanConfig
+    | LearningEngineCircuitSimulationScanConfig,
     Discriminator("type"),
 ]

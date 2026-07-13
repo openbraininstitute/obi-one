@@ -16,6 +16,9 @@ from obi_one.scientific.tasks.contribute import (
     ContributeMorphologyScanConfig,
     ContributeSubjectScanConfig,
 )
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
@@ -26,16 +29,22 @@ from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.conf
 from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.config import (
     EModelExportAndValidationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.ion_channel_models import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.me_model_with_synapses import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
@@ -44,6 +53,9 @@ from obi_one.scientific.tasks.morphology_metrics import (
 )
 from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
+from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationScanConfig,
+)
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
 
@@ -119,6 +131,7 @@ def activate_scan_config_endpoints() -> None:
     # Create endpoints for each OBI ScanConfig subclass.
     for form, processing_method, data_postprocessing_method, execute_single_config_task in [
         (CircuitSimulationScanConfig, "generate", "", True),
+        (Brian2CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
         (MorphologyMetricsScanConfig, "run", "", True),
@@ -133,6 +146,9 @@ def activate_scan_config_endpoints() -> None:
         (EModelEFeatureExtractionScanConfig, "generate", "", False),
         (EModelOptimizationScanConfig, "generate", "", False),
         (EModelExportAndValidationScanConfig, "generate", "", False),
+        (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
+        (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
+        (SynapseParameterizationScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,

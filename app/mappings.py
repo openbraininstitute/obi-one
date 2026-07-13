@@ -15,7 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -41,24 +41,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.morphology_skeletonization: TaskDefinition(
-        task_type=TaskType.morphology_skeletonization,
-        config_type=TaskConfigType.skeletonization__config,
-        activity_type=TaskActivityType.skeletonization__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
-            capabilities=Capabilities(private_packages=True),
-        ),
-        resources=MachineResources(
-            cores=16,
-            memory=32,
-            timelimit="02:00",
-            compute_cell="local",
-        ),
-    ),
     TaskType.circuit_simulation: TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,
@@ -69,10 +51,29 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location="https://github.com/openbraininstitute-partners/inait",
-            ref="commit:54da893cbf445a9c28b1a116ae8b8d7d4ed8a6dd",
+            ref="commit:62a6257b91872483ee6ffd6d5f61ba8642ffe67f",
             path="scripts/simulate-circuits/run.py",
             dependencies="scripts/simulate-circuits/requirements.txt",
             staged_directories=["wheels", "scripts/simulate-circuits/"],
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_inait,
+        ),
+    ),
+    TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_brian2_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
+            dependencies="obi_one/scientific/library/simulation/brian2/requirements.txt",
+            staged_directories=[],
         ),
         resources=MachineResources(
             cores=1,
@@ -109,23 +110,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             instances=1,
             instance_type="small",
             timelimit=None,
-            compute_cell="local",
-        ),
-    ),
-    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
-        task_type=TaskType.ion_channel_model_simulation_execution,
-        config_type=models.Simulation,
-        activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
-        resources=MachineResources(
-            cores=1,
-            memory=2,
-            timelimit="00:10",
             compute_cell="local",
         ),
     ),
@@ -200,6 +184,77 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.extracellular_recording_weights_calculation: TaskDefinition(
+        task_type=TaskType.extracellular_recording_weights_calculation,
+        config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
+        activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
+        task_type=TaskType.ion_channel_model_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=2,
+            timelimit="00:10",
+            compute_cell="local",
+        ),
+    ),
+    TaskType.mesh_lod_generation: TaskDefinition(
+        task_type=TaskType.mesh_lod_generation,
+        config_type=TaskConfigType.mesh_lod_generation__config,
+        activity_type=TaskActivityType.mesh_lod_generation__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "mesh_lod_generation.txt"),
+            capabilities=Capabilities(private_packages=True),
+        ),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+        ),
+    ),
+    TaskType.morphology_skeletonization: TaskDefinition(
+        task_type=TaskType.morphology_skeletonization,
+        config_type=TaskConfigType.skeletonization__config,
+        activity_type=TaskActivityType.skeletonization__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
+            capabilities=Capabilities(private_packages=True),
+        ),
+        resources=MachineResources(
+            cores=16,
+            memory=32,
+            timelimit="02:00",
+            compute_cell="local",
+        ),
+    ),
 }  # ty:ignore[invalid-assignment]
 
 CLUSTER_INSTANCES_INFO = {
@@ -212,7 +267,7 @@ CLUSTER_INSTANCES_INFO = {
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
-            memory_per_instance_gb=384,
+            memory_per_instance_gb=768,
         ),
     ],
     "cell_b": [

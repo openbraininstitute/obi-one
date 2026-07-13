@@ -2,6 +2,7 @@ from enum import StrEnum
 
 
 class SchemaKey(StrEnum):
+    ACCEPTED_INPUT_TYPES = "accepted_input_types"
     BLOCK_USABILITY_DICTIONARY = "block_usability_dictionary"
     DEFAULT_BLOCK_REFERENCE_LABELS = "default_block_reference_labels"
     DESCRIPTION_BY_KEY = "description_by_key"
@@ -12,12 +13,19 @@ class SchemaKey(StrEnum):
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
     LATEX_EQUATION = "latex_equation"
+    PARAMETER_ORDER_PRIORITY = "parameter_order_priority"
+    # Note: PARAMETER_ORDER_PRIORITY is not used by the UI,
+    # rather the Block class uses this to order the properties in the generated openapi.json schema,
+    # which in turn affects the order of properties in the UI.
+    # No value maintains the default ordering, higher values appear earlier in the block (UI),
+    # lower values appear later in the block (UI).
+    # This is useful when we would like a parameter of a child class to
+    # appear before parameters of the parent class in the UI, for example.
     PROPERTY = "property"
     PROPERTY_ENDPOINTS = "property_endpoints"
     PROPERTY_GROUP = "property_group"
-    REFERENCE_TYPE = "reference_type"
+    REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
-    SUPPORTS_VIRTUAL = "supports_virtual"
     TITLE_BY_KEY = "title_by_key"
     UI_ELEMENT = "ui_element"
     UI_ENABLED = "ui_enabled"
@@ -31,13 +39,17 @@ class UIElement(StrEnum):
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
+    ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST = (
         "ion_channel_variable_modification_by_section_list"
     )
+    NEURON_PROPERTY_FILTER = "neuron_property_filter"
+    NEURON_SET_COMBINATION = "neuron_set_combination"
     MODEL_IDENTIFIER = "model_identifier"
+    MODEL_IDENTIFIER_SCAN = "model_identifier_scan"
     MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
     NEURON_IDS = "neuron_ids"
@@ -50,3 +62,15 @@ class UIElement(StrEnum):
     STRING_SELECTION = "string_selection"
     STRING_SELECTION_ENHANCED = "string_selection_enhanced"
     VOLTAGE_DURATION = "voltage_duration"
+
+
+class AcceptedInputTypes(StrEnum):
+    """Contains types that can be used as inputs.
+
+    For now, is only used for models that use a subclass of NamedTuples as input
+    to make explicit the accepted types of models.
+    Can be extended in the future if needed.
+    """
+
+    CELL_MORPHOLOGY_FROM_ID = "CellMorphologyFromID"
+    ME_MODEL_FROM_ID = "MEModelFromID"
