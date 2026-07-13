@@ -9,7 +9,9 @@ from starlette.requests import Request
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
-from app.schemas.subject import SubjectRegisterRequest
+from app.schemas.subject import SubjectRegisterRequest, normalize_name_for_comparison
+
+_DUPLICATE_SEARCH_PREFIX_LENGTH = 4
 
 router = APIRouter(
     prefix="/declared/subject",
@@ -43,6 +45,67 @@ def get_subject(
     return existing.model_dump(mode="json")
 
 
+def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> object | None:
+    """Find a duplicate subject name using normalized comparison.
+
+    Normalizes the input name by lowercasing and stripping all non-alphanumeric
+    characters, then searches for candidates via case-insensitive ILIKE and
+    compares their normalized forms. This ensures that e.g. "Average Rat",
+    "average rat", "AverageRat", "Average-rat", "Average_rat" are all
+    considered duplicate names.
+    """
+    normalized_input = normalize_name_for_comparison(name)
+    if not normalized_input:
+        return None
+
+    # Strategy: build ILIKE patterns that are broad enough to catch all variants.
+    # We insert '%' between each alphanumeric character of the normalized name
+    # so that "averagerat" becomes "%a%v%e%r%a%g%e%r%a%t%" — this matches any
+    # string containing those characters in order regardless of separators.
+    # However, this could be too broad for long names and too slow.
+    #
+    # Practical approach: search using each word of the original name as an ilike
+    # fragment with wildcards, PLUS a second search using just the first word.
+    # Then compare normalized forms client-side.
+
+    seen_ids: set = set()
+    candidates = []
+
+    # Pattern 1: fragments from whitespace-split words
+    words = name.lower().split()
+    fragments = ["".join(c for c in w if c.isalnum()) for w in words]
+    fragments = [f for f in fragments if f]
+
+    if fragments:
+        ilike_pattern = "%" + "%".join(fragments) + "%"
+        results = db_client.search_entity(
+            entity_type=models.Subject, query={"name__ilike": ilike_pattern}
+        ).all()
+        for r in results:
+            if r.id not in seen_ids:
+                seen_ids.add(r.id)
+                candidates.append(r)
+
+    # Pattern 2: if the name has no spaces (e.g. "AverageRat"), also search with
+    # a shorter fragment to catch existing entries stored with separators.
+    # Use the first few alphanumeric characters as a broad match.
+    if len(normalized_input) >= _DUPLICATE_SEARCH_PREFIX_LENGTH:
+        short_pattern = f"%{normalized_input[:_DUPLICATE_SEARCH_PREFIX_LENGTH]}%"
+        results = db_client.search_entity(
+            entity_type=models.Subject, query={"name__ilike": short_pattern}
+        ).all()
+        for r in results:
+            if r.id not in seen_ids:
+                seen_ids.add(r.id)
+                candidates.append(r)
+
+    for candidate in candidates:
+        if normalize_name_for_comparison(candidate.name) == normalized_input:
+            return candidate
+
+    return None
+
+
 @router.post(
     "",
     summary="Register a new subject.",
@@ -59,10 +122,8 @@ def register_subject(
     request: Request,  # noqa: ARG001
 ) -> dict:
     """Register a new subject in entitycore."""
-    # Check for duplicate name
-    existing = db_client.search_entity(
-        entity_type=models.Subject, query={"name": json_model.name}
-    ).one_or_none()
+    # Duplicate name detection: normalize by stripping non-alphanumeric chars and lowercasing
+    existing = _find_duplicate_subject_name(db_client, json_model.name)
 
     if existing:
         raise ApiError(
