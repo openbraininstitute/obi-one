@@ -2204,6 +2204,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pylmesh" },
     { name = "python-multipart" },
+    { name = "scipy" },
 ]
 
 [package.optional-dependencies]
@@ -2317,6 +2318,7 @@ requires-dist = [
     { name = "pylmesh" },
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
+    { name = "scipy" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
