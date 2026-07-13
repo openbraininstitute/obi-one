@@ -122,6 +122,11 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
             SchemaKey.SINGULAR_NAME: "Electrode Locations",
             SchemaKey.GROUP: BlockGroup.ELECTRODE_POSITIONS,
             SchemaKey.GROUP_ORDER: 0,
+            "viewer_overlay": {
+                "kind": "electrode_locations",
+                "dictionary_summary_path": "/declared/extracellular-locations/block_dictionary_summary",
+                "block_summary_path": "/declared/extracellular-locations/block_summary"
+            },
         },
     )
 
