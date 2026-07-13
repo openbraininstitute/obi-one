@@ -15,11 +15,10 @@ from entitysdk.types import (
 )
 from pydantic import Field
 
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
-from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.blocks import (
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.blocks import (
     MorphologySelection,
     OptimizationInitialize,
     OptimizationParams,
@@ -78,8 +77,9 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             self.initialize.extraction_task_result.entity(db_client=db_client),
             self.morphology_selection.morphology.entity(db_client=db_client),
         ]
-        for icm in self.parameters_selection.ion_channel_models:
-            entities.append(icm.entity(db_client=db_client))
+        entities.extend(
+            icm.entity(db_client=db_client) for icm in self.parameters_selection.ion_channel_models
+        )
         return entities
 
     @property
@@ -136,7 +136,9 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     optimization_settings: OptimizationSettings = Field(
         default_factory=OptimizationSettings,
         title="Optimization settings",
-        description="Top-level ``pipeline_settings`` keys controlling optimisation, analysis, and export.",
+        description=(
+            "Top-level ``pipeline_settings`` keys controlling optimisation, analysis, and export."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.OPTIMIZATION,
@@ -163,11 +165,11 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     def campaign_description(self) -> str:
         return self.info.campaign_description
 
-    def create_campaign_entity_with_config(
+    def create_campaign_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
         output_root: Path,  # noqa: ARG002
         multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         if db_client is None:
             return
@@ -186,7 +188,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         self._campaign = campaign
 
         db_client.upload_content(
-            entity_id=campaign.id,
+            entity_id=campaign.id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskConfig,
             file_content=self.model_dump_json(indent=2).encode("utf-8"),
             file_name="scan_config.json",
@@ -207,7 +209,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 class EModelOptimizationSingleConfig(EModelOptimizationScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`EModelOptimizationScanConfig`."""
 
-    def create_single_entity_with_config(
+    def create_single_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
         campaign: TaskConfig,
         db_client: Client,
@@ -229,7 +231,7 @@ class EModelOptimizationSingleConfig(EModelOptimizationScanConfig, SingleConfigM
         )
 
         db_client.upload_content(
-            entity_id=single_config_entity.id,
+            entity_id=single_config_entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskConfig,
             file_content=self.model_dump_json(indent=2).encode("utf-8"),
             file_name="single_config.json",

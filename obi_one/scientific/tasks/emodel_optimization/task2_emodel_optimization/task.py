@@ -14,13 +14,9 @@ from typing import ClassVar
 import entitysdk
 
 from obi_one.core.task import Task
+from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.emodel_optimization import _shared
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
-    EXTRACTED_FEATURES_FILENAME,
-    RECIPES_RELPATH,
-    TARGETS_CONFIG_RELPATH,
-)
-from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.config import (
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
 
@@ -56,7 +52,7 @@ class EModelOptimizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
@@ -79,7 +75,7 @@ class EModelOptimizationTask(Task):
 
         # --- 1. Download extraction TaskResult assets ---
         extraction_tr = init.extraction_task_result
-        features_path = self._download_extraction_features(extraction_tr, coord_root, db_client)
+        self._download_extraction_features(extraction_tr, coord_root, db_client)
         base_recipes = self._download_extraction_recipes(extraction_tr, coord_root, db_client)
         self._download_extraction_targets(extraction_tr, coord_root, db_client)
 
@@ -150,7 +146,6 @@ class EModelOptimizationTask(Task):
                 )
                 store_best_model(access_point=access_point, seed=seed)
 
-            # Plot (analysis)
             pp_settings = access_point.pipeline_settings
             plotting.plot_models(
                 access_point=access_point,
@@ -207,7 +202,10 @@ class EModelOptimizationTask(Task):
     # --- Staging helpers ---
 
     def _download_extraction_features(
-        self, extraction_tr, coord_root: Path, db_client,
+        self,
+        extraction_tr: TaskResultFromID,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
     ) -> Path:
         """Download extracted features JSON from extraction TaskResult."""
         from entitysdk.types import AssetLabel  # noqa: PLC0415
@@ -226,25 +224,32 @@ class EModelOptimizationTask(Task):
         L.info("Staged extracted features: %s", target)
         return target
 
-    def _download_extraction_recipes(
-        self, extraction_tr, coord_root: Path, db_client,
+    def _download_extraction_recipes(  # noqa: PLR6301
+        self,
+        extraction_tr: TaskResultFromID,
+        coord_root: Path,  # noqa: ARG002
+        db_client: entitysdk.client.Client,
     ) -> dict:
         """Download recipes JSON from extraction TaskResult and return parsed dict."""
         from entitysdk.types import AssetLabel  # noqa: PLC0415
 
         try:
             recipes_dict = extraction_tr.download_json_asset_by_label(
-                AssetLabel.efeature_extraction_recipe,
+                AssetLabel.efeature_extraction_protocols,
                 db_client=db_client,
             )
-            L.info("Downloaded extraction recipes from TaskResult.")
-            return recipes_dict
-        except Exception:
+        except Exception:  # noqa: BLE001
             L.warning("Could not download extraction recipe; starting with empty recipes.")
             return {}
+        else:
+            L.info("Downloaded extraction recipes from TaskResult.")
+            return recipes_dict
 
-    def _download_extraction_targets(
-        self, extraction_tr, coord_root: Path, db_client,
+    def _download_extraction_targets(  # noqa: PLR6301
+        self,
+        extraction_tr: TaskResultFromID,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
     ) -> None:
         """Download targets config JSON from extraction TaskResult."""
         from entitysdk.types import AssetLabel  # noqa: PLC0415
@@ -253,15 +258,15 @@ class EModelOptimizationTask(Task):
         targets_dir.mkdir(parents=True, exist_ok=True)
         try:
             extraction_tr.download_asset_by_label(
-                AssetLabel.efeature_extraction_targets,
+                AssetLabel.task_result,
                 dest_dir=targets_dir,
                 db_client=db_client,
             )
             L.info("Staged extraction targets config.")
-        except Exception:
+        except Exception:  # noqa: BLE001
             L.warning("Could not download extraction targets config; optimisation may fail.")
 
-    def _stage_morphology(self, coord_root: Path, db_client) -> str:
+    def _stage_morphology(self, coord_root: Path, db_client: entitysdk.client.Client) -> str:
         """Download morphology SWC and return the filename."""
         morph_dir = coord_root / "morphologies"
         morph_dir.mkdir(parents=True, exist_ok=True)
@@ -270,21 +275,27 @@ class EModelOptimizationTask(Task):
         # Use entity ID as filename base
         morph_id = morph_entity.id_str
         morph_filename = f"{morph_id}.swc"
-        (morph_dir / morph_filename).write_text(swc_content, encoding="utf-8")
+        (morph_dir / morph_filename).write_text(
+            swc_content,  # ty:ignore[invalid-argument-type]
+            encoding="utf-8",
+        )
         L.info("Staged morphology: %s", morph_filename)
         return morph_filename
 
-    def _stage_mechanisms(self, coord_root: Path, db_client) -> None:
+    def _stage_mechanisms(self, coord_root: Path, db_client: entitysdk.client.Client) -> None:
         """Download .mod files from ion channel model entities."""
         mech_dir = coord_root / "mechanisms"
         mech_dir.mkdir(parents=True, exist_ok=True)
         for icm in self.config.parameters_selection.ion_channel_models:
             icm.download_asset(dest_dir=mech_dir, db_client=db_client)
-        L.info("Staged %d ion channel models.", len(self.config.parameters_selection.ion_channel_models))
+        L.info(
+            "Staged %d ion channel models.",
+            len(self.config.parameters_selection.ion_channel_models),
+        )
 
-    def _stage_params(self, coord_root: Path, db_client) -> str:  # noqa: ARG002
+    def _stage_params(self, coord_root: Path, db_client: entitysdk.client.Client) -> str:  # noqa: ARG002
         """Stage params file — either from params-file mode or dynamic builder."""
-        from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.blocks import (  # noqa: PLC0415
+        from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.blocks import (  # noqa: PLC0415
             validate_params_file,
         )
 
@@ -295,7 +306,7 @@ class EModelOptimizationTask(Task):
 
         # Params-file mode: validate and copy the provided file
         if self.config.use_params_file:
-            src_path = Path(self.config.params_file.params_file_path)
+            src_path = Path(self.config.params_file.params_file_path)  # ty:ignore[unresolved-attribute]
             if not src_path.exists():
                 msg = f"Params file not found: {src_path}"
                 raise FileNotFoundError(msg)
@@ -306,8 +317,8 @@ class EModelOptimizationTask(Task):
             L.info("Staged validated params file from: %s", src_path)
 
             # Also stage mechanisms dir if provided
-            if self.config.params_file.mechanisms_dir_path:
-                mech_src = Path(self.config.params_file.mechanisms_dir_path)
+            if self.config.params_file.mechanisms_dir_path:  # ty:ignore[unresolved-attribute]
+                mech_src = Path(self.config.params_file.mechanisms_dir_path)  # ty:ignore[unresolved-attribute]
                 if mech_src.is_dir():
                     mech_dst = coord_root / "mechanisms"
                     mech_dst.mkdir(parents=True, exist_ok=True)
@@ -325,10 +336,14 @@ class EModelOptimizationTask(Task):
             L.warning("Wrote placeholder params file. Dynamic builder not yet implemented.")
         return params_filename
 
-    def _stage_traces(self, extraction_tr, coord_root: Path, db_client) -> None:
+    def _stage_traces(  # noqa: PLR6301
+        self,
+        extraction_tr: TaskResultFromID,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
+    ) -> None:
         """Fetch experimental traces via derivation chain from extraction TaskResult."""
         from entitysdk.models import Derivation  # noqa: PLC0415
-        from entitysdk.types import DerivationType  # noqa: PLC0415
 
         ephys_dir = coord_root / "ephys_data"
         ephys_dir.mkdir(parents=True, exist_ok=True)
@@ -344,13 +359,13 @@ class EModelOptimizationTask(Task):
         )
 
         for deriv in derivations:
-            if deriv.used_id:
-                recording = ElectricalCellRecordingFromID(id=str(deriv.used_id))
+            if deriv.used and deriv.used.id:
+                recording = ElectricalCellRecordingFromID(id_str=str(deriv.used.id))
                 target_dir = ephys_dir / recording.id_str
                 recording.download_asset(dest_dir=target_dir, db_client=db_client)
         L.info("Staged experimental traces via derivation chain.")
 
-    def _derive_mtype(self, db_client) -> str:
+    def _derive_mtype(self, db_client: entitysdk.client.Client) -> str:
         """Derive mtype from the selected morphology entity."""
         morph_entity = self.config.morphology_selection.morphology
         entity = morph_entity.entity(db_client=db_client)
@@ -362,7 +377,7 @@ class EModelOptimizationTask(Task):
 
     # --- Entity registration ---
 
-    def _register_output_entities(
+    def _register_output_entities(  # noqa: C901, PLR0912, PLR0914, PLR0915
         self,
         coord_root: Path,
         db_client: entitysdk.client.Client,
@@ -399,24 +414,24 @@ class EModelOptimizationTask(Task):
         checkpoint_dir = coord_root / "checkpoints"
         if checkpoint_dir.exists():
             for ckpt in checkpoint_dir.glob("*.h5"):
-                db_client.upload_assets(
-                    entity_id=task_result.id,
+                db_client.upload_file(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    asset_path=ckpt,
+                    file_path=ckpt,
                     asset_label=AssetLabel.emodel_optimisation_checkpoint,
-                    content_type=ContentType.application_x_hdf5,
+                    file_content_type=ContentType.application_x_hdf5,
                 )
                 break
 
         # Upload final.json
         final_path = coord_root / "final.json"
         if final_path.exists():
-            db_client.upload_assets(
-                entity_id=task_result.id,
+            db_client.upload_file(
+                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                 entity_type=TaskResult,
-                asset_path=final_path,
-                asset_label=AssetLabel.emodel_optimisation_final_json,
-                content_type=ContentType.application_json,
+                file_path=final_path,
+                asset_label=AssetLabel.emodel_analysis_summary,
+                file_content_type=ContentType.application_json,
             )
 
         # Upload figures directory
@@ -428,35 +443,35 @@ class EModelOptimizationTask(Task):
                     rel = str(fp.relative_to(figures_dir))
                     paths[rel] = str(fp)
             if paths:
-                db_client.upload_asset_directory(
-                    entity_id=task_result.id,
+                db_client.upload_directory(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    paths=paths,
-                    asset_label=AssetLabel.emodel_optimisation_figures,
-                    content_type=ContentType.application_vnd_directory,
+                    name="figures",
+                    paths={Path(k): Path(v) for k, v in paths.items()},
+                    label=AssetLabel.emodel_analysis_figures,
                 )
 
         # Upload recipe
         recipes_path = coord_root / "config" / "recipes.json"
         if recipes_path.exists():
-            db_client.upload_assets(
-                entity_id=task_result.id,
+            db_client.upload_file(
+                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                 entity_type=TaskResult,
-                asset_path=recipes_path,
-                asset_label=AssetLabel.emodel_optimisation_recipe,
-                content_type=ContentType.application_json,
+                file_path=recipes_path,
+                asset_label=AssetLabel.task_result,
+                file_content_type=ContentType.application_json,
             )
 
         # Upload params
         params_path = coord_root / "config" / "params"
         if params_path.exists():
             for pf in params_path.glob("*.json"):
-                db_client.upload_assets(
-                    entity_id=task_result.id,
+                db_client.upload_file(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    asset_path=pf,
-                    asset_label=AssetLabel.emodel_optimisation_params,
-                    content_type=ContentType.application_json,
+                    file_path=pf,
+                    asset_label=AssetLabel.neuron_mechanisms,
+                    file_content_type=ContentType.application_json,
                 )
                 break
 
@@ -464,12 +479,12 @@ class EModelOptimizationTask(Task):
         hoc_dir = coord_root / "export_emodels_hoc"
         if hoc_dir.exists():
             for hoc_file in hoc_dir.rglob("*.hoc"):
-                db_client.upload_assets(
-                    entity_id=task_result.id,
+                db_client.upload_file(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    asset_path=hoc_file,
+                    file_path=hoc_file,
                     asset_label=AssetLabel.neuron_hoc,
-                    content_type=ContentType.application_hoc,
+                    file_content_type=ContentType.application_hoc,
                 )
                 break
 
@@ -482,12 +497,12 @@ class EModelOptimizationTask(Task):
                     rel = str(fp.relative_to(sonata_dir))
                     paths[rel] = str(fp)
             if paths:
-                db_client.upload_asset_directory(
-                    entity_id=task_result.id,
+                db_client.upload_directory(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    paths=paths,
-                    asset_label=AssetLabel.emodel_export_output,
-                    content_type=ContentType.application_vnd_directory,
+                    name="sonata",
+                    paths={Path(k): Path(v) for k, v in paths.items()},
+                    label=AssetLabel.emodel_optimization_output,
                 )
 
         # --- Derivation links from inputs ---
@@ -534,16 +549,18 @@ class EModelOptimizationTask(Task):
 
         # Get species and brain region entities
         species_entity = morph_entity.species if hasattr(morph_entity, "species") else None
-        brain_region_entity = morph_entity.brain_region if hasattr(morph_entity, "brain_region") else None
+        brain_region_entity = (
+            morph_entity.brain_region if hasattr(morph_entity, "brain_region") else None
+        )
 
         emodel_entity = db_client.register_entity(
             EModel(
-                species=species_entity,
-                brain_region=brain_region_entity,
+                species=species_entity,  # ty:ignore[invalid-argument-type]
+                brain_region=brain_region_entity,  # ty:ignore[invalid-argument-type]
                 iteration=init.iteration_tag or "0",
                 score=score,
                 seed=first_seed,
-                exemplar_morphology=morph_entity,
+                exemplar_morphology=morph_entity,  # ty:ignore[invalid-argument-type]
                 name=f"{emodel_name} (draft)",
                 description=f"Draft emodel from optimisation (emodel={emodel_name}).",
             )
@@ -553,12 +570,12 @@ class EModelOptimizationTask(Task):
         # Upload hoc to EModel
         if hoc_dir.exists():
             for hoc_file in hoc_dir.rglob("*.hoc"):
-                db_client.upload_assets(
-                    entity_id=emodel_entity.id,
+                db_client.upload_file(
+                    entity_id=emodel_entity.id,  # ty:ignore[invalid-argument-type]
                     entity_type=EModel,
-                    asset_path=hoc_file,
+                    file_path=hoc_file,
                     asset_label=AssetLabel.neuron_hoc,
-                    content_type=ContentType.application_hoc,
+                    file_content_type=ContentType.application_hoc,
                 )
                 break
 
@@ -570,12 +587,12 @@ class EModelOptimizationTask(Task):
                     rel = str(fp.relative_to(sonata_dir))
                     paths[rel] = str(fp)
             if paths:
-                db_client.upload_asset_directory(
-                    entity_id=emodel_entity.id,
+                db_client.upload_directory(
+                    entity_id=emodel_entity.id,  # ty:ignore[invalid-argument-type]
                     entity_type=EModel,
-                    paths=paths,
-                    asset_label=AssetLabel.emodel_export_output,
-                    content_type=ContentType.application_vnd_directory,
+                    name="sonata",
+                    paths={Path(k): Path(v) for k, v in paths.items()},
+                    label=AssetLabel.emodel_optimization_output,
                 )
 
         # Derivation: TaskResult → EModel
@@ -592,9 +609,9 @@ class EModelOptimizationTask(Task):
             MEModel(
                 name=f"{emodel_name} MEModel (draft)",
                 description=f"Draft MEModel from optimisation (emodel={emodel_name}).",
-                species=species_entity,
-                brain_region=brain_region_entity,
-                morphology=morph_entity,
+                species=species_entity,  # ty:ignore[invalid-argument-type]
+                brain_region=brain_region_entity,  # ty:ignore[invalid-argument-type]
+                morphology=morph_entity,  # ty:ignore[invalid-argument-type]
                 emodel=emodel_entity,
                 validation_status=ValidationStatus.created,
                 holding_current=None,  # Set after validation in Workflow B
