@@ -14,6 +14,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_ID,
     _SEG_OFF,
     _SOM_PAD,
+    MorphologyPathDistanceCalculator,
 )
 
 _LOCATION_COLUMNS = pandas.Index(
@@ -65,12 +66,11 @@ def _neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> 
         raise ValueError(msg) from None
 
 
-def _section_length(section: morphio.Section) -> float:
-    return float(np.linalg.norm(np.diff(section.points, axis=0), axis=1).sum())
-
-
 def _point_on_section(
-    morphology: morphio.Morphology, section_id: int, offset: float
+    morphology: morphio.Morphology,
+    path_distance_calculator: MorphologyPathDistanceCalculator | None,
+    section_id: int,
+    offset: float,
 ) -> dict[str, int | float]:
     if section_id == 0:
         return {
@@ -82,6 +82,10 @@ def _point_on_section(
             _PRE_IDX: 0,
             _SEC_LOC: offset,
         }
+
+    if path_distance_calculator is None:
+        msg = "A path-distance calculator is required for neurite locations."
+        raise ValueError(msg)
 
     section = _neurite_section_for_id(morphology, section_id)
     segment_lengths = np.linalg.norm(np.diff(section.points, axis=0), axis=1)
@@ -97,18 +101,26 @@ def _point_on_section(
         len(segment_lengths) - 1,
     )
     segment_start = 0.0 if segment_id == 0 else float(cumulative_lengths[segment_id - 1])
-
-    path_distance = distance_on_section
-    ancestor = section
-    while not ancestor.is_root:
-        ancestor = ancestor.parent
-        path_distance += _section_length(ancestor)
+    segment_offset = distance_on_section - segment_start
+    soma = pandas.DataFrame({_SEC_ID: [0], _SEG_ID: [0], _SEG_OFF: [0.0]})
+    location = pandas.DataFrame(
+        {_SEC_ID: [section_id], _SEG_ID: [segment_id], _SEG_OFF: [segment_offset]}
+    )
+    path_distance = float(
+        path_distance_calculator.path_distances(
+            soma,
+            location,
+            str_section_id=_SEC_ID,
+            str_segment_id=_SEG_ID,
+            str_offset=_SEG_OFF,
+        )[0, 0]
+    )
 
     return {
         _SEG_ID: segment_id,
         _SEC_ID: section_id,
         _SEC_TYP: int(section.type),
-        _SEG_OFF: distance_on_section - segment_start,
+        _SEG_OFF: segment_offset,
         _SOM_PAD: path_distance,
         _PRE_IDX: 0,
         _SEC_LOC: offset,
@@ -125,8 +137,18 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+        path_distance_calculator = (
+            MorphologyPathDistanceCalculator(morphology)
+            if any(location.section_id != 0 for location in self.locations)
+            else None
+        )
         points = [
-            _point_on_section(morphology, location.section_id, location.offset)
+            _point_on_section(
+                morphology,
+                path_distance_calculator,
+                location.section_id,
+                location.offset,
+            )
             for location in self.locations
         ]
         return pandas.DataFrame(points, columns=_LOCATION_COLUMNS)
