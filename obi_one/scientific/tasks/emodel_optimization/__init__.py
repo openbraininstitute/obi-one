@@ -3,10 +3,10 @@
 The pipeline mirrors the steps documented at
 https://github.com/openbraininstitute/BluePyEModel/blob/main/examples/L5PC/README.rst:
 
-* ``_01_efeature_extraction``: extract experimental e-features from raw traces.
-* ``_02_emodel_optimization``: optimise model parameters, run analysis, and export
+* ``efeature_extraction``: extract experimental e-features from raw traces.
+* ``emodel_optimization``: optimise model parameters, run analysis, and export
   draft emodel (Workflow A — merged optimisation + analysis + export).
-* ``_03_export_and_validation``: validate optimised models, plot validation
+* ``export_and_validation``: validate optimised models, plot validation
   figures, and re-export only validated models to HOC/SONATA (Workflow B).
 
 Each stage is a standalone OBI-ONE :class:`~obi_one.core.scan_config.ScanConfig`

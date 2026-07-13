@@ -6,6 +6,7 @@ updates MEModel with calibration results and validation status, and updates
 EModel with final export assets.
 """
 
+import contextlib
 import json
 import logging
 from pathlib import Path
@@ -14,8 +15,9 @@ from typing import ClassVar
 import entitysdk
 
 from obi_one.core.task import Task
+from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.emodel_optimization import _shared
-from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.config import (
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.config import (
     EModelExportAndValidationSingleConfig,
 )
 
@@ -36,7 +38,7 @@ class EModelExportAndValidationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
@@ -163,7 +165,12 @@ class EModelExportAndValidationTask(Task):
 
         return coord_root
 
-    def _download_opt_assets(self, opt_tr, coord_root: Path, db_client) -> None:
+    def _download_opt_assets(  # noqa: PLR6301
+        self,
+        opt_tr: TaskResultFromID,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
+    ) -> None:
         """Download all assets from optimisation TaskResult."""
         from entitysdk.types import AssetLabel  # noqa: PLC0415
 
@@ -176,13 +183,13 @@ class EModelExportAndValidationTask(Task):
                 dest_dir=ckpt_dir,
                 db_client=db_client,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             L.warning("Could not download optimisation checkpoint.")
 
         # Recipes
         try:
             recipes_dict = opt_tr.download_json_asset_by_label(
-                AssetLabel.emodel_optimisation_recipe,
+                AssetLabel.task_result,
                 db_client=db_client,
             )
             recipes_dir = coord_root / "config"
@@ -190,7 +197,7 @@ class EModelExportAndValidationTask(Task):
             (recipes_dir / "recipes.json").write_text(
                 json.dumps(recipes_dict, indent=4), encoding="utf-8"
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             L.warning("Could not download optimisation recipe.")
 
         # Params
@@ -198,11 +205,11 @@ class EModelExportAndValidationTask(Task):
         params_dir.mkdir(parents=True, exist_ok=True)
         try:
             opt_tr.download_asset_by_label(
-                AssetLabel.emodel_optimisation_params,
+                AssetLabel.neuron_mechanisms,
                 dest_dir=params_dir,
                 db_client=db_client,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             L.warning("Could not download optimisation params.")
 
         # Figures
@@ -210,59 +217,55 @@ class EModelExportAndValidationTask(Task):
         figures_dir.mkdir(parents=True, exist_ok=True)
         try:
             opt_tr.download_directory_asset_by_label(
-                AssetLabel.emodel_optimisation_figures,
+                AssetLabel.emodel_analysis_figures,
                 dest_dir=figures_dir,
                 db_client=db_client,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             L.warning("Could not download optimisation figures.")
 
         # Final.json
         try:
             final_dict = opt_tr.download_json_asset_by_label(
-                AssetLabel.emodel_optimisation_final_json,
+                AssetLabel.emodel_analysis_summary,
                 db_client=db_client,
             )
             (coord_root / "final.json").write_text(
                 json.dumps(final_dict, indent=4), encoding="utf-8"
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             L.warning("Could not download final.json.")
 
         # HOC
         hoc_dir = coord_root / "export_emodels_hoc"
         hoc_dir.mkdir(parents=True, exist_ok=True)
-        try:
+        with contextlib.suppress(Exception):
             opt_tr.download_asset_by_label(
                 AssetLabel.neuron_hoc,
                 dest_dir=hoc_dir,
                 db_client=db_client,
             )
-        except Exception:
-            pass
 
         # SONATA
         sonata_dir = coord_root / "export_emodels_sonata"
         sonata_dir.mkdir(parents=True, exist_ok=True)
-        try:
+        with contextlib.suppress(Exception):
             opt_tr.download_directory_asset_by_label(
-                AssetLabel.emodel_export_output,
+                AssetLabel.emodel_optimization_output,
                 dest_dir=sonata_dir,
                 db_client=db_client,
             )
-        except Exception:
-            pass
 
         L.info("Downloaded optimisation assets for export + validation.")
 
-    def _derive_mtype_from_memodel(self, db_client) -> str:
+    def _derive_mtype_from_memodel(self, db_client: entitysdk.client.Client) -> str:
         """Derive mtype from the MEModel entity."""
         memodel_entity = self.config.initialize.memodel.entity(db_client=db_client)
         if hasattr(memodel_entity, "mtypes") and memodel_entity.mtypes:
-            return str(memodel_entity.mtypes[0])
+            return str(memodel_entity.mtypes[0])  # ty:ignore[not-subscriptable]
         return "unknown"
 
-    def _register_and_update(
+    def _register_and_update(  # noqa: C901, PLR0912, PLR0914, PLR0915
         self,
         coord_root: Path,
         db_client: entitysdk.client.Client,
@@ -291,9 +294,7 @@ class EModelExportAndValidationTask(Task):
         task_result = db_client.register_entity(
             TaskResult(
                 name=f"EModel Export+Validation Result — {emodel_name}",
-                description=(
-                    f"Validation and final export results for emodel '{emodel_name}'."
-                ),
+                description=(f"Validation and final export results for emodel '{emodel_name}'."),
                 task_result_type=TaskResultType.optimized_emodel_analysis_validation__result,
             )
         )
@@ -308,23 +309,23 @@ class EModelExportAndValidationTask(Task):
                     rel = str(fp.relative_to(figures_dir))
                     paths[rel] = str(fp)
             if paths:
-                db_client.upload_asset_directory(
-                    entity_id=task_result.id,
+                db_client.upload_directory(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    paths=paths,
-                    asset_label=AssetLabel.emodel_optimisation_figures,
-                    content_type=ContentType.application_vnd_directory,
+                    name="figures",
+                    paths={Path(k): Path(v) for k, v in paths.items()},
+                    label=AssetLabel.emodel_analysis_figures,
                 )
 
         # Upload validation recipe
         recipes_path = coord_root / "config" / "recipes.json"
         if recipes_path.exists():
-            db_client.upload_assets(
-                entity_id=task_result.id,
+            db_client.upload_file(
+                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                 entity_type=TaskResult,
-                asset_path=recipes_path,
-                asset_label=AssetLabel.emodel_optimisation_recipe,
-                content_type=ContentType.application_json,
+                file_path=recipes_path,
+                asset_label=AssetLabel.task_result,
+                file_content_type=ContentType.application_json,
             )
 
         # Upload validation details
@@ -333,7 +334,7 @@ class EModelExportAndValidationTask(Task):
             "validation_protocols": list(settings.validation_protocols),
         }
         db_client.upload_content(
-            entity_id=task_result.id,
+            entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskResult,
             file_content=json.dumps(details, indent=2).encode("utf-8"),
             file_name="validation_details.json",
@@ -345,12 +346,12 @@ class EModelExportAndValidationTask(Task):
         hoc_dir = coord_root / "export_emodels_hoc"
         if hoc_dir.exists():
             for hoc_file in hoc_dir.rglob("*.hoc"):
-                db_client.upload_assets(
-                    entity_id=task_result.id,
+                db_client.upload_file(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    asset_path=hoc_file,
+                    file_path=hoc_file,
                     asset_label=AssetLabel.neuron_hoc,
-                    content_type=ContentType.application_hoc,
+                    file_content_type=ContentType.application_hoc,
                 )
 
         # Upload final SONATA
@@ -362,12 +363,12 @@ class EModelExportAndValidationTask(Task):
                     rel = str(fp.relative_to(sonata_dir))
                     paths[rel] = str(fp)
             if paths:
-                db_client.upload_asset_directory(
-                    entity_id=task_result.id,
+                db_client.upload_directory(
+                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                     entity_type=TaskResult,
-                    paths=paths,
-                    asset_label=AssetLabel.emodel_export_output,
-                    content_type=ContentType.application_vnd_directory,
+                    name="sonata",
+                    paths={Path(k): Path(v) for k, v in paths.items()},
+                    label=AssetLabel.emodel_optimization_output,
                 )
 
         # Derivation: optimisation TaskResult → validation TaskResult
@@ -413,43 +414,44 @@ class EModelExportAndValidationTask(Task):
                     holding_current=float(holding_current),
                     threshold_current=float(threshold_current),
                     rin=float(rin) if rin is not None else None,
-                    calibrated_entity_id=memodel_entity.id,
+                    calibrated_entity_id=memodel_entity.id,  # ty:ignore[invalid-argument-type]
                 )
             )
             L.info("Calibration result registered: %s", calibration_result.id)
 
         # Update MEModel
         updated_memodel = db_client.update_entity(
-            entity_id=memodel_entity.id,
-            entity_type=MEModel,
-            entity=MEModel(
-                id=memodel_entity.id,
+            memodel_entity.id,  # ty:ignore[invalid-argument-type]
+            MEModel,
+            MEModel(
                 name=memodel_entity.name,
                 description=memodel_entity.description,
-                species=memodel_entity.species,
-                brain_region=memodel_entity.brain_region,
-                morphology=memodel_entity.morphology,
-                emodel=memodel_entity.emodel,
+                species=memodel_entity.species,  # ty:ignore[unresolved-attribute]
+                brain_region=memodel_entity.brain_region,  # ty:ignore[unresolved-attribute]
+                morphology=memodel_entity.morphology,  # ty:ignore[unresolved-attribute]
+                emodel=memodel_entity.emodel,  # ty:ignore[unresolved-attribute]
                 validation_status=validation_status,
                 holding_current=float(holding_current) if holding_current is not None else None,
-                threshold_current=float(threshold_current) if threshold_current is not None else None,
-                iteration=memodel_entity.iteration,
+                threshold_current=float(threshold_current)
+                if threshold_current is not None
+                else None,
+                iteration=memodel_entity.iteration,  # ty:ignore[unresolved-attribute]
             ),
         )
         L.info("MEModel updated: %s (status=%s)", updated_memodel.id, validation_status)
 
         # --- Update EModel with final HOC/SONATA assets ---
-        emodel_entity = memodel_entity.emodel
+        emodel_entity = memodel_entity.emodel  # ty:ignore[unresolved-attribute]
 
         if emodel_entity:
             if hoc_dir.exists():
                 for hoc_file in hoc_dir.rglob("*.hoc"):
-                    db_client.upload_assets(
+                    db_client.upload_file(
                         entity_id=emodel_entity.id,
                         entity_type=EModel,
-                        asset_path=hoc_file,
+                        file_path=hoc_file,
                         asset_label=AssetLabel.neuron_hoc,
-                        content_type=ContentType.application_hoc,
+                        file_content_type=ContentType.application_hoc,
                     )
                     break
 
@@ -460,12 +462,12 @@ class EModelExportAndValidationTask(Task):
                         rel = str(fp.relative_to(sonata_dir))
                         paths[rel] = str(fp)
                 if paths:
-                    db_client.upload_asset_directory(
+                    db_client.upload_directory(
                         entity_id=emodel_entity.id,
                         entity_type=EModel,
-                        paths=paths,
-                        asset_label=AssetLabel.emodel_export_output,
-                        content_type=ContentType.application_vnd_directory,
+                        name="sonata",
+                        paths={Path(k): Path(v) for k, v in paths.items()},
+                        label=AssetLabel.emodel_optimization_output,
                     )
 
             L.info("EModel %s updated with final export assets.", emodel_entity.id)

@@ -98,8 +98,7 @@ class ExportAndValidationSettings(Block):
         default=("sAHP_220",),
         title="Validation protocols",
         description=(
-            "Protocols held out from optimisation, used to validate the optimised"
-            " models."
+            "Protocols held out from optimisation, used to validate the optimised models."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
