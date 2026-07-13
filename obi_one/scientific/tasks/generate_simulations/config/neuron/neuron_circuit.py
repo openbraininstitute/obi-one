@@ -127,7 +127,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: CircuitNeuronalManipulationReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [CircuitNeuronalManipulationReference.__name__],
             SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 0,

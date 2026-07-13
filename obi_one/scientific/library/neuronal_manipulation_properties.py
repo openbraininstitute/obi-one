@@ -25,6 +25,7 @@ from libsonata import NodeStorage
 
 from obi_one.scientific.library.circuit import Circuit as ObiCircuit
 from obi_one.scientific.library.emodel_parameters import get_mechanism_variables_for_emodel
+from obi_one.scientific.library.entity_property_types import CircuitMappedProperties
 from obi_one.scientific.library.memodel_circuit import (
     IonChannelVariables,
     MechanismVariableDetail,
@@ -34,7 +35,7 @@ from obi_one.scientific.library.memodel_circuit import (
 if TYPE_CHECKING:
     import entitysdk.client
 
-    from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
+    from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 
 L = logging.getLogger(__name__)
 
@@ -90,17 +91,17 @@ def _resolve_neuron_set_and_get_templates(
     circuit_id: str,
     circuit_entity: Circuit,
     asset_id: UUID,
-    neuron_set: AbstractNeuronSet,
-    population: str | None,
-) -> tuple[str, dict[int, str]]:
+    neuron_set: NeuronSet,
+) -> tuple[list[str], dict[int, str]]:
     """Stage circuit files, resolve neuron set to node IDs, read model_template.
 
-    Stages circuit_config.json, node_sets.json, and the population's nodes.h5
-    into one temp directory, then resolves the neuron set and reads model_template
-    for the resulting node IDs.
+    Stages circuit_config.json, node_sets.json, and the nodes.h5 for each population
+    the neuron set spans, then resolves the neuron set and reads model_template
+    for the resulting node IDs across all populations.
 
     Returns:
-        Tuple of (population_name, {node_id: model_template}).
+        Tuple of (population_names, {node_id: model_template}) where the template
+        dict merges entries from all populations.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
@@ -114,109 +115,64 @@ def _resolve_neuron_set_and_get_templates(
         except Exception:  # noqa: BLE001
             L.debug("node_sets.json not available, continuing without it")
 
-        # Load circuit to resolve population
+        # Load circuit
         config_path = temp_dir_path / "circuit_config.json"
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
-        if population is None:
-            population = obi_circuit.default_population_name
+        # Resolve neuron set → node IDs per population (new API)
+        ids_per_population: dict[str, list[int]] = neuron_set.get_neuron_ids(obi_circuit)
 
-        # Stage the population's nodes.h5
-
-        snap_circuit = SnapCircuit(str(config_path))
-        nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
-        nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
-
-        # Resolve neuron set → node IDs
-        node_ids = neuron_set.get_neuron_ids(obi_circuit, population).tolist()
-
-        # Read model_template for those node IDs
-        nodes_path = temp_dir_path / nodes_relative
-        pop_obj = NodeStorage(str(nodes_path)).open_population(population)
-
-        if "model_template" not in pop_obj.attribute_names:
-            msg = (
-                f"Property 'model_template' not found in population"
-                f" '{population}' of circuit {circuit_id}."
-                f" Available: {list(pop_obj.attribute_names)}"
-            )
+        if not ids_per_population:
+            msg = f"Neuron set resolved to no node IDs for circuit {circuit_id}."
             raise ValueError(msg)
 
-        templates = pop_obj.get_attribute("model_template", node_ids)
-        node_to_template = dict(zip(node_ids, templates, strict=True))
-
-    return population, node_to_template
-
-
-def _resolve_node_ids_and_get_templates(
-    db_client: entitysdk.client.Client,
-    circuit_id: str,
-    circuit_entity: Circuit,
-    asset_id: UUID,
-    node_ids: list[int],
-    population: str | None,
-) -> tuple[str, dict[int, str]]:
-    """Stage circuit files and read model_template for explicit node IDs.
-
-    Returns:
-        Tuple of (population_name, {node_id: model_template}).
-    """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir_path = Path(temp_dir).resolve()
-
-        # Stage circuit_config.json
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "circuit_config.json")
-
-        # Load circuit to resolve population
-        config_path = temp_dir_path / "circuit_config.json"
-        obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
-
-        if population is None:
-            population = obi_circuit.default_population_name
-
-        # Stage the population's nodes.h5
-
         snap_circuit = SnapCircuit(str(config_path))
-        nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
-        nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
+        node_to_template: dict[int, str] = {}
+        populations: list[str] = []
 
-        # Read model_template for the given node IDs
-        nodes_path = temp_dir_path / nodes_relative
-        pop_obj = NodeStorage(str(nodes_path)).open_population(population)
+        for population, node_ids in ids_per_population.items():
+            if not node_ids:
+                continue
 
-        if "model_template" not in pop_obj.attribute_names:
-            msg = (
-                f"Property 'model_template' not found in population"
-                f" '{population}' of circuit {circuit_id}."
-                f" Available: {list(pop_obj.attribute_names)}"
-            )
-            raise ValueError(msg)
+            populations.append(population)
 
-        templates = pop_obj.get_attribute("model_template", node_ids)
-        node_to_template = dict(zip(node_ids, templates, strict=True))
+            # Stage the population's nodes.h5
+            nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
+            nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
+            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
 
-    return population, node_to_template
+            # Read model_template for those node IDs
+            nodes_path = temp_dir_path / nodes_relative
+            pop_obj = NodeStorage(str(nodes_path)).open_population(population)
+
+            if "model_template" not in pop_obj.attribute_names:
+                msg = (
+                    f"Property 'model_template' not found in population"
+                    f" '{population}' of circuit {circuit_id}."
+                    f" Available: {list(pop_obj.attribute_names)}"
+                )
+                raise ValueError(msg)
+
+            templates = pop_obj.get_attribute("model_template", node_ids)
+            node_to_template.update(zip(node_ids, templates, strict=True))
+
+    return populations, node_to_template
 
 
-# Keep old functions for backward compatibility / tests
 def get_circuit_node_ids(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-    neuron_set: AbstractNeuronSet,
-    population: str | None = None,
-) -> tuple[str, list[int]]:
+    neuron_set: NeuronSet,
+) -> dict[str, list[int]]:
     """Resolve a neuron set to node IDs for a circuit.
 
     Args:
         db_client: entitysdk client.
         circuit_id: Circuit entity ID.
         neuron_set: Neuron set to resolve.
-        population: Node population name. Defaults to circuit's default.
 
     Returns:
-        Tuple of (population_name, node_ids).
+        Dict mapping population name to list of node IDs.
     """
     circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
 
@@ -232,61 +188,9 @@ def get_circuit_node_ids(
         config_path = temp_dir_path / "circuit_config.json"
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
-        if population is None:
-            population = obi_circuit.default_population_name
+        ids_per_population = neuron_set.get_neuron_ids(obi_circuit)
 
-        node_ids = neuron_set.get_neuron_ids(obi_circuit, population).tolist()
-
-    return population, node_ids
-
-
-def get_model_template_for_nodes(
-    db_client: entitysdk.client.Client,
-    circuit_id: str,
-    population: str,
-    node_ids: list[int],
-    asset_id: UUID,
-) -> dict[int, str]:
-    """Read model_template property for specific node IDs.
-
-    Args:
-        db_client: entitysdk client.
-        circuit_id: Circuit entity ID.
-        population: Node population name.
-        node_ids: List of node IDs to read model_template for.
-        asset_id: The sonata_circuit directory asset ID.
-
-    Returns:
-        Dict mapping node_id to model_template value.
-
-    Raises:
-        ValueError: If model_template property is not available.
-    """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir_path = Path(temp_dir).resolve()
-
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "circuit_config.json")
-
-        config_path = temp_dir_path / "circuit_config.json"
-        snap_circuit = SnapCircuit(str(config_path))
-        nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
-        nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
-
-        nodes_path = temp_dir_path / nodes_relative
-        pop_obj = NodeStorage(str(nodes_path)).open_population(population)
-
-        if "model_template" not in pop_obj.attribute_names:
-            msg = (
-                f"Property 'model_template' not found in population"
-                f" '{population}' of circuit {circuit_id}."
-                f" Available: {list(pop_obj.attribute_names)}"
-            )
-            raise ValueError(msg)
-
-        templates = pop_obj.get_attribute("model_template", node_ids)
-
-    return dict(zip(node_ids, templates, strict=True))
+    return ids_per_population
 
 
 def _fetch_emodel_derivation_mapping(
@@ -453,16 +357,13 @@ def _compute_common_mechanism_variables(
 def get_circuit_manipulation_properties(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-    neuron_set: AbstractNeuronSet | None = None,
-    node_ids: list[int] | None = None,
-    population: str | None = None,
+    neuron_set: NeuronSet | None = None,
 ) -> dict:
     """Get neuronal manipulation properties for a circuit + neuron set.
 
-    Three modes:
-    1. neuron_set=None, node_ids=None: Fast path — use all derivations (no file I/O).
-    2. node_ids provided: Stage files, read model_template for those nodes.
-    3. neuron_set provided: Stage files, resolve neuron set, read model_template.
+    Two modes:
+    1. neuron_set=None: Fast path — use all derivations (no file I/O).
+    2. neuron_set provided: Stage files, resolve neuron set, read model_template.
 
     Returns the intersection (common) of mechanism variables across all emodels
     in the selection.
@@ -470,22 +371,20 @@ def get_circuit_manipulation_properties(
     Args:
         db_client: entitysdk client.
         circuit_id: Circuit entity ID.
-        neuron_set: Neuron set to resolve.
-        node_ids: Direct list of node IDs (for debugging/direct calls).
-        population: Node population name. Defaults to circuit's default.
+        neuron_set: Neuron set to resolve (may span multiple populations).
 
     Returns:
-        Dict with entity_type, population, mechanism_variables_by_ion_channel,
+        Dict with entity_type, populations, mechanism_variables_by_ion_channel,
         and optional warnings.
     """
-    # Fast path: no neuron_set or node_ids — use all derivations (no file download)
-    if neuron_set is None and node_ids is None:
+    # Fast path: no neuron_set — use all derivations (no file download)
+    if neuron_set is None:
         label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
         if not label_to_emodel_id:
             return {
                 "entity_type": "circuit",
-                "population": None,
-                "mechanism_variables_by_ion_channel": {},
+                "populations": None,
+                CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: {},
                 "warnings": ["No emodel_circuit derivations found for this circuit."],
             }
         # Build emodel groups from all derivations (fake node IDs — not needed for intersection)
@@ -494,29 +393,21 @@ def get_circuit_manipulation_properties(
         common_vars = _compute_common_mechanism_variables(emodel_groups)
         return {
             "entity_type": "circuit",
-            "population": None,
-            "mechanism_variables_by_ion_channel": common_vars,
+            "populations": None,
+            CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: common_vars,
             "warnings": None,
         }
 
-    # Accurate path: resolve neuron set or use explicit node_ids
+    # Accurate path: resolve neuron set to node IDs across all populations
     circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
 
-    if node_ids is not None:
-        # Explicit node_ids provided
-        resolved_population, node_to_template = _resolve_node_ids_and_get_templates(
-            db_client, circuit_id, circuit_entity, asset_id, node_ids, population
-        )
-    else:
-        # Neuron set provided — resolve to node IDs and read templates
-        resolved_population, node_to_template = _resolve_neuron_set_and_get_templates(
-            db_client,
-            circuit_id,
-            circuit_entity,
-            asset_id,
-            neuron_set,  # ty:ignore[invalid-argument-type]  # guaranteed non-None by fast path above
-            population,
-        )
+    resolved_populations, node_to_template = _resolve_neuron_set_and_get_templates(
+        db_client,
+        circuit_id,
+        circuit_entity,
+        asset_id,
+        neuron_set,
+    )
 
     # Fetch derivations and match to emodels
     label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
@@ -549,7 +440,7 @@ def get_circuit_manipulation_properties(
 
     return {
         "entity_type": "circuit",
-        "population": resolved_population,
-        "mechanism_variables_by_ion_channel": common_vars,
+        "populations": resolved_populations,
+        CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: common_vars,
         "warnings": warnings,
     }

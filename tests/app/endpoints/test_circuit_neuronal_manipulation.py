@@ -45,10 +45,10 @@ class TestNeuronalManipulationPropertiesEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["entity_type"] == "memodel"
-        assert "mechanism_variables_by_ion_channel" in data
+        assert "MechanismVariablesByIonChannel" in data
 
-    def test_circuit_path_with_node_ids(self, client):
-        """Circuit path with explicit node_ids."""
+    def test_circuit_path_with_neuron_set(self, client):
+        """Circuit path with neuron_set."""
         with (
             patch(
                 "app.endpoints.circuit_properties.try_get_mechanism_variables",
@@ -60,8 +60,8 @@ class TestNeuronalManipulationPropertiesEndpoint:
         ):
             mock_props.return_value = {
                 "entity_type": "circuit",
-                "population": "All",
-                "mechanism_variables_by_ion_channel": {"NaTg": {}},
+                "populations": ["S1nonbarrel_neurons"],
+                "MechanismVariablesByIonChannel": {"NaTg": {}},
                 "warnings": None,
             }
 
@@ -69,8 +69,7 @@ class TestNeuronalManipulationPropertiesEndpoint:
                 "/declared/neuronal-manipulation-properties",
                 json={
                     "entity_id": str(uuid4()),
-                    "node_ids": [0, 1, 2],
-                    "population": "S1nonbarrel_neurons",
+                    "neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"},
                 },
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
@@ -78,7 +77,8 @@ class TestNeuronalManipulationPropertiesEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["entity_type"] == "circuit"
-        assert "mechanism_variables_by_ion_channel" in data
+        assert data["populations"] == ["S1nonbarrel_neurons"]
+        assert "MechanismVariablesByIonChannel" in data
 
     def test_circuit_path_no_neuron_set_uses_fast_path(self, client):
         """Circuit entity without neuron_set or node_ids uses fast path (all derivations)."""
@@ -94,7 +94,7 @@ class TestNeuronalManipulationPropertiesEndpoint:
             mock_props.return_value = {
                 "entity_type": "circuit",
                 "population": None,
-                "mechanism_variables_by_ion_channel": {"NaTg": {}},
+                "MechanismVariablesByIonChannel": {"NaTg": {}},
                 "warnings": None,
             }
 
@@ -122,7 +122,10 @@ class TestNeuronalManipulationPropertiesEndpoint:
         ):
             response = client.post(
                 "/declared/neuronal-manipulation-properties",
-                json={"entity_id": str(uuid4()), "node_ids": [0]},
+                json={
+                    "entity_id": str(uuid4()),
+                    "neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"},
+                },
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
 
@@ -142,7 +145,10 @@ class TestNeuronalManipulationPropertiesEndpoint:
         ):
             response = client.post(
                 "/declared/neuronal-manipulation-properties",
-                json={"entity_id": str(uuid4()), "node_ids": [0]},
+                json={
+                    "entity_id": str(uuid4()),
+                    "neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"},
+                },
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
 
@@ -155,7 +161,7 @@ class TestNodeIdsEndpoint:
     def test_success(self, client):
         """Successfully resolves neuron set to node IDs."""
         with patch("app.endpoints.circuit_properties.get_circuit_node_ids") as mock_node_ids:
-            mock_node_ids.return_value = ("S1nonbarrel_neurons", [0, 1, 2, 3])
+            mock_node_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2, 3]}
 
             response = client.post(
                 f"/declared/circuit/{uuid4()}/node-ids",
@@ -165,8 +171,7 @@ class TestNodeIdsEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["population"] == "S1nonbarrel_neurons"
-        assert data["node_ids"] == [0, 1, 2, 3]
+        assert data["node_ids_per_population"] == {"S1nonbarrel_neurons": [0, 1, 2, 3]}
 
     def test_value_error(self, client):
         """ValueError returns 400."""

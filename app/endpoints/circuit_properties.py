@@ -29,7 +29,9 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetUnion
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    NEURONSimulationNeuronSetUnion,
+)
 
 L = logging.getLogger(__name__)
 
@@ -43,24 +45,20 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 class NodeIdsRequest(BaseModel):
     """Request body for resolving a neuron set to node IDs."""
 
-    neuron_set: NeuronSetUnion
-    population: str | None = None
+    neuron_set: NEURONSimulationNeuronSetUnion
 
 
 class NodeIdsResponse(BaseModel):
-    """Response for resolved node IDs."""
+    """Response for resolved node IDs per population."""
 
-    population: str
-    node_ids: list[int]
+    node_ids_per_population: dict[str, list[int]]
 
 
 class NeuronalManipulationPropertiesRequest(BaseModel):
     """Request body for neuronal manipulation properties."""
 
     entity_id: str
-    neuron_set: NeuronSetUnion | None = None
-    node_ids: list[int] | None = None
-    population: str | None = None
+    neuron_set: NEURONSimulationNeuronSetUnion | None = None
 
 
 @router.get(
@@ -312,11 +310,10 @@ def neuron_set_node_ids(
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> NodeIdsResponse:
     try:
-        population, node_ids = get_circuit_node_ids(
+        ids_per_population = get_circuit_node_ids(
             db_client=db_client,
             circuit_id=circuit_id,
             neuron_set=request.neuron_set,
-            population=request.population,
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
@@ -328,7 +325,7 @@ def neuron_set_node_ids(
                 "detail": f"Internal error resolving node IDs for circuit {circuit_id}.",
             },
         ) from err
-    return NodeIdsResponse(population=population, node_ids=node_ids)
+    return NodeIdsResponse(node_ids_per_population=ids_per_population)
 
 
 @router.post(
@@ -349,7 +346,7 @@ def neuronal_manipulation_properties_endpoint(
     if memodel_result is not None:
         return {
             "entity_type": "memodel",
-            "mechanism_variables_by_ion_channel": memodel_result,
+            CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: memodel_result,
         }
 
     # Circuit path
@@ -358,8 +355,6 @@ def neuronal_manipulation_properties_endpoint(
             db_client=db_client,
             circuit_id=request.entity_id,
             neuron_set=request.neuron_set,
-            node_ids=request.node_ids,
-            population=request.population,
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err

@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-import numpy as np
 import pytest
 
 from obi_one.scientific.library.emodel_parameters import (
@@ -440,26 +439,6 @@ class TestGetCircuitAsset:
             _get_circuit_asset(client, str(uuid4()))
 
 
-class TestGetModelTemplateForNodes:
-    """Tests for get_model_template_for_nodes using real tiny circuit data.
-
-    Note: This function uses SnapCircuit + TemporaryAsset internally which has
-    fragile path resolution (relative_to). Tested via the integration tests
-    with mocked get_model_template_for_nodes instead.
-    """
-
-    def test_reads_model_template(self, mock_db_client):
-        """Reads model_template for specific node IDs (mocked at higher level)."""
-        # This is tested in TestGetCircuitManipulationPropertiesIntegration
-        # with a mocked get_model_template_for_nodes. Direct testing is fragile
-        # due to SnapCircuit path resolution in temp directories.
-
-    def test_raises_when_property_missing(self, mock_db_client):
-        """Raises ValueError for population without model_template (covered by unit logic)."""
-        # The ValueError raise is at line 151 in neuronal_manipulation_properties.py
-        # and is covered by the mock-based integration tests.
-
-
 class TestFetchEmodelDerivationMapping:
     """Tests for _fetch_emodel_derivation_mapping."""
 
@@ -554,8 +533,8 @@ class TestBuildEmodelGroups:
 class TestGetCircuitManipulationPropertiesIntegration:
     """Integration test for get_circuit_manipulation_properties with mocked I/O."""
 
-    def test_full_flow_with_node_ids(self, mock_db_client):
-        """Full flow: node_ids → model_template → derivations → intersection."""
+    def test_full_flow_with_neuron_set(self, mock_db_client):
+        """Full flow: neuron_set → resolve templates → derivations → intersection."""
         circuit_id = str(uuid4())
         emodel_id_1 = str(uuid4())
         emodel_id_2 = str(uuid4())
@@ -569,14 +548,17 @@ class TestGetCircuitManipulationPropertiesIntegration:
         deriv2.used.id = emodel_id_2
         mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
 
-        # Mock get_model_template_for_nodes to avoid macOS path issues
+        # Mock _resolve_neuron_set_and_get_templates to avoid file I/O
+        mock_populations = ["S1nonbarrel_neurons"]
         mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC", 2: "hoc:cADpyr_L6BPC"}
+
+        neuron_set = MagicMock()
 
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                ".get_model_template_for_nodes",
-                return_value=mock_templates,
+                "._resolve_neuron_set_and_get_templates",
+                return_value=(mock_populations, mock_templates),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -602,15 +584,14 @@ class TestGetCircuitManipulationPropertiesIntegration:
             result = get_circuit_manipulation_properties(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
-                node_ids=[0, 1, 2],
-                population="S1nonbarrel_neurons",
+                neuron_set=neuron_set,
             )
 
         assert result["entity_type"] == "circuit"
-        assert result["population"] == "S1nonbarrel_neurons"
-        assert "mechanism_variables_by_ion_channel" in result
+        assert result["populations"] == ["S1nonbarrel_neurons"]
+        assert "MechanismVariablesByIonChannel" in result
         # Both emodels have NaTg, so intersection should contain it
-        assert "NaTg" in result["mechanism_variables_by_ion_channel"]
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
         assert result["warnings"] is None
 
     def test_unmatched_templates_produce_warnings(self, mock_db_client):
@@ -621,21 +602,21 @@ class TestGetCircuitManipulationPropertiesIntegration:
         mock_db_client.search_entity.return_value.all.return_value = []
 
         mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC"}
+        neuron_set = MagicMock()
 
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
-            ".get_model_template_for_nodes",
-            return_value=mock_templates,
+            "._resolve_neuron_set_and_get_templates",
+            return_value=(["S1nonbarrel_neurons"], mock_templates),
         ):
             result = get_circuit_manipulation_properties(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
-                node_ids=[0, 1],
-                population="S1nonbarrel_neurons",
+                neuron_set=neuron_set,
             )
 
         assert result["entity_type"] == "circuit"
-        assert result["mechanism_variables_by_ion_channel"] == {}
+        assert result["MechanismVariablesByIonChannel"] == {}
         assert result["warnings"] is not None
         assert any("No derivation found" in w for w in result["warnings"])
 
@@ -654,6 +635,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
 
         mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC"}
+        neuron_set = MagicMock()
 
         call_count = [0]
 
@@ -692,8 +674,8 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                ".get_model_template_for_nodes",
-                return_value=mock_templates,
+                "._resolve_neuron_set_and_get_templates",
+                return_value=(["S1nonbarrel_neurons"], mock_templates),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -704,11 +686,10 @@ class TestGetCircuitManipulationPropertiesIntegration:
             result = get_circuit_manipulation_properties(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
-                node_ids=[0, 1],
-                population="S1nonbarrel_neurons",
+                neuron_set=neuron_set,
             )
 
-        assert result["mechanism_variables_by_ion_channel"] == {}
+        assert result["MechanismVariablesByIonChannel"] == {}
         assert result["warnings"] is not None
         assert any("No common mechanism variables" in w for w in result["warnings"])
 
@@ -754,30 +735,33 @@ class TestGetCircuitNodeIds:
 
         circuit_id = str(uuid4())
 
-        # Mock neuron set that returns specific node IDs
+        # Mock neuron set that returns dict of node IDs per population
         neuron_set = MagicMock()
-        neuron_set.get_neuron_ids.return_value = np.array([0, 1, 2, 3])
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2, 3]}
 
-        population, node_ids = get_circuit_node_ids(
-            mock_db_client, circuit_id, neuron_set, population="S1nonbarrel_neurons"
+        ids_per_population = get_circuit_node_ids(
+            mock_db_client, circuit_id, neuron_set
         )
 
-        assert population == "S1nonbarrel_neurons"
-        assert node_ids == [0, 1, 2, 3]
+        assert ids_per_population == {"S1nonbarrel_neurons": [0, 1, 2, 3]}
         neuron_set.get_neuron_ids.assert_called_once()
 
-    def test_resolves_default_population_when_none(self, mock_db_client):
-        """When population is None, resolves the default from the circuit."""
+    def test_resolves_multiple_populations(self, mock_db_client):
+        """When neuron set spans multiple populations, returns all."""
 
         circuit_id = str(uuid4())
 
         neuron_set = MagicMock()
-        neuron_set.get_neuron_ids.return_value = np.array([5, 6])
+        neuron_set.get_neuron_ids.return_value = {
+            "S1nonbarrel_neurons": [5, 6],
+            "other_pop": [10, 11, 12],
+        }
 
-        population, node_ids = get_circuit_node_ids(
-            mock_db_client, circuit_id, neuron_set, population=None
+        ids_per_population = get_circuit_node_ids(
+            mock_db_client, circuit_id, neuron_set
         )
 
-        # Default population for the tiny circuit is S1nonbarrel_neurons
-        assert population == "S1nonbarrel_neurons"
-        assert node_ids == [5, 6]
+        assert ids_per_population == {
+            "S1nonbarrel_neurons": [5, 6],
+            "other_pop": [10, 11, 12],
+        }
