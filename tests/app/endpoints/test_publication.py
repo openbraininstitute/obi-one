@@ -50,6 +50,9 @@ def _make_mock_db_client(existing_publications=None):
     mock_client = MagicMock()
     mock_search_result = MagicMock()
     mock_search_result.all.return_value = existing_publications or []
+    mock_search_result.one_or_none.return_value = (
+        existing_publications[0] if existing_publications else None
+    )
     mock_client.search_entity.return_value = mock_search_result
     return mock_client
 
@@ -117,7 +120,8 @@ class TestRegisterPublicationAlreadyExists:
     def test_already_registered_returns_409(self, client, mock_db_client):
         """A DOI that already exists returns 409 Conflict."""
         existing_pub = MagicMock()
-        mock_db_client.search_entity.return_value.all.return_value = [existing_pub]
+        existing_pub.id = uuid4()
+        mock_db_client.search_entity.return_value.one_or_none.return_value = existing_pub
 
         resp = client.post(f"{_BASE}/register", json={"DOI": VALID_DOI})
 
