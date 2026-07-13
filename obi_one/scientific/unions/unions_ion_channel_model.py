@@ -3,7 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.ion_channel_model import (
+from obi_one.scientific.blocks.ion_channel_model.ion_channel_model import (
     IonChannelModelWithConductance,
     IonChannelModelWithMaxPermeability,
     IonChannelModelWithoutConductance,
