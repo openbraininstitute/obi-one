@@ -34,7 +34,9 @@ ROR_METADATA = RorMetadata(
 def _make_mock_db_client(existing_entities=None):
     mock_client = MagicMock()
     mock_search_result = MagicMock()
-    mock_search_result.one_or_none.return_value = existing_entities[0] if existing_entities else None
+    mock_search_result.one_or_none.return_value = (
+        existing_entities[0] if existing_entities else None
+    )
     mock_client.search_entity.return_value = mock_search_result
     return mock_client
 
