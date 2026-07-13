@@ -1,29 +1,29 @@
 from obi_one.core.registry import block_ref_registry
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     CombinedBiophysicalNeuronSetReference,
     CombinedNonVirtualNeuronSetReference,
     CombinedPointNeuronSetReference,
     CombinedVirtualNeuronSetReference,
 )
-from obi_one.scientific.unions.unions_distributions import (
+from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
 )
-from obi_one.scientific.unions.unions_extracellular_locations import (
+from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
 )
-from obi_one.scientific.unions.unions_manipulations import SynapticManipulationsReference
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsReference
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
-from obi_one.scientific.unions.unions_recordings import RecordingReference
-from obi_one.scientific.unions.unions_stimuli import StimulusReference
-from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+from obi_one.scientific.unions_and_references.recordings import RecordingReference
+from obi_one.scientific.unions_and_references.stimuli import StimulusReference
+from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerReference,
 )
-from obi_one.scientific.unions.unions_synaptic_models import SynapticModelReference
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.synaptic_models import SynapticModelReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 AllBlockReferenceTypes = [
     CombinedBiophysicalNeuronSetReference,

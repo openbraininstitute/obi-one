@@ -34,7 +34,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
 )
 

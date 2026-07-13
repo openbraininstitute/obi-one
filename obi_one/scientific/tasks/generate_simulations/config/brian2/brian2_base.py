@@ -11,7 +11,7 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
 )
 

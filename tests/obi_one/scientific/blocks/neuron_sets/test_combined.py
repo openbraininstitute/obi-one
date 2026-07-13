@@ -7,7 +7,7 @@ import pytest
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet, SetOperation
 from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
-from obi_one.scientific.unions.unions_neuron_sets import BiophysicalNeuronSetReference
+from obi_one.scientific.unions_and_references.neuron_sets import BiophysicalNeuronSetReference
 
 from tests.utils import CIRCUIT_DIR
 

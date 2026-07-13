@@ -14,7 +14,7 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION,
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,

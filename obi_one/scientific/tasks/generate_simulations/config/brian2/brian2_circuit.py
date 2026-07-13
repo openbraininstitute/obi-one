@@ -20,17 +20,17 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base import (
     Brian2SimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
     Brian2SimulationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import PointNeuronSetReference
-from obi_one.scientific.unions.unions_stimuli import (
+from obi_one.scientific.unions_and_references.neuron_sets import PointNeuronSetReference
+from obi_one.scientific.unions_and_references.stimuli import (
     Brian2CircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
 

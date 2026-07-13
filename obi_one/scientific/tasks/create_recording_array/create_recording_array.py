@@ -20,7 +20,7 @@ from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_extracellular_locations import (
+from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )

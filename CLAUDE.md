@@ -59,7 +59,8 @@ The core uses a **block-based compositional pattern**:
 
 - **`blocks/`** - Domain-specific blocks: stimuli, neuron sets, recordings, morphology locations, synaptic/neuronal manipulations
 - **`tasks/`** - Task implementations: circuit extraction, simulation, morphology operations, ephys extraction, ion channel modeling
-- **`unions/`** - Discriminated union types (`ScanConfigsUnion`, `TasksUnion`, etc.) and `config_task_map.py` for dispatch
+- **`unions_and_references/`** - Discriminated union types (`ScanConfigsUnion`, `TasksUnion`, etc.) and the block reference types / reference-type constants that go with them
+- **`mappings_and_registry/`** - `config_task_map.py` for config->task dispatch and `block_reference_registry.py` for block reference registration
 - **`from_id/`** - Lazy-loading wrappers that fetch data from entitysdk by ID
 - **`library/`** - Reusable scientific utility functions
 
