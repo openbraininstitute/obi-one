@@ -6,13 +6,13 @@ from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityP
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
 from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
-from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.task import (
     EModelOptimizationTask,
 )
-from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.task import (
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.task import (
     EModelExportAndValidationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask

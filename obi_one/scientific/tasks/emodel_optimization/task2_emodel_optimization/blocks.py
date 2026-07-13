@@ -164,12 +164,12 @@ def validate_params_file(params: dict) -> None:
             msg = f"Parameter at index {i} is missing required key 'name'."
             raise OBIONEError(msg)
         if "val" not in param:
-            msg = f"Parameter '{param.get('name', i)}' is missing required key 'val'."
+            msg = f"Parameter '{param.get('name', i)}' is missing required key 'val'."  # ty:ignore[no-matching-overload]
             raise OBIONEError(msg)
-        dist = param.get("dist")
+        dist = param.get("dist")  # ty:ignore[invalid-argument-type]
         if dist is not None and dist not in dist_names:
             msg = (
-                f"Parameter '{param['name']}' references distribution '{dist}'"
+                f"Parameter '{param['name']}' references distribution '{dist}'"  # ty:ignore[invalid-argument-type]
                 f" which is not defined in 'distributions'"
                 f" (available: {sorted(dist_names)})."
             )

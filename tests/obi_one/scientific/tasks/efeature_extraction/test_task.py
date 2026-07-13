@@ -3,10 +3,10 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (
     Settings,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
     _build_extraction_recipes,
     _build_files_metadata,
@@ -38,18 +38,19 @@ class TestBuildExtractionRecipes:
 
     def test_custom_settings(self):
         settings = Settings(
-            threshold=-30.0,
             plot_extraction=False,
             pickle_cells=True,
-            name_rin_protocol="IV_-20",
+            threshold_based=True,
+            rin_protocol_name="IV",
+            rin_protocol_amplitude=-20.0,
         )
         recipes = _build_extraction_recipes(settings)
 
         ps = recipes["emodel"]["pipeline_settings"]
-        assert ps["efel_settings"]["Threshold"] == -30.0  # noqa: RUF069
         assert ps["plot_extraction"] is False
         assert ps["pickle_cells_extraction"] is True
-        assert ps["name_Rin_protocol"] == "IV_-20"
+        assert ps["extract_absolute_amplitudes"] is False
+        assert ps["name_Rin_protocol"] == ["IV", -20.0]
         assert ps["rheobase_settings_extraction"] == {"spike_threshold": 1}
 
 
@@ -172,11 +173,11 @@ class TestAutoselect:
         from obi_one.scientific.from_id.electrical_cell_recording_from_id import (  # noqa: PLC0415
             ElectricalCellRecordingFromID,
         )
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (  # noqa: PLC0415
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (  # noqa: PLC0415
             ExtractionInitialize,
             ProtocolAndFeatureSelection,
         )
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (  # noqa: PLC0415
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.config import (  # noqa: PLC0415
             EModelEFeatureExtractionSingleConfig,
         )
 
@@ -203,7 +204,7 @@ class TestAutoselect:
 
         with (
             patch(
-                "obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.task._build_files_metadata",
+                "obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.task._build_files_metadata",
                 return_value=[{"cell_name": "fake", "filepath": "/tmp/fake.nwb", "ecodes": {}}],  # noqa: S108
             ),
             patch(
@@ -228,7 +229,7 @@ class TestProtocolTimingOverride:
     """Test Protocol.timing_override() and Protocol.efel_settings_override()."""
 
     def test_timing_override_empty(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
             IDrest,
         )
 
@@ -236,7 +237,7 @@ class TestProtocolTimingOverride:
         assert protocol.timing_override() == {}
 
     def test_timing_override_with_values(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
             IDrest,
         )
 
@@ -245,7 +246,7 @@ class TestProtocolTimingOverride:
         assert override == {"ton": 700.0, "toff": 2700.0, "ljp": 14.0}
 
     def test_timing_override_partial(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
             SAHP,
         )
 
@@ -254,39 +255,32 @@ class TestProtocolTimingOverride:
         assert override == {"tmid": 520.0, "tmid2": 720.0}
 
     def test_protocol_efel_settings_defaults(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
             IDrest,
         )
 
         protocol = IDrest()
         overrides = protocol.efel_settings_override()
-        assert overrides == {
-            "Threshold": -20.0,
-            "strict_stiminterval": True,
-            "interp_step": 0.025,
-        }
+        assert overrides == {}
 
     def test_protocol_efel_settings_with_custom(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
             IDrest,
         )
 
         protocol = IDrest(
-            threshold=-30.0,
             custom_efel_settings={"DerivativeThreshold": 15.0, "stim_start": 700.0},
         )
         overrides = protocol.efel_settings_override()
-        assert overrides["Threshold"] == -30.0  # noqa: RUF069
         assert overrides["DerivativeThreshold"] == 15.0  # noqa: RUF069
         assert overrides["stim_start"] == 700.0  # noqa: RUF069
-        assert overrides["strict_stiminterval"] is True
 
 
 class TestEFeatureSettings:
     """Test EFeature.efel_settings_override() with new 3-field + custom dict."""
 
     def test_efeature_defaults(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
             Spikecount,
         )
 
@@ -299,7 +293,7 @@ class TestEFeatureSettings:
         }
 
     def test_efeature_custom_settings(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
             MeanFrequency,
         )
 
@@ -314,7 +308,7 @@ class TestEFeatureSettings:
         assert overrides["interp_step"] == 0.025  # noqa: RUF069
 
     def test_efeature_doc_url(self):
-        from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
+        from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: PLC0415, E501
             Spikecount,
         )
 

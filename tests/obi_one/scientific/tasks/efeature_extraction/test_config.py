@@ -1,6 +1,7 @@
 """Tests for the EModelEFeatureExtractionScanConfig and SingleConfig."""
 
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -8,15 +9,20 @@ import pytest
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (
     ExtractionInitialize,
     ProtocolAndFeatureSelection,
     Settings,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
     EModelEFeatureExtractionSingleConfig,
 )
+
+
+def _mock_input_entities():
+    """Return simple objects to avoid MagicMock pydantic recursion in entitysdk 0.19.2."""
+    return [SimpleNamespace(id=uuid4()) for _ in range(2)]
 
 
 @pytest.fixture
@@ -73,9 +79,9 @@ class TestScanConfigCreation:
         assert len(scan_config.initialize.electrical_cell_recording) == 2
 
     def test_default_settings(self, scan_config):
-        assert scan_config.settings.threshold == -20.0  # noqa: RUF069
         assert scan_config.settings.plot_extraction is True
-        assert scan_config.settings.interp_step == 0.025  # noqa: RUF069
+        assert scan_config.settings.compute_rheobase is True
+        assert scan_config.settings.default_std_value == 0.01  # noqa: RUF069
 
     def test_default_rheobase(self, scan_config):
         assert scan_config.settings.compute_rheobase is True
@@ -149,7 +155,7 @@ class TestSerialization:
         restored = EModelEFeatureExtractionScanConfig.model_validate_json(json_str)
         assert restored.campaign_name == scan_config.campaign_name
         assert len(restored.initialize.electrical_cell_recording) == 2
-        assert restored.settings.threshold == scan_config.settings.threshold
+        assert restored.settings.plot_extraction == scan_config.settings.plot_extraction
 
     def test_model_dump_contains_type(self, scan_config):
         dump = scan_config.model_dump()
@@ -184,10 +190,11 @@ class TestCreateCampaignEntity:
         mock_entity.id = uuid4()
         mock_client.register_entity.return_value = mock_entity
 
-        scan_config.create_campaign_entity_with_config(
-            output_root="/tmp/test",  # noqa: S108
-            db_client=mock_client,
-        )
+        with patch.object(type(scan_config), "input_entities", return_value=_mock_input_entities()):
+            scan_config.create_campaign_entity_with_config(
+                output_root="/tmp/test",  # noqa: S108
+                db_client=mock_client,
+            )
 
         # Should register a TaskConfig entity
         mock_client.register_entity.assert_called_once()
@@ -223,10 +230,11 @@ class TestCreateSingleEntityWithConfig:
         mock_campaign = MagicMock()
         mock_campaign.id = uuid4()
 
-        single.create_single_entity_with_config(
-            campaign=mock_campaign,
-            db_client=mock_client,
-        )
+        with patch.object(type(single), "input_entities", return_value=_mock_input_entities()):
+            single.create_single_entity_with_config(
+                campaign=mock_campaign,
+                db_client=mock_client,
+            )
 
         mock_client.register_entity.assert_called_once()
         mock_client.upload_content.assert_called_once()

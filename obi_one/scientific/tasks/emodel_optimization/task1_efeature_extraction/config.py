@@ -16,7 +16,7 @@ from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (
     ExtractionInitialize,
     ProtocolAndFeatureSelection,
     Settings,
@@ -106,11 +106,11 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         },
     )
 
-    def create_campaign_entity_with_config(
+    def create_campaign_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
         output_root: Path,  # noqa: ARG002
         multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         if db_client is None:
             return
@@ -130,7 +130,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
 
         # Upload the scan config as an asset on the campaign entity.
         db_client.upload_content(
-            entity_id=campaign.id,
+            entity_id=campaign.id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskConfig,
             file_content=self.model_dump_json(indent=2).encode("utf-8"),
             file_name="scan_config.json",
@@ -151,7 +151,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
 class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`EModelEFeatureExtractionScanConfig`."""
 
-    def create_single_entity_with_config(
+    def create_single_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
         campaign: TaskConfig,
         db_client: Client,
@@ -174,7 +174,7 @@ class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, S
 
         # Upload the single config JSON as an asset.
         db_client.upload_content(
-            entity_id=single_config_entity.id,
+            entity_id=single_config_entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskConfig,
             file_content=self.model_dump_json(indent=2).encode("utf-8"),
             file_name="single_config.json",

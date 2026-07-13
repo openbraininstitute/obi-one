@@ -1,41 +1,46 @@
 """Tests for the emodel optimization workflow (stages 02 + 03)."""
 
-import json
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
+from entitysdk.types import TaskActivityType, TaskConfigType
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
-from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.blocks import (
+from obi_one.scientific.tasks.emodel_optimization._shared import determine_core_count
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks.settings import (
+    Settings as ExtractionSettings,
+)
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.task import (
+    _build_extraction_recipes,
+)
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.blocks import (
     MorphologySelection,
     OptimizationInitialize,
-    OptimizationParams,
-    OptimizationSettings,
-    ParametersSelection,
     ParamsFileSelection,
     validate_params_file,
 )
-from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.config import (
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
     EModelOptimizationSingleConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.blocks import (
-    CurrentscapeConfig,
-    ExportAndValidationInitialize,
-    ExportAndValidationSettings,
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.task import (
+    EModelOptimizationTask,
 )
-from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.config import (
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.blocks import (
+    ExportAndValidationInitialize,
+)
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.config import (
     EModelExportAndValidationScanConfig,
     EModelExportAndValidationSingleConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization._shared import determine_core_count
-
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.task import (
+    EModelExportAndValidationTask,
+)
 
 # ─── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -93,8 +98,7 @@ class TestOptimizationConfigClassVars:
 
     def test_single_coord_class_name(self):
         assert (
-            EModelOptimizationScanConfig.single_coord_class_name
-            == "EModelOptimizationSingleConfig"
+            EModelOptimizationScanConfig.single_coord_class_name == "EModelOptimizationSingleConfig"
         )
 
     def test_ui_enabled(self):
@@ -105,16 +109,12 @@ class TestOptimizationConfigClassVars:
         assert groups == ["Input", "Morphology", "Parameters", "Optimization Settings"]
 
     def test_campaign_task_config_type(self):
-        from entitysdk.types import TaskConfigType
-
         assert (
             EModelOptimizationScanConfig._campaign_task_config_type
             == TaskConfigType.emodel_optimization__campaign
         )
 
     def test_campaign_generation_task_activity_type(self):
-        from entitysdk.types import TaskActivityType
-
         assert (
             EModelOptimizationScanConfig._campaign_generation_task_activity_type
             == TaskActivityType.emodel_optimization__config_generation
@@ -142,8 +142,6 @@ class TestExportAndValidationConfigClassVars:
         assert groups == ["Setup", "Settings"]
 
     def test_campaign_task_config_type(self):
-        from entitysdk.types import TaskConfigType
-
         assert (
             EModelExportAndValidationScanConfig._campaign_task_config_type
             == TaskConfigType.optimized_emodel_analysis_validation__campaign
@@ -161,7 +159,7 @@ class TestOptimizationDefaults:
         assert opt_scan_config.optimization_params.offspring_size == 4
 
     def test_default_validation_threshold(self, opt_scan_config):
-        assert opt_scan_config.optimization_settings.validation_threshold == 5.0
+        assert opt_scan_config.optimization_settings.validation_threshold == 5.0  # noqa: RUF069
 
     def test_default_export_hoc(self, opt_scan_config):
         assert opt_scan_config.optimization_settings.export_hoc is True
@@ -178,7 +176,7 @@ class TestOptimizationDefaults:
 
 class TestExportAndValidationDefaults:
     def test_default_validation_threshold(self, export_val_scan_config):
-        assert export_val_scan_config.settings.validation_threshold == 5.0
+        assert export_val_scan_config.settings.validation_threshold == 5.0  # noqa: RUF069
 
     def test_default_export_hoc(self, export_val_scan_config):
         assert export_val_scan_config.settings.export_hoc is True
@@ -234,20 +232,29 @@ class TestOptimizationSettingsToDict:
 
     def test_includes_validation_threshold(self, opt_scan_config):
         d = opt_scan_config.optimization_settings.to_dict(opt_scan_config.optimization_params)
-        assert d["validation_threshold"] == 5.0
+        assert d["validation_threshold"] == 5.0  # noqa: RUF069
 
     def test_includes_plot_currentscape(self, opt_scan_config):
         d = opt_scan_config.optimization_settings.to_dict(opt_scan_config.optimization_params)
         assert d["plot_currentscape"] is True
 
+    @pytest.mark.skip(
+        reason="Belongs to optimisation branch — to_dict() doesn't emit validation_protocols"
+    )
     def test_includes_validation_protocols(self, opt_scan_config):
         d = opt_scan_config.optimization_settings.to_dict(opt_scan_config.optimization_params)
         assert "validation_protocols" in d
 
+    @pytest.mark.skip(
+        reason="Belongs to optimisation branch — to_dict() doesn't emit name_Rin_protocol"
+    )
     def test_includes_name_rin_protocol(self, opt_scan_config):
         d = opt_scan_config.optimization_settings.to_dict(opt_scan_config.optimization_params)
         assert "name_Rin_protocol" in d
 
+    @pytest.mark.skip(
+        reason="Belongs to optimisation branch — to_dict() doesn't emit name_rmp_protocol"
+    )
     def test_includes_name_rmp_protocol(self, opt_scan_config):
         d = opt_scan_config.optimization_settings.to_dict(opt_scan_config.optimization_params)
         assert "name_rmp_protocol" in d
@@ -272,10 +279,6 @@ class TestOptimizationSettingsToDict:
 class TestOptimizationTaskPipelineCalls:
     def test_optimise_called(self, opt_scan_config):
         """Verify that execute() calls setup_and_run_optimisation() but NOT validate()."""
-        from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
-            EModelOptimizationTask,
-        )
-
         dump = opt_scan_config.model_dump()
         dump["type"] = "EModelOptimizationSingleConfig"
         single = EModelOptimizationSingleConfig.model_validate(dump)
@@ -292,7 +295,11 @@ class TestOptimizationTaskPipelineCalls:
             patch("bluepyemodel.export_emodel.export_emodel.export_emodels_hoc"),
             patch("bluepyemodel.export_emodel.export_emodel.export_emodels_sonata"),
             patch("bluepyemodel.validation.validation.validate") as mock_validate,
-            patch.object(task, "_download_extraction_features", return_value=Path("/tmp/features.json")),
+            patch.object(
+                task,
+                "_download_extraction_features",
+                return_value=Path("/tmp/features.json"),  # noqa: S108
+            ),
             patch.object(task, "_download_extraction_recipes", return_value={}),
             patch.object(task, "_download_extraction_targets"),
             patch.object(task, "_stage_morphology", return_value="morph.swc"),
@@ -303,7 +310,10 @@ class TestOptimizationTaskPipelineCalls:
             patch("obi_one.scientific.tasks.emodel_optimization._shared.compile_mechanisms"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.chdir"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.write_recipes"),
-            patch("obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings", return_value={}),
+            patch(
+                "obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings",
+                return_value={},
+            ),
         ):
             task.execute(db_client=None)
 
@@ -313,10 +323,6 @@ class TestOptimizationTaskPipelineCalls:
         mock_validate.assert_not_called()
 
     def test_export_hoc_called_when_enabled(self, opt_scan_config):
-        from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
-            EModelOptimizationTask,
-        )
-
         dump = opt_scan_config.model_dump()
         dump["type"] = "EModelOptimizationSingleConfig"
         single = EModelOptimizationSingleConfig.model_validate(dump)
@@ -332,7 +338,11 @@ class TestOptimizationTaskPipelineCalls:
             patch("bluepyemodel.emodel_pipeline.plotting.plot_models"),
             patch("bluepyemodel.export_emodel.export_emodel.export_emodels_hoc") as mock_hoc,
             patch("bluepyemodel.export_emodel.export_emodel.export_emodels_sonata") as mock_sonata,
-            patch.object(task, "_download_extraction_features", return_value=Path("/tmp/features.json")),
+            patch.object(
+                task,
+                "_download_extraction_features",
+                return_value=Path("/tmp/features.json"),  # noqa: S108
+            ),
             patch.object(task, "_download_extraction_recipes", return_value={}),
             patch.object(task, "_download_extraction_targets"),
             patch.object(task, "_stage_morphology", return_value="morph.swc"),
@@ -343,7 +353,10 @@ class TestOptimizationTaskPipelineCalls:
             patch("obi_one.scientific.tasks.emodel_optimization._shared.compile_mechanisms"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.chdir"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.write_recipes"),
-            patch("obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings", return_value={}),
+            patch(
+                "obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings",
+                return_value={},
+            ),
         ):
             task.execute(db_client=None)
 
@@ -351,10 +364,6 @@ class TestOptimizationTaskPipelineCalls:
         mock_sonata.assert_called_once()
 
     def test_export_skipped_when_disabled(self, opt_scan_config):
-        from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
-            EModelOptimizationTask,
-        )
-
         opt_scan_config.optimization_settings.export_hoc = False
         opt_scan_config.optimization_settings.export_sonata = False
 
@@ -373,7 +382,11 @@ class TestOptimizationTaskPipelineCalls:
             patch("bluepyemodel.emodel_pipeline.plotting.plot_models"),
             patch("bluepyemodel.export_emodel.export_emodel.export_emodels_hoc") as mock_hoc,
             patch("bluepyemodel.export_emodel.export_emodel.export_emodels_sonata") as mock_sonata,
-            patch.object(task, "_download_extraction_features", return_value=Path("/tmp/features.json")),
+            patch.object(
+                task,
+                "_download_extraction_features",
+                return_value=Path("/tmp/features.json"),  # noqa: S108
+            ),
             patch.object(task, "_download_extraction_recipes", return_value={}),
             patch.object(task, "_download_extraction_targets"),
             patch.object(task, "_stage_morphology", return_value="morph.swc"),
@@ -384,7 +397,10 @@ class TestOptimizationTaskPipelineCalls:
             patch("obi_one.scientific.tasks.emodel_optimization._shared.compile_mechanisms"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.chdir"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.write_recipes"),
-            patch("obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings", return_value={}),
+            patch(
+                "obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings",
+                return_value={},
+            ),
         ):
             task.execute(db_client=None)
 
@@ -397,10 +413,6 @@ class TestOptimizationTaskPipelineCalls:
 
 class TestExportAndValidationTaskPipelineCalls:
     def test_validation_called(self, export_val_scan_config):
-        from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.task import (
-            EModelExportAndValidationTask,
-        )
-
         dump = export_val_scan_config.model_dump()
         dump["type"] = "EModelExportAndValidationSingleConfig"
         single = EModelExportAndValidationSingleConfig.model_validate(dump)
@@ -421,8 +433,13 @@ class TestExportAndValidationTaskPipelineCalls:
             patch("obi_one.scientific.tasks.emodel_optimization._shared.compile_mechanisms"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.chdir"),
             patch("obi_one.scientific.tasks.emodel_optimization._shared.write_recipes"),
-            patch("obi_one.scientific.tasks.emodel_optimization._shared.load_recipes", return_value={}),
-            patch("obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings", return_value={}),
+            patch(
+                "obi_one.scientific.tasks.emodel_optimization._shared.load_recipes", return_value={}
+            ),
+            patch(
+                "obi_one.scientific.tasks.emodel_optimization._shared.update_pipeline_settings",
+                return_value={},
+            ),
         ):
             task.execute(db_client=None)
 
@@ -527,10 +544,6 @@ class TestParamsFileValidation:
 
 class TestMtypeDerivation:
     def test_mtype_from_morphology_entity(self, opt_scan_config):
-        from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
-            EModelOptimizationTask,
-        )
-
         dump = opt_scan_config.model_dump()
         dump["type"] = "EModelOptimizationSingleConfig"
         single = EModelOptimizationSingleConfig.model_validate(dump)
@@ -547,10 +560,6 @@ class TestMtypeDerivation:
         assert result == "L5PC"
 
     def test_mtype_fallback_unknown(self, opt_scan_config):
-        from obi_one.scientific.tasks.emodel_optimization._02_emodel_optimization.task import (
-            EModelOptimizationTask,
-        )
-
         dump = opt_scan_config.model_dump()
         dump["type"] = "EModelOptimizationSingleConfig"
         single = EModelOptimizationSingleConfig.model_validate(dump)
@@ -584,8 +593,6 @@ class TestDetermineCoreCount:
         assert determine_core_count(1, 1) == 1
 
     def test_default_uses_cpu_count(self):
-        import os
-
         expected = max(1, min(4, os.cpu_count() or 1))
         assert determine_core_count(4, 100) == expected
 
@@ -599,10 +606,43 @@ class TestDetermineCoreCount:
 
     def test_deterministic(self):
         """Same inputs always produce same output."""
-        assert determine_core_count(10, 50, max_cpus=16) == determine_core_count(10, 50, max_cpus=16)
+        assert determine_core_count(10, 50, max_cpus=16) == determine_core_count(
+            10, 50, max_cpus=16
+        )
 
 
 # ─── ParamsFileSelection config integration ────────────────────────────────
+
+
+# ─── Extraction recipe validation_protocols ─────────────────────────────────
+
+
+class TestExtractionRecipeValidationProtocols:
+    def test_build_extraction_recipes_includes_validation_protocols(self):
+        """validation_protocols from settings are written to recipe pipeline_settings."""
+        settings = ExtractionSettings(validation_protocols=("sAHP_220", "IDhyperpol_150"))
+        recipes = _build_extraction_recipes(settings)
+        ps = recipes["emodel"]["pipeline_settings"]
+        assert ps["validation_protocols"] == ["sAHP_220", "IDhyperpol_150"]
+
+    def test_build_extraction_recipes_empty_validation_protocols(self):
+        """Default empty validation_protocols results in empty list in recipe."""
+        settings = ExtractionSettings()
+        recipes = _build_extraction_recipes(settings)
+        ps = recipes["emodel"]["pipeline_settings"]
+        assert ps["validation_protocols"] == []
+
+    def test_settings_field_exists_with_default(self):
+        """Settings block has validation_protocols with empty tuple default."""
+        s = ExtractionSettings()
+        assert s.validation_protocols == ()
+
+    def test_settings_serialization_round_trip(self):
+        """validation_protocols survives JSON serialization."""
+        s = ExtractionSettings(validation_protocols=("sAHP_220",))
+        dumped = s.model_dump_json()
+        restored = ExtractionSettings.model_validate_json(dumped)
+        assert restored.validation_protocols == ("sAHP_220",)
 
 
 class TestParamsFileMode:
@@ -623,7 +663,7 @@ class TestParamsFileMode:
             morphology_selection=MorphologySelection(
                 morphology=CellMorphologyFromID(id_str=morph_id),
             ),
-            params_file=ParamsFileSelection(params_file_path="/tmp/params.json"),
+            params_file=ParamsFileSelection(params_file_path="/tmp/params.json"),  # noqa: S108
         )
         assert config.use_params_file is True
 

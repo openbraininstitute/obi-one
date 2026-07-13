@@ -15,11 +15,10 @@ from entitysdk.types import (
 )
 from pydantic import Field
 
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
-from obi_one.scientific.tasks.emodel_optimization._03_export_and_validation.blocks import (
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.blocks import (
     CurrentscapeConfig,
     ExportAndValidationInitialize,
     ExportAndValidationSettings,
@@ -108,11 +107,11 @@ class EModelExportAndValidationScanConfig(InfoScanConfig):
     def campaign_description(self) -> str:
         return self.info.campaign_description
 
-    def create_campaign_entity_with_config(
+    def create_campaign_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
         output_root: Path,  # noqa: ARG002
         multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         if db_client is None:
             return
@@ -131,7 +130,7 @@ class EModelExportAndValidationScanConfig(InfoScanConfig):
         self._campaign = campaign
 
         db_client.upload_content(
-            entity_id=campaign.id,
+            entity_id=campaign.id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskConfig,
             file_content=self.model_dump_json(indent=2).encode("utf-8"),
             file_name="scan_config.json",
@@ -149,12 +148,10 @@ class EModelExportAndValidationScanConfig(InfoScanConfig):
         return None
 
 
-class EModelExportAndValidationSingleConfig(
-    EModelExportAndValidationScanConfig, SingleConfigMixin
-):
+class EModelExportAndValidationSingleConfig(EModelExportAndValidationScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`EModelExportAndValidationScanConfig`."""
 
-    def create_single_entity_with_config(
+    def create_single_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
         campaign: TaskConfig,
         db_client: Client,
@@ -176,7 +173,7 @@ class EModelExportAndValidationSingleConfig(
         )
 
         db_client.upload_content(
-            entity_id=single_config_entity.id,
+            entity_id=single_config_entity.id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskConfig,
             file_content=self.model_dump_json(indent=2).encode("utf-8"),
             file_name="single_config.json",

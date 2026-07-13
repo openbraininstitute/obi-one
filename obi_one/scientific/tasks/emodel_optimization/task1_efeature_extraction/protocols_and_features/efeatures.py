@@ -105,8 +105,7 @@ class EFeature(OBIBaseModel):
         default=0.025,
         title="Interpolation step",
         description=(
-            "eFEL ``interp_step``: time step the trace is resampled to before"
-            " extraction (ms)."
+            "eFEL ``interp_step``: time step the trace is resampled to before extraction (ms)."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,

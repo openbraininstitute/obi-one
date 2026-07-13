@@ -2,7 +2,7 @@
 
 ui_element: `select_efeatures_by_protocol`
 
-Backs [`SelectEFeaturesByProtocol`](../../../../obi_one/scientific/tasks/emodel_optimization/_01_efeature_extraction/blocks.py) — a single object that lets the user pick which eFEL features to extract for each ephys protocol, with editable per-feature parameters.
+Backs [`SelectEFeaturesByProtocol`](../../../../obi_one/scientific/tasks/emodel_optimization/efeature_extraction/blocks.py) — a single object that lets the user pick which eFEL features to extract for each ephys protocol, with editable per-feature parameters.
 
 The schema advertises the **catalogue of features known per protocol** under the
 `available_efeatures_by_protocol` extra. The frontend filters this catalogue to

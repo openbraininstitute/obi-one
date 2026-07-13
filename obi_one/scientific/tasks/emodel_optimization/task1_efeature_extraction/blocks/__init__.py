@@ -8,13 +8,13 @@ to the optimisation stage. The remaining blocks expose the bluepyefe parameters
 that influence experimental e-feature extraction.
 """
 
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.initialize import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks.initialize import (  # noqa: E501
     ExtractionInitialize,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.protocol_and_feature_selection import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks.protocol_and_feature_selection import (  # noqa: E501
     ProtocolAndFeatureSelection,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks.settings import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks.settings import (
     Settings,
 )
 
