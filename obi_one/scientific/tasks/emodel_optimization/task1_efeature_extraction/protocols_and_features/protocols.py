@@ -18,7 +18,7 @@ from pydantic import Discriminator, Field
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
     ISICV,
     AdaptationIndex,
     AHPDepth,
@@ -100,8 +100,7 @@ class Protocol(OBIBaseModel):
         default=None,
         title="Mid-transition 1 (tmid)",
         description=(
-            "First mid-transition point for two-step protocols (ms)."
-            " Leave empty to auto-detect."
+            "First mid-transition point for two-step protocols (ms). Leave empty to auto-detect."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -112,8 +111,7 @@ class Protocol(OBIBaseModel):
         default=None,
         title="Mid-transition 2 (tmid2)",
         description=(
-            "Second mid-transition point for two-step protocols (ms)."
-            " Leave empty to auto-detect."
+            "Second mid-transition point for two-step protocols (ms). Leave empty to auto-detect."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -124,8 +122,7 @@ class Protocol(OBIBaseModel):
         default=None,
         title="Liquid junction potential (LJP)",
         description=(
-            "Liquid junction potential correction (mV)."
-            " Leave empty to use the recording's LJP."
+            "Liquid junction potential correction (mV). Leave empty to use the recording's LJP."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,

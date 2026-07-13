@@ -42,14 +42,14 @@ class TaskResultFromID(EntityFromID):
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> dict:
         """Download a JSON asset by label and return it as a parsed dict."""
-        from entitysdk.types import ContentType as CT  # noqa: PLC0415
+        from entitysdk.types import ContentType  # noqa: PLC0415
 
         bytes_content = db_client.fetch_content(
             entity_id=self.entity(db_client=db_client).id,  # ty:ignore[invalid-argument-type]
             entity_type=TaskResult,
             asset_or_id=db_client.select_assets(
                 entity=self.entity(db_client=db_client),
-                selection={"label": asset_label, "content_type": CT.application_json},
+                selection={"label": asset_label, "content_type": ContentType.application_json},
             ).one(),
         )
         import json  # noqa: PLC0415

@@ -37,10 +37,20 @@ class Settings(Block):
         title="Compute rheobase",
         description=(
             "When enabled, bluepyefe estimates each cell's rheobase from the"
-            ' "IDthresh" protocol recordings using the default "absolute"'
-            " strategy (lowest amplitude inducing at least 1 spike)."
+            " protocol specified in ``rheobase_protocol_name`` using the default"
+            ' "absolute" strategy (lowest amplitude inducing at least 1 spike).'
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    rheobase_protocol_name: str = Field(
+        default="IDthresh",
+        title="Rheobase protocol name",
+        description=(
+            "Protocol used to estimate rheobase (e.g. ``IDthresh`` or"
+            " ``IDThreshold``). Only used when compute_rheobase is enabled."
+            " The protocol must be present in the NWB recordings."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     default_std_value: PositiveFloat | list[PositiveFloat] = Field(
         default=0.01,

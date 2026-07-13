@@ -1,4 +1,4 @@
-# `_01_efeature_extraction` — exposed parameters
+# `efeature_extraction` — exposed parameters
 
 This stage extracts experimental e-features from ephys traces by running
 BluePyEModel's `extract_save_features_protocols` (which wraps `bluepyefe.extract`

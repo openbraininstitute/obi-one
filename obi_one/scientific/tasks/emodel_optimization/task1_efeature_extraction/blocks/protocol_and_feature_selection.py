@@ -6,7 +6,7 @@ from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features import (  # noqa: E501
     IV,
     SAHP,
     APWaveform,
@@ -449,7 +449,7 @@ class ProtocolAndFeatureSelection(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
-    protocols: tuple[ProtocolUnion, ...] = Field(
+    protocols: tuple[ProtocolUnion, ...] = Field(  # ty:ignore[invalid-assignment]
         default_factory=_default_protocols,
         title="Protocols",
         description=(

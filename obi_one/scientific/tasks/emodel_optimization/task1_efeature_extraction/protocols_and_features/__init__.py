@@ -7,7 +7,7 @@ parameters (in :mod:`.efeatures`), and each protocol is a subclass of
 :mod:`.protocols`).
 """
 
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
     ISICV,
     AdaptationIndex,
     AHPDepth,
@@ -43,7 +43,7 @@ from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protoc
     VoltageAfterStim,
     VoltageBase,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501
     IV,
     PROTOCOL_CATALOGUE,
     SAHP,

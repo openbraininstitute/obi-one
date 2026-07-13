@@ -17,10 +17,10 @@ from obi_one.scientific.library.electrical_cell_recording_properties import (
     _read_timing_from_nwb,
 )
 from obi_one.scientific.tasks.emodel_optimization import _shared
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.blocks import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (
     Settings,
 )
-from obi_one.scientific.tasks.emodel_optimization._01_efeature_extraction.config import (
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.config import (
     EModelEFeatureExtractionSingleConfig,
 )
 
@@ -310,7 +310,7 @@ class EModelEFeatureExtractionTask(Task):
                 raise TypeError(msg)
             target_dir = ephys_data_root / recording.id_str
             path = recording.download_asset(dest_dir=target_dir, db_client=db_client)
-            ljp = recording.entity(db_client=db_client).ljp
+            ljp = recording.entity(db_client=db_client).ljp  # ty:ignore[unresolved-attribute]
             downloaded.append((path, ljp))
         return downloaded
 
@@ -357,10 +357,16 @@ class EModelEFeatureExtractionTask(Task):
                 msg = "No NWB ephys files were downloaded for extraction."
                 raise FileNotFoundError(msg)
 
+            rheobase_protocols = (
+                [self.config.settings.rheobase_protocol_name]
+                if self.config.settings.compute_rheobase
+                else []
+            )
+
             return TargetsConfiguration(
                 files=files,
                 auto_targets=auto_targets,
-                protocols_rheobase=["IDthresh"] if self.config.settings.compute_rheobase else [],
+                protocols_rheobase=rheobase_protocols,
             )
 
         # --- Manual mode: build targets from per-protocol feature selection ---
@@ -394,6 +400,12 @@ class EModelEFeatureExtractionTask(Task):
             msg = "No NWB ephys files were downloaded for extraction."
             raise FileNotFoundError(msg)
 
+        rheobase_protocols = (
+            [self.config.settings.rheobase_protocol_name]
+            if self.config.settings.compute_rheobase
+            else []
+        )
+
         return TargetsConfiguration(
             files=files,
             targets=_build_targets_formatted(
@@ -401,13 +413,13 @@ class EModelEFeatureExtractionTask(Task):
                 amplitudes_per_protocol,
                 threshold_based=self.config.settings.threshold_based,
             ),
-            protocols_rheobase=["IDthresh"] if self.config.settings.compute_rheobase else [],
+            protocols_rheobase=rheobase_protocols,
         )
 
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
         execution_activity_id: str | None = None,  # noqa: ARG002
     ) -> Path:
@@ -519,26 +531,25 @@ class EModelEFeatureExtractionTask(Task):
         # Upload extracted features JSON.
         features_path = coord_root / EXTRACTED_FEATURES_FILENAME
         if features_path.exists():
-            db_client.upload_assets(
-                entity_id=task_result.id,
+            db_client.upload_file(
+                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                 entity_type=TaskResult,
-                asset_path=features_path,
+                file_path=features_path,
                 asset_label=AssetLabel.efeature_extraction_features,
-                content_type=ContentType.application_json,
+                file_content_type=ContentType.application_json,
             )
             L.info("Uploaded extracted features JSON.")
 
         # Upload recipes JSON.
+        # Note: entitycore does not yet have an asset label that accepts JSON
+        # for recipes/protocols — efeature_extraction_protocols requires HDF5.
+        # The recipes file is written to disk locally for downstream notebooks.
         recipes_path = coord_root / RECIPES_RELPATH
         if recipes_path.exists():
-            db_client.upload_assets(
-                entity_id=task_result.id,
-                entity_type=TaskResult,
-                asset_path=recipes_path,
-                asset_label=AssetLabel.efeature_extraction_recipe,
-                content_type=ContentType.application_json,
+            L.info(
+                "Recipes JSON written to %s (not uploaded — no compatible asset label).",
+                recipes_path,
             )
-            L.info("Uploaded recipes JSON.")
 
         # Upload figures directory with manifest.
         figures_dir = coord_root / "figures"
@@ -555,26 +566,23 @@ class EModelEFeatureExtractionTask(Task):
                     rel = str(file_path.relative_to(figures_dir))
                     paths[rel] = str(file_path)
 
-            db_client.upload_asset_directory(
-                entity_id=task_result.id,
+            db_client.upload_directory(
+                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
                 entity_type=TaskResult,
-                paths=paths,
-                asset_label=AssetLabel.efeature_extraction_figures,
-                content_type=ContentType.application_vnd_directory,
+                name="figures",
+                paths={Path(k): Path(v) for k, v in paths.items()},
+                label=AssetLabel.efeature_extraction_figures,
             )
             L.info("Uploaded figures directory (%d files).", len(paths))
 
         # Upload targets configuration JSON.
+        # Note: same as recipes — no asset label accepts JSON for this content.
         targets_path = coord_root / TARGETS_CONFIG_RELPATH
         if targets_path.exists():
-            db_client.upload_assets(
-                entity_id=task_result.id,
-                entity_type=TaskResult,
-                asset_path=targets_path,
-                asset_label=AssetLabel.efeature_extraction_targets,
-                content_type=ContentType.application_json,
+            L.info(
+                "Targets JSON written to %s (not uploaded — no compatible asset label).",
+                targets_path,
             )
-            L.info("Uploaded targets configuration JSON.")
 
         # Note: bluepyefe cells pickle (.pkl) is not uploaded because
         # entitycore expects HDF5 for efeature_extraction_cells. The pickle
