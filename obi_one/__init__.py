@@ -49,6 +49,9 @@ __all__ = [
     "CircuitExtractionSingleConfig",
     "CircuitExtractionTask",
     "CircuitFromID",
+    "CircuitSimplificationScanConfig",
+    "CircuitSimplificationSingleConfig",
+    "CircuitSimplificationTask",
     "CircuitSimulationScanConfig",
     "CircuitSimulationSingleConfig",
     "CircuitStimulusUnion",
@@ -485,6 +488,11 @@ from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,
     CircuitExtractionSingleConfig,
     CircuitExtractionTask,
+)
+from obi_one.scientific.tasks.circuit_simplification import (
+    CircuitSimplificationScanConfig,
+    CircuitSimplificationSingleConfig,
+    CircuitSimplificationTask,
 )
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
