@@ -397,13 +397,12 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
     return has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines
 
 
-def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:
+def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path | None:
     """Generate an overview figure of the circuit.
 
-    Uses the circular 2D network plot if available, otherwise falls back to a template.
+    Uses the circular 2D network plot if available. Returns None if no suitable
+    figure is found.
     """
-    from importlib.resources import files  # noqa: PLC0415
-
     from PIL import Image  # noqa: PLC0415
 
     from obi_one.core.exception import OBIONEError  # noqa: PLC0415
@@ -421,9 +420,10 @@ def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) ->
     else:
         fig_paths = None
 
-    # Use template figure from library if no circular plot available
+    # No figure available — skip without error
     if fig_paths is None:
-        fig_paths = Path(str(files("obi_one.scientific.library").joinpath("circuit_template.png")))
+        L.info("No overview figure available; skipping generation.")
+        return None
 
     # Check that output file does not exist yet
     if output_file.exists():
@@ -536,6 +536,9 @@ def run_connectivity_matrix_extraction(
     )
     if edge_population is None:
         edge_population = circuit.default_edge_population_name
+    if edge_population is None:
+        msg = "No edge population specified and circuit has no default edge population."
+        raise OBIONEError(msg)
 
     # Only request node properties that exist in the circuit's point or biophysical
     # node populations (excluding virtual ones), since not all circuits (e.g.

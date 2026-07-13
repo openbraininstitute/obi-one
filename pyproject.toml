@@ -41,6 +41,7 @@ dependencies = [
     "bluepyefe>=2.3.57",
     "bluepysnap>=3.0.5",
     "brainbuilder>=0.20.4",
+    "brian2",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
@@ -54,6 +55,7 @@ dependencies = [
     "python-multipart>=0.0.26",
     "obp-accounting-sdk>=0.6.3",
     "numpy",
+    "scipy",
 ]
 
 [project.optional-dependencies]

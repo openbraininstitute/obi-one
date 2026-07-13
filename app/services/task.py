@@ -20,6 +20,7 @@ import app.services.resource_estimation.circuit_simulation
 from app.config import settings
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import (
     Resources,
@@ -321,6 +322,7 @@ def estimate_task_resources(
     db_client: entitysdk.Client,
     task_definition: TaskDefinition,
     compute_cell: str,
+    accounting_parameters: AccountingParameters | None = None,
 ) -> Resources:
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
@@ -330,6 +332,7 @@ def estimate_task_resources(
                 db_client=db_client,
                 task_definition=task_definition,
                 compute_cell=compute_cell,
+                accounting_parameters=accounting_parameters,
             )
         case TaskType.circuit_simulation_neurodamus_cluster:
             return app.services.resource_estimation.circuit_simulation.estimate_task_resources(

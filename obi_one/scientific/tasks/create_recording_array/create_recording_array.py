@@ -1,3 +1,4 @@
+import json
 import logging
 import tempfile
 import typing
@@ -20,6 +21,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
     CircuitDiscriminator,
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
 from obi_one.utils import db_sdk
@@ -107,14 +109,17 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
         },
     )
 
-    electrode_locations: ExtracellularLocationsUnion = Field(
+    electrode_locations: dict[str, ExtracellularLocationsUnion] = Field(
+        default_factory=dict,
         title="Electrode Locations",
         description=(
             "Parameters defining the locations of the electrodes for the"
-            " extracellular recording array."
+            " extracellular recording array. Each entry contributes its electrodes to the array."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [ExtracellularLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Electrode Locations",
             SchemaKey.GROUP: BlockGroup.ELECTRODE_POSITIONS,
             SchemaKey.GROUP_ORDER: 0,
         },
@@ -177,7 +182,22 @@ class CreateExtracellularRecordingArrayTask(Task):
             temp_dir=self._create_temp_dir(),
         )
 
-        electrode_xyz_locations = self.config.electrode_locations.get_xyz_locations()
+        # Plot the configured electrode array relative to the circuit's somas and save the image.
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+
+        from obi_one.scientific.library.extracellular_locations import (  # noqa: PLC0415
+            extracellular_locations_block_dictionary_summary,
+            plot_extracellular_arrays,
+        )
+
+        figure = plot_extracellular_arrays(
+            self._circuit.sonata_circuit, self.config.electrode_locations
+        )
+        image_path = self.config.coordinate_output_root / "electrode_array.png"
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(image_path, dpi=150, bbox_inches="tight")
+        plt.close(figure)
+        L.info("Saved electrode-array plot to: %s", image_path)
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
@@ -189,13 +209,17 @@ class CreateExtracellularRecordingArrayTask(Task):
             save_weights,
         )
 
+        # Build the electrode array from every electrode-locations block in the dictionary, using
+        # each block's global coordinates (origin and direction applied). Electrode names are
+        # prefixed with the block name so electrodes from different blocks stay distinct.
         electrodes = [
             Electrode(
-                name=f"electrode_{i}",
+                name=f"{block_name}_electrode_{i}",
                 position=np.array(loc, dtype=float),
                 type=BlueRecordingElectrodeType.POINT_SOURCE,
             )
-            for i, loc in enumerate(electrode_xyz_locations)
+            for block_name, locations in self.config.electrode_locations.items()
+            for i, loc in enumerate(locations.get_global_electrode_xyz_locations())
         ]
 
         circuit_config_path = Path(self._circuit.path)
@@ -222,13 +246,39 @@ class CreateExtracellularRecordingArrayTask(Task):
         L.info("Weights saved to: %s", weights_output_path)
 
         entity = SimulatableExtracellularRecordingArray(
-            name=f"Extracellular Recording Array for {population_name}",
+            name=f"Extracellular Recording Array for {self._circuit.name}",
             description="Temp description.",
             electrode_type=ElectrodeType.custom,
             authorized_public=False,
             circuit_id=self._circuit_entity.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
         )
         entity = db_client.register_entity(entity)
+
+        # Upload the electrode-array plot as the entity's electrode_array_image asset.
+        db_client.upload_file(
+            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_type=SimulatableExtracellularRecordingArray,
+            file_path=image_path,
+            file_content_type=ContentType.image_png,
+            asset_label=AssetLabel.electrode_array_image,
+        )
+
+        # Write the electrode locations + each block's properties to a JSON asset.
+        locations_path = self.config.coordinate_output_root / "electrode_locations.json"
+        with locations_path.open("w") as locations_file:
+            json.dump(
+                extracellular_locations_block_dictionary_summary(self.config.electrode_locations),
+                locations_file,
+                indent=2,
+            )
+        db_client.upload_file(
+            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_type=SimulatableExtracellularRecordingArray,
+            file_path=locations_path,
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.electrode_locations,
+        )
+        L.info("Uploaded electrode locations to recording array %s.", entity.id)
 
         _ = db_client.upload_file(
             entity_id=entity.id,  # ty:ignore[invalid-argument-type]
