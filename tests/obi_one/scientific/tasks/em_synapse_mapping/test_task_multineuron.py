@@ -32,6 +32,7 @@ def _resolved_neuron(pt_root_id, name, *, use_me_model=False):
         source_mesh_entity=Mock(),
         source_dataset=SimpleNamespace(id=dataset_id, name="ds"),
         cave_version=3,
+        name_in_circuit="1234",
         use_me_model=use_me_model,
         phys_node_props={},
         fn_morph_h5=Path(f"morphologies/{name}.h5"),
@@ -117,6 +118,21 @@ class TestEMSynapseMappingTask:
                 side_effect=[rn1, rn2],
             ),
             pytest.raises(ValueError, match="same EM dense reconstruction"),
+        ):
+            task.execute(db_client=mock_db_client)
+
+    def test_execute_rejects_duplicate_pt_root_ids(self, tmp_path, mock_db_client):
+        task = _make_task(tmp_path)
+        rn1 = _resolved_neuron(111, "neuron_A")
+        rn2 = _resolved_neuron(111, "neuron_B")  # same pt_root_id
+
+        with (
+            patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
+            patch(
+                f"{_TASK_MODULE}.resolve_neuron",
+                side_effect=[rn1, rn2],
+            ),
+            pytest.raises(ValueError, match=r"Duplicate pt_root_id 111.*neuron_B.*neuron_A"),
         ):
             task.execute(db_client=mock_db_client)
 
@@ -345,5 +361,5 @@ class TestEMSynapseMappingTask:
         assert set(sonata_kwargs["edge_populations"]) == {"my_physical_edges", "my_virtual_edges"}
 
         # node_sets.json references the custom biophysical population.
-        node_sets = json.loads((tmp_path / "out" / "node_sets.json").read_text())
+        node_sets = json.loads((tmp_path / "out" / "SONATA" / "node_sets.json").read_text())
         assert node_sets["All"]["population"] == "my_bio_nodes"

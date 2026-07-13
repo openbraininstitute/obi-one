@@ -8,7 +8,7 @@
     "description": "Block dictionary description",
     "group": "Group 2", // Must be present in its parent config's group_order array
     "group_order": 0, // Unique within the group.
-    "reference_type": "Reference Type",
+    "reference_types": ["ReferenceTypeA", "ReferenceTypeB"], // List of BlockReference subclass names this dictionary provides
     "singular_name": "singular name",
     "ui_element": "block_dictionary"
   }

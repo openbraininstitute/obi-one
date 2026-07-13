@@ -18,6 +18,7 @@ from obi_one.core.serialization_constants import (
 )
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -33,9 +34,8 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_timestamps import (
-    TimestampsReference,
-    TimestampsUnion,
+from obi_one.scientific.unions.unions_neuron_sets import (
+    BiophysicalNeuronSetReference,
 )
 
 SONATA_VERSION = 2.4
@@ -43,7 +43,6 @@ SONATA_VERSION = 2.4
 L = logging.getLogger(__name__)
 
 
-DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
 
@@ -70,6 +69,20 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     _sonata_version: ClassVar[float] = SONATA_VERSION
     _target_simulator: ClassVar[SimulatorType] = None
     _timestep: ClassVar[None] = None
+    default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
+    default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
+
+    @property
+    def default_neuron_set_reference(self) -> BiophysicalNeuronSetReference:
+        """Returns the default neuron set reference for the simulation."""
+        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_node_set_name
+        )
+
+        default_neuron_set_block_reference.block = self.default_neuron_set_type()
+        default_neuron_set_block_reference.block.set_block_name(self.default_node_set_name)
+
+        return default_neuron_set_block_reference
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
@@ -124,19 +137,6 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
     initialize: Initialize
-
-    timestamps: dict[str, TimestampsUnion] = Field(
-        default_factory=dict,
-        title="Timestamps",
-        description="Timestamps for the simulation.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Timestamps",
-            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""

@@ -33,7 +33,8 @@ def resolved_neuron():
         cave_version=3,
         use_me_model=False,
         phys_node_props={},
-        fn_morph_h5=Path("morphologies/morph_A.h5"),
+        name_in_circuit="1234",
+        fn_morph_h5=Path("morph_A.h5"),
         fn_morph_swc=Path("morphologies/morphology/morph_A.swc"),
     )
 
@@ -70,6 +71,7 @@ def _make_task(
     )
     config.advanced_options.custom_biophysical_node_population = custom_biophysical_node_population
     config.advanced_options.custom_virtual_node_population = custom_virtual_node_population
+    config.advanced_options.include_spiny_morphologies = False
     return EMSynapseMappingTask.model_construct(config=config)
 
 
@@ -225,5 +227,5 @@ class TestEMSynapseMappingTask:
         assert set(sonata_kwargs["edge_populations"]) == {"my_virtual_edges"}
 
         # node_sets.json references the custom biophysical population.
-        node_sets = json.loads((tmp_path / "out" / "node_sets.json").read_text())
+        node_sets = json.loads((tmp_path / "out" / "SONATA" / "node_sets.json").read_text())
         assert node_sets["All"]["population"] == "my_bio_nodes"
