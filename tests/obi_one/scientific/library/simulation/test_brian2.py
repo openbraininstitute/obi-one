@@ -77,7 +77,7 @@ def _run_simulation(
         plt.plot(statemon.t / brian2.units.ms, statemon.v[0] / brian2.units.mV, c="r")
         plt.plot(statemon.t / brian2.units.ms, statemon.v[1] / brian2.units.mV, c="g")
         plt.plot(statemon.t / brian2.units.ms, statemon.v[2] / brian2.units.mV, c="b")
-        #plt.plot(net.spike_monitor.t / brian2.units.ms, net.spike_monitor.v / brian2.units.mV, "ob")
+        # plt.plot(net.spike_monitor.t / brian2.units.ms, net.spike_monitor.v / brian2.units.mV, "ob")
         plt.xlabel("Time (ms)")
         plt.ylabel("v (mV)")
         plt.savefig("test.png")
@@ -451,19 +451,13 @@ def test_connection_override(tmp_path):
                 "delay": 0,
                 "duration": 4,
                 "node_set": "0",
-                },
             },
+        },
         "connection_overrides": [
             # ...but disconnect 0 from other neurons
-            {
-                "name": "Disconnect0",
-                "source": "0",
-                "target": "All",
-                "delay": 0.0,
-                "weight": 0.0
-                }
-            ],
-        }
+            {"name": "Disconnect0", "source": "0", "target": "All", "delay": 0.0, "weight": 0.0}
+        ],
+    }
     spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert not spikes[1].any()

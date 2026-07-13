@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
-import heapq
-from typing import Callable
 import contextlib
+import heapq
 import logging
 import math
 import os
@@ -10,7 +9,7 @@ import re
 import tempfile
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timezone
 from functools import partial, singledispatch
 from pathlib import Path
@@ -617,7 +616,7 @@ class ConnectionOverride:
             msg = "connection_overrides::neuromodulation_strength is not supported"
             raise RuntimeError(msg)
 
-        #XXX do we want to handle this?
+        # XXX do we want to handle this?
         # how would it interact w/ the rtc being set to 0 for Poisson?
         if config.synapse_delay_override is not None:
             msg = "connection_overrides::synapse_delay_override is not supported"
@@ -719,7 +718,7 @@ def _write_reports(
     simulation: bluepysnap.Simulation,
     spike_monitor: brian2.SpikeMonitor,
     state_monitor: brian2.StateMonitor | None,
-    report_id_mapping: np.ndarray
+    report_id_mapping: np.ndarray,
 ) -> None:
     """Ibid."""
     output_dir = Path(simulation.output.output_dir)
@@ -810,7 +809,7 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Brian2Network:
             event = heapq.heappop(queue)
             event.func(net)
 
-    #network.run(duration=simulation.run.tstop * brian2.units.ms)
+    # network.run(duration=simulation.run.tstop * brian2.units.ms)
 
     _write_reports(simulation, net.spike_monitor, net.state_monitor, net.report_id_mapping)
 
