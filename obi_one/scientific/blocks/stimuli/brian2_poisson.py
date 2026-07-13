@@ -27,8 +27,9 @@ from obi_one.scientific.library.constants import (
     MAX_SIMULATION_LENGTH_MILLISECONDS,
     MIN_NON_NEGATIVE_FLOAT_VALUE,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    POINT_NEURON_SETS_REFERENCE_TYPES,
+    POINT_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_neuron_set,
     resolve_neuron_set_ref_to_node_set,
 )
@@ -44,14 +45,13 @@ class Brian2DirectPoissonStimulus(Block):
 
     title: ClassVar[str] = "Direct Poisson Input"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Neurons that receive the Poisson drive.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
+            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
@@ -102,7 +102,6 @@ class Brian2DirectPoissonStimulus(Block):
     def config(
         self,
         circuit: Circuit,
-        population: str | None = None,
         default_node_set: str = "sugar",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
@@ -122,10 +121,9 @@ class Brian2DirectPoissonStimulus(Block):
                 self._default_node_set,  # ty:ignore[invalid-argument-type]
             )
             max_n_neurons = 100
-            if (
-                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))  # ty:ignore[unresolved-attribute]
-                > max_n_neurons
-            ):
+            neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
+            total_neurons = sum(len(ids) for ids in neuron_ids.values())
+            if total_neurons > max_n_neurons:
                 msg = (
                     f"Number of neurons used with the {self.title} exceeds the maximum "
                     f"allowed: {max_n_neurons}."

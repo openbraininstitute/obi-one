@@ -52,6 +52,7 @@ class MachineResources(Schema):
     compute_cell: str
     timelimit: str | None = None
     image_type: MachineExecutorImageType = MachineExecutorImageType.python_3_12_compiler
+    ephemeral_storage: int | None = None
 
 
 class ClusterResources(Schema):

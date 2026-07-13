@@ -8,6 +8,7 @@ from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 from app.application import app
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
 
 L = logging.getLogger()
 
@@ -41,6 +42,13 @@ def validate_string(schema: dict, prop: str, ref: str) -> None:
 
     if type(value) is not str:
         msg = f"Validation error at {ref}: {prop} must be a string. Got: {type(value)}"
+        raise ValueError(msg)
+
+
+def validate_list_strings(schema: dict, prop: str, ref: str) -> None:
+    value = schema.get(prop, [])
+    if type(value) is not list or not all(isinstance(item, str) for item in value):
+        msg = f"Validation error at {ref}: {prop} must be a list of strings. Got: {value}"
         raise ValueError(msg)
 
 
@@ -194,29 +202,46 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
         raise ValidationError(msg) from None
 
 
-def validate_reference(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, SchemaKey.REFERENCE_TYPE, f"{param} at {ref}")
+def resolve_union_reference_types(union_members: list) -> list:
+    """Return the default `type` values of the BlockReference members of a union.
 
-    reference_type = schema.get(SchemaKey.REFERENCE_TYPE)
+    Each reference union member is a `$ref` to a BlockReference schema whose `type` property
+    defaults to its class name. Non-`$ref` members (e.g. the `null` of a nullable union) are
+    skipped.
+    """
+    reference_types = []
+    for union_member in union_members:
+        if (member_ref := union_member.get("$ref")) is None:
+            continue
+        member_schema = resolve_ref(openapi_schema, member_ref)
+        reference_types.append(member_schema.get("properties", {}).get("type", {}).get("default"))
+    return reference_types
+
+
+def validate_reference(schema: dict, param: str, ref: str) -> None:
+    validate_list_strings(schema, SchemaKey.REFERENCE_TYPES, f"{param} at {ref}")
+
+    reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
     schema_union = schema.get("anyOf", [])
 
-    if len(schema_union) != 2 or (refref := schema_union[0].get("$ref")) is None:
+    if (refref := schema_union[0].get("$ref")) is None:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
             "be a union with a 'BlockReference' as first element"
         )
         raise ValidationError(msg) from None
 
-    ref_schema = resolve_ref(openapi_schema, refref)
+    # Each non-null member of the union is a $ref to a BlockReference whose
+    # default `type` is its class name. Collect these and check they correspond
+    # exactly to the declared `reference_types`.
+    union_reference_types = resolve_union_reference_types(schema_union)
 
-    if (
-        ref_type := ref_schema.get("properties", [{}]).get("type", {}).get("default")
-    ) != reference_type:
+    if set(union_reference_types) != set(reference_types):
         msg = (
-            f"Validation error at {ref}: reference param {param} should "
-            "contain a default type consistent with 'reference_type': "
-            f"Expected {reference_type}, got {ref_type}"
+            f"Validation error at {ref}: reference param {param} should reference "
+            "BlockReferences whose default 'type' values match 'reference_types': "
+            f"Expected {reference_types}, got {union_reference_types}"
         )
         raise ValidationError(msg) from None
 
@@ -241,6 +266,62 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         msg = (
             f"Validation error at {refref}: 'reference' param {param} failed to validate a "
             "'null' value"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_neuron_set_combination(schema: dict, param: str, ref: str) -> None:
+    # `reference_types` declares the reference types offered for the neuron set element of each
+    # (neuron set, set operation) pair.
+    validate_list_strings(schema, SchemaKey.REFERENCE_TYPES, f"{param} at {ref}")
+    reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
+
+    # The field is a list (array) of (neuron_set_reference, set_operation) 2-tuples.
+    if schema.get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: neuron_set_combination param {param} "
+            "should be of type 'array'"
+        )
+        raise ValidationError(msg) from None
+
+    item_schema = schema.get("items", {})
+    prefix_items = item_schema.get("prefixItems", [])
+    if (
+        item_schema.get("type") != "array"
+        or item_schema.get("minItems") != 2
+        or item_schema.get("maxItems") != 2
+        or len(prefix_items) != 2
+    ):
+        msg = (
+            f"Validation error at {ref}: neuron_set_combination param {param} should have items "
+            "that are 2-tuples of (neuron set reference, set operation)"
+        )
+        raise ValidationError(msg) from None
+
+    # First tuple element: a (single or anyOf) union of BlockReferences whose default `type`
+    # values must match the declared `reference_types` exactly.
+    reference_member = prefix_items[0]
+    union_members = reference_member.get("anyOf", [reference_member])
+    union_reference_types = resolve_union_reference_types(union_members)
+    if set(union_reference_types) != set(reference_types):
+        msg = (
+            f"Validation error at {ref}: neuron_set_combination param {param} should reference "
+            "BlockReferences whose default 'type' values match 'reference_types': "
+            f"Expected {reference_types}, got {union_reference_types}"
+        )
+        raise ValidationError(msg) from None
+
+    # Second tuple element: the set operation, a string enum of the supported operations.
+    operation_schema = prefix_items[1]
+    expected_operations = {operation.value for operation in SetOperation}
+    if (
+        operation_schema.get("type") != "string"
+        or set(operation_schema.get("enum", [])) != expected_operations
+    ):
+        msg = (
+            f"Validation error at {ref}: neuron_set_combination param {param} should have a string "
+            f"enum of set operations {sorted(expected_operations)} as its second tuple element, "
+            f"got {operation_schema.get('enum')}"
         )
         raise ValidationError(msg) from None
 
@@ -547,6 +628,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_entity_property_dropdown(schema, param, ref)
         case UIElement.REFERENCE:
             validate_reference(schema, param, ref)
+        case UIElement.NEURON_SET_COMBINATION:
+            validate_neuron_set_combination(schema, param, ref)
         case UIElement.STRING_SELECTION:
             validate_string_selection(schema, param, ref)
         case UIElement.STRING_SELECTION_ENHANCED:
@@ -571,6 +654,9 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case UIElement.VOLTAGE_DURATION:
             validate_voltage_duration(schema, param, ref)
+        case UIElement.NEURON_PROPERTY_FILTER:
+            # Validation not yet implemented
+            pass
         case _:
             msg = (
                 f"Validation error at {ref}, param {param}: {ui_element} is not a valid ui_element"
