@@ -92,7 +92,7 @@ def _resolve_neuron_set_and_get_templates(
     circuit_entity: Circuit,
     asset_id: UUID,
     neuron_set: NeuronSet,
-) -> tuple[list[str], dict[int, str]]:
+) -> tuple[list[str], dict[tuple[str, int], str]]:
     """Stage circuit files, resolve neuron set to node IDs, read model_template.
 
     Stages circuit_config.json, node_sets.json, and the nodes.h5 for each population
@@ -100,8 +100,9 @@ def _resolve_neuron_set_and_get_templates(
     for the resulting node IDs across all populations.
 
     Returns:
-        Tuple of (population_names, {node_id: model_template}) where the template
-        dict merges entries from all populations.
+        Tuple of (population_names, {(population, node_id): model_template}) where
+        the template dict is keyed by population-qualified node IDs to avoid
+        collisions between populations with overlapping local node IDs.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
@@ -127,7 +128,7 @@ def _resolve_neuron_set_and_get_templates(
             raise ValueError(msg)
 
         snap_circuit = SnapCircuit(str(config_path))
-        node_to_template: dict[int, str] = {}
+        node_to_template: dict[tuple[str, int], str] = {}
         populations: list[str] = []
 
         for population, node_ids in ids_per_population.items():
@@ -154,7 +155,17 @@ def _resolve_neuron_set_and_get_templates(
                 raise ValueError(msg)
 
             templates = pop_obj.get_attribute("model_template", node_ids)
-            node_to_template.update(zip(node_ids, templates, strict=True))
+            node_to_template.update(
+                zip(
+                    [(population, nid) for nid in node_ids],
+                    templates,
+                    strict=True,
+                )
+            )
+
+        if not populations:
+            msg = f"Neuron set resolved to no node IDs for circuit {circuit_id}."
+            raise ValueError(msg)
 
     return populations, node_to_template
 
@@ -213,33 +224,34 @@ def _fetch_emodel_derivation_mapping(
 
 
 def _match_templates_to_emodels(
-    node_to_template: dict[int, str],
+    node_to_template: dict[tuple[str, int], str],
     label_to_emodel_id: dict[str, str],
-) -> tuple[dict[int, str], set[str]]:
+) -> tuple[dict[tuple[str, int], str], set[str]]:
     """Match node model_template values to emodel IDs via derivation labels.
 
     Returns:
-        Tuple of (node_id_to_emodel, unmatched_templates).
+        Tuple of (node_key_to_emodel, unmatched_templates) where node_key is
+        a (population, node_id) tuple.
     """
-    node_id_to_emodel: dict[int, str] = {}
+    node_key_to_emodel: dict[tuple[str, int], str] = {}
     unmatched_templates: set[str] = set()
-    for nid, template in node_to_template.items():
+    for key, template in node_to_template.items():
         if template in label_to_emodel_id:
-            node_id_to_emodel[nid] = label_to_emodel_id[template]
+            node_key_to_emodel[key] = label_to_emodel_id[template]
         else:
             unmatched_templates.add(template)
-    return node_id_to_emodel, unmatched_templates
+    return node_key_to_emodel, unmatched_templates
 
 
 def _build_emodel_groups(
     db_client: entitysdk.client.Client,
-    node_id_to_emodel: dict[int, str],
+    node_key_to_emodel: dict[tuple[str, int], str],
     label_to_emodel_id: dict[str, str],
 ) -> dict[str, dict]:
     """Group nodes by emodel and fetch mechanism variables for each."""
-    emodel_to_nodes: dict[str, list[int]] = {}
-    for nid, emodel_id in node_id_to_emodel.items():
-        emodel_to_nodes.setdefault(emodel_id, []).append(nid)
+    emodel_to_nodes: dict[str, list[tuple[str, int]]] = {}
+    for key, emodel_id in node_key_to_emodel.items():
+        emodel_to_nodes.setdefault(emodel_id, []).append(key)
 
     emodel_groups: dict[str, dict] = {}
     for emodel_id, group_node_ids in emodel_to_nodes.items():
@@ -387,9 +399,11 @@ def get_circuit_manipulation_properties(
                 CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: {},
                 "warnings": ["No emodel_circuit derivations found for this circuit."],
             }
-        # Build emodel groups from all derivations (fake node IDs — not needed for intersection)
-        node_id_to_emodel = dict(enumerate(label_to_emodel_id.values()))
-        emodel_groups = _build_emodel_groups(db_client, node_id_to_emodel, label_to_emodel_id)
+        # Build emodel groups from all derivations (synthetic keys — not needed for intersection)
+        node_key_to_emodel = {
+            ("__fast__", i): eid for i, eid in enumerate(label_to_emodel_id.values())
+        }
+        emodel_groups = _build_emodel_groups(db_client, node_key_to_emodel, label_to_emodel_id)
         common_vars = _compute_common_mechanism_variables(emodel_groups)
         return {
             "entity_type": "circuit",

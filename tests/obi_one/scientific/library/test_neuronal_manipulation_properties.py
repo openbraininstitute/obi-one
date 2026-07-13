@@ -352,33 +352,64 @@ class TestMatchTemplatesToEmodels:
 
     def test_all_matched(self):
         """Every template has a derivation."""
-        node_to_template = {0: "hoc:cADpyr_L5TPC", 1: "hoc:bAC_L6BTC"}
+        node_to_template = {
+            ("S1nonbarrel_neurons", 0): "hoc:cADpyr_L5TPC",
+            ("S1nonbarrel_neurons", 1): "hoc:bAC_L6BTC",
+        }
         label_to_emodel = {"hoc:cADpyr_L5TPC": "emodel-1", "hoc:bAC_L6BTC": "emodel-2"}
 
         matched, unmatched = _match_templates_to_emodels(node_to_template, label_to_emodel)
 
-        assert matched == {0: "emodel-1", 1: "emodel-2"}
+        assert matched == {
+            ("S1nonbarrel_neurons", 0): "emodel-1",
+            ("S1nonbarrel_neurons", 1): "emodel-2",
+        }
         assert unmatched == set()
 
     def test_some_unmatched(self):
         """One template has no derivation."""
-        node_to_template = {0: "hoc:cADpyr_L5TPC", 1: "hoc:unknown"}
+        node_to_template = {
+            ("S1nonbarrel_neurons", 0): "hoc:cADpyr_L5TPC",
+            ("S1nonbarrel_neurons", 1): "hoc:unknown",
+        }
         label_to_emodel = {"hoc:cADpyr_L5TPC": "emodel-1"}
 
         matched, unmatched = _match_templates_to_emodels(node_to_template, label_to_emodel)
 
-        assert matched == {0: "emodel-1"}
+        assert matched == {("S1nonbarrel_neurons", 0): "emodel-1"}
         assert unmatched == {"hoc:unknown"}
 
     def test_all_unmatched(self):
         """No derivations exist."""
-        node_to_template = {0: "hoc:cADpyr_L5TPC", 1: "hoc:bAC_L6BTC"}
+        node_to_template = {
+            ("S1nonbarrel_neurons", 0): "hoc:cADpyr_L5TPC",
+            ("S1nonbarrel_neurons", 1): "hoc:bAC_L6BTC",
+        }
         label_to_emodel: dict[str, str] = {}
 
         matched, unmatched = _match_templates_to_emodels(node_to_template, label_to_emodel)
 
         assert matched == {}
         assert unmatched == {"hoc:cADpyr_L5TPC", "hoc:bAC_L6BTC"}
+
+    def test_population_qualified_keys_prevent_collision(self):
+        """Same node ID in different populations maps to different emodels."""
+        node_to_template = {
+            ("pop_A", 0): "hoc:cADpyr_L5TPC",
+            ("pop_B", 0): "hoc:bAC_L6BTC",
+        }
+        label_to_emodel = {
+            "hoc:cADpyr_L5TPC": "emodel-1",
+            "hoc:bAC_L6BTC": "emodel-2",
+        }
+
+        matched, unmatched = _match_templates_to_emodels(node_to_template, label_to_emodel)
+
+        assert matched == {
+            ("pop_A", 0): "emodel-1",
+            ("pop_B", 0): "emodel-2",
+        }
+        assert unmatched == set()
 
     def test_empty_nodes(self):
         """No nodes to match."""
@@ -485,7 +516,11 @@ class TestBuildEmodelGroups:
         """Groups nodes correctly and fetches variables."""
         client = MagicMock()
         emodel_id = str(uuid4())
-        node_id_to_emodel = {0: emodel_id, 1: emodel_id, 2: emodel_id}
+        node_key_to_emodel = {
+            ("S1nonbarrel_neurons", 0): emodel_id,
+            ("S1nonbarrel_neurons", 1): emodel_id,
+            ("S1nonbarrel_neurons", 2): emodel_id,
+        }
         label_to_emodel_id = {"hoc:cADpyr_L5TPC": emodel_id}
 
         with patch(
@@ -507,10 +542,14 @@ class TestBuildEmodelGroups:
                 NATG_CHANNEL_MAPPING,
             )
 
-            result = _build_emodel_groups(client, node_id_to_emodel, label_to_emodel_id)
+            result = _build_emodel_groups(client, node_key_to_emodel, label_to_emodel_id)
 
         assert emodel_id in result
-        assert result[emodel_id]["node_ids"] == [0, 1, 2]
+        assert result[emodel_id]["node_ids"] == [
+            ("S1nonbarrel_neurons", 0),
+            ("S1nonbarrel_neurons", 1),
+            ("S1nonbarrel_neurons", 2),
+        ]
         assert result[emodel_id]["model_template"] == "hoc:cADpyr_L5TPC"
         assert "mechanism_variables_by_ion_channel" in result[emodel_id]
 
@@ -518,7 +557,7 @@ class TestBuildEmodelGroups:
         """Groups with failed variable fetch get empty mechanism_variables."""
         client = MagicMock()
         emodel_id = str(uuid4())
-        node_id_to_emodel = {0: emodel_id}
+        node_key_to_emodel = {("S1nonbarrel_neurons", 0): emodel_id}
         label_to_emodel_id = {"hoc:cADpyr_L5TPC": emodel_id}
 
         with patch(
@@ -526,7 +565,7 @@ class TestBuildEmodelGroups:
             ".get_mechanism_variables_for_emodel",
             side_effect=Exception("fetch failed"),
         ):
-            result = _build_emodel_groups(client, node_id_to_emodel, label_to_emodel_id)
+            result = _build_emodel_groups(client, node_key_to_emodel, label_to_emodel_id)
 
         assert result[emodel_id]["mechanism_variables_by_ion_channel"] == {}
 
@@ -551,7 +590,11 @@ class TestGetCircuitManipulationPropertiesIntegration:
 
         # Mock _resolve_neuron_set_and_get_templates to avoid file I/O
         mock_populations = ["S1nonbarrel_neurons"]
-        mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC", 2: "hoc:cADpyr_L6BPC"}
+        mock_templates = {
+            ("S1nonbarrel_neurons", 0): "hoc:cACint_L23MC",
+            ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
+            ("S1nonbarrel_neurons", 2): "hoc:cADpyr_L6BPC",
+        }
 
         neuron_set = MagicMock()
 
@@ -602,7 +645,10 @@ class TestGetCircuitManipulationPropertiesIntegration:
         # No derivations at all
         mock_db_client.search_entity.return_value.all.return_value = []
 
-        mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC"}
+        mock_templates = {
+            ("S1nonbarrel_neurons", 0): "hoc:cACint_L23MC",
+            ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
+        }
         neuron_set = MagicMock()
 
         with patch(
@@ -635,7 +681,10 @@ class TestGetCircuitManipulationPropertiesIntegration:
         deriv2.used.id = emodel_id_2
         mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
 
-        mock_templates = {0: "hoc:cACint_L23MC", 1: "hoc:cADpyr_L6BPC"}
+        mock_templates = {
+            ("S1nonbarrel_neurons", 0): "hoc:cACint_L23MC",
+            ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
+        }
         neuron_set = MagicMock()
 
         call_count = [0]
@@ -785,6 +834,9 @@ class TestResolveNeuronSetAndGetTemplates:
 
         assert populations == ["S1nonbarrel_neurons"]
         assert len(node_to_template) == 3
+        # Keys are (population, node_id) tuples
+        assert all(isinstance(k, tuple) and len(k) == 2 for k in node_to_template)
+        assert all(k[0] == "S1nonbarrel_neurons" for k in node_to_template)
         # model_template values from tiny circuit
         assert all(t.startswith("hoc:") for t in node_to_template.values())
 
@@ -893,3 +945,112 @@ class TestGetCircuitManipulationPropertiesFastPath:
         assert result["MechanismVariablesByIonChannel"] == {}
         assert result["warnings"] is not None
         assert any("No emodel_circuit derivations" in w for w in result["warnings"])
+
+
+class TestMultiPopulationRegression:
+    """Regression tests for multi-population correctness gaps."""
+
+    def test_collision_same_node_id_different_populations(self, mock_db_client):
+        """Two populations with same node ID 0 but different templates both contribute.
+
+        Before the fix, node_to_template was keyed by int node_id only, so
+        pop_B's template overwrote pop_A's entry for node 0. This test verifies
+        both emodels are present in the intersection.
+        """
+        circuit_id = str(uuid4())
+        emodel_id_1 = str(uuid4())
+        emodel_id_2 = str(uuid4())
+
+        deriv1 = MagicMock()
+        deriv1.label = "hoc:cADpyr_L5TPC"
+        deriv1.used.id = emodel_id_1
+        deriv2 = MagicMock()
+        deriv2.label = "hoc:bAC_L6BTC"
+        deriv2.used.id = emodel_id_2
+        mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
+
+        # Both populations have node ID 0, but different model_templates
+        mock_templates = {
+            ("pop_A", 0): "hoc:cADpyr_L5TPC",
+            ("pop_B", 0): "hoc:bAC_L6BTC",
+        }
+        neuron_set = MagicMock()
+
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "._resolve_neuron_set_and_get_templates",
+                return_value=(["pop_A", "pop_B"], mock_templates),
+            ),
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                ".get_mechanism_variables_for_emodel"
+            ) as mock_get_vars,
+        ):
+            mock_get_vars.return_value = (
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            )
+
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                neuron_set=neuron_set,
+            )
+
+        # Both emodels should have been fetched (2 calls)
+        assert mock_get_vars.call_count == 2
+        # NaTg is common to both → should appear in intersection
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+        assert result["warnings"] is None
+
+    def test_empty_node_id_lists_rejected(self, mock_db_client):
+        """Neuron set returning {"pop": []} raises ValueError, not silent empty.
+
+        Before the fix, the empty check only caught {} but not a non-empty
+        dict with all-empty node-ID lists. This caused a silent empty response.
+        """
+        circuit_id = str(uuid4())
+        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": []}
+
+        with pytest.raises(ValueError, match="resolved to no node IDs"):
+            _resolve_neuron_set_and_get_templates(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                circuit_entity=circuit_entity,
+                asset_id=asset_id,
+                neuron_set=neuron_set,
+            )
+
+    def test_all_populations_empty_rejected(self, mock_db_client):
+        """Multiple populations all with empty lists also raises ValueError."""
+        circuit_id = str(uuid4())
+        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {
+            "pop_A": [],
+            "pop_B": [],
+        }
+
+        with pytest.raises(ValueError, match="resolved to no node IDs"):
+            _resolve_neuron_set_and_get_templates(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                circuit_entity=circuit_entity,
+                asset_id=asset_id,
+                neuron_set=neuron_set,
+            )
