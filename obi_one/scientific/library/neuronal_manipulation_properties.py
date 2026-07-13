@@ -207,7 +207,7 @@ def _fetch_emodel_derivation_mapping(
     ).all()
     label_to_emodel_id: dict[str, str] = {}
     for deriv in derivations:
-        if deriv.label:
+        if deriv.label and deriv.used:
             label_to_emodel_id[deriv.label] = str(deriv.used.id)
     return label_to_emodel_id
 

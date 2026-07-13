@@ -739,9 +739,7 @@ class TestGetCircuitNodeIds:
         neuron_set = MagicMock()
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2, 3]}
 
-        ids_per_population = get_circuit_node_ids(
-            mock_db_client, circuit_id, neuron_set
-        )
+        ids_per_population = get_circuit_node_ids(mock_db_client, circuit_id, neuron_set)
 
         assert ids_per_population == {"S1nonbarrel_neurons": [0, 1, 2, 3]}
         neuron_set.get_neuron_ids.assert_called_once()
@@ -757,9 +755,7 @@ class TestGetCircuitNodeIds:
             "other_pop": [10, 11, 12],
         }
 
-        ids_per_population = get_circuit_node_ids(
-            mock_db_client, circuit_id, neuron_set
-        )
+        ids_per_population = get_circuit_node_ids(mock_db_client, circuit_id, neuron_set)
 
         assert ids_per_population == {
             "S1nonbarrel_neurons": [5, 6],

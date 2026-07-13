@@ -12,8 +12,8 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.unions.unions_combined_neuron_sets import (
-    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 
