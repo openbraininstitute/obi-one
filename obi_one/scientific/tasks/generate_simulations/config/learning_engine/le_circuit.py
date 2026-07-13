@@ -15,15 +15,15 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_base import (
     LearningEngineSimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_distributions import (
-    AllDistributionsReference,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
     LearningEngineNeuronSetUnion,
-    PointNeuronSetReference,
 )
+from obi_one.scientific.unions.unions_distributions import (
+    AllDistributionsReference,
+)
+from obi_one.scientific.unions.unions_neuron_sets import PointNeuronSetReference
 from obi_one.scientific.unions.unions_stimuli import (
     LearningEngineCircuitStimulusUnion,
     StimulusReference,

@@ -91,6 +91,7 @@ def task_launch_endpoint(
             db_client=db_client,
             task_definition=task_definition,
             compute_cell=compute_cell,
+            accounting_parameters=accounting_info.parameters,
         )
         task_definition = task_definition.model_copy(update={"resources": updated_resources})
 

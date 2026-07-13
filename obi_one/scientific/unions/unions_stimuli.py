@@ -101,7 +101,6 @@ MEModelStimulusUnion = Annotated[
     Discriminator("type"),
 ]
 
-
 IonChannelModelStimulusUnion = Annotated[
     _SE_CLAMP_STIMULI | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),

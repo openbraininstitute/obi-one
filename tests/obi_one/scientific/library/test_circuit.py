@@ -219,6 +219,34 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
         fake_snap_circuit.Circuit._default_edge_population_name(c)
 
 
+def test_default_edge_population_name_infer_from_name(fake_snap_circuit, monkeypatch):
+    """When multiple intrinsic edge pops exist, infer from population naming convention."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    # Set up two intrinsic edge populations where one follows the naming convention
+    c.edges._pops["bio__bio__chemical"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["other_intrinsic"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+        return ["bio__bio__chemical", "other_intrinsic"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    # Should infer "bio__bio__chemical" because it starts with "bio__bio"
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
+
+
 def test_connectivity_matrix_none_raises(fake_snap_circuit, tmp_path):
     cfg = tmp_path / "circuit_config.json"
     cfg.write_text("{}")
