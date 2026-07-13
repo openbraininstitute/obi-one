@@ -22,6 +22,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _fetch_emodel_derivation_mapping,
     _get_circuit_asset,
     _match_templates_to_emodels,
+    _resolve_neuron_set_and_get_templates,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -761,3 +762,134 @@ class TestGetCircuitNodeIds:
             "S1nonbarrel_neurons": [5, 6],
             "other_pop": [10, 11, 12],
         }
+
+
+class TestResolveNeuronSetAndGetTemplates:
+    """Tests for _resolve_neuron_set_and_get_templates using tiny circuit data."""
+
+    def test_reads_model_templates_from_circuit(self, mock_db_client):
+        """Stages circuit files and reads model_template for resolved node IDs."""
+        circuit_id = str(uuid4())
+        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+
+        populations, node_to_template = _resolve_neuron_set_and_get_templates(
+            db_client=mock_db_client,
+            circuit_id=circuit_id,
+            circuit_entity=circuit_entity,
+            asset_id=asset_id,
+            neuron_set=neuron_set,
+        )
+
+        assert populations == ["S1nonbarrel_neurons"]
+        assert len(node_to_template) == 3
+        # model_template values from tiny circuit
+        assert all(t.startswith("hoc:") for t in node_to_template.values())
+
+    def test_raises_when_neuron_set_resolves_to_no_nodes(self, mock_db_client):
+        """Empty node IDs raises ValueError."""
+        circuit_id = str(uuid4())
+        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {}
+
+        with pytest.raises(ValueError, match="resolved to no node IDs"):
+            _resolve_neuron_set_and_get_templates(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                circuit_entity=circuit_entity,
+                asset_id=asset_id,
+                neuron_set=neuron_set,
+            )
+
+    def test_raises_when_model_template_missing(self, mock_db_client):
+        """Missing model_template attribute raises ValueError."""
+        circuit_id = str(uuid4())
+        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1]}
+
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties.NodeStorage"
+        ) as mock_ns:
+            mock_pop = MagicMock()
+            mock_pop.attribute_names = ["x", "y"]
+            mock_ns.return_value.open_population.return_value = mock_pop
+
+            with pytest.raises(ValueError, match="model_template"):
+                _resolve_neuron_set_and_get_templates(
+                    db_client=mock_db_client,
+                    circuit_id=circuit_id,
+                    circuit_entity=circuit_entity,
+                    asset_id=asset_id,
+                    neuron_set=neuron_set,
+                )
+
+
+class TestGetCircuitManipulationPropertiesFastPath:
+    """Tests for get_circuit_manipulation_properties with neuron_set=None (fast path)."""
+
+    def test_fast_path_with_derivations(self):
+        """Fast path fetches all derivations and computes intersection."""
+        client = MagicMock()
+        emodel_id_1 = str(uuid4())
+        emodel_id_2 = str(uuid4())
+
+        deriv1 = MagicMock()
+        deriv1.label = "hoc:cACint_L23MC"
+        deriv1.used.id = emodel_id_1
+        deriv2 = MagicMock()
+        deriv2.label = "hoc:cADpyr_L6BPC"
+        deriv2.used.id = emodel_id_2
+        client.search_entity.return_value.all.return_value = [deriv1, deriv2]
+
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_mechanism_variables_for_emodel"
+        ) as mock_get_vars:
+            mock_get_vars.return_value = (
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            )
+
+            result = get_circuit_manipulation_properties(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                neuron_set=None,
+            )
+
+        assert result["entity_type"] == "circuit"
+        assert result["populations"] is None
+        assert "MechanismVariablesByIonChannel" in result
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+        assert result["warnings"] is None
+
+    def test_fast_path_no_derivations(self):
+        """Fast path with no derivations returns empty with warning."""
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = []
+
+        result = get_circuit_manipulation_properties(
+            db_client=client,
+            circuit_id=str(uuid4()),
+            neuron_set=None,
+        )
+
+        assert result["entity_type"] == "circuit"
+        assert result["MechanismVariablesByIonChannel"] == {}
+        assert result["warnings"] is not None
+        assert any("No emodel_circuit derivations" in w for w in result["warnings"])

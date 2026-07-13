@@ -69,7 +69,7 @@ class TestNeuronalManipulationPropertiesEndpoint:
                 "/declared/neuronal-manipulation-properties",
                 json={
                     "entity_id": str(uuid4()),
-                    "neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"},
+                    "neuron_set": {"type": "AllBiophysicalNeurons"},
                 },
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
@@ -124,7 +124,7 @@ class TestNeuronalManipulationPropertiesEndpoint:
                 "/declared/neuronal-manipulation-properties",
                 json={
                     "entity_id": str(uuid4()),
-                    "neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"},
+                    "neuron_set": {"type": "AllBiophysicalNeurons"},
                 },
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
@@ -147,7 +147,7 @@ class TestNeuronalManipulationPropertiesEndpoint:
                 "/declared/neuronal-manipulation-properties",
                 json={
                     "entity_id": str(uuid4()),
-                    "neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"},
+                    "neuron_set": {"type": "AllBiophysicalNeurons"},
                 },
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
@@ -165,7 +165,7 @@ class TestNodeIdsEndpoint:
 
             response = client.post(
                 f"/declared/circuit/{uuid4()}/node-ids",
-                json={"neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"}},
+                json={"neuron_set": {"type": "AllBiophysicalNeurons"}},
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
 
@@ -181,7 +181,7 @@ class TestNodeIdsEndpoint:
         ):
             response = client.post(
                 f"/declared/circuit/{uuid4()}/node-ids",
-                json={"neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"}},
+                json={"neuron_set": {"type": "AllBiophysicalNeurons"}},
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
 
@@ -195,7 +195,7 @@ class TestNodeIdsEndpoint:
         ):
             response = client.post(
                 f"/declared/circuit/{uuid4()}/node-ids",
-                json={"neuron_set": {"type": "PredefinedNeuronSet", "node_set": "All"}},
+                json={"neuron_set": {"type": "AllBiophysicalNeurons"}},
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
 
