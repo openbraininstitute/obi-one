@@ -4,6 +4,9 @@ from pydantic import Discriminator
 
 from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
+from obi_one.scientific.tasks.circuit_simplification import (
+    CircuitSimplificationTask,
+)
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
 from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
@@ -33,6 +36,7 @@ TasksUnion = Annotated[
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask
     | CreateExtracellularRecordingArrayScanConfig
-    | MorphologyLocationsTask,
+    | MorphologyLocationsTask
+    | CircuitSimplificationTask,
     Discriminator("type"),
 ]

@@ -56,6 +56,7 @@ dependencies = [
     "obp-accounting-sdk>=0.6.3",
     "numpy",
     "scipy",
+    "sonata-simplify",
 ]
 
 [project.optional-dependencies]
@@ -158,6 +159,7 @@ explicit = true
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
 neuromorphomesh = { index = "obi-codeartifact" }
 ultraliser = { index = "obi-codeartifact" }
+sonata-simplify = { path = "../sonata_simplify", editable = true }
 
 [tool.ruff]
 line-length = 100
