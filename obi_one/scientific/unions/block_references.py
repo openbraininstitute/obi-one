@@ -8,6 +8,9 @@ from obi_one.scientific.unions.unions_combined_neuron_sets import (
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
+from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsReference,
+)
 from obi_one.scientific.unions.unions_manipulations import SynapticManipulationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     BiophysicalNeuronSetReference,
@@ -37,6 +40,7 @@ AllBlockReferenceTypes = [
     AllDistributionsReference,
     SynapticModelReference,
     SynapticModelAssignerReference,
+    ExtracellularLocationsReference,
 ]
 
 

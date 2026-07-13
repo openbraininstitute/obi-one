@@ -338,6 +338,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_inait",
+            "ephemeral_storage": None,
         },
         "inputs": [
             "sonata-simulation-task",
@@ -399,6 +400,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_compiler",
+            "ephemeral_storage": None,
         },
         "inputs": [
             "sonata-simulation-task",
@@ -506,6 +508,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "timelimit": "00:10",
             "compute_cell": "local",
             "image_type": "python_3_12_compiler",
+            "ephemeral_storage": None,
         },
         "code": {
             "type": "python_repository",
@@ -702,6 +705,7 @@ def test_estimate_task_resources_circuit_extraction(db_client):
         db_client=db_client,
         task_definition=task_definition,
         compute_cell="cell_b",
+        accounting_parameters=None,
     )
 
 
