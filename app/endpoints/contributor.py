@@ -107,8 +107,7 @@ def register_contributor(
             if existing:
                 raise ApiError(
                     message=(
-                        f"Person '{metadata.pref_label}' is already registered "
-                        f"(id={existing.id})"
+                        f"Person '{metadata.pref_label}' is already registered (id={existing.id})"
                     ),
                     error_code=ApiErrorCode.INVALID_REQUEST,
                     http_status_code=HTTPStatus.CONFLICT,
@@ -117,7 +116,7 @@ def register_contributor(
                 pref_label=metadata.pref_label,
                 given_name=metadata.given_name,
                 family_name=metadata.family_name,
-                orcid=f"https://orcid.org/{normalized}",  # ty:ignore[unknown-argument]
+                orcid=f"https://orcid.org/{normalized}",
             )
 
         case IdentifierType.ror:
@@ -128,8 +127,7 @@ def register_contributor(
             if existing:
                 raise ApiError(
                     message=(
-                        f"Organization '{metadata.name}' is already registered "
-                        f"(id={existing.id})"
+                        f"Organization '{metadata.name}' is already registered (id={existing.id})"
                     ),
                     error_code=ApiErrorCode.INVALID_REQUEST,
                     http_status_code=HTTPStatus.CONFLICT,
@@ -139,7 +137,7 @@ def register_contributor(
                 alternative_name=(
                     metadata.alternative_names[0] if metadata.alternative_names else None
                 ),
-                ror_id=f"https://ror.org/{normalized}",  # ty:ignore[unknown-argument]
+                ror_id=f"https://ror.org/{normalized}",
             )
 
     registered = db_client.register_entity(entity=entity)
