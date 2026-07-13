@@ -47,7 +47,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
