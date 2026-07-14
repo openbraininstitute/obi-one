@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     import morphio
 
     from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
-    from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
     from obi_one.scientific.library.circuit import Circuit
     from obi_one.scientific.unions.unions_combined_neuron_sets import (
         BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
@@ -139,7 +138,7 @@ def build_compartment_set_for_neuron_set(
         `population` is the SONATA population name for the CompartmentSet.
         `node_population` is the circuit population used to resolve node ids/morphologies.
     """
-    neuron_set_block = cast("AbstractNeuronSet", neuron_set.block)
+    neuron_set_block = neuron_set.block
     ids_by_population = neuron_set_block.get_neuron_ids(circuit)
     selected_population = node_population or population
     try:
