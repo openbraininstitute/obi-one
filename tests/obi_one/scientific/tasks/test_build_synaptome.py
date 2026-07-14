@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock
 
 import bluepysnap
 import h5py
 import morphio
 import numpy as np
+import pandas as pd
 import pytest
 
 from obi_one.core.info import Info
@@ -20,7 +22,15 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     InhibitoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.build_synaptome import BuildSynaptomeError
+from obi_one.scientific.library.build_synaptome import (
+    BuildSynaptomeError,
+    _generate_locations,
+    _sample_physiology,
+    _target_population,
+)
+from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
+    write_virtual_nodes,
+)
 from obi_one.scientific.tasks.build_synaptome import (
     BuildSynaptomeScanConfig,
     BuildSynaptomeSingleConfig,
@@ -317,3 +327,91 @@ def test_output_directory_must_not_exist(tmp_path):
 
     with pytest.raises(FileExistsError, match="already exists"):
         build_synaptome(_config(), output, db_client=object())
+
+
+@pytest.mark.parametrize(
+    ("population_names", "population", "message"),
+    [
+        (["virtual"], SimpleNamespace(type="virtual"), "exactly one biophysical"),
+        (
+            ["target-a", "target-b"],
+            SimpleNamespace(type="biophysical", size=1),
+            "exactly one biophysical",
+        ),
+        (["target"], SimpleNamespace(type="biophysical", size=2), "exactly one target neuron"),
+    ],
+)
+def test_target_population_rejects_invalid_circuits(population_names, population, message):
+    nodes = MagicMock()
+    nodes.population_names = population_names
+    nodes.__getitem__.return_value = population
+
+    with pytest.raises(BuildSynaptomeError, match=message):
+        _target_population(SimpleNamespace(nodes=nodes))
+
+
+@pytest.mark.parametrize("count", [0, -1])
+def test_generate_locations_rejects_invalid_count(count):
+    placement = SimpleNamespace(number_of_locations=count)
+
+    with pytest.raises(BuildSynaptomeError, match=r"basal.*invalid location count"):
+        _generate_locations(object(), placement, group_name="basal")
+
+
+def test_generate_locations_rejects_wrong_result_size():
+    placement = SimpleNamespace(
+        number_of_locations=2,
+        points_on=Mock(return_value=pd.DataFrame({"location": [1]})),
+    )
+
+    with pytest.raises(BuildSynaptomeError, match=r"basal.*generated 1 locations"):
+        _generate_locations(object(), placement, group_name="basal")
+
+
+def test_sample_physiology_wraps_sampling_error():
+    model = SimpleNamespace(sample=Mock(side_effect=ValueError("bad distribution")))
+
+    with pytest.raises(BuildSynaptomeError, match=r"basal.*could not sample physiology"):
+        _sample_physiology(model, pd.DataFrame(index=[0]), group_name="basal")
+
+
+def test_sample_physiology_rejects_invalid_result():
+    model = SimpleNamespace(
+        sample=Mock(return_value=pd.DataFrame({"delay": [1.0]})),
+        parameter_names=Mock(return_value=["delay", "conductance"]),
+    )
+
+    with pytest.raises(BuildSynaptomeError, match=r"basal.*invalid physiology data"):
+        _sample_physiology(model, pd.DataFrame(index=[0]), group_name="basal")
+
+
+def test_sample_physiology_rejects_wrong_row_count():
+    model = SimpleNamespace(
+        sample=Mock(return_value=pd.DataFrame({"delay": [1.0, 1.5], "conductance": [0.4, 0.5]})),
+        parameter_names=Mock(return_value=["delay", "conductance"]),
+    )
+
+    with pytest.raises(BuildSynaptomeError, match=r"basal.*invalid physiology data"):
+        _sample_physiology(model, pd.DataFrame(index=[0]), group_name="basal")
+
+
+def test_write_virtual_nodes_rejects_non_positive_count(tmp_path):
+    with pytest.raises(ValueError, match="must be positive"):
+        write_virtual_nodes(tmp_path / "nodes.h5", "sources", 0)
+
+
+def test_build_wraps_virtual_node_writer_failure(tmp_path, stage_memodel, monkeypatch):
+    stage_memodel()
+
+    def reject_virtual_nodes(*_args, **_kwargs):
+        write_virtual_nodes(tmp_path / "invalid-nodes.h5", "sources", 0)
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.build_synaptome.write_virtual_nodes",
+        reject_virtual_nodes,
+    )
+
+    with pytest.raises(BuildSynaptomeError, match="Failed to write a valid SONATA artifact") as exc:
+        build_synaptome(_config(), tmp_path / "artifact", db_client=object())
+
+    assert isinstance(exc.value.__cause__, ValueError)
