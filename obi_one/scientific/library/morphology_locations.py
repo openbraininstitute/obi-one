@@ -250,6 +250,8 @@ def select_places_from_candidate_list(
             selected[_SEG_MAX] - selected[_SEG_MIN]
         )
 
+        # Keep the sampled index order: sorting the rows without sorting ``selected``
+        # associates offsets with the wrong segments.
         output = locs.loc[selected.index].drop(columns=[_SEG_OFF])
         output[_SEG_OFF] = selected.to_numpy()
         return output.sort_index()
@@ -300,7 +302,7 @@ def add_normalized_section_offset(
     )
     sec_o = (
         path_distance_calculator.offset[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
-        + dataframe[_SEG_OFF].to_numpy()
+        + dataframe[_SEG_OFF]
     )
     sec_l = sec_lengths[dataframe[_SEC_ID] - 1]
     dataframe[_SEC_LOC] = sec_o / sec_l
