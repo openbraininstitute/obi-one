@@ -123,9 +123,7 @@ class TestAutoselect:
 
     def test_default_presets(self, scan_config):
         assert scan_config.efeatures_by_protocol.auto_targets_presets == (
-            "firing_pattern",
-            "ap_waveform",
-            "iv",
+            "firing_pattern,ap_waveform,iv"
         )
 
     def test_custom_presets(self, recording_ids):
@@ -139,14 +137,10 @@ class TestAutoselect:
             ),
             efeatures_by_protocol=ProtocolAndFeatureSelection(
                 autoselect=True,
-                auto_targets_presets=("firing_pattern", "iv", "validation"),
+                auto_targets_presets="firing_pattern,iv,validation",
             ),
         )
-        assert config.efeatures_by_protocol.auto_targets_presets == (
-            "firing_pattern",
-            "iv",
-            "validation",
-        )
+        assert config.efeatures_by_protocol.auto_targets_presets == ("firing_pattern,iv,validation")
 
 
 class TestSerialization:

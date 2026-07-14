@@ -109,15 +109,17 @@ class ParamsFileSelection(Block):
     """
 
     params_file_path: str = Field(
+        default="",
         title="Params file path",
         description=(
             "Path to a BluePyEModel params JSON file. Must contain top-level"
             " keys: ``mechanisms``, ``distributions``, ``parameters``."
+            " Leave empty to use the dynamic builder."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    mechanisms_dir_path: str | None = Field(
-        default=None,
+    mechanisms_dir_path: str = Field(
+        default="",
         title="Mechanisms directory path",
         description=(
             "Optional path to a directory of ``.mod`` files. If not provided,"
@@ -254,19 +256,19 @@ class OptimizationSettings(Block):
     )
 
     # Validation-related settings — preserved in recipe for Workflow B
-    validation_protocols: list[str] = Field(
-        default_factory=list,
+    validation_protocols: str = Field(
+        default="",
         title="Validation protocols",
         description=(
-            "Protocol names whose features are validation-only (marked"
-            " ``validation: true`` in the features file). These are NOT"
+            "Comma-separated protocol names whose features are validation-only"
+            " (marked ``validation: true`` in the features file). These are NOT"
             " optimisation targets but must be in the recipe for"
             " BluePyEModel data structure initialization."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    name_rin_protocol: str | None = Field(
-        default=None,
+    name_rin_protocol: str = Field(
+        default="",
         title="Rin protocol name",
         description=(
             "Protocol name for input resistance measurement (e.g. ``IV_-20``)."
@@ -274,8 +276,8 @@ class OptimizationSettings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    name_rmp_protocol: str | None = Field(
-        default=None,
+    name_rmp_protocol: str = Field(
+        default="",
         title="RMP protocol name",
         description=(
             "Protocol name for resting membrane potential (e.g. ``IV_0``)."
@@ -303,8 +305,8 @@ class OptimizationSettings(Block):
         description="If True, export only the best individual from optimisation.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-    seeds: list[NonNegativeInt] = Field(
-        default=[1],
+    seeds: NonNegativeInt | list[NonNegativeInt] = Field(
+        default=1,
         title="Export seeds",
         description="Seeds to use for export.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
@@ -318,9 +320,11 @@ class OptimizationSettings(Block):
             "validation_threshold": self.validation_threshold,
             "optimisation_params": optimisation_params.to_dict(),
             "plot_currentscape": self.plot_currentscape,
-            "validation_protocols": self.validation_protocols,
-            "name_Rin_protocol": self.name_rin_protocol,
-            "name_rmp_protocol": self.name_rmp_protocol,
+            "validation_protocols": [
+                p.strip() for p in self.validation_protocols.split(",") if p.strip()
+            ],
+            "name_Rin_protocol": self.name_rin_protocol or None,
+            "name_rmp_protocol": self.name_rmp_protocol or None,
         }
 
         if self.currentscape_title:

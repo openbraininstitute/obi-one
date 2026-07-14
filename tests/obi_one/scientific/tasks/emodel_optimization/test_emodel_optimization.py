@@ -106,7 +106,7 @@ class TestOptimizationConfigClassVars:
 
     def test_group_order(self):
         groups = EModelOptimizationScanConfig.json_schema_extra_additions.get("group_order")
-        assert groups == ["Input", "Morphology", "Parameters", "Optimization Settings"]
+        assert groups == ["Setup", "Input", "Morphology", "Parameters", "Optimization Settings"]
 
     def test_campaign_task_config_type(self):
         assert (
@@ -171,7 +171,7 @@ class TestOptimizationDefaults:
         assert opt_scan_config.optimization_settings.only_best is False
 
     def test_default_seeds(self, opt_scan_config):
-        assert opt_scan_config.optimization_settings.seeds == [1]
+        assert opt_scan_config.optimization_settings.seeds == 1
 
 
 class TestExportAndValidationDefaults:
@@ -194,7 +194,7 @@ class TestExportAndValidationDefaults:
         assert export_val_scan_config.settings.only_validated_plots is True
 
     def test_default_validation_protocols(self, export_val_scan_config):
-        assert export_val_scan_config.settings.validation_protocols == ("sAHP_220",)
+        assert export_val_scan_config.settings.validation_protocols == "sAHP_220"
 
 
 class TestSerialization:
@@ -620,7 +620,7 @@ class TestDetermineCoreCount:
 class TestExtractionRecipeValidationProtocols:
     def test_build_extraction_recipes_includes_validation_protocols(self):
         """validation_protocols from settings are written to recipe pipeline_settings."""
-        settings = ExtractionSettings(validation_protocols=("sAHP_220", "IDhyperpol_150"))
+        settings = ExtractionSettings(validation_protocols="sAHP_220,IDhyperpol_150")
         recipes = _build_extraction_recipes(settings)
         ps = recipes["emodel"]["pipeline_settings"]
         assert ps["validation_protocols"] == ["sAHP_220", "IDhyperpol_150"]
@@ -633,16 +633,16 @@ class TestExtractionRecipeValidationProtocols:
         assert ps["validation_protocols"] == []
 
     def test_settings_field_exists_with_default(self):
-        """Settings block has validation_protocols with empty tuple default."""
+        """Settings block has validation_protocols with empty string default."""
         s = ExtractionSettings()
-        assert s.validation_protocols == ()
+        assert not s.validation_protocols
 
     def test_settings_serialization_round_trip(self):
         """validation_protocols survives JSON serialization."""
-        s = ExtractionSettings(validation_protocols=("sAHP_220",))
+        s = ExtractionSettings(validation_protocols="sAHP_220")
         dumped = s.model_dump_json()
         restored = ExtractionSettings.model_validate_json(dumped)
-        assert restored.validation_protocols == ("sAHP_220",)
+        assert restored.validation_protocols == "sAHP_220"
 
 
 class TestParamsFileMode:
@@ -667,5 +667,5 @@ class TestParamsFileMode:
         )
         assert config.use_params_file is True
 
-    def test_params_file_none_by_default(self, opt_scan_config):
-        assert opt_scan_config.params_file is None
+    def test_params_file_empty_by_default(self, opt_scan_config):
+        assert not opt_scan_config.params_file.params_file_path

@@ -7,6 +7,7 @@ from statistics import median
 from typing import Any, ClassVar
 
 import entitysdk
+import httpx
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
@@ -174,8 +175,9 @@ def _build_targets_formatted(
         protocol_efel = protocol.efel_settings_override()
 
         # Amplitude selection per rule 7.
-        if threshold_based and protocol.extraction_amplitudes:
-            amplitudes = list(protocol.extraction_amplitudes)
+        ea = protocol.extraction_amplitudes
+        if threshold_based and ea:
+            amplitudes = [ea] if isinstance(ea, (int, float)) else list(ea)
         else:
             amplitudes = amplitudes_per_protocol.get(ecode, ())
             if threshold_based and not amplitudes:
@@ -202,13 +204,13 @@ def _build_targets_formatted(
                     "weight": feature.weight,
                     "efel_settings": {**protocol_efel, **feature.efel_settings_override()},
                 }
-                if feature.efeature_name is not None:
+                if feature.efeature_name:
                     row["efeature_name"] = feature.efeature_name
                 rows.append(row)
     return rows
 
 
-def _build_extraction_recipes(settings: Settings) -> dict:
+def _build_extraction_recipes(settings: Settings, *, threshold_based: bool = False) -> dict:
     """Build a minimal BluePyEModel ``recipes.json`` for the extraction step.
 
     Only the ``pipeline_settings`` consumed by ``extract_save_features_protocols``
@@ -217,7 +219,7 @@ def _build_extraction_recipes(settings: Settings) -> dict:
     optimisation stage consumes; ``path_extract_config`` at the targets
     configuration stored through the access point at execution time.
 
-    ``extract_absolute_amplitudes`` is the inverse of ``settings.threshold_based``:
+    ``extract_absolute_amplitudes`` is the inverse of ``threshold_based``:
     - Default (threshold_based=False): absolute amplitudes from NWB (nA).
     - threshold_based=True: relative amplitudes (% of rheobase).
 
@@ -227,16 +229,16 @@ def _build_extraction_recipes(settings: Settings) -> dict:
     """
     # R_in / RMP protocol: [protocol_name, amplitude] or None.
     name_rin_protocol = None
-    if settings.threshold_based and settings.rin_protocol_name:
-        name_rin_protocol = [settings.rin_protocol_name, settings.rin_protocol_amplitude]
+    if threshold_based and settings.rin_protocol_name:
+        name_rin_protocol = [settings.rin_protocol_name, settings.rin_protocol_amplitude or None]
 
     name_rmp_protocol = None
-    if settings.threshold_based and settings.rmp_protocol_name:
-        name_rmp_protocol = [settings.rmp_protocol_name, settings.rmp_protocol_amplitude]
+    if threshold_based and settings.rmp_protocol_name:
+        name_rmp_protocol = [settings.rmp_protocol_name, settings.rmp_protocol_amplitude or None]
 
     pipeline_settings: dict = {
         "path_extract_config": TARGETS_CONFIG_RELPATH,
-        "extract_absolute_amplitudes": not settings.threshold_based,
+        "extract_absolute_amplitudes": not threshold_based,
         "plot_extraction": settings.plot_extraction,
         "default_std_value": settings.default_std_value,
         "efel_settings": DEFAULT_EFEL_SETTINGS,
@@ -246,9 +248,11 @@ def _build_extraction_recipes(settings: Settings) -> dict:
         "pickle_cells_extraction": settings.pickle_cells,
         "bound_max_std": settings.bound_max_std,
         "interpolate_RMP_extraction": settings.interpolate_rmp,
-        "threshold_efeature_std": settings.threshold_efeature_std,
+        "threshold_efeature_std": settings.threshold_efeature_std or None,
         "minimum_protocol_delay": settings.minimum_protocol_delay,
-        "validation_protocols": list(settings.validation_protocols),
+        "validation_protocols": [
+            p.strip() for p in settings.validation_protocols.split(",") if p.strip()
+        ],
     }
 
     if settings.compute_rheobase:
@@ -339,12 +343,15 @@ class EModelEFeatureExtractionTask(Task):
                 get_auto_target_from_presets,
             )
 
-            auto_targets = get_auto_target_from_presets(
-                list(self.config.efeatures_by_protocol.auto_targets_presets)
-            )
+            presets = [
+                p.strip()
+                for p in self.config.efeatures_by_protocol.auto_targets_presets.split(",")
+                if p.strip()
+            ]
+            auto_targets = get_auto_target_from_presets(presets)
             L.info(
                 "Autoselect enabled: using auto_targets presets %s",
-                self.config.efeatures_by_protocol.auto_targets_presets,
+                presets,
             )
 
             # Still need files_metadata with LJP — build with empty ecodes_metadata
@@ -411,7 +418,7 @@ class EModelEFeatureExtractionTask(Task):
             targets=_build_targets_formatted(
                 protocols_cfg,
                 amplitudes_per_protocol,
-                threshold_based=self.config.settings.threshold_based,
+                threshold_based=self.config.efeatures_by_protocol.threshold_based,
             ),
             protocols_rheobase=rheobase_protocols,
         )
@@ -439,7 +446,10 @@ class EModelEFeatureExtractionTask(Task):
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
         _shared.write_recipes(
-            _build_extraction_recipes(self.config.settings),
+            _build_extraction_recipes(
+                self.config.settings,
+                threshold_based=self.config.efeatures_by_protocol.threshold_based,
+            ),
             coord_root / RECIPES_RELPATH,
         )
 
@@ -458,7 +468,15 @@ class EModelEFeatureExtractionTask(Task):
 
         # 5. Register TaskResult entity and upload assets to entitycore.
         if db_client is not None:
-            self._register_task_result(coord_root, db_client)
+            try:
+                self._register_task_result(coord_root, db_client)
+            except httpx.HTTPError as e:
+                L.warning(
+                    "TaskResult registration failed (extraction output is still"
+                    " available locally at %s): %s",
+                    coord_root,
+                    e,
+                )
 
         return coord_root
 

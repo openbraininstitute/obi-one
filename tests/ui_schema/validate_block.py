@@ -573,9 +573,9 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
 
 def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) -> None:
     location = f"{param} at {ref}"
-    assert schema.get("type") == "object", (
+    assert schema.get("type") == "array", (
         f"Validation error at {location}: select_efeatures_by_protocol param {param}"
-        " should be of type 'object'"
+        " should be of type 'array'"
     )
     catalogue = schema.get("available_efeatures_by_protocol")
     assert isinstance(catalogue, dict), (

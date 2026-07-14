@@ -40,11 +40,10 @@ class TestBuildExtractionRecipes:
         settings = Settings(
             plot_extraction=False,
             pickle_cells=True,
-            threshold_based=True,
             rin_protocol_name="IV",
             rin_protocol_amplitude=-20.0,
         )
-        recipes = _build_extraction_recipes(settings)
+        recipes = _build_extraction_recipes(settings, threshold_based=True)
 
         ps = recipes["emodel"]["pipeline_settings"]
         assert ps["plot_extraction"] is False
@@ -192,7 +191,7 @@ class TestAutoselect:
             ),
             efeatures_by_protocol=ProtocolAndFeatureSelection(
                 autoselect=True,
-                auto_targets_presets=("firing_pattern", "iv"),
+                auto_targets_presets="firing_pattern,iv",
             ),
         )
 

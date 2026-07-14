@@ -63,7 +63,7 @@ class Protocol(OBIBaseModel):
     target rows and the recordings' NWB metadata) and one typed field per
     valid eFEL feature. Protocol-level stimulus timing (``ton``/``toff``/
     ``tmid``/``tmid2``) and liquid junction potential (``ljp``) can be
-    user-specified; when left ``None`` they are auto-detected from each
+    user-specified; when left at ``0.0`` they are auto-detected from each
     ``ElectricalCellRecording``'s NWB asset at task execution time.
 
     Per-protocol custom eFEL settings are available via
@@ -76,53 +76,53 @@ class Protocol(OBIBaseModel):
     name: ClassVar[str]
 
     # ------------------------------------------------------------------
-    # Stimulus timing & LJP — user-editable, None = auto-detect from NWB
+    # Stimulus timing & LJP — user-editable, 0.0 = auto-detect from NWB
     # ------------------------------------------------------------------
-    ton: float | None = Field(
-        default=None,
+    ton: float = Field(
+        default=0.0,
         title="Stimulus onset (ton)",
-        description="Stimulus onset time (ms). Leave empty to auto-detect from the NWB.",
+        description="Stimulus onset time (ms). Set to 0 to auto-detect from the NWB.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
-    toff: float | None = Field(
-        default=None,
+    toff: float = Field(
+        default=0.0,
         title="Stimulus end (toff)",
-        description="Stimulus end time (ms). Leave empty to auto-detect from the NWB.",
+        description="Stimulus end time (ms). Set to 0 to auto-detect from the NWB.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
-    tmid: float | None = Field(
-        default=None,
+    tmid: float = Field(
+        default=0.0,
         title="Mid-transition 1 (tmid)",
         description=(
-            "First mid-transition point for two-step protocols (ms). Leave empty to auto-detect."
+            "First mid-transition point for two-step protocols (ms). Set to 0 to auto-detect."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
-    tmid2: float | None = Field(
-        default=None,
+    tmid2: float = Field(
+        default=0.0,
         title="Mid-transition 2 (tmid2)",
         description=(
-            "Second mid-transition point for two-step protocols (ms). Leave empty to auto-detect."
+            "Second mid-transition point for two-step protocols (ms). Set to 0 to auto-detect."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
-    ljp: float | None = Field(
-        default=None,
+    ljp: float = Field(
+        default=0.0,
         title="Liquid junction potential (LJP)",
         description=(
-            "Liquid junction potential correction (mV). Leave empty to use the recording's LJP."
+            "Liquid junction potential correction (mV). Set to 0 to use the recording's LJP."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -133,14 +133,14 @@ class Protocol(OBIBaseModel):
     # ------------------------------------------------------------------
     # Per-protocol extraction amplitudes (threshold-based / relative mode)
     # ------------------------------------------------------------------
-    extraction_amplitudes: tuple[float, ...] | None = Field(
-        default=None,
+    extraction_amplitudes: float | list[float] = Field(
+        default=0.0,
         title="Extraction amplitudes",
         description=(
             "Amplitudes (% of rheobase) to extract from this protocol. Only used"
-            " when global ``threshold_based`` is enabled. If empty in relative"
-            " mode, falls back to NWB-discovered amplitudes (which may be in"
-            " absolute nA — a warning is logged)."
+            " when global ``threshold_based`` is enabled. Set to 0 to fall back to"
+            " NWB-discovered amplitudes (which may be in absolute nA — a warning"
+            " is logged)."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -148,8 +148,8 @@ class Protocol(OBIBaseModel):
     # ------------------------------------------------------------------
     # Custom eFEL settings (picker)
     # ------------------------------------------------------------------
-    custom_efel_settings: dict[str, float | bool] | None = Field(
-        default=None,
+    custom_efel_settings: dict[str, float | bool] = Field(
+        default_factory=dict,
         title="Custom eFEL settings",
         description=(
             "Per-protocol eFEL settings applied to all features of this protocol."
@@ -174,19 +174,19 @@ class Protocol(OBIBaseModel):
         settings override these values in the cascade (global -> protocol ->
         feature).
         """
-        return dict(self.custom_efel_settings or {})
+        return dict(self.custom_efel_settings)
 
     def timing_override(self) -> dict:
-        """Return user-set timing/LJP fields as a dict (None fields omitted).
+        """Return user-set timing/LJP fields as a dict (0.0 values omitted).
 
         Keys are ``ton``, ``toff``, ``tmid``, ``tmid2``, ``ljp`` — only
-        non-``None`` values are included. Used by the extraction task to
+        non-zero values are included. Used by the extraction task to
         override auto-detected NWB timing.
         """
         result: dict[str, float] = {}
         for key in ("ton", "toff", "tmid", "tmid2", "ljp"):
             value = getattr(self, key)
-            if value is not None:
+            if value:
                 result[key] = value
         return result
 

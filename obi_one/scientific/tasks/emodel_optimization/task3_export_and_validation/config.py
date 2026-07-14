@@ -73,7 +73,7 @@ class EModelExportAndValidationScanConfig(InfoScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
