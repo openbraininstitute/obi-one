@@ -12,6 +12,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
 )
+from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 
 from .validate_block import validate_morphology_section_type_selection
 
@@ -48,3 +49,13 @@ def test_morphology_source_endpoint_is_limited_to_single_neuron_configs():
         SchemaKey.PROPERTY_ENDPOINTS
     ]
     assert MappedPropertiesGroup.MORPHOLOGY_SOURCE not in circuit_property_endpoints
+
+
+def test_direct_morphology_uses_generic_source_endpoint_with_supported_placeholder():
+    property_endpoints = MorphologyLocationsScanConfig.model_json_schema()[
+        SchemaKey.PROPERTY_ENDPOINTS
+    ]
+
+    assert property_endpoints[MappedPropertiesGroup.MORPHOLOGY_SOURCE] == (
+        "/mapped-morphology-source-properties/{morphology_id}"
+    )

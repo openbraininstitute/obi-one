@@ -12,7 +12,7 @@ from entitysdk.types import AssetLabel, CircuitScale, ContentType
 
 from app.schemas.morphology_section_types import MorphologySectionTypeOption
 from app.services.morphology_section_types import (
-    cell_morphology_section_type_options,
+    _load_cell_morphology,
     memodel_section_type_options,
     memodel_with_synapses_section_type_options,
     morphology_source_section_type_options,
@@ -49,7 +49,7 @@ def test_section_type_options_only_returns_present_target_types():
     ]
 
 
-def test_cell_morphology_section_type_options():
+def test_morphology_source_section_type_options_supports_direct_cell_morphology_id():
     morphology = CellMorphology.model_validate(
         json.loads((DATA_DIR / "cell_morphology.json").read_bytes())
     )
@@ -59,20 +59,20 @@ def test_cell_morphology_section_type_options():
     spiny_asset.label = AssetLabel.morphology_with_spines
     morphology.assets.insert(0, spiny_asset)
     client = MagicMock(entitysdk.client.Client)
-    client.get_entity.return_value = morphology
+    client.get_entity.side_effect = _entity_lookup({CellMorphology: morphology})
     client.download_content.return_value = (DATA_DIR / "cell_morphology.swc").read_bytes()
 
-    options = cell_morphology_section_type_options(client, morphology.id)
+    options = morphology_source_section_type_options(client, morphology.id)
 
     assert _values_and_labels(options) == [
         (2, "Axon"),
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]
-    client.get_entity.assert_called_once_with(
-        entity_id=morphology.id,
-        entity_type=CellMorphology,
-    )
+    assert client.get_entity.call_args_list == [
+        call(entity_id=morphology.id, entity_type=MEModel),
+        call(entity_id=morphology.id, entity_type=CellMorphology),
+    ]
     client.download_content.assert_called_once_with(
         entity_id=morphology.id,
         entity_type=CellMorphology,
@@ -81,13 +81,11 @@ def test_cell_morphology_section_type_options():
 
 
 def test_cell_morphology_requires_id():
-    morphology_id = uuid4()
     morphology = CellMorphology.model_construct(id=None, assets=[])
     client = MagicMock(entitysdk.client.Client)
-    client.get_entity.return_value = morphology
 
     with pytest.raises(ValueError, match="missing an id"):
-        cell_morphology_section_type_options(client, morphology_id)
+        _load_cell_morphology(client, morphology)
 
 
 def test_cell_morphology_requires_supported_asset():
@@ -101,10 +99,9 @@ def test_cell_morphology_requires_supported_asset():
         assets=[unsupported_asset],
     )
     client = MagicMock(entitysdk.client.Client)
-    client.get_entity.return_value = morphology
 
     with pytest.raises(ValueError, match="no supported SWC, H5, or ASC asset"):
-        cell_morphology_section_type_options(client, morphology_id)
+        _load_cell_morphology(client, morphology)
 
 
 def test_cell_morphology_asset_requires_id():
@@ -116,10 +113,9 @@ def test_cell_morphology_asset_requires_id():
     )
     morphology = CellMorphology.model_construct(id=morphology_id, assets=[asset])
     client = MagicMock(entitysdk.client.Client)
-    client.get_entity.return_value = morphology
 
     with pytest.raises(ValueError, match="Morphology asset is missing an id"):
-        cell_morphology_section_type_options(client, morphology_id)
+        _load_cell_morphology(client, morphology)
 
 
 def test_memodel_section_type_options_uses_linked_morphology():

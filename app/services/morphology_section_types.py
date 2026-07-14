@@ -77,14 +77,6 @@ def _load_cell_morphology(client: Client, morphology: CellMorphology) -> morphio
     raise ValueError(msg)
 
 
-def cell_morphology_section_type_options(
-    client: Client,
-    morphology_id: UUID,
-) -> list[MorphologySectionTypeOption]:
-    morphology = client.get_entity(entity_id=morphology_id, entity_type=CellMorphology)
-    return section_type_options(_load_cell_morphology(client, morphology))
-
-
 def memodel_section_type_options(
     client: Client,
     memodel_id: UUID,

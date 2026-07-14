@@ -14,10 +14,7 @@ from app.schemas.morphology_section_types import (
     MorphologySectionTypeOption,
     MorphologySourceProperties,
 )
-from app.services.morphology_section_types import (
-    cell_morphology_section_type_options,
-    morphology_source_section_type_options,
-)
+from app.services.morphology_section_types import morphology_source_section_type_options
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -43,22 +40,6 @@ def _raise_discovery_error(source_id: UUID, exc: Exception) -> NoReturn:
             "detail": f"Could not discover morphology section types for {source_id}: {exc}",
         },
     ) from exc
-
-
-@router.get(
-    "/mapped-morphology-properties/{morphology_id}",
-    summary="Mapped cell morphology properties",
-    description="Returns section types available in a cell morphology.",
-)
-def mapped_morphology_properties_endpoint(
-    morphology_id: UUID,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
-) -> MorphologySourceProperties:
-    try:
-        options = cell_morphology_section_type_options(db_client, morphology_id)
-    except (EntitySDKError, ValueError, morphio.MorphioError) as exc:
-        _raise_discovery_error(morphology_id, exc)
-    return _properties_response(options)
 
 
 @router.get(

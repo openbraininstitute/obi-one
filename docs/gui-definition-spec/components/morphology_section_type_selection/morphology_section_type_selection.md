@@ -8,7 +8,12 @@ property endpoint identified by `property_group` and `property`.
 This specification adds the backend and generated-schema contract only. The frontend still needs
 to implement rendering and endpoint-driven option loading for this UI element.
 
-The backend property endpoint supports MEModel, MEModel-with-synapses, and direct CellMorphology sources.
+The single backend property endpoint,
+`/mapped-morphology-source-properties/{source_id}`, supports MEModel,
+MEModel-with-synapses, and direct CellMorphology sources. Generated schema mappings retain the
+frontend's workflow-specific placeholders (`{circuit_id}` or `{morphology_id}`); after substitution,
+both resolve to this endpoint. The frontend does not currently support a source-neutral
+`{source_id}` placeholder.
 
 General Circuit support is deferred. It should be morphology-specific and reuse
 `/circuit/viz/{circuit_id}/morphologies/{morphology_file}/section-types` once the UI can provide the circuit ID, morphology file, and optional morphology name. The property endpoint must not scan all morphologies in a circuit.
