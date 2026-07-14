@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Any, ClassVar, Self
+from typing import Annotated, Any, ClassVar
 
 from pydantic import (
     Field,
     NonNegativeFloat,
     PrivateAttr,
-    model_validator,
 )
 
 from obi_one.core.block import Block
@@ -115,61 +114,39 @@ class StimulusWithDuration(BaseStimulus):
 
 
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
-    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: (
+        NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION
+        | CompartmentSetReference
+        | MorphologyLocationsReference
+        | None
+    ) = Field(
         default=None,
-        title="Neuron Set",
-        description="Neuron set to which the stimulus is applied.",
+        title="Target",
+        description=(
+            "Neuron set, explicit compartment set, or morphology-location rule to which the "
+            "stimulus is applied."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TYPES: [
+                *NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+                CompartmentSetReference.__name__,
+                MorphologyLocationsReference.__name__,
+            ],
             SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
 
-    compartment_set: CompartmentSetReference | None = Field(
-        default=None,
-        title="Compartment Set",
-        description="Explicit SONATA compartment_set to target.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [CompartmentSetReference.__name__],
-        },
-    )
-
-    locations: MorphologyLocationsReference | None = Field(
-        default=None,
-        title="Locations",
-        description="Rule to generate locations on each targeted cell morphology.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
-        },
-    )
-
-    @model_validator(mode="after")
-    def _validate_targeting(self) -> Self:
-        if self.locations is not None and self.neuron_set is not None:
-            msg = "If 'locations' is set, set 'neuron_set' on the locations block instead."
-            raise ValueError(msg)
-
-        if self.compartment_set is not None and (
-            self.neuron_set is not None or self.locations is not None
-        ):
-            msg = "If 'compartment_set' is set, do not set 'neuron_set' or 'locations'."
-            raise ValueError(msg)
-        return self
-
     def _target_entry(self) -> dict[str, Any]:
-        if self.locations is not None:
+        if isinstance(self.neuron_set, MorphologyLocationsReference):
             msg = (
-                "Stimulus 'locations' must be materialized to a CompartmentSet "
+                "A stimulus MorphologyLocations target must be materialized to a CompartmentSet "
                 "before SONATA export. This is normally done by GenerateSimulationTask."
             )
-            raise ValueError(msg)
+            raise TypeError(msg)
 
-        comp_set_name = resolve_compartment_set_ref_to_name(self.compartment_set, default=None)
-        if comp_set_name is not None:
-            return {"compartment_set": comp_set_name}
+        if isinstance(self.neuron_set, CompartmentSetReference):
+            return {"compartment_set": resolve_compartment_set_ref_to_name(self.neuron_set)}
 
         return {
             "node_set": resolve_neuron_set_ref_to_node_set(
@@ -200,13 +177,20 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
-        if (self.neuron_set is not None) and (
-            self.neuron_set.block.get_neuron_set_population_type()
-            not in {
-                NeuronSetPopulationType.BIOPHYSICAL,
-                NeuronSetPopulationType.POINT,
-                NeuronSetPopulationType.NONVIRTUAL,
-            }
+        if (
+            self.neuron_set is not None
+            and not isinstance(
+                self.neuron_set,
+                (CompartmentSetReference, MorphologyLocationsReference),
+            )
+            and (
+                self.neuron_set.block.get_neuron_set_population_type()
+                not in {
+                    NeuronSetPopulationType.BIOPHYSICAL,
+                    NeuronSetPopulationType.POINT,
+                    NeuronSetPopulationType.NONVIRTUAL,
+                }
+            )
         ):
             msg = (
                 f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "

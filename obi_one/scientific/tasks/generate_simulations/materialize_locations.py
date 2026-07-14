@@ -9,6 +9,7 @@ from obi_one.scientific.blocks.compartment_sets import (
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetReference
+from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 
 
 def materialize_locations_to_compartment_sets(
@@ -19,24 +20,18 @@ def materialize_locations_to_compartment_sets(
     population: str,
     morphology_loader: Callable[[Circuit, int, str | None], morphio.Morphology | None],
 ) -> dict[str, CompartmentSet]:
-    """Convert stimulus.locations into generated CompartmentSet blocks."""
+    """Convert stimulus MorphologyLocations targets into generated CompartmentSet blocks."""
     materialized: dict[str, CompartmentSet] = {}
 
     if not hasattr(single_config, "stimuli"):
         return materialized
 
     for stimulus in single_config.stimuli.values():
-        locations_ref = getattr(stimulus, "locations", None)
-        if locations_ref is None:
+        target_ref = getattr(stimulus, "neuron_set", None)
+        if not isinstance(target_ref, MorphologyLocationsReference):
             continue
 
-        locations_block = locations_ref.block
-        if getattr(stimulus, "neuron_set", None) is not None:
-            msg = (
-                f"Stimulus '{stimulus.block_name}' specifies both locations and neuron_set. "
-                "Set neuron_set on the locations block instead."
-            )
-            raise ValueError(msg)
+        locations_block = target_ref.block
 
         neuron_set_ref = getattr(locations_block, "neuron_set", None)
         if neuron_set_ref is None:
@@ -66,8 +61,7 @@ def materialize_locations_to_compartment_sets(
 
         comp_set.set_ref(ref)
 
-        stimulus.compartment_set = ref
-        stimulus.locations = None
+        stimulus.neuron_set = ref
 
         materialized[comp_set_name] = comp_set
 

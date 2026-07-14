@@ -100,8 +100,6 @@ def test_deserialization_somatic_stimulus_type():
                 "timestamps": None,
                 "timestamp_offset": 5.0,
                 "neuron_set": None,
-                "compartment_set": None,
-                "locations": None,
             }
         },
         "recordings": {},

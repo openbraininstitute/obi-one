@@ -193,7 +193,7 @@ class GenerateSimulationTask(Task):
         This is only done if the config has a neuron_sets attribute.
         """
 
-        def is_optional_neuronsetreference(attr_value: type) -> bool:
+        def accepts_optional_neuron_set_reference(attr_value: type) -> bool:
             none_type = type(None)
             args = get_args(attr_value)
             none_args = [arg for arg in args if arg is none_type]
@@ -201,7 +201,7 @@ class GenerateSimulationTask(Task):
             return (
                 len(none_args) == 1
                 and len(reference_args) >= 1
-                and all(
+                and any(
                     isinstance(arg, type)
                     and issubclass(arg, (BaseNeuronSetReference, NeuronSetReference))
                     for arg in reference_args
@@ -212,7 +212,7 @@ class GenerateSimulationTask(Task):
             type_hints = get_type_hints(block.__class__)
 
             for attr_name, attr_type in type_hints.items():
-                if is_optional_neuronsetreference(attr_type):
+                if accepts_optional_neuron_set_reference(attr_type):
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
                         setattr(block, attr_name, self._default_neuron_set_ref())
@@ -231,10 +231,7 @@ class GenerateSimulationTask(Task):
             if getattr(locations_block, "neuron_set", None) is not None:
                 continue
 
-            if hasattr(self.config, "neuron_sets"):
-                locations_block.neuron_set = self._default_neuron_set_ref()
-            else:
-                locations_block.neuron_set = self.config.default_neuron_set_reference
+            locations_block.neuron_set = self.config.default_neuron_set_reference
 
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
@@ -246,8 +243,6 @@ class GenerateSimulationTask(Task):
                     recording
                 )
             for stimulus in getattr(self.config, "stimuli", {}).values():
-                if getattr(stimulus, "locations", None) is not None:
-                    continue
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     stimulus
                 )
