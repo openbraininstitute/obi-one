@@ -17,7 +17,10 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.library.info_scan_config.config import (
+    BlockGroup as InfoBlockGroup,
+    InfoScanConfig,
+)
 from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.blocks import (
     MorphologySelection,
     OptimizationInitialize,
@@ -58,6 +61,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
+            InfoBlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.INPUT,
             BlockGroup.MORPHOLOGY,
             BlockGroup.PARAMETERS,
@@ -85,7 +89,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     @property
     def use_params_file(self) -> bool:
         """True if params-file mode is active (params_file_path is set)."""
-        return bool(self.params_file and self.params_file.params_file_path)
+        return bool(self.params_file.params_file_path)
 
     initialize: OptimizationInitialize = Field(
         title="Initialize",
@@ -118,8 +122,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         },
     )
 
-    params_file: ParamsFileSelection | None = Field(
-        default=None,
+    params_file: ParamsFileSelection = Field(
+        default_factory=ParamsFileSelection,
         title="Params file (alternative)",
         description=(
             "Optional: provide a pre-built BluePyEModel params JSON file instead"
