@@ -83,14 +83,15 @@ class BuildSynaptomeScanConfig(ScanConfig):
         },
     }
 
-    class MEModelSelection(Block):
-        """Selected post-synaptic ME-model for the synaptome build."""
+    class Initialize(Block):
+        """Inputs supplied when initializing a synaptome build."""
 
-        cell_model: MEModelFromID = Field(
+        me_model: MEModelFromID = Field(
             title="ME-model",
-            description="Existing ME-model used as the post-synaptic cell context.",
+            description="Existing ME-model supplied as the postsynaptic cell context.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
 
@@ -103,9 +104,9 @@ class BuildSynaptomeScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
-    me_model: MEModelSelection = Field(
-        title="ME-model",
-        description="Selected ME-model used as the post-synaptic cell context.",
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Inputs supplied when initializing the synaptome build.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.ME_MODEL,
