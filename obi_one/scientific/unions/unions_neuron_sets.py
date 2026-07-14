@@ -10,6 +10,7 @@ from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
     InhibitoryNeurons,
+    PredefinedNeuronSet,
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
@@ -39,11 +40,31 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPointNeurons,
 )
 
-_DEPRECATED_BIOPHYSICAL_NEURON_SETS = (
-    AllNeurons | ExcitatoryNeurons | InhibitoryNeurons | IDNeuronSet
+# Deprecated neuron sets predate the population-typed taxonomy: back then a neuron set carried no
+# population type at all, so a config written before the rework uses any of them in either slot,
+# regardless of the type the class nominally declares now -- AllNeurons (nominally biophysical)
+# selects the virtual input population of an ME-model-with-synapses simulation, and
+# PredefinedNeuronSet merely names a node set, which may resolve in a population of either type.
+#
+# They are deliberately NOT offered for point populations: point-neuron support was introduced by
+# the same rework that deprecated them, so no pre-rework config can target a point population, and
+# these blocks have no meaning for one.
+#
+# This only affects which stored configs still load: being deprecated, every one of them raises as
+# soon as it is resolved against a circuit, so a config using one still has to be migrated before
+# it can be run.
+_DEPRECATED_NEURON_SETS = (
+    AllNeurons
+    | ExcitatoryNeurons
+    | InhibitoryNeurons
+    | IDNeuronSet
+    | PredefinedNeuronSet
+    | rCA1CA3Inputs
+    | nbS1POmInputs
+    | nbS1VPMInputs
 )
-_DEPRECATED_VIRTUAL_NEURON_SETS = rCA1CA3Inputs | nbS1POmInputs | nbS1VPMInputs
-_ALL_DEPRECATED_NEURON_SETS = _DEPRECATED_BIOPHYSICAL_NEURON_SETS | _DEPRECATED_VIRTUAL_NEURON_SETS
+
+_ALL_DEPRECATED_NEURON_SETS = _DEPRECATED_NEURON_SETS
 
 ATOMIC_BIOPHYSICAL_NEURON_SETS = (
     BiophysicalPopulationPropertyNeuronSet
@@ -51,14 +72,14 @@ ATOMIC_BIOPHYSICAL_NEURON_SETS = (
     | BiophysicalPopulationNeuronSet
     | AllBiophysicalNeurons
     | BiophysicalPopulationPredefinedNeuronSet
-    | _DEPRECATED_BIOPHYSICAL_NEURON_SETS
+    | _DEPRECATED_NEURON_SETS
 )
 ATOMIC_VIRTUAL_NEURON_SETS = (
     VirtualPopulationPropertyNeuronSet
     | VirtualPopulationIDNeuronSet
     | VirtualPopulationNeuronSet
     | VirtualPopulationPredefinedNeuronSet
-    | _DEPRECATED_VIRTUAL_NEURON_SETS
+    | _DEPRECATED_NEURON_SETS
 )
 ATOMIC_POINT_NEURON_SETS = (
     PointPopulationPropertyNeuronSet
@@ -177,8 +198,8 @@ ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
 ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION = BiophysicalNeuronSetReference | NeuronSetReference
 ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION = VirtualNeuronSetReference | NeuronSetReference
 # NeuronSetReference is intentionally excluded from the point union: it only references deprecated
-# biophysical/virtual neuron sets (never point sets), so it must not be offered for a point-only
-# reference field.
+# neuron sets, which are not offered for point populations (see above), so it must not be offered
+# for a point-only reference field.
 ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION = PointNeuronSetReference
 
 """
