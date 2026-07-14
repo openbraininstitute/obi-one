@@ -10,11 +10,8 @@ import logging
 import tempfile
 from pathlib import Path
 
-import entitysdk.client
 import h5py
 import numpy as np
-from entitysdk.models import ElectricalCellRecording
-from entitysdk.types import ContentType
 from scipy.ndimage import median_filter
 
 L = logging.getLogger(__name__)
@@ -29,7 +26,7 @@ _BASELINE_WINDOW = 300
 _MIN_ONSET_SAMPLES = 100
 
 
-def _read_protocols_from_nwb(nwb_path: Path) -> list[str]:
+def read_protocols_from_nwb(nwb_path: Path) -> list[str]:
     """Return the sorted protocol (ecode) names stored in an NWB file.
 
     For BBP-style NWBs the protocol names live under ``data_organization/<cell>/<ecode>``.
@@ -48,6 +45,30 @@ def _read_protocols_from_nwb(nwb_path: Path) -> list[str]:
                 if len(parts) >= min_parts_for_protocol:
                     protocols.add(parts[1])
     return sorted(protocols)
+
+
+def get_recording_protocols(
+    recording_ids: list[str],
+    db_client: object,
+) -> dict[str, list[str]]:
+    """Return ``{recording_id: [protocol_name, ...]}`` for each recording.
+
+    Downloads each recording's NWB asset via the entitysdk client and reads
+    the protocol (ecode) names from it using :func:`read_protocols_from_nwb`.
+    """
+    from obi_one.scientific.from_id.electrical_cell_recording_from_id import (  # noqa: PLC0415
+        ElectricalCellRecordingFromID,
+    )
+
+    by_recording: dict[str, list[str]] = {}
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for rid in recording_ids:
+            recording = ElectricalCellRecordingFromID(id_str=rid)
+            nwb_path = recording.download_asset(
+                dest_dir=Path(tmpdir), db_client=db_client
+            )
+            by_recording[rid] = read_protocols_from_nwb(nwb_path)
+    return by_recording
 
 
 def _stim_key_for_trace(trace_name: str) -> str | None:
@@ -192,21 +213,3 @@ def _read_timing_from_nwb(
                 if ton is not None:
                     timing[protocol_name] = ton
     return timing
-
-
-def get_recording_protocols(
-    recording_ids: list[str],
-    db_client: entitysdk.client.Client,
-) -> dict[str, list[str]]:
-    """Return ``{recording_id: [protocol_name, ...]}`` for each NWB asset."""
-    result: dict[str, list[str]] = {}
-    for rid in recording_ids:
-        entity = db_client.get_entity(entity_id=rid, entity_type=ElectricalCellRecording)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            fetched = db_client.fetch_assets(
-                entity,
-                selection={"content_type": ContentType.application_nwb},
-                output_path=Path(tmpdir),
-            ).one()
-            result[rid] = _read_protocols_from_nwb(fetched.path)
-    return result

@@ -409,7 +409,11 @@ def _default_protocols() -> tuple[Protocol, ...]:
 
 
 class ProtocolAndFeatureSelection(Block):
-    """Per-protocol picker for timing, LJP, and chosen efeatures.
+    """Per-protocol picker for timing, LJP, amplitudes, and chosen efeatures.
+
+    ``threshold_based`` controls whether per-protocol ``extraction_amplitudes``
+    are interpreted as relative (% of rheobase) or absolute (nA, auto-discovered
+    from the NWB).
 
     Each entry in ``protocols`` is a concrete :class:`Protocol` instance
     carrying its own stimulus timing (``ton``/``toff``/``tmid``/``tmid2``),
@@ -427,6 +431,17 @@ class ProtocolAndFeatureSelection(Block):
     leaves it alone instead of expanding it as a parameter-scan dimension.
     """
 
+    threshold_based: bool = Field(
+        default=False,
+        title="Threshold-based amplitudes",
+        description=(
+            "When enabled, extraction uses relative amplitudes (% of rheobase)"
+            " from per-protocol ``extraction_amplitudes``. When disabled (default),"
+            " amplitudes are auto-discovered in absolute nA from the NWB."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+
     autoselect: bool = Field(
         default=False,
         title="Automatically fill the features and protocols",
@@ -438,13 +453,13 @@ class ProtocolAndFeatureSelection(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
 
-    auto_targets_presets: tuple[str, ...] = Field(
-        default=("firing_pattern", "ap_waveform", "iv"),
+    auto_targets_presets: str = Field(
+        default="firing_pattern,ap_waveform,iv",
         title="Auto-target presets",
         description=(
-            "Preset names from BluePyEModel's AUTO_TARGET_DICT used when"
-            " autoselect is enabled. Options: 'firing_pattern', 'ap_waveform',"
-            " 'iv', 'validation'."
+            "Comma-separated preset names from BluePyEModel's AUTO_TARGET_DICT"
+            " used when autoselect is enabled. Options: 'firing_pattern',"
+            " 'ap_waveform', 'iv', 'validation'."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
@@ -455,8 +470,7 @@ class ProtocolAndFeatureSelection(Block):
         description=(
             "Protocols to extract features from. Defaults mirror the L5PC"
             " example; the frontend can repopulate this from the catalogue and"
-            " the protocols returned by"
-            " ``/declared/electrical-cell-recording-protocols``."
+            " the protocols discovered from the recordings' NWB files."
             " Ignored when autoselect is enabled."
         ),
         json_schema_extra={

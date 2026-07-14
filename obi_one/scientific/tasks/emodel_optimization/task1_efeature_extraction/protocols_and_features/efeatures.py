@@ -69,13 +69,13 @@ class EFeature(OBIBaseModel):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
-    efeature_name: str | None = Field(
-        default=None,
+    efeature_name: str = Field(
+        default="",
         title="Feature name",
         description=(
             "Custom name for this target (bluepyefe ``efeature_name``). Lets the"
             " same eFEL feature be extracted under a distinct label, e.g."
-            " ``Spikecount_phase1``. Leave ``None`` to use the eFEL feature name."
+            " ``Spikecount_phase1``. Leave empty to use the eFEL feature name."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
@@ -116,12 +116,12 @@ class EFeature(OBIBaseModel):
     # ------------------------------------------------------------------
     # Optional per-feature stimulus window overrides
     # ------------------------------------------------------------------
-    stim_start: float | None = Field(
-        default=None,
+    stim_start: float = Field(
+        default=0.0,
         title="Stim start",
         description=(
             "eFEL ``stim_start``: stimulus onset time for this feature (ms)."
-            " Overrides the protocol-level value. Leave empty to use the"
+            " Overrides the protocol-level value. Set to 0 to use the"
             " protocol's detected onset."
         ),
         json_schema_extra={
@@ -129,12 +129,12 @@ class EFeature(OBIBaseModel):
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
-    stim_end: float | None = Field(
-        default=None,
+    stim_end: float = Field(
+        default=0.0,
         title="Stim end",
         description=(
             "eFEL ``stim_end``: stimulus end time for this feature (ms)."
-            " Overrides the protocol-level value. Leave empty to use the"
+            " Overrides the protocol-level value. Set to 0 to use the"
             " protocol's detected end."
         ),
         json_schema_extra={
@@ -146,8 +146,8 @@ class EFeature(OBIBaseModel):
     # ------------------------------------------------------------------
     # Additional eFEL settings (picker)
     # ------------------------------------------------------------------
-    custom_efel_settings: dict[str, float | bool] | None = Field(
-        default=None,
+    custom_efel_settings: dict[str, float | bool] = Field(
+        default_factory=dict,
         title="Custom eFEL settings",
         description=(
             "Additional eFEL settings beyond the always-present Threshold,"
@@ -160,7 +160,7 @@ class EFeature(OBIBaseModel):
         """Build the per-feature ``efel_settings`` overrides for this target row.
 
         The 3 always-present settings are always emitted. ``stim_start`` and
-        ``stim_end`` are emitted only when not None. Additional settings from
+        ``stim_end`` are emitted only when non-zero. Additional settings from
         ``custom_efel_settings`` are merged on top. Each setting overrides the
         protocol- and global-level eFEL setting for this feature.
         """
@@ -169,9 +169,9 @@ class EFeature(OBIBaseModel):
             "strict_stiminterval": self.strict_stiminterval,
             "interp_step": self.interp_step,
         }
-        if self.stim_start is not None:
+        if self.stim_start:
             overrides["stim_start"] = self.stim_start
-        if self.stim_end is not None:
+        if self.stim_end:
             overrides["stim_end"] = self.stim_end
         if self.custom_efel_settings:
             overrides.update(self.custom_efel_settings)

@@ -4,8 +4,8 @@ This block exposes the extraction-wide knobs that BluePyEModel's
 ``extract_save_features_protocols`` forwards to ``bluepyefe.extract``:
 
 * the bluepyefe / ``EModelPipelineSettings`` extraction-flow knobs;
-* the global-by-nature amplitude mode (``threshold_based``) and R_in / RMP
-  protocol selectors.
+* the R_in / RMP protocol selectors (used only when ``threshold_based``
+  is enabled in :class:`ProtocolAndFeatureSelection`).
 
 Per-feature eFEL detection knobs (threshold, strict_stiminterval, interp_step,
 stim_start, stim_end) and per-protocol/per-feature custom eFEL settings live on
@@ -92,12 +92,12 @@ class Settings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-    threshold_efeature_std: float | None = Field(
-        default=None,
+    threshold_efeature_std: float | list[float] = Field(
+        default=0.0,
         title="Threshold efeature std",
         description=(
-            "If set, floor each feature's standard deviation at"
-            " ``abs(threshold_efeature_std * mean)``. Leave empty to disable."
+            "Floor each feature's standard deviation at"
+            " ``abs(threshold_efeature_std * mean)``. Set to 0 to disable."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -114,18 +114,8 @@ class Settings(Block):
     # ------------------------------------------------------------------
     # Global-by-nature fields (Decision F: global, not per-protocol)
     # ------------------------------------------------------------------
-    threshold_based: bool = Field(
-        default=False,
-        title="Threshold-based amplitudes",
-        description=(
-            "When enabled, extraction uses relative amplitudes (% of rheobase)"
-            " from per-protocol ``extraction_amplitudes``. When disabled (default),"
-            " amplitudes are auto-discovered in absolute nA from the NWB."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    rin_protocol_name: str | None = Field(
-        default=None,
+    rin_protocol_name: str = Field(
+        default="",
         title="R_in protocol name",
         description=(
             "Protocol used to compute input resistance (e.g. ``IV``). Only used"
@@ -133,17 +123,18 @@ class Settings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    rin_protocol_amplitude: float | None = Field(
-        default=None,
+    rin_protocol_amplitude: float | list[float] = Field(
+        default=0.0,
         title="R_in protocol amplitude",
         description=(
             "Amplitude for the R_in protocol (e.g. ``-20``). Only used when"
             " threshold_based is enabled and rin_protocol_name is set."
+            " Set to 0 to skip."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
-    rmp_protocol_name: str | None = Field(
-        default=None,
+    rmp_protocol_name: str = Field(
+        default="",
         title="RMP protocol name",
         description=(
             "Protocol used to compute resting membrane potential (e.g. ``IV``)."
@@ -151,12 +142,13 @@ class Settings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    rmp_protocol_amplitude: float | None = Field(
-        default=None,
+    rmp_protocol_amplitude: float | list[float] = Field(
+        default=0.0,
         title="RMP protocol amplitude",
         description=(
             "Amplitude for the RMP protocol (e.g. ``0``). Only used when"
             " threshold_based is enabled and rmp_protocol_name is set."
+            " Set to 0 to skip."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -164,14 +156,14 @@ class Settings(Block):
     # ------------------------------------------------------------------
     # Validation hold-out (carried forward to Workflow A via recipe)
     # ------------------------------------------------------------------
-    validation_protocols: tuple[str, ...] = Field(
-        default=(),
+    validation_protocols: str = Field(
+        default="",
         title="Validation protocols",
         description=(
-            "Protocol names held out from optimisation and used only for"
-            " validation. These protocols will still be extracted but marked"
-            " with validation=True in the features JSON so the optimiser"
-            " excludes them. Example: ('sAHP_220',). Leave empty to use all"
+            "Comma-separated protocol names held out from optimisation and used"
+            " only for validation. These protocols will still be extracted but"
+            " marked with validation=True in the features JSON so the optimiser"
+            " excludes them. Example: 'sAHP'. Leave empty to use all"
             " protocols for optimisation."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
