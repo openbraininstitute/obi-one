@@ -136,7 +136,8 @@ class EModelOptimizationTask(Task):
                 mapper = map
 
             # Optimise
-            seeds = self.config.optimization_settings.seeds
+            raw_seeds = self.config.optimization_settings.seeds
+            seeds = raw_seeds if isinstance(raw_seeds, list) else [raw_seeds]
             for seed in seeds:
                 setup_and_run_optimisation(
                     access_point,
@@ -306,7 +307,7 @@ class EModelOptimizationTask(Task):
 
         # Params-file mode: validate and copy the provided file
         if self.config.use_params_file:
-            src_path = Path(self.config.params_file.params_file_path)  # ty:ignore[unresolved-attribute]
+            src_path = Path(self.config.params_file.params_file_path)
             if not src_path.exists():
                 msg = f"Params file not found: {src_path}"
                 raise FileNotFoundError(msg)
@@ -317,8 +318,8 @@ class EModelOptimizationTask(Task):
             L.info("Staged validated params file from: %s", src_path)
 
             # Also stage mechanisms dir if provided
-            if self.config.params_file.mechanisms_dir_path:  # ty:ignore[unresolved-attribute]
-                mech_src = Path(self.config.params_file.mechanisms_dir_path)  # ty:ignore[unresolved-attribute]
+            if self.config.params_file.mechanisms_dir_path:
+                mech_src = Path(self.config.params_file.mechanisms_dir_path)
                 if mech_src.is_dir():
                     mech_dst = coord_root / "mechanisms"
                     mech_dst.mkdir(parents=True, exist_ok=True)
