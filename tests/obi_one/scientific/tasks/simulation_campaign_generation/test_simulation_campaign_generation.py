@@ -8,6 +8,10 @@ import pytest
 from bluepysnap import Simulation
 
 import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.id import (
+    BiophysicalPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
+)
 from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
     materialize_locations_to_compartment_sets,
 )
@@ -32,17 +36,22 @@ def _setup_sim():
     info = obi.Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
-    sim_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10))
+    sim_neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10)),
+        population="S1nonbarrel_neurons",
     )
     sim_conf.add(sim_neuron_set, name="ID10")
 
-    sync_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet2", elements=range(3))
+    sync_neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="IDNeuronSet2", elements=range(3)),
+        population="S1nonbarrel_neurons",
     )
     sim_conf.add(sync_neuron_set, name="ID3")
 
-    replay_neuron_set = obi.nbS1VPMInputs(sample_percentage=25)
+    replay_neuron_set = VirtualPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="VPMInputs", elements=range(50)),
+        population="VPM",
+    )
     sim_conf.add(replay_neuron_set, name="VPM_input")
 
     regular_timestamps = obi.RegularTimestamps(
@@ -104,7 +113,7 @@ def _check_generated_sims(tmp_path, scan):
             src = getattr(instance, stim.source_neuron_set.block_dict_name)[
                 stim.source_neuron_set.block_name
             ]
-            pop = src.get_population(instance.initialize.circuit.default_population_name)
+            pop = src.population
             with h5py.File(
                 tmp_path / scan.output_root / str(instance.idx) / (key + "_spikes.h5"), "r"
             ) as h5:
@@ -132,6 +141,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
             cfg = json.load(f)
 
         assert cfg.pop("version") == 2.4  # noqa: RUF069
+        assert cfg.pop("target_simulator") == "NEURON"
         assert cfg.pop("run") == {"dt": 0.025, "random_seed": 1, "tstop": 3000.0}
         mech_dict = {
             "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
@@ -219,13 +229,17 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     vpm_ref = {
         "block_dict_name": "neuron_sets",
         "block_name": "VPM_input",
-        "type": "NeuronSetReference",
+        "type": "VirtualNeuronSetReference",
     }
-    id3_ref = {"block_dict_name": "neuron_sets", "block_name": "ID3", "type": "NeuronSetReference"}
+    id3_ref = {
+        "block_dict_name": "neuron_sets",
+        "block_name": "ID3",
+        "type": "BiophysicalNeuronSetReference",
+    }
     id10_ref = {
         "block_dict_name": "neuron_sets",
         "block_name": "ID10",
-        "type": "NeuronSetReference",
+        "type": "BiophysicalNeuronSetReference",
     }
     poisson_dict = {
         "type": "PoissonSpikeStimulus",
@@ -253,19 +267,28 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     }
     id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
     id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
+    vpm_ids = {"name": "VPMInputs", "elements": list(range(50)), "type": "NamedTuple"}
     id10_dict = {
-        "type": "IDNeuronSet",
+        "type": "BiophysicalPopulationIDNeuronSet",
+        "population": "S1nonbarrel_neurons",
         "sample_percentage": 100.0,
         "sample_seed": 1,
         "neuron_ids": id10,
     }
     id3_dict = {
-        "type": "IDNeuronSet",
+        "type": "BiophysicalPopulationIDNeuronSet",
+        "population": "S1nonbarrel_neurons",
         "sample_percentage": 100.0,
         "sample_seed": 1,
         "neuron_ids": id3,
     }
-    vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
+    vpm_dict = {
+        "type": "VirtualPopulationIDNeuronSet",
+        "population": "VPM",
+        "sample_percentage": 100.0,
+        "sample_seed": 1,
+        "neuron_ids": vpm_ids,
+    }
     mg = scan.form.synaptic_manipulations["SynapticMgManipulation"].magnesium_value
     mg_dict = {
         "type": "SynapticMgManipulation",
@@ -382,17 +405,17 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         vpm_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "VPM_input",
-            "type": "NeuronSetReference",
+            "type": "VirtualNeuronSetReference",
         }
         id3_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "ID3",
-            "type": "NeuronSetReference",
+            "type": "BiophysicalNeuronSetReference",
         }
         id10_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "ID10",
-            "type": "NeuronSetReference",
+            "type": "BiophysicalNeuronSetReference",
         }
         poisson_dict = {
             "type": "PoissonSpikeStimulus",
@@ -425,19 +448,28 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         assert cfg.pop("recordings") == {"VoltageRecording": volt_dict}
         id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
         id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
+        vpm_ids = {"name": "VPMInputs", "elements": list(range(50)), "type": "NamedTuple"}
         id10_dict = {
-            "type": "IDNeuronSet",
+            "type": "BiophysicalPopulationIDNeuronSet",
+            "population": "S1nonbarrel_neurons",
             "sample_percentage": 100.0,
             "sample_seed": 1,
             "neuron_ids": id10,
         }
         id3_dict = {
-            "type": "IDNeuronSet",
+            "type": "BiophysicalPopulationIDNeuronSet",
+            "population": "S1nonbarrel_neurons",
             "sample_percentage": 100.0,
             "sample_seed": 1,
             "neuron_ids": id3,
         }
-        vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
+        vpm_dict = {
+            "type": "VirtualPopulationIDNeuronSet",
+            "population": "VPM",
+            "sample_percentage": 100.0,
+            "sample_seed": 1,
+            "neuron_ids": vpm_ids,
+        }
         assert cfg.pop("neuron_sets") == {
             "ID10": id10_dict,
             "ID3": id3_dict,
@@ -639,8 +671,9 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
     )
     sim_conf.set(info, name="info")
 
-    sim_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(1))
+    sim_neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(1)),
+        population="S1nonbarrel_neurons",
     )
     sim_conf.add(sim_neuron_set, name="ID1")
 
@@ -725,7 +758,10 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
 def test_morphology_locations_materialize_to_matching_compartment_set():
     form = obi.CircuitSimulationScanConfig.empty_config()
 
-    neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=[0]))
+    neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=[0]),
+        population="S1nonbarrel_neurons",
+    )
     form.add(neuron_set, name="ID1")
 
     locations = obi.RandomMorphologyLocations(

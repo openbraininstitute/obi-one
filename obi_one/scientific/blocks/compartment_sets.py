@@ -16,7 +16,9 @@ if TYPE_CHECKING:
     from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
     from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
     from obi_one.scientific.library.circuit import Circuit
-    from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+    from obi_one.scientific.unions.unions_combined_neuron_sets import (
+        BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+    )
 
 
 class CompartmentLocation(BaseModel):
@@ -123,7 +125,7 @@ def build_compartment_set_for_neuron_set(
     circuit: Circuit,
     node_population: str | None,
     population: str,
-    neuron_set: NeuronSetReference,
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     locations_block: MorphologyLocationsBlock,
     morphology_loader: Callable[[Circuit, int, str | None], morphio.Morphology | None],
 ) -> CompartmentSet:
@@ -138,7 +140,16 @@ def build_compartment_set_for_neuron_set(
         `node_population` is the circuit population used to resolve node ids/morphologies.
     """
     neuron_set_block = cast("AbstractNeuronSet", neuron_set.block)
-    node_ids = neuron_set_block.get_neuron_ids(circuit, node_population)
+    ids_by_population = neuron_set_block.get_neuron_ids(circuit)
+    selected_population = node_population or population
+    try:
+        node_ids = ids_by_population[selected_population]
+    except KeyError as exc:
+        msg = (
+            f"Neuron set does not contain population {selected_population!r}; "
+            f"available populations: {sorted(ids_by_population)}"
+        )
+        raise ValueError(msg) from exc
 
     morphologies: dict[int, morphio.Morphology] = {}
     for node_id in node_ids:

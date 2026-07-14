@@ -19,6 +19,54 @@ L = logging.getLogger(__name__)
 
 class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
+    ADVANCED_BLOCK_GROUP = "Advanced"
+
+
+class AdvancedEMSynapseMappingOptions(Block):
+    custom_physical_edge_population_name: str = Field(
+        title="Custom physical edge population name",
+        description="Custom name for the population of connections between neurons in the circuit."
+        " 'physical_connections' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_virtual_edge_population_name: str = Field(
+        title="Custom virtual edge population name",
+        description="Custom name for the population of connections from virtual neurons."
+        " 'virtual_afferents' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_biophysical_node_population: str = Field(
+        title="Custom biophysical node population name",
+        description="Custom name for the population of physical neurons in the circuit."
+        " 'biophysical_neurons' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_virtual_node_population: str = Field(
+        title="Custom virtual node population name",
+        description="Custom name for the population of external presynaptic neurons."
+        " 'virtual_afferent_neurons' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    include_spiny_morphologies: bool = Field(
+        title="Include spiny morphologies",
+        description="Include a container file with spiny morphologies in the output circuit.",
+        default=True,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
 
 
 class EMSynapseMappingScanConfig(InfoScanConfig):
@@ -32,6 +80,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.ADVANCED_BLOCK_GROUP,
         ],
     }
 
@@ -75,38 +124,6 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
                 ],
             },
         )
-        physical_edge_population_name: str = Field(
-            title="Physical edge population name",
-            description="Edge population for connections between neurons in the set.",
-            default="physical_connections",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        virtual_edge_population_name: str = Field(
-            title="Virtual edge population name",
-            description="Edge population for connections from virtual neurons.",
-            default="virtual_afferents",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        biophysical_node_population: str = Field(
-            title="Biophysical node population name",
-            description="Node population for the physical neurons in the circuit.",
-            default="biophysical_neurons",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        virtual_node_population: str = Field(
-            title="Virtual node population name",
-            description="Node population for external presynaptic neurons.",
-            default="virtual_afferent_neurons",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
 
         @model_validator(mode="after")
         def check_neuron_structure(self) -> Self:
@@ -137,22 +154,19 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
         },
     )
 
+    advanced_options: AdvancedEMSynapseMappingOptions = Field(
+        title="Advanced",
+        description="Advanced options for EM synapse mapping.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.ADVANCED_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 2,
+        },
+    )
+
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
     _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.em_synapse_mapping__config
     _single_task_activity_type: ClassVar[TaskActivityType] = (
         TaskActivityType.em_synapse_mapping__execution
-    )
-
-    class Initialize(EMSynapseMappingScanConfig.Initialize):
-        neurons: "EMSynapseMappingInputNamedTuple"
-
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the EM Synaptome.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
     )

@@ -4,8 +4,10 @@ from uuid import uuid4
 
 import entitysdk
 import pytest
+from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.mappings import TASK_DEFINITIONS
+from app.schemas.accounting import AccountingParameters
 from app.schemas.task import TaskLaunchSubmit, TaskType
 from app.services.resource_estimation import circuit_extraction as test_module
 from obi_one.scientific.library.circuit_metrics import (
@@ -43,13 +45,20 @@ def test_get_required_cpu_memory_combo_too_large():
         test_module._get_required_cpu_memory_combo(200)
 
 
-def test_check_available_disk_space_ok():
-    test_module._check_available_disk_space(10.0)
+def test_get_required_extra_storage_space_default():
+    # Under 20 GB -> no extra storage needed
+    assert test_module._get_required_extra_storage_space(10.0) is None
 
 
-def test_check_available_disk_space_too_large():
+def test_get_required_extra_storage_space_extra():
+    # Between 20 and 200 GB -> allocate extra storage (ceiling)
+    assert test_module._get_required_extra_storage_space(25.0) == 25
+    assert test_module._get_required_extra_storage_space(25.3) == 26
+
+
+def test_get_required_extra_storage_space_too_large():
     with pytest.raises(ValueError, match="Not enough disk space"):
-        test_module._check_available_disk_space(25.0)
+        test_module._get_required_extra_storage_space(250.0)
 
 
 def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
@@ -57,8 +66,10 @@ def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
     return CircuitMetricsOutput(
         number_of_biophys_node_populations=1,
         number_of_virtual_node_populations=1,
+        number_of_point_node_populations=0,
         names_of_biophys_node_populations=["bio_pop"],
         names_of_virtual_node_populations=["virt_pop"],
+        names_of_point_node_populations=[],
         names_of_nodesets=[],
         biophysical_node_populations=[
             CircuitMetricsNodePopulation(
@@ -82,6 +93,7 @@ def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
                 node_location_info=None,
             ),
         ],
+        point_node_populations=[],
         number_of_chemical_edge_populations=2,
         number_of_electrical_edge_populations=0,
         names_of_chemical_edge_populations=["bio_edges", "virt_edges"],
@@ -112,7 +124,9 @@ def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
     )
 
 
-def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
+def _run_estimate_task_resources(
+    db_client, circuit_metrics, do_virtual, accounting_parameters=None
+):
     """Run estimate_task_resources for circuit_extraction with mocked dependencies."""
     task_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_extraction, config_id=uuid4())
@@ -145,6 +159,7 @@ def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
             db_client=db_client,
             task_definition=task_definition,
             compute_cell="cell_b",
+            accounting_parameters=accounting_parameters,
         )
 
 
@@ -201,12 +216,12 @@ def test_estimate_task_resources_allocation(
 @pytest.mark.parametrize(
     ("sbio", "svirt", "do_virtual"),
     [
-        # do_virtual=True: total = 60M + 50M = 110M synapses
-        #   disk = 1 + 110e6 * 1.85e-7 = 21.35 GB > 20 GB limit
-        (60_000_000, 50_000_000, True),
-        # do_virtual=False: only bio = 110M synapses
-        #   disk = 1 + 110e6 * 1.85e-7 = 21.35 GB > 20 GB limit
-        (110_000_000, 50_000_000, False),
+        # do_virtual=True: total = 600M + 500M = 1100M synapses
+        #   disk = 1 + 1100e6 * 1.85e-7 = 204.5 GB > 200 GB limit
+        (600_000_000, 500_000_000, True),
+        # do_virtual=False: only bio = 1100M synapses
+        #   disk = 1 + 1100e6 * 1.85e-7 = 204.5 GB > 200 GB limit
+        (1_100_000_000, 500_000_000, False),
     ],
     ids=["too_many_synapses_with_virtual", "too_many_synapses_without_virtual"],
 )
@@ -229,3 +244,57 @@ def test_estimate_task_resources_disk_ok_without_virtual(db_client, sbio, svirt,
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
     result = _run_estimate_task_resources(db_client, metrics, do_virtual)
     assert result.cores >= 1
+
+
+def test_estimate_task_resources_with_accounting_parameters_reduces_disk(db_client):
+    """When accounting_parameters.count < nbio, output_fraction scales down disk estimate."""
+    # nbio=100_000, sbio=500M synapses
+    # Without accounting_parameters: output_fraction=1.0
+    #   disk = 1 + 500e6 * 1.85e-7 = 93.5 GB -> extra storage = 94
+    # With count=10_000 (10% of nbio): output_fraction=0.1
+    #   disk = 1 + 500e6 * 0.1 * 1.85e-7 = 10.25 GB -> no extra storage (None)
+    metrics = _make_circuit_metrics(100_000, 0, 500_000_000, 0)
+
+    result_without = _run_estimate_task_resources(db_client, metrics, do_virtual=False)
+    assert result_without.ephemeral_storage == 94
+
+    accounting_params = AccountingParameters(
+        count=10_000,
+        service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
+    )
+    result_with = _run_estimate_task_resources(
+        db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
+    )
+    assert result_with.ephemeral_storage is None
+
+
+def test_estimate_task_resources_with_accounting_parameters_full_extraction(db_client):
+    """When accounting_parameters.count == nbio, output_fraction is 1.0 (same as None)."""
+    # nbio=100_000, sbio=500M synapses, count=100_000 -> fraction=1.0
+    #   disk = 1 + 500e6 * 1.85e-7 = 93.5 GB -> extra storage = 94
+    metrics = _make_circuit_metrics(100_000, 0, 500_000_000, 0)
+
+    accounting_params = AccountingParameters(
+        count=100_000,
+        service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
+    )
+    result = _run_estimate_task_resources(
+        db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
+    )
+    assert result.ephemeral_storage == 94
+
+
+def test_estimate_task_resources_with_accounting_parameters_disk_limit(db_client):
+    """Even with accounting_parameters, large extractions can exceed the disk limit."""
+    # nbio=100_000, sbio=2000M synapses, count=100_000 -> fraction=1.0
+    #   disk = 1 + 2000e6 * 1.85e-7 = 371 GB > 200 GB limit
+    metrics = _make_circuit_metrics(100_000, 0, 2_000_000_000, 0)
+
+    accounting_params = AccountingParameters(
+        count=100_000,
+        service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
+    )
+    with pytest.raises(ValueError, match="Not enough disk space"):
+        _run_estimate_task_resources(
+            db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
+        )

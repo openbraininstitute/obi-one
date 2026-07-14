@@ -3,14 +3,12 @@ import pathlib
 import tempfile
 import traceback
 from contextlib import ExitStack, suppress
-from functools import cache
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Final, TypeVar, cast
 from uuid import UUID
 
 import entitysdk
-import neurom as nm
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import (
@@ -19,30 +17,28 @@ from entitysdk.models import (
     CellMorphology,
     CellMorphologyProtocol,
     License,
-    MeasurementAnnotation,
     Subject,
 )
-from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
-from entitysdk.models.measurement_annotation import MeasurementKind
-from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-import app.endpoints.useful_functions.useful_functions as uf
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.endpoints.convert_morphology_to_registered_mesh import (
-    HAS_MESHING,
-    mesh_and_register as _mesh_and_register,
-)
-from app.errors import ApiError
-from app.logger import L
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
     MorphologyFiles,
     validate_and_convert_morphology,
+)
+from obi_one.scientific.library.morphology_measurement_annotation import (
+    compute_morphometrics,
+)
+from obi_one.scientific.library.morphology_registration import (
+    register_morphometrics,
+    try_generate_and_upload_mesh,
+    upload_morphology_content,
+    upload_morphology_file,
 )
 
 if TYPE_CHECKING:
@@ -56,9 +52,6 @@ class ApiErrorCode:
 
 ALLOWED_EXTENSIONS: Final[set[str]] = {".swc", ".h5", ".asc"}
 ALLOWED_EXT_STR: Final[str] = ", ".join(ALLOWED_EXTENSIONS)
-
-DEFAULT_NEURITE_DOMAIN: Final[str] = "basal_dendrite"
-TARGET_NEURITE_DOMAINS: Final[list[str]] = ["apical_dendrite", "axon"]
 
 BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
@@ -109,38 +102,9 @@ def _validate_file_extension(filename: str | None) -> str:
     return file_extension
 
 
-@cache
-def _get_template() -> dict:
-    template_path = Path(__file__).parent / "morphology_template.json"
-    return json.loads(template_path.read_text())
-
-
-@cache
-def _get_analysis_dict() -> dict:
-    """Lazily initialize and cache the analysis dictionary."""
-    analysis_dict_base = uf.create_analysis_dict(_get_template())
-    analysis_dict = dict(analysis_dict_base)
-
-    if DEFAULT_NEURITE_DOMAIN in analysis_dict:
-        default_analysis = analysis_dict[DEFAULT_NEURITE_DOMAIN]
-        for domain in TARGET_NEURITE_DOMAINS:
-            analysis_dict.setdefault(domain, default_analysis)
-
-    return analysis_dict
-
-
-def run_morphology_analysis(morphology_path: str) -> list[MeasurementKind]:
+def run_morphology_analysis(morphology_path: str) -> list[dict[str, Any]]:
     try:
-        neuron = nm.load_morphology(morphology_path)
-        results_dict = uf.build_results_dict(_get_analysis_dict(), neuron)
-        filled = uf.fill_json(_get_template(), results_dict, entity_id="temp_id")
-        measurement_kinds = filled["data"][0]["measurement_kinds"]
-        filled["data"][0]["measurement_kinds"] = [
-            mk
-            for mk in measurement_kinds
-            if any(mi.get("value") is not None for mi in mk.get("measurement_items", []))
-        ]
-        return filled["data"][0]["measurement_kinds"]
+        return compute_morphometrics(morphology_path)
     except Exception as e:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -275,106 +239,14 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
     return registered
 
 
-EXTENSION_CONTENT_TYPE_MAP: Final[dict[str, ContentType]] = {
-    ".asc": ContentType.application_asc,
-    ".swc": ContentType.application_swc,
-    ".h5": ContentType.application_x_hdf5,
-}
-
-
-def _get_content_type(file_extension: str) -> ContentType:
-    content_type = EXTENSION_CONTENT_TYPE_MAP.get(file_extension.lower())
-    if not content_type:
-        error_msg = f"Unsupported file extension: '{file_extension}'."
-        raise ValueError(error_msg)
-    return content_type
-
-
-def register_asset_from_content(
-    client: Client,
-    entity_id: UUID,
-    morphology_name: str,
-    content: bytes,
-) -> Asset:
-    file_extension = pathlib.Path(morphology_name).suffix
-    content_type = _get_content_type(file_extension)
-    try:
-        asset = client.upload_content(
-            entity_id=entity_id,
-            entity_type=CellMorphology,
-            file_content=content,
-            file_name=morphology_name,
-            file_content_type=content_type,
-            asset_label=AssetLabel.morphology,
-        )
-    except EntitySDKError as e:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
-                "detail": f"Entity asset registration failed: {e}",
-            },
-        ) from e
-    else:
-        return asset
-
-
-def register_assets(
-    client: Client,
-    entity_id: UUID,
-    file_folder: str,
-    morphology_name: str,
-) -> Asset:
-    file_path = pathlib.Path(file_folder) / morphology_name
-
-    if not file_path.exists():
-        error_msg = f"Asset file not found at path: {file_path}"
-        raise FileNotFoundError(error_msg)
-
-    content_type = _get_content_type(file_path.suffix)
-
-    try:
-        asset1 = client.upload_file(
-            entity_id=entity_id,
-            entity_type=CellMorphology,
-            file_path=file_path,
-            file_content_type=content_type,
-            asset_label=AssetLabel.morphology,
-        )
-    except EntitySDKError as e:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
-                "detail": f"Entity asset registration failed: {e}",
-            },
-        ) from e
-    else:
-        return asset1
-
-
-def register_measurements(
-    client: Client,
-    entity_id: UUID,
-    measurements: list[MeasurementKind],
-) -> MeasurementAnnotation:
-    try:
-        measurement_annotation = MeasurementAnnotation(
-            entity_id=entity_id,
-            entity_type=MeasurableEntity.cell_morphology,
-            measurement_kinds=measurements,
-        )
-        registered = client.register_entity(entity=measurement_annotation)
-    except EntitySDKError as e:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={
-                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
-                "detail": f"Entity measurement registration failed: {e}",
-            },
-        ) from e
-    else:
-        return registered
+def _raise_entitysdk_failure(operation: str, error: EntitySDKError) -> None:
+    raise HTTPException(
+        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+        detail={
+            "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+            "detail": f"Entity {operation} failed: {error}",
+        },
+    ) from error
 
 
 def _prepare_entity_payload(
@@ -391,28 +263,6 @@ def _prepare_entity_payload(
     return entity_payload
 
 
-def _register_assets_and_measurements(
-    client: Client,
-    entity_uuid: UUID,
-    morphology_name: str,
-    content: bytes,
-    measurement_list: list[MeasurementKind],
-    converted_files: MorphologyFiles,
-) -> MeasurementAnnotation:
-    register_asset_from_content(client, entity_uuid, morphology_name, content)
-
-    if converted_files.swc and converted_files.swc.exists():
-        swc = converted_files.swc
-        register_assets(client, entity_uuid, str(swc.parent), swc.name)
-
-    if converted_files.hdf5 and converted_files.hdf5.exists():
-        hdf5 = converted_files.hdf5
-        register_assets(client, entity_uuid, str(hdf5.parent), hdf5.name)
-
-    registered = register_measurements(client, entity_uuid, measurement_list)
-    return registered
-
-
 def _resolve_swc_bytes_for_mesh(
     _client: Any,
     converted_files: MorphologyFiles,
@@ -425,25 +275,6 @@ def _resolve_swc_bytes_for_mesh(
     if file_extension == ".swc":
         return content
     return None
-
-
-def _try_mesh_and_register(
-    client: entitysdk.client.Client,
-    entity_uuid: UUID,
-    swc_bytes: bytes,
-) -> str | None:
-    if not HAS_MESHING:
-        L.info("_try_mesh_and_register: meshing dependencies not available, skipping")
-        return None
-    try:
-        asset = _mesh_and_register(client, entity_uuid, swc_bytes)
-        return str(asset.id)
-    except ApiError as err:
-        L.warning(f"_try_mesh_and_register: meshing failed for {entity_uuid}: {err.message}")
-        return None
-    except Exception as err:  # noqa: BLE001
-        L.warning(f"_try_mesh_and_register: unexpected meshing error for {entity_uuid}: {err}")
-        return None
 
 
 async def _run_pipeline(
@@ -485,23 +316,25 @@ async def _run_pipeline(
 
         data = register_morphology(client, entity_payload)
         entity_uuid = UUID(str(data.id))
-        data2 = _register_assets_and_measurements(
-            client,
-            entity_uuid,
-            morphology_name,
-            content,
-            measurement_list,
-            converted_files,
-        )
+        try:
+            upload_morphology_content(client, entity_uuid, morphology_name, content)
+            if converted_files.swc and converted_files.swc.exists():
+                upload_morphology_file(client, entity_uuid, converted_files.swc)
+            if converted_files.hdf5 and converted_files.hdf5.exists():
+                upload_morphology_file(client, entity_uuid, converted_files.hdf5)
+            measurement_annotation = register_morphometrics(client, entity_uuid, measurement_list)
+        except EntitySDKError as err:
+            _raise_entitysdk_failure("registration", err)
 
         swc_bytes = _resolve_swc_bytes_for_mesh(client, converted_files, file_extension, content)
         mesh_asset_id: str | None = None
         if swc_bytes is not None:
-            mesh_asset_id = await run_in_threadpool(
-                _try_mesh_and_register, client, entity_uuid, swc_bytes
+            mesh_asset = await run_in_threadpool(
+                lambda: try_generate_and_upload_mesh(client, entity_uuid, swc_bytes=swc_bytes)
             )
+            mesh_asset_id = str(mesh_asset.id) if mesh_asset else None
 
-        return str(entity_uuid), str(data2.id), mesh_asset_id
+        return str(entity_uuid), str(measurement_annotation.id), mesh_asset_id
 
 
 @router.post(

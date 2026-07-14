@@ -20,6 +20,7 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_metrics import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
@@ -75,7 +76,9 @@ def fix_node_sets_file(circuit_path: Path) -> None:
         json.dump(nset_dict, f, indent=2)
 
 
-def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
+def get_circuit_size(
+    c: Circuit, scale_override: types.CircuitScale | None = None
+) -> tuple[types.CircuitScale, int, int, int]:
     """Returns the circuit scale, number of neurons, synapses, and connections.
 
     Counts neurons across all biophysical populations. If none exist,
@@ -93,6 +96,13 @@ def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
     # Count neurons across all relevant populations
     num_nrn = sum(c_sonata.nodes[pop].size for pop in npop_names)
 
+    if num_nrn <= MAX_SMALL_MICROCIRCUIT_SIZE and scale_override is not None:
+        msg = (
+            "scale_override should only be used for scales greater than 'small' (e.g. microcircuit,"
+            " whole-brain)!"
+        )
+        raise ValueError(msg)
+
     # Determine scale
     if num_nrn == 1:
         scale = types.CircuitScale.single
@@ -102,8 +112,12 @@ def get_circuit_size(c: Circuit) -> tuple[types.CircuitScale, int, int, int]:
         scale = types.CircuitScale.small
     else:
         scale = types.CircuitScale.microcircuit
-    # TODO: Add support for other scales as well
-    # https://github.com/openbraininstitute/obi-one/issues/463
+        # TODO: Add support for other scales as well
+        # https://github.com/openbraininstitute/obi-one/issues/463
+
+        # Override scale if provided
+        if scale_override is not None:
+            scale = scale_override
 
     # Get edge populations for synapse/connection counting
     if scale == types.CircuitScale.single:
@@ -151,16 +165,6 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
         elif isinstance(value, list):
             for v in value:
                 rebase_config(v, old_base, new_base)
-
-
-def copy_mod_files(circuit_path: str, output_root: str, mod_folder: str) -> None:
-    """Copy mod files from circuit directory to output root."""
-    mod_folder = "mod"
-    source_dir = Path(os.path.split(circuit_path)[0]) / mod_folder
-    if Path(source_dir).exists():
-        L.info("Copying mod files")
-        dest_dir = Path(output_root) / mod_folder
-        shutil.copytree(source_dir, dest_dir)
 
 
 def run_validation(circuit_path: str | Path) -> None:
@@ -299,6 +303,36 @@ def copy_hoc_files(
             shutil.copyfile(src_file, dest_file)
 
 
+def copy_mod_files(
+    pop_name: str,
+    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    original_circuit: snap.Circuit,
+) -> None:
+    """Copy mechanisms (.mod) files for a node population."""
+    source_dir = original_circuit.nodes[pop_name].config.get("mechanisms_dir")
+    if not source_dir or not Path(source_dir).exists():
+        return
+
+    mod_file_list = [p.name for p in Path(source_dir).glob("*.mod")]
+    if len(mod_file_list) == 0:
+        return
+
+    L.info(
+        f"Copying {len(mod_file_list)} mechanisms (.mod) for population '{pop_name}' ({pop.size})"
+    )
+
+    dest_dir = pop.config.get("mechanisms_dir")
+    Path(dest_dir).mkdir(parents=True, exist_ok=True)
+
+    for mod_file in mod_file_list:
+        src_file = Path(source_dir) / mod_file
+        dest_file = Path(dest_dir) / mod_file
+        if not Path(dest_file).exists():
+            # Copy only, if not yet existing (could happen for shared mod files
+            # among populations)
+            shutil.copyfile(src_file, dest_file)
+
+
 def _any_not_empty(data_series: pd.Series) -> bool:
     """Checks if any value in a data series is not empty, 'none', or 'null'."""
     values = data_series.apply(lambda x: x.strip(" -_").lower()).to_numpy()
@@ -334,8 +368,7 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue
-        if npop.type.startswith("point_"):
-            # E.g., point_neuron, point_process
+        if npop.type in TYPES_OF_POINT_NODES:
             has_point_neurons = True
             break
 
@@ -364,13 +397,12 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa
     return has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines
 
 
-def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path:
+def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path | None:
     """Generate an overview figure of the circuit.
 
-    Uses the circular 2D network plot if available, otherwise falls back to a template.
+    Uses the circular 2D network plot if available. Returns None if no suitable
+    figure is found.
     """
-    from importlib.resources import files  # noqa: PLC0415
-
     from PIL import Image  # noqa: PLC0415
 
     from obi_one.core.exception import OBIONEError  # noqa: PLC0415
@@ -388,9 +420,10 @@ def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) ->
     else:
         fig_paths = None
 
-    # Use template figure from library if no circular plot available
+    # No figure available — skip without error
     if fig_paths is None:
-        fig_paths = Path(str(files("obi_one.scientific.library").joinpath("circuit_template.png")))
+        L.info("No overview figure available; skipping generation.")
+        return None
 
     # Check that output file does not exist yet
     if output_file.exists():
@@ -503,10 +536,31 @@ def run_connectivity_matrix_extraction(
     )
     if edge_population is None:
         edge_population = circuit.default_edge_population_name
+    if edge_population is None:
+        msg = "No edge population specified and circuit has no default edge population."
+        raise OBIONEError(msg)
+
+    # Only request node properties that exist in the circuit's point or biophysical
+    # node populations (excluding virtual ones), since not all circuits (e.g.
+    # point-neuron circuits) provide every attribute.
+    sonata_circuit = circuit.sonata_circuit
+    available_node_properties = {
+        prop
+        for pop in Circuit.get_node_population_names(
+            sonata_circuit, incl_virtual=False, incl_point=True
+        )
+        for prop in sonata_circuit.nodes[pop].property_names
+    }
+    node_attributes = tuple(
+        prop
+        for prop in ("synapse_class", "layer", "mtype", "etype", "x", "y", "z")
+        if prop in available_node_properties
+    )
+
     matrix_init = ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit,
         edge_population=edge_population,
-        node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
+        node_attributes=node_attributes,
         with_matrix_config=True,
     )
     matrix_extraction_config = ConnectivityMatrixExtractionScanConfig(initialize=matrix_init)

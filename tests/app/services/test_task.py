@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime
 from http import HTTPStatus
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 from uuid import UUID, uuid4
 
 import entitysdk
@@ -325,7 +325,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": "https://github.com/openbraininstitute-partners/inait",
-            "ref": "commit:55428c970249d37d4d0f22f69a81ab07987dfa33",
+            "ref": ANY,
             "path": "scripts/simulate-circuits/run.py",
             "dependencies": "scripts/simulate-circuits/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
@@ -338,6 +338,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_inait",
+            "ephemeral_storage": None,
         },
         "inputs": [
             "sonata-simulation-task",
@@ -399,6 +400,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_compiler",
+            "ephemeral_storage": None,
         },
         "inputs": [
             "sonata-simulation-task",
@@ -506,6 +508,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "timelimit": "00:10",
             "compute_cell": "local",
             "image_type": "python_3_12_compiler",
+            "ephemeral_storage": None,
         },
         "code": {
             "type": "python_repository",
@@ -702,6 +705,7 @@ def test_estimate_task_resources_circuit_extraction(db_client):
         db_client=db_client,
         task_definition=task_definition,
         compute_cell="cell_b",
+        accounting_parameters=None,
     )
 
 

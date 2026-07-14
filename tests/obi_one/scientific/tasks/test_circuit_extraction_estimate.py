@@ -4,7 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import entitysdk
-import numpy as np
+import pytest
 
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
 
@@ -13,8 +13,10 @@ def test_estimate_circuit_extraction_count_from_neuron_set_size():
     db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # noqa: S106
     config_id = uuid4()
     task_config = SimpleNamespace()
-    fake_circuit = SimpleNamespace(default_population_name="default_pop")
-    fake_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: np.array([101, 202, 303]))
+    fake_circuit = SimpleNamespace()
+    fake_neuron_set = SimpleNamespace(
+        get_neuron_ids=lambda **_kwargs: {"pop_a": [101, 202], "pop_b": [303]}
+    )
     fake_config = SimpleNamespace(
         initialize=SimpleNamespace(circuit=fake_circuit),
         neuron_set=fake_neuron_set,
@@ -43,12 +45,12 @@ def test_estimate_circuit_extraction_count_from_neuron_set_size():
         assert estimate_circuit_extraction_count(db_client=db_client, config_id=config_id) == 3
 
 
-def test_estimate_circuit_extraction_count_has_minimum_one_for_empty_set():
+def test_estimate_circuit_extraction_count_raises_for_empty_set():
     db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # noqa: S106
     config_id = uuid4()
     task_config = SimpleNamespace()
-    fake_circuit = SimpleNamespace(default_population_name="default_pop")
-    fake_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: np.array([]))
+    fake_circuit = SimpleNamespace()
+    fake_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: {})
     fake_config = SimpleNamespace(
         initialize=SimpleNamespace(circuit=fake_circuit),
         neuron_set=fake_neuron_set,
@@ -73,15 +75,16 @@ def test_estimate_circuit_extraction_count_has_minimum_one_for_empty_set():
             "obi_one.scientific.tasks.circuit_extraction.estimate.CircuitExtractionSingleConfig.model_validate",
             return_value=fake_config,
         ),
+        pytest.raises(ValueError, match="resolved to 0 neurons"),
     ):
-        assert estimate_circuit_extraction_count(db_client=db_client, config_id=config_id) == 1
+        estimate_circuit_extraction_count(db_client=db_client, config_id=config_id)
 
 
 def test_estimate_circuit_extraction_count_with_circuit_from_id_staging():
     db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # noqa: S106
     config_id = uuid4()
     task_config = SimpleNamespace()
-    staged_circuit = SimpleNamespace(default_population_name="default_pop")
+    staged_circuit = SimpleNamespace()
     fake_deserialized = SimpleNamespace(
         model_dump=lambda: {"type": "CircuitExtractionSingleConfig"}
     )
@@ -92,7 +95,7 @@ def test_estimate_circuit_extraction_count_with_circuit_from_id_staging():
 
     fake_circuit_from_id = FakeCircuitFromID()
     fake_neuron_set = SimpleNamespace(
-        get_neuron_ids=lambda **_kwargs: np.array([1, 2]),
+        get_neuron_ids=lambda **_kwargs: {"pop_a": [1], "pop_b": [2]},
     )
     fake_config = SimpleNamespace(
         initialize=SimpleNamespace(circuit=fake_circuit_from_id),

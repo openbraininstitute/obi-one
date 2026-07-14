@@ -11,8 +11,8 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -88,7 +88,8 @@ class ByNeuronModification(ComplexVariableHolder):
         default="GLOBAL",
         description="Variable type: 'RANGE' (section-specific) or 'GLOBAL' (neuron-wide)",
     )
-    new_value: float | list[float] = Field(
+    new_value: float | list[float] | None = Field(
+        default=None,
         description="New value(s) that applies to entire neuron (GLOBAL) or all sections (RANGE)",
     )
 
@@ -106,7 +107,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Variable Modification by Section List"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -124,7 +125,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict]:
+    def config(self, default_node_set: str) -> list[dict]:
         """Generate SONATA conditions.modifications entries for each section list.
 
         Returns:
@@ -165,7 +166,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
 
     title: ClassVar[str] = "Full Neuron Variable Modification"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -183,7 +184,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict] | dict:
+    def config(self, default_node_set: str) -> list[dict] | dict:
         """Generate SONATA config entry.
 
         Returns:
@@ -193,7 +194,11 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
             entry for all sections.
             For section properties (cm, Ra): list[dict] with a single
             conditions.modifications entry for all sections.
+            Empty list if no new_value is provided (use existing defaults).
         """
+        if self.modification.new_value is None:
+            return []
+
         # Handle RANGE variables (including section properties)
         if self.modification.variable_type == "RANGE":
             node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)

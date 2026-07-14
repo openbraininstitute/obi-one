@@ -16,7 +16,7 @@ from app.mappings import APP_TAG, OBI_ONE_CODE_PATH, OBI_ONE_DEPS_DIR, TASK_DEFI
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskLaunchInfo
-from app.services.accounting import CIRCUIT_SCALE_TO_SERVICE_SUBTYPE
+from app.services.accounting import _DURATION_BILLING_SCALES, CIRCUIT_SCALE_TO_SERVICE_SUBTYPE
 from app.types import TaskType
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID, assert_request
@@ -266,6 +266,8 @@ def _circuit_metadata(*, circuit_id: UUID, target_simulator: str, circuit_scale:
 @pytest.mark.parametrize(
     "circuit_scale",
     [
+        CircuitScale.single,
+        CircuitScale.pair,
         CircuitScale.small,
         CircuitScale.microcircuit,
         CircuitScale.region,
@@ -306,6 +308,7 @@ def test_task_launch_success__circuit_simulation(
         url=f"{db_url}/simulation/{simulation_id}/assets/{simulation_config_asset_id}/download",
         method="GET",
         json=_simulation_config(target_simulator=target_simulator),
+        is_reusable=True,  # simulation config may be fetched multiple times
     )
     # mock circuit metadata needed for fetching target_simulator/scale for toggling
     httpx_mock.add_response(
@@ -364,6 +367,8 @@ def test_task_launch_success__circuit_simulation(
     ).json()
 
     expected_task_type = {
+        (TargetSimulator.NEURON, CircuitScale.single): TaskType.circuit_simulation_neuron,
+        (TargetSimulator.NEURON, CircuitScale.pair): TaskType.circuit_simulation_neuron,
         (TargetSimulator.NEURON, CircuitScale.small): TaskType.circuit_simulation_neuron,
         (
             TargetSimulator.NEURON,
@@ -381,6 +386,8 @@ def test_task_launch_success__circuit_simulation(
             TargetSimulator.NEURON,
             CircuitScale.whole_brain,
         ): TaskType.circuit_simulation_neurodamus_cluster,
+        (TargetSimulator.CORENEURON, CircuitScale.single): TaskType.circuit_simulation_neuron,
+        (TargetSimulator.CORENEURON, CircuitScale.pair): TaskType.circuit_simulation_neuron,
         (TargetSimulator.CORENEURON, CircuitScale.small): TaskType.circuit_simulation_neuron,
         (
             TargetSimulator.CORENEURON,
@@ -398,6 +405,14 @@ def test_task_launch_success__circuit_simulation(
             TargetSimulator.CORENEURON,
             CircuitScale.whole_brain,
         ): TaskType.circuit_simulation_neurodamus_cluster,
+        (
+            TargetSimulator.LearningEngine,
+            CircuitScale.single,
+        ): TaskType.circuit_simulation_inait_machine,
+        (
+            TargetSimulator.LearningEngine,
+            CircuitScale.pair,
+        ): TaskType.circuit_simulation_inait_machine,
         (
             TargetSimulator.LearningEngine,
             CircuitScale.small,
@@ -477,7 +492,7 @@ def test_task_launch_success__circuit_simulation(
                     "accounting_service_subtype": str(
                         CIRCUIT_SCALE_TO_SERVICE_SUBTYPE[circuit_scale]
                     ),
-                    "count": 100,
+                    "count": 100 if circuit_scale in _DURATION_BILLING_SCALES else 1,
                 },
             },
         },
@@ -529,7 +544,7 @@ def test_task_launch_success__circuit_simulation(
                     "accounting_service_subtype": str(
                         CIRCUIT_SCALE_TO_SERVICE_SUBTYPE[circuit_scale]
                     ),
-                    "count": 100,
+                    "count": 100 if circuit_scale in _DURATION_BILLING_SCALES else 1,
                 },
             },
         },
@@ -652,6 +667,8 @@ def test_task_estimate(client, task_type):
 @pytest.mark.parametrize(
     "circuit_scale",
     [
+        CircuitScale.single,
+        CircuitScale.pair,
         CircuitScale.small,
         CircuitScale.microcircuit,
         CircuitScale.region,
@@ -683,6 +700,7 @@ def test_task_estimate__circuit_simulation(client, target_simulator, circuit_sca
         url=f"{db_url}/simulation/{simulation_id}/assets/{simulation_config_asset_id}/download",
         method="GET",
         json=_simulation_config(target_simulator=target_simulator),
+        is_reusable=True,  # simulation config may be fetched multiple times
     )
     # mock circuit metadata needed for fetching target_simulator/scale for toggling
     httpx_mock.add_response(
@@ -712,6 +730,10 @@ def test_task_estimate__circuit_simulation(client, target_simulator, circuit_sca
     )
     assert data["config_id"] == str(simulation_id)
     assert data["cost"] == 1000
+    assert data["parameters"]["service_subtype"] == CIRCUIT_SCALE_TO_SERVICE_SUBTYPE[circuit_scale]
+    if circuit_scale not in _DURATION_BILLING_SCALES:
+        # single/pair/small are billed as a fixed single unit, independent of duration.
+        assert data["parameters"]["count"] == 1
 
 
 @pytest.mark.parametrize("task_type", TASK_DEFINITIONS.keys())

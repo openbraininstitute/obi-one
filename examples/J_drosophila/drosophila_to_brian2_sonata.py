@@ -1,20 +1,46 @@
 import itertools as it
 import json
+import logging
 from pathlib import Path
 from textwrap import dedent
 
 import h5py
+import libsonata
 import numpy as np
 import pandas as pd
-from brainbuilder.utils.sonata.split_population import _write_indexes  # noqa: PLC2701
 from brian2 import Hz, ms, mV
 from voxcell import CellCollection
 
+L = logging.getLogger(__name__)
+
 POPULATION = "drosophila"
+UNKNOWN_STRING = "[unknown]"
 
 
-def _create_nodes(output: Path, path_comp: Path) -> tuple[Path, pd.DataFrame]:
-    df_comp = pd.read_csv(path_comp, index_col=0)
+def _write_indexes(
+    edge_file_name: str | Path, new_pop_name: str, source_node_count: int, target_node_count: int
+) -> None:
+    """Ibid."""
+    libsonata.EdgePopulation.write_indices(
+        str(edge_file_name), new_pop_name, source_node_count, target_node_count
+    )
+
+
+def _create_nodes(
+    output: Path, path_comp: Path, annotations_path: Path | None, connections: pd.DataFrame
+) -> tuple[Path, pd.DataFrame]:
+    excitatory_df = (
+        connections[["Presynaptic_ID", "Excitatory"]].drop_duplicates().set_index("Presynaptic_ID")
+    )
+    excitatory_df["synapse_class"] = (
+        excitatory_df["Excitatory"].map({-1: "INH", 1: "EXC"}).astype("string")
+    ).drop(columns="Excitatory")
+    df_comp = (
+        pd.read_csv(path_comp, index_col=0)
+        .merge(excitatory_df, left_index=True, right_index=True, how="left")
+        .fillna(UNKNOWN_STRING)
+    )
+
     assert df_comp.Completed.all()
 
     nodes = pd.DataFrame(
@@ -23,8 +49,62 @@ def _create_nodes(output: Path, path_comp: Path) -> tuple[Path, pd.DataFrame]:
             "model_type": "brian2_point",
             "model_template": "json:drosophila",
             "flywire_id": df_comp.index,
+            "synapse_class": df_comp.synapse_class.to_numpy()
         },
     )
+
+    if annotations_path:
+        # there are mixed datatypes, thus low_memory=False
+        annotations_df = pd.read_csv(annotations_path, sep="\t", low_memory=False)
+        string_cols = [
+            "flow",
+            "super_class",
+            "cell_class",
+            "cell_sub_class",
+            "cell_type",
+            "ito_lee_hemilineage",
+            "side",
+            "nerve",
+            "top_nt",
+        ]
+        cols = ["root_id", "pos_x", "pos_y", "pos_z", "soma_x", "soma_y", "soma_z", *string_cols]
+
+        nodes = nodes.merge(
+            annotations_df[cols],
+            left_on="flywire_id",
+            right_on="root_id",
+            how="left",
+        )
+
+        if len(nodes) < len(df_comp):
+            L.warning("After adding annotations, lost %d cells", len(df_comp) - len(nodes))
+
+        # Prefer soma; use "anchor" (pos_*); if neither exist, put at origin
+        for axis in "xyz":
+            pos = nodes[f"pos_{axis}"].fillna(0.)
+            nodes[axis] = nodes[f"soma_{axis}"].fillna(pos)
+
+        # voxel space (4, 4, 40) nm -> micrometres
+        nodes["x"] = nodes["x"].to_numpy(dtype=np.float32) * 4 / 1000
+        nodes["y"] = nodes["y"].to_numpy(dtype=np.float32) * 4 / 1000
+        nodes["z"] = nodes["z"].to_numpy(dtype=np.float32) * 40 / 1000
+
+        for axis in "xyz":
+            mask = nodes[axis] < nodes[axis].mean() + 4 * nodes[axis].std()
+            nodes[axis] = nodes[axis].where(mask, 0.)
+
+        nodes = nodes.drop(columns=[
+            "root_id",
+            "pos_x",
+            "pos_y",
+            "pos_z",
+            "soma_x",
+            "soma_y",
+            "soma_z",
+        ])
+
+        for col in string_cols:
+            nodes[col] = nodes[col].fillna(UNKNOWN_STRING)
 
     cc = CellCollection.from_dataframe(nodes, index_offset=0)
     cc.population_name = POPULATION
@@ -35,13 +115,13 @@ def _create_nodes(output: Path, path_comp: Path) -> tuple[Path, pd.DataFrame]:
 
 def _create_edges(
     output: Path,
-    path_connnections: Path,
+    connections: pd.DataFrame,
     nodes: pd.DataFrame,
     default_params: dict,
     *,
     repack_indices: bool = False
 ) -> Path:
-    df_con = pd.read_parquet(path_connnections).sort_values("Postsynaptic_ID")
+    df_con = connections.copy().sort_values("Postsynaptic_ID")
 
     fly_wire_idx = nodes.reset_index(names=["id"]).set_index("flywire_id").id
     src = np.asarray(
@@ -51,9 +131,12 @@ def _create_edges(
         df_con.join(fly_wire_idx, on="Postsynaptic_ID").id.to_numpy(), dtype=np.uint32
     )
 
-    weight = float(default_params["w_syn"]) * 1000
     # Note: to get the same results, we need to use float64
-    w = df_con["Excitatory x Connectivity"].to_numpy(dtype=np.float64) * weight
+    w = (
+        df_con["Excitatory x Connectivity"].to_numpy(dtype=np.float64)
+        * float(default_params["w_syn"])
+        * 1000
+    )
 
     path = output / "edges.h5"
 
@@ -70,7 +153,6 @@ def _create_edges(
         g0.create_dataset("w", data=w)  # in mV
         g0.create_dataset("@library/model_template", data=["json:synapse"])
         g0.create_dataset("model_template", data=np.zeros(len(src), dtype=np.uint8))
-        # g0.create_dataset("delay", data=delays)
 
     _write_indexes(str(path), name, source_node_count=len(nodes), target_node_count=len(nodes))
 
@@ -104,20 +186,20 @@ def _create_models(output: Path, default_params: dict) -> Path:
             "threshold": default_params["eq_th"],
             "reset": default_params["eq_rst"],
             "refractory": "rfc",
-            },
+        },
         "namespace": {
-            "t_mbr": get_value_unit("t_mbr"),  # [20, "ms"],
-            "tau": get_value_unit("tau"),  # [5, "ms"],          # time constant
-            "v_0": get_value_unit("v_0"),  # [-52, "mV"],        # resting potential
-            "v_th": get_value_unit("v_th"),  # [-45, "mV"],       # threshold for spiking
-            "v_rst": get_value_unit("v_rst"),  # [-52, "mV"],      # reset potential after spike
-            },
+            "t_mbr": get_value_unit("t_mbr"),
+            "tau": get_value_unit("tau"),  # time constant
+            "v_0": get_value_unit("v_0"),  # resting potential
+            "v_th": get_value_unit("v_th"),  # threshold for spiking
+            "v_rst": get_value_unit("v_rst"),  # reset potential after spike
+        },
         "initial": {
             "v": get_value_unit("v_rst"),
             "g": [0, "mV"],
             "rfc": [2.2, "ms"],
-            }
-        }
+        },
+    }
     with (path / "drosophila.json").open("w") as fd:
         json.dump(bio, fd, indent=2)
 
@@ -139,6 +221,7 @@ def _create_models(output: Path, default_params: dict) -> Path:
 
 def _create_nodesets(output: Path, nodes: pd.DataFrame, sugar_nodes: list[int]) -> Path:
     path = output / "node_sets.json"
+
     node_sets = {
         "All": {"population": POPULATION},
         "sugar": {
@@ -146,8 +229,16 @@ def _create_nodesets(output: Path, nodes: pd.DataFrame, sugar_nodes: list[int]) 
             "node_id": nodes[np.isin(nodes.flywire_id, sugar_nodes)].index.to_list(),
         },
     }
+
+    # see: https://github.com/openbraininstitute/prod-circuit-simulation/issues/174#issuecomment-4621972177
+    ignored_columns = {"model_type", "model_template", "cell_type", "ito_lee_hemilineage"}
+    for k in set(nodes.select_dtypes(include=["object", "string"]).columns) - ignored_columns:
+        for v in nodes[k].unique():
+            node_sets[v] = {k: v}
+
     with path.open("w") as fd:
         json.dump(node_sets, fd)
+
     return path
 
 
@@ -196,22 +287,32 @@ def convert(
     path_connnections: Path,
     sugar_nodes: list[int],
     default_params: dict,
+    annotations_path: Path | None,
 ) -> Path:
+    """Convert Flywire model to SONATA.
+
+
+    Args:
+        output: path to output directory
+        path_comp: path to "completeness" file; ends in .csv
+        path_connnections: parquet file of connections
+        sugar_nodes: list of IDs considered to be `sugar` neurons
+        default_params: dictionary of parameters
+        annotations_path: path to `annotations.csv` file
+
+    """
     output.mkdir(parents=True, exist_ok=True)
 
     models_path = _create_models(output, default_params)
-    nodes_path, nodes = _create_nodes(output, path_comp)
-    edges_path = _create_edges(output, path_connnections, nodes, default_params)
+    connections = pd.read_parquet(path_connnections)
+    nodes_path, nodes = _create_nodes(output, path_comp, annotations_path, connections)
+    edges_path = _create_edges(output, connections, nodes, default_params)
     node_sets_path = _create_nodesets(output, nodes, sugar_nodes)
     return _create_config(output, models_path, nodes_path, edges_path, node_sets_path)
 
 
 if __name__ == "__main__":
-    output = Path("output")
-    output.mkdir(exist_ok=True)
-    DROSOPHILA_REPO = Path()
-    PATH_COMP = DROSOPHILA_REPO / "2023_03_23_completeness_630_final.csv"
-    PATH_CON = DROSOPHILA_REPO / "2023_03_23_connectivity_630_final.parquet"
+    DROSOPHILA_REPO = Path("Drosophila_brain_model")
 
     SUGAR_NODES = [
             720575940611875570,
@@ -236,6 +337,23 @@ if __name__ == "__main__":
             720575940639332736,
             720575940640649691,
         ]
+
+    if True:  # 630
+        output = Path("output-630")
+        output.mkdir(exist_ok=True)
+        PATH_COMP = DROSOPHILA_REPO / "2023_03_23_completeness_630_final.csv"
+        PATH_CON = DROSOPHILA_REPO / "2023_03_23_connectivity_630_final.parquet"
+        # from version v1.0.0
+        # https://github.com/flyconnectome/flywire_annotations/raw/847a711ce3b6e3cc675cf9ef9c843ba564bba1b5/supplemental_files/Supplemental_file1_annotations.tsv
+        ANNOTATIONS = DROSOPHILA_REPO / "Supplemental_file1_neuron_annotations_630.tsv"
+    else:
+        output = Path("output-783")
+        output.mkdir(exist_ok=True)
+        PATH_COMP = DROSOPHILA_REPO / "Completeness_783.csv"
+        PATH_CON = DROSOPHILA_REPO / "Connectivity_783.parquet"
+        # from version v3.0.0
+        # https://github.com/flyconnectome/flywire_annotations/raw/a92610ef4cb86653aaf2b337eaf466b22f3ebd23/supplemental_files/Supplemental_file1_neuron_annotations.tsv
+        ANNOTATIONS = DROSOPHILA_REPO / "Supplemental_file1_neuron_annotations.tsv"
 
     default_params = {
         # trials
@@ -277,6 +395,7 @@ if __name__ == "__main__":
         path_connnections=PATH_CON,
         sugar_nodes=SUGAR_NODES,
         default_params=default_params,
+        annotations_path=ANNOTATIONS
     )
 
     sim_config = {

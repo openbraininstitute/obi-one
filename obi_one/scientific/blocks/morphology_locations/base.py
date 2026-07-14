@@ -7,20 +7,22 @@ from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.unions.unions_neuron_sets import NeuronSetReference
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+)
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
         description="Neuron set whose morphologies the locations are generated on.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 

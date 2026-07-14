@@ -1,16 +1,27 @@
 import json
 
+import pytest
+
 import obi_one as obi
 
 from tests.utils import CIRCUIT_DIR, DATA_DIR
 
+MODEL_DUMPS_DIR = DATA_DIR / "model_dumps"
+
+# Legacy serializations that still contain the now-deprecated ``NeuronSetReference`` (and the
+# deprecated neuron sets it referenced, e.g. ``AllNeurons``). Deserializing any of these must fail
+# loudly with a migration message rather than silently producing a broken config.
+DEPRECATED_SERIALIZATION_FILES = [
+    "circuit_simulation_single_config_serialization_deprecated.json",
+    "grid_scan_task_serialization_deprecated.json",
+    "grid_scan_simulations_form_deprecated.json",
+]
+
 
 def test_deserialization(tmp_path):
-    model_dumps_dir = DATA_DIR / "model_dumps"
+    model_dumps_dir = MODEL_DUMPS_DIR
 
-    """
-    Test deserialization of simulation
-    """
+    # Test deserialization of simulation
     simulation_json_path = model_dumps_dir / "circuit_simulation_single_config_serialization.json"
 
     data = json.loads(simulation_json_path.read_bytes())
@@ -24,9 +35,7 @@ def test_deserialization(tmp_path):
     simulation.coordinate_output_root = tmp_path / "simulation_output_2"
     obi.run_task_for_single_config(single_config=simulation)
 
-    """
-    Test deserialization of grid_scan_task
-    """
+    # Test deserialization of grid_scan_task
     grid_scan_task_json_path = model_dumps_dir / "grid_scan_task_serialization.json"
 
     data = json.loads(grid_scan_task_json_path.read_bytes())
@@ -42,9 +51,9 @@ def test_deserialization(tmp_path):
     grid_scan_task.execute()
     obi.run_tasks_for_generated_scan(grid_scan_task)
 
-    """
-    Test deserialization of deprecated grid_scan_simulations_form (GridScan, SimulationsForm)
-    """
+    # Test deserialization of deprecated grid_scan_simulations_form (GridScan, SimulationsForm).
+    # The deprecated top-level GridScan/SimulationsForm aliases must still deserialize and run; the
+    # neuron sets and references it uses are the current (non-deprecated) types.
     grid_scan_json_path = model_dumps_dir / "grid_scan_simulations_form.json"
 
     data = json.loads(grid_scan_json_path.read_bytes())
@@ -109,3 +118,20 @@ def test_deserialization_somatic_stimulus_type():
 
     assert isinstance(stimulus, obi.ConstantCurrentClampSomaticStimulus)
     assert stimulus.type == "ConstantCurrentClampSomaticStimulus"
+
+
+@pytest.mark.parametrize("filename", DEPRECATED_SERIALIZATION_FILES)
+def test_deserialization_of_deprecated_neuron_set_reference_raises(filename):
+    """Legacy configs using the deprecated NeuronSetReference must fail to deserialize.
+
+    The error must clearly direct the user to the replacement reference types rather than surfacing
+    an obscure error (e.g. a missing-setter ``AttributeError``).
+    """
+    deprecated_json_path = MODEL_DUMPS_DIR / filename
+
+    data = json.loads(deprecated_json_path.read_bytes())
+    with pytest.raises(DeprecationWarning, match="NeuronSetReference is deprecated"):
+        obi.deserialize_obi_object_from_json_data(data)
+
+    with pytest.raises(DeprecationWarning, match="NeuronSetReference is deprecated"):
+        obi.deserialize_obi_object_from_json_file(deprecated_json_path)

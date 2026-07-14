@@ -21,12 +21,23 @@ from obi_one.core.tuple import NamedTuple
 
 __all__ = [
     "AfferentSynapsesBlock",
+    "AllBiophysicalNeurons",
     "AllDistributionsReference",
     "AllDistributionsUnion",
-    "AllNeurons",
+    "AllNonVirtualNeurons",
+    "AllPairsSynapticModelAssigner",
+    "AllPointNeurons",
+    "AllPopulationNeurons",
+    "AllVirtualNeurons",
     "BasicConnectivityPlotsScanConfig",
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
+    "BiophysicalCombinedNeuronSet",
+    "BiophysicalNeuronSetReference",
+    "BiophysicalPopulationIDNeuronSet",
+    "BiophysicalPopulationNeuronSet",
+    "BiophysicalPopulationPredefinedNeuronSet",
+    "BiophysicalPopulationPropertyNeuronSet",
     "Block",
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
@@ -67,15 +78,19 @@ __all__ = [
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
+    "EMSynapseMappingInputNamedTuple",
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
+    "EMSynapseMappingTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
     "EntityFromID",
     "ExcitatoryNeurons",
+    "ExcitatoryTsodyksMarkramSynapticModel",
     "ExponentialDistribution",
     "ExtracellularLocations",
+    "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
     "FloatConstantDistribution",
     "FloatRange",
@@ -87,22 +102,28 @@ __all__ = [
     "GammaDistribution",
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
+    "GridExtracellularLocations",
     "GridScan",
     "GridScanGenerationTask",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
     "Info",
     "InhibitoryNeurons",
+    "InhibitoryTsodyksMarkramSynapticModel",
     "IntConstantDistribution",
+    "IntDiscreteDistribution",
     "IntRange",
     "IntUniformDistribution",
     "InterNeuronSetSynapticManipulation",
+    "InterNeuronSetSynapticModelAssigner",
     "InterSpikeIntervalDistributionSpikeStimulus",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
     "IonChannelModelSimulationScanConfig",
     "IonChannelModelSimulationSingleConfig",
+    "LearningEngineCircuitSimulationScanConfig",
+    "LearningEngineCircuitSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
     "LinearExtracellularLocations",
     "LoadAssetMethod",
@@ -135,29 +156,33 @@ __all__ = [
     "NamedTuple",
     "NeuronPropertyFilter",
     "NeuronSet",
-    "NeuronSetReference",
-    "NeuronSetUnion",
     "Neuropixels1ExtracellularLocations",
     "NonNegativeFloatRange",
     "NonNegativeIntRange",
+    "NonVirtualCombinedNeuronSet",
     "NormalDistribution",
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
     "OrnsteinUhlenbeckConductanceSomaticStimulus",
     "OrnsteinUhlenbeckCurrentSomaticStimulus",
-    "PairMotifNeuronSet",
     "PathDistanceConstrainedFractionOfSynapses",
     "PathDistanceConstrainedNumberOfSynapses",
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PointCombinedNeuronSet",
+    "PointNeuronSetReference",
+    "PointPopulationIDNeuronSet",
+    "PointPopulationNeuronSet",
+    "PointPopulationPredefinedNeuronSet",
+    "PointPopulationPropertyNeuronSet",
     "PoissonDistribution",
     "PoissonSpikeStimulus",
     "PositiveFloatRange",
     "PositiveIntRange",
     "PredefinedNeuronSet",
-    "PropertyNeuronSet",
+    "PresynapticNeuronSetSynapticModelAssigner",
     "RandomGroupedMorphologyLocations",
     "RandomMorphologyLocations",
     "RandomlySelectedFractionOfSynapses",
@@ -175,10 +200,7 @@ __all__ = [
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
-    "SimplexMembershipBasedNeuronSet",
-    "SimplexNeuronSet",
     "Simulation",
-    "SimulationNeuronSetUnion",
     "SimulationsForm",
     "SingleConfigMixin",
     "SingleTimestamp",
@@ -192,16 +214,28 @@ __all__ = [
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
+    "SynapseParameterizationScanConfig",
+    "SynapseParameterizationSingleConfig",
+    "SynapseParameterizationTask",
     "SynapseSetUnion",
     "SynapticMgManipulation",
+    "SynapticModelAssignerReference",
+    "SynapticModelAssignerUnion",
+    "SynapticModelReference",
+    "SynapticModelUnion",
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
-    "VolumetricCountNeuronSet",
-    "VolumetricRadiusNeuronSet",
+    "UTAHArrayExtracellularLocations",
+    "VirtualCombinedNeuronSet",
+    "VirtualNeuronSetReference",
+    "VirtualPopulationIDNeuronSet",
+    "VirtualPopulationNeuronSet",
+    "VirtualPopulationPredefinedNeuronSet",
+    "VirtualPopulationPropertyNeuronSet",
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
@@ -232,7 +266,7 @@ from obi_one.core.scan_generation import (
     GridScanGenerationTask,
     ScanGenerationTask,
 )
-from obi_one.scientific.blocks.afferent_synapses import (
+from obi_one.scientific.blocks.afferent_synapses.afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
     ClusteredPDSynapsesByMaxDistance,
@@ -250,6 +284,7 @@ from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
 )
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
@@ -261,8 +296,10 @@ from obi_one.scientific.blocks.distributions.uniform import (
 )
 from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
     ExtracellularLocations,
+    GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
+    UTAHArrayExtracellularLocations,
     XYZExtracellularLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.clustered import (
@@ -278,29 +315,52 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet
-from obi_one.scientific.blocks.neuron_sets.id import IDNeuronSet
-from obi_one.scientific.blocks.neuron_sets.pair import PairMotifNeuronSet
-from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
-from obi_one.scientific.blocks.neuron_sets.property import NeuronPropertyFilter, PropertyNeuronSet
-from obi_one.scientific.blocks.neuron_sets.simplex import (
-    SimplexMembershipBasedNeuronSet,
-    SimplexNeuronSet,
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+    CombinedNeuronSet,
+    NonVirtualCombinedNeuronSet,
+    PointCombinedNeuronSet,
+    VirtualCombinedNeuronSet,
 )
-from obi_one.scientific.blocks.neuron_sets.specific import (
-    AllNeurons,
+from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
+    IDNeuronSet,
     InhibitoryNeurons,
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
 )
-from obi_one.scientific.blocks.neuron_sets.volumetric import (
-    VolumetricCountNeuronSet,
-    VolumetricRadiusNeuronSet,
+from obi_one.scientific.blocks.neuron_sets.id import (
+    BiophysicalPopulationIDNeuronSet,
+    PointPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
 )
-from obi_one.scientific.blocks.recording import (
-    Recording,
+from obi_one.scientific.blocks.neuron_sets.population import (
+    BiophysicalPopulationNeuronSet,
+    PointPopulationNeuronSet,
+    VirtualPopulationNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.predefined import (
+    BiophysicalPopulationPredefinedNeuronSet,
+    PointPopulationPredefinedNeuronSet,
+    PredefinedNeuronSet,
+    VirtualPopulationPredefinedNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.property import (
+    BiophysicalPopulationPropertyNeuronSet,
+    NeuronPropertyFilter,
+    PointPopulationPropertyNeuronSet,
+    VirtualPopulationPropertyNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllBiophysicalNeurons,
+    AllNonVirtualNeurons,
+    AllPointNeurons,
+    AllPopulationNeurons,
+    AllVirtualNeurons,
+)
+from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
@@ -352,6 +412,20 @@ from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
     SynapticMgManipulation,
 )
+from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
+    AllPairsSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
+    InterNeuronSetSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.presyn_neuron_set import (
+    PresynapticNeuronSetSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+    # CorrelatedExcitatoryTsodyksMarkramSynapticModel,
+    ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
+)
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.cell_morphology_from_id import (
@@ -399,8 +473,12 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
     CreateExtracellularRecordingArrayTask,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import (
+    EMSynapseMappingInputNamedTuple,
     EMSynapseMappingScanConfig,
     EMSynapseMappingSingleConfig,
+)
+from obi_one.scientific.tasks.em_synapse_mapping.task import (
+    EMSynapseMappingTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
@@ -415,6 +493,10 @@ from obi_one.scientific.tasks.folder_compression import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
     Brian2CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationScanConfig,
+    LearningEngineCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
@@ -464,6 +546,11 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
 )
+from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationScanConfig,
+    SynapseParameterizationSingleConfig,
+)
+from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
 from obi_one.scientific.unions.block_references import AllBlockReferenceTypes  # noqa: F401
 from obi_one.scientific.unions.config_task_map import (
@@ -474,13 +561,14 @@ from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsUnion,
 )
 from obi_one.scientific.unions.unions_extracellular_locations import (
+    ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
 from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    NeuronSetUnion,
-    SimulationNeuronSetUnion,
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
 from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
@@ -491,6 +579,14 @@ from obi_one.scientific.unions.unions_stimuli import (
     StimulusUnion,
 )
 from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
+from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+    SynapticModelAssignerReference,
+    SynapticModelAssignerUnion,
+)
+from obi_one.scientific.unions.unions_synaptic_models import (
+    SynapticModelReference,
+    SynapticModelUnion,
+)
 from obi_one.scientific.unions.unions_tasks import TasksUnion
 from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
 

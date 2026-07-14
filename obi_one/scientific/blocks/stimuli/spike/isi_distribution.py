@@ -47,7 +47,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
         },
     )
 
@@ -99,7 +99,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
             if self.resample_each_repetition:
                 for timestamp in timestamps:
                     relative_spikes = self._generate_spike_train_from_distribution(
-                        distribution,  # ty:ignore[invalid-argument-type]
+                        distribution,
                         self.duration,  # ty:ignore[invalid-argument-type]
                         rng=rng,
                     )
@@ -107,7 +107,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
                     spikes_by_gid[gid].extend(spike_offset + t for t in relative_spikes)
             else:
                 relative_spikes = self._generate_spike_train_from_distribution(
-                    distribution,  # ty:ignore[invalid-argument-type]
+                    distribution,
                     self.duration,  # ty:ignore[invalid-argument-type]
                     rng=rng,
                 )
