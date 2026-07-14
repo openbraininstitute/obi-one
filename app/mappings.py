@@ -168,24 +168,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.mesh_lod_generation: TaskDefinition(
-        task_type=TaskType.mesh_lod_generation,
-        config_type=TaskConfigType.mesh_lod_generation__config,
-        activity_type=TaskActivityType.mesh_lod_generation__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "mesh_lod_generation.txt"),
-            capabilities=Capabilities(private_packages=True),
-        ),
-        resources=MachineResources(
-            cores=4,
-            memory=8,
-            timelimit="01:00",
-            compute_cell="local",
-        ),
-    ),
     TaskType.morphology_skeletonization: TaskDefinition(
         task_type=TaskType.morphology_skeletonization,
         config_type=TaskConfigType.skeletonization__config,

@@ -19,6 +19,9 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 # Max file size: 5 GB
 MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
 
+# Supported MESH file extensions
+VALID_MESH_EXTENSIONS = {".obj", ".glb"}
+
 
 class ValidationStatus(StrEnum):
     """Enumeration of possible validation outcomes."""
@@ -39,7 +42,7 @@ def _handle_empty_geometry(path: str) -> NoReturn:
 
 def _handle_mesh_load_error(error: Exception) -> NoReturn:
     """Helper to raise ValueError for mesh loading failures."""
-    msg = f"Failed to load OBJ file with PyVista: {error}"
+    msg = f"Failed to load MESH file with PyVista: {error}"
     raise ValueError(msg) from error
 
 
@@ -127,13 +130,14 @@ def _cleanup_temp_file(temp_path: str) -> None:
 
 
 def validate_mesh_file(
-    file: Annotated[UploadFile, File(description="MESH file to upload (.obj)")],
+    file: Annotated[UploadFile, File(description="MESH file to upload (.obj, .glb)")],
     background_tasks: BackgroundTasks,
 ) -> MESHValidationResponse:
-    """Validates an uploaded .obj file using pylmesh."""
+    """Validates an uploaded .obj or .glb file using pylmesh."""
     file_extension = pathlib.Path(file.filename).suffix.lower() if file.filename else ""
-    if file_extension != ".obj":
-        msg = "Invalid file extension. Must be .obj"
+    if file_extension not in VALID_MESH_EXTENSIONS:
+        valid_extensions = ", ".join(sorted(VALID_MESH_EXTENSIONS))
+        msg = f"Invalid file extension. Must be one of: {valid_extensions}"
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -157,7 +161,7 @@ def validate_mesh_file(
     temp_file_path = ""
 
     try:
-        temp_file_path = _save_upload_to_tempfile(file, suffix=".obj")
+        temp_file_path = _save_upload_to_tempfile(file, suffix=file_extension)
 
         if pathlib.Path(temp_file_path).stat().st_size == 0:
             _handle_empty_file(file)
@@ -205,7 +209,7 @@ def activate_test_mesh_endpoint(router: APIRouter) -> None:
     router.post(
         "/test-mesh-file",
         summary="Validate MESH file format for OBP.",
-        description="Validates an uploaded .obj file using pylmesh.",
+        description="Validates an uploaded .obj or .glb file using pylmesh.",
     )(validate_mesh_file)
 
 
