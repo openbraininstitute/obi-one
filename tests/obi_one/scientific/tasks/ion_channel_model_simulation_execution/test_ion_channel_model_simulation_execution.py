@@ -4,7 +4,9 @@ from uuid import UUID
 import pytest
 
 from obi_one.core.info import Info
-from obi_one.scientific.blocks.ion_channel_model import IonChannelModelWithConductance
+from obi_one.scientific.blocks.ion_channel_model.ion_channel_model import (
+    IonChannelModelWithConductance,
+)
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.library.simulation.schemas import SimulationParameters, SimulationResults
 from obi_one.scientific.tasks import ion_channel_model_simulation_execution as test_module
