@@ -1,5 +1,8 @@
 import os
+from pathlib import Path
 
+import h5py
+import numpy as np
 import pandas  # NOQA: ICN001
 import voxcell
 from entitysdk import Client
@@ -78,3 +81,18 @@ def write_nodes(
 ) -> None:
     cell_collection.population_name = population_name
     cell_collection.save_sonata(fn_out, mode=write_mode)
+
+
+def write_virtual_nodes(fn_out: os.PathLike, population_name: str, count: int) -> None:
+    """Write a property-free SONATA virtual node population."""
+    if count <= 0:
+        msg = f"Virtual node count must be positive, got {count}."
+        raise ValueError(msg)
+    path = Path(fn_out)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with h5py.File(path, "w") as h5:
+        population = h5.create_group(f"nodes/{population_name}")
+        population.create_dataset("node_type_id", data=-np.ones(count, dtype=np.int64))
+        population.create_dataset("node_group_id", data=np.zeros(count, dtype=np.int64))
+        population.create_dataset("node_group_index", data=np.arange(count, dtype=np.uint64))
+        population.create_group("0")
