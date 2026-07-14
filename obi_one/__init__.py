@@ -42,6 +42,7 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
+    "BuildSynaptomeResult",
     "BuildSynaptomeScanConfig",
     "BuildSynaptomeSingleConfig",
     "CellMorphologyFromID",
@@ -238,6 +239,7 @@ __all__ = [
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
+    "build_synaptome",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
     "get_configs_task_type",
@@ -450,8 +452,10 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsTask,
 )
 from obi_one.scientific.tasks.build_synaptome import (
+    BuildSynaptomeResult,
     BuildSynaptomeScanConfig,
     BuildSynaptomeSingleConfig,
+    build_synaptome,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,
