@@ -6,7 +6,7 @@ TaskResult from Workflow A, runs validation, plots, and final export.
 
 from typing import Any
 
-from pydantic import Field, NonNegativeInt
+from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
@@ -45,11 +45,13 @@ class ExportAndValidationInitialize(Block):
     species: str = Field(
         default="rat",
         title="Species",
+        description="Species for the model (e.g. ``rat``, ``mouse``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     brain_region: str = Field(
         default="SSCX",
         title="Brain region",
+        description="Brain region for the model (e.g. ``SSCX``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     etype: str = Field(
@@ -67,11 +69,13 @@ class ExportAndValidationInitialize(Block):
     use_multiprocessing: bool = Field(
         default=False,
         title="Use multiprocessing",
+        description="If True, use multiprocessing for parallel execution.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     use_ipyparallel: bool = Field(
         default=False,
         title="Use ipyparallel",
+        description="If True, use ipyparallel for parallel execution.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
 
@@ -94,15 +98,16 @@ class ExportAndValidationSettings(Block):
     """Settings controlling validation, plotting, and export."""
 
     # Validation settings
-    validation_protocols: tuple[str, ...] = Field(
-        default=("sAHP_220",),
+    validation_protocols: str = Field(
+        default="sAHP_220",
         title="Validation protocols",
         description=(
-            "Protocols held out from optimisation, used to validate the optimised models."
+            "Comma-separated protocol names held out from optimisation,"
+            " used to validate the optimised models."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    validation_threshold: float = Field(
+    validation_threshold: float | list[float] = Field(
         default=5.0,
         title="Validation threshold",
         description="Z-score threshold below which a model is considered validated.",
@@ -154,16 +159,18 @@ class ExportAndValidationSettings(Block):
         description="Forward as ``only_best`` to the export functions.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-    seeds: tuple[NonNegativeInt, ...] = Field(
-        default=(1,),
+    seeds: str = Field(
+        default="1",
         title="Seeds",
-        description="Seeds to export. Must be a subset of the seeds optimised.",
+        description="Comma-separated seeds to export. Must be a subset of the seeds optimised.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
     def to_dict(self, currentscape: CurrentscapeConfig) -> dict[str, Any]:
         return {
-            "validation_protocols": list(self.validation_protocols),
+            "validation_protocols": [
+                p.strip() for p in self.validation_protocols.split(",") if p.strip()
+            ],
             "validation_threshold": self.validation_threshold,
             "plot_currentscape": self.plot_currentscape,
             "save_recordings": self.save_recordings,

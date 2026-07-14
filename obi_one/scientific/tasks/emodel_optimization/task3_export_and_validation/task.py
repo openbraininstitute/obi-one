@@ -101,7 +101,7 @@ class EModelExportAndValidationTask(Task):
                 mapper = map
 
             # Store optimisation results (reads checkpoints → final.json)
-            seeds = list(settings.seeds)
+            seeds = [int(s.strip()) for s in settings.seeds.split(",") if s.strip()]
             for seed in seeds:
                 store_best_model(access_point=access_point, seed=seed)
 
@@ -331,7 +331,9 @@ class EModelExportAndValidationTask(Task):
         # Upload validation details
         details = {
             "validation_threshold": settings.validation_threshold,
-            "validation_protocols": list(settings.validation_protocols),
+            "validation_protocols": [
+                p.strip() for p in settings.validation_protocols.split(",") if p.strip()
+            ],
         }
         db_client.upload_content(
             entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
@@ -404,7 +406,10 @@ class EModelExportAndValidationTask(Task):
 
         # Determine validation status
         validation_status = ValidationStatus.done
-        if score > settings.validation_threshold:
+        threshold = settings.validation_threshold
+        if isinstance(threshold, list):
+            threshold = threshold[0] if threshold else 0.0
+        if score > threshold:
             validation_status = ValidationStatus.error
 
         # Register calibration result
