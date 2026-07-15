@@ -198,21 +198,6 @@ def test_materialization_requires_locations_neuron_set():
         )
 
 
-def test_morphology_target_must_be_materialized_before_export():
-    locations = obi.RandomMorphologyLocations()
-    locations.set_block_name("locations")
-    locations_ref = MorphologyLocationsReference(
-        block_dict_name="morphology_locations",
-        block_name="locations",
-    )
-    locations_ref.block = locations
-    stimulus = obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations_ref)
-    stimulus.set_block_name("stimulus")
-
-    with pytest.raises(TypeError, match="must be materialized"):
-        stimulus.config()
-
-
 def test_continuous_stimulus_without_target_uses_default_node_set():
     stimulus = obi.ConstantCurrentClampSomaticStimulus()
     stimulus.set_block_name("stimulus")

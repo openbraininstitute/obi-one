@@ -136,13 +136,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     )
 
     def _target_entry(self) -> dict[str, Any]:
-        if isinstance(self.neuron_set, MorphologyLocationsReference):
-            msg = (
-                "A stimulus MorphologyLocations target must be materialized to a CompartmentSet "
-                "before SONATA export. This is normally done by GenerateSimulationTask."
-            )
-            raise TypeError(msg)
-
         if isinstance(self.neuron_set, CompartmentSetReference):
             return {"compartment_set": resolve_compartment_set_ref_to_name(self.neuron_set)}
 
