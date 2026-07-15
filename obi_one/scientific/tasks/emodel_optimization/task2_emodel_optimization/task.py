@@ -7,7 +7,6 @@ optimisation settings into the recipe, and runs the full pipeline.
 
 import json
 import logging
-import shutil
 from pathlib import Path
 from typing import ClassVar
 
@@ -66,8 +65,6 @@ class EModelOptimizationTask(Task):
             setup_and_run_optimisation,
             store_best_model,
         )
-        from bluepyemodel.tools.multiprocessing import get_mapper  # noqa: PLC0415
-
         init = self.config.initialize
         coord_root = Path(self.config.coordinate_output_root).resolve()
         emodel = init.emodel
@@ -89,6 +86,9 @@ class EModelOptimizationTask(Task):
         self._stage_traces(extraction_tr, coord_root, db_client)
 
         # --- 5. Merge recipe ---
+        # Rename extraction key ("emodel") to the user-specified emodel name
+        if "emodel" in base_recipes and emodel != "emodel":
+            base_recipes[emodel] = base_recipes.pop("emodel")
         recipes = base_recipes
         recipes.setdefault(emodel, {})
         recipes[emodel]["morph_path"] = "./morphologies/"
@@ -123,21 +123,14 @@ class EModelOptimizationTask(Task):
                 ttype=None,
                 species=init.species,
                 brain_region=init.brain_region,
-                iteration_tag=init.iteration_tag,
+                iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
 
-            # Determine mapper backend
-            if init.use_ipyparallel:
-                mapper = get_mapper(backend="ipyparallel")
-            elif init.use_multiprocessing:
-                mapper = get_mapper(backend="multiprocessing")
-            else:
-                mapper = map
+            mapper = map
 
             # Optimise
-            raw_seeds = self.config.optimization_settings.seeds
-            seeds = raw_seeds if isinstance(raw_seeds, list) else [raw_seeds]
+            seeds = [self.config.optimization_settings.seed]
             for seed in seeds:
                 setup_and_run_optimisation(
                     access_point,
@@ -179,20 +172,18 @@ class EModelOptimizationTask(Task):
                 save_recordings=pp_settings.save_recordings,
             )
 
-            # Export
-            if self.config.optimization_settings.export_hoc:
-                export_emodels_hoc(
-                    access_point=access_point,
-                    only_best=self.config.optimization_settings.only_best,
-                    seeds=seeds,
-                )
-            if self.config.optimization_settings.export_sonata:
-                export_emodels_sonata(
-                    access_point=access_point,
-                    only_best=self.config.optimization_settings.only_best,
-                    seeds=seeds,
-                    map_function=mapper,
-                )
+            # Export (always — spec says optimisation stage always exports)
+            export_emodels_hoc(
+                access_point=access_point,
+                only_best=False,
+                seeds=seeds,
+            )
+            export_emodels_sonata(
+                access_point=access_point,
+                only_best=False,
+                seeds=seeds,
+                map_function=mapper,
+            )
 
         # --- 8. Register output entities ---
         if db_client is not None:
@@ -305,27 +296,14 @@ class EModelOptimizationTask(Task):
         params_filename = "params.json"
         params_path = params_dir / params_filename
 
-        # Params-file mode: validate and copy the provided file
+        # Params-file mode: validate and write the embedded content
         if self.config.use_params_file:
-            src_path = Path(self.config.params_file.params_file_path)
-            if not src_path.exists():
-                msg = f"Params file not found: {src_path}"
-                raise FileNotFoundError(msg)
-            with src_path.open(encoding="utf-8") as f:
-                params_data = json.load(f)
+            params_data = self.config.params_file.params_content
             validate_params_file(params_data)
-            shutil.copy2(src_path, params_path)
-            L.info("Staged validated params file from: %s", src_path)
-
-            # Also stage mechanisms dir if provided
-            if self.config.params_file.mechanisms_dir_path:
-                mech_src = Path(self.config.params_file.mechanisms_dir_path)
-                if mech_src.is_dir():
-                    mech_dst = coord_root / "mechanisms"
-                    mech_dst.mkdir(parents=True, exist_ok=True)
-                    for mod_file in mech_src.glob("*.mod"):
-                        shutil.copy2(mod_file, mech_dst / mod_file.name)
-                    L.info("Staged mechanisms from: %s", mech_src)
+            params_path.write_text(
+                json.dumps(params_data, indent=4), encoding="utf-8"
+            )
+            L.info("Staged validated params file from embedded content.")
             return params_filename
 
         # Dynamic builder mode: TODO — build from ion channel models
@@ -536,8 +514,7 @@ class EModelOptimizationTask(Task):
         # --- Register draft EModel ---
         # Read score and seed from final.json (written by store_best_model)
         score = 0.0
-        seeds = self.config.optimization_settings.seeds
-        first_seed = int(seeds[0]) if isinstance(seeds, list) else int(seeds)
+        first_seed = int(self.config.optimization_settings.seed)
         final_path = coord_root / "final.json"
         if final_path.exists():
             with final_path.open(encoding="utf-8") as f:
@@ -558,7 +535,7 @@ class EModelOptimizationTask(Task):
             EModel(
                 species=species_entity,  # ty:ignore[invalid-argument-type]
                 brain_region=brain_region_entity,  # ty:ignore[invalid-argument-type]
-                iteration=init.iteration_tag or "0",
+                iteration="0",
                 score=score,
                 seed=first_seed,
                 exemplar_morphology=morph_entity,  # ty:ignore[invalid-argument-type]

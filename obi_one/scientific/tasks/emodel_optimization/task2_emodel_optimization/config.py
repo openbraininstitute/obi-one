@@ -88,8 +88,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     @property
     def use_params_file(self) -> bool:
-        """True if params-file mode is active (params_file_path is set)."""
-        return bool(self.params_file.params_file_path)
+        """True if params-file mode is active (params_content is set)."""
+        return bool(self.params_file.params_content)
 
     initialize: OptimizationInitialize = Field(
         title="Initialize",
