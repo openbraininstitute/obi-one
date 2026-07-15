@@ -256,11 +256,7 @@ def _build_extraction_recipes(
         "threshold_efeature_std": settings.threshold_efeature_std or None,
         "minimum_protocol_delay": settings.minimum_protocol_delay,
         "validation_protocols": sorted(
-            set(
-                p.strip()
-                for p in settings.validation_protocols.split(",")
-                if p.strip()
-            )
+            {p.strip() for p in settings.validation_protocols.split(",") if p.strip()}
             | set(validation_protocol_names or [])
         ),
     }
