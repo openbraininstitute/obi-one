@@ -1,0 +1,33 @@
+{
+  "params": {
+    "model": [
+      "dv/dt = (I_inj * R_membrane - v) / tau : volt",
+      "I_inj            : amp",
+      "rfc              : second"
+    ],
+    "method": "linear",
+    "threshold": "v > 1*volt",
+    "reset": "v = 0*volt",
+    "refractory": "rfc"
+  },
+  "namespace": {
+    "R_membrane": [
+      1,
+      "ohm"
+    ],
+    "tau": [
+      5.0,
+      "ms"
+    ]
+  },
+  "initial": {
+    "rfc": [
+      0.0,
+      "ms"
+    ],
+    "v": [
+      0.5,
+      "volt"
+    ]
+  }
+}

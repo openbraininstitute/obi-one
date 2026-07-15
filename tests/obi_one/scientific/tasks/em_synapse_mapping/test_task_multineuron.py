@@ -361,5 +361,5 @@ class TestEMSynapseMappingTask:
         assert set(sonata_kwargs["edge_populations"]) == {"my_physical_edges", "my_virtual_edges"}
 
         # node_sets.json references the custom biophysical population.
-        node_sets = json.loads((tmp_path / "out" / "node_sets.json").read_text())
+        node_sets = json.loads((tmp_path / "out" / "SONATA" / "node_sets.json").read_text())
         assert node_sets["All"]["population"] == "my_bio_nodes"

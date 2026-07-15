@@ -76,6 +76,19 @@ def _asset_json():
     }
 
 
+def _derivation_handler(used: dict, generated: dict):
+    """Return httpx callback that echoes derivation payload with nested entities."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status_code=200,
+            json=json.loads(request.content)
+            | {"id": str(uuid4()), "used": used, "generated": generated},
+        )
+
+    return handler
+
+
 @pytest.fixture
 def species():
     return Species(name="Mus musculus", taxonomy_id="NCBITaxon:10090")
@@ -121,6 +134,7 @@ def agent():
 def em_dataset_no_slicing():
     """EM dataset without slicing_thickness (protocol branch skipped)."""
     return EMDenseReconstructionDataset(
+        id=uuid4(),
         name="test-dataset",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
@@ -135,6 +149,7 @@ def em_dataset_no_slicing():
 def em_dataset_with_slicing():
     """EM dataset with slicing_thickness (protocol branch used)."""
     return EMDenseReconstructionDataset(
+        id=uuid4(),
         name="test-dataset",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
@@ -387,6 +402,18 @@ def test_register_output_resource_creates_protocol_when_missing(
         url=f"{API_URL}/contribution",
         method="POST",
     )
+    httpx_mock.add_callback(
+        _derivation_handler(
+            used=_serialize(metadata_with_protocol.em_dense_reconstruction_dataset),
+            generated={
+                "id": str(morphology_id),
+                "name": metadata_with_protocol.cell_morphology_name,
+                "type": "cell_morphology",
+            },
+        ),
+        url=f"{API_URL}/derivation",
+        method="POST",
+    )
     for _ in range(4):
         httpx_mock.add_response(
             url=f"{API_URL}/cell-morphology/{morphology_id}/assets",
@@ -452,6 +479,18 @@ def test_register_output_resource_reuses_existing_protocol(
             | {"id": str(uuid4()), "role": role_json, "agent": agent_json},
         ),
         url=f"{API_URL}/contribution",
+        method="POST",
+    )
+    httpx_mock.add_callback(
+        _derivation_handler(
+            used=_serialize(metadata_with_protocol.em_dense_reconstruction_dataset),
+            generated={
+                "id": str(morphology_id),
+                "name": metadata_with_protocol.cell_morphology_name,
+                "type": "cell_morphology",
+            },
+        ),
+        url=f"{API_URL}/derivation",
         method="POST",
     )
     for _ in range(4):

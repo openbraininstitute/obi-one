@@ -41,24 +41,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.morphology_skeletonization: TaskDefinition(
-        task_type=TaskType.morphology_skeletonization,
-        config_type=TaskConfigType.skeletonization__config,
-        activity_type=TaskActivityType.skeletonization__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
-            capabilities=Capabilities(private_packages=True),
-        ),
-        resources=MachineResources(
-            cores=16,
-            memory=32,
-            timelimit="02:00",
-            compute_cell="local",
-        ),
-    ),
     TaskType.circuit_simulation: TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,
@@ -69,7 +51,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location="https://github.com/openbraininstitute-partners/inait",
-            ref="commit:55428c970249d37d4d0f22f69a81ab07987dfa33",
+            ref="commit:62a6257b91872483ee6ffd6d5f61ba8642ffe67f",
             path="scripts/simulate-circuits/run.py",
             dependencies="scripts/simulate-circuits/requirements.txt",
             staged_directories=["wheels", "scripts/simulate-circuits/"],
@@ -131,23 +113,6 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
-        task_type=TaskType.ion_channel_model_simulation_execution,
-        config_type=models.Simulation,
-        activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
-        resources=MachineResources(
-            cores=1,
-            memory=2,
-            timelimit="00:10",
-            compute_cell="local",
-        ),
-    ),
     TaskType.em_synapse_mapping: TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
         config_type=TaskConfigType.em_synapse_mapping__config,
@@ -184,6 +149,41 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             timelimit="02:00",
             compute_cell="local",
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
+        task_type=TaskType.ion_channel_model_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=2,
+            timelimit="00:10",
+            compute_cell="local",
+        ),
+    ),
+    TaskType.morphology_skeletonization: TaskDefinition(
+        task_type=TaskType.morphology_skeletonization,
+        config_type=TaskConfigType.skeletonization__config,
+        activity_type=TaskActivityType.skeletonization__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
+            capabilities=Capabilities(private_packages=True),
+        ),
+        resources=MachineResources(
+            cores=16,
+            memory=32,
+            timelimit="02:00",
+            compute_cell="local",
         ),
     ),
 }  # ty:ignore[invalid-assignment]

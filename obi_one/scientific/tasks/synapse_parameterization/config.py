@@ -10,13 +10,16 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+)
+from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NEURONSynapseParameterizationNeuronSetUnion,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    SynapseParameterizationNeuronSetUnion,
 )
 from obi_one.scientific.unions.unions_synaptic_model_assigner import (
     SynapticModelAssignerReference,
@@ -55,6 +58,9 @@ class SynapseParameterizationScanConfig(ScanConfig):
             BlockGroup.SYNAPSE_PARAMETERS,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+        },
     }
 
     class Initialize(Block):
@@ -90,7 +96,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Parameterizations...",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticModelAssignerReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelAssignerReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Parameterization",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 0,
@@ -102,7 +108,7 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Synaptic models for synapse parameterization.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Model",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 1,
@@ -114,19 +120,19 @@ class SynapseParameterizationScanConfig(ScanConfig):
         description="Distributions for synapse parameterization.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 2,
         },
     )
 
-    neuron_sets: dict[str, SynapseParameterizationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSynapseParameterizationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
