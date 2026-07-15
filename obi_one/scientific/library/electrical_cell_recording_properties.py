@@ -10,6 +10,7 @@ import logging
 import tempfile
 from pathlib import Path
 
+import entitysdk.client
 import h5py
 import numpy as np
 from scipy.ndimage import median_filter
@@ -49,7 +50,7 @@ def read_protocols_from_nwb(nwb_path: Path) -> list[str]:
 
 def get_recording_protocols(
     recording_ids: list[str],
-    db_client: object,
+    db_client: entitysdk.client.Client,
 ) -> dict[str, list[str]]:
     """Return ``{recording_id: [protocol_name, ...]}`` for each recording.
 
