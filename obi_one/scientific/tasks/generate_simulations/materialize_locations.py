@@ -9,7 +9,7 @@ from obi_one.scientific.blocks.compartment_sets import (
 )
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetReference
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 
 
 def materialize_locations_to_compartment_sets(

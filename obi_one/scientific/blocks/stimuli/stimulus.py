@@ -31,7 +31,7 @@ from obi_one.scientific.unions.unions_compartment_sets import (
     CompartmentSetReference,
     resolve_compartment_set_ref_to_name,
 )
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,

@@ -1,7 +1,8 @@
-from typing import Annotated
+from typing import Annotated, Any, ClassVar
 
 from pydantic import Discriminator
 
+from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
@@ -24,4 +25,12 @@ MorphologyLocationUnion = Annotated[
     | RandomMorphologyLocations,
     Discriminator("type"),
 ]
-__all__ = ["MorphologyLocationUnion"]
+
+
+class MorphologyLocationsReference(BlockReference):
+    """Reference to a block that generates morphology locations."""
+
+    allowed_block_types: ClassVar[Any] = MorphologyLocationUnion
+
+
+__all__ = ["MorphologyLocationUnion", "MorphologyLocationsReference"]

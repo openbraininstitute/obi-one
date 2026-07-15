@@ -22,7 +22,7 @@ from obi_one.scientific.unions.unions_compartment_sets import (
     CompartmentSetReference,
     resolve_compartment_set_ref_to_name,
 )
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 
 
 def test_compartment_set_sorts_deduplicates_and_builds_from_locations():

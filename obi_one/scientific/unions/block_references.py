@@ -13,7 +13,7 @@ from obi_one.scientific.unions.unions_extracellular_locations import (
     ExtracellularLocationsReference,
 )
 from obi_one.scientific.unions.unions_manipulations import SynapticManipulationsReference
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,

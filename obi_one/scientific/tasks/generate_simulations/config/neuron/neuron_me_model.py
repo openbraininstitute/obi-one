@@ -14,7 +14,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_morphology_locations_ref import MorphologyLocationsReference
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
