@@ -148,6 +148,7 @@ __all__ = [
     "MorphologyMetricsScanConfig",
     "MorphologyMetricsSingleConfig",
     "MorphologyMetricsTask",
+    "MultiPopulationPredefinedNeuronSet",
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
@@ -322,6 +323,7 @@ from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
     InhibitoryNeurons,
+    PredefinedNeuronSet,
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
@@ -338,8 +340,8 @@ from obi_one.scientific.blocks.neuron_sets.population import (
 )
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
+    MultiPopulationPredefinedNeuronSet,
     PointPopulationPredefinedNeuronSet,
-    PredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets.property import (

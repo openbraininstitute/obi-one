@@ -70,11 +70,15 @@ class PredefinedBaseNeuronSet(NeuronSet, abc.ABC):
         return node_populations
 
 
-class PredefinedNeuronSet(PredefinedBaseNeuronSet):
+class MultiPopulationPredefinedNeuronSet(PredefinedBaseNeuronSet):
     """Use an existing node set already defined in the circuit's node sets file.
 
     The node set may span multiple populations, as defined in the circuit's
     node set definition.
+
+    Note: the name ``PredefinedNeuronSet`` now belongs to the deprecated block of that name
+    (see ``neuron_sets.deprecated``), which is kept so that configs written before the
+    population-typed taxonomy still deserialize.
     """
 
     title: ClassVar[str] = (

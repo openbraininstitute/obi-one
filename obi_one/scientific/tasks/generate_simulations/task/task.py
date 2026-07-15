@@ -364,8 +364,8 @@ class GenerateSimulationTask(Task):
                         f"'{self.config.initialize.node_set.block_name}' is virtual. "
                         "Please use a non-virtual (biophysical or point) Neuron Set type. "
                         f"Available non-virtual populations: {non_virtual_list}. "
-                        f"You may be able to reference one through a "
-                        f"PredefinedNeuronSet block type. "
+                        f"You may be able to reference one through an "
+                        f"MultiPopulationPredefinedNeuronSet block type. "
                         "In future we will support population selection for any neuron set."
                     )
                     raise OBIONEError(msg)
@@ -387,7 +387,7 @@ class GenerateSimulationTask(Task):
         In the case where there is no neuron_sets dictionary in the config, the config's
         default_neuron_set_type is created and added to the SONATA circuit object.
         The neuron_sets dict key is always used as the name of the new node set, even for a
-        PredefinedNeuronSet, in which case a new node set is created which references the
+        predefined neuron set, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
         """
