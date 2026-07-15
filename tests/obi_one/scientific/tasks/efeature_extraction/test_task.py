@@ -3,6 +3,15 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+try:
+    import bluepyemodel  # noqa: F401
+
+    _has_bluepyemodel = True
+except ImportError:
+    _has_bluepyemodel = False
+
 from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (
     Settings,
 )
@@ -167,6 +176,7 @@ class TestBuildFiguresManifest:
 class TestAutoselect:
     """Test that autoselect mode invokes get_auto_target_from_presets."""
 
+    @pytest.mark.skipif(not _has_bluepyemodel, reason="bluepyemodel not installed")
     def test_autoselect_calls_auto_targets(self):
         """When autoselect=True, _build_targets_configuration should use auto_targets."""
         from obi_one.scientific.from_id.electrical_cell_recording_from_id import (  # noqa: PLC0415

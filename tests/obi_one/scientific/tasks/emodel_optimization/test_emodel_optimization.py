@@ -7,6 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from entitysdk.types import TaskActivityType, TaskConfigType
 
+try:
+    import bluepyemodel  # noqa: F401
+
+    _has_bluepyemodel = True
+except ImportError:
+    _has_bluepyemodel = False
+
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
@@ -276,6 +283,7 @@ class TestOptimizationSettingsToDict:
 # ─── Step 5: Merged task calls correct pipeline methods (no validation) ────
 
 
+@pytest.mark.skipif(not _has_bluepyemodel, reason="bluepyemodel not installed")
 class TestOptimizationTaskPipelineCalls:
     def test_optimise_called(self, opt_scan_config):
         """Verify that execute() calls setup_and_run_optimisation() but NOT validate()."""
@@ -411,6 +419,7 @@ class TestOptimizationTaskPipelineCalls:
 # ─── Step 6: Export+validation task calls validation() + export ────────────
 
 
+@pytest.mark.skipif(not _has_bluepyemodel, reason="bluepyemodel not installed")
 class TestExportAndValidationTaskPipelineCalls:
     def test_validation_called(self, export_val_scan_config):
         dump = export_val_scan_config.model_dump()
