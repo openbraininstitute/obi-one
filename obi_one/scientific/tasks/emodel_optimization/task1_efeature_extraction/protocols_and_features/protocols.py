@@ -146,6 +146,19 @@ class Protocol(OBIBaseModel):
     )
 
     # ------------------------------------------------------------------
+    # Validation hold-out (per-protocol)
+    # ------------------------------------------------------------------
+    validation: bool = Field(
+        default=False,
+        title="Validation protocol",
+        description=(
+            "If True, this protocol's features are extracted but marked as"
+            " validation-only in the output JSON so the optimiser excludes them."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+
+    # ------------------------------------------------------------------
     # Custom eFEL settings (picker)
     # ------------------------------------------------------------------
     custom_efel_settings: dict[str, float | bool] = Field(
