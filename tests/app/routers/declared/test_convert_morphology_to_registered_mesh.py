@@ -73,13 +73,11 @@ def test_register_morphology_mesh_success(client, mock_db_client, mock_morpholog
 
     with (
         patch(f"{TARGET_MODULE}.HAS_MESHING", new=True),
-        patch(f"{TARGET_MODULE}._mesh_swc", return_value="fake_path.glb"),
-        patch(f"{TARGET_MODULE}.Path") as mock_path,
+        patch(
+            f"{TARGET_MODULE}.mesh_and_upload",
+            MagicMock(return_value=uploaded_asset),
+        ),
     ):
-        instance = mock_path.return_value
-        instance.exists.return_value = True
-        instance.stat.return_value.st_size = 1024
-
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.OK
@@ -149,13 +147,11 @@ def test_register_morphology_mesh_upload_fails(client, mock_db_client, mock_morp
 
     with (
         patch(f"{TARGET_MODULE}.HAS_MESHING", new=True),
-        patch(f"{TARGET_MODULE}._mesh_swc", return_value="fake_path.glb"),
-        patch(f"{TARGET_MODULE}.Path") as mock_path,
+        patch(
+            f"{TARGET_MODULE}.mesh_and_upload",
+            MagicMock(side_effect=entitysdk.exception.EntitySDKError("upload error")),
+        ),
     ):
-        instance = mock_path.return_value
-        instance.exists.return_value = True
-        instance.stat.return_value.st_size = 1024
-
         response = _make_response(client, cell_id)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR

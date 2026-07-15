@@ -80,7 +80,7 @@ def _create_nodes(
             L.warning("After adding annotations, lost %d cells", len(df_comp) - len(nodes))
 
         # Prefer soma; use "anchor" (pos_*); if neither exist, put at origin
-        for axis in ("x", "y", "z"):
+        for axis in "xyz":
             pos = nodes[f"pos_{axis}"].fillna(0.)
             nodes[axis] = nodes[f"soma_{axis}"].fillna(pos)
 
@@ -88,6 +88,10 @@ def _create_nodes(
         nodes["x"] = nodes["x"].to_numpy(dtype=np.float32) * 4 / 1000
         nodes["y"] = nodes["y"].to_numpy(dtype=np.float32) * 4 / 1000
         nodes["z"] = nodes["z"].to_numpy(dtype=np.float32) * 40 / 1000
+
+        for axis in "xyz":
+            mask = nodes[axis] < nodes[axis].mean() + 4 * nodes[axis].std()
+            nodes[axis] = nodes[axis].where(mask, 0.)
 
         nodes = nodes.drop(columns=[
             "root_id",
@@ -334,7 +338,7 @@ if __name__ == "__main__":
             720575940640649691,
         ]
 
-    if False:  # 630
+    if True:  # 630
         output = Path("output-630")
         output.mkdir(exist_ok=True)
         PATH_COMP = DROSOPHILA_REPO / "2023_03_23_completeness_630_final.csv"

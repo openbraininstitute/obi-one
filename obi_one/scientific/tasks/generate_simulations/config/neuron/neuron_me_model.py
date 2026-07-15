@@ -64,7 +64,7 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
         description="Stimuli for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [StimulusReference.__name__],
             SchemaKey.SINGULAR_NAME: "Stimulus",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
@@ -77,7 +77,7 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronalManipulationReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [NeuronalManipulationReference.__name__],
             SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 0,

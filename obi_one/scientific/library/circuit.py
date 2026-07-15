@@ -5,6 +5,11 @@ import numpy as np
 from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.scientific.library.circuit_metrics import (
+    TYPES_OF_BIOPHYS_NODES,
+    TYPES_OF_POINT_NODES,
+    TYPES_OF_VIRTUAL_NODES,
+)
 
 CIRCUIT_MOD_DIR = "mod"
 
@@ -67,15 +72,26 @@ class Circuit(OBIBaseModel):
 
     @staticmethod
     def get_node_population_names(
-        c: snap.Circuit, *, incl_virtual: bool = True, incl_point: bool = True
+        c: snap.Circuit,
+        *,
+        incl_virtual: bool = True,
+        incl_point: bool = True,
+        incl_biophysical: bool = True,
     ) -> list:
         """Returns node population names."""
         popul_names = c.nodes.population_names
         if not incl_virtual:
-            popul_names = [pop for pop in popul_names if c.nodes[pop].type != "virtual"]
+            popul_names = [
+                pop for pop in popul_names if c.nodes[pop].type not in TYPES_OF_VIRTUAL_NODES
+            ]
         if not incl_point:
-            # Exclude "point_neuron", "point_process", etc. types
-            popul_names = [pop for pop in popul_names if "point_" not in c.nodes[pop].type]
+            popul_names = [
+                pop for pop in popul_names if c.nodes[pop].type not in TYPES_OF_POINT_NODES
+            ]
+        if not incl_biophysical:
+            popul_names = [
+                pop for pop in popul_names if c.nodes[pop].type not in TYPES_OF_BIOPHYS_NODES
+            ]
         return popul_names
 
     @staticmethod
@@ -99,24 +115,36 @@ class Circuit(OBIBaseModel):
 
     @staticmethod
     def get_edge_population_names(
-        c: snap.Circuit, *, incl_virtual: bool = True, incl_point: bool = True
+        c: snap.Circuit,
+        *,
+        incl_virtual: bool = True,
+        incl_point: bool = True,
+        incl_biophysical: bool = True,
     ) -> list:
         """Returns edge population names."""
         popul_names = c.edges.population_names
         if not incl_virtual:
-            popul_names = [pop for pop in popul_names if c.edges[pop].source.type != "virtual"]
+            popul_names = [
+                pop for pop in popul_names if c.edges[pop].source.type not in TYPES_OF_VIRTUAL_NODES
+            ]
         if not incl_point:
-            # Exclude "point_neuron", "point_process", etc. source/target types
             popul_names = [
                 pop
                 for pop in popul_names
-                if "point_" not in c.edges[pop].source.type
-                and "point_" not in c.edges[pop].target.type
+                if c.edges[pop].source.type not in TYPES_OF_POINT_NODES
+                and c.edges[pop].target.type not in TYPES_OF_POINT_NODES
+            ]
+        if not incl_biophysical:
+            popul_names = [
+                pop
+                for pop in popul_names
+                if c.edges[pop].source.type not in TYPES_OF_BIOPHYS_NODES
+                and c.edges[pop].target.type not in TYPES_OF_BIOPHYS_NODES
             ]
         return popul_names
 
     @staticmethod
-    def _default_edge_population_name(c: snap.Circuit) -> str:
+    def _default_edge_population_name(c: snap.Circuit) -> str | None:
         """Returns the default edge population name of a SONATA circuit c."""
         try:
             default_npop = Circuit._default_population_name(c)
@@ -133,14 +161,19 @@ class Circuit(OBIBaseModel):
             and c.edges[epop].target.name == default_npop
         ]
         if len(intrinsic_epops) == 0:
-            return None  # ty:ignore[invalid-return-type]
+            return None
         if len(intrinsic_epops) > 1:
-            msg = "Default edge population unknown!"
-            raise ValueError(msg)
-        return intrinsic_epops[0]
+            # Try to infer from population name
+            intrinsic_epops = [
+                pop for pop in intrinsic_epops if pop.startswith(f"{default_npop}__{default_npop}")
+            ]
+        if len(intrinsic_epops) == 1:
+            return intrinsic_epops[0]
+        msg = "Default edge population unknown!"
+        raise ValueError(msg)
 
     @property
-    def default_edge_population_name(self) -> str:
+    def default_edge_population_name(self) -> str | None:
         """Returns the default edge population name."""
         return self._default_edge_population_name(self.sonata_circuit)
 

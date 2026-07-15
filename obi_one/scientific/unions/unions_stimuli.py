@@ -74,6 +74,18 @@ _FIELD_STIMULI = (
     SpatiallyUniformElectricFieldStimulus | TemporallyCosineSpatiallyUniformElectricFieldStimulus
 )
 
+_SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
+
+_BRIAN2_STIMULI = Brian2DirectPoissonStimulus
+
+_LE_ABSOLUTE_INJECTION_STIMULI = (
+    ConstantCurrentClampSomaticStimulus
+    | RelativeConstantCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SinusoidalCurrentClampSomaticStimulus
+    | SubthresholdCurrentClampSomaticStimulus
+)
+
 StimulusUnion = Annotated[
     _INJECTION_STIMULI | _SPIKE_STIMULI,
     Discriminator("type"),
@@ -90,27 +102,15 @@ MEModelStimulusUnion = Annotated[
 ]
 
 IonChannelModelStimulusUnion = Annotated[
-    SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus | _ABSOLUTE_INJECTION_STIMULI,
+    _SE_CLAMP_STIMULI | _ABSOLUTE_INJECTION_STIMULI,
     Discriminator("type"),
 ]
-
-"""Brian2-specific stimulus types."""
 
 Brian2CircuitStimulusUnion = Annotated[
-    Brian2DirectPoissonStimulus,
+    _BRIAN2_STIMULI,
     Discriminator("type"),
 ]
 
-
-"""Learning Engine-specific stimulus types."""
-
-_LE_ABSOLUTE_INJECTION_STIMULI = (
-    ConstantCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
-)
 
 LearningEngineCircuitStimulusUnion = Annotated[
     _LE_ABSOLUTE_INJECTION_STIMULI,
@@ -118,7 +118,21 @@ LearningEngineCircuitStimulusUnion = Annotated[
 ]
 
 
+_ALL_STIMULI = (
+    _INJECTION_STIMULI
+    | _SPIKE_STIMULI
+    | _FIELD_STIMULI
+    | _SE_CLAMP_STIMULI
+    | _LE_ABSOLUTE_INJECTION_STIMULI
+    | _BRIAN2_STIMULI
+)
+
+
 class StimulusReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
     allowed_block_types: ClassVar[Any] = StimulusUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_ALL_STIMULI)
+    }

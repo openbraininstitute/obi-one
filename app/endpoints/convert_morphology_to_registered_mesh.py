@@ -2,6 +2,7 @@ import tempfile
 import uuid
 from http import HTTPStatus
 from pathlib import Path
+from typing import Any
 
 import entitysdk.client
 import entitysdk.exception
@@ -14,14 +15,18 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from obi_one.scientific.library.morphology_mesh import HAS_MESHING
 
-try:
-    from nmm.common import NEURON_COLORS  # ty:ignore[unresolved-import]
-    from nmm.morphology import NeuronMorphology  # ty:ignore[unresolved-import]
+if HAS_MESHING:
+    try:
+        from nmm.common import NEURON_COLORS
+        from nmm.morphology import NeuronMorphology
+    except ImportError:
+        HAS_MESHING = False
 
-    HAS_MESHING = True
-except ImportError:
-    HAS_MESHING = False
+if not HAS_MESHING:
+    NEURON_COLORS: Any = None
+    NeuronMorphology: Any = None
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -100,7 +105,7 @@ def _validate_mesh_output(glb_path: Path, glb_path_str: str) -> None:
         raise RuntimeError(msg)
 
 
-def mesh_and_register(
+def mesh_and_upload(
     db_client: entitysdk.client.Client,
     cell_morphology_id: uuid.UUID,
     swc_bytes: bytes,
@@ -199,7 +204,7 @@ def register_morphology_mesh(
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
-    asset = mesh_and_register(db_client, cell_morphology_id, swc_bytes)
+    asset = mesh_and_upload(db_client, cell_morphology_id, swc_bytes)
 
     L.info(f"register_morphology_mesh: done, asset id={asset.id}")
     return {"asset_id": str(asset.id), "status": "success"}

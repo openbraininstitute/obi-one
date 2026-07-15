@@ -11,6 +11,7 @@ from PIL import Image
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
+    copy_mod_files,
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
@@ -230,28 +231,26 @@ def test_run_validation_invalid_circuit():
         run_validation(circuit_path)
 
 
-def test_generate_overview_figure_fallback_template(tmp_path):
-    """Test that template is used when no plots directory is provided."""
+def test_generate_overview_figure_skipped_when_no_plots_dir(tmp_path):
+    """Test that None is returned when no plots directory is provided (skip overview)."""
     output_file = tmp_path / "overview.png"
 
     result = generate_overview_figure(basic_plots_dir=None, output_file=output_file)
 
-    assert result == output_file
-    assert output_file.exists()
-    assert output_file.stat().st_size > 0
+    assert result is None
+    assert not output_file.exists()
 
 
-def test_generate_overview_figure_fallback_when_no_circular_plot(tmp_path):
-    """Test that template is used when plots dir exists but has no circular plot."""
+def test_generate_overview_figure_skipped_when_no_circular_plot(tmp_path):
+    """Test that None is returned when plots dir exists but has no circular plot."""
     plots_dir = tmp_path / "plots"
     plots_dir.mkdir()
     output_file = tmp_path / "overview.png"
 
     result = generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
 
-    assert result == output_file
-    assert output_file.exists()
-    assert output_file.stat().st_size > 0
+    assert result is None
+    assert not output_file.exists()
 
 
 def test_generate_overview_figure_with_circular_plot(tmp_path):
@@ -293,14 +292,34 @@ def test_generate_overview_figure_with_circular_and_table(tmp_path):
 
 
 def test_generate_overview_figure_raises_if_output_exists(tmp_path):
-    """Test that error is raised when output file already exists."""
-    # Create a dummy output image
-    output_file = tmp_path / "overview.png"
+    """Test that error is raised when output file already exists and a figure is available."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    # Create a circular plot so the function proceeds past the early return
     img = Image.new("RGB", (123, 123), color="blue")
+    img.save(plots_dir / "small_network_in_2D_circular.png")
+
+    # Create a dummy output image that already exists
+    output_file = tmp_path / "overview.png"
     img.save(output_file)
 
     with pytest.raises(OBIONEError, match="already exists"):
-        generate_overview_figure(basic_plots_dir=None, output_file=output_file)
+        generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
+
+
+def test_generate_overview_figure_raises_on_extension_mismatch(tmp_path):
+    """Test that error is raised when output extension doesn't match figure extension."""
+    plots_dir = tmp_path / "plots"
+    plots_dir.mkdir()
+    # Create a circular plot (png)
+    img = Image.new("RGB", (123, 123), color="blue")
+    img.save(plots_dir / "small_network_in_2D_circular.png")
+
+    # Request a .jpg output — mismatch with .png source
+    output_file = tmp_path / "overview.jpg"
+
+    with pytest.raises(OBIONEError, match="does not match"):
+        generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
 
 
 def test_get_circuit_properties_small_circuit():
@@ -467,3 +486,94 @@ def test_register_circuit_from_metadata_forwards_scale_override():
         )
 
     assert mock_register.call_args.kwargs["scale_override"] == types.CircuitScale.whole_brain
+
+
+# --- copy_mod_files ---
+
+
+def _make_mock_circuit_with_mods(tmp_path, mod_files):
+    """Create source mod files and return mocked snap objects for copy_mod_files."""
+    source_dir = tmp_path / "source_mods"
+    source_dir.mkdir()
+    for name in mod_files:
+        (source_dir / name).write_text(f"NEURON {{ SUFFIX {name} }}")
+
+    dest_dir = tmp_path / "dest_mods"
+
+    # Mock original circuit
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(source_dir)
+
+    # Mock target population
+    pop = MagicMock()
+    pop.config.get.return_value = str(dest_dir)
+    pop.size = 5
+
+    return pop, original_circuit, source_dir, dest_dir
+
+
+def test_copy_mod_files_copies_all_mod_files(tmp_path):
+    """Test that all .mod files are copied from source to destination."""
+    mod_files = ["Ca_HVA2.mod", "Ih.mod", "NaTg.mod"]
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, mod_files)
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    assert dest_dir.exists()
+    for name in mod_files:
+        assert (dest_dir / name).exists()
+        assert (dest_dir / name).read_text() == f"NEURON {{ SUFFIX {name} }}"
+
+
+def test_copy_mod_files_skips_existing(tmp_path):
+    """Test that existing files in destination are not overwritten."""
+    mod_files = ["Ca_HVA2.mod"]
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, mod_files)
+
+    # Pre-create destination with different content
+    dest_dir.mkdir(parents=True)
+    (dest_dir / "Ca_HVA2.mod").write_text("ORIGINAL CONTENT")
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # Should NOT be overwritten
+    assert (dest_dir / "Ca_HVA2.mod").read_text() == "ORIGINAL CONTENT"
+
+
+def test_copy_mod_files_no_source_dir():
+    """Test early return when mechanisms_dir is not configured."""
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = None
+
+    pop = MagicMock()
+
+    # Should return without error
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # dest_dir should never be accessed
+    pop.config.get.assert_not_called()
+
+
+def test_copy_mod_files_source_dir_does_not_exist(tmp_path):
+    """Test early return when mechanisms_dir path does not exist on disk."""
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(
+        tmp_path / "nonexistent"
+    )
+
+    pop = MagicMock()
+
+    # Should return without error
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    pop.config.get.assert_not_called()
+
+
+def test_copy_mod_files_empty_source_dir(tmp_path):
+    """Test early return when source directory exists but has no .mod files."""
+    pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, [])
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    # Destination directory should not be created
+    assert not dest_dir.exists()
