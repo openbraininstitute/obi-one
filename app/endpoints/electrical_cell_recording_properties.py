@@ -20,7 +20,10 @@ class ElectricalCellRecordingProtocolsResponse(BaseModel):
     """Protocols available across a set of ElectricalCellRecording entities."""
 
     by_recording: dict[str, list[str]] = Field(
-        description="Mapping of recording id to the list of protocol (ecode) names in its NWB.",
+        description=(
+            "Mapping of recording id to the list of protocol (ecode) names"
+            " in its stimuli metadata."
+        ),
     )
     union: list[str] = Field(
         description="Sorted union of protocol (ecode) names across all requested recordings.",
@@ -31,8 +34,8 @@ class ElectricalCellRecordingProtocolsResponse(BaseModel):
     "/electrical-cell-recording-protocols",
     summary="ElectricalCellRecording protocols",
     description=(
-        "Inspect the NWB asset of each requested ``ElectricalCellRecording`` and"
-        " return the protocols (ecodes) it contains, both per-recording and as the"
+        "Return the protocol (ecode) names stored in the ``stimuli`` metadata of"
+        " each requested ``ElectricalCellRecording``, both per-recording and as the"
         " union across all requested recordings."
     ),
 )

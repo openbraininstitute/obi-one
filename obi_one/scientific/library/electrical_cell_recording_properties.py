@@ -7,7 +7,6 @@ already in the file.
 """
 
 import logging
-import tempfile
 from pathlib import Path
 
 import entitysdk.client
@@ -54,19 +53,19 @@ def get_recording_protocols(
 ) -> dict[str, list[str]]:
     """Return ``{recording_id: [protocol_name, ...]}`` for each recording.
 
-    Downloads each recording's NWB asset via the entitysdk client and reads
-    the protocol (ecode) names from it using :func:`read_protocols_from_nwb`.
+    Reads protocol names from the ``stimuli`` field of each
+    ``ElectricalCellRecording`` entity — no NWB download required.
     """
-    from obi_one.scientific.from_id.electrical_cell_recording_from_id import (  # noqa: PLC0415
-        ElectricalCellRecordingFromID,
-    )
+    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
 
     by_recording: dict[str, list[str]] = {}
-    with tempfile.TemporaryDirectory() as tmpdir:
-        for rid in recording_ids:
-            recording = ElectricalCellRecordingFromID(id_str=rid)
-            nwb_path = recording.download_asset(dest_dir=Path(tmpdir), db_client=db_client)
-            by_recording[rid] = read_protocols_from_nwb(nwb_path)
+    for rid in recording_ids:
+        entity = db_client.get_entity(
+            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_type=ElectricalCellRecording,
+        )
+        stimuli = entity.stimuli or []
+        by_recording[rid] = sorted({s.name for s in stimuli if s.name})
     return by_recording
 
 
