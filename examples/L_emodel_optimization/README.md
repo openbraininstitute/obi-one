@@ -1,59 +1,62 @@
 # L_emodel_optimization — BluePyEModel L5PC Pipeline Demo
 
-End-to-end walk-through of the four stages of the
+End-to-end walk-through of the three stages of the
 [BluePyEModel L5PC example](https://github.com/openbraininstitute/BluePyEModel/blob/main/examples/L5PC/README.rst)
-running locally on the SSCx C060109A1-SR-C1 dataset:
+running on the SSCx C060109A1-SR-C1 dataset via entitycore staging:
 
-1. **eFeature extraction** — extract experimental e-features from raw IBW traces.
-2. **Optimisation** — fit the L5PC model parameters with SO-CMA (single-objective CMA-ES).
-3. **Analysis & validation** — `store_optimisation_results`, `validation`, `plot`.
-4. **Export** — emit HOC and SONATA representations of the optimised model.
+1. **eFeature extraction** — download `ElectricalCellRecording` NWB assets from
+   entitycore and extract experimental e-features via BluePyEModel's
+   `extract_save_features_protocols`.
+2. **Optimisation** — fit the L5PC model parameters with SO-CMA (single-objective
+   CMA-ES). Downloads the extraction `TaskResult` assets, stages `CellMorphology`
+   and `IonChannelModel` entities, builds params dynamically, and runs
+   `pipeline.optimise(seed=...)` followed by analysis and draft emodel export.
+3. **Export and validation** — download the optimisation `TaskResult` assets, run
+   `store_optimisation_results` → `validation` → `plot`, then export validated
+   models to HOC and SONATA. Updates the draft `MEModel` with calibration results.
 
 Each notebook builds the corresponding `obi.EModel…ScanConfig`, expands it via
 `GridScanGenerationTask`, and runs the matching `EModel…Task` for every
-coordinate. The task copies (or seeds, for stages 02-04) a self-contained
-BluePyEModel working directory into the single config's `coordinate_output_root`
-and `chdir`s into it before invoking the BluePyEModel API. Every stage's output
-lives under `obi-output/` (outside the repo). With `coordinate_directory_option="ZERO_INDEX"`
-coord 0 is always at `<output_root>/0/`; sweep dimensions add `1/`, `2/`, … alongside it.
+coordinate. The task seeds a self-contained BluePyEModel working directory into
+the single config's `coordinate_output_root` and `chdir`s into it before invoking
+the BluePyEModel API. Every stage's output lives under `obi-output/` (outside the
+repo). With `coordinate_directory_option="ZERO_INDEX"` coord 0 is always at
+`<output_root>/0/`; sweep dimensions add `1/`, `2/`, … alongside it.
+
+All stages use **entity-based inputs** — `TaskResult`, `CellMorphology`,
+`IonChannelModel`, and `MEModel` entities are fetched from entitycore staging
+via `db_client`. Replace the placeholder entity IDs in each notebook with real
+IDs from your staging project before running.
 
 ## Prerequisites
 
-- `bluepyemodel[nexus]` installed in the active venv (the setup notebook installs it via `uv pip`).
-  The `[nexus]` extra is required because BluePyEModel's top-level import chain
-  unconditionally imports `entity_management` / `nexusforge` / `pyJWT`, even when
-  only the local access point is used.
+- `bluepyemodel` installed in the active venv.
 - **NEURON 8.2.x**, not 9.x. The L5PC mechanism set ships with `StochKv2.mod` and
   `StochKv3.mod` which fail to compile under NEURON 9 (`nrn_random_pick(Rand*)`
-  vs. `void*`). The setup notebook pins `neuron<9` to avoid the issue.
+  vs. `void*`).
 - `nrnivmodl` available — NEURON's mod-file compiler. The tasks resolve it via
   `shutil.which` first, then fall back to `<sys.prefix>/bin/nrnivmodl`, so the
   pip-installed NEURON in the venv works even if you haven't activated it.
-- An internet connection for the first run of `00_setup_download_l5pc_data.ipynb`.
+- Access to entitycore staging (the notebooks use `obi_auth.get_token(environment="staging")`
+  which opens a browser tab for authentication).
+- Real entity IDs in your staging project for `ElectricalCellRecording`,
+  `CellMorphology`, `IonChannelModel`, `TaskResult`, and `MEModel` entities.
 
 ## Run order
 
 | # | Notebook | What it does | Reads from | Writes to |
 |---|---|---|---|---|
-| 00 | [`00_setup_download_l5pc_data.ipynb`](00_setup_download_l5pc_data.ipynb) | Installs `bluepyemodel`; fetches the L5PC ephys data, recipe, params, morphology, and mod files. *No task — pure data setup.* | — | `obi-output/L_emodel_optimization_inputs/` |
-| 01 | [`01_efeature_extraction.ipynb`](01_efeature_extraction.ipynb) | Runs `bluepyefe.extract.extract_efeatures` directly on the ephys traces; writes `extracted_features.json`. | `obi-output/L_emodel_optimization_inputs/ephys_data/` | `obi-output/01_efeature_extraction/grid_scan/0/` |
-| 02 | [`02_emodel_optimization.ipynb`](02_emodel_optimization.ipynb) | Seeds ephys + extracted features from stage 01, copies the recipes / morphology / mechanisms / params from the inputs root, runs `pipeline.optimise(seed=...)` with `optimiser='SO-CMA'`, `max_ngen=2`, `offspring_size=4`. | `obi-output/01_efeature_extraction/grid_scan/0/` + `obi-output/L_emodel_optimization_inputs/` (recipes, morphology, mechanisms, params) | `obi-output/02_emodel_optimization/grid_scan/0/` |
-| 03 | [`03_analysis_and_validation.ipynb`](03_analysis_and_validation.ipynb) | Seeds from stage 02, runs `store_optimisation_results` → `validation` → `plot`. | `obi-output/02_emodel_optimization/grid_scan/0/` | `obi-output/03_analysis_and_validation/grid_scan/0/` |
-| 04 | [`04_export_final_model.ipynb`](04_export_final_model.ipynb) | Seeds from stage 03, runs `export_emodels_hoc` and `export_emodels_sonata`. | `obi-output/03_analysis_and_validation/grid_scan/0/` | `obi-output/04_export_final_model/grid_scan/0/` |
+| 01 | [`01_efeature_extraction.ipynb`](01_efeature_extraction.ipynb) | Downloads `ElectricalCellRecording` NWB assets from entitycore, extracts e-features via BluePyEModel; writes `extracted_features.json` and a minimal `recipes.json`. Registers a `TaskResult` entity. | entitycore staging (`ElectricalCellRecording` entities) | `obi-output/01_efeature_extraction/grid_scan/0/` |
+| 02 | [`02_emodel_optimization.ipynb`](02_emodel_optimization.ipynb) | Downloads extraction `TaskResult` assets, stages `CellMorphology` + `IonChannelModel` entities, builds params dynamically, runs `pipeline.optimise(seed=...)` with `optimiser='SO-CMA'`, `max_ngen=2`, `offspring_size=4`. Registers a `TaskResult` + draft `MEModel` entity. | entitycore staging (extraction `TaskResult`, `CellMorphology`, `IonChannelModel` entities) | `obi-output/02_emodel_optimization/grid_scan/0/` |
+| 03 | [`03_export_and_validation.ipynb`](03_export_and_validation.ipynb) | Downloads optimisation `TaskResult` assets, runs `store_optimisation_results` → `validation` → `plot`, then `export_emodels_hoc` and `export_emodels_sonata`. Updates `MEModel` with calibration results. | entitycore staging (optimisation `TaskResult`, draft `MEModel` entities) | `obi-output/03_export_and_validation/grid_scan/0/` |
 
 ## Output layout
 
 ```
 obi-output/
-├── L_emodel_optimization_inputs/                  # downloaded by the setup notebook
-│   ├── ephys_data/C060109A1-SR-C1/                # *.ibw raw traces
-│   ├── morphologies/C060114A5.asc
-│   ├── mechanisms/*.mod
-│   └── config/{params/pyr.json, recipes.json}
-├── 01_efeature_extraction/grid_scan/0/            # ephys_data + extraction/ + extracted_features.json
-├── 02_emodel_optimization/grid_scan/0/            # working dir + checkpoints/ + run/
-├── 03_analysis_and_validation/grid_scan/0/        # working dir + final.json + figures/
-└── 04_export_final_model/grid_scan/0/             # working dir + export_emodels_hoc/ + export_emodels_sonata/
+├── 01_efeature_extraction/grid_scan/0/            # ephys_data/ + extraction/ + extracted_features.json + config/recipes.json
+├── 02_emodel_optimization/grid_scan/0/            # working dir + checkpoints/ + run/ + figures/
+└── 03_export_and_validation/grid_scan/0/          # working dir + final.json + figures/ + export_emodels_hoc/ + export_emodels_sonata/
 ```
 
 The OBI framework also writes `obi_one_scan.json` (the serialised `ScanConfig`)

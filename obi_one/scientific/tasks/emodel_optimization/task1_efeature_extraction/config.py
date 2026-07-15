@@ -138,7 +138,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             asset_label=AssetLabel.task_config,
         )
         L.info("Campaign entity registered: %s", campaign.id)
-        return
+        return campaign
 
     def create_campaign_generation_entity(  # noqa: PLR6301
         self,

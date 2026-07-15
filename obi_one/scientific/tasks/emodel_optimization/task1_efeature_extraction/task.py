@@ -210,7 +210,12 @@ def _build_targets_formatted(
     return rows
 
 
-def _build_extraction_recipes(settings: Settings, *, threshold_based: bool = False) -> dict:
+def _build_extraction_recipes(
+    settings: Settings,
+    *,
+    threshold_based: bool = False,
+    validation_protocol_names: list[str] | None = None,
+) -> dict:
     """Build a minimal BluePyEModel ``recipes.json`` for the extraction step.
 
     Only the ``pipeline_settings`` consumed by ``extract_save_features_protocols``
@@ -250,9 +255,14 @@ def _build_extraction_recipes(settings: Settings, *, threshold_based: bool = Fal
         "interpolate_RMP_extraction": settings.interpolate_rmp,
         "threshold_efeature_std": settings.threshold_efeature_std or None,
         "minimum_protocol_delay": settings.minimum_protocol_delay,
-        "validation_protocols": [
-            p.strip() for p in settings.validation_protocols.split(",") if p.strip()
-        ],
+        "validation_protocols": sorted(
+            set(
+                p.strip()
+                for p in settings.validation_protocols.split(",")
+                if p.strip()
+            )
+            | set(validation_protocol_names or [])
+        ),
     }
 
     if settings.compute_rheobase:
@@ -445,10 +455,15 @@ class EModelEFeatureExtractionTask(Task):
 
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
+        validation_protocol_names = [
+            p.name for p in self.config.efeatures_by_protocol.protocols
+            if getattr(p, "validation", False)
+        ]
         _shared.write_recipes(
             _build_extraction_recipes(
                 self.config.settings,
                 threshold_based=self.config.efeatures_by_protocol.threshold_based,
+                validation_protocol_names=validation_protocol_names,
             ),
             coord_root / RECIPES_RELPATH,
         )

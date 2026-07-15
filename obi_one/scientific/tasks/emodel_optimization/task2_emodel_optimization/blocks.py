@@ -48,29 +48,6 @@ class OptimizationInitialize(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
-    iteration_tag: str | None = Field(
-        default=None,
-        title="Iteration tag",
-        description=(
-            "BluePyEModel ``iteration_tag`` (also called ``githash``) used to namespace"
-            " checkpoints under ``./run/<tag>/``."
-        ),
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-
-    use_multiprocessing: bool = Field(
-        default=False,
-        title="Use multiprocessing",
-        description="Pass ``use_multiprocessing=True`` to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    use_ipyparallel: bool = Field(
-        default=False,
-        title="Use ipyparallel",
-        description="Pass ``use_ipyparallel=True`` to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-
 
 class MorphologySelection(Block):
     """Morphology entity selection for the optimisation stage."""
@@ -101,32 +78,22 @@ class ParametersSelection(Block):
 
 
 class ParamsFileSelection(Block):
-    """Params-file mode — provide a pre-built BluePyEModel params JSON file.
+    """Params-file mode — embed a pre-built BluePyEModel params JSON dict.
 
-    The file must contain top-level keys ``mechanisms``, ``distributions``,
+    The dict must contain top-level keys ``mechanisms``, ``distributions``,
     and ``parameters``. Each parameter must have a ``name`` and ``val``;
     each ``dist`` reference must point to an existing distribution.
     """
 
-    params_file_path: str = Field(
-        default="",
-        title="Params file path",
+    params_content: dict = Field(
+        default_factory=dict,
+        title="Params content",
         description=(
-            "Path to a BluePyEModel params JSON file. Must contain top-level"
-            " keys: ``mechanisms``, ``distributions``, ``parameters``."
+            "Embedded BluePyEModel params JSON. Must contain top-level"
+            " keys: 'mechanisms', 'distributions', 'parameters'."
             " Leave empty to use the dynamic builder."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    mechanisms_dir_path: str = Field(
-        default="",
-        title="Mechanisms directory path",
-        description=(
-            "Optional path to a directory of ``.mod`` files. If not provided,"
-            " mechanisms are expected to already be available in the working"
-            " directory."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
     )
 
 
@@ -182,7 +149,7 @@ class OptimizationParams(Block):
     """``optimisation_params`` block (passed verbatim to BluePyEModel)."""
 
     offspring_size: PositiveInt | list[PositiveInt] = Field(
-        default=4,
+        default=20,
         title="Offspring size",
         description=(
             "Population size per generation. The L5PC example uses 20; we default"
@@ -199,7 +166,7 @@ class OptimizationSettings(Block):
     """Top-level ``pipeline_settings`` keys controlling optimisation + analysis + export."""
 
     optimiser: Literal["SO-CMA", "MO-CMA", "IBEA"] = Field(
-        default="SO-CMA",
+        default="MO-CMA",
         title="Optimiser",
         description=(
             "BluePyEModel optimiser. ``SO-CMA`` is the single-objective"
@@ -211,7 +178,7 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
     max_ngen: PositiveInt | list[PositiveInt] = Field(
-        default=2,
+        default=100,
         title="Max generations",
         description=(
             "Generation cap for the optimiser. The L5PC example uses 100; we default"
@@ -255,63 +222,6 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
-    # Validation-related settings — preserved in recipe for Workflow B
-    validation_protocols: str = Field(
-        default="",
-        title="Validation protocols",
-        description=(
-            "Comma-separated protocol names whose features are validation-only"
-            " (marked ``validation: true`` in the features file). These are NOT"
-            " optimisation targets but must be in the recipe for"
-            " BluePyEModel data structure initialization."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    name_rin_protocol: str = Field(
-        default="",
-        title="Rin protocol name",
-        description=(
-            "Protocol name for input resistance measurement (e.g. ``IV_-20``)."
-            " Required for threshold-based optimisations."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    name_rmp_protocol: str = Field(
-        default="",
-        title="RMP protocol name",
-        description=(
-            "Protocol name for resting membrane potential (e.g. ``IV_0``)."
-            " Required for threshold-based optimisations."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
-    # Export settings
-    export_hoc: bool = Field(
-        default=True,
-        title="Export HOC",
-        description="Export the optimised emodel to NEURON HOC format.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    export_sonata: bool = Field(
-        default=True,
-        title="Export SONATA",
-        description="Export the optimised emodel to SONATA format.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    only_best: bool = Field(
-        default=False,
-        title="Only best",
-        description="If True, export only the best individual from optimisation.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    seeds: NonNegativeInt | list[NonNegativeInt] = Field(
-        default=1,
-        title="Export seeds",
-        description="Seeds to use for export.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
-    )
-
     def to_dict(self, optimisation_params: OptimizationParams) -> dict[str, Any]:
         result: dict[str, Any] = {
             "optimiser": self.optimiser,
@@ -320,11 +230,6 @@ class OptimizationSettings(Block):
             "validation_threshold": self.validation_threshold,
             "optimisation_params": optimisation_params.to_dict(),
             "plot_currentscape": self.plot_currentscape,
-            "validation_protocols": [
-                p.strip() for p in self.validation_protocols.split(",") if p.strip()
-            ],
-            "name_Rin_protocol": self.name_rin_protocol or None,
-            "name_rmp_protocol": self.name_rmp_protocol or None,
         }
 
         if self.currentscape_title:
