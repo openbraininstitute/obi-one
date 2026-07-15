@@ -148,6 +148,7 @@ __all__ = [
     "MorphologyMetricsScanConfig",
     "MorphologyMetricsSingleConfig",
     "MorphologyMetricsTask",
+    "MultiPopulationPredefinedNeuronSet",
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
@@ -263,7 +264,7 @@ from obi_one.core.scan_generation import (
     GridScanGenerationTask,
     ScanGenerationTask,
 )
-from obi_one.scientific.blocks.afferent_synapses import (
+from obi_one.scientific.blocks.afferent_synapses.afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
     ClusteredPDSynapsesByMaxDistance,
@@ -322,6 +323,7 @@ from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
     InhibitoryNeurons,
+    PredefinedNeuronSet,
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
@@ -338,8 +340,8 @@ from obi_one.scientific.blocks.neuron_sets.population import (
 )
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
+    MultiPopulationPredefinedNeuronSet,
     PointPopulationPredefinedNeuronSet,
-    PredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets.property import (
@@ -355,8 +357,8 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPopulationNeurons,
     AllVirtualNeurons,
 )
-from obi_one.scientific.blocks.recording import (
-    Recording,
+from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
