@@ -9,6 +9,10 @@ from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionSingleConfig,
     CircuitExtractionTask,
 )
+from obi_one.scientific.tasks.circuit_simplification import (
+    CircuitSimplificationSingleConfig,
+    CircuitSimplificationTask,
+)
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionSingleConfig,
     ConnectivityMatrixExtractionTask,
@@ -200,6 +204,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         MorphologyMetricsTask,
         MorphologyMetricsSingleConfig,
         None,
+    ),
+    TaskType.circuit_simplification: (
+        CircuitSimplificationTask,
+        CircuitSimplificationSingleConfig,
+        AssetLabel.task_config,
     ),
 }
 
