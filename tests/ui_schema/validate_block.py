@@ -202,6 +202,60 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
         raise ValidationError(msg) from None
 
 
+def validate_morphology_section_type_selection(schema: dict, param: str, ref: str) -> None:
+    validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
+    validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
+
+    any_of = schema.get("anyOf", [])
+    if len(any_of) != 3:
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should be a union of array[int], array[array[int]], and null"
+        )
+        raise ValidationError(msg)
+
+    single_selection_schema, scan_schema, null_schema = any_of
+    if (
+        single_selection_schema.get("type") != "array"
+        or single_selection_schema.get("items", {}).get("type") != "integer"
+    ):
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have array[int] as its first union member"
+        )
+        raise ValidationError(msg)
+
+    scan_items = scan_schema.get("items", {})
+    if (
+        scan_schema.get("type") != "array"
+        or scan_items.get("type") != "array"
+        or scan_items.get("items", {}).get("type") != "integer"
+    ):
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have array[array[int]] as its second union member"
+        )
+        raise ValidationError(msg)
+
+    if null_schema.get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have null as its third union member"
+        )
+        raise ValidationError(msg)
+
+    try:
+        validate([2, 3, 4], schema)
+        validate([[2], [3, 4]], schema)
+        validate(None, schema)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "failed to validate supported values"
+        )
+        raise ValidationError(msg) from None
+
+
 def resolve_union_reference_types(union_members: list) -> list:
     """Return the default `type` values of the BlockReference members of a union.
 
@@ -223,12 +277,16 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
-    schema_union = schema.get("anyOf", [])
+    schema_union = schema.get("anyOf")
+    schema_union = [{"$ref": schema.get("$ref")}] if schema_union is None else list(schema_union)
 
-    if (refref := schema_union[0].get("$ref")) is None:
+    non_null_refs = [
+        union_member.get("$ref") for union_member in schema_union if union_member.get("$ref")
+    ]
+    if not non_null_refs:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
-            "be a union with a 'BlockReference' as first element"
+            "be a BlockReference or a union with a BlockReference as first element"
         )
         raise ValidationError(msg) from None
 
@@ -254,20 +312,24 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+            f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+            "failed to validate a "
             f"reference object {validated_ref}"
         )
         raise ValidationError(msg) from None
 
-    try:
-        validator.validate(None, schema)
+    allows_null = any(union_member.get("type") == "null" for union_member in schema_union)
+    if allows_null:
+        try:
+            validator.validate(None, schema)
 
-    except ValidationError:
-        msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
-            "'null' value"
-        )
-        raise ValidationError(msg) from None
+        except ValidationError:
+            msg = (
+                f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+                "failed to validate a "
+                "'null' value"
+            )
+            raise ValidationError(msg) from None
 
 
 def validate_neuron_set_combination(schema: dict, param: str, ref: str) -> None:
@@ -614,8 +676,27 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
+def validate_block_union(schema: dict, param: str, ref: str) -> None:
+    if schema.get("oneOf") is None:
+        msg = f"Validation error at {ref}: block_union param {param} must have 'oneOf'"
+        raise ValueError(msg)
+
+    for block_schema in schema.get("oneOf"):
+        block_ref = block_schema.get("$ref")
+
+        if block_ref:
+            resolved_block_schema = {
+                **block_schema,
+                **resolve_ref(openapi_schema, block_ref),
+            }
+
+        validate_block(resolved_block_schema, block_ref)
+
+
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
+        case UIElement.BLOCK_UNION:
+            validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:
@@ -646,6 +727,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
+        case UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION:
+            validate_morphology_section_type_selection(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON:
