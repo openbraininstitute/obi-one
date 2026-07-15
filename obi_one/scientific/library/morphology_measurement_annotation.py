@@ -197,10 +197,7 @@ def _partition_asymmetry_length_from_cache(
 ) -> float:
     left, right = bifurcation.children[:2]
     return (
-        abs(
-            cache_entry.subtree_lengths[left]
-            - cache_entry.subtree_lengths[right]
-        )
+        abs(cache_entry.subtree_lengths[left] - cache_entry.subtree_lengths[right])
         / cache_entry.total_length
     )
 
