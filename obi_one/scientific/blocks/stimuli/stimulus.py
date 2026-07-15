@@ -9,11 +9,9 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
-from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.constants import (
     DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
@@ -176,27 +174,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         if default_timestamps is None:
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
-
-        if (
-            self.neuron_set is not None
-            and not isinstance(
-                self.neuron_set,
-                (CompartmentSetReference, MorphologyLocationsReference),
-            )
-            and (
-                self.neuron_set.block.get_neuron_set_population_type()
-                not in {
-                    NeuronSetPopulationType.BIOPHYSICAL,
-                    NeuronSetPopulationType.POINT,
-                    NeuronSetPopulationType.NONVIRTUAL,
-                }
-            )
-        ):
-            msg = (
-                f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
-                f"'{self.block_name}' should be non-virtual (biophysical or point)!"
-            )
-            raise OBIONEError(msg)
 
         return self._generate_config()
 
