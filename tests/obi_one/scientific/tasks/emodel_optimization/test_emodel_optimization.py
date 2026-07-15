@@ -979,7 +979,7 @@ class TestTask2StageMechanisms:
         task = EModelOptimizationTask(config=single)
 
         mock_icm = MagicMock()
-        task.config.parameters_selection.ion_channel_models = [mock_icm]
+        task.config.parameters_selection.ion_channel_models = (mock_icm,)
 
         task._stage_mechanisms(tmp_path, MagicMock())
         mock_icm.download_asset.assert_called_once()
