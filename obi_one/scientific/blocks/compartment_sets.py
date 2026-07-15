@@ -7,6 +7,10 @@ from pydantic import BaseModel, Field
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    MappedPropertiesGroup,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -30,10 +34,13 @@ class CompartmentSet(Block):
     """SONATA-compatible compartment_set block."""
 
     population: str = Field(
+        min_length=1,
         title="Population",
-        description="Node population name for which the compartment entries apply.",
+        description="Biophysical node population name for which the compartment entries apply.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
         },
     )
 

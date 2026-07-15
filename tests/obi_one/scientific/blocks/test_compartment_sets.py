@@ -5,11 +5,16 @@ import pandas as pd
 import pytest
 
 import obi_one as obi
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.compartment_sets import (
     CompartmentLocation,
     CompartmentSet,
     build_compartment_set_for_neuron_set,
     build_compartment_set_from_locations_block,
+)
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    MappedPropertiesGroup,
 )
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_compartment_set_file,
@@ -41,6 +46,14 @@ def test_compartment_set_sorts_deduplicates_and_builds_from_locations():
             "population": "pop",
             "compartment_set": [[1, 4, 0.2], [2, 3, 0.5]],
         }
+    }
+
+
+def test_compartment_set_population_uses_biophysical_population_dropdown():
+    assert CompartmentSet.model_fields["population"].json_schema_extra == {
+        SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+        SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+        SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
     }
 
 
