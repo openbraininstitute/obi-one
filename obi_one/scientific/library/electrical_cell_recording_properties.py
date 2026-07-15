@@ -64,9 +64,7 @@ def get_recording_protocols(
     with tempfile.TemporaryDirectory() as tmpdir:
         for rid in recording_ids:
             recording = ElectricalCellRecordingFromID(id_str=rid)
-            nwb_path = recording.download_asset(
-                dest_dir=Path(tmpdir), db_client=db_client
-            )
+            nwb_path = recording.download_asset(dest_dir=Path(tmpdir), db_client=db_client)
             by_recording[rid] = read_protocols_from_nwb(nwb_path)
     return by_recording
 
