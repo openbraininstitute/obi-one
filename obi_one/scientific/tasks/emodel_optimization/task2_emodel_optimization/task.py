@@ -331,7 +331,7 @@ class EModelOptimizationTask(Task):
         tr_entity = extraction_tr.entity(db_client=db_client)
         derivations = db_client.search_entity(
             entity_type=Derivation,
-            query={"generated_id": tr_entity.id},
+            query={"generated__id": tr_entity.id},
         )
         from obi_one.scientific.from_id.electrical_cell_recording_from_id import (  # noqa: PLC0415
             ElectricalCellRecordingFromID,
