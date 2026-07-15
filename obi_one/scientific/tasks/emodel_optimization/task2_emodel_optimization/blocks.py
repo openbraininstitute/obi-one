@@ -65,8 +65,8 @@ class MorphologySelection(Block):
 class ParametersSelection(Block):
     """Parameters selection — ion channel models for dynamic builder."""
 
-    ion_channel_models: list[IonChannelModelFromID] = Field(
-        default_factory=list,
+    ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
+        default_factory=tuple,
         title="Ion channel models",
         description=(
             "Ion channel model entities whose ``.mod`` assets are staged into"
@@ -97,7 +97,7 @@ class ParamsFileSelection(Block):
     )
 
 
-def validate_params_file(params: dict) -> None:
+def validate_params_file(params: dict) -> None:  # noqa: C901
     """Validate the structure of a BluePyEModel params dictionary.
 
     Raises :class:`OBIONEError` if the structure is invalid.
@@ -121,28 +121,41 @@ def validate_params_file(params: dict) -> None:
     dist_names = set(distributions.keys())
 
     parameters = params.get("parameters", [])
-    if not isinstance(parameters, list):
-        msg = f"'parameters' must be a list, got {type(parameters).__name__}."
+    if isinstance(parameters, dict):
+        param_sections = parameters.items()
+    elif isinstance(parameters, list):
+        param_sections = [("__root__", parameters)]
+    else:
+        msg = f"'parameters' must be a list or dict, got {type(parameters).__name__}."
         raise OBIONEError(msg)
 
-    for i, param in enumerate(parameters):
-        if not isinstance(param, dict):
-            msg = f"Parameter at index {i} must be a dict, got {type(param).__name__}."
-            raise OBIONEError(msg)
-        if "name" not in param:
-            msg = f"Parameter at index {i} is missing required key 'name'."
-            raise OBIONEError(msg)
-        if "val" not in param:
-            msg = f"Parameter '{param.get('name', i)}' is missing required key 'val'."  # ty:ignore[no-matching-overload]
-            raise OBIONEError(msg)
-        dist = param.get("dist")  # ty:ignore[invalid-argument-type]
-        if dist is not None and dist not in dist_names:
+    for section, section_params in param_sections:
+        if section.startswith("__"):
+            continue
+        if not isinstance(section_params, list):
             msg = (
-                f"Parameter '{param['name']}' references distribution '{dist}'"  # ty:ignore[invalid-argument-type]
-                f" which is not defined in 'distributions'"
-                f" (available: {sorted(dist_names)})."
+                f"Parameter section '{section}' must be a list,"
+                f" got {type(section_params).__name__}."
             )
             raise OBIONEError(msg)
+        for i, param in enumerate(section_params):
+            if not isinstance(param, dict):
+                msg = f"Parameter '{section}[{i}]' must be a dict, got {type(param).__name__}."
+                raise OBIONEError(msg)
+            if "name" not in param:
+                msg = f"Parameter '{section}[{i}]' is missing required key 'name'."
+                raise OBIONEError(msg)
+            if "val" not in param:
+                msg = f"Parameter '{param.get('name', i)}' is missing required key 'val'."  # ty:ignore[no-matching-overload]
+                raise OBIONEError(msg)
+            dist = param.get("dist")  # ty:ignore[invalid-argument-type]
+            if dist is not None and dist not in dist_names:
+                msg = (
+                    f"Parameter '{param['name']}' references distribution '{dist}'"  # ty:ignore[invalid-argument-type]
+                    f" which is not defined in 'distributions'"
+                    f" (available: {sorted(dist_names)})."
+                )
+                raise OBIONEError(msg)
 
 
 class OptimizationParams(Block):
