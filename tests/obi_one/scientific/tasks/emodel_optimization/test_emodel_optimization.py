@@ -620,7 +620,7 @@ class TestExtractionRecipeValidationProtocols:
         settings = ExtractionSettings(validation_protocols="sAHP_220,IDhyperpol_150")
         recipes = _build_extraction_recipes(settings)
         ps = recipes["emodel"]["pipeline_settings"]
-        assert ps["validation_protocols"] == ["sAHP_220", "IDhyperpol_150"]
+        assert ps["validation_protocols"] == ["IDhyperpol_150", "sAHP_220"]
 
     def test_build_extraction_recipes_empty_validation_protocols(self):
         """Default empty validation_protocols results in empty list in recipe."""

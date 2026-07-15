@@ -113,7 +113,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         if db_client is None:
-            return
+            return None
 
         L.info("Registering efeature extraction campaign TaskConfig entity.")
         input_entities = self.input_entities(db_client)
