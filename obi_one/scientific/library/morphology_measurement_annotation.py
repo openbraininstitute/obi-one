@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 from collections import defaultdict
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from typing import Any
 import neurom as nm
 import numpy as np
 from neurom.core import Morphology
+from neurom.core.morphology import Section
 
 L = logging.getLogger(__name__)
 
@@ -20,8 +22,32 @@ TARGET_NEURITE_DOMAINS = ("apical_dendrite", "axon")
 MIN_MEASUREMENT_ITEM_ENTRIES = 2
 EMPTY_NAME_SET = {None, ""}
 AGGREGATE_ITEM_NAMES = {"minimum", "maximum", "median", "mean", "standard_deviation"}
+# Profiling on the morphometrics outliers showed these three path-length metrics
+# dominate the endpoint runtime. Keep this cache intentionally narrow; other
+# NeuroM metrics continue to use nm.get directly.
+CACHED_PATH_LENGTH_SECTION_METRICS = {
+    "section_path_distances": ("sections", "path_lengths"),
+    "terminal_path_lengths": ("leaves", "path_lengths"),
+}
+CACHED_PATH_LENGTH_METRICS = {
+    *CACHED_PATH_LENGTH_SECTION_METRICS,
+    "partition_asymmetry_length",
+}
 
 _TEMPLATE_PATH = Path(__file__).with_name("morphology_template.json")
+_CACHE_MISS = object()
+
+
+@dataclass(frozen=True)
+class _NeuritePathLengthCache:
+    """Cached values for the three profiled path-length bottleneck metrics."""
+
+    sections: list[Any]
+    leaves: list[Any]
+    bifurcations: list[Any]
+    path_lengths: dict[Any, Any]
+    subtree_lengths: dict[Any, Any]
+    total_length: Any
 
 
 @cache
@@ -106,19 +132,132 @@ def create_analysis_dict(
     return results
 
 
+def _matching_neurites(neuron: Morphology, neurite_type: Any | None) -> list[Any]:
+    """Return neurites matching NeuroM's simple morphology-level neurite filter."""
+    if neurite_type is None:
+        return list(neuron.neurites)
+
+    return [neurite for neurite in neuron.neurites if neurite.type == neurite_type]
+
+
+def _build_neurite_path_length_cache(neurite: Any) -> _NeuritePathLengthCache:
+    """Precompute only the path lengths needed by the profiled slow metrics."""
+    sections = list(Section.ipreorder(neurite.root_node))
+    leaves = list(Section.ileaf(neurite.root_node))
+    bifurcations = list(Section.ibifurcation_point(neurite.root_node))
+
+    path_lengths: dict[Any, Any] = {}
+
+    def _walk_upstream_values(section: Any, path_before_s: Any) -> None:
+        path_lengths[section] = path_before_s + section.length
+        for child in section.children:
+            _walk_upstream_values(child, path_lengths[section])
+
+    _walk_upstream_values(neurite.root_node, 0)
+
+    subtree_lengths: dict[Any, Any] = {}
+
+    for section in reversed(sections):
+        subtree_lengths[section] = section.length + sum(
+            subtree_lengths[child] for child in section.children
+        )
+
+    return _NeuritePathLengthCache(
+        sections=sections,
+        leaves=leaves,
+        bifurcations=bifurcations,
+        path_lengths=path_lengths,
+        subtree_lengths=subtree_lengths,
+        total_length=sum(section.length for section in sections),
+    )
+
+
+def _path_length_cache_for_neurite_type(
+    neuron: Morphology,
+    neurite_type: Any | None,
+    path_length_cache: dict[Any, list[_NeuritePathLengthCache]],
+) -> list[_NeuritePathLengthCache] | None:
+    """Return per-neurite path-length caches, or None to keep NeuroM fallback behavior."""
+    cache_key = neurite_type
+    if cache_key in path_length_cache:
+        return path_length_cache[cache_key]
+
+    neurites = _matching_neurites(neuron, neurite_type)
+    if any(neurite.process_subtrees for neurite in neurites):
+        return None
+
+    path_length_caches = [_build_neurite_path_length_cache(neurite) for neurite in neurites]
+    path_length_cache[cache_key] = path_length_caches
+    return path_length_caches
+
+
+def _partition_asymmetry_length_from_cache(
+    cache_entry: _NeuritePathLengthCache,
+    bifurcation: Any,
+) -> float:
+    left, right = bifurcation.children[:2]
+    return (
+        abs(
+            cache_entry.subtree_lengths[left]
+            - cache_entry.subtree_lengths[right]
+        )
+        / cache_entry.total_length
+    )
+
+
+def _cached_path_length_measurement(
+    label: str,
+    neuron: Morphology,
+    neurite_type: Any | None,
+    path_length_cache: dict[Any, list[_NeuritePathLengthCache]] | None,
+) -> Any:
+    """Return cached equivalents for the three profiled path-length bottlenecks."""
+    if path_length_cache is None or label not in CACHED_PATH_LENGTH_METRICS:
+        return _CACHE_MISS
+
+    path_length_caches = _path_length_cache_for_neurite_type(
+        neuron,
+        neurite_type,
+        path_length_cache,
+    )
+    if path_length_caches is None:
+        return _CACHE_MISS
+
+    if section_value_measurement := CACHED_PATH_LENGTH_SECTION_METRICS.get(label):
+        section_attr, value_attr = section_value_measurement
+        return [
+            getattr(cache_entry, value_attr)[section]
+            for cache_entry in path_length_caches
+            for section in getattr(cache_entry, section_attr)
+        ]
+
+    if label == "partition_asymmetry_length":
+        return [
+            _partition_asymmetry_length_from_cache(cache_entry, bifurcation)
+            for cache_entry in path_length_caches
+            for bifurcation in cache_entry.bifurcations
+        ]
+
+    return _CACHE_MISS
+
+
 def _process_measurement(
     label: str,
     unit: str,
     neuron: Morphology,
     neurite_type: int | None = None,
+    path_length_cache: dict[Any, list[_NeuritePathLengthCache]] | None = None,
 ) -> list[Any]:
     """Get a neurom measurement, aggregate if it's a list, and package the result."""
     nm_get_key = "max_radial_distance" if label.endswith("max_radial_distance") else label
 
-    if neurite_type is not None:
-        data = nm.get(nm_get_key, neuron, neurite_type=neurite_type)
-    else:
-        data = nm.get(nm_get_key, neuron)
+    data = _cached_path_length_measurement(label, neuron, neurite_type, path_length_cache)
+
+    if data is _CACHE_MISS:
+        if neurite_type is not None:
+            data = nm.get(nm_get_key, neuron, neurite_type=neurite_type)
+        else:
+            data = nm.get(nm_get_key, neuron)
 
     if isinstance(data, list):
         nan_count = sum(
@@ -167,11 +306,18 @@ def build_results_dict(
     neuron: Morphology,
 ) -> dict[str, list[list[Any]]]:
     """Analyze neuron morphology using neurom based on the analysis_dict structure."""
+    path_length_cache: dict[Any, list[_NeuritePathLengthCache]] = {}
 
     def _run_analysis(category_key: str, neurite_type: int | None = None) -> list[list[Any]]:
         category_results = []
         for label, unit in analysis_dict.get(category_key, []):
-            result = _process_measurement(label, unit, neuron, neurite_type=neurite_type)
+            result = _process_measurement(
+                label,
+                unit,
+                neuron,
+                neurite_type=neurite_type,
+                path_length_cache=path_length_cache,
+            )
             category_results.append(result)
         return category_results
 
