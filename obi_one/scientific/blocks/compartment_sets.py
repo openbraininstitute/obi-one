@@ -133,7 +133,7 @@ def build_compartment_set_for_neuron_set(
     population: str,
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     locations_block: MorphologyLocationsBlock,
-    morphology_loader: Callable[[Circuit, int, str | None], morphio.Morphology | None],
+    morphology_loader: Callable[[int, str | None], morphio.Morphology | None],
 ) -> CompartmentSet:
     """Create a compartment set from a neuron set and morphology locations block.
 
@@ -160,7 +160,7 @@ def build_compartment_set_for_neuron_set(
     morphologies: dict[int, morphio.Morphology] = {}
     for node_id in node_ids:
         node_id_int = int(getattr(node_id, "id", node_id))
-        morph = morphology_loader(circuit, node_id_int, node_population)
+        morph = morphology_loader(node_id_int, node_population)
         if morph is None:
             continue
         morphologies[node_id_int] = morph

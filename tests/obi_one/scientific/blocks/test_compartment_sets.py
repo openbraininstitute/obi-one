@@ -121,9 +121,7 @@ def test_build_compartment_set_skips_unavailable_morphologies():
         population="pop",
         neuron_set=neuron_set,
         locations_block=locations_block,
-        morphology_loader=lambda _circuit, node_id, _population: (
-            None if node_id == 1 else morphology
-        ),
+        morphology_loader=lambda node_id, _population: None if node_id == 1 else morphology,
     )
 
     assert result.compartment_entries == ((2, 3, 0.75),)

@@ -365,10 +365,12 @@ class GenerateSimulationTask(Task):
     NEURON SETS HAVE TYPES (BIOPHYSICAL, POINT, ETC.)
     """
 
-    @staticmethod
-    def _load_morphology(
-        circuit: Circuit, node_id: int, population: str | None
-    ) -> morphio.Morphology | None:
+    def _load_morphology(self, node_id: int, population: str | None) -> morphio.Morphology | None:
+        circuit = self._circuit
+        if circuit is None:
+            msg = "Circuit must be resolved before loading morphologies."
+            raise OBIONEError(msg)
+
         population_name = population or circuit.default_population_name
         try:
             return circuit.load_morphology(node_id, population=population_name)

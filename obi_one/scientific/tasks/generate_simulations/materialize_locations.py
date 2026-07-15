@@ -18,7 +18,7 @@ def materialize_locations_to_compartment_sets(
     circuit: Circuit,
     node_population: str | None,
     population: str,
-    morphology_loader: Callable[[Circuit, int, str | None], morphio.Morphology | None],
+    morphology_loader: Callable[[int, str | None], morphio.Morphology | None],
 ) -> dict[str, CompartmentSet]:
     """Convert stimulus MorphologyLocations targets into generated CompartmentSet blocks."""
     materialized: dict[str, CompartmentSet] = {}
