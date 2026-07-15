@@ -60,25 +60,6 @@ class ExportAndValidationInitialize(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
-    iteration_tag: str | None = Field(
-        default=None,
-        title="Iteration tag",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-
-    use_multiprocessing: bool = Field(
-        default=False,
-        title="Use multiprocessing",
-        description="If True, use multiprocessing for parallel execution.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    use_ipyparallel: bool = Field(
-        default=False,
-        title="Use ipyparallel",
-        description="If True, use ipyparallel for parallel execution.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-
 
 class CurrentscapeConfig(Block):
     """Subset of the BluePyEModel ``currentscape_config``."""

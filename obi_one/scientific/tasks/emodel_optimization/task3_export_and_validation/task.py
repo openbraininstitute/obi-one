@@ -49,7 +49,6 @@ class EModelExportAndValidationTask(Task):
             export_emodels_sonata,
         )
         from bluepyemodel.optimisation import store_best_model  # noqa: PLC0415
-        from bluepyemodel.tools.multiprocessing import get_mapper  # noqa: PLC0415
         from bluepyemodel.validation.validation import validate  # noqa: PLC0415
 
         init = self.config.initialize
@@ -61,6 +60,10 @@ class EModelExportAndValidationTask(Task):
         # --- 1. Download optimisation TaskResult assets ---
         opt_tr = init.optimization_task_result
         self._download_opt_assets(opt_tr, coord_root, db_client)
+
+        # --- 1b. Stage morphology + mechanisms from MEModel ---
+        self._stage_morphology_from_memodel(coord_root, db_client)
+        self._stage_mechanisms_from_memodel(coord_root, db_client)
 
         # --- 2. Compile mechanisms if needed ---
         if (
@@ -88,17 +91,11 @@ class EModelExportAndValidationTask(Task):
                 ttype=None,
                 species=init.species,
                 brain_region=init.brain_region,
-                iteration_tag=init.iteration_tag,
+                iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
 
-            # Determine mapper backend
-            if init.use_ipyparallel:
-                mapper = get_mapper(backend="ipyparallel")
-            elif init.use_multiprocessing:
-                mapper = get_mapper(backend="multiprocessing")
-            else:
-                mapper = map
+            mapper = map
 
             # Store optimisation results (reads checkpoints → final.json)
             seeds = [int(s.strip()) for s in settings.seeds.split(",") if s.strip()]
@@ -259,11 +256,63 @@ class EModelExportAndValidationTask(Task):
         L.info("Downloaded optimisation assets for export + validation.")
 
     def _derive_mtype_from_memodel(self, db_client: entitysdk.client.Client) -> str:
-        """Derive mtype from the MEModel entity."""
+        """Derive mtype from the MEModel entity's morphology."""
+        from entitysdk.models import CellMorphology  # noqa: PLC0415
+
         memodel_entity = self.config.initialize.memodel.entity(db_client=db_client)
-        if hasattr(memodel_entity, "mtypes") and memodel_entity.mtypes:
-            return str(memodel_entity.mtypes[0])  # ty:ignore[not-subscriptable]
+        morph = db_client.get_entity(
+            entity_id=memodel_entity.morphology.id,  # ty:ignore[union-attr]
+            entity_type=CellMorphology,
+        )
+        if hasattr(morph, "mtypes") and morph.mtypes:
+            return str(morph.mtypes[0].name)  # ty:ignore[union-attr]
         return "unknown"
+
+    def _stage_morphology_from_memodel(
+        self, coord_root: Path, db_client: entitysdk.client.Client
+    ) -> None:
+        """Download morphology SWC from MEModel → morphology → CellMorphology entity."""
+        from entitysdk.models import CellMorphology  # noqa: PLC0415
+        from obi_one.scientific.from_id.cell_morphology_from_id import (  # noqa: PLC0415
+            CellMorphologyFromID,
+        )
+
+        memodel_entity = self.config.initialize.memodel.entity(db_client=db_client)
+        morph_id = memodel_entity.morphology.id  # ty:ignore[union-attr]
+
+        morph_dir = coord_root / "morphologies"
+        morph_dir.mkdir(parents=True, exist_ok=True)
+        morph_from_id = CellMorphologyFromID(id_str=str(morph_id))
+        swc_content = morph_from_id.swc_file_content(db_client=db_client)
+        morph_filename = f"{morph_id}.swc"
+        (morph_dir / morph_filename).write_text(
+            swc_content,  # ty:ignore[invalid-argument-type]
+            encoding="utf-8",
+        )
+        L.info("Staged morphology from MEModel: %s", morph_filename)
+
+    def _stage_mechanisms_from_memodel(
+        self, coord_root: Path, db_client: entitysdk.client.Client
+    ) -> None:
+        """Download .mod files from MEModel → emodel → EModel → ion_channel_models."""
+        from entitysdk.models import EModel  # noqa: PLC0415
+        from obi_one.scientific.from_id.ion_channel_model_from_id import (  # noqa: PLC0415
+            IonChannelModelFromID,
+        )
+
+        memodel_entity = self.config.initialize.memodel.entity(db_client=db_client)
+        emodel_id = memodel_entity.emodel.id  # ty:ignore[union-attr]
+        emodel_entity = db_client.get_entity(
+            entity_id=emodel_id, entity_type=EModel
+        )
+
+        mech_dir = coord_root / "mechanisms"
+        mech_dir.mkdir(parents=True, exist_ok=True)
+        icms = getattr(emodel_entity, "ion_channel_models", []) or []
+        for icm in icms:
+            icm_from_id = IonChannelModelFromID(id_str=str(icm.id))
+            icm_from_id.download_asset(dest_dir=mech_dir, db_client=db_client)
+        L.info("Staged %d ion channel models from MEModel.", len(icms))
 
     def _register_and_update(  # noqa: C901, PLR0912, PLR0914, PLR0915
         self,
