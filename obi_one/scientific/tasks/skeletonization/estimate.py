@@ -29,7 +29,7 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
     with tempfile.TemporaryDirectory() as tmp_dir:
         output_path = Path(tmp_dir) / "mesh.glb"
         db_client.fetch_assets(
-            entity_or_id=(cell_mesh.id_str, models.EMCellMesh),  # ty:ignore[invalid-argument-type]
+            entity_or_id=(cell_mesh.id_str, models.EMCellMesh),
             selection={
                 "label": AssetLabel.cell_surface_mesh,
                 "content_type": ContentType.model_gltf_binary,

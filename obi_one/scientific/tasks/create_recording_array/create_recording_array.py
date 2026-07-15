@@ -250,13 +250,13 @@ class CreateExtracellularRecordingArrayTask(Task):
             description="Temp description.",
             electrode_type=ElectrodeType.custom,
             authorized_public=False,
-            circuit_id=self._circuit_entity.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
+            circuit_id=self._circuit_entity.id,  # ty:ignore[unresolved-attribute]
         )
         entity = db_client.register_entity(entity)
 
         # Upload the electrode-array plot as the entity's electrode_array_image asset.
         db_client.upload_file(
-            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=image_path,
             file_content_type=ContentType.image_png,
@@ -272,7 +272,7 @@ class CreateExtracellularRecordingArrayTask(Task):
                 indent=2,
             )
         db_client.upload_file(
-            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=locations_path,
             file_content_type=ContentType.application_json,
@@ -281,7 +281,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         L.info("Uploaded electrode locations to recording array %s.", entity.id)
 
         _ = db_client.upload_file(
-            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=weights_output_path,
             file_content_type=ContentType.application_x_hdf5,

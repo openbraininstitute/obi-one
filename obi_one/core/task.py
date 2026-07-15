@@ -43,7 +43,7 @@ class Task(OBIBaseModel, abc.ABC):
         if db_client and execution_activity and generated:
             upd_entity = db_sdk.update_execution_activity_with_generated(
                 client=db_client,
-                execution_activity_id=execution_activity.id,  # ty:ignore[invalid-argument-type]
+                execution_activity_id=execution_activity.id,
                 generated_ids=generated,
             )
 

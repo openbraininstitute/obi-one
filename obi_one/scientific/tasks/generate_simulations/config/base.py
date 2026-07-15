@@ -297,7 +297,7 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
 
         L.info("-- Upload simulation_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=self.single_entity.id,
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]

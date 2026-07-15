@@ -463,7 +463,7 @@ class GenerateSimulationTask(Task):
                 number_neurons = 1
 
             db_client.update_entity(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 attrs_or_entity={"number_neurons": number_neurons},
             )
@@ -480,7 +480,7 @@ class GenerateSimulationTask(Task):
         if db_client:
             L.info("-- Upload custom_node_sets")
             _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
@@ -493,7 +493,7 @@ class GenerateSimulationTask(Task):
                     spike_file = self._sonata_config["inputs"][input_]["spike_file"]
                     if spike_file is not None:
                         _ = db_client.upload_file(
-                            entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                            entity_id=self.config.single_entity.id,
                             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                             file_path=Path(self.config.coordinate_output_root, spike_file),
                             file_content_type="application/x-hdf5",  # ty:ignore[invalid-argument-type]
@@ -502,7 +502,7 @@ class GenerateSimulationTask(Task):
 
             L.info("-- Upload sonata_simulation_config")
             _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
