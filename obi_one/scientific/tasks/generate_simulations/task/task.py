@@ -54,6 +54,7 @@ class GenerateSimulationTask(Task):
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
+    COMPARTMENT_SETS_FILE_NAME: ClassVar[str] = "compartment_sets.json"
 
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
@@ -489,11 +490,10 @@ class GenerateSimulationTask(Task):
         )
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
-        # 4. If the config contains compartment_sets, collect them and write a
-        # compartment_sets.json file next to the node sets so stimuli referencing
-        # named compartment sets will resolve correctly.
+    def _write_materialized_compartment_sets_file(self) -> None:
         if self._materialized_compartment_sets:
             compartment_sets_dict: dict = {}
+            sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
 
             for cs_key, cs_block in self._materialized_compartment_sets.items():
                 if cs_key != cs_block.block_name:
@@ -506,11 +506,11 @@ class GenerateSimulationTask(Task):
                 sonata_circuit,
                 str(self.config.coordinate_output_root),
                 compartment_sets=compartment_sets_dict,
-                file_name="compartment_sets.json",
+                file_name=self.COMPARTMENT_SETS_FILE_NAME,
                 overwrite_if_exists=False,
             )
 
-            self._sonata_config["compartment_sets_file"] = "compartment_sets.json"
+            self._sonata_config["compartment_sets_file"] = self.COMPARTMENT_SETS_FILE_NAME
 
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
         if db_client:
@@ -592,6 +592,7 @@ class GenerateSimulationTask(Task):
         self._add_sonata_simulation_config_reports(db_client)
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
+        self._write_materialized_compartment_sets_file()
         self._update_simulation_number_neurons(db_client)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)
