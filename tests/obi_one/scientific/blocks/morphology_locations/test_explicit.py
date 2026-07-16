@@ -2,6 +2,7 @@ import morphio
 import numpy as np
 import pandas as pd
 import pytest
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 from pydantic import TypeAdapter, ValidationError
 
 from obi_one.scientific.blocks.morphology_locations.explicit import (
@@ -10,7 +11,6 @@ from obi_one.scientific.blocks.morphology_locations.explicit import (
 )
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.library.morphology_locations import MorphologyPathDistanceCalculator
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
 
 from tests.utils import DATA_DIR
 
