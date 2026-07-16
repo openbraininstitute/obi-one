@@ -17,9 +17,6 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
 )
 
-type SectionType = Literal[2, 3, 4]
-type SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]]
-
 
 class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""
@@ -61,7 +58,11 @@ class MorphologyLocationsBlock(Block, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-    section_types: SectionTypes | None = Field(
+    section_types: (
+        tuple[Literal[2, 3, 4], ...]
+        | list[tuple[Literal[2, 3, 4], ...]]
+        | None
+    ) = Field(
         default=(2, 3, 4),
         title="Section Types",
         description=(
