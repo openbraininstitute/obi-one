@@ -1,5 +1,5 @@
 import abc
-from typing import Self
+from typing import Literal, Self
 
 import morphio
 import pandas  # noqa: ICN001
@@ -11,6 +11,9 @@ from obi_one.scientific.unions.unions_combined_neuron_sets import (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
 )
+
+type SectionType = Literal[2, 3, 4]
+type SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]]
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
@@ -44,7 +47,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
 
-    section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
+    section_types: SectionTypes = Field(
         default=(2, 3, 4),
         title="Section Types",
         description=(
