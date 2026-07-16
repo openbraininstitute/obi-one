@@ -14,7 +14,6 @@ import bluepysnap.circuit_validation
 
 if TYPE_CHECKING:
     import pandas as pd
-    from neurodamus.utils.compile_mods import Simulator  # ty:ignore[unresolved-import]
 
 import h5py
 import numpy as np
@@ -308,25 +307,24 @@ def copy_hoc_files(
 def ensure_mechanisms_compiled(
     circuit_config_path: Path,
     cache_dir: Path,
-    simulator: Simulator,
+    simulator: str = "neuron",
     incflags: str = "",
     loadflags: str = "",
     nrnivmodl_path: str | None = None,
-) -> str:  # pragma: no cover
+) -> str:
     """Compile NMODL mechanisms for a circuit if not already cached.
 
-    Uses neurodamus' compile_mods utilities to discover the circuit's mechanism
-    directories, include neurodamus' internal support mods, and compile them
-    via nrnivmodl. Results are cached (MD5-based) so repeated calls with the
-    same mod files skip recompilation.
+    Shells out to ``neurodamus-compile-mods`` to discover the circuit's mechanism
+    directories and compile them via nrnivmodl. Results are cached (MD5-based) so
+    repeated calls with the same mod files skip recompilation.
 
     Sets ``os.environ["NRNMECH_LIB_PATH"]`` (and ``CORENEURONLIB`` when
-    *simulator* is ``Simulator.coreneuron``) to the compiled library paths.
+    *simulator* is ``"coreneuron"``) to the compiled library paths.
 
     Args:
         circuit_config_path: Path to a SONATA circuit configuration file.
         cache_dir: Directory for storing compiled mechanism artifacts.
-        simulator: ``Simulator.neuron`` or ``Simulator.coreneuron``.
+        simulator: ``"neuron"`` or ``"coreneuron"``.
         incflags: Extra include flags passed to nrnivmodl.
         loadflags: Extra linker flags passed to nrnivmodl.
         nrnivmodl_path: Explicit path to the nrnivmodl binary. If None,
@@ -335,22 +333,38 @@ def ensure_mechanisms_compiled(
     Returns:
         The absolute path to the compiled ``libnrnmech`` shared library.
     """
-    from neurodamus.utils.compile_mods import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
-        Options,
-        _build_mod_files,  # noqa: PLC2701
-        _extract_mechanisms_dir,  # noqa: PLC2701
-    )
+    import subprocess  # noqa: PLC0415, S404
 
-    input_dirs = _extract_mechanisms_dir(circuit_config_path)
-    L.info(
-        "Compiling mechanisms from %d directories into %s",
-        len(input_dirs),
-        cache_dir,
-    )
+    cmd = [
+        "neurodamus-compile-mods",
+        "--circuit-config",
+        str(circuit_config_path),
+        "--output-dir",
+        str(cache_dir),
+        "--simulator",
+        simulator,
+        "--output-type",
+        "json",
+    ]
+    if incflags:
+        cmd.extend(["--incflags", incflags])
+    if loadflags:
+        cmd.extend(["--loadflags", loadflags])
+    if nrnivmodl_path:
+        cmd.extend(["--nrnivmodl", nrnivmodl_path])
+
+    L.info("Compiling mechanisms: %s", " ".join(cmd))
 
     cache_dir.mkdir(parents=True, exist_ok=True)
-    options = Options(simulator=simulator, incflags=incflags, loadflags=loadflags)
-    env = _build_mod_files(input_dirs, cache_dir, nrnivmodl_path=nrnivmodl_path, options=options)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+
+    if result.returncode != 0:
+        msg = f"neurodamus-compile-mods failed (exit {result.returncode}):\n{result.stderr}"
+        raise RuntimeError(msg)
+
+    import json  # noqa: PLC0415
+
+    env = json.loads(result.stdout)
 
     nrnmech_lib_path = env["NRNMECH_LIB_PATH"]
     os.environ["NRNMECH_LIB_PATH"] = nrnmech_lib_path

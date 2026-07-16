@@ -202,9 +202,6 @@ class CreateExtracellularRecordingArrayTask(Task):
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
         import numpy as np  # noqa: PLC0415
-        from neurodamus.utils.compile_mods import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
-            Simulator,
-        )
 
         from obi_one.utils.circuit import ensure_mechanisms_compiled  # noqa: PLC0415
 
@@ -212,7 +209,6 @@ class CreateExtracellularRecordingArrayTask(Task):
         ensure_mechanisms_compiled(
             circuit_config_path,
             self.config.scan_output_root / "entity_cache" / "compiled_mods",
-            Simulator.neuron,
         )
 
         from bluerecording import compute_weights  # noqa: PLC0415 # ty:ignore[unresolved-import]

@@ -583,41 +583,28 @@ def test_copy_mod_files_empty_source_dir(tmp_path):
 
 # --- Tests for ensure_mechanisms_compiled ---
 
-try:
-    from neurodamus.utils.compile_mods import Simulator
 
-    _has_neurodamus = True
-except ModuleNotFoundError:
-    _has_neurodamus = False
+def _mock_compile_mods_cli(monkeypatch, stdout_json):
+    """Mock subprocess.run for neurodamus-compile-mods CLI."""
+    from unittest.mock import MagicMock  # noqa: PLC0415
 
-_skip_no_neurodamus = pytest.mark.skipif(not _has_neurodamus, reason="neurodamus not installed")
-
-
-def _mock_compile_mods(monkeypatch, tmp_path, env_result):
-    """Set up monkeypatches for compile_mods internals."""
-    monkeypatch.setattr(
-        "neurodamus.utils.compile_mods._extract_mechanisms_dir",
-        lambda _path: [tmp_path / "mods"],
-    )
-    monkeypatch.setattr(
-        "neurodamus.utils.compile_mods._build_mod_files",
-        lambda _input_dirs, _output_dir, **_kwargs: env_result,
-    )
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stdout = json.dumps(stdout_json)
+    mock_result.stderr = ""
+    monkeypatch.setattr("subprocess.run", lambda *_args, **_kwargs: mock_result)
 
 
-@_skip_no_neurodamus
 class TestEnsureMechanismsCompiled:
-    """Unit tests for ensure_mechanisms_compiled (mocked, no nrnivmodl needed)."""
+    """Unit tests for ensure_mechanisms_compiled (mocked CLI, no neurodamus needed)."""
 
     def test_sets_nrnmech_lib_path(self, tmp_path, monkeypatch):
         """Compiles mechanisms and sets NRNMECH_LIB_PATH in os.environ."""
         fake_lib = str(tmp_path / "arm64" / "libnrnmech.dylib")
-        _mock_compile_mods(monkeypatch, tmp_path, {"NRNMECH_LIB_PATH": fake_lib})
+        _mock_compile_mods_cli(monkeypatch, {"NRNMECH_LIB_PATH": fake_lib})
 
         cache_dir = tmp_path / "cache"
-        result = ensure_mechanisms_compiled(
-            tmp_path / "circuit_config.json", cache_dir, Simulator.neuron
-        )
+        result = ensure_mechanisms_compiled(tmp_path / "circuit_config.json", cache_dir)
 
         assert result == fake_lib
         assert os.environ["NRNMECH_LIB_PATH"] == fake_lib
@@ -627,14 +614,13 @@ class TestEnsureMechanismsCompiled:
         """When simulator is coreneuron, also sets CORENEURONLIB."""
         fake_lib = str(tmp_path / "arm64" / "libnrnmech.dylib")
         fake_corelib = str(tmp_path / "arm64" / "libcorenrnmech.dylib")
-        _mock_compile_mods(
+        _mock_compile_mods_cli(
             monkeypatch,
-            tmp_path,
             {"NRNMECH_LIB_PATH": fake_lib, "CORENEURONLIB": fake_corelib},
         )
 
         result = ensure_mechanisms_compiled(
-            tmp_path / "circuit_config.json", tmp_path / "cache", Simulator.coreneuron
+            tmp_path / "circuit_config.json", tmp_path / "cache", simulator="coreneuron"
         )
 
         assert result == fake_lib
@@ -644,31 +630,23 @@ class TestEnsureMechanismsCompiled:
     def test_idempotent(self, tmp_path, monkeypatch):
         """Calling twice does not error."""
         fake_lib = str(tmp_path / "arm64" / "libnrnmech.dylib")
-        _mock_compile_mods(monkeypatch, tmp_path, {"NRNMECH_LIB_PATH": fake_lib})
+        _mock_compile_mods_cli(monkeypatch, {"NRNMECH_LIB_PATH": fake_lib})
 
         cache_dir = tmp_path / "cache"
-        ensure_mechanisms_compiled(tmp_path / "circuit_config.json", cache_dir, Simulator.neuron)
-        ensure_mechanisms_compiled(tmp_path / "circuit_config.json", cache_dir, Simulator.neuron)
+        ensure_mechanisms_compiled(tmp_path / "circuit_config.json", cache_dir)
+        ensure_mechanisms_compiled(tmp_path / "circuit_config.json", cache_dir)
 
         assert os.environ["NRNMECH_LIB_PATH"] == fake_lib
 
     def test_propagates_build_error(self, tmp_path, monkeypatch):
-        """If _build_mod_files raises, error propagates."""
-        monkeypatch.setattr(
-            "neurodamus.utils.compile_mods._extract_mechanisms_dir",
-            lambda _path: [tmp_path / "mods"],
-        )
+        """If neurodamus-compile-mods fails, error propagates."""
+        from unittest.mock import MagicMock  # noqa: PLC0415
 
-        def _failing_build(_input_dirs, _output_dir, **_kwargs):
-            msg = "nrnivmodl not found"
-            raise RuntimeError(msg)
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+        mock_result.stderr = "nrnivmodl not found in PATH"
+        monkeypatch.setattr("subprocess.run", lambda *_args, **_kwargs: mock_result)
 
-        monkeypatch.setattr(
-            "neurodamus.utils.compile_mods._build_mod_files",
-            _failing_build,
-        )
-
-        with pytest.raises(RuntimeError, match="nrnivmodl not found"):
-            ensure_mechanisms_compiled(
-                tmp_path / "circuit_config.json", tmp_path / "cache", Simulator.neuron
-            )
+        with pytest.raises(RuntimeError, match="neurodamus-compile-mods failed"):
+            ensure_mechanisms_compiled(tmp_path / "circuit_config.json", tmp_path / "cache")

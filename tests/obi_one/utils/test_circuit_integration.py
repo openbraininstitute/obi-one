@@ -7,10 +7,7 @@ from pathlib import Path
 
 import pytest
 
-neurodamus = pytest.importorskip("neurodamus")
-from neurodamus.utils.compile_mods import Simulator  # noqa: E402
-
-from obi_one.utils.circuit import ensure_mechanisms_compiled  # noqa: E402
+from obi_one.utils.circuit import ensure_mechanisms_compiled
 
 # Find the real nrnivmodl (not the venv shim which may be broken)
 _nrnivmodl_path = os.environ.get("NRNIVMODL_PATH") or shutil.which("nrnivmodl")
@@ -95,7 +92,7 @@ def test_compiles_and_produces_library(mock_circuit_config, tmp_path):
     cache_dir = tmp_path / "compiled_mods"
 
     result = ensure_mechanisms_compiled(
-        mock_circuit_config, cache_dir, Simulator.neuron, nrnivmodl_path=_nrnivmodl_path
+        mock_circuit_config, cache_dir, nrnivmodl_path=_nrnivmodl_path
     )
 
     assert result == os.environ["NRNMECH_LIB_PATH"]
@@ -108,10 +105,10 @@ def test_second_call_uses_cache(mock_circuit_config, tmp_path):
     cache_dir = tmp_path / "compiled_mods"
 
     result1 = ensure_mechanisms_compiled(
-        mock_circuit_config, cache_dir, Simulator.neuron, nrnivmodl_path=_nrnivmodl_path
+        mock_circuit_config, cache_dir, nrnivmodl_path=_nrnivmodl_path
     )
     result2 = ensure_mechanisms_compiled(
-        mock_circuit_config, cache_dir, Simulator.neuron, nrnivmodl_path=_nrnivmodl_path
+        mock_circuit_config, cache_dir, nrnivmodl_path=_nrnivmodl_path
     )
 
     assert result1 == result2
