@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import ClassVar, get_args, get_type_hints
 
 import entitysdk
-import morphio
 from pydantic import PrivateAttr
 
 from obi_one.core.block import Block
@@ -267,7 +266,6 @@ class GenerateSimulationTask(Task):
                 circuit=circuit,
                 node_population=population,
                 population=population,
-                morphology_loader=self._load_morphology,
             )
         )
 
@@ -367,24 +365,6 @@ class GenerateSimulationTask(Task):
     NEW NEURON SETS REFACTOR: SOME OF THIS CAN PROBABLY BE REMOVED NOW THE
     NEURON SETS HAVE TYPES (BIOPHYSICAL, POINT, ETC.)
     """
-
-    def _load_morphology(self, node_id: int, population: str | None) -> morphio.Morphology | None:
-        circuit = self._circuit
-        if circuit is None:
-            msg = "Circuit must be resolved before loading morphologies."
-            raise OBIONEError(msg)
-
-        population_name = population or circuit.default_population_name
-        try:
-            return circuit.load_morphology(node_id, population=population_name)
-        except (FileNotFoundError, KeyError, ValueError) as exc:
-            L.warning(
-                "Unable to load morphology for node %s in population '%s': %s",
-                node_id,
-                population_name,
-                exc,
-            )
-            return None
 
     def _ensure_simulation_target_node_set(self) -> None:
         """Ensure a neuron set exists matching `initialize.node_set`.

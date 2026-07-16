@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pandas as pd
 import pytest
@@ -86,7 +86,6 @@ def test_build_compartment_set_rejects_neuron_set_without_selected_population():
             population="selected",
             neuron_set=neuron_set,
             locations_block=MagicMock(),
-            morphology_loader=MagicMock(),
         )
 
 
@@ -100,19 +99,24 @@ def test_build_compartment_set_skips_unavailable_morphologies():
         {"section_id": [3], "normalized_section_offset": [0.75]}
     )
     morphology = MagicMock()
+    circuit = MagicMock()
+    circuit.load_morphology.side_effect = [FileNotFoundError, morphology]
 
     result = build_compartment_set_for_neuron_set(
         name="target",
-        circuit=MagicMock(),
+        circuit=circuit,
         node_population="pop",
         population="pop",
         neuron_set=neuron_set,
         locations_block=locations_block,
-        morphology_loader=lambda node_id, _population: None if node_id == 1 else morphology,
     )
 
     assert result.compartment_entries == ((2, 3, 0.75),)
     locations_block.points_on.assert_called_once_with(morphology)
+    assert circuit.load_morphology.call_args_list == [
+        call(1, population="pop"),
+        call(2, population="pop"),
+    ]
 
 
 def test_materialization_without_stimuli_returns_empty():
@@ -122,7 +126,6 @@ def test_materialization_without_stimuli_returns_empty():
             circuit=MagicMock(),
             node_population="pop",
             population="pop",
-            morphology_loader=MagicMock(),
         )
         == {}
     )
@@ -173,7 +176,6 @@ def test_materialization_requires_locations_neuron_set():
             circuit=MagicMock(),
             node_population="pop",
             population="pop",
-            morphology_loader=MagicMock(),
         )
 
 

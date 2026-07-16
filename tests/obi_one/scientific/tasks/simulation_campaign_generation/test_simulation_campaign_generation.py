@@ -816,7 +816,6 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
         circuit=circuit,
         node_population=circuit.default_population_name,
         population=circuit.default_population_name,
-        morphology_loader=lambda *_args, **_kwargs: morph,
     )
 
     comp_set = materialized["LocationCurrentClamp__locations"]

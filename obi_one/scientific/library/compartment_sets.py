@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import logging
 from operator import itemgetter
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping
+    from collections.abc import Iterable, Mapping
 
     import morphio
 
@@ -15,6 +16,8 @@ if TYPE_CHECKING:
     from obi_one.scientific.unions.unions_combined_neuron_sets import (
         BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     )
+
+L = logging.getLogger(__name__)
 
 
 class CompartmentLocation(BaseModel):
@@ -120,7 +123,6 @@ def build_compartment_set_for_neuron_set(
     population: str,
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     locations_block: MorphologyLocationsBlock,
-    morphology_loader: Callable[[int, str | None], morphio.Morphology | None],
 ) -> MaterializedCompartmentSet:
     """Create an internal SONATA compartment set from a neuron set and morphology locations."""
     neuron_set_block = neuron_set.block
@@ -138,8 +140,15 @@ def build_compartment_set_for_neuron_set(
     morphologies: dict[int, morphio.Morphology] = {}
     for node_id in node_ids:
         node_id_int = int(getattr(node_id, "id", node_id))
-        morph = morphology_loader(node_id_int, node_population)
-        if morph is None:
+        try:
+            morph = circuit.load_morphology(node_id_int, population=selected_population)
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            L.warning(
+                "Unable to load morphology for node %s in population '%s': %s",
+                node_id_int,
+                selected_population,
+                exc,
+            )
             continue
         morphologies[node_id_int] = morph
 

@@ -1,7 +1,4 @@
-from collections.abc import Callable
 from typing import Any
-
-import morphio
 
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.compartment_sets import (
@@ -17,7 +14,6 @@ def materialize_locations_to_compartment_sets(
     circuit: Circuit,
     node_population: str | None,
     population: str,
-    morphology_loader: Callable[[int, str | None], morphio.Morphology | None],
 ) -> dict[str, MaterializedCompartmentSet]:
     """Convert stimulus MorphologyLocations targets into internal SONATA compartment sets."""
     materialized: dict[str, MaterializedCompartmentSet] = {}
@@ -49,7 +45,6 @@ def materialize_locations_to_compartment_sets(
             population=population,
             neuron_set=neuron_set_ref,
             locations_block=locations_block,
-            morphology_loader=morphology_loader,
         )
         stimulus.set_materialized_compartment_set_target(comp_set_name)
 
