@@ -1,17 +1,20 @@
 """Tests for circuit utility functions (asset generation)."""
 
 import json
+import os
 import shutil
 from unittest.mock import MagicMock, patch
 
 import pytest
 from entitysdk import types
+from neurodamus.utils.compile_mods import Simulator
 from PIL import Image
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
     copy_mod_files,
+    ensure_mechanisms_compiled,
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
@@ -577,3 +580,86 @@ def test_copy_mod_files_empty_source_dir(tmp_path):
 
     # Destination directory should not be created
     assert not dest_dir.exists()
+
+
+# --- Tests for ensure_mechanisms_compiled ---
+
+
+def _mock_compile_mods(monkeypatch, tmp_path, env_result):
+    """Set up monkeypatches for compile_mods internals."""
+    monkeypatch.setattr(
+        "neurodamus.utils.compile_mods._extract_mechanisms_dir",
+        lambda _path: [tmp_path / "mods"],
+    )
+    monkeypatch.setattr(
+        "neurodamus.utils.compile_mods._build_mod_files",
+        lambda _input_dirs, _output_dir, **_kwargs: env_result,
+    )
+
+
+class TestEnsureMechanismsCompiled:
+    """Unit tests for ensure_mechanisms_compiled (mocked, no nrnivmodl needed)."""
+
+    def test_sets_nrnmech_lib_path(self, tmp_path, monkeypatch):
+        """Compiles mechanisms and sets NRNMECH_LIB_PATH in os.environ."""
+        fake_lib = str(tmp_path / "arm64" / "libnrnmech.dylib")
+        _mock_compile_mods(monkeypatch, tmp_path, {"NRNMECH_LIB_PATH": fake_lib})
+
+        cache_dir = tmp_path / "cache"
+        result = ensure_mechanisms_compiled(
+            tmp_path / "circuit_config.json", cache_dir, Simulator.neuron
+        )
+
+        assert result == fake_lib
+        assert os.environ["NRNMECH_LIB_PATH"] == fake_lib
+        assert cache_dir.exists()
+
+    def test_sets_coreneuronlib_when_coreneuron(self, tmp_path, monkeypatch):
+        """When simulator is coreneuron, also sets CORENEURONLIB."""
+        fake_lib = str(tmp_path / "arm64" / "libnrnmech.dylib")
+        fake_corelib = str(tmp_path / "arm64" / "libcorenrnmech.dylib")
+        _mock_compile_mods(
+            monkeypatch,
+            tmp_path,
+            {"NRNMECH_LIB_PATH": fake_lib, "CORENEURONLIB": fake_corelib},
+        )
+
+        result = ensure_mechanisms_compiled(
+            tmp_path / "circuit_config.json", tmp_path / "cache", Simulator.coreneuron
+        )
+
+        assert result == fake_lib
+        assert os.environ["NRNMECH_LIB_PATH"] == fake_lib
+        assert os.environ["CORENEURONLIB"] == fake_corelib
+
+    def test_idempotent(self, tmp_path, monkeypatch):
+        """Calling twice does not error."""
+        fake_lib = str(tmp_path / "arm64" / "libnrnmech.dylib")
+        _mock_compile_mods(monkeypatch, tmp_path, {"NRNMECH_LIB_PATH": fake_lib})
+
+        cache_dir = tmp_path / "cache"
+        ensure_mechanisms_compiled(tmp_path / "circuit_config.json", cache_dir, Simulator.neuron)
+        ensure_mechanisms_compiled(tmp_path / "circuit_config.json", cache_dir, Simulator.neuron)
+
+        assert os.environ["NRNMECH_LIB_PATH"] == fake_lib
+
+    def test_propagates_build_error(self, tmp_path, monkeypatch):
+        """If _build_mod_files raises, error propagates."""
+        monkeypatch.setattr(
+            "neurodamus.utils.compile_mods._extract_mechanisms_dir",
+            lambda _path: [tmp_path / "mods"],
+        )
+
+        def _failing_build(_input_dirs, _output_dir, **_kwargs):
+            msg = "nrnivmodl not found"
+            raise RuntimeError(msg)
+
+        monkeypatch.setattr(
+            "neurodamus.utils.compile_mods._build_mod_files",
+            _failing_build,
+        )
+
+        with pytest.raises(RuntimeError, match="nrnivmodl not found"):
+            ensure_mechanisms_compiled(
+                tmp_path / "circuit_config.json", tmp_path / "cache", Simulator.neuron
+            )
