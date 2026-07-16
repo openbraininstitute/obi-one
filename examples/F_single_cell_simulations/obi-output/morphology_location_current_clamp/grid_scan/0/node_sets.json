@@ -1,0 +1,448 @@
+{
+  "All": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "Excitatory": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "Cylinder300": {
+    "gids": []
+  },
+  "Inhibitory": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SLM_PPA": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SO_BP": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SO_BS": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SO_OLM": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SO_Tri": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SP_AA": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SP_BS": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SP_CCKBC": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SP_Ivy": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SP_PC": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "SP_PVBC": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SR_SCA": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "bAC": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cAC": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cACpyr": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "cNAC": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SLM": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SO": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SP": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "SR": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "BC": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "BS": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "CCK": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "PV": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SOM": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "SP_INT": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "nonCCK": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice21": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice36": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice40": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder300_exc": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "slice8": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice41": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice4": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "target_single": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice33": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder300_inh": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice32": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice42": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice10": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "cylinder397485r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "Mosaic": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "slice19": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder253803r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice2": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice6": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice39": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "CA3_SP_PC": {
+    "population": "CA3_projections"
+  },
+  "source_single": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice30": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice46": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice25": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice34": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice15": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder299049r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice12": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder300": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "slice16": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice27": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder109262r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice43": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice0": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder269358r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice26": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "CB1R_pos": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice14": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice7": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "source_cyl_unique": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice22": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice44": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice45": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder128660r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice38": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice37": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice29": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice28": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder329179r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice18": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice17": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice20": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinders": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice35": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "100_per_mtype": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "target_cyl_unique": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "LFPCompartments": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "CB1R_neg": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice24": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice5": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinders300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice23": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "destination_single": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice9": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder216679r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice11": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice400um": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  },
+  "destination_cyl_unique": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "cylinder297714r300": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice13": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice3": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice31": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "slice1": {
+    "population": "hippocampus_neurons",
+    "node_id": []
+  },
+  "Default: All Biophysical Neurons": {
+    "population": "hippocampus_neurons",
+    "node_id": [
+      0
+    ]
+  }
+}
