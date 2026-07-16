@@ -6,9 +6,11 @@ import shutil
 from pathlib import Path
 
 import pytest
-from neurodamus.utils.compile_mods import Simulator
 
-from obi_one.utils.circuit import ensure_mechanisms_compiled
+neurodamus = pytest.importorskip("neurodamus")
+from neurodamus.utils.compile_mods import Simulator  # noqa: E402
+
+from obi_one.utils.circuit import ensure_mechanisms_compiled  # noqa: E402
 
 # Find the real nrnivmodl (not the venv shim which may be broken)
 _nrnivmodl_path = os.environ.get("NRNIVMODL_PATH") or shutil.which("nrnivmodl")

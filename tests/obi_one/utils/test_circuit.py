@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from entitysdk import types
-from neurodamus.utils.compile_mods import Simulator
 from PIL import Image
 
 from obi_one.core.exception import OBIONEError
@@ -584,6 +583,15 @@ def test_copy_mod_files_empty_source_dir(tmp_path):
 
 # --- Tests for ensure_mechanisms_compiled ---
 
+try:
+    from neurodamus.utils.compile_mods import Simulator
+
+    _has_neurodamus = True
+except ModuleNotFoundError:
+    _has_neurodamus = False
+
+_skip_no_neurodamus = pytest.mark.skipif(not _has_neurodamus, reason="neurodamus not installed")
+
 
 def _mock_compile_mods(monkeypatch, tmp_path, env_result):
     """Set up monkeypatches for compile_mods internals."""
@@ -597,6 +605,7 @@ def _mock_compile_mods(monkeypatch, tmp_path, env_result):
     )
 
 
+@_skip_no_neurodamus
 class TestEnsureMechanismsCompiled:
     """Unit tests for ensure_mechanisms_compiled (mocked, no nrnivmodl needed)."""
 
