@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import (
     Field,
@@ -137,9 +137,10 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         if self._materialized_compartment_set_name is not None:
             return {"compartment_set": self._materialized_compartment_set_name}
 
+        neuron_set = cast("NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None", self.neuron_set)
         return {
             "node_set": resolve_neuron_set_ref_to_node_set(
-                self.neuron_set,
+                neuron_set,
                 self._default_node_set,
             )
         }
