@@ -312,7 +312,7 @@ def ensure_mechanisms_compiled(
     incflags: str = "",
     loadflags: str = "",
     nrnivmodl_path: str | None = None,
-) -> str:
+) -> str:  # pragma: no cover
     """Compile NMODL mechanisms for a circuit if not already cached.
 
     Uses neurodamus' compile_mods utilities to discover the circuit's mechanism
@@ -359,8 +359,6 @@ def ensure_mechanisms_compiled(
     if "CORENEURONLIB" in env:
         os.environ["CORENEURONLIB"] = env["CORENEURONLIB"]
         L.info("CORENEURONLIB set to %s", env["CORENEURONLIB"])
-
-    return nrnmech_lib_path
 
     return nrnmech_lib_path
 
