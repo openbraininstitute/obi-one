@@ -50,7 +50,7 @@ class IonChannelModelSimulationExecutionTask(Task):
             raise ValueError(msg)
 
         json_str = db_client.download_content(
-            entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=self.config.single_entity.id,
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
             asset_id=config_asset.id,
         ).decode(encoding="utf-8")
@@ -113,7 +113,7 @@ class IonChannelModelSimulationExecutionTask(Task):
         simulation_entity = self.config.single_entity
 
         simulation_metadata = SimulationMetadata(
-            simulation_id=simulation_entity.id,  # ty:ignore[invalid-argument-type]
+            simulation_id=simulation_entity.id,
         )
         staged_simulation_config_path = stage_simulation(
             client=db_client,
@@ -140,7 +140,7 @@ class IonChannelModelSimulationExecutionTask(Task):
                 simulation_metadata=simulation_metadata,
             )
             db_client.update_entity(
-                entity_id=execution_activity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=execution_activity.id,
                 entity_type=self.activity_type,
                 attrs_or_entity={"generated_ids": [str(generated_entity.id)]},  # ty:ignore[unresolved-attribute]
             )

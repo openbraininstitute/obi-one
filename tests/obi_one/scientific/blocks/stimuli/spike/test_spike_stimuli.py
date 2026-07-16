@@ -13,7 +13,7 @@ from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.stimuli.spike.sinusoidal_poisson import (
     _draw_inhomogeneous_poisson_interval_ms,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 from tests.utils import CIRCUIT_DIR
 

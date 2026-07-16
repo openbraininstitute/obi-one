@@ -14,7 +14,7 @@ from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
-from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
+from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 
 if TYPE_CHECKING:
     from obi_one.scientific.blocks.distributions.base import Distribution
