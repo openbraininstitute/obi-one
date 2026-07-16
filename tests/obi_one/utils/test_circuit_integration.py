@@ -14,11 +14,30 @@ from obi_one.utils.circuit import ensure_mechanisms_compiled  # noqa: E402
 
 # Find the real nrnivmodl (not the venv shim which may be broken)
 _nrnivmodl_path = os.environ.get("NRNIVMODL_PATH") or shutil.which("nrnivmodl")
-_has_nrnivmodl = _nrnivmodl_path is not None
+
+
+def _nrnivmodl_works() -> bool:
+    """Check if nrnivmodl is actually functional (not just a broken shim)."""
+    if not _nrnivmodl_path:
+        return False
+    import subprocess  # noqa: PLC0415, S404
+
+    try:
+        result = subprocess.run(  # noqa: S603
+            [_nrnivmodl_path, "--help"],
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    else:
+        return result.returncode == 0
+
 
 pytestmark = pytest.mark.skipif(
-    not _has_nrnivmodl,
-    reason="Requires nrnivmodl on PATH (set NRNIVMODL_PATH if needed)",
+    not _nrnivmodl_works(),
+    reason="Requires a functional nrnivmodl (set NRNIVMODL_PATH if needed)",
 )
 
 # A trivial .mod file that compiles without external dependencies.
