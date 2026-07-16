@@ -1,2 +1,2 @@
-obi-one @ git+https://github.com/openbraininstitute/obi-one@dkeller9/remove_lod_task_config
+obi-one
 
