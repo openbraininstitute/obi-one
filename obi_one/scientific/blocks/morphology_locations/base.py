@@ -58,11 +58,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-    section_types: (
-        tuple[Literal[2, 3, 4], ...]
-        | list[tuple[Literal[2, 3, 4], ...]]
-        | None
-    ) = Field(
+    section_types: tuple[Literal[2, 3, 4], ...] | list[tuple[Literal[2, 3, 4], ...]] | None = Field(
         default=(2, 3, 4),
         title="Section Types",
         description=(
