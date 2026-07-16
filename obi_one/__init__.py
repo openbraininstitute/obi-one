@@ -80,6 +80,16 @@ __all__ = [
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
     "EMSynapseMappingTask",
+    "EModelEFeatureExtractionScanConfig",
+    "EModelEFeatureExtractionSingleConfig",
+    "EModelEFeatureExtractionTask",
+    "EModelExportAndValidationScanConfig",
+    "EModelExportAndValidationSingleConfig",
+    "EModelExportAndValidationTask",
+    "EModelOptimizationScanConfig",
+    "EModelOptimizationSingleConfig",
+    "EModelOptimizationTask",
+    "ElectricalCellRecordingFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -433,6 +443,9 @@ from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
+)
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -477,6 +490,27 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import (
 )
 from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingTask,
+)
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.config import (
+    EModelEFeatureExtractionScanConfig,
+    EModelEFeatureExtractionSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
+)
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.task import (
+    EModelOptimizationTask,
+)
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.config import (
+    EModelExportAndValidationScanConfig,
+    EModelExportAndValidationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.task import (
+    EModelExportAndValidationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,

@@ -1,0 +1,1 @@
+obi-one[emodel] @ git+https://github.com/openbraininstitute/obi-one.git@emodel_extraction

@@ -571,6 +571,39 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
+def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) -> None:
+    location = f"{param} at {ref}"
+    assert schema.get("type") == "array", (
+        f"Validation error at {location}: select_efeatures_by_protocol param {param}"
+        " should be of type 'array'"
+    )
+    catalogue = schema.get("available_efeatures_by_protocol")
+    assert isinstance(catalogue, dict), (
+        f"Validation error at {location}: select_efeatures_by_protocol param {param} must"
+        " expose an 'available_efeatures_by_protocol' dict listing the efeatures known"
+        " per protocol"
+    )
+    assert catalogue, (
+        f"Validation error at {location}: 'available_efeatures_by_protocol' must not be empty"
+    )
+    for protocol, features in catalogue.items():
+        assert isinstance(protocol, str), (
+            f"Validation error at {location}: protocol key in"
+            " 'available_efeatures_by_protocol' must be a string"
+        )
+        assert protocol, (
+            f"Validation error at {location}: protocol key in"
+            " 'available_efeatures_by_protocol' must be non-empty"
+        )
+        assert isinstance(features, list), (
+            f"Validation error at {location}: features for protocol {protocol!r} must be a list"
+        )
+        assert all(isinstance(f, str) for f in features), (
+            f"Validation error at {location}: every entry in features for protocol"
+            f" {protocol!r} must be a string"
+        )
+
+
 def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     assert schema.get("type") == "array", (
         f"Validation error at {ref}: voltage_duration param {param} should be of type 'array'"
@@ -650,6 +683,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON:
             validate_ion_channel_variable_modification_by_neuron(schema, param, ref)
+        case UIElement.SELECT_EFEATURES_BY_PROTOCOL:
+            validate_select_efeatures_by_protocol(schema, param, ref)
         case UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE:
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case UIElement.VOLTAGE_DURATION:

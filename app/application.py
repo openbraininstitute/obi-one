@@ -22,6 +22,7 @@ from app.endpoints import (
     config_validation,
     convert_morphology_to_registered_mesh,
     count_scan_coordinates,
+    electrical_cell_recording_properties,
     ephys_metrics,
     extracellular_locations,
     ion_channel_properties,
@@ -172,6 +173,7 @@ app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
 app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
+app.include_router(electrical_cell_recording_properties.router)
 app.include_router(ephys_metrics.router)
 app.include_router(extracellular_locations.router)
 app.include_router(ion_channel_properties.router)
