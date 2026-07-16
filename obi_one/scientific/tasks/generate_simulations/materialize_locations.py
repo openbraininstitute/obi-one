@@ -32,11 +32,7 @@ def materialize_locations_to_compartment_sets(
 
         neuron_set_ref = getattr(locations_block, "neuron_set", None)
         if neuron_set_ref is None:
-            msg = (
-                f"Locations block '{locations_block.block_name}' referenced by stimulus "
-                f"'{stimulus.block_name}' has no neuron_set."
-            )
-            raise ValueError(msg)
+            neuron_set_ref = single_config.default_neuron_set_reference
 
         comp_set_name = f"{stimulus.block_name}__locations"
 

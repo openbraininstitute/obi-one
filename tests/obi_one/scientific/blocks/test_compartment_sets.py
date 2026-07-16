@@ -161,7 +161,7 @@ def test_write_compartment_sets_rejects_invalid_file_name(tmp_path, file_name):
         )
 
 
-def test_materialization_requires_locations_neuron_set():
+def test_materialization_uses_default_neuron_set_for_locations_without_target():
     locations = obi.RandomMorphologyLocations()
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
@@ -171,14 +171,29 @@ def test_materialization_requires_locations_neuron_set():
     locations_ref.block = locations
     stimulus = obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations_ref)
     stimulus.set_block_name("stimulus")
+    default_ref = MagicMock()
 
-    with pytest.raises(ValueError, match="has no neuron_set"):
+    with patch(
+        "obi_one.scientific.tasks.generate_simulations.materialize_locations."
+        "build_compartment_set_for_neuron_set"
+    ) as build_compartment_set:
+        build_compartment_set.return_value = MaterializedCompartmentSet(
+            name="stimulus__locations",
+            population="pop",
+        )
+
         materialize_locations_to_compartment_sets(
-            single_config=SimpleNamespace(stimuli={"stimulus": stimulus}),
+            single_config=SimpleNamespace(
+                stimuli={"stimulus": stimulus},
+                default_neuron_set_reference=default_ref,
+            ),
             circuit=MagicMock(),
             node_population="pop",
             population="pop",
         )
+
+    build_compartment_set.assert_called_once()
+    assert build_compartment_set.call_args.kwargs["neuron_set"] is default_ref
 
 
 def test_continuous_stimulus_without_target_uses_default_node_set():
