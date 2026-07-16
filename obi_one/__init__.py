@@ -59,8 +59,6 @@ __all__ = [
     "ClusteredSynapsesByCount",
     "ClusteredSynapsesByMaxDistance",
     "CombinedNeuronSet",
-    "CompartmentLocation",
-    "CompartmentSet",
     "ConnectSynapticManipulation",
     "ConnectivityMatrixExtractionScanConfig",
     "ConnectivityMatrixExtractionSingleConfig",
@@ -279,7 +277,6 @@ from obi_one.scientific.blocks.afferent_synapses.afferent_synapses import (
     RandomlySelectedFractionOfSynapses,
     RandomlySelectedNumberOfSynapses,
 )
-from obi_one.scientific.blocks.compartment_sets import CompartmentLocation, CompartmentSet
 from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,

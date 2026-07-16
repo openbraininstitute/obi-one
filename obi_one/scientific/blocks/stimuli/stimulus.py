@@ -25,10 +25,6 @@ from obi_one.scientific.unions.unions_combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_compartment_sets import (
-    CompartmentSetReference,
-    resolve_compartment_set_ref_to_name,
-)
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 from obi_one.scientific.unions.unions_timestamps import (
     TimestampsReference,
@@ -112,32 +108,36 @@ class StimulusWithDuration(BaseStimulus):
 
 
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
-    neuron_set: (
-        NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION
-        | CompartmentSetReference
-        | MorphologyLocationsReference
-        | None
-    ) = Field(
-        default=None,
-        title="Target",
-        description=(
-            "Neuron set, explicit compartment set, or morphology-location rule to which the "
-            "stimulus is applied."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [
-                *NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-                CompartmentSetReference.__name__,
-                MorphologyLocationsReference.__name__,
-            ],
-            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
-        },
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | MorphologyLocationsReference | None = (
+        Field(
+            default=None,
+            title="Target",
+            description=(
+                "Neuron set or morphology-location rule to which the stimulus is applied."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+                SchemaKey.REFERENCE_TYPES: [
+                    *NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+                    MorphologyLocationsReference.__name__,
+                ],
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
+            },
+        )
     )
 
+    _materialized_compartment_set_name: str | None = PrivateAttr(default=None)
+
+    def set_materialized_compartment_set_target(self, name: str) -> None:
+        self._materialized_compartment_set_name = name
+
     def _target_entry(self) -> dict[str, Any]:
-        if isinstance(self.neuron_set, CompartmentSetReference):
-            return {"compartment_set": resolve_compartment_set_ref_to_name(self.neuron_set)}
+        if self._materialized_compartment_set_name is not None:
+            return {"compartment_set": self._materialized_compartment_set_name}
+
+        if isinstance(self.neuron_set, MorphologyLocationsReference):
+            msg = "MorphologyLocations targets must be materialized before stimulus export."
+            raise TypeError(msg)
 
         return {
             "node_set": resolve_neuron_set_ref_to_node_set(

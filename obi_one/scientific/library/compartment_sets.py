@@ -5,13 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from obi_one.core.block import Block
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.library.entity_property_types import (
-    CircuitMappedProperties,
-    MappedPropertiesGroup,
-)
-
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
 
@@ -30,28 +23,15 @@ class CompartmentLocation(BaseModel):
     offset: float = Field(ge=0.0, le=1.0)
 
 
-class CompartmentSet(Block):
-    """SONATA-compatible compartment_set block."""
+class MaterializedCompartmentSet(BaseModel):
+    """Internal SONATA compartment-set representation generated from MorphologyLocations."""
 
-    population: str = Field(
-        min_length=1,
-        title="Population",
-        description="Biophysical node population name for which the compartment entries apply.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
-        },
-    )
-
-    compartment_entries: tuple[tuple[int, int, float], ...] = Field(
-        default_factory=tuple,
-        title="Compartment Entries",
-        description="Tuple of (node_id, section_id, offset) triplets.",
-    )
+    name: str = Field(min_length=1)
+    population: str = Field(min_length=1)
+    compartment_entries: tuple[tuple[int, int, float], ...] = Field(default_factory=tuple)
 
     def to_sonata_dict(self) -> dict[str, Any]:
-        """Return SONATA-compliant { block_name : {...} } structure."""
+        """Return SONATA-compliant { name : {...} } structure."""
         triplets = [
             [int(node_id), int(section_id), float(offset)]
             for (node_id, section_id, offset) in self.compartment_entries
@@ -61,13 +41,13 @@ class CompartmentSet(Block):
 
         deduped: list[list[float | int]] = []
         last: list[float | int] | None = None
-        for t in triplets:
-            if t != last:
-                deduped.append(t)
-                last = t
+        for triplet in triplets:
+            if triplet != last:
+                deduped.append(triplet)
+                last = triplet
 
         return {
-            self.block_name: {
+            self.name: {
                 "population": self.population,
                 "compartment_set": deduped,
             }
@@ -76,25 +56,27 @@ class CompartmentSet(Block):
     @classmethod
     def from_locations(
         cls,
+        *,
+        name: str,
         population: str,
         locations: Iterable[CompartmentLocation],
-    ) -> CompartmentSet:
-        """Convenience constructor from CompartmentLocation objects."""
+    ) -> MaterializedCompartmentSet:
         triplets = [(loc.node_id, loc.section_id, loc.offset) for loc in locations]
-        return cls(population=population, compartment_entries=tuple(triplets))
+        return cls(name=name, population=population, compartment_entries=tuple(triplets))
 
 
 def build_compartment_set_from_locations_block(
+    *,
+    name: str,
     population: str,
     locations_block: MorphologyLocationsBlock,
     morphologies: Mapping[int, morphio.Morphology],
-) -> CompartmentSet:
+) -> MaterializedCompartmentSet:
     locations: list[CompartmentLocation] = []
 
     for node_id, morph in morphologies.items():
         df = locations_block.points_on(morph)
 
-        # --- resolve column names ---
         if "section_id" not in df.columns:
             msg = (
                 "MorphologyLocationsBlock must return a DataFrame with a 'section_id' column. "
@@ -123,28 +105,24 @@ def build_compartment_set_from_locations_block(
                 )
             )
 
-    return CompartmentSet.from_locations(population=population, locations=locations)
+    return MaterializedCompartmentSet.from_locations(
+        name=name,
+        population=population,
+        locations=locations,
+    )
 
 
 def build_compartment_set_for_neuron_set(
     *,
+    name: str,
     circuit: Circuit,
     node_population: str | None,
     population: str,
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     locations_block: MorphologyLocationsBlock,
     morphology_loader: Callable[[int, str | None], morphio.Morphology | None],
-) -> CompartmentSet:
-    """Create a compartment set from a neuron set and morphology locations block.
-
-    This is a public bridge for high-level configs/examples:
-
-    neuron_set + locations_block -> CompartmentSet
-
-    Notes:
-        `population` is the SONATA population name for the CompartmentSet.
-        `node_population` is the circuit population used to resolve node ids/morphologies.
-    """
+) -> MaterializedCompartmentSet:
+    """Create an internal SONATA compartment set from a neuron set and morphology locations."""
     neuron_set_block = neuron_set.block
     ids_by_population = neuron_set_block.get_neuron_ids(circuit)
     selected_population = node_population or population
@@ -166,6 +144,7 @@ def build_compartment_set_for_neuron_set(
         morphologies[node_id_int] = morph
 
     return build_compartment_set_from_locations_block(
+        name=name,
         population=population,
         locations_block=locations_block,
         morphologies=morphologies,

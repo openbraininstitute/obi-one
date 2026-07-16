@@ -5,7 +5,6 @@ from obi_one.scientific.unions.unions_combined_neuron_sets import (
     CombinedPointNeuronSetReference,
     CombinedVirtualNeuronSetReference,
 )
-from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetReference
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
 )
@@ -39,7 +38,6 @@ AllBlockReferenceTypes = [
     SynapticManipulationsReference,
     RecordingReference,
     TimestampsReference,
-    CompartmentSetReference,
     MorphologyLocationsReference,
     AllDistributionsReference,
     SynapticModelReference,

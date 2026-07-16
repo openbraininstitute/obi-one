@@ -5,16 +5,11 @@ import pandas as pd
 import pytest
 
 import obi_one as obi
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.compartment_sets import (
+from obi_one.scientific.library.compartment_sets import (
     CompartmentLocation,
-    CompartmentSet,
+    MaterializedCompartmentSet,
     build_compartment_set_for_neuron_set,
     build_compartment_set_from_locations_block,
-)
-from obi_one.scientific.library.entity_property_types import (
-    CircuitMappedProperties,
-    MappedPropertiesGroup,
 )
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_compartment_set_file,
@@ -23,15 +18,12 @@ from obi_one.scientific.tasks.generate_simulations.materialize_locations import 
     materialize_locations_to_compartment_sets,
 )
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
-from obi_one.scientific.unions.unions_compartment_sets import (
-    CompartmentSetReference,
-    resolve_compartment_set_ref_to_name,
-)
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 
 
 def test_compartment_set_sorts_deduplicates_and_builds_from_locations():
-    compartment_set = CompartmentSet.from_locations(
+    compartment_set = MaterializedCompartmentSet.from_locations(
+        name="target",
         population="pop",
         locations=[
             CompartmentLocation(node_id=2, section_id=3, offset=0.5),
@@ -39,21 +31,12 @@ def test_compartment_set_sorts_deduplicates_and_builds_from_locations():
             CompartmentLocation(node_id=2, section_id=3, offset=0.5),
         ],
     )
-    compartment_set.set_block_name("target")
 
     assert compartment_set.to_sonata_dict() == {
         "target": {
             "population": "pop",
             "compartment_set": [[1, 4, 0.2], [2, 3, 0.5]],
         }
-    }
-
-
-def test_compartment_set_population_uses_biophysical_population_dropdown():
-    assert CompartmentSet.model_fields["population"].json_schema_extra == {
-        SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
-        SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-        SchemaKey.PROPERTY: CircuitMappedProperties.BIOPHYSICAL_NEURONAL_POPULATION,
     }
 
 
@@ -70,6 +53,7 @@ def test_build_compartment_set_rejects_missing_location_columns(columns, match):
 
     with pytest.raises(KeyError, match=match):
         build_compartment_set_from_locations_block(
+            name="target",
             population="pop",
             locations_block=locations_block,
             morphologies={1: MagicMock()},
@@ -81,6 +65,7 @@ def test_build_compartment_set_accepts_offset_column():
     locations_block.points_on.return_value = pd.DataFrame({"section_id": [3], "offset": [0.25]})
 
     result = build_compartment_set_from_locations_block(
+        name="target",
         population="pop",
         locations_block=locations_block,
         morphologies={7: MagicMock()},
@@ -95,6 +80,7 @@ def test_build_compartment_set_rejects_neuron_set_without_selected_population():
 
     with pytest.raises(ValueError, match="does not contain population 'selected'"):
         build_compartment_set_for_neuron_set(
+            name="target",
             circuit=MagicMock(),
             node_population="selected",
             population="selected",
@@ -116,6 +102,7 @@ def test_build_compartment_set_skips_unavailable_morphologies():
     morphology = MagicMock()
 
     result = build_compartment_set_for_neuron_set(
+        name="target",
         circuit=MagicMock(),
         node_population="pop",
         population="pop",
@@ -139,14 +126,6 @@ def test_materialization_without_stimuli_returns_empty():
         )
         == {}
     )
-
-
-def test_compartment_set_reference_name_resolution():
-    ref = CompartmentSetReference(block_dict_name="", block_name="target")
-
-    assert resolve_compartment_set_ref_to_name(None, default="default") == "default"
-    assert resolve_compartment_set_ref_to_name("raw-name") == "raw-name"
-    assert resolve_compartment_set_ref_to_name(ref) == "target"
 
 
 def test_write_compartment_sets_uses_circuit_default_file(tmp_path):
@@ -205,6 +184,17 @@ def test_continuous_stimulus_without_target_uses_default_node_set():
     config = stimulus.config(default_node_set="default-target")
 
     assert config["stimulus_0"]["node_set"] == "default-target"
+
+
+def test_continuous_stimulus_uses_materialized_compartment_set_target():
+    stimulus = obi.ConstantCurrentClampSomaticStimulus()
+    stimulus.set_block_name("stimulus")
+    stimulus.set_materialized_compartment_set_target("LocationCurrentClamp__locations")
+
+    config = stimulus.config(default_node_set="default-target")
+
+    assert config["stimulus_0"]["compartment_set"] == "LocationCurrentClamp__locations"
+    assert "node_set" not in config["stimulus_0"]
 
 
 def test_task_injects_default_into_optional_unified_target():

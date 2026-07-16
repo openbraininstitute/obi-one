@@ -9,7 +9,6 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
-from obi_one.scientific.blocks.compartment_sets import CompartmentSet
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
@@ -21,6 +20,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.compartment_sets import MaterializedCompartmentSet
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
@@ -59,7 +59,9 @@ class GenerateSimulationTask(Task):
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
-    _materialized_compartment_sets: dict[str, CompartmentSet] = PrivateAttr(default_factory=dict)
+    _materialized_compartment_sets: dict[str, MaterializedCompartmentSet] = PrivateAttr(
+        default_factory=dict
+    )
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -495,12 +497,12 @@ class GenerateSimulationTask(Task):
             compartment_sets_dict: dict = {}
             sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
 
-            for cs_key, cs_block in self._materialized_compartment_sets.items():
-                if cs_key != cs_block.block_name:
+            for cs_key, comp_set in self._materialized_compartment_sets.items():
+                if cs_key != comp_set.name:
                     msg = "Materialized compartment set name mismatch."
                     raise OBIONEError(msg)
 
-                compartment_sets_dict.update(cs_block.to_sonata_dict())
+                compartment_sets_dict.update(comp_set.to_sonata_dict())
 
             write_circuit_compartment_set_file(
                 sonata_circuit,

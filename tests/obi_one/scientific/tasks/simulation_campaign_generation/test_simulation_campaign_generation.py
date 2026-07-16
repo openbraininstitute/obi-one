@@ -16,7 +16,7 @@ from obi_one.scientific.blocks.neuron_sets.id import (
 from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
     materialize_locations_to_compartment_sets,
 )
-from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetReference
+from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 
 from tests.utils import CIRCUIT_DIR
 
@@ -822,8 +822,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     comp_set = materialized["LocationCurrentClamp__locations"]
     materialized_target = form.stimuli["LocationCurrentClamp"].neuron_set
 
-    assert isinstance(materialized_target, CompartmentSetReference)
-    assert materialized_target.block is comp_set
+    assert isinstance(materialized_target, MorphologyLocationsReference)
 
     actual_rows = comp_set.to_sonata_dict()["LocationCurrentClamp__locations"]["compartment_set"]
 
@@ -851,30 +850,11 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     pd.testing.assert_frame_equal(actual, expected)
 
 
-def test_continuous_stimulus_accepts_explicit_compartment_set_target():
-    comp_set = obi.CompartmentSet(
-        population="S1nonbarrel_neurons",
-        compartment_entries=((0, 1, 0.5),),
-    )
-    comp_set.set_block_name("ExplicitTarget")
-    target_ref = CompartmentSetReference(block_dict_name="", block_name="ExplicitTarget")
-    target_ref.block = comp_set
-
-    stimulus = obi.ConstantCurrentClampSomaticStimulus(neuron_set=target_ref)
-    stimulus.set_block_name("CurrentClamp")
-
-    config = stimulus.config()
-
-    assert config["CurrentClamp_0"]["compartment_set"] == "ExplicitTarget"
-    assert "node_set" not in config["CurrentClamp_0"]
-
-
 def test_continuous_stimulus_exposes_single_target_field():
     fields = obi.ConstantCurrentClampSomaticStimulus.model_fields
     reference_types = fields["neuron_set"].json_schema_extra[SchemaKey.REFERENCE_TYPES]
 
     assert fields["neuron_set"].title == "Target"
     assert "MorphologyLocationsReference" in reference_types
-    assert "CompartmentSetReference" in reference_types
     assert "locations" not in fields
     assert "compartment_set" not in fields

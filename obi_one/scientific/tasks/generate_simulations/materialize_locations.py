@@ -3,12 +3,11 @@ from typing import Any
 
 import morphio
 
-from obi_one.scientific.blocks.compartment_sets import (
-    CompartmentSet,
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.compartment_sets import (
+    MaterializedCompartmentSet,
     build_compartment_set_for_neuron_set,
 )
-from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_compartment_sets import CompartmentSetReference
 from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
 
 
@@ -19,9 +18,9 @@ def materialize_locations_to_compartment_sets(
     node_population: str | None,
     population: str,
     morphology_loader: Callable[[int, str | None], morphio.Morphology | None],
-) -> dict[str, CompartmentSet]:
-    """Convert stimulus MorphologyLocations targets into generated CompartmentSet blocks."""
-    materialized: dict[str, CompartmentSet] = {}
+) -> dict[str, MaterializedCompartmentSet]:
+    """Convert stimulus MorphologyLocations targets into internal SONATA compartment sets."""
+    materialized: dict[str, MaterializedCompartmentSet] = {}
 
     if not hasattr(single_config, "stimuli"):
         return materialized
@@ -44,6 +43,7 @@ def materialize_locations_to_compartment_sets(
         comp_set_name = f"{stimulus.block_name}__locations"
 
         comp_set = build_compartment_set_for_neuron_set(
+            name=comp_set_name,
             circuit=circuit,
             node_population=node_population,
             population=population,
@@ -51,17 +51,7 @@ def materialize_locations_to_compartment_sets(
             locations_block=locations_block,
             morphology_loader=morphology_loader,
         )
-        comp_set.set_block_name(comp_set_name)
-
-        ref = CompartmentSetReference(
-            block_dict_name="",
-            block_name=comp_set_name,
-        )
-        ref.block = comp_set
-
-        comp_set.set_ref(ref)
-
-        stimulus.neuron_set = ref
+        stimulus.set_materialized_compartment_set_target(comp_set_name)
 
         materialized[comp_set_name] = comp_set
 
