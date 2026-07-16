@@ -137,10 +137,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         if self._materialized_compartment_set_name is not None:
             return {"compartment_set": self._materialized_compartment_set_name}
 
-        if isinstance(self.neuron_set, MorphologyLocationsReference):
-            msg = "MorphologyLocations targets must be materialized before stimulus export."
-            raise TypeError(msg)
-
         return {
             "node_set": resolve_neuron_set_ref_to_node_set(
                 self.neuron_set,
