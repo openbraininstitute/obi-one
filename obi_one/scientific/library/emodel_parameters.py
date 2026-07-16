@@ -124,7 +124,7 @@ def get_mechanism_variables(
         Tuple of (variables_list, channel_mapping) where channel_mapping shows
         which section lists each ion channel appears in based on emodel JSON.
     """
-    emodel = db_client.get_entity(entity_id=memodel.emodel.id, entity_type=EModel)  # ty:ignore[invalid-argument-type]
+    emodel = db_client.get_entity(entity_id=memodel.emodel.id, entity_type=EModel)
 
     optimized_params = _fetch_optimization_parameters(db_client, emodel)
     ion_channel_vars = _get_ion_channel_variables(emodel)
@@ -181,7 +181,7 @@ def _fetch_optimization_parameters(
         return []
 
     content_bytes = db_client.download_content(
-        entity_id=emodel.id,  # ty:ignore[invalid-argument-type]
+        entity_id=emodel.id,
         entity_type=EModel,
         asset_id=asset.id,  # ty:ignore[unresolved-attribute]
     )

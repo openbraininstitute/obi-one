@@ -149,6 +149,7 @@ __all__ = [
     "MorphologyMetricsScanConfig",
     "MorphologyMetricsSingleConfig",
     "MorphologyMetricsTask",
+    "MultiPopulationPredefinedNeuronSet",
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
@@ -323,6 +324,7 @@ from obi_one.scientific.blocks.neuron_sets.deprecated import (
     ExcitatoryNeurons,
     IDNeuronSet,
     InhibitoryNeurons,
+    PredefinedNeuronSet,
     nbS1POmInputs,
     nbS1VPMInputs,
     rCA1CA3Inputs,
@@ -339,8 +341,8 @@ from obi_one.scientific.blocks.neuron_sets.population import (
 )
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
+    MultiPopulationPredefinedNeuronSet,
     PointPopulationPredefinedNeuronSet,
-    PredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets.property import (
@@ -443,6 +445,12 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     add_node_set_to_circuit,
     write_circuit_node_set_file,
 )
+from obi_one.scientific.mappings_and_registry.block_reference_registry import (
+    AllBlockReferenceTypes,  # noqa: F401
+)
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_configs_task_type,
+)
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsSingleConfig,
@@ -494,6 +502,10 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit 
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
     LearningEngineCircuitSimulationScanConfig,
     LearningEngineCircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.aliases import (
+    Simulation,
+    SimulationsForm,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
@@ -548,44 +560,41 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
-from obi_one.scientific.unions.aliases import Simulation, SimulationsForm
-from obi_one.scientific.unions.block_references import AllBlockReferenceTypes  # noqa: F401
-from obi_one.scientific.unions.config_task_map import (
-    get_configs_task_type,
-)
-from obi_one.scientific.unions.unions_distributions import (
+from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
 )
-from obi_one.scientific.unions.unions_extracellular_locations import (
+from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
-from obi_one.scientific.unions.unions_recordings import RecordingReference, RecordingUnion
-from obi_one.scientific.unions.unions_scan_configs import ScanConfigsUnion
-from obi_one.scientific.unions.unions_stimuli import (
+from obi_one.scientific.unions_and_references.recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions_and_references.scan_configs import ScanConfigsUnion
+from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,
     MEModelStimulusUnion,
     StimulusReference,
     StimulusUnion,
 )
-from obi_one.scientific.unions.unions_synapse_set import SynapseSetUnion
-from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+from obi_one.scientific.unions_and_references.synapse_set import SynapseSetUnion
+from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerReference,
     SynapticModelAssignerUnion,
 )
-from obi_one.scientific.unions.unions_synaptic_models import (
+from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )
-from obi_one.scientific.unions.unions_tasks import TasksUnion
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference, TimestampsUnion
+from obi_one.scientific.unions_and_references.tasks import TasksUnion
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference, TimestampsUnion
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # noqa: RUF067
 PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # noqa: RUF067

@@ -18,7 +18,9 @@ from obi_one.scientific.tasks.generate_simulations.materialize_locations import 
     materialize_locations_to_compartment_sets,
 )
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 
 
 def test_compartment_set_sorts_deduplicates_and_builds_from_locations():

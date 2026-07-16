@@ -5,7 +5,9 @@ from obi_one.scientific.library.compartment_sets import (
     MaterializedCompartmentSet,
     build_compartment_set_for_neuron_set,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 
 
 def materialize_locations_to_compartment_sets(

@@ -16,7 +16,9 @@ from obi_one.scientific.blocks.neuron_sets.id import (
 from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
     materialize_locations_to_compartment_sets,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationsReference
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 
 from tests.utils import CIRCUIT_DIR
 

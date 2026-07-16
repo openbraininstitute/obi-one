@@ -24,7 +24,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_ID,
     _SEG_OFF,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
 
 L = logging.getLogger(__name__)
 

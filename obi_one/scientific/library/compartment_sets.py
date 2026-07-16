@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
     from obi_one.scientific.library.circuit import Circuit
-    from obi_one.scientific.unions.unions_combined_neuron_sets import (
+    from obi_one.scientific.unions_and_references.combined_neuron_sets import (
         BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     )
 

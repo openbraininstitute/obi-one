@@ -7,6 +7,7 @@ import entitysdk.client
 import entitysdk.exception
 import pytest
 from entitysdk.models.cell_morphology import CellMorphology
+from entitysdk.types import AssetLabel
 from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
@@ -175,6 +176,67 @@ def test_compute_measurement_kinds_unsupported_format():
     assert exc.value.detail == (
         "Unsupported morphology format: foo (expected one of: swc, h5, asc)"
     )
+
+
+def test_compute_measurement_kinds_prefers_morphology_h5_over_spiny_h5(monkeypatch):
+    entity_id = uuid.uuid4()
+
+    spiny_asset = MagicMock()
+    spiny_asset.content_type = "application/x-hdf5"
+    spiny_asset.label = AssetLabel.morphology_with_spines
+    spiny_asset.id = uuid.uuid4()
+
+    h5_asset = MagicMock()
+    h5_asset.content_type = "application/x-hdf5"
+    h5_asset.label = AssetLabel.morphology
+    h5_asset.id = uuid.uuid4()
+
+    morphology = MagicMock()
+    morphology.assets = [spiny_asset, h5_asset]
+
+    entitysdk_client_mock = MagicMock(entitysdk.client.Client)
+    entitysdk_client_mock.get_entity.return_value = morphology
+    entitysdk_client_mock.download_content.return_value = b"standard h5 content"
+
+    mock_run = MagicMock(return_value=["metric1"])
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics._run_analysis_with_temp_file",
+        mock_run,
+    )
+
+    result = compute_measurement_kinds(entity_id, entitysdk_client_mock, morphology_format="h5")
+
+    assert result == ["metric1"]
+    entitysdk_client_mock.download_content.assert_called_once_with(
+        entity_id=entity_id,
+        entity_type=CellMorphology,
+        asset_id=h5_asset.id,
+    )
+    mock_run.assert_called_once_with(b"standard h5 content", ".h5")
+
+
+def test_compute_measurement_kinds_ignores_spiny_h5_asset():
+    entity_id = uuid.uuid4()
+
+    spiny_asset = MagicMock()
+    spiny_asset.content_type = "application/x-hdf5"
+    spiny_asset.label = AssetLabel.morphology_with_spines
+    spiny_asset.id = uuid.uuid4()
+
+    morphology = MagicMock()
+    morphology.assets = [spiny_asset]
+
+    entitysdk_client_mock = MagicMock(entitysdk.client.Client)
+    entitysdk_client_mock.get_entity.return_value = morphology
+
+    with pytest.raises(HTTPException) as exc:
+        compute_measurement_kinds(entity_id, entitysdk_client_mock, morphology_format="h5")
+
+    assert exc.value.status_code == HTTPStatus.BAD_REQUEST
+    assert exc.value.detail == (
+        "No H5 asset on morphology (expected content type: application/x-hdf5)"
+    )
+    entitysdk_client_mock.download_content.assert_not_called()
 
 
 @pytest.mark.parametrize(
