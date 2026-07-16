@@ -11,7 +11,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
 )

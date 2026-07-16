@@ -29,7 +29,9 @@ from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_ci
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import CircuitExtractionNeuronSetUnion
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    CircuitExtractionNeuronSetUnion,
+)
 from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
 from obi_one.utils.benchmark import BenchmarkTracker
 

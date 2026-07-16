@@ -4,7 +4,7 @@ import entitysdk
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.unions.unions_ion_channel_model import (
+from obi_one.scientific.unions_and_references.ion_channel_model import (
     IonChannelModelUnion,
 )
 

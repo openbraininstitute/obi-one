@@ -19,16 +19,16 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
     BlockGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
-from obi_one.scientific.unions.unions_recordings import (
+from obi_one.scientific.unions_and_references.recordings import (
     RecordingReference,
     RecordingUnion,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )

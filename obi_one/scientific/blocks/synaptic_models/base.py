@@ -3,7 +3,7 @@ from pandas import DataFrame
 from obi_one.core.block import Block
 from obi_one.scientific.blocks import distributions
 from obi_one.scientific.blocks.distributions.base import Distribution
-from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
+from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 
 
 class SynapticModelBase(Block):

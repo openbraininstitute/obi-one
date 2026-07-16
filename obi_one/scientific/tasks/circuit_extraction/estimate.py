@@ -29,7 +29,7 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
     config_bytes = db_client.download_content(
         entity_id=config_id,
         entity_type=models.TaskConfig,
-        asset_id=config_asset.id,  # ty:ignore[invalid-argument-type]
+        asset_id=config_asset.id,
     )
     config_dict = json.loads(config_bytes.decode("utf-8"))
 
