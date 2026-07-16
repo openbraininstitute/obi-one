@@ -14,7 +14,7 @@ import bluepysnap.circuit_validation
 
 if TYPE_CHECKING:
     import pandas as pd
-    from neurodamus.utils.compile_mods import Simulator
+    from neurodamus.utils.compile_mods import Simulator  # ty:ignore[unresolved-import]
 
 import h5py
 import numpy as np
@@ -335,7 +335,7 @@ def ensure_mechanisms_compiled(
     Returns:
         The absolute path to the compiled ``libnrnmech`` shared library.
     """
-    from neurodamus.utils.compile_mods import (  # noqa: PLC0415
+    from neurodamus.utils.compile_mods import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
         Options,
         _build_mod_files,  # noqa: PLC2701
         _extract_mechanisms_dir,  # noqa: PLC2701
