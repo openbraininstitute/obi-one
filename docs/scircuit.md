@@ -239,5 +239,5 @@ Simulation outputs include:
 
 See the examples directory for notebook examples:
 
-- `examples/E_run_small_microcircuit/` - Small circuit simulation examples
+- `examples/obi_one/scientific/tasks/generate_simulations/NEURON/circuit/` - Small circuit simulation examples
 - `examples/obi_one/scientific/tasks/generate_simulations/` - Circuit simulation configuration examples
