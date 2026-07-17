@@ -39,8 +39,8 @@ KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 
 
 class Event(BaseModel):
-    at: float
-    func: Callable
+    at: float  # time during the simulation that Event fires (in ms)
+    func: Callable  # function to call at time `at`
 
     def __lt__(self, other: "Event") -> bool:
         """The at which the event should fire is used to sort in the heapq."""
@@ -627,7 +627,7 @@ class ConnectionOverride:
 
     @property
     def at(self) -> float:
-        """Return the time at which the override should start, in ms."""
+        """Time at which the override should start, in ms."""
         return self.config.delay
 
     def __call__(self, net: Brian2Network) -> None:
@@ -654,6 +654,7 @@ class ConnectionOverride:
 
 
 def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Event]:
+    """Get `connection_overrides` SONATA configuraiton blocks and make Events."""
     ret = []
 
     for connection_override in simulation.to_libsonata.connection_overrides():
