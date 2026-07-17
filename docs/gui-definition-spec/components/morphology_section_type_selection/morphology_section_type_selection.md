@@ -10,13 +10,12 @@ to implement rendering and endpoint-driven option loading for this UI element.
 
 The single backend property endpoint,
 `/mapped-morphology-source-properties/{source_id}`, supports MEModel,
-MEModel-with-synapses, and direct CellMorphology sources. Generated schema mappings retain the
-frontend's workflow-specific placeholders (`{circuit_id}` or `{morphology_id}`); after substitution,
-both resolve to this endpoint. The frontend does not currently support a source-neutral
-`{source_id}` placeholder.
-
-General Circuit support is deferred. It should be morphology-specific and reuse
-`/circuit/viz/{circuit_id}/morphologies/{morphology_file}/section-types` once the UI can provide the circuit ID, morphology file, and optional morphology name. The property endpoint must not scan all morphologies in a circuit.
+MEModel-with-synapses, direct CellMorphology sources, and circuit sources up to microcircuit
+scale. Single-neuron circuit sources are inspected directly. Pair, small, and microcircuit sources
+return the static supported neurite options instead of scanning all morphologies in the circuit.
+Generated schema mappings retain the frontend's workflow-specific placeholders (`{circuit_id}` or
+`{morphology_id}`); after substitution, both resolve to this endpoint. The frontend does not
+currently support a source-neutral `{source_id}` placeholder.
 
 The component should render the returned options as checkboxes or a multi-select. Each option has:
 
@@ -57,8 +56,8 @@ Reference schema:
 ### Example Pydantic implementation
 
 ```py
-section_types: tuple[int, ...] | list[tuple[int, ...]] | None = Field(
-    default=None,
+section_types: tuple[Literal[2, 3, 4], ...] | list[tuple[Literal[2, 3, 4], ...]] | None = Field(
+    default=(2, 3, 4),
     title="Section types",
     description="Types of sections to generate locations on.",
     json_schema_extra={

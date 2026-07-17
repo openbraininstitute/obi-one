@@ -180,6 +180,9 @@ def _circuit_section_type_options(
     if circuit.scale not in _SUPPORTED_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS:
         msg = "Circuit morphology section-type options are only supported up to microcircuit scale."
         raise ValueError(msg)
+    if not circuit.has_morphologies:
+        msg = "Circuit has no morphologies."
+        raise ValueError(msg)
     if circuit.scale in _STATIC_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS:
         return static_section_type_options()
     return _memodel_with_synapses_section_type_options(client, circuit)

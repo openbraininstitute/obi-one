@@ -28,10 +28,11 @@ def test_morphology_section_type_selection_schema():
     )
 
 
-def test_morphology_source_endpoint_is_limited_to_single_neuron_configs():
+def test_morphology_source_endpoint_is_available_for_neuron_simulation_configs():
     endpoint = "/mapped-morphology-source-properties/{circuit_id}"
 
     for config_class in (
+        CircuitSimulationScanConfig,
         MEModelSimulationScanConfig,
         neuron_me_model_with_synapses.MEModelWithSynapsesCircuitSimulationScanConfig,
     ):
@@ -44,11 +45,6 @@ def test_morphology_source_endpoint_is_limited_to_single_neuron_configs():
         assert schema[SchemaKey.UI_ENABLED] is True
         assert schema[SchemaKey.GROUP_ORDER]
         assert schema[SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS]
-
-    circuit_property_endpoints = CircuitSimulationScanConfig.model_json_schema()[
-        SchemaKey.PROPERTY_ENDPOINTS
-    ]
-    assert MappedPropertiesGroup.MORPHOLOGY_SOURCE not in circuit_property_endpoints
 
 
 def test_direct_morphology_uses_generic_source_endpoint_with_supported_placeholder():

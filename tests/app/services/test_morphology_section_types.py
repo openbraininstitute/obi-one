@@ -410,6 +410,24 @@ def test_morphology_source_returns_static_options_for_supported_multi_neuron_cir
     client.download_file.assert_not_called()
 
 
+def test_morphology_source_rejects_supported_circuit_without_morphologies():
+    source_id = uuid4()
+    circuit = Circuit.model_construct(
+        id=source_id,
+        scale=CircuitScale.microcircuit,
+        number_neurons=10,
+        has_morphologies=False,
+    )
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
+
+    with pytest.raises(ValueError, match="has no morphologies"):
+        morphology_source_section_type_options(client, source_id)
+
+    client.select_assets.assert_not_called()
+    client.download_file.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "scale",
     [CircuitScale.region, CircuitScale.system, CircuitScale.whole_brain],
