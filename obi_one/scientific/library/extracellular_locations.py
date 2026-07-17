@@ -8,7 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 
-from obi_one.scientific.unions.unions_extracellular_locations import ExtracellularLocationsUnion
+from obi_one.scientific.unions_and_references.extracellular_locations import (
+    ExtracellularLocationsUnion,
+)
 
 _SMALL_CIRCUIT = 500
 _MEDIUM_CIRCUIT = 5000

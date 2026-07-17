@@ -180,14 +180,14 @@ def register_asset(
         asset = client.upload_directory(
             label=asset_label,  # ty:ignore[invalid-argument-type]
             name=asset_label,
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_id=registered_circuit.id,
             entity_type=models.Circuit,
             paths=files_in_dir,  # ty:ignore[invalid-argument-type]
         )
     else:
         asset = client.upload_file(
             asset_label=asset_label,  # ty:ignore[invalid-argument-type]
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_id=registered_circuit.id,
             entity_type=models.Circuit,
             file_path=file_path,
             file_content_type=content_type,

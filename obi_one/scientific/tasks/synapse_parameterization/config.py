@@ -13,19 +13,19 @@ from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONSynapseParameterizationNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_distributions import (
+from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
 )
-from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerReference,
     SynapticModelAssignerUnion,
 )
-from obi_one.scientific.unions.unions_synaptic_models import (
+from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )

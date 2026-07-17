@@ -14,15 +14,15 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_neuronal_manipulations import (
+from obi_one.scientific.unions_and_references.neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
 )
-from obi_one.scientific.unions.unions_stimuli import (
+from obi_one.scientific.unions_and_references.stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
 )
 

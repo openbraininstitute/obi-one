@@ -8,8 +8,8 @@ import obi_one as obi
 from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
-from obi_one.scientific.unions.unions_neuron_sets import VirtualNeuronSetReference
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.neuron_sets import VirtualNeuronSetReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 
 def _set_block_name(block: object, name: str) -> None:

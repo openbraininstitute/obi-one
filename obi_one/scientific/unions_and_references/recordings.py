@@ -3,8 +3,8 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.recording import (
-    IonChannelVariableRecording,
+from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
+from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
