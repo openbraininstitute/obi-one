@@ -275,6 +275,14 @@ def test_task_uploads_materialized_compartment_sets_asset(tmp_path):
     }
     assert upload_labels_by_path == {
         GenerateSimulationTask.NODE_SETS_FILE_NAME: "custom_node_sets",
-        GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME: "custom_compartment_sets",
+        GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME: "directory_child",
         GenerateSimulationTask.CONFIG_FILE_NAME: "sonata_simulation_config",
     }
+    compartment_sets_upload = next(
+        call_
+        for call_ in db_client.upload_file.call_args_list
+        if call_.kwargs["file_path"].name == GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME
+    )
+    assert compartment_sets_upload.kwargs["file_name"] == (
+        GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME
+    )

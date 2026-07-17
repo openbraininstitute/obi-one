@@ -558,13 +558,14 @@ class GenerateSimulationTask(Task):
                 self.COMPARTMENT_SETS_FILE_NAME,
             )
             if compartment_sets_path.exists():
-                L.info("-- Upload custom_compartment_sets")
+                L.info("-- Upload compartment_sets.json")
                 _ = db_client.upload_file(
                     entity_id=self.config.single_entity.id,
                     entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                     file_path=compartment_sets_path,
+                    file_name=self.COMPARTMENT_SETS_FILE_NAME,
                     file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-                    asset_label="custom_compartment_sets",  # ty:ignore[invalid-argument-type]
+                    asset_label="directory_child",  # ty:ignore[invalid-argument-type]
                 )
 
             L.info("-- Upload spike replay files")
