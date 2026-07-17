@@ -247,3 +247,34 @@ def test_task_requires_circuit_before_materialization():
 
     with pytest.raises(obi.OBIONEError, match="Circuit must be resolved"):
         task._materialize_location_targets()
+
+
+def test_task_uploads_materialized_compartment_sets_asset(tmp_path):
+    simulation_id = "simulation-id"
+    for file_name in (
+        GenerateSimulationTask.NODE_SETS_FILE_NAME,
+        GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME,
+        GenerateSimulationTask.CONFIG_FILE_NAME,
+    ):
+        (tmp_path / file_name).write_text("{}")
+
+    task = GenerateSimulationTask.model_construct(
+        config=SimpleNamespace(
+            coordinate_output_root=tmp_path,
+            single_entity=SimpleNamespace(id=simulation_id),
+        )
+    )
+    task._sonata_config = {"inputs": {}}
+    db_client = MagicMock()
+
+    task._save_generated_simulation_assets_to_entity(db_client)
+
+    upload_labels_by_path = {
+        call_.kwargs["file_path"].name: call_.kwargs["asset_label"]
+        for call_ in db_client.upload_file.call_args_list
+    }
+    assert upload_labels_by_path == {
+        GenerateSimulationTask.NODE_SETS_FILE_NAME: "custom_node_sets",
+        GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME: "custom_compartment_sets",
+        GenerateSimulationTask.CONFIG_FILE_NAME: "sonata_simulation_config",
+    }

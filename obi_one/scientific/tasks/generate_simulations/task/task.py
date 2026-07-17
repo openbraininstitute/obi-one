@@ -548,10 +548,24 @@ class GenerateSimulationTask(Task):
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-                file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
+                file_path=Path(self.config.coordinate_output_root, self.NODE_SETS_FILE_NAME),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
                 asset_label="custom_node_sets",  # ty:ignore[invalid-argument-type]
             )
+
+            compartment_sets_path = Path(
+                self.config.coordinate_output_root,
+                self.COMPARTMENT_SETS_FILE_NAME,
+            )
+            if compartment_sets_path.exists():
+                L.info("-- Upload custom_compartment_sets")
+                _ = db_client.upload_file(
+                    entity_id=self.config.single_entity.id,
+                    entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+                    file_path=compartment_sets_path,
+                    file_content_type="application/json",  # ty:ignore[invalid-argument-type]
+                    asset_label="custom_compartment_sets",  # ty:ignore[invalid-argument-type]
+                )
 
             L.info("-- Upload spike replay files")
             for input_ in self._sonata_config["inputs"]:
@@ -570,7 +584,7 @@ class GenerateSimulationTask(Task):
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
+                file_path=Path(self.config.coordinate_output_root, self.CONFIG_FILE_NAME),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
                 asset_label="sonata_simulation_config",  # ty:ignore[invalid-argument-type]
             )
