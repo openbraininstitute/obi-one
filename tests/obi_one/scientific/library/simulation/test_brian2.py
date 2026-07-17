@@ -467,3 +467,42 @@ def test_connection_override(tmp_path):
     spikes = dict(spike_monitor.spike_trains().items())
     assert not spikes[1].any()
     assert not spikes[2].any()
+
+
+def test_connection_override_mid_simulation(tmp_path):
+    delay = 1.5
+    config = {
+        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 12000,
+                "delay": 0,
+                "duration": 4,
+                "node_set": "0",
+            },
+        },
+        "connection_overrides": [
+            {
+                "name": "DelayedDisconnect",
+                "source": "0",
+                "target": "All",
+                "delay": delay,
+                "weight": 0.0,
+            }
+        ],
+    }
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+
+    # Neurons 1&2 should spike BEFORE the override
+    delay *= brian2.units.ms
+    assert any(t < delay for t in spikes[1])
+    assert any(t < delay for t in spikes[2])
+
+    # But no spikes AFTER the override
+    assert not any(t > delay for t in spikes[1])
+    assert not any(t > delay for t in spikes[2])

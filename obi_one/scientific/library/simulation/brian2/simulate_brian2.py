@@ -706,7 +706,7 @@ def _write_soma_report(
     end: float,
     dt: float,
 ) -> None:
-    """Ibid."""
+    """Write soma report in SONATA format."""
     values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
     string_dtype = h5py.special_dtype(vlen=str)
     with h5py.File(output_path, "w") as h5f:
@@ -731,7 +731,7 @@ def _write_reports(
     state_monitor: brian2.StateMonitor | None,
     report_id_mapping: np.ndarray,
 ) -> None:
-    """Ibid."""
+    """Write all reports configured in `simulation`."""
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
