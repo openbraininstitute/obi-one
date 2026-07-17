@@ -17,6 +17,7 @@ from app.services.morphology_section_types import (
     memodel_with_synapses_section_type_options,
     morphology_source_section_type_options,
     section_type_options,
+    static_section_type_options,
 )
 
 from tests.utils import DATA_DIR, SINGLE_NEURON_CIRCUIT_DIR
@@ -46,6 +47,14 @@ def test_section_type_options_only_returns_present_target_types():
     assert _values_and_labels(section_type_options(morphology)) == [
         (2, "Axon"),
         (3, "Basal dendrite"),
+    ]
+
+
+def test_static_section_type_options_returns_all_target_types():
+    assert _values_and_labels(static_section_type_options()) == [
+        (2, "Axon"),
+        (3, "Basal dendrite"),
+        (4, "Apical dendrite"),
     ]
 
 
@@ -375,6 +384,52 @@ def test_morphology_source_dispatches_to_memodel_with_synapses(mock_options):
         call(entity_id=source_id, entity_type=Circuit),
     ]
     mock_options.assert_called_once_with(client, circuit)
+
+
+@pytest.mark.parametrize(
+    "scale",
+    [CircuitScale.pair, CircuitScale.small, CircuitScale.microcircuit],
+)
+def test_morphology_source_returns_static_options_for_supported_multi_neuron_circuits(scale):
+    source_id = uuid4()
+    circuit = Circuit.model_construct(
+        id=source_id,
+        scale=scale,
+        number_neurons=10,
+        has_morphologies=True,
+    )
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
+
+    assert _values_and_labels(morphology_source_section_type_options(client, source_id)) == [
+        (2, "Axon"),
+        (3, "Basal dendrite"),
+        (4, "Apical dendrite"),
+    ]
+    client.select_assets.assert_not_called()
+    client.download_file.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "scale",
+    [CircuitScale.region, CircuitScale.system, CircuitScale.whole_brain],
+)
+def test_morphology_source_rejects_large_circuit_section_type_options(scale):
+    source_id = uuid4()
+    circuit = Circuit.model_construct(
+        id=source_id,
+        scale=scale,
+        number_neurons=100,
+        has_morphologies=True,
+    )
+    client = MagicMock(entitysdk.client.Client)
+    client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
+
+    with pytest.raises(ValueError, match="only supported up to microcircuit"):
+        morphology_source_section_type_options(client, source_id)
+
+    client.select_assets.assert_not_called()
+    client.download_file.assert_not_called()
 
 
 def test_morphology_source_rejects_unexpected_entity_type():

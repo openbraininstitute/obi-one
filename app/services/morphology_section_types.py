@@ -25,6 +25,22 @@ _MORPHOLOGY_ASSET_TYPES = (
     (ContentType.application_x_hdf5, ".h5"),
     (ContentType.application_asc, ".asc"),
 )
+_STATIC_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS = {
+    CircuitScale.pair,
+    CircuitScale.small,
+    CircuitScale.microcircuit,
+}
+_SUPPORTED_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS = {
+    CircuitScale.single,
+    *_STATIC_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS,
+}
+
+
+def static_section_type_options() -> list[MorphologySectionTypeOption]:
+    return [
+        MorphologySectionTypeOption(value=int(section_type), label=label)
+        for section_type, label in _SECTION_TYPE_LABELS.items()
+    ]
 
 
 def section_type_options(
@@ -157,6 +173,18 @@ def _memodel_with_synapses_section_type_options(
         return section_type_options(morphology)
 
 
+def _circuit_section_type_options(
+    client: Client,
+    circuit: Circuit,
+) -> list[MorphologySectionTypeOption]:
+    if circuit.scale not in _SUPPORTED_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS:
+        msg = "Circuit morphology section-type options are only supported up to microcircuit scale."
+        raise ValueError(msg)
+    if circuit.scale in _STATIC_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS:
+        return static_section_type_options()
+    return _memodel_with_synapses_section_type_options(client, circuit)
+
+
 def morphology_source_section_type_options(
     client: Client,
     source_id: UUID,
@@ -172,7 +200,7 @@ def morphology_source_section_type_options(
         if isinstance(entity, CellMorphology):
             return section_type_options(_load_cell_morphology(client, entity))
         if isinstance(entity, Circuit):
-            return _memodel_with_synapses_section_type_options(client, entity)
+            return _circuit_section_type_options(client, entity)
 
     msg = (
         f"Entity {source_id} is not an MEModel, MEModel-with-synapses circuit, or cell morphology."
