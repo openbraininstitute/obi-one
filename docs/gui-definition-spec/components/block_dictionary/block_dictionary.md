@@ -33,12 +33,12 @@ class Config:
 
 ```
 
-A dictionary that provides multiple reference types — one per block class in the union (see `CircuitSimulationScanConfig.neuron_sets` for an example using the pre-defined `ALL_NEURON_SETS_REFERENCE_TYPES` constant from `unions_neuron_sets.py`):
+A dictionary that provides multiple reference types — one per block class in the union (see `CircuitSimulationScanConfig.neuron_sets` for an example using the pre-defined `ALL_NEURON_SETS_REFERENCE_TYPES` constant from `unions_and_references/combined_neuron_sets.py`):
 
 ```py
 class Config:
 
-    neuron_sets: dict[str, AllNeuronSetUnion] = Field(
+    neuron_sets: dict[str, AtomicAllNeuronSetUnion] = Field(
         default_factory=dict,
         title="Neuron Sets",
         description="Neuron sets for the simulation.",

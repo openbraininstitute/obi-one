@@ -43,7 +43,7 @@ class CellMorphologyFromID(EntityFromID):
                             msg = "Asset must have an id"
                             raise ValueError(msg)
                         content = db_client.download_content(
-                            entity_id=self.entity(db_client=db_client).id,  # ty:ignore[invalid-argument-type]
+                            entity_id=self.entity(db_client=db_client).id,
                             entity_type=self.entitysdk_type,
                             asset_id=asset.id,
                         ).decode(encoding="utf-8")
@@ -131,8 +131,8 @@ class CellMorphologyFromID(EntityFromID):
                 "generated__id": morph_entity.id,
             },
         ).one_or_none()
-        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
-        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable]
+        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)  # ty:ignore[not-subscriptable, unresolved-attribute]
+        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[not-subscriptable]
         return source_mesh
 
     def write_spiny_neuron_h5(
@@ -149,7 +149,7 @@ class CellMorphologyFromID(EntityFromID):
                     msg = "Asset must have an id"
                     raise ValueError(msg)
                 db_client.download_file(
-                    entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+                    entity_id=entity.id,
                     entity_type=self.entitysdk_class,
                     asset_id=asset.id,
                     output_path=str(path_to),  # ty:ignore[invalid-argument-type]

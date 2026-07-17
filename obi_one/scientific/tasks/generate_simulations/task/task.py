@@ -9,6 +9,7 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -26,12 +27,17 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
-    BaseNeuronSetReference,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
+from obi_one.scientific.unions_and_references.neuron_sets import (
+    BaseNeuronSetReference,
+    NeuronSetReference,
+)
+from obi_one.scientific.unions_and_references.simulations import (
+    SIMULATION_GENERATION_SINGLE_CONFIGS,
+)
 from obi_one.utils.sonata import write_simulation_config
 
 L = logging.getLogger(__name__)
@@ -183,13 +189,18 @@ class GenerateSimulationTask(Task):
         """
 
         def is_optional_neuronsetreference(attr_value: type) -> bool:
-            args_len = 2
+            none_type = type(None)
             args = get_args(attr_value)
+            none_args = [arg for arg in args if arg is none_type]
+            reference_args = [arg for arg in args if arg is not none_type]
             return (
-                len(args) == args_len
-                and isinstance(args[0], type)
-                and issubclass(args[0], BaseNeuronSetReference)
-                and args[1] is type(None)
+                len(none_args) == 1
+                and len(reference_args) >= 1
+                and all(
+                    isinstance(arg, type)
+                    and issubclass(arg, (BaseNeuronSetReference, NeuronSetReference))
+                    for arg in reference_args
+                )
             )
 
         if hasattr(self.config, "neuron_sets"):
@@ -199,7 +210,13 @@ class GenerateSimulationTask(Task):
                 if is_optional_neuronsetreference(attr_type):
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
-                        setattr(block, attr_name, self._default_neuron_set_ref())
+                        # A Brian2 Poisson stimulus with no target drives the `sugar` node set,
+                        # not the simulation-wide default (every point neuron); see
+                        # Brian2SimulationScanConfig.
+                        if isinstance(block, Brian2DirectPoissonStimulus):
+                            setattr(block, attr_name, self._default_stimulus_neuron_set_ref())
+                        else:
+                            setattr(block, attr_name, self._default_neuron_set_ref())
 
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
@@ -212,6 +229,76 @@ class GenerateSimulationTask(Task):
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
                     stimulus
                 )
+            for neuron_set in list(getattr(self.config, "neuron_sets", {}).values()):
+                if isinstance(neuron_set, CombinedBaseNeuronSet):
+                    self._ensure_combined_neuron_set_has_references(neuron_set)
+
+    def _ensure_combined_neuron_set_has_references(self, neuron_set: CombinedBaseNeuronSet) -> None:
+        """Ensure a combined neuron set's base and combined_with references are filled."""
+        default_ref = self._default_neuron_set_ref_for_population_type(
+            neuron_set.get_neuron_set_population_type()
+        )
+
+        if neuron_set.base_neuron_set is None:
+            neuron_set.base_neuron_set = default_ref
+
+        updated_entries = []
+        for ref, op in neuron_set.combined_with:
+            if ref is None:
+                updated_entries.append((default_ref, op))
+            else:
+                updated_entries.append((ref, op))
+        neuron_set.combined_with = tuple(updated_entries)
+
+    def _default_neuron_set_ref_for_population_type(
+        self, population_type: NeuronSetPopulationType
+    ) -> ALL_NEURON_SETS_REFERENCE_UNION:
+        """Returns the appropriate default neuron set reference for the given population type."""
+        if population_type == NeuronSetPopulationType.VIRTUAL:
+            return self._default_virtual_neuron_set_ref()
+        if population_type == NeuronSetPopulationType.POINT:
+            return self._default_point_neuron_set_ref()
+        return self._default_neuron_set_ref()
+
+    def _default_virtual_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
+        """Returns the reference for the default virtual neuron set."""
+        ref = self.config.default_virtual_neuron_set_reference  # ty:ignore[unresolved-attribute]
+        if (
+            ref.block_name in self.config.neuron_sets  # ty:ignore[unresolved-attribute]
+            and not isinstance(
+                self.config.neuron_sets[ref.block_name],  # ty:ignore[unresolved-attribute]
+                self.config.default_virtual_neuron_set_type,  # ty:ignore[unresolved-attribute]
+            )
+        ):
+            msg = (
+                f"Default virtual neuron set name '{ref.block_name}' already exists in "
+                f"neuron_sets but is not an "
+                f"{self.config.default_virtual_neuron_set_type.__name__} set!"  # ty:ignore[unresolved-attribute]
+            )
+            raise OBIONEError(msg)
+        if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
+            self.config.neuron_sets[ref.block_name] = ref.block  # ty:ignore[unresolved-attribute,invalid-assignment]
+        return ref
+
+    def _default_point_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
+        """Returns the reference for the default point neuron set."""
+        ref = self.config.default_point_neuron_set_reference  # ty:ignore[unresolved-attribute]
+        if (
+            ref.block_name in self.config.neuron_sets  # ty:ignore[unresolved-attribute]
+            and not isinstance(
+                self.config.neuron_sets[ref.block_name],  # ty:ignore[unresolved-attribute]
+                self.config.default_point_neuron_set_type,  # ty:ignore[unresolved-attribute]
+            )
+        ):
+            msg = (
+                f"Default point neuron set name '{ref.block_name}' already exists in "
+                f"neuron_sets but is not an "
+                f"{self.config.default_point_neuron_set_type.__name__} set!"  # ty:ignore[unresolved-attribute]
+            )
+            raise OBIONEError(msg)
+        if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
+            self.config.neuron_sets[ref.block_name] = ref.block  # ty:ignore[unresolved-attribute,invalid-assignment]
+        return ref
 
     def _default_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
         """Returns the reference for the default neuron set."""
@@ -224,9 +311,11 @@ class GenerateSimulationTask(Task):
                 self.config.default_neuron_set_type,
             )
         ):
-            msg = f"Default neuron set name '{default_neuron_set_ref.block_name}' \
-                already exists in neuron_sets but is not an \
-                {self.config.default_neuron_set_type.__name__} set!"
+            msg = (
+                f"Default neuron set name '{default_neuron_set_ref.block_name}' already exists "
+                f"in neuron_sets but is not an "
+                f"{self.config.default_neuron_set_type.__name__} set!"
+            )
             raise OBIONEError(msg)
 
         if default_neuron_set_ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
@@ -235,6 +324,17 @@ class GenerateSimulationTask(Task):
             )
 
         return default_neuron_set_ref
+
+    def _default_stimulus_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
+        """Returns the reference for the default stimulus neuron set (Brian2: the `sugar` set).
+
+        The circuit is already resolved: ``execute`` calls ``_resolve_circuit`` before it fills
+        in the missing neuron set references.
+        """
+        ref = self.config.default_stimulus_neuron_set_reference(self._circuit)  # ty:ignore[unresolved-attribute,invalid-argument-type]
+        if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
+            self.config.neuron_sets[ref.block_name] = ref.block  # ty:ignore[unresolved-attribute,invalid-assignment]
+        return ref
 
     """
     NEW NEURON SETS REFACTOR: SOME OF THIS CAN PROBABLY BE REMOVED NOW THE
@@ -283,8 +383,8 @@ class GenerateSimulationTask(Task):
                         f"'{self.config.initialize.node_set.block_name}' is virtual. "
                         "Please use a non-virtual (biophysical or point) Neuron Set type. "
                         f"Available non-virtual populations: {non_virtual_list}. "
-                        f"You may be able to reference one through a "
-                        f"PredefinedNeuronSet block type. "
+                        f"You may be able to reference one through an "
+                        f"MultiPopulationPredefinedNeuronSet block type. "
                         "In future we will support population selection for any neuron set."
                     )
                     raise OBIONEError(msg)
@@ -306,7 +406,7 @@ class GenerateSimulationTask(Task):
         In the case where there is no neuron_sets dictionary in the config, the config's
         default_neuron_set_type is created and added to the SONATA circuit object.
         The neuron_sets dict key is always used as the name of the new node set, even for a
-        PredefinedNeuronSet, in which case a new node set is created which references the
+        predefined neuron set, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
         """
@@ -363,7 +463,7 @@ class GenerateSimulationTask(Task):
                 number_neurons = 1
 
             db_client.update_entity(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 attrs_or_entity={"number_neurons": number_neurons},
             )
@@ -380,7 +480,7 @@ class GenerateSimulationTask(Task):
         if db_client:
             L.info("-- Upload custom_node_sets")
             _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
@@ -393,7 +493,7 @@ class GenerateSimulationTask(Task):
                     spike_file = self._sonata_config["inputs"][input_]["spike_file"]
                     if spike_file is not None:
                         _ = db_client.upload_file(
-                            entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                            entity_id=self.config.single_entity.id,
                             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                             file_path=Path(self.config.coordinate_output_root, spike_file),
                             file_content_type="application/x-hdf5",  # ty:ignore[invalid-argument-type]
@@ -402,7 +502,7 @@ class GenerateSimulationTask(Task):
 
             L.info("-- Upload sonata_simulation_config")
             _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]

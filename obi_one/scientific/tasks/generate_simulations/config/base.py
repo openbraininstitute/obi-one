@@ -34,7 +34,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
 )
 
@@ -73,7 +73,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
 
     @property
-    def default_neuron_set_reference(self) -> BiophysicalNeuronSetReference:
+    def default_neuron_set_reference(
+        self,
+    ) -> BiophysicalNeuronSetReference:
         """Returns the default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
@@ -295,7 +297,7 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
 
         L.info("-- Upload simulation_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=self.single_entity.id,
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]

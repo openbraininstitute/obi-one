@@ -1,7 +1,7 @@
 """Task implementation: generate LOD meshes for a registered EM-cell mesh asset.
 
 This module is executed remotely by the obi-one launch-system. It:
-1. Reads the MeshLodGenerationSingleConfig from the TaskConfig entity.
+1. Reads the MeshLodGenerationSingleConfig from CLI-provided parameters.
 2. Downloads the source mesh asset (OBJ or GLB) from entitycore.
 3. Runs ultraliser LOD generation.
 4. Uploads the resulting LOD directory block back onto the EMCellMesh entity.
@@ -78,6 +78,12 @@ def _upload_lod_directory(
     entity_id: UUID,
     lod_files: dict[os.PathLike, os.PathLike],
 ) -> str:
+    entity = client.get_entity(entity_id=entity_id, entity_type=EMCellMesh)
+    for asset in client.select_assets(
+        entity=entity, selection={"label": AssetLabel.lod_mesh_block}
+    ):
+        client.delete_asset(entity_id=entity_id, entity_type=EMCellMesh, asset_id=asset.id)
+
     client.upload_directory(
         entity_id=entity_id,
         entity_type=EMCellMesh,

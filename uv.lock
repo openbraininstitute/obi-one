@@ -906,14 +906,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.2"
+version = "0.19.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/69/90527f90ab96b650bb88f185fa131788abe6079e44c9f4443234d6ccc46a/entitysdk-0.19.2.tar.gz", hash = "sha256:308dedc77531963ab66bd8a5ab8ad3accdce3c5db7d751c911c5acdb1122cfc7", size = 90827, upload-time = "2026-07-08T13:16:27.367Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/d1/3f698d0043ef8c088616e40f1f1df57dccd591f724e60fece0812ae03c1d/entitysdk-0.19.3.tar.gz", hash = "sha256:f9682f2d26bb243508ba8dd0660000b32a6754cd764e96a7d641e3241a1743f1", size = 91611, upload-time = "2026-07-15T08:44:54.868Z" }
 
 [[package]]
 name = "executing"
@@ -2060,9 +2060,9 @@ dependencies = [
     { name = "scikit-image" },
     { name = "scipy" },
 ]
-sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha256:9369a7dc13de9d4294e982c952c397b31bbc17403e43794e6d28f8a2864cd509" }
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha512:976bcf603ce6fc192941a170ac88ba18c371e7d59c053fd200cb691f163a0259ef9126cb358c943ac36915f7cc44e4fe451d1f348b3ccd37bdbf281868ac5106" }
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha256:46a4221731317b131e2780b07d78bf5f0a2e698207467208de22ce09ac9e01c1" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha512:7f42255c55d93a23190a598930acbc7f729090cf2e68bd804c405364d631e300984cad13976138dbcc95b649f2e9aa5443114b772af99a3a59821c741d7e56cb" },
 ]
 
 [[package]]
@@ -2204,6 +2204,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pylmesh" },
     { name = "python-multipart" },
+    { name = "scipy" },
 ]
 
 [package.optional-dependencies]
@@ -2317,6 +2318,7 @@ requires-dist = [
     { name = "pylmesh" },
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
+    { name = "scipy" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
@@ -3455,7 +3457,7 @@ dependencies = [
     { name = "tqdm" },
 ]
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.2.4/ultraliser-2.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4120f998a7bcdaf09d9b7f46cc7790bb3b60160913d91e658b440a62adb5641a", upload-time = "2026-06-30T14:21:56.758Z" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.2.4/ultraliser-2.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha512:ab05ee1a04eed5cb0ed57d82f60e39edbafc315e75587997f0bf6acef5d4926b57c19e73bece353dbbb98b04c5790a026f7969bbe8013169c7eed08f15126f2d", size = 7911383, upload-time = "2026-06-30T14:21:56.758Z" },
 ]
 
 [[package]]
