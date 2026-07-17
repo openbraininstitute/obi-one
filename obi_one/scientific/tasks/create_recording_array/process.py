@@ -76,7 +76,7 @@ def write_electrode_json(
         The output path.
     """
     import numpy as np  # noqa: PLC0415
-    from bluerecording.electrodes import Electrode, ElectrodeType  # noqa: PLC0415
+    from bluerecording.electrodes import Electrode, ElectrodeType  # noqa: PLC0415 # ty:ignore[unresolved-import]
 
     electrodes = [
         Electrode(
