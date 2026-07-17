@@ -7,6 +7,7 @@
 
 import copy
 import json
+import math
 from pathlib import Path
 
 import bluepysnap
@@ -506,3 +507,26 @@ def test_connection_override_mid_simulation(tmp_path):
     # But no spikes AFTER the override
     assert not any(t > delay for t in spikes[1])
     assert not any(t > delay for t in spikes[2])
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("spont_minis", 1.0),
+        ("synapse_configure", "James"),
+        ("modoverride", "Bond"),
+        ("neuromodulation_dtc", math.pi),
+        ("neuromodulation_strength", math.e),
+    ],
+)
+def test_connection_override_unsupported(tmp_path, field, value):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "connection_overrides": [
+            {"name": "Bad", "source": "0", "target": "All", "delay": 0.0, field: value}
+        ],
+    }
+    with pytest.raises(RuntimeError, match=f"connection_overrides::{field} is not supported"):
+        _run_simulation(tmp_path, config)
