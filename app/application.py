@@ -29,6 +29,7 @@ from app.endpoints import (
     mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
+    morphology_section_types,
     morphology_validation,
     multi_values,
     scan_config,
@@ -178,6 +179,7 @@ app.include_router(ion_channel_properties.router)
 app.include_router(mesh_registration.router)
 app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
+app.include_router(morphology_section_types.router)
 app.include_router(morphology_validation.router)
 app.include_router(morphology_metrics_calculation.router)
 app.include_router(multi_values.router)
