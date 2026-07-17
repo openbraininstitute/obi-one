@@ -128,7 +128,6 @@ class TestRunBluerecordingWriteWeights:
         assert str(circuit_config) in call_args
         assert str(electrode_json) in call_args
         assert str(output_path) in call_args
-        assert "--with-neurite-type" in call_args
         # env should include NRNMECH_LIB_PATH
         call_kwargs = mock_run.call_args[1]
         assert "NRNMECH_LIB_PATH" in call_kwargs["env"]

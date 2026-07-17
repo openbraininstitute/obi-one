@@ -117,7 +117,6 @@ def run_bluerecording_write_weights(
         str(circuit_config),
         str(electrode_json),
         str(output_path),
-        "--with-neurite-type",
     ]
 
     L.info("Running bluerecording: %s", " ".join(cmd))
