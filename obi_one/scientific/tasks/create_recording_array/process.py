@@ -62,7 +62,7 @@ def write_electrode_json(
     """Write electrode positions to a JSON file for the bluerecording CLI.
 
     Builds global positions from each block's ``get_global_electrode_xyz_locations()``
-    and writes them in the format expected by ``Electrode.from_json``.
+    and writes them using ``Electrode.to_json`` from bluerecording.
 
     Args:
         electrode_locations: Dict of electrode location blocks (name -> block).
@@ -72,22 +72,21 @@ def write_electrode_json(
     Returns:
         The output path.
     """
-    electrodes = []
-    for block_name, block in electrode_locations.items():
-        for i, (x, y, z) in enumerate(block.get_global_electrode_xyz_locations()):
-            electrodes.append(
-                {
-                    "name": f"{block_name}_electrode_{i}",
-                    "x": float(x),
-                    "y": float(y),
-                    "z": float(z),
-                    "type": calculation_method,
-                }
-            )
+    import numpy as np  # noqa: PLC0415
+    from bluerecording.electrodes import Electrode, ElectrodeType  # noqa: PLC0415
+
+    electrodes = [
+        Electrode(
+            name=f"{block_name}_electrode_{i}",
+            position=np.array([x, y, z], dtype=float),
+            type=ElectrodeType(calculation_method),
+        )
+        for block_name, block in electrode_locations.items()
+        for i, (x, y, z) in enumerate(block.get_global_electrode_xyz_locations())
+    ]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as f:
-        json.dump(electrodes, f, indent=2)
+    Electrode.to_json(electrodes, str(output_path))
 
     L.info("Wrote %d electrodes to %s", len(electrodes), output_path)
     return output_path
