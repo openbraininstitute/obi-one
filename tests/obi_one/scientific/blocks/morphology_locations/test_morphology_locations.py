@@ -9,6 +9,15 @@ from obi_one.scientific.library.entity_property_types import (
 )
 
 
+def test_random_morphology_locations_defaults_to_all_available_section_types():
+    locations = obi.RandomMorphologyLocations(
+        random_seed=0,
+        number_of_locations=2,
+    )
+
+    assert locations.section_types is None
+
+
 def test_random_morphology_locations_accepts_tuple_section_types():
     locations = obi.RandomMorphologyLocations(
         random_seed=0,

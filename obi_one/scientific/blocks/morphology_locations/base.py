@@ -59,13 +59,11 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
     section_types: tuple[Literal[2, 3, 4], ...] | list[tuple[Literal[2, 3, 4], ...]] | None = Field(
-        default=(2, 3, 4),
+        default=None,
         title="Section Types",
         description=(
-            "Valid neurite section types to generate locations on: "
-            "2: axon, 3: basal dendrite, 4: apical dendrite. "
-            "Use a tuple for one selection, e.g. (3, 4), "
-            "or a list of tuples for parameter scans."
+            "Neurite section types to generate locations on. "
+            "If unset, all available section types are valid."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
