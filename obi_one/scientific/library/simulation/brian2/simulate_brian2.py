@@ -43,6 +43,7 @@ class Event(BaseModel):
     func: Callable
 
     def __lt__(self, other: "Event") -> bool:
+        """The at which the event should fire is used to sort in the heapq."""
         return self.at < other.at
 
 
@@ -584,11 +585,14 @@ def _create_synapses(
         neurons,
         model=synapse_template.params.model,
         on_pre=synapse_template.params.on_pre,
-        delay=None
-        if synapse_template.params.delay is None
-        else synapse_template.params.delay.get(),
     )
     syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
+
+    syn.pre.delay = (
+        0.0 * brian2.units.ms
+        if synapse_template.params.delay is None
+        else synapse_template.params.delay.get()
+    )
 
     for name, unit in synapse_template.dynamics.items():
         values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
@@ -598,7 +602,9 @@ def _create_synapses(
 
 
 class ConnectionOverride:
-    def __init__(self, config, sim_config_path) -> None:
+    def __init__(
+        self, config: libsonata.SimulationConfig.ConnectionOverride, sim_config_path: Path
+    ) -> None:
         """Ibid."""
         if config.spont_minis is not None:
             msg = "connection_overrides::spont_minis is not supported"
@@ -616,17 +622,12 @@ class ConnectionOverride:
             msg = "connection_overrides::neuromodulation_strength is not supported"
             raise RuntimeError(msg)
 
-        # XXX do we want to handle this?
-        # how would it interact w/ the rtc being set to 0 for Poisson?
-        if config.synapse_delay_override is not None:
-            msg = "connection_overrides::synapse_delay_override is not supported"
-            raise RuntimeError(msg)
-
         self.config = config
         self.sim_config_path = sim_config_path
 
     @property
-    def delay(self) -> float:
+    def at(self) -> float:
+        """Return the time at which the override should start, in ms."""
         return self.config.delay
 
     def __call__(self, net: Brian2Network) -> None:
@@ -642,15 +643,22 @@ class ConnectionOverride:
         edges = circuit.edges[next(iter(circuit.edges.population_names))]
         edge_pop = edges.to_libsonata
         selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
-        net.synapses[0].w[selection.flatten()] = self.config.weight * brian2.units.mV
+
+        if self.config.weight is not None:
+            net.synapses[0].w[selection.flatten()] = self.config.weight * brian2.units.mV
+
+        if self.config.synapse_delay_override is not None:
+            net.synapses[0].delay[selection.flatten()] = (
+                self.config.synapse_delay_override * brian2.units.ms
+            )
 
 
-def gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Event]:
+def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Event]:
     ret = []
 
     for connection_override in simulation.to_libsonata.connection_overrides():
-        co = ConnectionOverride(connection_override, simulation._simulation_config_path)
-        ret.append(Event(at=co.delay, func=co))
+        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # noqa: SLF001
+        ret.append(Event(at=co.at, func=co))
 
     return ret
 
@@ -660,7 +668,7 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     brian2.seed(simulation.run.random_seed)
 
     current_inputs = Inputs(simulation)
-    events = gather_connection_overrides(simulation)
+    events = _gather_connection_overrides(simulation)
 
     neurons = _create_neurons(simulation, current_inputs)
 
@@ -808,8 +816,6 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> Brian2Network:
         while queue and queue[0].at <= current_t:
             event = heapq.heappop(queue)
             event.func(net)
-
-    # network.run(duration=simulation.run.tstop * brian2.units.ms)
 
     _write_reports(simulation, net.spike_monitor, net.state_monitor, net.report_id_mapping)
 

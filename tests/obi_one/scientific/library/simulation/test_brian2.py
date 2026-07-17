@@ -11,7 +11,6 @@ from pathlib import Path
 
 import bluepysnap
 import brian2
-import brian2.devices
 import brian2.units
 import libsonata
 import numpy as np
@@ -41,48 +40,39 @@ def test_get_close_spikes(ids, times, expected):
 
 
 def _run_simulation(
-    tmp_path, config, *, plot_voltage=False
+    tmp_path, config, *, plot_voltage: bool = False
 ) -> tuple[bluepysnap.Simulation, test_module.Brian2Network]:
+    if plot_voltage:
+        if "reports" in config:
+            reports = config["reports"]
+        else:
+            reports = config["reports"] = {}
+
+        reports["test_plot"] = {
+            "sections": "soma",
+            "type": "compartment",
+            "variable_name": "v",
+            "unit": "mV",
+            "dt": config["run"]["dt"],
+            "start_time": 0,
+            "end_time": config["run"]["tstop"],
+        }
+
     path = tmp_path / "simulation_config.json"
     with path.open("w") as fd:
         json.dump(config, fd)
 
-    return bluepysnap.Simulation(path), test_module.run_sonata_brian2_trial(path)
+    net = test_module.run_sonata_brian2_trial(path)
 
-    simulation = bluepysnap.Simulation(path)
-    brian2.start_scope()
-    brian2.devices.reinit_and_delete()
-
-    net = test_module._build_brian2_network(simulation)
-
-    if plot_voltage:
-        statemon = brian2.StateMonitor(net.neurons[0], "v", record=True)
-        net.inputs.append(statemon)
-
-    network = brian2.Network(
-        net.neurons,
-        net.synapses,
-        net.spike_monitor,
-        *net.inputs,
-        *([] if net.state_monitor is None else [net.state_monitor]),
-    )
-    network.run(duration=simulation.run.tstop * brian2.units.ms)
-
-    test_module._write_reports(simulation, net.spike_monitor, net.state_monitor)
+    sim_config = bluepysnap.Simulation(path)
 
     if plot_voltage:
         import matplotlib.pyplot as plt  # noqa: PLC0415
 
-        plt.figure(figsize=(9, 4))
-        plt.plot(statemon.t / brian2.units.ms, statemon.v[0] / brian2.units.mV, c="r")
-        plt.plot(statemon.t / brian2.units.ms, statemon.v[1] / brian2.units.mV, c="g")
-        plt.plot(statemon.t / brian2.units.ms, statemon.v[2] / brian2.units.mV, c="b")
-        # plt.plot(net.spike_monitor.t / brian2.units.ms, net.spike_monitor.v / brian2.units.mV, "ob")
-        plt.xlabel("Time (ms)")
-        plt.ylabel("v (mV)")
+        sim_config.reports["test_plot"].filter().trace(plot_type="all")
         plt.savefig("test.png")
 
-    return simulation, net
+    return sim_config, net
 
 
 def test_no_stim_or_report(tmp_path):
@@ -439,7 +429,7 @@ def test_current_stim_report_failure(tmp_path):
 
 def test_connection_override(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.25, "random_seed": 42},
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -458,7 +448,22 @@ def test_connection_override(tmp_path):
             {"name": "Disconnect0", "source": "0", "target": "All", "delay": 0.0, "weight": 0.0}
         ],
     }
-    spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert not spikes[1].any()
+    assert not spikes[2].any()
+
+    config["connection_overrides"] = [
+        {
+            # ... or unless the synapse delay is too large
+            "name": "ChangeSynapseDelay",
+            "source": "0",
+            "target": "All",
+            "delay": 0.0,
+            "synapse_delay_override": 2.0,
+        }
+    ]
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert not spikes[1].any()
     assert not spikes[2].any()
