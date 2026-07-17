@@ -36,8 +36,8 @@ class TestCompileMechanisms:
         assert (tmp_path / "out").exists()
         call_args = mock_run.call_args[0][0]
         assert "neurodamus-compile-mods" in call_args[0]
-        assert "--with-internal-mods" in call_args
-        assert "-DDISABLE_REPORTINGLIB" in call_args
+        assert "--with-internal-mods" not in call_args
+        assert "--incflags=-DDISABLE_REPORTINGLIB" in call_args
 
     def test_raises_on_failure(self, tmp_path):
         """Raises RuntimeError when neurodamus-compile-mods fails."""
