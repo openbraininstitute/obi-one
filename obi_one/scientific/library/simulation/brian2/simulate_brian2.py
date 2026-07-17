@@ -50,8 +50,8 @@ class Event(BaseModel):
 class Brian2Network(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    neurons: list[brian2.NeuronGroup]
-    synapses: list[brian2.Synapses]
+    neurons: brian2.NeuronGroup
+    synapses: brian2.Synapses
     spike_monitor: brian2.SpikeMonitor
     state_monitor: brian2.StateMonitor | None
     inputs: list
@@ -557,6 +557,7 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
 def _create_synapses(
     circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup
 ) -> tuple[brian2.Synapses, SynapseTemplate]:
+    """Create synapses for circuit; all synapses are instantiated."""
     assert len(circuit.edges.population_names) == 1, "Only one population supported"
     edges = circuit.edges[next(iter(circuit.edges.population_names))]
     edge_pop = edges.to_libsonata
@@ -642,19 +643,20 @@ class ConnectionOverride:
 
         edges = circuit.edges[next(iter(circuit.edges.population_names))]
         edge_pop = edges.to_libsonata
+        # All synapses have been instantiated, so we can index using the `connecting_edges`
         selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
 
         if self.config.weight is not None:
-            net.synapses[0].w[selection.flatten()] = self.config.weight * brian2.units.mV
+            net.synapses.w[selection.flatten()] = self.config.weight * brian2.units.mV
 
         if self.config.synapse_delay_override is not None:
-            net.synapses[0].delay[selection.flatten()] = (
+            net.synapses.delay[selection.flatten()] = (
                 self.config.synapse_delay_override * brian2.units.ms
             )
 
 
 def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Event]:
-    """Get `connection_overrides` SONATA configuraiton blocks and make Events."""
+    """Get `connection_overrides` SONATA configuration blocks and make Events."""
     ret = []
 
     for connection_override in simulation.to_libsonata.connection_overrides():
@@ -682,8 +684,8 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
 
     net = Brian2Network(
-        neurons=[neurons],
-        synapses=[synapses],
+        neurons=neurons,
+        synapses=synapses,
         spike_monitor=spike_monitor,
         inputs=inputs,
         state_monitor=state_monitor,
