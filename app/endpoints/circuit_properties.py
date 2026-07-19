@@ -29,7 +29,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NEURONSimulationNeuronSetUnion,
 )
 

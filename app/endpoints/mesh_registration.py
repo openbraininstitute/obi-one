@@ -1,5 +1,5 @@
 import pathlib
-from typing import Annotated, cast
+from typing import Annotated
 from uuid import UUID, uuid4
 
 import entitysdk.client
@@ -70,13 +70,13 @@ def _resolve_source_mesh_asset(
         (a for a in mesh_assets if a.content_type == ContentType.application_obj), None
     )
     if obj_asset is not None:
-        return cast("UUID", obj_asset.id), "obj"
+        return obj_asset.id, "obj"
 
     glb_asset = next(
         (a for a in mesh_assets if a.content_type == ContentType.model_gltf_binary), None
     )
     if glb_asset is not None:
-        return cast("UUID", glb_asset.id), "glb"
+        return glb_asset.id, "glb"
 
     msg = f"Entity {entity_id} has no obj or glb cell_surface_mesh asset"
     raise HTTPException(status_code=404, detail=msg)
@@ -167,9 +167,9 @@ async def register_mesh(
             _trigger_mesh_lod_generation_task,
             ls_client=ls_client,
             entity_id=entity_id,
-            mesh_asset_id=cast("UUID", glb_asset.id),
+            mesh_asset_id=glb_asset.id,
             mesh_format=lod_mesh_format,
-            project_id=project_context.project_id,  # ty:ignore[invalid-argument-type]
+            project_id=project_context.project_id,
             virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
             compute_cell=compute_cell,
         )
@@ -213,7 +213,7 @@ async def generate_lod_from_entity(
             entity_id=entity_id,
             mesh_asset_id=mesh_asset_id,
             mesh_format=mesh_format,
-            project_id=project_context.project_id,  # ty:ignore[invalid-argument-type]
+            project_id=project_context.project_id,
             virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
             compute_cell=compute_cell,
         )

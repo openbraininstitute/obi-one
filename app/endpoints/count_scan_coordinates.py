@@ -7,7 +7,7 @@ from obi_one.core.parametric_multi_values import (
     MAX_N_COORDINATES,
 )
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.unions.unions_scan_configs import (
+from obi_one.scientific.unions_and_references.scan_configs import (
     ScanConfigsUnion,
 )
 

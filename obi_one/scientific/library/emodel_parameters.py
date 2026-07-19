@@ -197,7 +197,7 @@ def _fetch_optimization_parameters(
         return []
 
     content_bytes = db_client.download_content(
-        entity_id=emodel.id,  # ty:ignore[invalid-argument-type]
+        entity_id=emodel.id,
         entity_type=EModel,
         asset_id=asset.id,  # ty:ignore[unresolved-attribute]
     )

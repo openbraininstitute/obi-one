@@ -17,7 +17,7 @@ from obi_one.scientific.tasks.synapse_parameterization.utils import (
     get_default_for,
     write_back_to_edge_file,
 )
-from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerUnion,
 )
 from obi_one.utils import db_sdk

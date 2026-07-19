@@ -49,7 +49,7 @@ class SkeletonizationTask(Task):
         ).one()
         # fetch the full dataset from the nested Entity
         em_dense_reconstruction_dataset = db_client.get_entity(
-            em_cell_mesh.em_dense_reconstruction_dataset.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
+            em_cell_mesh.em_dense_reconstruction_dataset.id,  # ty:ignore[unresolved-attribute]
             entity_type=models.EMDenseReconstructionDataset,
         )
         cell_id = em_cell_mesh.dense_reconstruction_cell_id

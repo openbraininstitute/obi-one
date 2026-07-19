@@ -67,7 +67,7 @@ TYPE_MAP: dict[str, str] = {
     # __init__.py aliases (class is re-exported under this name)
     "CoupledScan": "obi_one",
     "GridScan": "obi_one",
-    "SimulationsForm": "obi_one.scientific.unions.aliases",
+    "SimulationsForm": "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases",
 }
 
 

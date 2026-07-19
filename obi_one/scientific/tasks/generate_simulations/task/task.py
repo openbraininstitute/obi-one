@@ -27,15 +27,17 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BaseNeuronSetReference,
     NeuronSetReference,
 )
-from obi_one.scientific.unions.unions_simulations import SIMULATION_GENERATION_SINGLE_CONFIGS
+from obi_one.scientific.unions_and_references.simulations import (
+    SIMULATION_GENERATION_SINGLE_CONFIGS,
+)
 from obi_one.utils.sonata import write_simulation_config
 
 L = logging.getLogger(__name__)
@@ -467,7 +469,7 @@ class GenerateSimulationTask(Task):
                 number_neurons = 1
 
             db_client.update_entity(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 attrs_or_entity={"number_neurons": number_neurons},
             )
@@ -484,7 +486,7 @@ class GenerateSimulationTask(Task):
         if db_client:
             L.info("-- Upload custom_node_sets")
             _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
@@ -497,7 +499,7 @@ class GenerateSimulationTask(Task):
                     spike_file = self._sonata_config["inputs"][input_]["spike_file"]
                     if spike_file is not None:
                         _ = db_client.upload_file(
-                            entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                            entity_id=self.config.single_entity.id,
                             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                             file_path=Path(self.config.coordinate_output_root, spike_file),
                             file_content_type="application/x-hdf5",  # ty:ignore[invalid-argument-type]
@@ -506,7 +508,7 @@ class GenerateSimulationTask(Task):
 
             L.info("-- Upload sonata_simulation_config")
             _ = db_client.upload_file(
-                entity_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+                entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
