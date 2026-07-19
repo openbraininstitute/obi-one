@@ -1,4 +1,4 @@
-"""ScanConfig and SingleConfig for the 03_export_and_validation stage (Workflow B)."""
+"""ScanConfig and SingleConfig for the 03_export_and_validation stage."""
 
 import logging
 from enum import StrEnum
@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
+from entitysdk.models import TaskConfig
 from entitysdk.types import (
     AssetLabel,
     ContentType,
@@ -18,10 +18,8 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
-from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.blocks import (
-    CurrentscapeConfig,
+from obi_one.scientific.tasks.emodel_building.task3_export_and_validation.blocks import (
     ExportAndValidationInitialize,
-    ExportAndValidationSettings,
 )
 
 L = logging.getLogger(__name__)
@@ -31,27 +29,26 @@ class BlockGroup(StrEnum):
     """Block groups for the export + validation stage."""
 
     SETUP = "Setup"
-    SETTINGS = "Settings"
 
 
 class EModelExportAndValidationScanConfig(InfoScanConfig):
-    """ScanConfig for Workflow B — export + validation.
+    """ScanConfig for the export + validation stage.
 
-    Downloads optimisation TaskResult assets, runs validation + plotting,
-    re-exports validated models to HOC/SONATA, registers validation TaskResult,
-    and updates the draft MEModel with calibration results and validation status.
+    Validates the draft EModel/MEModel from the optimisation stage and
+    promotes them to active lifecycle status. All validation and plotting
+    settings are read from the optimisation recipe (stored on the TaskResult).
     """
 
     single_coord_class_name: ClassVar[str] = "EModelExportAndValidationSingleConfig"
     name: ClassVar[str] = "EModel Export and Validation"
     description: ClassVar[str] = (
-        "Run BluePyEModel validation, plotting, and final export of validated"
-        " models to HOC/SONATA. Updates MEModel with calibration results."
+        "Validate the draft EModel/MEModel and promote to active lifecycle."
+        " Settings come from the optimisation recipe."
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.SETTINGS],
+        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP],
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (
@@ -61,7 +58,7 @@ class EModelExportAndValidationScanConfig(InfoScanConfig):
         TaskActivityType.optimized_emodel_analysis_validation__config_generation
     )
 
-    def input_entities(self, db_client: Client) -> list[Entity]:
+    def input_entities(self, db_client: Client) -> list:
         return [
             self.initialize.optimization_task_result.entity(db_client=db_client),
             self.initialize.memodel.entity(db_client=db_client),
@@ -73,28 +70,6 @@ class EModelExportAndValidationScanConfig(InfoScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-
-    settings: ExportAndValidationSettings = Field(
-        default_factory=ExportAndValidationSettings,
-        title="Export and validation settings",
-        description="Settings for validation, plotting, and export.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETTINGS,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    currentscape_config: CurrentscapeConfig = Field(
-        default_factory=CurrentscapeConfig,
-        title="Currentscape config",
-        description="``currentscape_config`` (used when ``plot_currentscape=True``).",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETTINGS,
             SchemaKey.GROUP_ORDER: 1,
         },
     )

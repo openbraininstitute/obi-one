@@ -10,14 +10,15 @@ import contextlib
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import entitysdk
+from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
-from obi_one.scientific.tasks.emodel_optimization import _shared
-from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.config import (
+from obi_one.scientific.tasks.emodel_building import _shared
+from obi_one.scientific.tasks.emodel_building.task3_export_and_validation.config import (
     EModelExportAndValidationSingleConfig,
 )
 
@@ -35,15 +36,18 @@ class EModelExportAndValidationTask(Task):
 
     config: EModelExportAndValidationSingleConfig
 
+    _registered_task_result_id: str | None = PrivateAttr(default=None)
+    _registered_emodel_id: str | None = PrivateAttr(default=None)
+    _registered_memodel_id: str | None = PrivateAttr(default=None)
+
     def execute(
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        execution_activity_id: str | None = None,
     ) -> Path:
         from bluepyemodel.access_point.local import LocalAccessPoint  # noqa: PLC0415
-        from bluepyemodel.emodel_pipeline import plotting  # noqa: PLC0415
         from bluepyemodel.export_emodel.export_emodel import (  # noqa: PLC0415
             export_emodels_hoc,
             export_emodels_sonata,
@@ -52,113 +56,87 @@ class EModelExportAndValidationTask(Task):
         from bluepyemodel.validation.validation import validate  # noqa: PLC0415
 
         init = self.config.initialize
-        settings = self.config.settings
         coord_root = Path(self.config.coordinate_output_root).resolve()
-        emodel = init.emodel
-        mtype = self._derive_mtype_from_memodel(db_client)
+
+        # Fetch MEModel entity once — all helpers use this cached reference.
+        memodel_entity = init.memodel.entity(db_client=db_client)
+
+        metadata = self._derive_metadata(memodel_entity, db_client)
+        emodel = metadata["emodel"]
+        mtype = self._derive_mtype(memodel_entity, db_client)
 
         # --- 1. Download optimisation TaskResult assets ---
         opt_tr = init.optimization_task_result
         self._download_opt_assets(opt_tr, coord_root, db_client)
 
         # --- 1b. Stage morphology + mechanisms from MEModel ---
-        self._stage_morphology_from_memodel(coord_root, db_client)
-        self._stage_mechanisms_from_memodel(coord_root, db_client)
+        self._stage_morphology(memodel_entity, coord_root, db_client)
+        self._stage_mechanisms(memodel_entity, coord_root, db_client)
 
         # --- 2. Compile mechanisms if needed ---
-        if (
-            not (coord_root / "x86_64" / "special").exists()
-            and not (coord_root / "arm64" / "special").exists()
-        ):
-            _shared.compile_mechanisms(coord_root / "mechanisms")
+        _shared.compile_mechanisms(coord_root / "mechanisms")
 
-        # --- 3. Merge validation + export settings into recipe ---
-        recipes_path = coord_root / "config" / "recipes.json"
-        recipes = _shared.load_recipes(recipes_path)
-        recipes = _shared.update_pipeline_settings(
-            recipes,
-            emodel=emodel,
-            overrides=settings.to_dict(self.config.currentscape_config),
-        )
-        _shared.write_recipes(recipes, recipes_path)
+        # --- 3. Recipe is already on disk from step 1 (downloaded from TaskResult) ---
+        # All validation/plotting settings are in the recipe's pipeline_settings.
 
         # --- 4. Run validation + plot + export ---
         with _shared.chdir(coord_root):
             access_point = LocalAccessPoint(
                 emodel=emodel,
-                etype=init.etype,
+                etype=metadata["etype"],
                 mtype=mtype,
                 ttype=None,
-                species=init.species,
-                brain_region=init.brain_region,
+                species=metadata["species"],
+                brain_region=metadata["brain_region"],
                 iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
 
             mapper = map
+            pp = access_point.pipeline_settings
 
-            # Store optimisation results (reads checkpoints → final.json)
-            seeds = [int(s.strip()) for s in settings.seeds.split(",") if s.strip()]
+            # Seed comes from the recipe's optimisation_params or default to [1]
+            seeds = [pp.seed] if hasattr(pp, "seed") else [1]
+
+            # Store optimisation results (reads checkpoints -> final.json)
             for seed in seeds:
                 store_best_model(access_point=access_point, seed=seed)
 
             # Validation
             validate(access_point=access_point, mapper=mapper)
 
-            # Plot (only validated)
-            pp_settings = access_point.pipeline_settings
-            plotting.plot_models(
+            # Plot (only validated models)
+            _shared.run_plot_models(
                 access_point=access_point,
                 mapper=mapper,
                 seeds=seeds,
                 figures_dir=Path("./figures") / emodel,
-                plot_optimisation_progress=pp_settings.plot_optimisation_progress,
-                optimiser=pp_settings.optimiser,
-                plot_parameter_evolution=pp_settings.plot_parameter_evolution,
-                plot_distributions=pp_settings.plot_distributions,
-                plot_scores=pp_settings.plot_scores,
-                plot_traces=pp_settings.plot_traces,
-                plot_thumbnail=pp_settings.plot_thumbnail,
-                plot_currentscape=pp_settings.plot_currentscape,
-                plot_dendritic_ISI_CV=pp_settings.plot_dendritic_ISI_CV,
-                plot_dendritic_rheobase=pp_settings.plot_dendritic_rheobase,
-                plot_bAP_EPSP=pp_settings.plot_bAP_EPSP,
-                plot_IV_curve=pp_settings.plot_IV_curves,
-                plot_FI_curve_comparison=pp_settings.plot_FI_curve_comparison,
-                plot_phase_plot=pp_settings.plot_phase_plot,
-                plot_traces_comparison=pp_settings.plot_traces_comparison,
-                run_plot_custom_sinspec=pp_settings.run_plot_custom_sinspec,
-                IV_curve_prot_name=pp_settings.IV_curve_prot_name,
-                FI_curve_prot_name=pp_settings.FI_curve_prot_name,
-                phase_plot_settings=pp_settings.phase_plot_settings,
-                sinespec_settings=pp_settings.sinespec_settings,
-                custom_bluepyefe_cells_pklpath=pp_settings.custom_bluepyefe_cells_pklpath,
-                custom_bluepyefe_protocols_pklpath=pp_settings.custom_bluepyefe_protocols_pklpath,
-                only_validated=settings.only_validated_plots,
-                save_recordings=pp_settings.save_recordings,
+                only_validated=True,
             )
 
-            # Final export (only validated)
-            if settings.export_hoc:
-                export_emodels_hoc(
-                    access_point=access_point,
-                    only_validated=settings.only_validated,
-                    only_best=settings.only_best,
-                    seeds=seeds,
-                )
-
-            if settings.export_sonata:
-                export_emodels_sonata(
-                    access_point=access_point,
-                    only_validated=settings.only_validated,
-                    only_best=settings.only_best,
-                    seeds=seeds,
-                    map_function=mapper,
-                )
+            # Export (only validated, only best)
+            export_emodels_hoc(
+                access_point=access_point,
+                only_validated=True,
+                only_best=True,
+                seeds=seeds,
+            )
+            export_emodels_sonata(
+                access_point=access_point,
+                only_validated=True,
+                only_best=True,
+                seeds=seeds,
+                map_function=mapper,
+            )
 
         # --- 5. Register output entities and update MEModel/EModel ---
         if db_client is not None:
-            self._register_and_update(coord_root, db_client)
+            self._register_and_update(
+                coord_root,
+                db_client,
+                memodel_entity=memodel_entity,
+                execution_activity_id=execution_activity_id,
+            )
 
         return coord_root
 
@@ -168,72 +146,74 @@ class EModelExportAndValidationTask(Task):
         coord_root: Path,
         db_client: entitysdk.client.Client,
     ) -> None:
-        """Download all assets from optimisation TaskResult."""
+        """Download all assets from the optimisation TaskResult.
+
+        Assets are split into *required* (checkpoint, recipes) and *optional*
+        (figures, HOC, SONATA). Required assets raise on failure; optional
+        assets log a warning and continue.
+        """
         from entitysdk.types import AssetLabel  # noqa: PLC0415
 
-        # Checkpoint
+        from obi_one.utils.db_sdk import select_json_asset_content  # noqa: PLC0415
+
+        # --- Required assets (task cannot proceed without these) ---
+
+        # Checkpoint — needed by store_best_model
         ckpt_dir = coord_root / "checkpoints"
         ckpt_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            opt_tr.download_asset_by_label(
-                AssetLabel.emodel_optimisation_checkpoint,
-                dest_dir=ckpt_dir,
-                db_client=db_client,
-            )
-        except Exception:  # noqa: BLE001
-            L.warning("Could not download optimisation checkpoint.")
+        opt_tr.download_asset_by_label(
+            AssetLabel.emodel_optimisation_checkpoint,
+            dest_dir=ckpt_dir,
+            db_client=db_client,
+        )
 
-        # Recipes
-        try:
-            recipes_dict = opt_tr.download_json_asset_by_label(
-                AssetLabel.task_result,
-                db_client=db_client,
-            )
-            recipes_dir = coord_root / "config"
-            recipes_dir.mkdir(parents=True, exist_ok=True)
-            (recipes_dir / "recipes.json").write_text(
-                json.dumps(recipes_dict, indent=4), encoding="utf-8"
-            )
-        except Exception:  # noqa: BLE001
-            L.warning("Could not download optimisation recipe.")
+        # Recipes — needed to reconstruct pipeline settings
+        recipes_dict = select_json_asset_content(
+            client=db_client,
+            entity=opt_tr.entity(db_client=db_client),
+            selection={"label": AssetLabel.task_result},
+        )
+        recipes_dir = coord_root / "config"
+        recipes_dir.mkdir(parents=True, exist_ok=True)
+        (recipes_dir / "recipes.json").write_text(
+            json.dumps(recipes_dict, indent=4), encoding="utf-8"
+        )
 
-        # Params
+        # Params — needed for mechanism parameters
         params_dir = coord_root / "config" / "params"
         params_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            opt_tr.download_asset_by_label(
-                AssetLabel.neuron_mechanisms,
-                dest_dir=params_dir,
-                db_client=db_client,
-            )
-        except Exception:  # noqa: BLE001
-            L.warning("Could not download optimisation params.")
+        opt_tr.download_asset_by_label(
+            AssetLabel.neuron_mechanisms,
+            dest_dir=params_dir,
+            db_client=db_client,
+        )
 
-        # Figures
+        # --- Optional assets (task can regenerate these) ---
+
+        # Figures (previous analysis plots)
         figures_dir = coord_root / "figures"
         figures_dir.mkdir(parents=True, exist_ok=True)
-        try:
+        with contextlib.suppress(Exception):
             opt_tr.download_directory_asset_by_label(
                 AssetLabel.emodel_analysis_figures,
                 dest_dir=figures_dir,
                 db_client=db_client,
             )
-        except Exception:  # noqa: BLE001
-            L.warning("Could not download optimisation figures.")
 
-        # Final.json
+        # Final.json (summary from store_best_model — will be regenerated)
         try:
-            final_dict = opt_tr.download_json_asset_by_label(
-                AssetLabel.emodel_analysis_summary,
-                db_client=db_client,
+            final_dict = select_json_asset_content(
+                client=db_client,
+                entity=opt_tr.entity(db_client=db_client),
+                selection={"label": AssetLabel.emodel_analysis_summary},
             )
             (coord_root / "final.json").write_text(
                 json.dumps(final_dict, indent=4), encoding="utf-8"
             )
         except Exception:  # noqa: BLE001
-            L.warning("Could not download final.json.")
+            L.warning("Could not download final.json (will be regenerated by store_best_model).")
 
-        # HOC
+        # HOC (will be re-exported)
         hoc_dir = coord_root / "export_emodels_hoc"
         hoc_dir.mkdir(parents=True, exist_ok=True)
         with contextlib.suppress(Exception):
@@ -243,7 +223,7 @@ class EModelExportAndValidationTask(Task):
                 db_client=db_client,
             )
 
-        # SONATA
+        # SONATA (will be re-exported)
         sonata_dir = coord_root / "export_emodels_sonata"
         sonata_dir.mkdir(parents=True, exist_ok=True)
         with contextlib.suppress(Exception):
@@ -255,30 +235,65 @@ class EModelExportAndValidationTask(Task):
 
         L.info("Downloaded optimisation assets for export + validation.")
 
-    def _derive_mtype_from_memodel(self, db_client: entitysdk.client.Client) -> str:
-        """Derive mtype from the MEModel entity's morphology."""
+    @staticmethod
+    def _derive_mtype(
+        memodel_entity: Any,
+        db_client: entitysdk.client.Client,
+    ) -> str:
+        """Derive mtype from the MEModel entity's morphology.
+
+        Uses ``.pref_label`` (consistent with task2) for the canonical short label.
+        """
         from entitysdk.models import CellMorphology  # noqa: PLC0415
 
-        memodel_entity = self.config.initialize.memodel.entity(db_client=db_client)
         morph = db_client.get_entity(
-            entity_id=memodel_entity.morphology.id,  # ty:ignore[union-attr]
+            entity_id=memodel_entity.morphology.id,
             entity_type=CellMorphology,
         )
         if hasattr(morph, "mtypes") and morph.mtypes:
-            return str(morph.mtypes[0].name)  # ty:ignore[union-attr]
+            return str(morph.mtypes[0].pref_label)
         return "unknown"
 
-    def _stage_morphology_from_memodel(
-        self, coord_root: Path, db_client: entitysdk.client.Client
+    @staticmethod
+    def _derive_metadata(
+        memodel_entity: Any,
+        db_client: entitysdk.client.Client,  # noqa: ARG004
+    ) -> dict[str, str]:
+        """Derive emodel, etype, species, brain_region from the MEModel entity.
+
+        Returns a dict with keys: emodel, etype, species, brain_region.
+        """
+        emodel_name = memodel_entity.emodel.name if memodel_entity.emodel else "unknown"
+
+        etype = "unknown"
+        if memodel_entity.etypes and len(memodel_entity.etypes) > 0:
+            etype = str(memodel_entity.etypes[0].pref_label)
+
+        species = memodel_entity.species.name if memodel_entity.species else "unknown"
+
+        brain_region = (
+            memodel_entity.brain_region.name if memodel_entity.brain_region else "unknown"
+        )
+
+        return {
+            "emodel": emodel_name,
+            "etype": etype,
+            "species": species,
+            "brain_region": brain_region,
+        }
+
+    @staticmethod
+    def _stage_morphology(
+        memodel_entity: Any,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
     ) -> None:
-        """Download morphology SWC from MEModel → morphology → CellMorphology entity."""
-        from entitysdk.models import CellMorphology  # noqa: PLC0415
+        """Download morphology SWC from MEModel -> morphology -> CellMorphology entity."""
         from obi_one.scientific.from_id.cell_morphology_from_id import (  # noqa: PLC0415
             CellMorphologyFromID,
         )
 
-        memodel_entity = self.config.initialize.memodel.entity(db_client=db_client)
-        morph_id = memodel_entity.morphology.id  # ty:ignore[union-attr]
+        morph_id = memodel_entity.morphology.id
 
         morph_dir = coord_root / "morphologies"
         morph_dir.mkdir(parents=True, exist_ok=True)
@@ -286,25 +301,26 @@ class EModelExportAndValidationTask(Task):
         swc_content = morph_from_id.swc_file_content(db_client=db_client)
         morph_filename = f"{morph_id}.swc"
         (morph_dir / morph_filename).write_text(
-            swc_content,  # ty:ignore[invalid-argument-type]
+            swc_content,
             encoding="utf-8",
         )
         L.info("Staged morphology from MEModel: %s", morph_filename)
 
-    def _stage_mechanisms_from_memodel(
-        self, coord_root: Path, db_client: entitysdk.client.Client
+    @staticmethod
+    def _stage_mechanisms(
+        memodel_entity: Any,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
     ) -> None:
-        """Download .mod files from MEModel → emodel → EModel → ion_channel_models."""
+        """Download .mod files from MEModel -> emodel -> EModel -> ion_channel_models."""
         from entitysdk.models import EModel  # noqa: PLC0415
+
         from obi_one.scientific.from_id.ion_channel_model_from_id import (  # noqa: PLC0415
             IonChannelModelFromID,
         )
 
-        memodel_entity = self.config.initialize.memodel.entity(db_client=db_client)
-        emodel_id = memodel_entity.emodel.id  # ty:ignore[union-attr]
-        emodel_entity = db_client.get_entity(
-            entity_id=emodel_id, entity_type=EModel
-        )
+        emodel_id = memodel_entity.emodel.id
+        emodel_entity = db_client.get_entity(entity_id=emodel_id, entity_type=EModel)
 
         mech_dir = coord_root / "mechanisms"
         mech_dir.mkdir(parents=True, exist_ok=True)
@@ -318,26 +334,31 @@ class EModelExportAndValidationTask(Task):
         self,
         coord_root: Path,
         db_client: entitysdk.client.Client,
+        *,
+        memodel_entity: Any,
+        execution_activity_id: str | None = None,
     ) -> None:
-        """Register validation TaskResult, upload assets, update MEModel and EModel."""
+        """Register validation TaskResult, upload assets, update MEModel and EModel.
+
+        Converts draft EModel and MEModel to active lifecycle status after validation.
+        """
         from entitysdk.models import (  # noqa: PLC0415
-            Derivation,
             EModel,
             MEModel,
             MEModelCalibrationResult,
+            TaskActivity,
             TaskResult,
         )
         from entitysdk.types import (  # noqa: PLC0415
             AssetLabel,
             ContentType,
-            DerivationType,
+            EntityLifecycleStatus,
             TaskResultType,
             ValidationStatus,
         )
 
-        init = self.config.initialize
-        settings = self.config.settings
-        emodel_name = init.emodel
+        metadata = self._derive_metadata(memodel_entity, db_client)
+        emodel_name = metadata["emodel"]
 
         # --- Register validation TaskResult ---
         task_result = db_client.register_entity(
@@ -359,7 +380,7 @@ class EModelExportAndValidationTask(Task):
                     paths[rel] = str(fp)
             if paths:
                 db_client.upload_directory(
-                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                    entity_id=task_result.id,
                     entity_type=TaskResult,
                     name="figures",
                     paths={Path(k): Path(v) for k, v in paths.items()},
@@ -370,22 +391,30 @@ class EModelExportAndValidationTask(Task):
         recipes_path = coord_root / "config" / "recipes.json"
         if recipes_path.exists():
             db_client.upload_file(
-                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                entity_id=task_result.id,
                 entity_type=TaskResult,
                 file_path=recipes_path,
                 asset_label=AssetLabel.task_result,
                 file_content_type=ContentType.application_json,
             )
 
-        # Upload validation details
+        # Upload validation details (read from recipe)
+        recipes_path = coord_root / "config" / "recipes.json"
+        validation_threshold = 5.0  # default
+        validation_protocols: list[str] = []
+        if recipes_path.exists():
+            recipe_data = json.loads(recipes_path.read_text(encoding="utf-8"))
+            if emodel_name in recipe_data:
+                ps = recipe_data[emodel_name].get("pipeline_settings", {})
+                validation_threshold = ps.get("validation_threshold", 5.0)
+                validation_protocols = ps.get("validation_protocols", [])
+
         details = {
-            "validation_threshold": settings.validation_threshold,
-            "validation_protocols": [
-                p.strip() for p in settings.validation_protocols.split(",") if p.strip()
-            ],
+            "validation_threshold": validation_threshold,
+            "validation_protocols": validation_protocols,
         }
         db_client.upload_content(
-            entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+            entity_id=task_result.id,
             entity_type=TaskResult,
             file_content=json.dumps(details, indent=2).encode("utf-8"),
             file_name="validation_details.json",
@@ -398,7 +427,7 @@ class EModelExportAndValidationTask(Task):
         if hoc_dir.exists():
             for hoc_file in hoc_dir.rglob("*.hoc"):
                 db_client.upload_file(
-                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                    entity_id=task_result.id,
                     entity_type=TaskResult,
                     file_path=hoc_file,
                     asset_label=AssetLabel.neuron_hoc,
@@ -415,25 +444,14 @@ class EModelExportAndValidationTask(Task):
                     paths[rel] = str(fp)
             if paths:
                 db_client.upload_directory(
-                    entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                    entity_id=task_result.id,
                     entity_type=TaskResult,
                     name="sonata",
                     paths={Path(k): Path(v) for k, v in paths.items()},
                     label=AssetLabel.emodel_optimization_output,
                 )
 
-        # Derivation: optimisation TaskResult → validation TaskResult
-        opt_tr_entity = init.optimization_task_result.entity(db_client=db_client)
-        db_client.register_entity(
-            Derivation(
-                used=opt_tr_entity,
-                generated=task_result,
-                derivation_type=DerivationType.unspecified,
-            )
-        )
-
         # --- Update MEModel with calibration results ---
-        memodel_entity = init.memodel.entity(db_client=db_client)
 
         # Extract calibration values from final.json
         holding_current = None
@@ -453,12 +471,9 @@ class EModelExportAndValidationTask(Task):
                 threshold_current = best.get("threshold_current")
                 rin = best.get("rin")
 
-        # Determine validation status
+        # Determine validation status: score > threshold means FAILED (z-score: lower is better)
         validation_status = ValidationStatus.done
-        threshold = settings.validation_threshold
-        if isinstance(threshold, list):
-            threshold = threshold[0] if threshold else 0.0
-        if score > threshold:
+        if score > validation_threshold:
             validation_status = ValidationStatus.error
 
         # Register calibration result
@@ -468,34 +483,35 @@ class EModelExportAndValidationTask(Task):
                     holding_current=float(holding_current),
                     threshold_current=float(threshold_current),
                     rin=float(rin) if rin is not None else None,
-                    calibrated_entity_id=memodel_entity.id,  # ty:ignore[invalid-argument-type]
+                    calibrated_entity_id=memodel_entity.id,
                 )
             )
             L.info("Calibration result registered: %s", calibration_result.id)
 
-        # Update MEModel
-        updated_memodel = db_client.update_entity(
-            memodel_entity.id,  # ty:ignore[invalid-argument-type]
-            MEModel,
-            MEModel(
-                name=memodel_entity.name,
-                description=memodel_entity.description,
-                species=memodel_entity.species,  # ty:ignore[unresolved-attribute]
-                brain_region=memodel_entity.brain_region,  # ty:ignore[unresolved-attribute]
-                morphology=memodel_entity.morphology,  # ty:ignore[unresolved-attribute]
-                emodel=memodel_entity.emodel,  # ty:ignore[unresolved-attribute]
-                validation_status=validation_status,
-                holding_current=float(holding_current) if holding_current is not None else None,
-                threshold_current=float(threshold_current)
-                if threshold_current is not None
-                else None,
-                iteration=memodel_entity.iteration,  # ty:ignore[unresolved-attribute]
-            ),
+        # Update MEModel — use partial update to avoid overwriting other fields
+        # or breaking on schema changes (instead of reconstructing the full entity).
+        memodel_updates: dict = {
+            "validation_status": validation_status,
+            "lifecycle_status": EntityLifecycleStatus.active,
+        }
+        if holding_current is not None:
+            memodel_updates["holding_current"] = float(holding_current)
+        if threshold_current is not None:
+            memodel_updates["threshold_current"] = float(threshold_current)
+
+        db_client.update_entity(
+            entity_id=memodel_entity.id,
+            entity_type=MEModel,
+            attrs_or_entity=memodel_updates,
         )
-        L.info("MEModel updated: %s (status=%s)", updated_memodel.id, validation_status)
+        L.info(
+            "MEModel %s updated (status=%s, lifecycle=active).",
+            memodel_entity.id,
+            validation_status,
+        )
 
         # --- Update EModel with final HOC/SONATA assets ---
-        emodel_entity = memodel_entity.emodel  # ty:ignore[unresolved-attribute]
+        emodel_entity = memodel_entity.emodel
 
         if emodel_entity:
             if hoc_dir.exists():
@@ -524,16 +540,33 @@ class EModelExportAndValidationTask(Task):
                         label=AssetLabel.emodel_optimization_output,
                     )
 
-            L.info("EModel %s updated with final export assets.", emodel_entity.id)
+            # Convert EModel from draft to active
+            db_client.update_entity(
+                entity_id=emodel_entity.id,
+                entity_type=EModel,
+                attrs_or_entity={"lifecycle_status": EntityLifecycleStatus.active},
+            )
+            L.info(
+                "EModel %s updated with final export assets and set to active.",
+                emodel_entity.id,
+            )
 
-        # Derivation: validation TaskResult → EModel
+        # Store registered entity IDs on the task instance for external access
+        self._registered_task_result_id = str(task_result.id)
         if emodel_entity:
-            db_client.register_entity(
-                Derivation(
-                    used=task_result,
-                    generated=emodel_entity,
-                    derivation_type=DerivationType.unspecified,
-                )
+            self._registered_emodel_id = emodel_entity.id
+        self._registered_memodel_id = memodel_entity.id
+
+        # --- Update TaskActivity with generated_ids ---
+        if execution_activity_id is not None:
+            generated_ids = [task_result.id]
+            if emodel_entity:
+                generated_ids.append(emodel_entity.id)
+            generated_ids.append(memodel_entity.id)
+            db_client.update_entity(
+                entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
+                entity_type=TaskActivity,
+                attrs_or_entity={"generated_ids": generated_ids},
             )
 
         L.info("Export + validation complete.")
