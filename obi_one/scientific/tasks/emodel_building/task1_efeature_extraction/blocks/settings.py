@@ -67,14 +67,6 @@ class Settings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
-    pickle_cells: bool = Field(
-        default=False,
-        title="Pickle cells",
-        description=(
-            "bluepyefe ``pickle_cells``: also dump the BluePyEfe ``Cell`` objects as pickles."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
     bound_max_std: bool = Field(
         default=False,
         title="Bound max std",

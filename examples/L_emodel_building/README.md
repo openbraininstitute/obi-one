@@ -1,4 +1,4 @@
-# L_emodel_optimization — BluePyEModel L5PC Pipeline Demo
+# L_emodel_building — BluePyEModel L5PC Pipeline Demo
 
 End-to-end walk-through of the three stages of the
 [BluePyEModel L5PC example](https://github.com/openbraininstitute/BluePyEModel/blob/main/examples/L5PC/README.rst)

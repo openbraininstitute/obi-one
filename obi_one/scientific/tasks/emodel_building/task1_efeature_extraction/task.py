@@ -8,20 +8,21 @@ from typing import Any, ClassVar
 
 import entitysdk
 import httpx
+from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
 from obi_one.scientific.library.electrical_cell_recording_properties import (
-    _read_amplitudes_from_nwb,
-    _read_timing_from_nwb,
+    read_amplitudes_from_nwb,
+    read_timing_from_nwb,
 )
-from obi_one.scientific.tasks.emodel_optimization import _shared
-from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (
+from obi_one.scientific.tasks.emodel_building import _shared
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks import (
     Settings,
 )
-from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.config import (
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
     EModelEFeatureExtractionSingleConfig,
 )
 
@@ -45,7 +46,7 @@ DEFAULT_EFEL_SETTINGS: dict[str, float | bool] = {
 }
 
 # bluepyefe eCodes that don't auto-detect their stimulus timing. ``Ramp`` needs
-# only ``ton``, which this stage reads from the NWB current (``_read_timing_from_nwb``)
+# only ``ton``, which this stage reads from the NWB current (``read_timing_from_nwb``)
 # and supplies. ``DeHyperPol`` also needs mid-transition points we can't recover
 # from the current alone, so protocols routing to it are skipped at extraction
 # (with a warning) rather than crashing the whole run.
@@ -75,7 +76,7 @@ def _discover_timing(
     """
     collected: dict[str, list[float]] = {p: [] for p in protocol_names}
     for path in nwb_paths:
-        for protocol_name, ton in _read_timing_from_nwb(path, protocol_names).items():
+        for protocol_name, ton in read_timing_from_nwb(path, protocol_names).items():
             collected[protocol_name].append(ton)
     return {p: median(v) for p, v in collected.items() if v}
 
@@ -145,7 +146,7 @@ def _discover_amplitudes(
     """Union of step amplitudes (nA) discovered across every NWB, per protocol."""
     combined: dict[str, set[float]] = {p: set() for p in protocol_names}
     for path in nwb_paths:
-        per_file = _read_amplitudes_from_nwb(path, protocol_names)
+        per_file = read_amplitudes_from_nwb(path, protocol_names)
         for protocol_name, amps in per_file.items():
             combined[protocol_name].update(amps)
     return {p: sorted(v) for p, v in combined.items()}
@@ -250,7 +251,6 @@ def _build_extraction_recipes(
         "name_rmp_protocol": name_rmp_protocol,
         "name_Rin_protocol": name_rin_protocol,
         "extraction_threshold_value_save": settings.threshold_nvalue_save,
-        "pickle_cells_extraction": settings.pickle_cells,
         "bound_max_std": settings.bound_max_std,
         "interpolate_RMP_extraction": settings.interpolate_rmp,
         "threshold_efeature_std": settings.threshold_efeature_std or None,
@@ -306,6 +306,8 @@ class EModelEFeatureExtractionTask(Task):
     )
 
     config: EModelEFeatureExtractionSingleConfig
+
+    _registered_task_result_id: str | None = PrivateAttr(default=None)
 
     def _download_recordings(
         self,
@@ -452,7 +454,8 @@ class EModelEFeatureExtractionTask(Task):
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
         validation_protocol_names = [
-            p.name for p in self.config.efeatures_by_protocol.protocols
+            p.name
+            for p in self.config.efeatures_by_protocol.protocols
             if getattr(p, "validation", False)
         ]
         _shared.write_recipes(
@@ -557,6 +560,9 @@ class EModelEFeatureExtractionTask(Task):
         )
         L.info("TaskResult entity registered: %s", task_result.id)
 
+        # Store registered entity ID on the task instance for external access
+        self._registered_task_result_id = str(task_result.id)
+
         # Upload extracted features JSON.
         features_path = coord_root / EXTRACTED_FEATURES_FILENAME
         if features_path.exists():
@@ -569,16 +575,10 @@ class EModelEFeatureExtractionTask(Task):
             )
             L.info("Uploaded extracted features JSON.")
 
-        # Upload recipes JSON.
-        # Note: entitycore does not yet have an asset label that accepts JSON
-        # for recipes/protocols — efeature_extraction_protocols requires HDF5.
-        # The recipes file is written to disk locally for downstream notebooks.
+        # Keep recipes JSON local for the extraction workflow.
         recipes_path = coord_root / RECIPES_RELPATH
         if recipes_path.exists():
-            L.info(
-                "Recipes JSON written to %s (not uploaded — no compatible asset label).",
-                recipes_path,
-            )
+            L.info("Recipes JSON remains local: %s", recipes_path)
 
         # Upload figures directory with manifest.
         figures_dir = coord_root / "figures"
@@ -604,14 +604,10 @@ class EModelEFeatureExtractionTask(Task):
             )
             L.info("Uploaded figures directory (%d files).", len(paths))
 
-        # Upload targets configuration JSON.
-        # Note: same as recipes — no asset label accepts JSON for this content.
+        # Keep targets JSON local because extraction consumes it directly.
         targets_path = coord_root / TARGETS_CONFIG_RELPATH
         if targets_path.exists():
-            L.info(
-                "Targets JSON written to %s (not uploaded — no compatible asset label).",
-                targets_path,
-            )
+            L.info("Targets JSON remains local: %s", targets_path)
 
         # Note: bluepyefe cells pickle (.pkl) is not uploaded because
         # entitycore expects HDF5 for efeature_extraction_cells. The pickle

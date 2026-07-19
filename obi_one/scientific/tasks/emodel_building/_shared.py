@@ -161,6 +161,55 @@ def compile_mechanisms(mechanisms_dir: Path) -> None:
     )
 
 
+def run_plot_models(
+    access_point: Any,
+    mapper: object,
+    seeds: list[int],
+    figures_dir: Path,
+    *,
+    only_validated: bool = False,
+) -> None:
+    """Run ``plotting.plot_models`` with all settings from the access point.
+
+    Centralises the ~20 keyword arguments that ``plotting.plot_models`` expects,
+    reading them from ``access_point.pipeline_settings``. Only
+    ``only_validated`` differs between task2 (False) and task3 (True/user-set).
+    """
+    from bluepyemodel.emodel_pipeline import plotting  # noqa: PLC0415
+
+    pp = access_point.pipeline_settings
+    plotting.plot_models(
+        access_point=access_point,
+        mapper=mapper,
+        seeds=seeds,
+        figures_dir=figures_dir,
+        plot_optimisation_progress=pp.plot_optimisation_progress,
+        optimiser=pp.optimiser,
+        plot_parameter_evolution=pp.plot_parameter_evolution,
+        plot_distributions=pp.plot_distributions,
+        plot_scores=pp.plot_scores,
+        plot_traces=pp.plot_traces,
+        plot_thumbnail=pp.plot_thumbnail,
+        plot_currentscape=pp.plot_currentscape,
+        plot_dendritic_ISI_CV=pp.plot_dendritic_ISI_CV,
+        plot_dendritic_rheobase=pp.plot_dendritic_rheobase,
+        plot_bAP_EPSP=pp.plot_bAP_EPSP,
+        plot_IV_curve=pp.plot_IV_curves,
+        plot_FI_curve_comparison=pp.plot_FI_curve_comparison,
+        plot_phase_plot=pp.plot_phase_plot,
+        plot_traces_comparison=pp.plot_traces_comparison,
+        run_plot_custom_sinspec=pp.run_plot_custom_sinspec,
+        IV_curve_prot_name=pp.IV_curve_prot_name,
+        FI_curve_prot_name=pp.FI_curve_prot_name,
+        phase_plot_settings=pp.phase_plot_settings,
+        sinespec_settings=pp.sinespec_settings,
+        custom_bluepyefe_cells_pklpath=pp.custom_bluepyefe_cells_pklpath,
+        custom_bluepyefe_protocols_pklpath=pp.custom_bluepyefe_protocols_pklpath,
+        only_validated=only_validated,
+        save_recordings=pp.save_recordings,
+    )
+
+
 def determine_core_count(
     offspring_size: int,
     max_ngen: int,

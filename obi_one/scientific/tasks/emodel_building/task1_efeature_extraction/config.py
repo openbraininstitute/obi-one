@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
+from entitysdk.models import TaskConfig
 from entitysdk.types import AssetLabel, ContentType, TaskActivityType, TaskConfigType
 from pydantic import Field
 
@@ -16,7 +16,7 @@ from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.blocks import (
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks import (
     ExtractionInitialize,
     ProtocolAndFeatureSelection,
     Settings,
@@ -65,7 +65,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         TaskActivityType.efeature_extraction__config_generation
     )
 
-    def input_entities(self, db_client: Client) -> list[Entity]:
+    def input_entities(self, db_client: Client) -> list:
         return [r.entity(db_client=db_client) for r in self.initialize.electrical_cell_recording]
 
     initialize: ExtractionInitialize = Field(
@@ -113,7 +113,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> None:
         if db_client is None:
-            return None
+            return
 
         L.info("Registering efeature extraction campaign TaskConfig entity.")
         input_entities = self.input_entities(db_client)
@@ -138,7 +138,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             asset_label=AssetLabel.task_config,
         )
         L.info("Campaign entity registered: %s", campaign.id)
-        return campaign
+        return
 
     def create_campaign_generation_entity(  # noqa: PLR6301
         self,

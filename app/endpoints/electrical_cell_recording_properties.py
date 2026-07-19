@@ -9,9 +9,7 @@ from pydantic import BaseModel, Field
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
-from obi_one.scientific.library.electrical_cell_recording_properties import (
-    get_recording_protocols,
-)
+from obi_one.utils.db_sdk import get_recording_protocols
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -21,8 +19,7 @@ class ElectricalCellRecordingProtocolsResponse(BaseModel):
 
     by_recording: dict[str, list[str]] = Field(
         description=(
-            "Mapping of recording id to the list of protocol (ecode) names"
-            " in its stimuli metadata."
+            "Mapping of recording id to the list of protocol (ecode) names in its stimuli metadata."
         ),
     )
     union: list[str] = Field(
