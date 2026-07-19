@@ -13,7 +13,7 @@ from entitysdk.types import (
     TaskActivityType,
     TaskConfigType,
 )
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
@@ -21,7 +21,7 @@ from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.blocks import (
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     MorphologySelection,
     OptimizationInitialize,
     OptimizationParams,
@@ -76,8 +76,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         TaskActivityType.emodel_optimization__config_generation
     )
 
-    def input_entities(self, db_client: Client) -> list[Entity]:
-        entities: list[Entity] = [
+    def input_entities(self, db_client: Client) -> list:
+        entities: list = [
             self.initialize.extraction_task_result.entity(db_client=db_client),
             self.morphology_selection.morphology.entity(db_client=db_client),
         ]
@@ -88,8 +88,22 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     @property
     def use_params_file(self) -> bool:
-        """True if params-file mode is active (params_content is set)."""
-        return bool(self.params_file.params_content)
+        """True if params-file mode is active (params_template is set)."""
+        return self.params_file.params_template is not None
+
+    @model_validator(mode="after")
+    def validate_params_source(self) -> "EModelOptimizationScanConfig":
+        """Ensure at least one parameter source is provided."""
+        has_icm = len(self.parameters_selection.ion_channel_models) > 0
+        has_template = self.params_file.params_template is not None
+        if not has_icm and not has_template:
+            msg = (
+                "Either ion_channel_models or params_template must be set."
+                " Provide ion channel models for the dynamic builder, or select"
+                " a pre-built params template from the database."
+            )
+            raise ValueError(msg)
+        return self
 
     initialize: OptimizationInitialize = Field(
         title="Initialize",
