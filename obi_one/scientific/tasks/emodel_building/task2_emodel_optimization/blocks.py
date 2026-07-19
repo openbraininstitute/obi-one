@@ -7,8 +7,12 @@ from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.from_id.brain_region_from_id import BrainRegionFromID
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
+from obi_one.scientific.from_id.species_from_id import SpeciesFromID
+from obi_one.scientific.from_id.task_config_from_id import TaskConfigFromID
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 
 
@@ -30,22 +34,35 @@ class OptimizationInitialize(Block):
         description="Top-level key in ``recipes.json`` to operate on (e.g. ``L5PC``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    species: str = Field(
-        default="rat",
+    species: SpeciesFromID = Field(
         title="Species",
-        description="Species tag passed to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        description="Species entity selected from the database.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
+                "type": "species",
+            },
+        },
     )
-    brain_region: str = Field(
-        default="SSCX",
+    brain_region: BrainRegionFromID = Field(
         title="Brain region",
-        description="Brain region tag passed to ``EModel_pipeline``.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        description="Brain region entity selected from the database.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
+                "type": "brain-region",
+            },
+        },
     )
-    etype: str = Field(
+    etype: ETypeClassFromID = Field(
         title="E-type",
-        description="Electrical type tag (selected by the user in the UI).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        description="Electrical type entity selected from the database.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
+                "type": "etype",
+            },
+        },
     )
 
 
@@ -78,26 +95,32 @@ class ParametersSelection(Block):
 
 
 class ParamsFileSelection(Block):
-    """Params-file mode — embed a pre-built BluePyEModel params JSON dict.
+    """Params-file mode — select a pre-built BluePyEModel params JSON from a TaskConfig entity.
 
-    The dict must contain top-level keys ``mechanisms``, ``distributions``,
-    and ``parameters``. Each parameter must have a ``name`` and ``val``;
-    each ``dist`` reference must point to an existing distribution.
+    The TaskConfig must have ``task_config_type=emodel_optimization__config``
+    and contain a ``params.json`` asset with the standard BluePyEModel
+    params structure (top-level keys: ``mechanisms``, ``distributions``,
+    ``parameters``).
     """
 
-    params_content: dict = Field(
-        default_factory=dict,
-        title="Params content",
+    params_template: TaskConfigFromID | None = Field(
+        default=None,
+        title="Params template",
         description=(
-            "Embedded BluePyEModel params JSON. Must contain top-level"
-            " keys: 'mechanisms', 'distributions', 'parameters'."
-            " Leave empty to use the dynamic builder."
+            "Select a pre-built BluePyEModel params template from the database."
+            " If set, this takes precedence over the dynamic builder."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
+                "type": "task_config",
+                "task_config_type": "emodel_optimization__config",
+            },
+        },
     )
 
 
-def validate_params_file(params: dict) -> None:  # noqa: C901
+def validate_params_file(params: dict) -> None:  # noqa: C901, PLR0912
     """Validate the structure of a BluePyEModel params dictionary.
 
     Raises :class:`OBIONEError` if the structure is invalid.
@@ -163,10 +186,12 @@ class OptimizationParams(Block):
 
     offspring_size: PositiveInt | list[PositiveInt] = Field(
         default=20,
+        le=200,
         title="Offspring size",
         description=(
             "Population size per generation. The L5PC example uses 20; we default"
             " to a small value so the bundled example completes quickly."
+            " Allowed range: 1-200."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -221,31 +246,12 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
 
-    # Analysis settings (used by pipeline.plot() after optimisation)
-    plot_currentscape: bool = Field(
-        default=True,
-        title="Plot currentscape",
-        description="Generate currentscape plots during analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    currentscape_title: str = Field(
-        default="",
-        title="Currentscape title",
-        description="Title for currentscape plots.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-
     def to_dict(self, optimisation_params: OptimizationParams) -> dict[str, Any]:
-        result: dict[str, Any] = {
+        return {
             "optimiser": self.optimiser,
             "max_ngen": self.max_ngen,
             "optimisation_timeout": self.optimisation_timeout,
             "validation_threshold": self.validation_threshold,
             "optimisation_params": optimisation_params.to_dict(),
-            "plot_currentscape": self.plot_currentscape,
+            "plot_currentscape": True,
         }
-
-        if self.currentscape_title:
-            result["currentscape_config"] = {"title": self.currentscape_title}
-
-        return result
