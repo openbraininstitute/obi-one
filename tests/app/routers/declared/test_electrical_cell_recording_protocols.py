@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 import entitysdk.client
 import entitysdk.exception
-import pytest
 from entitysdk.models import ElectricalCellRecording
 from fastapi.testclient import TestClient
 

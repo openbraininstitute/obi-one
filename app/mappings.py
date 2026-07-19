@@ -141,7 +141,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_optimization.txt"),
+            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
         ),
         resources=MachineResources(
             cores=1,
@@ -158,7 +158,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_optimization.txt"),
+            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
         ),
         resources=MachineResources(
             cores=4,
@@ -175,7 +175,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_optimization.txt"),
+            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
         ),
         resources=MachineResources(
             cores=2,

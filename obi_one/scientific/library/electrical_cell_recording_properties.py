@@ -9,7 +9,6 @@ already in the file.
 import logging
 from pathlib import Path
 
-import entitysdk.client
 import h5py
 import numpy as np
 from scipy.ndimage import median_filter
@@ -47,29 +46,7 @@ def read_protocols_from_nwb(nwb_path: Path) -> list[str]:
     return sorted(protocols)
 
 
-def get_recording_protocols(
-    recording_ids: list[str],
-    db_client: entitysdk.client.Client,
-) -> dict[str, list[str]]:
-    """Return ``{recording_id: [protocol_name, ...]}`` for each recording.
-
-    Reads protocol names from the ``stimuli`` field of each
-    ``ElectricalCellRecording`` entity — no NWB download required.
-    """
-    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
-
-    by_recording: dict[str, list[str]] = {}
-    for rid in recording_ids:
-        entity = db_client.get_entity(
-            entity_id=rid,  # ty:ignore[invalid-argument-type]
-            entity_type=ElectricalCellRecording,
-        )
-        stimuli = entity.stimuli or []
-        by_recording[rid] = sorted({s.name for s in stimuli if s.name})
-    return by_recording
-
-
-def _stim_key_for_trace(trace_name: str) -> str | None:
+def stim_key_for_trace(trace_name: str) -> str | None:
     """Map a BBP voltage trace name to its sibling current trace key.
 
     The key is in ``stimulus/presentation``.
@@ -81,7 +58,7 @@ def _stim_key_for_trace(trace_name: str) -> str | None:
     return None
 
 
-def _step_amplitude_na(current_a: np.ndarray) -> float:
+def step_amplitude_na(current_a: np.ndarray) -> float:
     """Estimate the step amplitude (nA) of a current trace.
 
     Baseline = median of the first 5%, step = median of the middle 40%, amp
@@ -96,7 +73,7 @@ def _step_amplitude_na(current_a: np.ndarray) -> float:
     return (step - baseline) * 1e9
 
 
-def _read_amplitudes_from_nwb(
+def read_amplitudes_from_nwb(
     nwb_path: Path,
     protocol_names: list[str],
     *,
@@ -107,7 +84,7 @@ def _read_amplitudes_from_nwb(
     Inspects every sweep under each ``data_organization/<cell>/<protocol>``
     group (BBP layout), reads its sibling current trace from
     ``stimulus/presentation``, estimates the step amplitude with
-    :func:`_step_amplitude_na`, rounds to ``round_decimals`` decimal places
+    :func:`step_amplitude_na`, rounds to ``round_decimals`` decimal places
     (default 3 → 1 pA precision) and dedupes.
     """
     requested = set(protocol_names)
@@ -124,18 +101,18 @@ def _read_amplitudes_from_nwb(
                 for rep in cell[protocol_name]:
                     for sweep in cell[protocol_name][rep]:
                         for trace_name in cell[protocol_name][rep][sweep]:
-                            key_current = _stim_key_for_trace(trace_name)
+                            key_current = stim_key_for_trace(trace_name)
                             if key_current is None or key_current not in stim_pres:
                                 continue
                             data = stim_pres[key_current]["data"]
                             conversion = data.attrs.get("conversion", 1.0)
                             current_a = np.asarray(data[()]) * conversion
-                            amp_na = _step_amplitude_na(current_a)
+                            amp_na = step_amplitude_na(current_a)
                             amps[protocol_name].add(round(amp_na, round_decimals))
     return {p: sorted(v) for p, v in amps.items()}
 
 
-def _detect_ton_ms(current_na: np.ndarray, dt_ms: float) -> float | None:
+def detect_ton_ms(current_na: np.ndarray, dt_ms: float) -> float | None:
     """Stimulus onset (ms) à la ``bluepyefe.ecode.step``.
 
     Returns the time of the first sample where the smoothed current departs the
@@ -160,14 +137,14 @@ def _detect_ton_ms(current_na: np.ndarray, dt_ms: float) -> float | None:
     return (buffer_idx + int(np.argmax(above))) * dt_ms
 
 
-def _detect_protocol_ton_ms(protocol_group: h5py.Group, stim_pres: h5py.Group) -> float | None:
+def detect_protocol_ton_ms(protocol_group: h5py.Group, stim_pres: h5py.Group) -> float | None:
     """Detect ``ton`` (ms) from the first usable current trace under a
     ``data_organization`` protocol group, or ``None`` if not detectable.
     """
     for rep in protocol_group:
         for sweep in protocol_group[rep]:
             for trace_name in protocol_group[rep][sweep]:
-                key_current = _stim_key_for_trace(trace_name)
+                key_current = stim_key_for_trace(trace_name)
                 if key_current is None or key_current not in stim_pres:
                     continue
                 series = stim_pres[key_current]
@@ -179,13 +156,13 @@ def _detect_protocol_ton_ms(protocol_group: h5py.Group, stim_pres: h5py.Group) -
                 data = series["data"]
                 conversion = data.attrs.get("conversion", 1.0)
                 current_na = np.asarray(data[()]) * conversion * 1e9
-                ton = _detect_ton_ms(current_na, 1000.0 / float(rate))
+                ton = detect_ton_ms(current_na, 1000.0 / float(rate))
                 if ton is not None:
                     return ton
     return None
 
 
-def _read_timing_from_nwb(
+def read_timing_from_nwb(
     nwb_path: Path,
     protocol_names: list[str],
 ) -> dict[str, float]:
@@ -207,7 +184,7 @@ def _read_timing_from_nwb(
             for protocol_name in cell:
                 if protocol_name not in requested or protocol_name in timing:
                     continue
-                ton = _detect_protocol_ton_ms(cell[protocol_name], stim_pres)
+                ton = detect_protocol_ton_ms(cell[protocol_name], stim_pres)
                 if ton is not None:
                     timing[protocol_name] = ton
     return timing

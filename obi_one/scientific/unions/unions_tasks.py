@@ -9,13 +9,13 @@ from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
-from obi_one.scientific.tasks.emodel_optimization.task1_efeature_extraction.task import (
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
-from obi_one.scientific.tasks.emodel_optimization.task2_emodel_optimization.task import (
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
 )
-from obi_one.scientific.tasks.emodel_optimization.task3_export_and_validation.task import (
+from obi_one.scientific.tasks.emodel_building.task3_export_and_validation.task import (
     EModelExportAndValidationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
