@@ -2,7 +2,7 @@
 
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
 simplified point-neuron or single-compartment circuits while preserving network
-connectivity. Supports multiple simplification algorithms and optional export to
+connectivity. Supports multiple simplification target models and optional export to
 NEST or BRIAN2 formats.
 """
 
@@ -11,7 +11,7 @@ import logging
 import tempfile
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from entitysdk import Client, models
 from entitysdk.types import DerivationType, TaskActivityType, TaskConfigType
@@ -41,33 +41,22 @@ class BlockGroup(StrEnum):
     SIMPLIFICATION = "Simplification"
 
 
-class SimplificationAlgorithm(StrEnum):
-    """Available simplification algorithms.
-
-    These map to the algorithms registered in sonata_simplify.algorithms.registry.
-    """
-
-    single_compartment = "single_compartment"
-    lif = "lif"
-    adex = "adex"
-    izhikevich = "izhikevich"
-    glif = "glif"
-    gif = "gif"
-
-
-class ExportFormat(StrEnum):
-    """Target simulator export formats."""
-
-    none = "none"
-    nest = "nest"
-    brian2 = "brian2"
+# Literal type for algorithm selection
+SimplificationModelType = Literal[
+    "single_compartment",
+    "lif",
+    "adex",
+    "izhikevich",
+    "glif",
+    "gif",
+]
 
 
 class CircuitSimplificationScanConfig(InfoScanConfig):
     """ScanConfig for simplifying SONATA circuits.
 
     Transforms detailed biophysical circuits into simplified representations
-    while preserving network connectivity. Multiple algorithms can be selected,
+    while preserving network connectivity. Multiple target models can be selected,
     each producing a separate simplified output circuit.
     """
 
@@ -75,13 +64,16 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     name: ClassVar[str] = "Circuit Simplification"
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
-        " network connectivity. Supports multiple simplification algorithms (single-compartment,"
+        " network connectivity. Supports multiple target models (single-compartment,"
         " LIF, AdEx, Izhikevich, GLIF, GIF) and optional export to NEST or BRIAN2 formats."
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.SIMPLIFICATION],
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP,
+            BlockGroup.SIMPLIFICATION,
+        ],
         SchemaKey.PROPERTY_ENDPOINTS: {
             "circuit": "/mapped-circuit-properties/{circuit_id}",
         },
@@ -115,71 +107,51 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
         )
 
     class Simplification(Block):
-        algorithms: list[SimplificationAlgorithm] = Field(
-            default=[SimplificationAlgorithm.single_compartment],
-            title="Simplification Algorithms",
-            description="Select one or more simplification algorithms. Each selected algorithm"
-            " produces a separate simplified output circuit.",
+        algorithms: list[SimplificationModelType] = Field(
+            default=["single_compartment"],
+            title="Algorithms",
+            description=(
+                "Select one or more target models for simplification."
+                " Each produces a separate simplified output circuit."
+            ),
             json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
-            },
-        )
-        compute_filters: bool = Field(
-            default=True,
-            title="Compute Filters",
-            description="Whether to compute tau_corr and w_corr filters for soma correction.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
-            },
-        )
-        biophysical_population: str | None = Field(
-            default=None,
-            title="Biophysical Population",
-            description="Name of the biophysical population to simplify (default: auto-detect).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        simplified_params_path: str | None = Field(
-            default=None,
-            title="Simplified Parameters Path",
-            description="Path to custom simplified_parameters.json file. If not provided,"
-            " bundled defaults are used.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        morphology_dir: str | None = Field(
-            default=None,
-            title="Morphology Directory",
-            description="Custom simplified morphology directory (optional).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        hoc_dir: str | None = Field(
-            default=None,
-            title="HOC Directory",
-            description="Custom simplified HOC templates directory (optional).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        mod_dir: str | None = Field(
-            default=None,
-            title="MOD Directory",
-            description="Custom MOD files directory (optional).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        export_format: ExportFormat = Field(
-            default=ExportFormat.none,
-            title="Export Format",
-            description="Export the simplified circuit to a target simulator format (none, NEST,"
-            " or BRIAN2).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
+                SchemaKey.TITLE_BY_KEY: {
+                    "single_compartment": (
+                        "Automated point-neuron simplification of data-driven microcircuit models"
+                    ),
+                    "lif": "Leaky Integrate and Fire Model",
+                    "adex": "Adaptive Integrate and Fire Model",
+                    "izhikevich": "Izhikevich Model",
+                    "glif": "Generalized Leaky Integrate and Fire Model",
+                    "gif": "Generalized Integrate and Fire Model",
+                },
+                SchemaKey.DESCRIPTION_BY_KEY: {
+                    "single_compartment": (
+                        "Reduces biophysical morphologies to single-compartment"
+                        " representations preserving passive and active properties."
+                    ),
+                    "lif": (
+                        "Converts to leaky integrate-and-fire point neurons"
+                        " with matched firing statistics."
+                    ),
+                    "adex": (
+                        "Converts to adaptive exponential integrate-and-fire point"
+                        " neurons with matched subthreshold and spiking dynamics."
+                    ),
+                    "izhikevich": (
+                        "Converts to Izhikevich point neurons capturing diverse"
+                        " firing patterns with minimal parameters."
+                    ),
+                    "glif": (
+                        "Converts to generalized leaky integrate-and-fire neurons"
+                        " with after-spike currents and threshold dynamics."
+                    ),
+                    "gif": (
+                        "Converts to generalized integrate-and-fire neurons"
+                        " with spike-frequency adaptation."
+                    ),
+                },
             },
         )
 
@@ -202,8 +174,8 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
         },
     )
     simplification: Simplification = Field(
-        title="Simplification",
-        description="Simplification algorithm and parameters.",
+        title="Algorithms",
+        description="Target models for simplification.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SIMPLIFICATION,
@@ -212,9 +184,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     )
 
 
-class CircuitSimplificationSingleConfig(
-    CircuitSimplificationScanConfig, SingleConfigMixin
-):
+class CircuitSimplificationSingleConfig(CircuitSimplificationScanConfig, SingleConfigMixin):
     """Single-coordinate configuration for circuit simplification.
 
     Enforces that all parameters are single values (no scan dimensions).
@@ -291,9 +261,7 @@ class CircuitSimplificationTask(Task):
         )
 
     @staticmethod
-    def _build_simulation_config(
-        input_circuit_path: str, output_dir: Path
-    ) -> Path:
+    def _build_simulation_config(input_circuit_path: str, output_dir: Path) -> Path:
         """Build a simulation_config.json for the sonata_simplify pipeline.
 
         The pipeline expects a simulation config JSON that references the
@@ -355,8 +323,7 @@ class CircuitSimplificationTask(Task):
 
         output_circuit_ids: list[str] = []
 
-        for algorithm in simplification.algorithms:
-            algorithm_name = algorithm.value if hasattr(algorithm, "value") else str(algorithm)
+        for algorithm_name in simplification.algorithms:
             L.info(f"Running simplification with algorithm: {algorithm_name}")
 
             # Create output directory for this algorithm
@@ -371,23 +338,6 @@ class CircuitSimplificationTask(Task):
             # Initialize the pipeline
             pipeline = SimplificationPipeline(
                 simulation_config=str(sim_config_path),
-                simplified_params_path=(
-                    Path(simplification.simplified_params_path)
-                    if simplification.simplified_params_path
-                    else None
-                ),
-                morphology_dir=(
-                    Path(simplification.morphology_dir)
-                    if simplification.morphology_dir
-                    else None
-                ),
-                hoc_dir=(
-                    Path(simplification.hoc_dir) if simplification.hoc_dir else None
-                ),
-                mod_dir=(
-                    Path(simplification.mod_dir) if simplification.mod_dir else None
-                ),
-                biophysical_population=simplification.biophysical_population,
                 simplification_mode=algorithm_name,
             )
 
@@ -403,15 +353,6 @@ class CircuitSimplificationTask(Task):
                     f" for algorithm '{algorithm_name}'"
                 )
                 continue
-
-            # Optionally export to NEST or BRIAN2
-            if simplification.export_format != ExportFormat.none:
-                CircuitSimplificationTask._run_exporter(
-                    simplification.export_format,
-                    input_circuit_dir=output_dir,
-                    output_dir=output_dir / f"export_{simplification.export_format.value}",
-                    algorithm_name=algorithm_name,
-                )
 
             # Register the simplified circuit entity
             new_circuit_entity = None
@@ -440,29 +381,3 @@ class CircuitSimplificationTask(Task):
         if output_circuit_ids:
             return output_circuit_ids[0]
         return None
-
-    @staticmethod
-    def _run_exporter(
-        export_format: ExportFormat,
-        input_circuit_dir: Path,
-        output_dir: Path,
-        algorithm_name: str,
-    ) -> None:
-        """Run the appropriate exporter for the simplified circuit."""
-        from sonata_simplify.exporters import get_exporter  # noqa: PLC0415
-
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        exporter_name = export_format.value
-        L.info(f"Exporting simplified circuit '{algorithm_name}' to {exporter_name}")
-
-        try:
-            exporter = get_exporter(
-                exporter_name,
-                input_circuit_dir=str(input_circuit_dir),
-                output_dir=str(output_dir),
-            )
-            exporter.export()
-            L.info(f"Export to {exporter_name} completed")
-        except Exception:  # noqa: BLE001
-            L.exception(f"Export to {exporter_name} failed")
