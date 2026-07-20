@@ -32,33 +32,40 @@ class TestBuildExtractionRecipes:
         assert ps["extract_absolute_amplitudes"] is True
         assert ps["plot_extraction"] is True
         assert ps["default_std_value"] == 0.01  # noqa: RUF069
-        assert ps["rheobase_strategy_extraction"] == "absolute"
-        assert ps["rheobase_settings_extraction"] == {"spike_threshold": 1}
+        assert "rheobase_strategy_extraction" not in ps
         assert ps["efel_settings"]["Threshold"] == -20.0  # noqa: RUF069
         assert ps["efel_settings"]["interp_step"] == 0.025  # noqa: RUF069
 
-    def test_rheobase_disabled(self):
-        settings = Settings(compute_rheobase=False)
-        recipes = _build_extraction_recipes(settings)
+    def test_rheobase_from_protocol_flag(self):
+        from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+            Protocol,
+        )
+
+        settings = Settings()
+        idthresh = Protocol.from_protocol_name("IDthresh")
+        idthresh.is_rheobase_protocol = True
+        recipes = _build_extraction_recipes(settings, protocols=(idthresh,))
 
         ps = recipes["emodel"]["pipeline_settings"]
-        assert "rheobase_strategy_extraction" not in ps
-        assert "rheobase_settings_extraction" not in ps
+        assert ps["rheobase_strategy_extraction"] == "absolute"
+        assert ps["rheobase_settings_extraction"] == {"spike_threshold": 1}
 
     def test_custom_settings(self):
-        settings = Settings(
-            plot_extraction=False,
-            rin_protocol_name="IV",
-            rin_protocol_amplitude=-20.0,
+        from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # noqa: PLC0415, E501
+            Protocol,
         )
-        recipes = _build_extraction_recipes(settings, threshold_based=True)
+
+        settings = Settings(plot_extraction=False)
+        iv = Protocol.from_protocol_name("IV")
+        iv.is_rin_protocol = True
+        iv.rin_amplitude = -20.0
+        recipes = _build_extraction_recipes(settings, threshold_based=True, protocols=(iv,))
 
         ps = recipes["emodel"]["pipeline_settings"]
         assert ps["plot_extraction"] is False
         assert "pickle_cells_extraction" not in ps
         assert ps["extract_absolute_amplitudes"] is False
         assert ps["name_Rin_protocol"] == ["IV", -20.0]
-        assert ps["rheobase_settings_extraction"] == {"spike_threshold": 1}
 
 
 class TestBuildFilesMetadata:

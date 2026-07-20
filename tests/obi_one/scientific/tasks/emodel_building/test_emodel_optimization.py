@@ -1860,37 +1860,54 @@ class TestBuildTargetsFormatted:
 
 class TestBuildExtractionRecipesAdditional:
     def test_threshold_based_includes_rin_rmp(self):
-        settings = ExtractionSettings(
-            rin_protocol_name="IV_-20",
-            rin_protocol_amplitude=-0.2,
-            rmp_protocol_name="IV_0",
-            rmp_protocol_amplitude=0.0,
+        from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (
+            Protocol,
         )
-        recipes = _build_extraction_recipes(settings, threshold_based=True)
+
+        iv = Protocol.from_protocol_name("IV")
+        iv.is_rin_protocol = True
+        iv.rin_amplitude = -20.0
+        iv.is_rmp_protocol = True
+        iv.rmp_amplitude = 0.0
+
+        settings = ExtractionSettings()
+        recipes = _build_extraction_recipes(settings, threshold_based=True, protocols=(iv,))
         ps = recipes["emodel"]["pipeline_settings"]
-        assert ps["name_Rin_protocol"] == ["IV_-20", -0.2]
-        assert ps["name_rmp_protocol"] == ["IV_0", None]
+        assert ps["name_Rin_protocol"] == ["IV", -20.0]
+        assert ps["name_rmp_protocol"] == ["IV", None]
 
     def test_non_threshold_omits_rin_rmp(self):
-        settings = ExtractionSettings(
-            rin_protocol_name="IV_-20",
-            rmp_protocol_name="IV_0",
+        from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (
+            Protocol,
         )
-        recipes = _build_extraction_recipes(settings, threshold_based=False)
+
+        iv = Protocol.from_protocol_name("IV")
+        iv.is_rin_protocol = True
+        iv.rin_amplitude = -20.0
+
+        settings = ExtractionSettings()
+        recipes = _build_extraction_recipes(settings, threshold_based=False, protocols=(iv,))
         ps = recipes["emodel"]["pipeline_settings"]
         assert ps["name_Rin_protocol"] is None
         assert ps["name_rmp_protocol"] is None
 
-    def test_compute_rheobase_adds_strategy(self):
-        settings = ExtractionSettings(compute_rheobase=True)
-        recipes = _build_extraction_recipes(settings)
+    def test_rheobase_protocol_flag_adds_strategy(self):
+        from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (
+            Protocol,
+        )
+
+        idthresh = Protocol.from_protocol_name("IDthresh")
+        idthresh.is_rheobase_protocol = True
+
+        settings = ExtractionSettings()
+        recipes = _build_extraction_recipes(settings, protocols=(idthresh,))
         ps = recipes["emodel"]["pipeline_settings"]
         assert ps["rheobase_strategy_extraction"] == "absolute"
         assert "rheobase_settings_extraction" in ps
 
-    def test_no_rheobase_omits_strategy(self):
-        settings = ExtractionSettings(compute_rheobase=False)
-        recipes = _build_extraction_recipes(settings)
+    def test_no_rheobase_flag_omits_strategy(self):
+        settings = ExtractionSettings()
+        recipes = _build_extraction_recipes(settings, protocols=())
         ps = recipes["emodel"]["pipeline_settings"]
         assert "rheobase_strategy_extraction" not in ps
 
@@ -2142,10 +2159,6 @@ class TestExtractionSettingsDefaults:
     def test_default_plot_extraction(self):
         s = ExtractionSettings()
         assert s.plot_extraction is True
-
-    def test_default_compute_rheobase(self):
-        s = ExtractionSettings()
-        assert s.compute_rheobase is True
 
     def test_default_validation_protocols_empty(self):
         s = ExtractionSettings()

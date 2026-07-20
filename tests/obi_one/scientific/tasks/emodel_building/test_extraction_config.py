@@ -12,7 +12,6 @@ from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks import (
     ExtractionInitialize,
     ProtocolAndFeatureSelection,
-    Settings,
 )
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
@@ -80,28 +79,15 @@ class TestScanConfigCreation:
 
     def test_default_settings(self, scan_config):
         assert scan_config.settings.plot_extraction is True
-        assert scan_config.settings.compute_rheobase is True
         assert scan_config.settings.default_std_value == 0.01  # noqa: RUF069
 
     def test_default_rheobase(self, scan_config):
-        assert scan_config.settings.compute_rheobase is True
+        # Rheobase is now per-protocol (Protocol.is_rheobase_protocol), not on Settings
+        assert scan_config.efeatures_by_protocol.protocols[0].is_rheobase_protocol is True
 
     def test_default_efeatures_by_protocol(self, scan_config):
         assert scan_config.efeatures_by_protocol.autoselect is False
         assert len(scan_config.efeatures_by_protocol.protocols) == 5
-
-    def test_rheobase_disabled(self, recording_ids):
-        config = EModelEFeatureExtractionScanConfig(
-            info=EModelEFeatureExtractionScanConfig.model_fields["info"].annotation(
-                campaign_name="Test",
-                campaign_description="Test",
-            ),
-            initialize=ExtractionInitialize(
-                electrical_cell_recording=(ElectricalCellRecordingFromID(id_str=recording_ids[0]),),
-            ),
-            settings=Settings(compute_rheobase=False),
-        )
-        assert config.settings.compute_rheobase is False
 
 
 class TestAutoselect:

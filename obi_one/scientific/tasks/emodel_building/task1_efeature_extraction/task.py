@@ -216,6 +216,7 @@ def _build_extraction_recipes(
     *,
     threshold_based: bool = False,
     validation_protocol_names: list[str] | None = None,
+    protocols: tuple = (),
 ) -> dict:
     """Build a minimal BluePyEModel ``recipes.json`` for the extraction step.
 
@@ -229,18 +230,22 @@ def _build_extraction_recipes(
     - Default (threshold_based=False): absolute amplitudes from NWB (nA).
     - threshold_based=True: relative amplitudes (% of rheobase).
 
-    R_in and RMP protocols are only emitted when ``threshold_based=True`` and the
-    corresponding protocol name is set; BluePyEModel nulls them under absolute
-    amplitudes anyway.
+    R_in and RMP protocols are derived from per-protocol flags
+    (``is_rin_protocol``, ``is_rmp_protocol``) and are only emitted when
+    ``threshold_based=True``.
     """
-    # R_in / RMP protocol: [protocol_name, amplitude] or None.
+    # Derive R_in / RMP protocol from per-protocol flags.
     name_rin_protocol = None
-    if threshold_based and settings.rin_protocol_name:
-        name_rin_protocol = [settings.rin_protocol_name, settings.rin_protocol_amplitude or None]
-
     name_rmp_protocol = None
-    if threshold_based and settings.rmp_protocol_name:
-        name_rmp_protocol = [settings.rmp_protocol_name, settings.rmp_protocol_amplitude or None]
+    rheobase_protocol_names: list[str] = []
+
+    for protocol in protocols:
+        if threshold_based and getattr(protocol, "is_rin_protocol", False):
+            name_rin_protocol = [protocol.name, protocol.rin_amplitude or None]
+        if threshold_based and getattr(protocol, "is_rmp_protocol", False):
+            name_rmp_protocol = [protocol.name, protocol.rmp_amplitude or None]
+        if getattr(protocol, "is_rheobase_protocol", False):
+            rheobase_protocol_names.append(protocol.name)
 
     pipeline_settings: dict = {
         "path_extract_config": TARGETS_CONFIG_RELPATH,
@@ -261,7 +266,7 @@ def _build_extraction_recipes(
         ),
     }
 
-    if settings.compute_rheobase:
+    if rheobase_protocol_names:
         pipeline_settings["rheobase_strategy_extraction"] = "absolute"
         pipeline_settings["rheobase_settings_extraction"] = {"spike_threshold": 1}
 
@@ -372,11 +377,11 @@ class EModelEFeatureExtractionTask(Task):
                 msg = "No NWB ephys files were downloaded for extraction."
                 raise FileNotFoundError(msg)
 
-            rheobase_protocols = (
-                [self.config.settings.rheobase_protocol_name]
-                if self.config.settings.compute_rheobase
-                else []
-            )
+            rheobase_protocols = [
+                p.name
+                for p in self.config.efeatures_by_protocol.protocols
+                if getattr(p, "is_rheobase_protocol", False)
+            ]
 
             return TargetsConfiguration(
                 files=files,
@@ -415,11 +420,9 @@ class EModelEFeatureExtractionTask(Task):
             msg = "No NWB ephys files were downloaded for extraction."
             raise FileNotFoundError(msg)
 
-        rheobase_protocols = (
-            [self.config.settings.rheobase_protocol_name]
-            if self.config.settings.compute_rheobase
-            else []
-        )
+        rheobase_protocols = [
+            p.name for p in all_protocols if getattr(p, "is_rheobase_protocol", False)
+        ]
 
         return TargetsConfiguration(
             files=files,
@@ -463,6 +466,7 @@ class EModelEFeatureExtractionTask(Task):
                 self.config.settings,
                 threshold_based=self.config.efeatures_by_protocol.threshold_based,
                 validation_protocol_names=validation_protocol_names,
+                protocols=self.config.efeatures_by_protocol.protocols,
             ),
             coord_root / RECIPES_RELPATH,
         )

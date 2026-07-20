@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
+from entitysdk.models import TaskConfig
 from entitysdk.types import (
     AssetLabel,
     ContentType,

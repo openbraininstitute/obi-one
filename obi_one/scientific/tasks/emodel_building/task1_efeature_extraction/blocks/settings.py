@@ -1,16 +1,12 @@
 """Global extraction-flow settings for the e-feature extraction stage.
 
-This block exposes the extraction-wide knobs that BluePyEModel's
-``extract_save_features_protocols`` forwards to ``bluepyefe.extract``:
+Advanced extraction knobs that BluePyEModel's
+``extract_save_features_protocols`` forwards to ``bluepyefe.extract``.
 
-* the bluepyefe / ``EModelPipelineSettings`` extraction-flow knobs;
-* the R_in / RMP protocol selectors (used only when ``threshold_based``
-  is enabled in :class:`ProtocolAndFeatureSelection`).
-
-Per-feature eFEL detection knobs (threshold, strict_stiminterval, interp_step,
-stim_start, stim_end) and per-protocol/per-feature custom eFEL settings live on
-:class:`EFeature` and :class:`Protocol` respectively. Global eFEL defaults are
-defined as the module constant ``DEFAULT_EFEL_SETTINGS`` in ``task.py``.
+Per-protocol settings (Rin, RMP, rheobase, threshold_based, timing, LJP)
+live on :class:`Protocol`. Per-feature eFEL detection knobs live on
+:class:`EFeature`. This block contains only the statistical/output settings
+that apply globally across all protocols.
 """
 
 from pydantic import Field, PositiveFloat
@@ -21,36 +17,13 @@ from obi_one.core.units import Units
 
 
 class Settings(Block):
-    """Global extraction-flow settings for the e-feature extraction stage."""
+    """Advanced extraction settings (statistical knobs and output toggles)."""
 
-    # ------------------------------------------------------------------
-    # bluepyefe / BluePyEModel extraction-flow settings
-    # ------------------------------------------------------------------
     plot_extraction: bool = Field(
         default=True,
         title="Plot extraction",
         description="Whether to render extraction figures alongside the JSON output.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    compute_rheobase: bool = Field(
-        default=True,
-        title="Compute rheobase",
-        description=(
-            "When enabled, bluepyefe estimates each cell's rheobase from the"
-            " protocol specified in ``rheobase_protocol_name`` using the default"
-            ' "absolute" strategy (lowest amplitude inducing at least 1 spike).'
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    rheobase_protocol_name: str = Field(
-        default="IDthresh",
-        title="Rheobase protocol name",
-        description=(
-            "Protocol used to estimate rheobase (e.g. ``IDthresh`` or"
-            " ``IDThreshold``). Only used when compute_rheobase is enabled."
-            " The protocol must be present in the NWB recordings."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     default_std_value: PositiveFloat | list[PositiveFloat] = Field(
         default=0.01,
@@ -102,52 +75,6 @@ class Settings(Block):
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
-
-    # ------------------------------------------------------------------
-    # Global-by-nature fields (Decision F: global, not per-protocol)
-    # ------------------------------------------------------------------
-    rin_protocol_name: str = Field(
-        default="",
-        title="R_in protocol name",
-        description=(
-            "Protocol used to compute input resistance (e.g. ``IV``). Only used"
-            " when threshold_based is enabled. Leave empty to skip."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    rin_protocol_amplitude: float | list[float] = Field(
-        default=0.0,
-        title="R_in protocol amplitude",
-        description=(
-            "Amplitude for the R_in protocol (e.g. ``-20``). Only used when"
-            " threshold_based is enabled and rin_protocol_name is set."
-            " Set to 0 to skip."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    rmp_protocol_name: str = Field(
-        default="",
-        title="RMP protocol name",
-        description=(
-            "Protocol used to compute resting membrane potential (e.g. ``IV``)."
-            " Only used when threshold_based is enabled. Leave empty to skip."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    rmp_protocol_amplitude: float | list[float] = Field(
-        default=0.0,
-        title="RMP protocol amplitude",
-        description=(
-            "Amplitude for the RMP protocol (e.g. ``0``). Only used when"
-            " threshold_based is enabled and rmp_protocol_name is set."
-            " Set to 0 to skip."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-
-    # ------------------------------------------------------------------
-    # Validation hold-out (carried forward to Workflow A via recipe)
-    # ------------------------------------------------------------------
     validation_protocols: str = Field(
         default="",
         title="Validation protocols",
