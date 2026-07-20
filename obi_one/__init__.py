@@ -82,6 +82,9 @@ __all__ = [
     "EModelEFeatureExtractionScanConfig",
     "EModelEFeatureExtractionSingleConfig",
     "EModelEFeatureExtractionTask",
+    "EModelOptimizationScanConfig",
+    "EModelOptimizationSingleConfig",
+    "EModelOptimizationTask",
     "ElectricalCellRecordingFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
@@ -521,6 +524,13 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 )
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
+    EModelOptimizationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
