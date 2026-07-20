@@ -649,6 +649,8 @@ class InputPoisson:
             raise RuntimeError(msg)
         self.config = config
         self.sim_config_path = sim_config_path
+        # the __call__should happen twice, once to create the stimuli (at `delay`),
+        # and once to stop it (at `delay + duration`)
         self._inputs = []
 
     @property
@@ -656,13 +658,14 @@ class InputPoisson:
         """Time at which the Poisson stimulus should start and end, in ms."""
         return [self.config.delay, self.config.delay + self.config.duration]
 
-    def __call__(self, _t: float, net: Brian2Network) -> NetworkOperation:
+    def __call__(self, t: float, net: Brian2Network) -> NetworkOperation:
         if not self._inputs:
             L.debug("Adding InputPoisson: %s: rate: %f weight: %f",
                     self.config.node_set,
                     self.config.rate,
                     self.config.weight,
                     )
+            assert self.config.delay <= t <= self.config.delay + self.config.duration
             simulation = bluepysnap.Simulation(self.sim_config_path)
             population_name = _get_single_node_population(simulation.circuit)
             selections = simulation.node_sets.to_libsonata.materialize(
@@ -683,6 +686,7 @@ class InputPoisson:
 
             return NetworkOperation(add=list(self._inputs), remove=[])
 
+        assert self.config.delay + self.config.duration <= t
         L.debug("Removing InputPoisson: %s: (delay: %s, duration: %s): rate: %f weight: %f",
                 self.config.node_set,
                 self.config.delay,
@@ -721,8 +725,7 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     brian2.seed(simulation.run.random_seed)
 
     current_inputs = Inputs(simulation)
-    events = _gather_connection_overrides(simulation)
-    events += _gather_poisson(simulation)
+    events = _gather_connection_overrides(simulation) + _gather_poisson(simulation)
 
     neurons = _create_neurons(simulation, current_inputs)
 
