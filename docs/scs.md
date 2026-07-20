@@ -121,4 +121,4 @@ Simulation outputs include:
 
 See the examples directory for notebook examples:
 
-- `examples/F_single_cell_simulations/` - Single cell simulation examples
+- `examples/obi_one/scientific/tasks/generate_simulations/NEURON/` - Single cell (ME-model) simulation examples
