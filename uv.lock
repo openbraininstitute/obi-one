@@ -906,14 +906,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.4"
+version = "0.19.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/9b/32f672e1c4061bf46f8eb6f5e0c1cd4fc2dcaa7ac5ad7e7f727a13d546ef/entitysdk-0.19.4.tar.gz", hash = "sha256:e50e70e7e3b5128b3218b958a85309aaed952a3b78f2f0bc39af1fbb3d5a68e6", size = 91637, upload-time = "2026-07-18T12:08:02.617Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/4a/e8c09e6fe42765ae8b5bea4fa12be91589abd8fa4dc8a1d6561c039c180b/entitysdk-0.19.5.tar.gz", hash = "sha256:249b604a45730ada252053a6b816e7ab6201962ef154ebfb38de6e118e28a247", size = 92063, upload-time = "2026-07-20T11:11:08.848Z" }
 
 [[package]]
 name = "executing"
