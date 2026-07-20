@@ -11,7 +11,6 @@ import math
 from pathlib import Path
 
 import bluepysnap
-import brian2
 import brian2.units
 import libsonata
 import numpy as np
@@ -146,7 +145,7 @@ def test_spike_replay(tmp_path):
 
 def test_poisson(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -154,16 +153,24 @@ def test_poisson(tmp_path):
                 "input_type": "spikes",
                 "module": "poisson",
                 "node_set": "0",
-                "delay": 0,
+                "delay": 0.0,
                 "duration": 1000,
-                "rate": 150,
-                "weight": 68.75,
+                "rate": 1000,
+                "weight": 1000,
             }
         },
     }
-    _, net = _run_simulation(tmp_path, config)
-    assert len(net.inputs) == 1
-    assert isinstance(net.inputs[0], brian2.PoissonInput)
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 1
+    assert spikes[0] == [0.2] * brian2.units.ms
+
+    # delay the onset of poisson stim
+    config["inputs"]["poisson"]["delay"] = 0.1
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 1
+    assert spikes[0] == [0.2 + 0.1] * brian2.units.ms
 
 
 def test_current_stim(tmp_path):
