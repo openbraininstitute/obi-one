@@ -247,18 +247,23 @@ class Circuit(OBIBaseModel):
 
         morph_dir = self._resolve_circuit_path(morph_dir_raw)
 
-        direct = morph_dir / morph_name
-        if direct.exists():
-            return direct
+        candidates = [morph_dir / morph_name]
+        morph_name_path = Path(morph_name)
+        if morph_name_path.is_absolute() or len(morph_name_path.parts) > 1:
+            candidates.append(self._resolve_circuit_path(morph_name))
 
-        for ext in (".asc", ".swc", ".h5"):
-            path = morph_dir / f"{morph_name}{ext}"
-            if path.exists():
-                return path
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+            for ext in (".asc", ".swc", ".h5"):
+                path = Path(f"{candidate}{ext}")
+                if path.exists():
+                    return path
 
         msg = (
             f"Could not find morphology file for node_id={node_id}, population={population!r}. "
-            f"Tried '{direct}' and common extensions in '{morph_dir}'."
+            f"Tried {candidates} and common extensions."
         )
         raise FileNotFoundError(msg)
 
