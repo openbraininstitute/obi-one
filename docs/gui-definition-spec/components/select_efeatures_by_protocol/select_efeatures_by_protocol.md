@@ -4,9 +4,10 @@ ui_element: `select_efeatures_by_protocol`
 
 Backs [`SelectEFeaturesByProtocol`](../../../../obi_one/scientific/tasks/emodel_optimization/efeature_extraction/blocks.py) — a single object that lets the user pick which eFEL features to extract for each ephys protocol, with editable per-feature parameters.
 
-The schema advertises the **catalogue of features known per protocol** under the
-`available_efeatures_by_protocol` extra. The frontend filters this catalogue to
-the protocols returned by the
+Each protocol in the object's `protocols` tuple is a concrete protocol class
+whose `features` field is a discriminated union of exactly the eFEL features
+that protocol can extract, so the schema itself states the valid features per
+protocol. The frontend filters the protocols to those returned by the
 [`/declared/electrical-cell-recording-protocols`](../../../../app/endpoints/electrical_cell_recording_properties.py)
 endpoint (one row per protocol — see screenshot), and the user activates a
 subset of the listed features. For each activated feature the user can edit
@@ -14,9 +15,9 @@ subset of the listed features. For each activated feature the user can edit
 only.
 
 - The block field's `type` must be `"object"`.
-- It must expose an `available_efeatures_by_protocol` extra: a non-empty
-  dictionary mapping protocol name (string) → list of efeature name strings.
-- The catalogue ships baked-in for the L5PC-style BluePyEModel protocols
+- The valid efeatures per protocol are read from each protocol's `features`
+  union in the schema; there is no separate catalogue extra.
+- The protocol and feature classes ship baked-in for the L5PC-style BluePyEModel protocols
   (`IDrest`, `IDthresh`, `IV`, `APWaveform`, `sAHP`, `IDhyperpol`), derived from
   the `AUTO_TARGET_DICT` presets in
   [`bluepyemodel.efeatures_extraction.auto_targets`](https://github.com/openbraininstitute/BluePyEModel/blob/main/bluepyemodel/efeatures_extraction/auto_targets.py).

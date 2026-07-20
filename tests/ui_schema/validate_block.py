@@ -586,32 +586,8 @@ def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) ->
         f"Validation error at {location}: select_efeatures_by_protocol param {param}"
         " should reference a schema of type 'object'"
     )
-
-    catalogue = schema.get("available_efeatures_by_protocol")
-    assert isinstance(catalogue, dict), (
-        f"Validation error at {location}: select_efeatures_by_protocol param {param} must"
-        " expose an 'available_efeatures_by_protocol' dict listing the efeatures known"
-        " per protocol"
-    )
-    assert catalogue, (
-        f"Validation error at {location}: 'available_efeatures_by_protocol' must not be empty"
-    )
-    for protocol, features in catalogue.items():
-        assert isinstance(protocol, str), (
-            f"Validation error at {location}: protocol key in"
-            " 'available_efeatures_by_protocol' must be a string"
-        )
-        assert protocol, (
-            f"Validation error at {location}: protocol key in"
-            " 'available_efeatures_by_protocol' must be non-empty"
-        )
-        assert isinstance(features, list), (
-            f"Validation error at {location}: features for protocol {protocol!r} must be a list"
-        )
-        assert all(isinstance(f, str) for f in features), (
-            f"Validation error at {location}: every entry in features for protocol"
-            f" {protocol!r} must be a string"
-        )
+    # Which efeatures are valid per protocol is carried by each protocol's
+    # `features` union in the schema, so there is no catalogue extra to check.
 
 
 def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:

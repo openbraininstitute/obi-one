@@ -37,8 +37,7 @@ TARGETS_CONFIG_RELPATH = "config/extract_config/targets.json"
 
 # Global eFEL defaults passed as the recipe's ``efel_settings`` dict. In manual
 # mode, per-feature overrides (threshold/strict_stiminterval/interp_step/stim_start
-# /stim_end + custom_efel_settings) take priority via the cascade. In autoselect
-# mode these are the only eFEL settings applied.
+# /stim_end + custom_efel_settings) take priority via the cascade.
 DEFAULT_EFEL_SETTINGS: dict[str, float | bool] = {
     "Threshold": -20.0,
     "strict_stiminterval": True,
@@ -192,8 +191,6 @@ def _build_targets_formatted(
                     "weight": feature.weight,
                     "efel_settings": {**protocol_efel, **feature.efel_settings_override()},
                 }
-                if feature.efeature_name:
-                    row["efeature_name"] = feature.efeature_name
                 rows.append(row)
     return rows
 
@@ -326,9 +323,6 @@ class EModelEFeatureExtractionTask(Task):
         timing can't be recovered (with a warning); and builds files_metadata +
         targets. Per-protocol ecode metadata carries each recording's LJP plus
         the detected ``ton`` for Ramp protocols.
-
-        When ``autoselect`` is enabled, uses BluePyEModel's auto_targets presets
-        instead of manually-built targets rows.
         """
         from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
             TargetsConfiguration,
@@ -336,46 +330,6 @@ class EModelEFeatureExtractionTask(Task):
 
         nwb_paths = [path for path, _ in downloaded]
 
-        # --- Autoselect mode: use auto_targets presets ---
-        if self.config.efeatures_by_protocol.selection.autoselect:
-            from bluepyemodel.efeatures_extraction.auto_targets import (  # noqa: PLC0415
-                get_auto_target_from_presets,
-            )
-
-            presets = [
-                p.strip()
-                for p in self.config.efeatures_by_protocol.selection.auto_targets_presets.split(",")
-                if p.strip()
-            ]
-            auto_targets = get_auto_target_from_presets(presets)
-            L.info(
-                "Autoselect enabled: using auto_targets presets %s",
-                presets,
-            )
-
-            # Still need files_metadata with LJP — build with empty ecodes_metadata
-            # since auto_targets handles protocol selection internally.
-            files = _build_files_metadata(
-                nwb_paths_with_ljp=downloaded,
-                ecodes_metadata_dict={},
-            )
-            if not files:
-                msg = "No NWB ephys files were downloaded for extraction."
-                raise FileNotFoundError(msg)
-
-            rheobase_protocols = [
-                p.name
-                for p in self.config.efeatures_by_protocol.selection.protocols
-                if getattr(p, "is_rheobase_protocol", False)
-            ]
-
-            return TargetsConfiguration(
-                files=files,
-                auto_targets=auto_targets,
-                protocols_rheobase=rheobase_protocols,
-            )
-
-        # --- Manual mode: build targets from per-protocol feature selection ---
         all_protocols = self.config.efeatures_by_protocol.selection.protocols
 
         # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
