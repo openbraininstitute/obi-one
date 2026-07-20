@@ -14,6 +14,13 @@ from obi_one.scientific.tasks.create_recording_array.process import (
     write_electrode_json,
 )
 
+try:
+    import bluerecording.electrodes  # noqa: F401
+
+    _has_bluerecording = True
+except ModuleNotFoundError:
+    _has_bluerecording = False
+
 
 class TestCompileMechanisms:
     """Tests for compile_mechanisms (mocked subprocess)."""
@@ -53,6 +60,7 @@ class TestCompileMechanisms:
             compile_mechanisms(tmp_path / "circuit_config.json", tmp_path / "out")
 
 
+@pytest.mark.skipif(not _has_bluerecording, reason="bluerecording not installed")
 class TestWriteElectrodeJson:
     """Tests for write_electrode_json."""
 
