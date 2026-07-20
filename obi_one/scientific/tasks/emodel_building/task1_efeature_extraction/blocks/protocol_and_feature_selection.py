@@ -14,6 +14,8 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocol
     SAHPProtocol,
 )
 
+# Base of the eFEL feature documentation; the frontend appends ``#<efel_name>``
+# to deep-link a specific feature.
 EFEL_DOC_BASE_URL = "https://efel.readthedocs.io/en/latest/eFeatures.html"
 
 # Root of the eFEL docs' figure directory. Each feature class names its own
@@ -117,7 +119,6 @@ class ProtocolAndFeatureSelection(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,
             SchemaKey.EFEL_DOC_BASE_URL: EFEL_DOC_BASE_URL,
-            SchemaKey.EFEL_DOC_URL: EFEL_DOC_BASE_URL,
             SchemaKey.EFEL_FIGURES_BASE_URL: EFEL_FIGURES_BASE_URL,
         },
     )

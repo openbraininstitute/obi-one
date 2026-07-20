@@ -156,14 +156,19 @@ eFEL defaults, overridden in turn by `custom_efel_settings`):
 | `extract` | on/off — whether this feature is sent to bluepyefe at all |
 | `weight` | fitness weight (bluepyefe `Target.weight`) |
 | `tolerance` | amplitude tolerance for matching recordings |
-| `efeature_name` | custom target alias (bluepyefe `efeature_name`) |
 | `threshold` | eFEL `Threshold` (default -20.0) |
 | `strict_stiminterval` | eFEL `strict_stiminterval` (default True) |
 | `interp_step` | eFEL `interp_step` (default 0.025) |
+| `stim_start` | eFEL `stim_start` — per-feature stimulus onset (ms), overrides the protocol |
+| `stim_end` | eFEL `stim_end` — per-feature stimulus end (ms), overrides the protocol |
 | `custom_efel_settings` | additional eFEL settings as a key-value dict |
 
-The `efel_doc_url` ClassVar on each `EFeature` subclass links to the eFEL
-documentation for that feature.
+`efel_name` is a ClassVar fixed by each concrete subclass, not an editable
+field. The frontend deep-links a feature's documentation by appending
+`#<efel_name>` to the block's `SchemaKey.EFEL_DOC_BASE_URL`. Subclasses that
+have an illustrative figure in the eFEL docs name it via
+`SchemaKey.EFEL_FEATURE_IMAGE`, resolved against the block's
+`SchemaKey.EFEL_FIGURES_BASE_URL`.
 
 ---
 
@@ -178,3 +183,86 @@ the `Protocol` class; when left `None`, they are auto-detected from the NWB.
 - **Amplitudes:** `amp`, `hypamp`, `amp2` (discovered per protocol, in nA)
 - **Units / sampling:** `i_unit`, `v_unit`, `t_unit`, `dt`
 - **Liquid junction potential:** `ljp` (read from the entity / NWB, or user-set)
+
+## eFEL doc figures with no model class (47)
+
+`EFeature` subclasses exist only for features some protocol can actually
+extract — the 32 named in the per-protocol feature sets mirrored from
+[BluePyEfe PR #23](https://github.com/openbraininstitute/BluePyEfe/pull/23). Of
+those, 18 have an illustrative figure in the eFEL docs, named on the class via
+`SchemaKey.EFEL_FEATURE_IMAGE` and resolved by the frontend against
+`SchemaKey.EFEL_FIGURES_BASE_URL`.
+
+The eFEL docs illustrate a wider set than we model. The 47 features below share
+one of those same figures but have **no** `EFeature` subclass, because no
+protocol lists them as extractable. They are recorded here as the candidate set
+should a protocol's feature list ever widen: adding one means adding an
+`EFeature` subclass in `protocols_and_features/efeatures.py` and putting it in
+the relevant per-protocol union.
+
+Grouped by the figure they share:
+
+**`AHP.png`**
+
+- `AHP_depth_abs`
+- `AHP_depth_diff`
+- `AHP_depth_from_peak`
+- `AHP1_depth_from_peak`
+- `AHP2_depth_from_peak`
+- `fast_AHP`
+- `fast_AHP_change`
+- `AHP_depth_abs_slow`
+- `AHP_depth_slow`
+- `AHP_slow_time`
+- `min_AHP_indices`
+- `min_AHP_values`
+
+**`AP_Amplitude.png`**
+
+- `AP2_amp`
+- `APlast_amp`
+- `mean_AP_amplitude`
+- `AP_amplitude_change`
+- `AP_amplitude_from_voltagebase`
+- `AP_height`
+- `AP1_peak`
+- `AP2_peak`
+- `peak_voltage`
+
+**`AP_duration_half_width.png`**
+
+- `AP_duration_half_width_change`
+- `AP_width`
+- `AP_duration`
+- `AP_duration_change`
+- `spike_half_width`
+- `AP1_width`
+- `AP2_width`
+- `APlast_width`
+- `AP_rise_time`
+- `AP_fall_time`
+
+**`inv_ISI.png`**
+
+- `ISI_values`
+- `all_ISI_values`
+- `inv_ISI_values`
+- `inv_fourth_ISI`
+- `inv_fifth_ISI`
+- `ISI_semilog_slope`
+- `ISI_log_slope_skip`
+
+**`sag.png`**
+
+- `sag_time_constant`
+
+**`voltage_features.png`**
+
+- `steady_state_voltage_stimend`
+- `steady_state_voltage`
+- `voltage_deflection`
+- `voltage_deflection_vb_ssse`
+- `voltage_deflection_begin`
+- `minimum_voltage`
+- `maximum_voltage`
+- `ohmic_input_resistance`
