@@ -23,6 +23,12 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
 from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+    EModelOptimizationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
+    EModelOptimizationTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
@@ -103,6 +109,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.em_synapse_mapping: (
         EMSynapseMappingTask,
         EMSynapseMappingSingleConfig,
+        AssetLabel.task_config,
+    ),
+    TaskType.emodel_optimization: (
+        EModelOptimizationTask,
+        EModelOptimizationSingleConfig,
         AssetLabel.task_config,
     ),
     TaskType.extracellular_recording_weights_calculation: (
