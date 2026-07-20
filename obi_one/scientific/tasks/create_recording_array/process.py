@@ -14,12 +14,16 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 
-def compile_mechanisms(circuit_config_path: Path, output_dir: Path) -> dict[str, str]:  # pragma: no cover
+def compile_mechanisms(
+    circuit_config_path: Path, output_dir: Path
+) -> dict[str, str]:  # pragma: no cover
     """Compile NMODL mechanisms for a circuit via neurodamus-compile-mods.
 
-    Compiles the circuit's mod files plus neurodamus internal mods with
-    ``-DDISABLE_REPORTINGLIB`` (stubs out SonataReport so libsonatareport
-    headers are not needed).
+    Discovers mod files from the circuit's ``mechanisms_dir`` (via
+    ``--circuit-config``). If that's empty/unset, falls back to a ``mod/``
+    directory next to the circuit config (common convention for bundled
+    circuits). Compiles with ``-DDISABLE_REPORTINGLIB`` to stub out
+    SonataReport (no libsonatareport headers needed).
 
     Args:
         circuit_config_path: Path to a SONATA circuit configuration file.
@@ -27,7 +31,7 @@ def compile_mechanisms(circuit_config_path: Path, output_dir: Path) -> dict[str,
 
     Returns:
         Environment dict containing ``NRNMECH_LIB_PATH`` (and optionally
-        ``CORENEURONLIB``, ``SPECIALS_PATH``).
+        ``CORENEURONLIB``, ``SPECIALS_PATH``). Empty dict if no mods found.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -35,6 +39,7 @@ def compile_mechanisms(circuit_config_path: Path, output_dir: Path) -> dict[str,
         "neurodamus-compile-mods",
         "--circuit-config",
         str(circuit_config_path),
+        "--with-internal-mods",
         "--output-dir",
         str(output_dir),
         "--output-type",
@@ -42,14 +47,28 @@ def compile_mechanisms(circuit_config_path: Path, output_dir: Path) -> dict[str,
         "--incflags=-DDISABLE_REPORTINGLIB",
     ]
 
+    # Fallback: look for a 'mod/' directory next to the circuit config.
+    mod_dir = circuit_config_path.parent / "mod"
+    has_fallback_mods = mod_dir.is_dir() and any(mod_dir.glob("*.mod"))
+    if has_fallback_mods:
+        cmd.extend(["--input-dir", str(mod_dir)])
+        L.warning(
+            "Circuit mechanisms_dir is empty; falling back to '%s' (%d .mod files).",
+            mod_dir,
+            len(list(mod_dir.glob("*.mod"))),
+        )
+
     L.info("Compiling mechanisms: %s", " ".join(cmd))
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
 
     if result.returncode != 0:
-        # "No mod files selected" means the circuit has no mechanisms_dir — not an error,
-        # the pre-existing NRNMECH_LIB_PATH already has everything needed.
         if "No mod files selected" in result.stderr:
-            L.info("No circuit-specific mod files to compile; using existing mechanisms.")
+            L.warning(
+                "No mod files found to compile. "
+                "Checked mechanisms_dir from circuit config and fallback '%s'. "
+                "Relying on pre-existing NRNMECH_LIB_PATH.",
+                mod_dir,
+            )
             return {}
         msg = f"neurodamus-compile-mods failed (exit {result.returncode}):\n{result.stderr}"
         raise RuntimeError(msg)
@@ -127,13 +146,9 @@ def run_bluerecording_write_weights(
 
     L.info("Running bluerecording: %s", " ".join(cmd))
 
-    # Prepend compiled NRNMECH_LIB_PATH to existing one so NEURON loads both:
-    # - Freshly compiled circuit-specific mods
-    # - Pre-existing neurodamus-models lib (internals + base model mods)
+    # Use the compiled library exclusively — it contains both circuit mods and
+    # neurodamus internals compiled together, avoiding duplicate mechanism errors.
     subprocess_env = {**os.environ, **env}
-    existing_nrnmech = os.environ.get("NRNMECH_LIB_PATH", "")
-    if existing_nrnmech and "NRNMECH_LIB_PATH" in env:
-        subprocess_env["NRNMECH_LIB_PATH"] = f"{env['NRNMECH_LIB_PATH']}:{existing_nrnmech}"
 
     result = subprocess.run(  # noqa: S603
         cmd, capture_output=True, text=True, check=False, env=subprocess_env
