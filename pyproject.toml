@@ -161,6 +161,10 @@ explicit = true
 
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+# TEMPORARY: the e-feature extraction workflow needs `PROTOCOL_EFEATURES` and
+# `get_valid_efeatures`, which only exist on this branch. Drop this override once
+# features_per_ecode is merged to master and released to PyPI.
+bluepyefe = { git = "https://github.com/openbraininstitute/BluePyEfe.git", branch = "features_per_ecode" }
 neuromorphomesh = { index = "obi-codeartifact" }
 ultraliser = { index = "obi-codeartifact" }
 

@@ -277,8 +277,8 @@ wheels = [
 
 [[package]]
 name = "bluepyefe"
-version = "2.3.57"
-source = { registry = "https://pypi.org/simple" }
+version = "2.3.60.dev1"
+source = { git = "https://github.com/openbraininstitute/BluePyEfe.git?branch=features_per_ecode#770c7b3a1427de761fd261f28b3245ed8ec3a955" }
 dependencies = [
     { name = "efel" },
     { name = "h5py" },
@@ -287,10 +287,6 @@ dependencies = [
     { name = "neo" },
     { name = "numpy" },
     { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c3/89/1220cfa748a6ce0ac1d700c39ace694a0b82c4caea4b3c0f48e63c5579f9/bluepyefe-2.3.57.tar.gz", hash = "sha256:b88613b460938934573985cd9d019d33d7e95de676a684b585cbed19868a2a4a", size = 1033268, upload-time = "2026-06-03T14:53:47.782Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/16/5d5ea42cc347bf1c188962a52264591a0ae2f4aa2eadd2d4f049e8985b90/bluepyefe-2.3.57-py3-none-any.whl", hash = "sha256:417841f140cbdb3a12e1984dafde2a46ee54fff3e6814efb169da14828a52249", size = 69315, upload-time = "2026-06-03T14:53:46.188Z" },
 ]
 
 [[package]]
@@ -2446,7 +2442,7 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "bluecellulab", specifier = ">=2.6.99" },
     { name = "blueetl" },
-    { name = "bluepyefe", specifier = ">=2.3.57" },
+    { name = "bluepyefe", git = "https://github.com/openbraininstitute/BluePyEfe.git?branch=features_per_ecode" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.43" },
     { name = "bluepysnap", specifier = ">=3.0.5" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },

@@ -13,19 +13,14 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocol
     EFEL_FIGURES_BASE_URL,
 )
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501
-    Protocol,
+    APWaveformProtocol,
+    IDRestProtocol,
+    IDThreshProtocol,
+    IVProtocol,
+    ProtocolUnion,
+    SAHPProtocol,
+    available_efeatures_by_protocol,
 )
-
-
-def _available_efeatures_by_protocol() -> dict[str, list[str]]:
-    """Build ``{protocol_name: [efel_name, ...]}`` from BluePyEfe's registry.
-
-    Used by the frontend's ``select_efeatures_by_protocol`` UI element to
-    populate the feature picker for each protocol.
-    """
-    from bluepyefe.ecode import PROTOCOL_EFEATURES  # noqa: PLC0415
-
-    return {name: list(features) for name, features in PROTOCOL_EFEATURES.items()}
 
 
 class AutoTargetPreset(StrEnum):
@@ -37,14 +32,14 @@ class AutoTargetPreset(StrEnum):
     VALIDATION = "validation"
 
 
-def _default_protocols() -> tuple[Protocol, ...]:
-    """L5PC-style defaults — set ``extract=True`` on the same features the old
-    ``ExtractionTargets`` mirror used. Amplitudes are no longer a user
-    parameter (they're read from the NWB at task execution time), so this only
-    pre-selects features.
+def _default_protocols() -> tuple[ProtocolUnion, ...]:
+    """L5PC-style defaults, pre-selecting the features the L5PC example extracts.
+
+    ``Protocol.select`` silently skips names that are not valid for a protocol,
+    so these lists stay honest against the per-protocol feature sets.
     """
-    idrest = Protocol.from_protocol_name("IDrest")
-    for fname in (
+    idthresh = IDThreshProtocol(is_rheobase_protocol=True)
+    idrest = IDRestProtocol().select(
         "Spikecount",
         "mean_frequency",
         "time_to_first_spike",
@@ -56,31 +51,14 @@ def _default_protocols() -> tuple[Protocol, ...]:
         "inv_last_ISI",
         "AHP_depth",
         "AHP_time_from_peak",
-        "min_AHP_values",
         "depol_block_bool",
         "voltage_base",
-    ):
-        if fname in idrest.features:
-            idrest.features[fname].extract = True
-
-    iv = Protocol.from_protocol_name("IV")
-    if "voltage_base" in iv.features:
-        iv.features["voltage_base"].extract = True
-    if "ohmic_input_resistance_vb_ssse" in iv.features:
-        iv.features["ohmic_input_resistance_vb_ssse"].extract = True
-
-    apwaveform = Protocol.from_protocol_name("APWaveform")
-    for fname in ("AP_amplitude", "AP1_amp", "AP_duration_half_width", "AHP_depth"):
-        if fname in apwaveform.features:
-            apwaveform.features[fname].extract = True
-
-    sahp = Protocol.from_protocol_name("sAHP")
-    for fname in ("mean_frequency", "voltage_base", "depol_block_bool"):
-        if fname in sahp.features:
-            sahp.features[fname].extract = True
-
-    idthresh = Protocol.from_protocol_name("IDthresh")
-    idthresh.is_rheobase_protocol = True
+    )
+    iv = IVProtocol().select("voltage_base", "ohmic_input_resistance_vb_ssse")
+    apwaveform = APWaveformProtocol().select(
+        "AP_amplitude", "AP1_amp", "AP_duration_half_width", "AHP_depth"
+    )
+    sahp = SAHPProtocol().select("mean_frequency", "voltage_base", "depol_block_bool")
 
     return (idthresh, idrest, iv, apwaveform, sahp)
 
@@ -97,13 +75,13 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
     are interpreted as relative (% of rheobase) or absolute (nA, auto-discovered
     from the NWB).
 
-    Each entry in ``protocols`` is a :class:`Protocol` instance carrying its
-    own stimulus timing (``ton``/``toff``/``tmid``/``tmid2``), liquid junction
-    potential (``ljp``), and a ``features`` dict of valid :class:`EFeature`
-    instances keyed by eFEL feature name. Whether each feature is actually
-    extracted is controlled by its own ``extract`` flag. The valid features
-    per protocol are sourced from bluepyefe's
-    :func:`bluepyefe.ecode.get_valid_efeatures`.
+    Each entry in ``protocols`` is one of the concrete :class:`Protocol`
+    subclasses, carrying its own stimulus timing (``ton``/``toff``/``tmid``/
+    ``tmid2``), liquid junction potential (``ljp``), and a ``features`` dict of
+    valid :class:`EFeature` instances keyed by eFEL feature name. Whether each
+    feature is actually extracted is controlled by its own ``extract`` flag.
+    Which features are valid, and which timing fields are meaningful, are fixed
+    by the protocol class itself — see :mod:`.protocols_and_features.protocols`.
 
     ``protocols`` is a tuple — not a list — so the obi-one scan framework
     leaves it alone instead of expanding it as a parameter-scan dimension.
@@ -139,7 +117,7 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
         ),
     )
 
-    protocols: tuple[Protocol, ...] = Field(  # ty:ignore[invalid-assignment]
+    protocols: tuple[ProtocolUnion, ...] = Field(  # ty:ignore[invalid-assignment]
         default_factory=_default_protocols,
         title="Protocols",
         description=(
@@ -169,7 +147,7 @@ class ProtocolAndFeatureSelection(Block):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,
-            "available_efeatures_by_protocol": _available_efeatures_by_protocol(),
+            "available_efeatures_by_protocol": available_efeatures_by_protocol(),
             "efel_doc_base_url": EFEL_DOC_BASE_URL,
             "efel_figures_base_url": EFEL_FIGURES_BASE_URL,
             "efel_feature_image_map": EFEL_FEATURE_IMAGE_MAP,

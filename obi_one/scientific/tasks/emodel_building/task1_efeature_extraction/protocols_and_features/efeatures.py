@@ -6,7 +6,7 @@ A single generic :class:`EFeature` class represents any eFEL feature. The
 categories from the eFEL documentation).
 
 The :data:`EFEATURE_REGISTRY` maps every eFEL feature name to the
-:class:`EFeature` class. :func:`Protocol.from_protocol_name()` instantiates
+:class:`EFeature` class. Each concrete ``Protocol`` subclass instantiates
 features from this registry with the correct ``efel_name`` and ``category``.
 
 Categories (from https://efel.readthedocs.io/en/latest/eFeatures.html):

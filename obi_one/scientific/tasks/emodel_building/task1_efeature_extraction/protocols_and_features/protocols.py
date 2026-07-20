@@ -1,115 +1,117 @@
-"""Ephys protocol Pydantic model.
+"""Ephys protocol models, one class per protocol.
 
-A single generic :class:`Protocol` class replaces the former per-protocol
-subclasses. Valid eFEL features per protocol are sourced from
-:func:`bluepyefe.ecode.get_valid_efeatures`, eliminating duplication between
-obi-one and bluepyefe.
+The hierarchy has three levels:
 
-Each BluePyEfe eCode class uses a different subset of timing parameters
-(ton, toff, tmid, tmid2). The :data:`ECODE_TIMING_PARAMS` mapping tells the
-frontend which timing fields to render for each protocol via
-``Protocol.visible_timing_params``.
+* :class:`Protocol` — the base, holding the fields every protocol shares (LJP,
+  amplitudes, role flags, per-protocol eFEL settings, feature selection).
+* a *shape* intermediate per BluePyEfe eCode class (:class:`StepShapeProtocol`,
+  :class:`SAHPShapeProtocol`, …). The stimulus shape decides which timing
+  parameters exist, so each intermediate fixes ``ecode`` and declares exactly
+  the timing fields its eCode reads — ``ton``/``toff`` for a plain step, all
+  four for sAHP, ``ton`` alone for a ramp, none at all for SpikeRec. A protocol
+  therefore has no timing field it cannot use, and the schema tells the
+  frontend which inputs to render without a separate list.
+* a concrete class per protocol (:class:`IDRestProtocol`, :class:`IVProtocol`,
+  …), which fixes ``protocol_name`` and narrows ``features`` to its own
+  feature union.
+
+Everything is declared statically here rather than read from BluePyEfe at
+runtime: the eCode-to-shape mapping is mirrored from ``bluepyefe.ecode.eCodes``
+and the feature classes live in :mod:`.efeature_types`. That keeps the schema (and
+so the UI) buildable without BluePyEfe's unreleased ``features_per_ecode``
+branch installed.
+
+The same eCode can back protocols with very different feature sets — IDrest,
+IV and APWaveform are all ``Step`` — which is why the feature set belongs to
+the concrete protocol rather than to the shape.
 """
 
-from typing import Any
+import abc
+from typing import Annotated, Any, ClassVar, get_args
 
-from pydantic import Field, model_validator
+from pydantic import Discriminator, Field, model_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # noqa: E501
+    efeature_types,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
-    EFEATURE_REGISTRY,
     EFeature,
-    get_feature_category,
 )
 
-# ---------------------------------------------------------------------------
-# Per-eCode timing parameter visibility
-#
-# Maps each BluePyEfe eCode name (lowercase, matching PROTOCOL_EFEATURES keys)
-# to the tuple of timing fields that are meaningful for that stimulus shape.
-# The frontend uses this to show only the relevant timing inputs.
-#
-# Source: bluepyefe/ecode/*.py — each Recording subclass reads a different
-# subset of ton/toff/tmid/tmid2 from config_data.
-# ---------------------------------------------------------------------------
 
-ECODE_TIMING_PARAMS: dict[str, tuple[str, ...]] = {
-    # Step eCode (IDrest, IV, APWaveform, IDthresh, FirePattern, etc.)
-    "step": ("ton", "toff"),
-    "idrest": ("ton", "toff"),
-    "genericstep": ("ton", "toff"),
-    "iv": ("ton", "toff"),
-    "apwaveform": ("ton", "toff"),
-    "idthresh": ("ton", "toff"),
-    "idthres": ("ton", "toff"),
-    "idthreshold": ("ton", "toff"),
-    "firepattern": ("ton", "toff"),
-    "spontaneous": ("ton", "toff"),
-    "spontaps": ("ton", "toff"),
-    "sponaps": ("ton", "toff"),
-    "sponnohold30": ("ton", "toff"),
-    "sponhold30": ("ton", "toff"),
-    "spontnohold30": ("ton", "toff"),
-    "sponthold30": ("ton", "toff"),
-    "spontaneousnohold": ("ton", "toff"),
-    "starthold": ("ton", "toff"),
-    "startnohold": ("ton", "toff"),
-    "delta": ("ton", "toff"),
-    "iddepol": ("ton", "toff"),
-    "irdepol": ("ton", "toff"),
-    # Ramp eCode — only needs ton (toff = end of ramp, auto-detected)
-    "ramp": ("ton",),
-    "ap_thresh": ("ton",),
-    "apthresh": ("ton",),
-    "apthreshold": ("ton",),
-    # sAHP eCode — two-step protocol with 4 timing points
-    "sahp": ("ton", "tmid", "tmid2", "toff"),
-    "idhyperpol": ("ton", "tmid", "tmid2", "toff"),
-    "irhyperpol": ("ton", "tmid", "tmid2", "toff"),
-    # DeHyperPol / HyperDePol — two-step with 3 timing points
-    "dehyperpol": ("ton", "tmid", "toff"),
-    "hyperdepol": ("ton", "tmid", "toff"),
-    # Cheops — triangular stimuli (t1-t4 not yet exposed; use ton/toff as outer bounds)
-    "poscheops": ("ton", "toff"),
-    "negcheops": ("ton", "toff"),
-    # SpikeRec — no user-configurable timing
-    "spikerec": (),
-    # SineSpec / resonance
-    "sinespec": ("ton", "toff"),
-    # PinkNoise
-    "pinknoise": ("ton", "toff"),
-    # CapCheck
-    "capcheck": ("ton", "toff"),
-}
+def _timing_field(title: str, description: str) -> Any:
+    """Build a stimulus-timing field (ms); 0.0 means auto-detect from the NWB."""
+    return Field(
+        default=0.0,
+        title=title,
+        description=description,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
 
 
-def _resolve_timing_params(protocol_name: str) -> tuple[str, ...]:
-    """Resolve visible timing params for a protocol name.
+def ton_field() -> Any:
+    """Stimulus onset, declared by shapes whose eCode reads ``ton``."""
+    return _timing_field(
+        "Stimulus onset (ton)",
+        "Stimulus onset time (ms). Set to 0 to auto-detect from the NWB.",
+    )
 
-    Uses the same case-insensitive substring matching as BluePyEfe's eCode
-    lookup to find the matching entry in :data:`ECODE_TIMING_PARAMS`.
-    Falls back to ``("ton", "toff")`` (Step-like) if no match.
+
+def toff_field() -> Any:
+    """Stimulus end, declared by shapes whose eCode reads ``toff``."""
+    return _timing_field(
+        "Stimulus end (toff)",
+        "Stimulus end time (ms). Set to 0 to auto-detect from the NWB.",
+    )
+
+
+def tmid_field() -> Any:
+    """First mid-transition, declared by two-step shapes."""
+    return _timing_field(
+        "Mid-transition 1 (tmid)",
+        "First mid-transition point for two-step protocols (ms). Set to 0 to auto-detect.",
+    )
+
+
+def tmid2_field() -> Any:
+    """Second mid-transition, declared by the sAHP shape."""
+    return _timing_field(
+        "Mid-transition 2 (tmid2)",
+        "Second mid-transition point for two-step protocols (ms). Set to 0 to auto-detect.",
+    )
+
+
+def _features_field(feature_classes: tuple[type[EFeature], ...]) -> Any:
+    """Build a protocol's ``features`` field, defaulting to all of its features.
+
+    Each concrete protocol narrows the annotation to its own feature union, so
+    the tuple the UI fills in can only contain features that protocol can
+    extract.
     """
-    name_lower = protocol_name.lower()
-    for ecode_name, params in ECODE_TIMING_PARAMS.items():
-        if ecode_name in name_lower:
-            return params
-    return ("ton", "toff")
+    return Field(
+        default_factory=lambda: tuple(cls() for cls in feature_classes),
+        title="Features",
+        description=(
+            "eFEL features valid for this protocol. Each carries its own"
+            " ``extract`` flag, weight, tolerance and eFEL setting overrides."
+        ),
+    )
 
 
-class Protocol(OBIBaseModel):
-    """Generic ephys protocol with feature selection driven by bluepyefe.
+class Protocol(OBIBaseModel, abc.ABC):
+    """Base class for every ephys protocol.
 
-    The valid eFEL features for this protocol are sourced from
-    :func:`bluepyefe.ecode.get_valid_efeatures` via :meth:`from_protocol_name`.
-    Each feature is an :class:`EFeature` instance stored in the ``features``
-    dict, keyed by eFEL feature name. Whether each feature is actually
-    extracted is controlled by its ``extract`` flag.
+    Subclasses supply the static description of the protocol through class
+    variables; instances carry only what the user can edit.
 
     Protocol-level stimulus timing (``ton``/``toff``/``tmid``/``tmid2``) and
-    liquid junction potential (``ljp``) can be user-specified; when left at
+    liquid junction potential (``ljp``) may be user-specified; when left at
     ``0.0`` they are auto-detected from each ``ElectricalCellRecording``'s NWB
     asset at task execution time.
 
@@ -119,58 +121,28 @@ class Protocol(OBIBaseModel):
     :class:`EFeature` and override the protocol level.
     """
 
+    # -- static description, set by the shape intermediate / concrete class ---
+    protocol_name: ClassVar[str] = ""
+    """Canonical protocol name, as it appears in recording metadata."""
+
+    ecode: ClassVar[str] = "Step"
+    """Name of the BluePyEfe eCode class implementing this stimulus shape."""
+
     name: str = Field(
-        ...,
+        default="",
         title="Protocol name",
         description=(
-            "Protocol name (e.g. 'IDrest', 'IV', 'APWaveform'). Must match a"
-            " bluepyefe eCode name — see bluepyefe.ecode.eCodes."
+            "Protocol name as it appears in the recording metadata. Defaults to"
+            " the class's canonical name; override it when the recordings use a"
+            " variant spelling."
         ),
     )
 
     # ------------------------------------------------------------------
-    # Stimulus timing & LJP — user-editable, 0.0 = auto-detect from NWB
+    # LJP — a property of the recording, so it applies to every shape. The
+    # stimulus timing fields are declared by the shape intermediates, since
+    # which ones exist depends on the eCode.
     # ------------------------------------------------------------------
-    ton: float = Field(
-        default=0.0,
-        title="Stimulus onset (ton)",
-        description="Stimulus onset time (ms). Set to 0 to auto-detect from the NWB.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-    toff: float = Field(
-        default=0.0,
-        title="Stimulus end (toff)",
-        description="Stimulus end time (ms). Set to 0 to auto-detect from the NWB.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-    tmid: float = Field(
-        default=0.0,
-        title="Mid-transition 1 (tmid)",
-        description=(
-            "First mid-transition point for two-step protocols (ms). Set to 0 to auto-detect."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-    tmid2: float = Field(
-        default=0.0,
-        title="Mid-transition 2 (tmid2)",
-        description=(
-            "Second mid-transition point for two-step protocols (ms). Set to 0 to auto-detect."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
     ljp: float = Field(
         default=0.0,
         title="Liquid junction potential (LJP)",
@@ -278,84 +250,54 @@ class Protocol(OBIBaseModel):
     # ------------------------------------------------------------------
     # Features — keyed by eFEL feature name
     # ------------------------------------------------------------------
-    features: dict[str, EFeature] = Field(
-        default_factory=dict,
+    features: tuple[EFeature, ...] = Field(
+        default=(),
         title="Features",
         description=(
-            "eFEL features valid for this protocol, keyed by eFEL feature name."
-            " Use Protocol.from_protocol_name() to populate with the correct"
-            " features for a given protocol name."
+            "eFEL features valid for this protocol. Concrete protocols narrow this"
+            " to their own feature union, so it can only hold features the protocol"
+            " can actually extract."
         ),
     )
 
-    # ------------------------------------------------------------------
-    # Visible timing params — tells the frontend which timing fields to show
-    # ------------------------------------------------------------------
-    visible_timing_params: tuple[str, ...] = Field(
-        default=("ton", "toff"),
-        title="Visible timing parameters",
-        description=(
-            "Timing fields that are meaningful for this protocol's eCode shape."
-            " The frontend should only render these timing inputs. Other timing"
-            " fields still exist on the model (defaulting to 0.0 = auto-detect)"
-            " but are irrelevant for this protocol type."
-        ),
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def _strip_feature_type(cls, data: object) -> object:
-        """Strip ``type`` from feature dicts so base EFeature validates.
-
-        EFeature subclasses set ``type`` to their class name (e.g.
-        ``"Spikecount"``) via :class:`OBIBaseModel`. When deserializing a
-        ``dict[str, EFeature]``, Pydantic validates each value as the base
-        ``EFeature`` class which expects ``type: Literal["EFeature"]``.
-        Removing ``type`` from the raw dict lets validation succeed while
-        ``efel_name`` preserves the feature identity.
-        """
-        if isinstance(data, dict) and "features" in data:
-            for val in data["features"].values():
-                if isinstance(val, dict) and "type" in val:
-                    del val["type"]
-        return data
+    @model_validator(mode="after")
+    def _apply_class_defaults(self) -> "Protocol":
+        """Fill name and features from the class's static description."""
+        if not self.name:
+            self.name = self.protocol_name
+        return self
 
     @classmethod
-    def from_protocol_name(cls, name: str, **kwargs: Any) -> "Protocol":
-        """Create a Protocol with all valid features instantiated (extract=False).
+    def feature_classes(cls) -> tuple[type[EFeature], ...]:
+        """Return the feature classes this protocol's ``features`` union allows.
 
-        Uses :func:`bluepyefe.ecode.get_valid_efeatures` to determine which
-        eFEL features are valid for the given protocol name, then instantiates
-        each as a generic :class:`EFeature` with the correct ``efel_name`` and
-        ``category``.
-
-        Also sets ``visible_timing_params`` based on :data:`ECODE_TIMING_PARAMS`
-        so the frontend knows which timing fields to render.
+        Read off the annotation rather than kept in a parallel list, so the
+        union stays the single statement of what a protocol can extract.
         """
-        from bluepyefe.ecode import get_valid_efeatures  # noqa: PLC0415
+        args = get_args(cls.model_fields["features"].annotation)
+        if not args:
+            return ()
+        item = args[0]
+        inner = get_args(item)  # unwrap Annotated[union, Discriminator]
+        if not inner:
+            return (item,) if isinstance(item, type) else ()
+        return get_args(inner[0])
 
-        valid = get_valid_efeatures(name)
-        features: dict[str, EFeature] = {}
-        for efel_name in valid:
-            if efel_name in EFEATURE_REGISTRY:
-                features[efel_name] = EFeature(
-                    efel_name=efel_name,
-                    category=get_feature_category(efel_name),
-                )
+    def select(self, *efel_names: str) -> "Protocol":
+        """Mark the named features for extraction, ignoring any not valid here."""
+        wanted = set(efel_names)
+        for feature in self.features:
+            if feature.efel_name in wanted:
+                feature.extract = True
+        return self
 
-        # Determine visible timing params from eCode mapping
-        visible = _resolve_timing_params(name)
-
-        return cls(
-            name=name,
-            features=features,
-            visible_timing_params=visible,
-            **kwargs,
-        )  # ty:ignore[arg-type]
+    def feature(self, efel_name: str) -> EFeature | None:
+        """Return this protocol's feature with ``efel_name``, or None."""
+        return next((f for f in self.features if f.efel_name == efel_name), None)
 
     def selected_efeatures(self) -> list[EFeature]:
         """Return every :class:`EFeature` whose ``extract`` flag is set."""
-        return [f for f in self.features.values() if f.extract]
+        return [f for f in self.features if f.extract]
 
     def efel_settings_override(self) -> dict:
         """Build the per-protocol ``efel_settings`` overrides.
@@ -369,13 +311,505 @@ class Protocol(OBIBaseModel):
     def timing_override(self) -> dict:
         """Return user-set timing/LJP fields as a dict (0.0 values omitted).
 
-        Keys are ``ton``, ``toff``, ``tmid``, ``tmid2``, ``ljp`` — only
-        non-zero values are included. Used by the extraction task to
-        override auto-detected NWB timing.
+        Only the timing fields this protocol's shape actually declares are
+        considered, plus ``ljp``. Used by the extraction task to override
+        auto-detected NWB timing.
         """
         result: dict[str, float] = {}
         for key in ("ton", "toff", "tmid", "tmid2", "ljp"):
-            value = getattr(self, key)
+            value = getattr(self, key, 0.0)
             if value:
                 result[key] = value
         return result
+
+
+# ---------------------------------------------------------------------------
+# Shape intermediates — one per BluePyEfe eCode class.
+#
+# Mirrors the eCode registry at bluepyefe/ecode/__init__.py; the shape decides
+# which timing parameters BluePyEfe reads from config_data.
+# ---------------------------------------------------------------------------
+
+
+class StepShapeProtocol(Protocol, abc.ABC):
+    """Single rectangular step (``Step`` eCode): onset and end only."""
+
+    ecode: ClassVar[str] = "Step"
+
+    ton: float = ton_field()
+    toff: float = toff_field()
+
+
+class SAHPShapeProtocol(Protocol, abc.ABC):
+    """Two-step with a short depolarising pulse (``SAHP`` eCode): 4 timing points."""
+
+    ecode: ClassVar[str] = "SAHP"
+
+    ton: float = ton_field()
+    tmid: float = tmid_field()
+    tmid2: float = tmid2_field()
+    toff: float = toff_field()
+
+
+class RampShapeProtocol(Protocol, abc.ABC):
+    """Linearly rising stimulus (``Ramp`` eCode): only the onset is configurable."""
+
+    ecode: ClassVar[str] = "Ramp"
+
+    ton: float = ton_field()
+
+
+class HyperDePolShapeProtocol(Protocol, abc.ABC):
+    """Hyperpolarising then depolarising step (``HyperDePol`` eCode): 3 timing points."""
+
+    ecode: ClassVar[str] = "HyperDePol"
+
+    ton: float = ton_field()
+    tmid: float = tmid_field()
+    toff: float = toff_field()
+
+
+class DeHyperPolShapeProtocol(Protocol, abc.ABC):
+    """Depolarising then hyperpolarising step (``DeHyperPol`` eCode): 3 timing points."""
+
+    ecode: ClassVar[str] = "DeHyperPol"
+
+    ton: float = ton_field()
+    tmid: float = tmid_field()
+    toff: float = toff_field()
+
+
+class NegCheopsShapeProtocol(Protocol, abc.ABC):
+    """Negative triangular ramps (``NegCheops`` eCode); inner ramp times are not exposed."""
+
+    ecode: ClassVar[str] = "NegCheops"
+
+    ton: float = ton_field()
+    toff: float = toff_field()
+
+
+class PosCheopsShapeProtocol(Protocol, abc.ABC):
+    """Positive triangular ramps (``PosCheops`` eCode); inner ramp times are not exposed."""
+
+    ecode: ClassVar[str] = "PosCheops"
+
+    ton: float = ton_field()
+    toff: float = toff_field()
+
+
+class SpikeRecShapeProtocol(Protocol, abc.ABC):
+    """Train of short suprathreshold pulses (``SpikeRec`` eCode): timing is not configurable."""
+
+    ecode: ClassVar[str] = "SpikeRec"
+
+    # SpikeRec exposes no configurable stimulus timing.
+
+
+class SineSpecShapeProtocol(Protocol, abc.ABC):
+    """Chirp / resonance stimulus (``SineSpec`` eCode)."""
+
+    ecode: ClassVar[str] = "SineSpec"
+
+    ton: float = ton_field()
+    toff: float = toff_field()
+
+
+class PinkNoiseShapeProtocol(Protocol, abc.ABC):
+    """Pink-noise stimulus (``PinkNoise`` eCode)."""
+
+    ecode: ClassVar[str] = "PinkNoise"
+
+    ton: float = ton_field()
+    toff: float = toff_field()
+
+
+class CapCheckShapeProtocol(Protocol, abc.ABC):
+    """Capacitance-check pulse (``CapCheck`` eCode)."""
+
+    ecode: ClassVar[str] = "CapCheck"
+
+    ton: float = ton_field()
+    toff: float = toff_field()
+
+
+# ---------------------------------------------------------------------------
+# Concrete protocols — Step shape
+# ---------------------------------------------------------------------------
+
+
+class IDRestProtocol(StepShapeProtocol):
+    """IDrest — long depolarising step used for the firing-pattern features."""
+
+    protocol_name: ClassVar[str] = "IDrest"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class IDThreshProtocol(StepShapeProtocol):
+    """IDthresh — near-rheobase step, normally the rheobase-search protocol."""
+
+    protocol_name: ClassVar[str] = "IDthresh"
+    features: tuple[efeature_types.ThresholdStepFeatureUnion, ...] = _features_field(
+        efeature_types.THRESHOLD_STEP_FEATURES
+    )
+
+
+class IVProtocol(StepShapeProtocol):
+    """IV — subthreshold step used for input resistance and sag."""
+
+    protocol_name: ClassVar[str] = "IV"
+    features: tuple[efeature_types.IVFeatureUnion, ...] = _features_field(
+        efeature_types.IV_FEATURES
+    )
+
+
+class APWaveformProtocol(StepShapeProtocol):
+    """APWaveform — short suprathreshold step used for spike-shape features."""
+
+    protocol_name: ClassVar[str] = "APWaveform"
+    features: tuple[efeature_types.APWaveformFeatureUnion, ...] = _features_field(
+        efeature_types.AP_WAVEFORM_FEATURES
+    )
+
+
+class FirePatternProtocol(StepShapeProtocol):
+    """FirePattern — long depolarising step for sustained firing."""
+
+    protocol_name: ClassVar[str] = "FirePattern"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class SpontaneousProtocol(StepShapeProtocol):
+    """Spontaneous — no injected current; spiking features on the resting trace."""
+
+    protocol_name: ClassVar[str] = "Spontaneous"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class SpontAPsProtocol(StepShapeProtocol):
+    """SpontAPs — spontaneous action potentials."""
+
+    protocol_name: ClassVar[str] = "SpontAPs"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class DeltaProtocol(StepShapeProtocol):
+    """Delta — short step used as a generic depolarising probe."""
+
+    protocol_name: ClassVar[str] = "Delta"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class StartHoldProtocol(StepShapeProtocol):
+    """StartHold — holding-current step at the start of a recording."""
+
+    protocol_name: ClassVar[str] = "StartHold"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class StartNoHoldProtocol(StepShapeProtocol):
+    """StartNoHold — start-of-recording step without holding current."""
+
+    protocol_name: ClassVar[str] = "StartNoHold"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class GenericStepProtocol(StepShapeProtocol):
+    """Step — generic rectangular step for recordings with no more specific name."""
+
+    protocol_name: ClassVar[str] = "Step"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+# ---------------------------------------------------------------------------
+# Concrete protocols — SAHP shape
+# ---------------------------------------------------------------------------
+
+
+class SAHPProtocol(SAHPShapeProtocol):
+    """sAHP — two-step protocol probing the slow afterhyperpolarisation."""
+
+    protocol_name: ClassVar[str] = "sAHP"
+    features: tuple[efeature_types.SAHPFeatureUnion, ...] = _features_field(
+        efeature_types.SAHP_FEATURES
+    )
+
+
+class IDHyperpolProtocol(SAHPShapeProtocol):
+    """IDhyperpol — hyperpolarising variant of the sAHP shape."""
+
+    protocol_name: ClassVar[str] = "IDhyperpol"
+    features: tuple[efeature_types.SAHPFeatureUnion, ...] = _features_field(
+        efeature_types.SAHP_FEATURES
+    )
+
+
+class IRHyperpolProtocol(SAHPShapeProtocol):
+    """IRhyperpol — input-resistance hyperpolarising protocol."""
+
+    protocol_name: ClassVar[str] = "IRhyperpol"
+    features: tuple[efeature_types.SAHPFeatureUnion, ...] = _features_field(
+        efeature_types.SAHP_FEATURES
+    )
+
+
+class IDDepolProtocol(SAHPShapeProtocol):
+    """IDdepol — depolarising variant of the sAHP shape; elicits spiking."""
+
+    protocol_name: ClassVar[str] = "IDdepol"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class IRDepolProtocol(SAHPShapeProtocol):
+    """IRdepol — input-resistance depolarising protocol; elicits spiking."""
+
+    protocol_name: ClassVar[str] = "IRdepol"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+# ---------------------------------------------------------------------------
+# Concrete protocols — Ramp shape
+# ---------------------------------------------------------------------------
+
+
+class RampProtocol(RampShapeProtocol):
+    """Ramp — linearly rising current used to find the AP threshold."""
+
+    protocol_name: ClassVar[str] = "Ramp"
+    features: tuple[efeature_types.APWaveformFeatureUnion, ...] = _features_field(
+        efeature_types.AP_WAVEFORM_FEATURES
+    )
+
+
+class APThresholdProtocol(RampShapeProtocol):
+    """APThreshold — ramp to the first spike."""
+
+    protocol_name: ClassVar[str] = "APThreshold"
+    features: tuple[efeature_types.APWaveformFeatureUnion, ...] = _features_field(
+        efeature_types.AP_WAVEFORM_FEATURES
+    )
+
+
+# ---------------------------------------------------------------------------
+# Concrete protocols — one per remaining shape
+# ---------------------------------------------------------------------------
+
+
+class HyperDePolProtocol(HyperDePolShapeProtocol):
+    """HyperDePol — hyperpolarising step followed by a depolarising one."""
+
+    protocol_name: ClassVar[str] = "HyperDePol"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class DeHyperPolProtocol(DeHyperPolShapeProtocol):
+    """DeHyperPol — depolarising step followed by a hyperpolarising one."""
+
+    protocol_name: ClassVar[str] = "DeHyperPol"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class NegCheopsProtocol(NegCheopsShapeProtocol):
+    """negCheops — negative triangular ramp series."""
+
+    protocol_name: ClassVar[str] = "negCheops"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class PosCheopsProtocol(PosCheopsShapeProtocol):
+    """posCheops — positive triangular ramp series."""
+
+    protocol_name: ClassVar[str] = "posCheops"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class SpikeRecProtocol(SpikeRecShapeProtocol):
+    """SpikeRec — train of short suprathreshold pulses."""
+
+    protocol_name: ClassVar[str] = "SpikeRec"
+    features: tuple[efeature_types.ThresholdStepFeatureUnion, ...] = _features_field(
+        efeature_types.THRESHOLD_STEP_FEATURES
+    )
+
+
+class SineSpecProtocol(SineSpecShapeProtocol):
+    """sineSpec — chirp stimulus used to probe subthreshold resonance."""
+
+    protocol_name: ClassVar[str] = "sineSpec"
+    features: tuple[efeature_types.ThresholdStepFeatureUnion, ...] = _features_field(
+        efeature_types.THRESHOLD_STEP_FEATURES
+    )
+
+
+class PinkNoiseProtocol(PinkNoiseShapeProtocol):
+    """pinkNoise — suprathreshold pink-noise current injection."""
+
+    protocol_name: ClassVar[str] = "pinkNoise"
+    features: tuple[efeature_types.SpikingStepFeatureUnion, ...] = _features_field(
+        efeature_types.SPIKING_STEP_FEATURES
+    )
+
+
+class CapCheckProtocol(CapCheckShapeProtocol):
+    """capCheck — short pulse used to check the capacitance compensation."""
+
+    protocol_name: ClassVar[str] = "capCheck"
+    features: tuple[efeature_types.SubthresholdFeatureUnion, ...] = _features_field(
+        efeature_types.SUBTHRESHOLD_FEATURES
+    )
+
+
+_PROTOCOLS = (
+    IDRestProtocol
+    | IDThreshProtocol
+    | IVProtocol
+    | APWaveformProtocol
+    | FirePatternProtocol
+    | SpontaneousProtocol
+    | SpontAPsProtocol
+    | DeltaProtocol
+    | StartHoldProtocol
+    | StartNoHoldProtocol
+    | GenericStepProtocol
+    | SAHPProtocol
+    | IDHyperpolProtocol
+    | IRHyperpolProtocol
+    | IDDepolProtocol
+    | IRDepolProtocol
+    | RampProtocol
+    | APThresholdProtocol
+    | HyperDePolProtocol
+    | DeHyperPolProtocol
+    | NegCheopsProtocol
+    | PosCheopsProtocol
+    | SpikeRecProtocol
+    | SineSpecProtocol
+    | PinkNoiseProtocol
+    | CapCheckProtocol
+)
+
+ProtocolUnion = Annotated[_PROTOCOLS, Discriminator("type")]
+
+# Ordered longest-name-first so that e.g. "IDthresh" wins over "IDrest" would-be
+# prefixes and "IRhyperpol" is not shadowed by a shorter alias.
+PROTOCOL_CLASSES: tuple[type[Protocol], ...] = tuple(
+    sorted(
+        (
+            IDRestProtocol,
+            IDThreshProtocol,
+            IVProtocol,
+            APWaveformProtocol,
+            FirePatternProtocol,
+            SpontaneousProtocol,
+            SpontAPsProtocol,
+            DeltaProtocol,
+            StartHoldProtocol,
+            StartNoHoldProtocol,
+            GenericStepProtocol,
+            SAHPProtocol,
+            IDHyperpolProtocol,
+            IRHyperpolProtocol,
+            IDDepolProtocol,
+            IRDepolProtocol,
+            RampProtocol,
+            APThresholdProtocol,
+            HyperDePolProtocol,
+            DeHyperPolProtocol,
+            NegCheopsProtocol,
+            PosCheopsProtocol,
+            SpikeRecProtocol,
+            SineSpecProtocol,
+            PinkNoiseProtocol,
+            CapCheckProtocol,
+        ),
+        key=lambda cls: len(cls.protocol_name),
+        reverse=True,
+    )
+)
+
+# Alternative spellings seen in recording metadata, mapped to their protocol.
+PROTOCOL_ALIASES: dict[str, type[Protocol]] = {
+    "idthres": IDThreshProtocol,
+    "idthreshold": IDThreshProtocol,
+    "ap_thresh": APThresholdProtocol,
+    "apthresh": APThresholdProtocol,
+    "sponaps": SpontAPsProtocol,
+    "sponnohold30": SpontaneousProtocol,
+    "sponhold30": SpontaneousProtocol,
+    "spontnohold30": SpontaneousProtocol,
+    "sponthold30": SpontaneousProtocol,
+    "spontaneousnohold": SpontaneousProtocol,
+    "genericstep": GenericStepProtocol,
+}
+
+
+def protocol_class_for_name(protocol_name: str) -> type[Protocol] | None:
+    """Return the protocol class matching ``protocol_name``, or None.
+
+    Mirrors BluePyEfe's own lookup (``cell.Cell.read_recordings``): a registry
+    key that is a case-insensitive substring of the protocol name wins, so
+    ``"IDrest_250"`` resolves to :class:`IDRestProtocol`. Longer names are
+    tried first so more specific protocols beat shorter ones.
+    """
+    lowered = protocol_name.lower()
+    for alias, cls in sorted(PROTOCOL_ALIASES.items(), key=lambda kv: -len(kv[0])):
+        if alias in lowered:
+            return cls
+    for cls in PROTOCOL_CLASSES:
+        if cls.protocol_name.lower() in lowered:
+            return cls
+    return None
+
+
+def protocol_from_name(protocol_name: str, **kwargs: Any) -> Protocol:
+    """Build the protocol matching ``protocol_name``, with its valid features.
+
+    Raises:
+        KeyError: if no protocol matches, mirroring BluePyEfe's behaviour.
+    """
+    cls = protocol_class_for_name(protocol_name)
+    if cls is None:
+        msg = (
+            f"There is no protocol matching the stimulus name {protocol_name!r}."
+            " See PROTOCOL_CLASSES for the available protocols."
+        )
+        raise KeyError(msg)
+    return cls(name=protocol_name, **kwargs)
+
+
+def available_efeatures_by_protocol() -> dict[str, list[str]]:
+    """Return ``{protocol_name: [efel_name, ...]}`` for every known protocol.
+
+    Backs the ``select_efeatures_by_protocol`` UI element's catalogue.
+    """
+    return {
+        cls.protocol_name: [f.model_fields["efel_name"].default for f in cls.feature_classes()]
+        for cls in sorted(PROTOCOL_CLASSES, key=lambda c: c.protocol_name)
+    }

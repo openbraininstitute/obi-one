@@ -54,18 +54,6 @@ _TON_ONLY_ECODES = frozenset({"Ramp"})
 _TIMING_UNSUPPORTED_ECODES = frozenset({"DeHyperPol"})
 
 
-def _ecode_class_name(protocol_name: str, ecodes: dict) -> str | None:
-    """Return the bluepyefe eCode class name matching ``protocol_name`` (or None).
-
-    Mirrors bluepyefe's own lookup (``cell.Cell.read_recordings``): the first
-    registry key that is a case-insensitive substring of the protocol name wins.
-    """
-    for key, ecode_cls in ecodes.items():
-        if key.lower() in protocol_name.lower():
-            return ecode_cls.__name__
-    return None
-
-
 def _discover_timing(
     nwb_paths: list[Path],
     protocol_names: list[str],
@@ -83,7 +71,6 @@ def _discover_timing(
 
 def _partition_protocols(
     protocols: tuple,
-    ecodes: dict,
     ton_by_protocol: dict[str, float],
 ) -> tuple[list, dict[str, dict], list[str]]:
     """Split protocols into ``(extractable, ecode_metadata, skipped)``.
@@ -98,7 +85,7 @@ def _partition_protocols(
     ecode_metadata: dict[str, dict] = {}
     skipped: list[str] = []
     for protocol in protocols:
-        ecode = _ecode_class_name(protocol.name, ecodes)
+        ecode = protocol.ecode
         user_timing = protocol.timing_override()
         if ecode in _TON_ONLY_ECODES:
             ton = user_timing.get("ton", ton_by_protocol.get(protocol.name))
@@ -343,7 +330,6 @@ class EModelEFeatureExtractionTask(Task):
         When ``autoselect`` is enabled, uses BluePyEModel's auto_targets presets
         instead of manually-built targets rows.
         """
-        from bluepyefe.ecode import eCodes  # noqa: PLC0415
         from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
             TargetsConfiguration,
         )
@@ -394,13 +380,11 @@ class EModelEFeatureExtractionTask(Task):
 
         # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
         # auto-detect it; the rest auto-detect their timing or use defaults.
-        ton_names = [
-            p.name for p in all_protocols if _ecode_class_name(p.name, eCodes) in _TON_ONLY_ECODES
-        ]
+        ton_names = [p.name for p in all_protocols if p.ecode in _TON_ONLY_ECODES]
         ton_per_protocol = _discover_timing(nwb_paths, ton_names) if ton_names else {}
 
         protocols_cfg, ecodes_metadata_dict, skipped = _partition_protocols(
-            all_protocols, eCodes, ton_per_protocol
+            all_protocols, ton_per_protocol
         )
         if skipped:
             L.warning(
