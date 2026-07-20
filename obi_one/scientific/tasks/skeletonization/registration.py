@@ -139,7 +139,7 @@ def register_output_resource(
         entity=models.Contribution(
             entity=registered_morphology,
             role=role,
-            agent=registered_morphology.created_by,  # ty:ignore[invalid-argument-type]
+            agent=registered_morphology.created_by,
         )
     )
     client.register_entity(

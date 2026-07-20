@@ -22,7 +22,9 @@ from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME, SCAN_CONFIG_FILENAME
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.blocks import ion_channel_equations as equations_module
+from obi_one.scientific.blocks.ion_channel_equations import (
+    ion_channel_equations as equations_module,
+)
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
 
 L = logging.getLogger(__name__)
@@ -310,7 +312,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
 
         L.info("-- Upload ion_channel_modeling_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=self.single_entity.id,
             entity_type=entitysdk.models.IonChannelModelingConfig,  # ty:ignore[possibly-missing-submodule]
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]

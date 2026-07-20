@@ -78,7 +78,7 @@ def select_asset_content(
         selection=selection,
     ).one()
     return client.fetch_content(
-        entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+        entity_id=entity.id,
         entity_type=type(entity),
         asset_or_id=asset,
     )
@@ -226,7 +226,7 @@ def upload_task_config_asset(
     """Uploads the given task configuration as an asset and returns it."""
     L.info("-- Upload task_config asset for TaskConfig")
     asset = client.upload_file(
-        entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+        entity_id=entity.id,
         entity_type=TaskConfig,
         file_path=file_path,
         file_content_type=ContentType.application_json,
@@ -321,7 +321,7 @@ def add_circuit_folder_asset(
     directory_asset = client.upload_directory(
         label=asset_label,  # ty:ignore[invalid-argument-type]
         name=asset_label,
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_id=registered_circuit.id,
         entity_type=models.Circuit,
         paths=circuit_files,  # ty:ignore[invalid-argument-type]
     )
@@ -342,7 +342,7 @@ def add_compressed_circuit_asset(
     # Upload compressed file asset
     transfer_config = MultipartUploadTransferConfig()
     compressed_asset = client.upload_file(
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_id=registered_circuit.id,
         entity_type=models.Circuit,
         file_path=compressed_file,
         file_content_type="application/gzip",  # ty:ignore[invalid-argument-type]
@@ -373,7 +373,7 @@ def add_connectivity_matrix_asset(
     matrix_asset = client.upload_directory(
         label=asset_label,  # ty:ignore[invalid-argument-type]
         name=asset_label,
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_id=registered_circuit.id,
         entity_type=models.Circuit,
         paths=matrix_files,  # ty:ignore[invalid-argument-type]
     )
@@ -422,7 +422,7 @@ def add_image_assets(
             msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
             raise ValueError(msg)
         plot_asset = client.upload_file(
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_id=registered_circuit.id,
             entity_type=models.Circuit,
             file_path=file_path,
             file_content_type=f"image/{fmt}",  # ty:ignore[invalid-argument-type]

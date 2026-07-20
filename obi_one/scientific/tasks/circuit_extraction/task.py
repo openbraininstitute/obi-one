@@ -30,12 +30,12 @@ from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_ci
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     CircuitExtractionNeuronSetUnion,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
 )

@@ -48,7 +48,7 @@ def resolve_provenance(
     source_mesh_entity = morph_from_id.source_mesh_entity(db_client=db_client)
     pt_root_id = source_mesh_entity.dense_reconstruction_cell_id
     source_dataset = db_client.get_entity(
-        entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
+        entity_id=source_mesh_entity.em_dense_reconstruction_dataset.id,  # ty:ignore[unresolved-attribute]
         entity_type=EMDenseReconstructionDataset,
     )
     return pt_root_id, source_mesh_entity, source_dataset
@@ -88,7 +88,11 @@ def resolve_neuron(  # NOQA: PLR0914
     fn_morphology_out_h5 = Path("morphologies/morphology") / (entity_id_str + ".h5")
     fn_spiny_morph = Path(entity_id_str + ".h5")
     if (out_root / fn_morphology_out_swc).exists():
-        err_str = f"Duplicate entity in input: {entity_id_str}"
+        err_str = (
+            f"Duplicate entity in input: {entity_id_str}. "
+            f"The same morphology cannot be chosen twice. "
+            f"Please select different morphologies."
+        )
         raise ValueError(err_str)
 
     smooth_morph = morph_from_id.neurom_morphology(db_client)

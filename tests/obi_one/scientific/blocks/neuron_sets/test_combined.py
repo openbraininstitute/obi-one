@@ -6,8 +6,8 @@ import pytest
 
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedNeuronSet, SetOperation
-from obi_one.scientific.blocks.neuron_sets.predefined import PredefinedNeuronSet
-from obi_one.scientific.unions.unions_neuron_sets import BiophysicalNeuronSetReference
+from obi_one.scientific.blocks.neuron_sets.predefined import MultiPopulationPredefinedNeuronSet
+from obi_one.scientific.unions_and_references.neuron_sets import BiophysicalNeuronSetReference
 
 from tests.utils import CIRCUIT_DIR
 
@@ -26,7 +26,9 @@ def circuit():
     )
 
 
-def _resolved_ref(neuron_set: PredefinedNeuronSet, name: str) -> BiophysicalNeuronSetReference:
+def _resolved_ref(
+    neuron_set: MultiPopulationPredefinedNeuronSet, name: str
+) -> BiophysicalNeuronSetReference:
     """Return a resolved reference to a named neuron set.
 
     Mirrors what a Task/config wiring (``fill_block_references_and_names``) produces: the block
@@ -51,9 +53,14 @@ def _combined_neuron_set(
         combined_with: Sequence of (node_set_name, operation) applied in order.
         name: Block name assigned to the combined neuron set.
     """
-    base_ref = _resolved_ref(PredefinedNeuronSet(node_set=base_node_set), base_node_set)
+    base_ref = _resolved_ref(
+        MultiPopulationPredefinedNeuronSet(node_set=base_node_set), base_node_set
+    )
     combine_refs = [
-        (_resolved_ref(PredefinedNeuronSet(node_set=node_set), node_set), operation)
+        (
+            _resolved_ref(MultiPopulationPredefinedNeuronSet(node_set=node_set), node_set),
+            operation,
+        )
         for node_set, operation in combined_with
     ]
     neuron_set = CombinedNeuronSet(base_neuron_set=base_ref, combined_with=combine_refs)
