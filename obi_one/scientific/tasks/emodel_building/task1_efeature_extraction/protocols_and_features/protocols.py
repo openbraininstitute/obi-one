@@ -212,6 +212,57 @@ class Protocol(OBIBaseModel):
     )
 
     # ------------------------------------------------------------------
+    # Per-protocol role flags (Rin, RMP, Rheobase)
+    # ------------------------------------------------------------------
+    is_rin_protocol: bool = Field(
+        default=False,
+        title="Use as R_in protocol",
+        description=(
+            "If True, this protocol is used to compute input resistance."
+            " Automatically adds ``ohmic_input_resistance_vb_ssse`` to features."
+            " Only relevant when ``threshold_based`` is enabled."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    rin_amplitude: float = Field(
+        default=-20.0,
+        title="R_in amplitude (%)",
+        description=(
+            "Amplitude (% of rheobase) for the R_in measurement."
+            " Only used when ``is_rin_protocol`` is True. Default: -20%."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    is_rmp_protocol: bool = Field(
+        default=False,
+        title="Use as RMP protocol",
+        description=(
+            "If True, this protocol is used to compute resting membrane potential."
+            " Automatically adds ``voltage_base`` to features."
+            " Only relevant when ``threshold_based`` is enabled."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    rmp_amplitude: float = Field(
+        default=0.0,
+        title="RMP amplitude (%)",
+        description=(
+            "Amplitude (% of rheobase) for the RMP measurement."
+            " Only used when ``is_rmp_protocol`` is True. Default: 0%."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    is_rheobase_protocol: bool = Field(
+        default=False,
+        title="Use for rheobase",
+        description=(
+            "If True, this protocol is used to estimate rheobase (lowest amplitude"
+            " inducing at least 1 spike). Typically IDthresh or IDThreshold."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+
+    # ------------------------------------------------------------------
     # Custom eFEL settings (picker)
     # ------------------------------------------------------------------
     custom_efel_settings: dict[str, float | bool] = Field(

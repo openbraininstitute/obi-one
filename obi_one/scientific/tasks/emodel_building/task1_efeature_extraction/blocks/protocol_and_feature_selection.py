@@ -162,6 +162,7 @@ def _default_protocols() -> tuple[Protocol, ...]:
             sahp.features[fname].extract = True
 
     idthresh = Protocol.from_protocol_name("IDthresh")
+    idthresh.is_rheobase_protocol = True
 
     return (idthresh, idrest, iv, apwaveform, sahp)
 
