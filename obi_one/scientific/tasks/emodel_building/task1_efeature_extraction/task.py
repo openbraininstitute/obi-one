@@ -19,7 +19,7 @@ from obi_one.scientific.library.electrical_cell_recording_properties import (
     read_timing_from_nwb,
 )
 from obi_one.scientific.tasks.emodel_building import _shared
-from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks import (
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.settings import (
     Settings,
 )
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
