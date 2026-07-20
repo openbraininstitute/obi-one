@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from pydantic import Field
 
+from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.images_and_doc_links import (  # noqa: E501
@@ -84,8 +85,13 @@ def _default_protocols() -> tuple[Protocol, ...]:
     return (idthresh, idrest, iv, apwaveform, sahp)
 
 
-class ProtocolAndFeatureSelection(Block):
-    """Per-protocol picker for timing, LJP, amplitudes, and chosen efeatures.
+class SelectEFeaturesByProtocol(OBIBaseModel):
+    """Protocol list and per-protocol feature selection.
+
+    Not a Block — this is the object behind the ``select_efeatures_by_protocol``
+    UI element, in the same way :class:`NeuronPropertyFilter` backs the neuron
+    property filter element. The whole object is rendered by that one widget, so
+    its fields carry no individual ``ui_element`` of their own.
 
     ``threshold_based`` controls whether per-protocol ``extraction_amplitudes``
     are interpreted as relative (% of rheobase) or absolute (nA, auto-discovered
@@ -111,7 +117,6 @@ class ProtocolAndFeatureSelection(Block):
             " from per-protocol ``extraction_amplitudes``. When disabled (default),"
             " amplitudes are auto-discovered in absolute nA from the NWB."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
 
     autoselect: bool = Field(
@@ -122,7 +127,6 @@ class ProtocolAndFeatureSelection(Block):
             " using BluePyEModel's auto_targets presets. Manual protocol/feature"
             " selection below is ignored."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
 
     auto_targets_presets: str = Field(
@@ -133,7 +137,6 @@ class ProtocolAndFeatureSelection(Block):
             " is enabled. Select one or more: 'firing_pattern', 'ap_waveform',"
             " 'iv', 'validation'."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
     protocols: tuple[Protocol, ...] = Field(  # ty:ignore[invalid-assignment]
@@ -144,6 +147,25 @@ class ProtocolAndFeatureSelection(Block):
             " example; the frontend can repopulate this from the catalogue and"
             " the protocols discovered from the recordings' NWB files."
             " Ignored when autoselect is enabled."
+        ),
+    )
+
+
+class ProtocolAndFeatureSelection(Block):
+    """Per-protocol picker for timing, LJP, amplitudes, and chosen efeatures.
+
+    The selection itself lives in :class:`SelectEFeaturesByProtocol`, exposed as
+    a single object field so the schema advertises ``type: object`` as the
+    ``select_efeatures_by_protocol`` component spec requires.
+    """
+
+    selection: SelectEFeaturesByProtocol = Field(
+        default_factory=SelectEFeaturesByProtocol,
+        title="EFeatures by protocol",
+        description=(
+            "Protocols to extract features from, together with the per-protocol"
+            " feature selection and the amplitude/auto-target settings that"
+            " govern it."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,

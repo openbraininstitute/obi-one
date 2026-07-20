@@ -351,14 +351,14 @@ class EModelEFeatureExtractionTask(Task):
         nwb_paths = [path for path, _ in downloaded]
 
         # --- Autoselect mode: use auto_targets presets ---
-        if self.config.efeatures_by_protocol.autoselect:
+        if self.config.efeatures_by_protocol.selection.autoselect:
             from bluepyemodel.efeatures_extraction.auto_targets import (  # noqa: PLC0415
                 get_auto_target_from_presets,
             )
 
             presets = [
                 p.strip()
-                for p in self.config.efeatures_by_protocol.auto_targets_presets.split(",")
+                for p in self.config.efeatures_by_protocol.selection.auto_targets_presets.split(",")
                 if p.strip()
             ]
             auto_targets = get_auto_target_from_presets(presets)
@@ -379,7 +379,7 @@ class EModelEFeatureExtractionTask(Task):
 
             rheobase_protocols = [
                 p.name
-                for p in self.config.efeatures_by_protocol.protocols
+                for p in self.config.efeatures_by_protocol.selection.protocols
                 if getattr(p, "is_rheobase_protocol", False)
             ]
 
@@ -390,7 +390,7 @@ class EModelEFeatureExtractionTask(Task):
             )
 
         # --- Manual mode: build targets from per-protocol feature selection ---
-        all_protocols = self.config.efeatures_by_protocol.protocols
+        all_protocols = self.config.efeatures_by_protocol.selection.protocols
 
         # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
         # auto-detect it; the rest auto-detect their timing or use defaults.
@@ -429,7 +429,7 @@ class EModelEFeatureExtractionTask(Task):
             targets=_build_targets_formatted(
                 protocols_cfg,
                 amplitudes_per_protocol,
-                threshold_based=self.config.efeatures_by_protocol.threshold_based,
+                threshold_based=self.config.efeatures_by_protocol.selection.threshold_based,
             ),
             protocols_rheobase=rheobase_protocols,
         )
@@ -458,15 +458,15 @@ class EModelEFeatureExtractionTask(Task):
         #    local access point rather than calling bluepyefe directly.
         validation_protocol_names = [
             p.name
-            for p in self.config.efeatures_by_protocol.protocols
+            for p in self.config.efeatures_by_protocol.selection.protocols
             if getattr(p, "validation", False)
         ]
         _shared.write_recipes(
             _build_extraction_recipes(
                 self.config.settings,
-                threshold_based=self.config.efeatures_by_protocol.threshold_based,
+                threshold_based=self.config.efeatures_by_protocol.selection.threshold_based,
                 validation_protocol_names=validation_protocol_names,
-                protocols=self.config.efeatures_by_protocol.protocols,
+                protocols=self.config.efeatures_by_protocol.selection.protocols,
             ),
             coord_root / RECIPES_RELPATH,
         )
