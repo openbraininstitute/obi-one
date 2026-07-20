@@ -5,11 +5,6 @@ from pydantic import Field
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.images_and_doc_links import (  # noqa: E501
-    EFEL_DOC_BASE_URL,
-    EFEL_FEATURE_IMAGE_MAP,
-    EFEL_FIGURES_BASE_URL,
-)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501
     APWaveformProtocol,
     IDRestProtocol,
@@ -17,6 +12,14 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocol
     IVProtocol,
     ProtocolUnion,
     SAHPProtocol,
+)
+
+EFEL_DOC_BASE_URL = "https://efel.readthedocs.io/en/latest/eFeatures.html"
+
+# Root of the eFEL docs' figure directory. Each feature class names its own
+# figure file via SchemaKey.EFEL_FEATURE_IMAGE; the frontend joins the two.
+EFEL_FIGURES_BASE_URL = (
+    "https://raw.githubusercontent.com/openbraininstitute/eFEL/master/docs/source/_static/figures"
 )
 
 
@@ -114,7 +117,7 @@ class ProtocolAndFeatureSelection(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,
             SchemaKey.EFEL_DOC_BASE_URL: EFEL_DOC_BASE_URL,
+            SchemaKey.EFEL_DOC_URL: EFEL_DOC_BASE_URL,
             SchemaKey.EFEL_FIGURES_BASE_URL: EFEL_FIGURES_BASE_URL,
-            SchemaKey.EFEL_FEATURE_IMAGE_MAP: EFEL_FEATURE_IMAGE_MAP,
         },
     )

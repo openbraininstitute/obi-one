@@ -50,12 +50,6 @@ class EFeature(OBIBaseModel):
 
     efel_name: ClassVar[str] = ""
     """The eFEL feature key, fixed by each concrete feature class."""
-    efel_doc_url: ClassVar[str] = "https://efel.readthedocs.io/en/latest/eFeatures.html"
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "efel_doc_url": "https://efel.readthedocs.io/en/latest/eFeatures.html",
-    }
-
     extract: bool = Field(
         default=False,
         title="Extract",
@@ -206,12 +200,18 @@ class ISICVFeature(SpikeEventFeature):
     """eFEL ``ISI_CV``."""
 
     efel_name: ClassVar[str] = "ISI_CV"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "inv_ISI.png",
+    }
 
 
 class ISILogSlopeFeature(SpikeEventFeature):
     """eFEL ``ISI_log_slope``."""
 
     efel_name: ClassVar[str] = "ISI_log_slope"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "inv_ISI.png",
+    }
 
 
 class SpikecountFeature(SpikeEventFeature):
@@ -236,30 +236,45 @@ class DoubletISIFeature(SpikeEventFeature):
     """eFEL ``doublet_ISI``."""
 
     efel_name: ClassVar[str] = "doublet_ISI"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "inv_ISI.png",
+    }
 
 
 class InvFirstISIFeature(SpikeEventFeature):
     """eFEL ``inv_first_ISI``."""
 
     efel_name: ClassVar[str] = "inv_first_ISI"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "inv_ISI.png",
+    }
 
 
 class InvLastISIFeature(SpikeEventFeature):
     """eFEL ``inv_last_ISI``."""
 
     efel_name: ClassVar[str] = "inv_last_ISI"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "inv_ISI.png",
+    }
 
 
 class InvSecondISIFeature(SpikeEventFeature):
     """eFEL ``inv_second_ISI``."""
 
     efel_name: ClassVar[str] = "inv_second_ISI"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "inv_ISI.png",
+    }
 
 
 class InvThirdISIFeature(SpikeEventFeature):
     """eFEL ``inv_third_ISI``."""
 
     efel_name: ClassVar[str] = "inv_third_ISI"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "inv_ISI.png",
+    }
 
 
 class InvTimeToFirstSpikeFeature(SpikeEventFeature):
@@ -319,24 +334,36 @@ class AHPDepthFeature(SpikeShapeFeature):
     """eFEL ``AHP_depth``."""
 
     efel_name: ClassVar[str] = "AHP_depth"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "AHP.png",
+    }
 
 
 class AHPTimeFromPeakFeature(SpikeShapeFeature):
     """eFEL ``AHP_time_from_peak``."""
 
     efel_name: ClassVar[str] = "AHP_time_from_peak"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "AHP.png",
+    }
 
 
 class AP1AmpFeature(SpikeShapeFeature):
     """eFEL ``AP1_amp``."""
 
     efel_name: ClassVar[str] = "AP1_amp"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "AP_Amplitude.png",
+    }
 
 
 class APAmplitudeFeature(SpikeShapeFeature):
     """eFEL ``AP_amplitude``."""
 
     efel_name: ClassVar[str] = "AP_amplitude"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "AP_Amplitude.png",
+    }
 
 
 class APBeginVoltageFeature(SpikeShapeFeature):
@@ -355,6 +382,9 @@ class APDurationHalfWidthFeature(SpikeShapeFeature):
     """eFEL ``AP_duration_half_width``."""
 
     efel_name: ClassVar[str] = "AP_duration_half_width"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "AP_duration_half_width.png",
+    }
 
 
 # -------------------------------------------------------------------------
@@ -372,36 +402,54 @@ class OhmicInputResistanceVbSsseFeature(SubthresholdFeature):
     """eFEL ``ohmic_input_resistance_vb_ssse``."""
 
     efel_name: ClassVar[str] = "ohmic_input_resistance_vb_ssse"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "voltage_features.png",
+    }
 
 
 class SagAmplitudeFeature(SubthresholdFeature):
     """eFEL ``sag_amplitude``."""
 
     efel_name: ClassVar[str] = "sag_amplitude"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "sag.png",
+    }
 
 
 class SagRatio1Feature(SubthresholdFeature):
     """eFEL ``sag_ratio1``."""
 
     efel_name: ClassVar[str] = "sag_ratio1"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "sag.png",
+    }
 
 
 class SagRatio2Feature(SubthresholdFeature):
     """eFEL ``sag_ratio2``."""
 
     efel_name: ClassVar[str] = "sag_ratio2"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "sag.png",
+    }
 
 
 class VoltageAfterStimFeature(SubthresholdFeature):
     """eFEL ``voltage_after_stim``."""
 
     efel_name: ClassVar[str] = "voltage_after_stim"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "voltage_features.png",
+    }
 
 
 class VoltageBaseFeature(SubthresholdFeature):
     """eFEL ``voltage_base``."""
 
     efel_name: ClassVar[str] = "voltage_base"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.EFEL_FEATURE_IMAGE: "voltage_features.png",
+    }
 
 
 # -------------------------------------------------------------------------
