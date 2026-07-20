@@ -78,14 +78,9 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            BiophysicalNeuronSetReference.__name__: (
-                default_node_set_name
-            ),
-            PointNeuronSetReference.__name__: (
-                default_point_node_set_name,
-            ),
+            BiophysicalNeuronSetReference.__name__: (default_node_set_name),
+            PointNeuronSetReference.__name__: (default_point_node_set_name,),
         },
-
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (
@@ -268,7 +263,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(  # noqa: C901, PLR0915
+    def execute(  # noqa: C901, PLR0914, PLR0915
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
@@ -299,7 +294,7 @@ class CircuitExtractionTask(Task):
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         with BenchmarkTracker.section("add_node_set"):
-            neuron_set = self.config.initialize.neuron_set.block
+            neuron_set = self.config.initialize.neuron_set.block  # ty:ignore[unresolved-attribute]
             nset_name = neuron_set.__class__.__name__
             nset_def, nset_combined = neuron_set.get_node_set_definition(
                 self._circuit,
