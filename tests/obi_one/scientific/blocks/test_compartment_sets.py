@@ -275,7 +275,7 @@ def test_task_uploads_materialized_compartment_sets_asset(tmp_path):
     }
     assert upload_labels_by_path == {
         GenerateSimulationTask.NODE_SETS_FILE_NAME: "custom_node_sets",
-        GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME: "directory_child",
+        GenerateSimulationTask.COMPARTMENT_SETS_FILE_NAME: "task_result",
         GenerateSimulationTask.CONFIG_FILE_NAME: "sonata_simulation_config",
     }
     compartment_sets_upload = next(

@@ -565,7 +565,7 @@ class GenerateSimulationTask(Task):
                     file_path=compartment_sets_path,
                     file_name=self.COMPARTMENT_SETS_FILE_NAME,
                     file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-                    asset_label="directory_child",  # ty:ignore[invalid-argument-type]
+                    asset_label="compartment_sets",  # ty:ignore[invalid-argument-type]
                 )
 
             L.info("-- Upload spike replay files")
