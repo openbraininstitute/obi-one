@@ -13,6 +13,5 @@ class Units(StrEnum):
     MILLIVOLTS = "mV"
     NANOAMPS = "nA"
     PERCENT = "%"
-    SECONDS = "s"
     SIEMENS_PER_CM2 = "S/cm2"
     VOLTS_PER_METER = "V/m"
