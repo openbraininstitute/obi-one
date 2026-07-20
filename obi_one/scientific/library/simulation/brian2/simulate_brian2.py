@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
+# ruff:file-ignore[assert]
 import contextlib
 import heapq
 import logging
@@ -415,9 +415,6 @@ def _get_inputs(
     for input_ in simulation.inputs.values():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
             inputs += _get_spike_replay(simulation, input_, n0, synapses, synapse_template)
-        #elif isinstance(input_, libsonata.SimulationConfig.Poisson):
-        #    n0, poissons = _make_poisson(simulation, input_, n0)
-        #    inputs += poissons
 
     return n0, inputs
 
@@ -658,9 +655,7 @@ class ConnectionOverride:
 
 
 class InputPoisson:
-    def __init__(
-        self, config: libsonata.SimulationConfig.Poisson, sim_config_path: Path
-    ) -> None:
+    def __init__(self, config: libsonata.SimulationConfig.Poisson, sim_config_path: Path) -> None:
         """Ibid."""
         self.config = config
         self.sim_config_path = sim_config_path
@@ -698,7 +693,7 @@ def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Even
     ret = []
 
     for connection_override in simulation.to_libsonata.connection_overrides():
-        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # noqa: SLF001
+        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # ruff:ignore[private-member-access]
         ret.append(Event(at=co.at, func=co))
 
     return ret
@@ -708,7 +703,7 @@ def _gather_poisson(simulation: bluepysnap.Simulation) -> list[Event]:
     ret = []
     for input_ in simulation.inputs.values():
         if isinstance(input_, libsonata.SimulationConfig.Poisson):
-            co = InputPoisson(input_, Path(simulation._simulation_config_path))  # noqa: SLF001
+            co = InputPoisson(input_, Path(simulation._simulation_config_path))  # ruff:ignore[private-member-access]
             ret.append(Event(at=co.at, func=co))
 
     return ret
@@ -834,7 +829,9 @@ def _write_reports(
         )
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path, profile: bool=False) -> Brian2Network:
+def run_sonata_brian2_trial(
+    simulation_config_path: Path, *, profile: bool = False
+) -> Brian2Network:
     """Returns the path to the spikes file."""
     simulation = bluepysnap.Simulation(simulation_config_path)
 
@@ -874,7 +871,7 @@ def run_sonata_brian2_trial(simulation_config_path: Path, profile: bool=False) -
     _write_reports(simulation, net.spike_monitor, net.state_monitor, net.report_id_mapping)
 
     if profile:
-        print(brian2.profiling_summary(net=network))
+        print(brian2.profiling_summary(net=network))  # ruff:ignore[print]
 
     return net
 
@@ -891,6 +888,7 @@ def cli() -> None:
 def sonata_simulation(
     simulation_path: str,
     verbose: int,
+    *,
     profile: bool,
 ) -> None:
 
@@ -899,7 +897,7 @@ def sonata_simulation(
     if verbose:
         brian2.BrianLogger.log_level_debug()
 
-    run_sonata_brian2_trial(Path(simulation_path), profile)
+    run_sonata_brian2_trial(Path(simulation_path), profile=profile)
 
 
 def _init_entitysdk_client(
@@ -953,12 +951,12 @@ def activity_wrapper(
         yield
     except Exception:
         _update_activity_status(
-            {"status": ActivityStatus.error, "end_time": datetime.now(tz=timezone.utc)}  # noqa: UP017
+            {"status": ActivityStatus.error, "end_time": datetime.now(tz=timezone.utc)}  # ruff:ignore[datetime-timezone-utc]
         )
         raise  # re-raise the exception so that it can be handled by the job wrapper
     else:
         _update_activity_status(
-            {"status": ActivityStatus.done, "end_time": datetime.now(tz=timezone.utc)}  # noqa: UP017
+            {"status": ActivityStatus.done, "end_time": datetime.now(tz=timezone.utc)}  # ruff:ignore[datetime-timezone-utc]
         )
 
 
@@ -985,7 +983,7 @@ def sonata_main(
         activity_id=simulation_execution_id,
         activity_type=models.SimulationExecution,
     ):
-        run_sonata_brian2_trial(simulation_config_file, profile)
+        run_sonata_brian2_trial(simulation_config_file, profile=profile)
 
     L.info("Registering simulation result")
     simulation_result = client.register_entity(
@@ -1045,6 +1043,7 @@ def sonata_simulation_task(
     project_id: uuid.UUID,
     simulation_id: uuid.UUID,
     simulation_execution_id: uuid.UUID,
+    *,
     profile: bool,
     verbose: int,
 ) -> None:
