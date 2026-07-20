@@ -133,6 +133,23 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.efeature_extraction: TaskDefinition(
+        task_type=TaskType.efeature_extraction,
+        config_type=TaskConfigType.efeature_extraction__config,
+        activity_type=TaskActivityType.efeature_extraction__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=4,
+            timelimit="00:30",
+            compute_cell="local",
+        ),
+    ),
     TaskType.extracellular_recording_weights_calculation: TaskDefinition(
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
