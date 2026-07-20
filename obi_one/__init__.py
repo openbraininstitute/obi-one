@@ -80,6 +80,9 @@ __all__ = [
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
     "EMSynapseMappingTask",
+    "EModelExportAndValidationScanConfig",
+    "EModelExportAndValidationSingleConfig",
+    "EModelExportAndValidationTask",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -483,6 +486,13 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import (
 )
 from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingTask,
+)
+from obi_one.scientific.tasks.emodel_building.task3_export_and_validation.config import (
+    EModelExportAndValidationScanConfig,
+    EModelExportAndValidationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task3_export_and_validation.task import (
+    EModelExportAndValidationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,

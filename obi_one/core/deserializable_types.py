@@ -64,6 +64,9 @@ TYPE_MAP: dict[str, str] = {
     "MorphologyMetricsSingleConfig": "obi_one.scientific.tasks.morphology_metrics",
     "SkeletonizationScanConfig": "obi_one.scientific.tasks.skeletonization",
     "SkeletonizationSingleConfig": "obi_one.scientific.tasks.skeletonization",
+    # EModel optimization workflows
+    "EModelExportAndValidationScanConfig": "obi_one.scientific.tasks.emodel_building.task3_export_and_validation.config",
+    "EModelExportAndValidationSingleConfig": "obi_one.scientific.tasks.emodel_building.task3_export_and_validation.config",
     # __init__.py aliases (class is re-exported under this name)
     "CoupledScan": "obi_one",
     "GridScan": "obi_one",

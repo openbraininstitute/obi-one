@@ -12,6 +12,9 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
     CreateExtracellularRecordingArrayScanConfig,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.emodel_building.task3_export_and_validation.config import (
+    EModelExportAndValidationScanConfig,
+)
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
@@ -49,6 +52,7 @@ ScanConfigsUnion = Annotated[
     | SimulationsForm  # Alias for backward compatibility
     | CircuitExtractionScanConfig
     | EMSynapseMappingScanConfig
+    | EModelExportAndValidationScanConfig
     | BasicConnectivityPlotsScanConfig
     | ConnectivityMatrixExtractionScanConfig
     | ContributeMorphologyScanConfig

@@ -9,6 +9,9 @@ from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
+from obi_one.scientific.tasks.emodel_building.task3_export_and_validation.task import (
+    EModelExportAndValidationTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
@@ -26,6 +29,7 @@ TasksUnion = Annotated[
     | BasicConnectivityPlotsTask
     | ConnectivityMatrixExtractionTask
     | ElectrophysiologyMetricsTask
+    | EModelExportAndValidationTask
     | FolderCompressionTask
     | IonChannelFittingTask
     | SkeletonizationTask

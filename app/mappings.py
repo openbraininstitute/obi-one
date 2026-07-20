@@ -133,6 +133,23 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.emodel_export_and_validation: TaskDefinition(
+        task_type=TaskType.emodel_export_and_validation,
+        config_type=TaskConfigType.optimized_emodel_analysis_validation__config,
+        activity_type=TaskActivityType.optimized_emodel_analysis_validation__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
+        ),
+        resources=MachineResources(
+            cores=2,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+        ),
+    ),
     TaskType.extracellular_recording_weights_calculation: TaskDefinition(
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
