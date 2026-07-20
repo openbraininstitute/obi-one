@@ -172,6 +172,33 @@ def test_poisson(tmp_path):
     assert len(spikes[0]) == 1
     assert spikes[0] == [0.2 + 0.1] * brian2.units.ms
 
+    # have duration too short to spike, delay reminas 0.1
+    config["inputs"]["poisson"]["duration"] = 0.1
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 0
+
+
+def test_poisson_compartment_set_unsupported(tmp_path):
+    config = {
+        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "poisson": {
+                "input_type": "spikes",
+                "module": "poisson",
+                "delay": 0.0,
+                "duration": 1000,
+                "rate": 100,
+                "weight": 50,
+                "compartment_set": "dendrite",
+            }
+        },
+    }
+    with pytest.raises(RuntimeError, match="compartment_set"):
+        _run_simulation(tmp_path, config)
+
 
 def test_current_stim(tmp_path):
     config = {
