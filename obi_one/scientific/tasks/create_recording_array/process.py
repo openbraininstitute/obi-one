@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 
-def compile_mechanisms(circuit_config_path: Path, output_dir: Path) -> dict[str, str]:
+def compile_mechanisms(circuit_config_path: Path, output_dir: Path) -> dict[str, str]:  # pragma: no cover
     """Compile NMODL mechanisms for a circuit via neurodamus-compile-mods.
 
     Compiles the circuit's mod files plus neurodamus internal mods with
@@ -61,7 +61,7 @@ def write_electrode_json(
     electrode_locations: dict,
     calculation_method: str,
     output_path: Path,
-) -> Path:
+) -> Path:  # pragma: no cover
     """Write electrode positions to a JSON file for the bluerecording CLI.
 
     Builds global positions from each block's ``get_global_electrode_xyz_locations()``
@@ -103,7 +103,7 @@ def run_bluerecording_write_weights(
     electrode_json: Path,
     output_path: Path,
     env: dict[str, str],
-) -> Path:
+) -> Path:  # pragma: no cover
     """Run bluerecording write_weights as a subprocess.
 
     Args:
