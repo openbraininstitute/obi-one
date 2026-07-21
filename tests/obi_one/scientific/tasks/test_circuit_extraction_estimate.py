@@ -18,8 +18,10 @@ def test_estimate_circuit_extraction_count_from_neuron_set_size():
         get_neuron_ids=lambda **_kwargs: {"pop_a": [101, 202], "pop_b": [303]}
     )
     fake_config = SimpleNamespace(
-        initialize=SimpleNamespace(circuit=fake_circuit),
-        neuron_set=fake_neuron_set,
+        initialize=SimpleNamespace(
+            circuit=fake_circuit,
+            neuron_set=SimpleNamespace(block=fake_neuron_set),
+        ),
     )
     fake_deserialized = SimpleNamespace(
         model_dump=lambda: {"type": "CircuitExtractionSingleConfig"}
@@ -52,8 +54,10 @@ def test_estimate_circuit_extraction_count_raises_for_empty_set():
     fake_circuit = SimpleNamespace()
     fake_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: {})
     fake_config = SimpleNamespace(
-        initialize=SimpleNamespace(circuit=fake_circuit),
-        neuron_set=fake_neuron_set,
+        initialize=SimpleNamespace(
+            circuit=fake_circuit,
+            neuron_set=SimpleNamespace(block=fake_neuron_set),
+        ),
     )
     fake_deserialized = SimpleNamespace(
         model_dump=lambda: {"type": "CircuitExtractionSingleConfig"}
@@ -98,8 +102,10 @@ def test_estimate_circuit_extraction_count_with_circuit_from_id_staging():
         get_neuron_ids=lambda **_kwargs: {"pop_a": [1], "pop_b": [2]},
     )
     fake_config = SimpleNamespace(
-        initialize=SimpleNamespace(circuit=fake_circuit_from_id),
-        neuron_set=fake_neuron_set,
+        initialize=SimpleNamespace(
+            circuit=fake_circuit_from_id,
+            neuron_set=SimpleNamespace(block=fake_neuron_set),
+        ),
     )
 
     db_client.get_entity = lambda **_kwargs: task_config

@@ -159,18 +159,24 @@ def test_circuit_extraction(tmp_path):
                 / f"do_virtual={do_virtual}"
                 / f"create_external={create_external}"
             )
-            extraction_init = obi.CircuitExtractionScanConfig.Initialize(
-                circuit=circuit_list,
-                do_virtual=do_virtual,
-                create_external=create_external,
-            )
             neuron_set = obi.BiophysicalPopulationPredefinedNeuronSet(
                 node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
             )
             info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
 
-            circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
-                initialize=extraction_init, neuron_set=neuron_set, info=info
+            circuit_extractions_scan_config = obi.CircuitExtractionScanConfig.empty_config()
+            circuit_extractions_scan_config.set(info, name="info")
+            circuit_extractions_scan_config.add(neuron_set, name="TestNeuronSet")
+
+            extraction_init = obi.CircuitExtractionScanConfig.Initialize(
+                circuit=circuit_list,
+                neuron_set=neuron_set.ref,
+                do_virtual=do_virtual,
+                create_external=create_external,
+            )
+            circuit_extractions_scan_config.set(extraction_init, name="initialize")
+            circuit_extractions_scan_config = (
+                circuit_extractions_scan_config.validated_config()
             )
 
             grid_scan = obi.GridScanGenerationTask(
@@ -199,7 +205,7 @@ def test_circuit_extraction(tmp_path):
 
                 npop_dict, epop_dict = _get_population_ids(
                     instance.initialize.circuit,
-                    instance.neuron_set,
+                    instance.initialize.neuron_set.block,
                     with_virtual=instance.initialize.do_virtual,
                     with_external=instance.initialize.create_external,
                 )
@@ -226,17 +232,10 @@ def test_circuit_extraction(tmp_path):
 
 
 def test_circuit_extraction_rejects_virtual_neuron_set():
-    """CircuitExtractionScanConfig should not accept virtual neuron sets."""
+    """CircuitExtractionScanConfig should not accept virtual neuron sets in neuron_sets."""
     virtual_nset = VirtualPopulationNeuronSet(population="VPM")
 
+    config = obi.CircuitExtractionScanConfig.empty_config()
     with pytest.raises(pydantic.ValidationError, match="union_tag_invalid"):
-        obi.CircuitExtractionScanConfig(
-            initialize=obi.CircuitExtractionScanConfig.Initialize(
-                circuit=obi.Circuit(
-                    name="N_10__top_nodes_dim6",
-                    path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
-                ),
-            ),
-            neuron_set=virtual_nset,
-            info=obi.Info(campaign_name="Test", campaign_description="Should fail"),
-        )
+        config.neuron_sets["virtual"] = virtual_nset  # ty:ignore[invalid-assignment]
+        config.validated_config()
