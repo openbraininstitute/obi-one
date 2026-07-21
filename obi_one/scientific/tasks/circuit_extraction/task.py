@@ -4,14 +4,14 @@ import os
 import tempfile
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar, Self
+from typing import ClassVar
 
 import bluepysnap as snap
 import bluepysnap.circuit_validation
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
 from entitysdk.types import TaskActivityType, TaskConfigType
-from pydantic import Field, PrivateAttr, model_validator
+from pydantic import Field, PrivateAttr
 
 from obi_one.config import settings
 from obi_one.core.block import Block
@@ -20,6 +20,12 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllBiophysicalNeurons,
+    AllPointNeurons,
+)
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
@@ -68,8 +74,36 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         " to simulate the extracted circuit."
     )
 
-    default_node_set_name: ClassVar[str] = "Default: None"
-    default_point_node_set_name: ClassVar[str] = "Default: None"
+    default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
+    default_point_node_set_name: ClassVar[str] = "Default: All Point Neurons"
+    default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
+    default_point_neuron_set_type: ClassVar[type[AllPointNeurons]] = AllPointNeurons
+
+    @property
+    def default_neuron_set_reference(
+        self,
+    ) -> BiophysicalNeuronSetReference:
+        """Returns the default neuron set reference for the simulation."""
+        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_node_set_name
+        )
+
+        default_neuron_set_block_reference.block = self.default_neuron_set_type()
+        default_neuron_set_block_reference.block.set_block_name(self.default_node_set_name)
+
+        return default_neuron_set_block_reference
+
+    @property
+    def default_point_neuron_set_reference(
+        self,
+    ) -> PointNeuronSetReference:
+        """Returns the default point neuron set reference for the simulation."""
+        ref = PointNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
+        )
+        ref.block = self.default_point_neuron_set_type()
+        ref.block.set_block_name(self.default_point_node_set_name)
+        return ref
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -169,24 +203,76 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         },
     )
 
-    @model_validator(mode="after")
-    def neuron_set_required(self) -> Self:
-        self.check_neuron_set()
-        return self
+    def ensure_extraction_target_neuron_set(self) -> None:
+        """Ensure a neuron set reference exists for initialize.neuron_set.
 
-    def check_neuron_set(self) -> None:
-        """Check that a neuron set is specified in initialize.
-
-        Raises an error if neuron_set is None, since circuit extraction
-        requires an explicit neuron set defining the sub-circuit to extract.
+        If neuron_set is None, sets it to the default biophysical neuron set
+        reference and ensures the corresponding block exists in neuron_sets.
         """
         if self.initialize.neuron_set is None:
+            L.info("initialize.neuron_set is None — setting default neuron set.")
+            self.initialize.neuron_set = self._default_neuron_set_ref()
+
+    def _default_neuron_set_ref(self) -> BiophysicalNeuronSetReference:
+        """Returns the reference for the default neuron set, adding it to neuron_sets if needed."""
+        ref = self.default_neuron_set_reference
+        if ref.block_name in self.neuron_sets and not isinstance(
+            self.neuron_sets[ref.block_name], self.default_neuron_set_type
+        ):
             msg = (
-                "Circuit extraction requires a neuron set to be "
-                "added to the list of neuron sets and selected "
-                "as target neuron set for extration."
+                f"Default neuron set name '{ref.block_name}' already exists in "
+                f"neuron_sets but is not an {self.default_neuron_set_type.__name__} set!"
             )
             raise OBIONEError(msg)
+        if ref.block_name not in self.neuron_sets:
+            self.neuron_sets[ref.block_name] = ref.block  # ty:ignore[invalid-assignment]
+        return ref
+
+    def _default_point_neuron_set_ref(self) -> PointNeuronSetReference:
+        """Returns the reference for the default point neuron set, adding it if needed."""
+        ref = self.default_point_neuron_set_reference
+        if ref.block_name in self.neuron_sets and not isinstance(
+            self.neuron_sets[ref.block_name], self.default_point_neuron_set_type
+        ):
+            msg = (
+                f"Default point neuron set name '{ref.block_name}' already exists in "
+                f"neuron_sets but is not an {self.default_point_neuron_set_type.__name__} set!"
+            )
+            raise OBIONEError(msg)
+        if ref.block_name not in self.neuron_sets:
+            self.neuron_sets[ref.block_name] = ref.block  # ty:ignore[invalid-assignment]
+        return ref
+
+    def ensure_combined_neuron_sets_have_references(self) -> None:
+        """Ensure combined neuron sets in the dictionary have their references filled."""
+        for neuron_set in list(self.neuron_sets.values()):
+            if isinstance(neuron_set, CombinedBaseNeuronSet):
+                self._ensure_combined_neuron_set_has_references(neuron_set)
+
+    def _ensure_combined_neuron_set_has_references(self, neuron_set: CombinedBaseNeuronSet) -> None:
+        """Ensure a combined neuron set's base and combined_with references are filled."""
+        default_ref = self._default_neuron_set_ref_for_population_type(
+            neuron_set.get_neuron_set_population_type()
+        )
+
+        if neuron_set.base_neuron_set is None:
+            neuron_set.base_neuron_set = default_ref
+
+        updated_entries = []
+        for ref, op in neuron_set.combined_with:
+            if ref is None:
+                updated_entries.append((default_ref, op))
+            else:
+                updated_entries.append((ref, op))
+        neuron_set.combined_with = tuple(updated_entries)
+
+    def _default_neuron_set_ref_for_population_type(
+        self, population_type: NeuronSetPopulationType
+    ) -> NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION:
+        """Returns the appropriate default neuron set reference for the given population type."""
+        if population_type == NeuronSetPopulationType.POINT:
+            return self._default_point_neuron_set_ref()
+        return self._default_neuron_set_ref()
 
 
 class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
@@ -278,8 +364,9 @@ class CircuitExtractionTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        # Ensure neuron set is specified
-        self.config.check_neuron_set()
+        # Ensure neuron set reference is set (use default if None)
+        self.config.ensure_extraction_target_neuron_set()
+        self.config.ensure_combined_neuron_sets_have_references()
 
         # Resolve parent circuit (local path or staging from ID)
         with BenchmarkTracker.section("resolve_circuit"):
