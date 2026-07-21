@@ -24,7 +24,7 @@ class TestInitSentry:
         init_sentry()
 
         assert captured["dsn"] == dsn
-        assert captured["environment"] == settings.ENVIRONMENT
+        assert captured["environment"] == settings.DEPLOYMENT_ENV
         assert captured["release"] == settings.APP_VERSION
         assert captured["traces_sample_rate"] == settings.SENTRY_TRACES_SAMPLE_RATE
         assert (

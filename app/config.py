@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     COMMIT_SHA: str | None = None
 
     ENVIRONMENT: str | None = None
+    DEPLOYMENT_ENV: Literal["local", "staging", "production"] = "local"
     ROOT_PATH: str = ""
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",  # for local tests
