@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Annotated
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -59,6 +61,11 @@ class Settings(BaseSettings):
     ACCOUNTING_DISABLED: bool = False
     VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service
     VIRTUAL_LAB_DISABLED: bool = False
+
+    # Sentry is disabled when SENTRY_DSN is unset (sentry_sdk.init with dsn=None is a no-op).
+    SENTRY_DSN: str | None = None
+    SENTRY_TRACES_SAMPLE_RATE: Annotated[float, Field(ge=0, le=1)] = 0.1
+    SENTRY_PROFILE_SESSION_SAMPLE_RATE: Annotated[float, Field(ge=0, le=1)] = 1.0
 
     SUBDOMAIN_PLACEHOLDER: str = "cell-X"
 
