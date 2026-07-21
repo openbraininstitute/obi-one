@@ -22,12 +22,10 @@ from obi_one.scientific.library.info_scan_config.config import (
     InfoScanConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
-    MorphologySelection,
     OptimizationInitialize,
     OptimizationParams,
     OptimizationSettings,
     ParametersSelection,
-    ParamsFileSelection,
 )
 
 L = logging.getLogger(__name__)
@@ -37,7 +35,6 @@ class BlockGroup(StrEnum):
     """Block groups for the optimisation stage."""
 
     INPUT = "Input"
-    MORPHOLOGY = "Morphology"
     PARAMETERS = "Parameters"
     OPTIMIZATION = "Optimization Settings"
 
@@ -63,7 +60,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         SchemaKey.GROUP_ORDER: [
             InfoBlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.INPUT,
-            BlockGroup.MORPHOLOGY,
             BlockGroup.PARAMETERS,
             BlockGroup.OPTIMIZATION,
         ],
@@ -78,29 +74,21 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
-            self.initialize.extraction_task_result.entity(db_client=db_client),
-            self.morphology_selection.morphology.entity(db_client=db_client),
+            self.initialize.target_efeatures.entity(db_client=db_client),
+            self.initialize.morphology.entity(db_client=db_client),
         ]
         entities.extend(
             icm.entity(db_client=db_client) for icm in self.parameters_selection.ion_channel_models
         )
         return entities
 
-    @property
-    def use_params_file(self) -> bool:
-        """True if params-file mode is active (params_template is set)."""
-        return self.params_file.params_template is not None
-
     @model_validator(mode="after")
     def validate_params_source(self) -> "EModelOptimizationScanConfig":
-        """Ensure at least one parameter source is provided."""
-        has_icm = len(self.parameters_selection.ion_channel_models) > 0
-        has_template = self.params_file.params_template is not None
-        if not has_icm and not has_template:
+        """Ensure ion channel models are provided for the dynamic params builder."""
+        if len(self.parameters_selection.ion_channel_models) == 0:
             msg = (
-                "Either ion_channel_models or params_template must be set."
-                " Provide ion channel models for the dynamic builder, or select"
-                " a pre-built params template from the database."
+                "ion_channel_models must be set: the dynamic builder needs ion"
+                " channel models to build the params file."
             )
             raise ValueError(msg)
         return self
@@ -115,16 +103,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         },
     )
 
-    morphology_selection: MorphologySelection = Field(
-        title="Morphology",
-        description="Morphology entity to stage into the working directory.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.MORPHOLOGY,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
     parameters_selection: ParametersSelection = Field(
         default_factory=ParametersSelection,
         title="Parameters",
@@ -133,21 +111,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PARAMETERS,
             SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    params_file: ParamsFileSelection = Field(
-        default_factory=ParamsFileSelection,
-        title="Params file (alternative)",
-        description=(
-            "Optional: provide a pre-built BluePyEModel params JSON file instead"
-            " of using the dynamic builder. If set, this takes precedence over"
-            " the ion channel models selection."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.PARAMETERS,
-            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

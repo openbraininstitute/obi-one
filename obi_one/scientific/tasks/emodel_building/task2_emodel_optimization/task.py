@@ -76,7 +76,7 @@ class EModelOptimizationTask(Task):
         mtype = self._derive_mtype(db_client)
 
         # --- 1. Download extracted features ---
-        extraction_tr = init.extraction_task_result
+        extraction_tr = init.target_efeatures
         self._download_extraction_features(extraction_tr, coord_root, db_client)
 
         # --- 2. Download morphology ---
@@ -89,7 +89,7 @@ class EModelOptimizationTask(Task):
         trace_ids = self._stage_traces(extraction_tr, coord_root, db_client)
 
         # --- 5. Stage params file (before building recipe) ---
-        params_path = self._stage_params(coord_root, db_client)
+        params_path = self._stage_params(coord_root)
 
         # --- 6. Reconstruct recipe ---
         recipes = {}
@@ -117,14 +117,16 @@ class EModelOptimizationTask(Task):
         _shared.compile_mechanisms(coord_root / "mechanisms")
 
         # --- 7. Run optimisation + store + plot + export ---
+        # Species and brain region are taken from the morphology entity (cached
+        # by the from-id wrapper, so this does not re-fetch).
         with _shared.chdir(coord_root):
             access_point = LocalAccessPoint(
                 emodel=emodel,
                 etype=init.etype.entity(db_client=db_client).pref_label,
                 mtype=mtype,
                 ttype=None,
-                species=init.species.entity(db_client=db_client).name,
-                brain_region=init.brain_region.entity(db_client=db_client).name,
+                species=init.morphology.entity(db_client=db_client).subject.species.name,
+                brain_region=init.morphology.entity(db_client=db_client).brain_region.name,
                 iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
@@ -203,7 +205,7 @@ class EModelOptimizationTask(Task):
         """Download morphology SWC and return the filename."""
         morph_dir = coord_root / "morphologies"
         morph_dir.mkdir(parents=True, exist_ok=True)
-        morph_entity = self.config.morphology_selection.morphology
+        morph_entity = self.config.initialize.morphology
         swc_content = morph_entity.swc_file_content(db_client=db_client)
         # Use entity ID as filename base
         morph_id = morph_entity.id_str
@@ -226,32 +228,17 @@ class EModelOptimizationTask(Task):
             len(self.config.parameters_selection.ion_channel_models),
         )
 
-    def _stage_params(self, coord_root: Path, db_client: entitysdk.client.Client) -> Path:
-        """Stage params file and return the full Path to it."""
-        from entitysdk.types import AssetLabel  # noqa: PLC0415
+    @staticmethod
+    def _stage_params(coord_root: Path) -> Path:
+        """Stage the params file and return the full Path to it.
 
+        Builds the BluePyEModel params file from the selected ion channel models.
+        """
         params_dir = coord_root / "config" / "params"
         params_dir.mkdir(parents=True, exist_ok=True)
-        params_filename = "params.json"
-
-        # Params-template mode: download params.json from the selected TaskConfig entity
-        if self.config.use_params_file:
-            params_template = self.config.params_file.params_template
-            downloaded_path = params_template.download_asset_by_label(
-                asset_label=AssetLabel.task_config,
-                dest_dir=params_dir,
-                db_client=db_client,
-            )
-            # Rename to params.json if the downloaded file has a different name
-            if downloaded_path.name != params_filename:
-                target = params_dir / params_filename
-                downloaded_path.rename(target)
-                return target
-            L.info("Staged params file from TaskConfig entity.")
-            return downloaded_path
 
         # Dynamic builder mode: TODO - build from ion channel models
-        params_path = params_dir / params_filename
+        params_path = params_dir / "params.json"
         if not params_path.exists():
             params_path.write_text(
                 json.dumps({"mechanisms": [], "distributions": {}, "parameters": []}, indent=4),
@@ -292,7 +279,7 @@ class EModelOptimizationTask(Task):
         Uses the first m-type if multiple are available. Returns None when
         the morphology has no m-types, which is acceptable for optimisation.
         """
-        morph_entity = self.config.morphology_selection.morphology
+        morph_entity = self.config.initialize.morphology
         entity = morph_entity.entity(db_client=db_client)
         if hasattr(entity, "mtypes") and entity.mtypes:
             return str(entity.mtypes[0].pref_label)  # ty:ignore[union-attr]
@@ -445,9 +432,11 @@ class EModelOptimizationTask(Task):
         seed = int(self.config.optimization_settings.seed)  # ty:ignore[invalid-argument-type]
 
         # --- Gather metadata ---
-        morph_entity = self.config.morphology_selection.morphology.entity(db_client=db_client)
-        brain_region_entity = init.brain_region.entity(db_client=db_client)
-        species_entity = init.species.entity(db_client=db_client)
+        # Species and brain region come from the morphology entity, so the
+        # registered emodel/me-model inherit the morphology's provenance.
+        morph_entity = self.config.initialize.morphology.entity(db_client=db_client)
+        brain_region_entity = morph_entity.brain_region
+        species_entity = morph_entity.subject.species
 
         # Fetch license (CC-BY-4.0)
         license_entity = db_client.search_entity(
