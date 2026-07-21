@@ -201,47 +201,31 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
-        import numpy as np  # noqa: PLC0415
-        from bluerecording import compute_weights  # noqa: PLC0415 # ty:ignore[unresolved-import]
-        from bluerecording.weights import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
-            Electrode,
-            ElectrodeType as BlueRecordingElectrodeType,
-            save_weights,
+        from obi_one.scientific.tasks.create_recording_array.process import (  # noqa: PLC0415
+            compile_mechanisms,
+            run_bluerecording_write_weights,
+            write_electrode_json,
         )
-
-        # Build the electrode array from every electrode-locations block in the dictionary, using
-        # each block's global coordinates (origin and direction applied). Electrode names are
-        # prefixed with the block name so electrodes from different blocks stay distinct.
-        electrodes = [
-            Electrode(
-                name=f"{block_name}_electrode_{i}",
-                position=np.array(loc, dtype=float),
-                type=BlueRecordingElectrodeType.POINT_SOURCE,
-            )
-            for block_name, locations in self.config.electrode_locations.items()
-            for i, loc in enumerate(locations.get_global_electrode_xyz_locations())
-        ]
 
         circuit_config_path = Path(self._circuit.path)
-        weights, positions_df, cols, neurite_types, population_name = compute_weights(
-            path_to_config=circuit_config_path,
-            electrodes=electrodes,
-            replace_axons=True,
+
+        compiled_env = compile_mechanisms(
+            circuit_config_path,
+            self.config.coordinate_output_root / "compiled_mods",
         )
-        L.info("weights shape: %s", weights.shape if weights is not None else None)
-        L.info("positions_df shape: %s", positions_df.shape)
-        L.info("cols shape: %s", cols.shape)
-        L.info("neurite_types shape: %s", neurite_types.shape)
-        L.info("population_name: %s", population_name)
+
+        electrode_json_path = write_electrode_json(
+            self.config.electrode_locations,
+            self.config.initialize.calculation_method,
+            self.config.coordinate_output_root / "electrodes.json",
+        )
 
         weights_output_path = self.config.coordinate_output_root / "weights.h5"
-        save_weights(
-            weights=weights,
-            cols=cols,
-            population_name=population_name,
-            outputfile=str(weights_output_path),
-            electrodes=electrodes,
-            neurite_types=neurite_types,
+        run_bluerecording_write_weights(
+            circuit_config_path,
+            electrode_json_path,
+            weights_output_path,
+            env=compiled_env,
         )
         L.info("Weights saved to: %s", weights_output_path)
 

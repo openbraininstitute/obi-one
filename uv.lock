@@ -314,7 +314,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/ee/08/7e02f9e347c6a9b22
 
 [[package]]
 name = "bluerecording"
-version = "0.4.6"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -326,9 +326,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/95/8fdb476a9b514f9ce7a194cc986be116268a7f396eafab7b44f78698c2f0/bluerecording-0.4.6.tar.gz", hash = "sha256:62e59551256c7b2c9fb5c1daf5d05fc2a234fd0b61111be357f643f1c5d98fb2", size = 20102, upload-time = "2026-06-29T13:07:39.003Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/3f/1cbdd46084d19ac60d81dc2ae77e9ac0a58eeafb94bc2c041580b7a8b46d/bluerecording-0.6.1.tar.gz", hash = "sha256:6618b353f252156ea5b813596fd6ac31f8f5713db2aa69e92e9f1aa3d2f0386a", size = 25699, upload-time = "2026-07-17T15:03:48.003Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/86/05a52ef802fe9690a2a2a66a960e3e31f6fd6c374202c30f765cab6c0363/bluerecording-0.4.6-py3-none-any.whl", hash = "sha256:4e09eeabe8d38e059ab5d13b0953e6cf9b302f288fb8d5a66f453249ac01398a", size = 22124, upload-time = "2026-06-29T13:07:37.771Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/8c/57f793b3b9b442e1804c08533981b8ed9575f520c42746412f384c7f012d/bluerecording-0.6.1-py3-none-any.whl", hash = "sha256:369f0d5dd8ef9e37d72eec58a8545117c7318b88db6e827209318be6b3ba74b2", size = 29260, upload-time = "2026-07-17T15:03:46.999Z" },
 ]
 
 [[package]]
@@ -2014,7 +2014,7 @@ wheels = [
 
 [[package]]
 name = "neurodamus"
-version = "4.2.2"
+version = "4.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -2024,9 +2024,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/c6/8876703503cd8c08f200ca6b35d1017b2b41c3e2088de0251df13a294a33/neurodamus-4.2.2.tar.gz", hash = "sha256:41c74b2a8fafe252d3984a7a003a3e79b0a7c8bc4e4a00f266c6c708fe7d3bc8", size = 191926, upload-time = "2026-05-20T11:56:44.763Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/4a/1e80f008a54b6161aeccc0176b3756bac51f84e9daa2dc528f07e4d22d7c/neurodamus-4.2.4.tar.gz", hash = "sha256:02342a6f00138d925290509c1916ad0bcfdcffa46b606757dc7265d4c6cfee95", size = 200411, upload-time = "2026-06-30T14:14:44.347Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/c6/07dbe4fde2a221bded4a95010e7504f62bcb5c0dbc1af6031ace2de9eeca/neurodamus-4.2.2-py3-none-any.whl", hash = "sha256:8c6d47b4fafadf684b1c509c081fe3805c51e490bdecb45c1a5b2c2bdf82edcd", size = 222948, upload-time = "2026-05-20T11:56:43.207Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/46/ec10be77a49eb1a5129114d260a7033fb2e5cc9a7a29b094891930af63ee/neurodamus-4.2.4-py3-none-any.whl", hash = "sha256:8ae1286bb6d91c100fc81151b793d700237cc07f3960ce08b87fc1afd712e076", size = 235518, upload-time = "2026-06-30T14:14:42.69Z" },
 ]
 
 [[package]]
@@ -2283,7 +2283,7 @@ requires-dist = [
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
     { name = "bluepysnap", specifier = ">=3.0.5" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.6.1" },
     { name = "brainbuilder", specifier = ">=0.20.4" },
     { name = "brian2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
