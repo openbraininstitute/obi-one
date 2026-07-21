@@ -6,21 +6,17 @@ from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.units import Units
-from obi_one.scientific.from_id.brain_region_from_id import BrainRegionFromID
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.from_id.species_from_id import SpeciesFromID
-from obi_one.scientific.from_id.task_config_from_id import TaskConfigFromID
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 
 
 class OptimizationInitialize(Block):
     """Entity-based inputs for the optimisation stage."""
 
-    extraction_task_result: TaskResultFromID = Field(
-        title="Extraction TaskResult",
+    target_efeatures: TaskResultFromID = Field(
+        title="Target EFeatures",
         description=(
             "TaskResult entity from the 01_efeature_extraction stage. Assets"
             " (extracted features, recipes, targets config) are downloaded from"
@@ -34,25 +30,14 @@ class OptimizationInitialize(Block):
         description="Top-level key in ``recipes.json`` to operate on (e.g. ``L5PC``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
-    species: SpeciesFromID = Field(
-        title="Species",
-        description="Species entity selected from the database.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
-            SchemaKey.ENTITY_QUERY: {
-                "type": "species",
-            },
-        },
-    )
-    brain_region: BrainRegionFromID = Field(
-        title="Brain region",
-        description="Brain region entity selected from the database.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
-            SchemaKey.ENTITY_QUERY: {
-                "type": "brain-region",
-            },
-        },
+    morphology: CellMorphologyFromID = Field(
+        title="Cell morphology",
+        description=(
+            "Morphology entity whose SWC/ASC asset is staged into"
+            " ``./morphologies/``. The m-type, species and brain region are all"
+            " derived from this entity."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
     )
     etype: ETypeClassFromID = Field(
         title="E-type",
@@ -63,19 +48,6 @@ class OptimizationInitialize(Block):
                 "type": "etype",
             },
         },
-    )
-
-
-class MorphologySelection(Block):
-    """Morphology entity selection for the optimisation stage."""
-
-    morphology: CellMorphologyFromID = Field(
-        title="Cell morphology",
-        description=(
-            "Morphology entity whose SWC/ASC asset will be staged into"
-            " ``./morphologies/``. The m-type is derived from this entity."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
     )
 
 
@@ -92,93 +64,6 @@ class ParametersSelection(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
     )
-
-
-class ParamsFileSelection(Block):
-    """Params-file mode — select a pre-built BluePyEModel params JSON from a TaskConfig entity.
-
-    The TaskConfig must have ``task_config_type=emodel_optimization__config``
-    and contain a ``params.json`` asset with the standard BluePyEModel
-    params structure (top-level keys: ``mechanisms``, ``distributions``,
-    ``parameters``).
-    """
-
-    params_template: TaskConfigFromID | None = Field(
-        default=None,
-        title="Params template",
-        description=(
-            "Select a pre-built BluePyEModel params template from the database."
-            " If set, this takes precedence over the dynamic builder."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
-            SchemaKey.ENTITY_QUERY: {
-                "type": "task_config",
-                "task_config_type": "emodel_optimization__config",
-            },
-        },
-    )
-
-
-def validate_params_file(params: dict) -> None:  # noqa: C901, PLR0912
-    """Validate the structure of a BluePyEModel params dictionary.
-
-    Raises :class:`OBIONEError` if the structure is invalid.
-    """
-    from obi_one.core.exception import OBIONEError  # noqa: PLC0415
-
-    required_keys = {"mechanisms", "distributions", "parameters"}
-    missing = required_keys - set(params)
-    if missing:
-        msg = (
-            f"Params file is missing required top-level keys: {sorted(missing)}."
-            f" Expected keys: {sorted(required_keys)}."
-        )
-        raise OBIONEError(msg)
-
-    distributions = params.get("distributions", {})
-    if not isinstance(distributions, dict):
-        msg = f"'distributions' must be a dict, got {type(distributions).__name__}."
-        raise OBIONEError(msg)
-
-    dist_names = set(distributions.keys())
-
-    parameters = params.get("parameters", [])
-    if isinstance(parameters, dict):
-        param_sections = parameters.items()
-    elif isinstance(parameters, list):
-        param_sections = [("__root__", parameters)]
-    else:
-        msg = f"'parameters' must be a list or dict, got {type(parameters).__name__}."
-        raise OBIONEError(msg)
-
-    for section, section_params in param_sections:
-        if section.startswith("__"):
-            continue
-        if not isinstance(section_params, list):
-            msg = (
-                f"Parameter section '{section}' must be a list,"
-                f" got {type(section_params).__name__}."
-            )
-            raise OBIONEError(msg)
-        for i, param in enumerate(section_params):
-            if not isinstance(param, dict):
-                msg = f"Parameter '{section}[{i}]' must be a dict, got {type(param).__name__}."
-                raise OBIONEError(msg)
-            if "name" not in param:
-                msg = f"Parameter '{section}[{i}]' is missing required key 'name'."
-                raise OBIONEError(msg)
-            if "val" not in param:
-                msg = f"Parameter '{param.get('name', i)}' is missing required key 'val'."  # ty:ignore[no-matching-overload]
-                raise OBIONEError(msg)
-            dist = param.get("dist")  # ty:ignore[invalid-argument-type]
-            if dist is not None and dist not in dist_names:
-                msg = (
-                    f"Parameter '{param['name']}' references distribution '{dist}'"  # ty:ignore[invalid-argument-type]
-                    f" which is not defined in 'distributions'"
-                    f" (available: {sorted(dist_names)})."
-                )
-                raise OBIONEError(msg)
 
 
 class OptimizationParams(Block):
