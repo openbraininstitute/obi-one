@@ -14,6 +14,7 @@ from functools import partial, singledispatch
 from pathlib import Path
 
 import bluepysnap
+import bluepysnap.frame_report
 import bluepysnap.input
 import brian2
 import brian2.units
@@ -42,6 +43,7 @@ class Brian2Network(BaseModel):
     neurons: list[brian2.NeuronGroup]
     synapses: list[brian2.Synapses]
     spike_monitor: brian2.SpikeMonitor
+    state_monitor: brian2.StateMonitor | None
     inputs: list
 
 
@@ -408,6 +410,45 @@ def _get_inputs(
     return n0, inputs
 
 
+def _get_reports(
+    simulation: bluepysnap.Simulation, neurons: brian2.NeuronGroup
+) -> brian2.StateMonitor | None:
+    """Get voltage reports."""
+    node_sets = simulation.node_sets.to_libsonata
+    population = simulation.circuit.nodes[
+        _get_single_node_population(simulation.circuit)
+    ].to_libsonata
+
+    selection = libsonata.Selection([])
+    for name, report in simulation.reports.items():
+        if isinstance(report, bluepysnap.frame_report.SomaReport):
+            config = report.to_libsonata
+            if config.sections != libsonata.SimulationConfig.Report.Sections.soma:
+                msg = f"only sections == `soma` is supported, found: `{config.sections}`"
+                raise RuntimeError(msg)
+            if config.variable_name != "v":
+                msg = "`variable_name`s other than `v` are not supported"
+                raise RuntimeError(msg)
+            if config.dt != simulation.run.dt:
+                msg = "`dt` other than simulation.run.dt are not supported"
+                raise RuntimeError(msg)
+            if not config.enabled:
+                L.warning("Skipping report: `%s` since not enabled", name)
+
+            if node_set := config.cells or simulation.to_libsonata.node_set:
+                selection |= node_sets.materialize(node_set, population)
+            else:
+                selection = population.select_all()
+        else:
+            msg = f"`{type(report)}` report type not handled, named {name}"
+            raise TypeError(msg)
+
+    if not selection:
+        return None
+
+    return brian2.StateMonitor(neurons, ["v"], record=np.sort(selection.flatten()))
+
+
 def _write_spikes(
     filepath: Path,
     population_name: str,
@@ -554,48 +595,133 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
 
     spike_monitor = brian2.SpikeMonitor(neurons)
 
+    state_monitor = _get_reports(simulation, neurons)
+
     neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
 
     net = Brian2Network(
-        neurons=[neurons], synapses=[synapses], spike_monitor=spike_monitor, inputs=inputs
+        neurons=[neurons],
+        synapses=[synapses],
+        spike_monitor=spike_monitor,
+        inputs=inputs,
+        state_monitor=state_monitor,
     )
 
     return net
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
+def _write_soma_report(
+    output_path: Path,
+    name: str,
+    node_ids: np.ndarray,
+    values: np.ndarray,
+    unit: brian2.units.Unit,
+    start: float,
+    end: float,
+    dt: float,
+) -> None:
+    """Ibid."""
+    values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
+    string_dtype = h5py.special_dtype(vlen=str)
+    with h5py.File(output_path, "w") as h5f:
+        g = h5f.create_group(f"/report/{name}")
+        g.create_dataset("data", data=values.T / unit, dtype=np.float32).attrs.create(
+            "units", data=str(unit), dtype=string_dtype
+        )
+        mapping = h5f.create_group(f"/report/{name}/mapping")
+        mapping.create_dataset("node_ids", data=node_ids, dtype=np.uint64)
+        mapping.create_dataset(
+            "index_pointers", data=np.arange(values.shape[0] + 1), dtype=np.uint64
+        )
+        mapping.create_dataset("element_ids", data=np.zeros(values.shape[0]), dtype=np.uint32)
+        mapping.create_dataset("time", data=(start, end, dt), dtype=np.double).attrs.create(
+            "units", data="ms", dtype=string_dtype
+        )
+
+
+def _write_reports(
+    simulation: bluepysnap.Simulation,
+    spike_monitor: brian2.SpikeMonitor,
+    state_monitor: brian2.StateMonitor | None,
+) -> None:
+    """Ibid."""
+    output_dir = Path(simulation.output.output_dir)
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    spikes = [
+        (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
+    ]
+
+    node_ids, timestamps = zip(*spikes, strict=True) if spikes else ((), ())
+    L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
+    Path(simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
+    _write_spikes(
+        filepath=simulation.output.spikes_file,
+        population_name=_get_single_node_population(simulation.circuit),
+        timestamps=timestamps,
+        node_ids=node_ids,
+    )
+
+    if state_monitor is None:
+        return
+
+    node_sets = simulation.node_sets.to_libsonata
+    population_name = _get_single_node_population(simulation.circuit)
+    population = simulation.circuit.nodes[population_name].to_libsonata
+
+    for report in simulation.reports.values():
+        if not isinstance(report, bluepysnap.frame_report.SomaReport):
+            continue
+
+        config = report.to_libsonata
+        if not config.enabled:
+            continue
+
+        if node_set := config.cells or simulation.to_libsonata.node_set:
+            selection = node_sets.materialize(node_set, population)
+        else:
+            selection = population.select_all()
+
+        ids = np.sort(selection.flatten())
+
+        Path(config.file_name).parent.mkdir(exist_ok=True, parents=True)
+
+        _write_soma_report(
+            config.file_name,
+            population_name,
+            ids,
+            state_monitor.v[ids, :],
+            unit=brian2.units.mV,
+            start=config.start_time,
+            end=min(config.end_time, simulation.run.tstop),
+            dt=simulation.run.dt,
+        )
+
+
+def run_sonata_brian2_trial(simulation_config_path: Path) -> None:
     """Returns the path to the spikes file."""
     simulation = bluepysnap.Simulation(simulation_config_path)
 
     brian2.start_scope()
     net = _build_brian2_network(simulation)
 
-    network = brian2.Network(net.neurons, net.synapses, net.spike_monitor, *net.inputs)
+    network = brian2.Network(
+        net.neurons,
+        net.synapses,
+        net.spike_monitor,
+        *net.inputs,
+        *([] if net.state_monitor is None else [net.state_monitor]),
+    )
 
     L.info(
         "Running simulation with `%s` backend",
         brian2.prefs.codegen.target,
     )
 
+    L.info("Running simulation")
     network.run(duration=simulation.run.tstop * brian2.units.ms)
 
-    output_dir = Path(simulation.output.output_dir)
-    output_dir.mkdir(exist_ok=True, parents=True)
-
-    spikes = [
-        (k, v / brian2.units.ms) for k, vs in net.spike_monitor.spike_trains().items() for v in vs
-    ]
-
-    node_ids, timestamps = zip(*spikes, strict=True) if spikes else ((), ())
-    L.info("%d neurons spiked %d times", len(net.spike_monitor.spike_trains()), len(node_ids))
-    (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
-    spikes_path = _write_spikes(
-        filepath=output_dir / simulation.output.spikes_file,
-        population_name=_get_single_node_population(simulation.circuit),
-        timestamps=timestamps,
-        node_ids=node_ids,
-    )
-    return spikes_path
+    _write_reports(simulation, net.spike_monitor, net.state_monitor)
 
 
 @click.group()
@@ -701,7 +827,7 @@ def sonata_main(
         activity_id=simulation_execution_id,
         activity_type=models.SimulationExecution,
     ):
-        spikes_report_filepath = run_sonata_brian2_trial(simulation_config_file)
+        run_sonata_brian2_trial(simulation_config_file)
 
     L.info("Registering simulation result")
     simulation_result = client.register_entity(
@@ -711,15 +837,27 @@ def sonata_main(
             simulation_id=simulation_id,
         )
     )
-    if spikes_report_filepath:
-        L.info("Uploading assets for simulation")
-        assert simulation_result.id
+    L.info("Uploading assets for simulation")
+    assert simulation_result.id
+
+    simulation_config = libsonata.SimulationConfig.from_file(simulation_config_file)
+
+    client.upload_file(
+        entity_id=simulation_result.id,
+        entity_type=models.SimulationResult,
+        file_path=Path(simulation_config.output.output_dir) / simulation_config.output.spikes_file,
+        file_content_type=ContentType.application_x_hdf5,
+        asset_label=AssetLabel.spike_report,
+    )
+
+    for name in simulation_config.list_report_names:
+        report = simulation_config.report(name)
         client.upload_file(
             entity_id=simulation_result.id,
             entity_type=models.SimulationResult,
-            file_path=spikes_report_filepath,
+            file_path=Path(report.file_name),
             file_content_type=ContentType.application_x_hdf5,
-            asset_label=AssetLabel.spike_report,
+            asset_label=AssetLabel.voltage_report,
         )
 
     L.info("Updating simulation execution")
