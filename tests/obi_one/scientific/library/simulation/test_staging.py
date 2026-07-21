@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.simulation import staging as test_module
 from obi_one.scientific.library.simulation.schemas import (
@@ -103,29 +102,6 @@ def test_stage_memodel_as_circuit_from_id(monkeypatch, tmp_path):
         output_dir=mock_output_dir,
     )
     mock_build_circuit.assert_called_once_with(circuit_config_path)
-
-
-def test_stage_memodel_with_synapses_as_circuit_from_id(tmp_path):
-    mock_client = MagicMock()
-    staged_circuit = MagicMock()
-
-    with patch.object(
-        MEModelWithSynapsesCircuitFromID,
-        "stage_circuit",
-        return_value=staged_circuit,
-    ) as mock_stage:
-        circuit = test_module.stage_memodel_with_synapses_as_circuit(
-            client=mock_client,
-            circuit=MEModelWithSynapsesCircuitFromID(id_str="circuit-id"),
-            output_dir=tmp_path / "circuit",
-        )
-
-    assert circuit is staged_circuit
-    mock_stage.assert_called_once_with(
-        db_client=mock_client,
-        dest_dir=tmp_path / "circuit",
-        entity_cache=False,
-    )
 
 
 @pytest.mark.parametrize(
