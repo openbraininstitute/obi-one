@@ -78,8 +78,8 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            BiophysicalNeuronSetReference.__name__: (default_node_set_name),
-            PointNeuronSetReference.__name__: (default_point_node_set_name,),
+            BiophysicalNeuronSetReference.__name__: default_node_set_name,
+            PointNeuronSetReference.__name__: default_point_node_set_name,
         },
     }
 
