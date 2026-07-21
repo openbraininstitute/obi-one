@@ -230,7 +230,6 @@ class OptimizationSettings(Block):
         description="Hard wall-clock limit per optimisation run.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.SECONDS,
         },
     )
     validation_threshold: PositiveFloat | list[PositiveFloat] = Field(
