@@ -6,6 +6,7 @@ import click
 import uvicorn
 
 from app.config import settings
+from app.sentry import init_sentry
 
 
 @click.group()
@@ -23,4 +24,5 @@ def run(*, host: str, port: int, reload: bool) -> None:
     uvicorn.run("app.application:app", host=host, port=port, reload=reload)
 
 
+init_sentry()
 cli()
