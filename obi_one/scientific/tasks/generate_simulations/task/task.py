@@ -145,6 +145,7 @@ class GenerateSimulationTask(Task):
                     self.config.initialize.simulation_length,
                     self.config.default_node_set_name,
                     db_client,
+                    sonata_simulation_config_directory=self.config.coordinate_output_root,
                 )
             )
 
