@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # ruff: noqa: S101
 import contextlib
+import heapq
 import logging
 import math
 import os
@@ -8,7 +9,7 @@ import re
 import tempfile
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timezone
 from functools import partial, singledispatch
 from pathlib import Path
@@ -37,14 +38,25 @@ L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 
 
+class Event(BaseModel):
+    at: float  # time during the simulation that Event fires (in ms)
+    func: Callable  # function to call at time `at`
+
+    def __lt__(self, other: "Event") -> bool:
+        """The at which the event should fire is used to sort in the heapq."""
+        return self.at < other.at
+
+
 class Brian2Network(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    neurons: list[brian2.NeuronGroup]
-    synapses: list[brian2.Synapses]
+    neurons: brian2.NeuronGroup
+    synapses: brian2.Synapses
     spike_monitor: brian2.SpikeMonitor
     state_monitor: brian2.StateMonitor | None
     inputs: list
+    report_id_mapping: np.ndarray
+    events: list[Event]
 
 
 class CurrentStimulator(ABC):
@@ -412,7 +424,7 @@ def _get_inputs(
 
 def _get_reports(
     simulation: bluepysnap.Simulation, neurons: brian2.NeuronGroup
-) -> brian2.StateMonitor | None:
+) -> tuple[brian2.StateMonitor | None, np.ndarray]:
     """Get voltage reports."""
     node_sets = simulation.node_sets.to_libsonata
     population = simulation.circuit.nodes[
@@ -444,9 +456,12 @@ def _get_reports(
             raise TypeError(msg)
 
     if not selection:
-        return None
+        return None, np.array([])
 
-    return brian2.StateMonitor(neurons, ["v"], record=np.sort(selection.flatten()))
+    ids = np.sort(selection.flatten())
+    id_mapping = np.zeros(ids[-1] + 1, dtype=np.min_scalar_type(ids[-1]))
+    id_mapping[ids] = np.arange(len(ids))
+    return brian2.StateMonitor(neurons, ["v"], record=ids), id_mapping
 
 
 def _write_spikes(
@@ -542,6 +557,7 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
 def _create_synapses(
     circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup
 ) -> tuple[brian2.Synapses, SynapseTemplate]:
+    """Create synapses for circuit; all synapses are instantiated."""
     assert len(circuit.edges.population_names) == 1, "Only one population supported"
     edges = circuit.edges[next(iter(circuit.edges.population_names))]
     edge_pop = edges.to_libsonata
@@ -570,11 +586,14 @@ def _create_synapses(
         neurons,
         model=synapse_template.params.model,
         on_pre=synapse_template.params.on_pre,
-        delay=None
-        if synapse_template.params.delay is None
-        else synapse_template.params.delay.get(),
     )
     syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
+
+    syn.pre.delay = (
+        0.0 * brian2.units.ms
+        if synapse_template.params.delay is None
+        else synapse_template.params.delay.get()
+    )
 
     for name, unit in synapse_template.dynamics.items():
         values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
@@ -583,11 +602,76 @@ def _create_synapses(
     return syn, synapse_template
 
 
+class ConnectionOverride:
+    def __init__(
+        self, config: libsonata.SimulationConfig.ConnectionOverride, sim_config_path: Path
+    ) -> None:
+        """Ibid."""
+        if config.spont_minis is not None:
+            msg = "connection_overrides::spont_minis is not supported"
+            raise RuntimeError(msg)
+        if config.synapse_configure is not None:
+            msg = "connection_overrides::synapse_configure is not supported"
+            raise RuntimeError(msg)
+        if config.modoverride is not None:
+            msg = "connection_overrides::modoverride is not supported"
+            raise RuntimeError(msg)
+        if config.neuromodulation_dtc is not None:
+            msg = "connection_overrides::neuromodulation_dtc is not supported"
+            raise RuntimeError(msg)
+        if config.neuromodulation_strength is not None:
+            msg = "connection_overrides::neuromodulation_strength is not supported"
+            raise RuntimeError(msg)
+
+        self.config = config
+        self.sim_config_path = sim_config_path
+
+    @property
+    def at(self) -> float:
+        """Time at which the override should start, in ms."""
+        return self.config.delay
+
+    def __call__(self, net: Brian2Network) -> None:
+        simulation = bluepysnap.Simulation(self.sim_config_path)
+        circuit = simulation.circuit
+        node_sets = simulation.node_sets.to_libsonata
+
+        nodes = circuit.nodes[next(iter(circuit.nodes.population_names))].to_libsonata
+
+        src_ids = node_sets.materialize(self.config.source, nodes)
+        tgt_ids = node_sets.materialize(self.config.target, nodes)
+
+        edges = circuit.edges[next(iter(circuit.edges.population_names))]
+        edge_pop = edges.to_libsonata
+        # All synapses have been instantiated, so we can index using the `connecting_edges`
+        selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
+
+        if self.config.weight is not None:
+            net.synapses.w[selection.flatten()] = self.config.weight * brian2.units.mV
+
+        if self.config.synapse_delay_override is not None:
+            net.synapses.delay[selection.flatten()] = (
+                self.config.synapse_delay_override * brian2.units.ms
+            )
+
+
+def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Event]:
+    """Get `connection_overrides` SONATA configuration blocks and make Events."""
+    ret = []
+
+    for connection_override in simulation.to_libsonata.connection_overrides():
+        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # noqa: SLF001
+        ret.append(Event(at=co.at, func=co))
+
+    return ret
+
+
 def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     brian2.defaultclock.dt = simulation.run.dt * brian2.units.ms
     brian2.seed(simulation.run.random_seed)
 
     current_inputs = Inputs(simulation)
+    events = _gather_connection_overrides(simulation)
 
     neurons = _create_neurons(simulation, current_inputs)
 
@@ -595,16 +679,18 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
 
     spike_monitor = brian2.SpikeMonitor(neurons)
 
-    state_monitor = _get_reports(simulation, neurons)
+    state_monitor, report_id_mapping = _get_reports(simulation, neurons)
 
     neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
 
     net = Brian2Network(
-        neurons=[neurons],
-        synapses=[synapses],
+        neurons=neurons,
+        synapses=synapses,
         spike_monitor=spike_monitor,
         inputs=inputs,
         state_monitor=state_monitor,
+        report_id_mapping=report_id_mapping,
+        events=events,
     )
 
     return net
@@ -620,7 +706,7 @@ def _write_soma_report(
     end: float,
     dt: float,
 ) -> None:
-    """Ibid."""
+    """Write soma report in SONATA format."""
     values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
     string_dtype = h5py.special_dtype(vlen=str)
     with h5py.File(output_path, "w") as h5f:
@@ -643,8 +729,9 @@ def _write_reports(
     simulation: bluepysnap.Simulation,
     spike_monitor: brian2.SpikeMonitor,
     state_monitor: brian2.StateMonitor | None,
+    report_id_mapping: np.ndarray,
 ) -> None:
-    """Ibid."""
+    """Write all reports configured in `simulation`."""
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
@@ -690,7 +777,7 @@ def _write_reports(
             config.file_name,
             population_name,
             ids,
-            state_monitor.v[ids, :],
+            state_monitor.v[report_id_mapping[ids], :],
             unit=brian2.units.mV,
             start=config.start_time,
             end=min(config.end_time, simulation.run.tstop),
@@ -698,7 +785,7 @@ def _write_reports(
         )
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path) -> None:
+def run_sonata_brian2_trial(simulation_config_path: Path) -> Brian2Network:
     """Returns the path to the spikes file."""
     simulation = bluepysnap.Simulation(simulation_config_path)
 
@@ -719,9 +806,23 @@ def run_sonata_brian2_trial(simulation_config_path: Path) -> None:
     )
 
     L.info("Running simulation")
-    network.run(duration=simulation.run.tstop * brian2.units.ms)
 
-    _write_reports(simulation, net.spike_monitor, net.state_monitor)
+    queue = list(net.events)
+    heapq.heapify(queue)
+
+    current_t = 0.0
+    while current_t < simulation.run.tstop:
+        next_t = min(queue[0].at, simulation.run.tstop) if queue else simulation.run.tstop
+        network.run((next_t - current_t) * brian2.units.ms)
+        current_t = next_t
+
+        while queue and queue[0].at <= current_t:
+            event = heapq.heappop(queue)
+            event.func(net)
+
+    _write_reports(simulation, net.spike_monitor, net.state_monitor, net.report_id_mapping)
+
+    return net
 
 
 @click.group()
