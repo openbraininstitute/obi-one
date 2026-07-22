@@ -6,6 +6,7 @@ import entitysdk.client
 import entitysdk.exception
 from entitysdk.models.circuit import Circuit
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
@@ -24,11 +25,40 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.memodel_circuit import (
     try_get_mechanism_variables,
 )
+from obi_one.scientific.library.neuronal_manipulation_properties import (
+    get_circuit_manipulation_properties,
+    get_circuit_node_ids,
+)
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    NEURONSimulationNeuronSetUnion,
+)
 
 L = logging.getLogger(__name__)
 
 INPUT_RESISTANCE_DYNAMIC_PARAM = "input_resistance"
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
+
+
+# --- Schemas for neuronal manipulation endpoints ---
+
+
+class NodeIdsRequest(BaseModel):
+    """Request body for resolving a neuron set to node IDs."""
+
+    neuron_set: NEURONSimulationNeuronSetUnion
+
+
+class NodeIdsResponse(BaseModel):
+    """Response for resolved node IDs per population."""
+
+    node_ids_per_population: dict[str, list[int]]
+
+
+class NeuronalManipulationPropertiesRequest(BaseModel):
+    """Request body for neuronal manipulation properties."""
+
+    entity_id: str
+    neuron_set: NEURONSimulationNeuronSetUnion | None = None
 
 
 @router.get(
@@ -264,3 +294,79 @@ def mapped_circuit_properties_endpoint(
         }
 
     return mapped_circuit_properties
+
+
+# --- Neuronal manipulation endpoints ---
+
+
+@router.post(
+    "/circuit/{circuit_id}/node-ids",
+    summary="Resolve neuron set to node IDs",
+    description="Returns the node IDs for a given neuron set selection in a circuit.",
+)
+def neuron_set_node_ids(
+    circuit_id: str,
+    request: NodeIdsRequest,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> NodeIdsResponse:
+    try:
+        ids_per_population = get_circuit_node_ids(
+            db_client=db_client,
+            circuit_id=circuit_id,
+            neuron_set=request.neuron_set,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": f"Internal error resolving node IDs for circuit {circuit_id}.",
+            },
+        ) from err
+    return NodeIdsResponse(node_ids_per_population=ids_per_population)
+
+
+@router.post(
+    "/neuronal-manipulation-properties",
+    summary="Neuronal manipulation properties",
+    description="Returns mechanism variables for neuronal manipulation blocks. "
+    "Supports both MEModel (single cell) and Circuit (multi-cell) entities.",
+)
+def neuronal_manipulation_properties_endpoint(
+    request: NeuronalManipulationPropertiesRequest,
+    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+) -> dict:
+    # Try MEModel path first
+    memodel_result = try_get_mechanism_variables(
+        db_client=db_client,
+        entity_id=request.entity_id,
+    )
+    if memodel_result is not None:
+        return {
+            "entity_type": "memodel",
+            CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: memodel_result,
+        }
+
+    # Circuit path
+    try:
+        result = get_circuit_manipulation_properties(
+            db_client=db_client,
+            circuit_id=request.entity_id,
+            neuron_set=request.neuron_set,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
+    except entitysdk.exception.EntitySDKError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.INTERNAL_ERROR,
+                "detail": (
+                    f"Internal error retrieving manipulation properties for {request.entity_id}."
+                ),
+            },
+        ) from err
+
+    return result

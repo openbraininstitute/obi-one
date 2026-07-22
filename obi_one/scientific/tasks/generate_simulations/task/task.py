@@ -233,6 +233,12 @@ class GenerateSimulationTask(Task):
                 if isinstance(neuron_set, CombinedBaseNeuronSet):
                     self._ensure_combined_neuron_set_has_references(neuron_set)
 
+            if hasattr(self.config, "neuronal_manipulations"):
+                for manipulation in self.config.neuronal_manipulations.values():  # ty:ignore[unresolved-attribute]
+                    self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
+                        manipulation
+                    )
+
     def _ensure_combined_neuron_set_has_references(self, neuron_set: CombinedBaseNeuronSet) -> None:
         """Ensure a combined neuron set's base and combined_with references are filled."""
         default_ref = self._default_neuron_set_ref_for_population_type(
