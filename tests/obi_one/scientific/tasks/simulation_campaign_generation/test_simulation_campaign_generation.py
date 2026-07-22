@@ -854,8 +854,23 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
 def test_continuous_stimulus_exposes_single_target_field():
     fields = obi.ConstantCurrentClampSomaticStimulus.model_fields
     reference_types = fields["neuron_set"].json_schema_extra[SchemaKey.REFERENCE_TYPES]
+    morphology_locations_ref_schema = MorphologyLocationsReference.model_json_schema()
 
     assert fields["neuron_set"].title == "Target"
     assert "MorphologyLocationsReference" in reference_types
+    assert "RandomMorphologyLocations" in morphology_locations_ref_schema["allowed_block_types"]
     assert "locations" not in fields
     assert "compartment_set" not in fields
+
+
+def test_continuous_stimulus_infers_morphology_locations_target_reference_type():
+    stimulus = obi.ConstantCurrentClampSomaticStimulus.model_validate(
+        {
+            "neuron_set": {
+                "block_dict_name": "morphology_locations",
+                "block_name": "Location Target",
+            }
+        }
+    )
+
+    assert isinstance(stimulus.neuron_set, MorphologyLocationsReference)

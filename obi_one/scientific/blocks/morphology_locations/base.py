@@ -10,14 +10,12 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
+    MorphologySourceMappedProperties,
 )
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
 )
-
-type SectionType = Literal[2, 3, 4]
-type SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]]
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
@@ -53,25 +51,24 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     )
 
     number_of_locations: int | list[int] = Field(
-        default=1,
+        default=20,
         title="Number of Locations",
         description="Number of locations to generate on morphology.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-
-    section_types: SectionTypes = Field(
-        default=(2, 3, 4),
+    section_types: tuple[Literal[2, 3, 4], ...] | list[tuple[Literal[2, 3, 4], ...]] | None = Field(
+        default=None,
         title="Section Types",
         description=(
-            "Valid neurite section types to generate locations on: "
-            "2: axon, 3: basal dendrite, 4: apical dendrite. "
-            "Use a tuple for one selection, e.g. (3, 4), "
-            "or a list of tuples for parameter scans."
+            "Neurite section types to generate locations on. "
+            "If unset, all available section types are valid."
         ),
         json_schema_extra={
-            SchemaKey.UI_HIDDEN: True,
+            SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY_SOURCE,
+            SchemaKey.PROPERTY: MorphologySourceMappedProperties.SECTION_TYPES,
         },
     )
 

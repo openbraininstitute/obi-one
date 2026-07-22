@@ -1,0 +1,28 @@
+{
+  "anyOf": [
+    {
+      "items": {
+        "type": "integer"
+      },
+      "type": "array"
+    },
+    {
+      "items": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "type": "array"
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "default": null,
+  "title": "Section types",
+  "description": "Types of sections to generate locations on.",
+  "property_group": "MorphologySource",
+  "property": "SectionTypes",
+  "ui_element": "morphology_section_type_selection"
+}

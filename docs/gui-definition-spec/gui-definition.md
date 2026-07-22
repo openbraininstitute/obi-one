@@ -104,6 +104,8 @@ There are two major types of such UI elements:
 
         - [neuron_set_combination](components/neuron_set_combination/neuron_set_combination.md)
 
+        - [morphology_section_type_selection](components/morphology_section_type_selection/morphology_section_type_selection.md)
+
         - [variable_modification](components/neuronal_modification/BySectionListMechanismVariableNeuronalManipulation.md)
 
     - Legacy block elements:

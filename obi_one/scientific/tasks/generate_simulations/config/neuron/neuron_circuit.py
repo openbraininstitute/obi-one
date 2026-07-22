@@ -5,6 +5,7 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_TIMESTAMPS_NAME,
@@ -77,6 +78,13 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
             MorphologyLocationsReference.__name__: "Default: None",
+        },
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            # TODO: Use {source_id} once the UI supports source-neutral endpoint placeholders.
+            MappedPropertiesGroup.MORPHOLOGY_SOURCE: (
+                "/mapped-morphology-source-properties/{circuit_id}"
+            ),
         },
     }
 

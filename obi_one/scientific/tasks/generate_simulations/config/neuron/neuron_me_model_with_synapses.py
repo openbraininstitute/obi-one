@@ -7,6 +7,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
 )
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
@@ -34,6 +35,24 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
+            BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            BlockGroup.EVENTS_GROUP,
+        ],
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            # TODO: Use {source_id} once the UI supports source-neutral endpoint placeholders.
+            MappedPropertiesGroup.MORPHOLOGY_SOURCE: (
+                "/mapped-morphology-source-properties/{circuit_id}"
+            ),
+        },
+    }
 
     class Initialize(CircuitSimulationScanConfig.Initialize):
         circuit: (
