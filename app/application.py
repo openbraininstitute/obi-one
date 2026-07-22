@@ -32,6 +32,7 @@ from app.endpoints import (
     morphology_validation,
     multi_values,
     scan_config,
+    subject,
     task,
     validate_electrophysiology_protocol_nwb,
 )
@@ -184,4 +185,5 @@ app.include_router(multi_values.router)
 app.include_router(validate_electrophysiology_protocol_nwb.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
+app.include_router(subject.router)
 app.include_router(task.router)
