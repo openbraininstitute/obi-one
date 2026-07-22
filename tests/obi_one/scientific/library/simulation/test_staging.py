@@ -1,15 +1,15 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from obi_one.scientific.library.simulation.schemas import (
+
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.simulation.neuron import staging as test_module
+from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     NeuronMechanismBuild,
 )
-
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.simulation import staging as test_module
 from obi_one.types import SimulationBackend
 
 
@@ -24,11 +24,11 @@ def test_stage_ion_channel_models_as_circuit(monkeypatch, tmp_path):
     mock_me_model = MagicMock()
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.staging.stage_sonata_from_config",
+        "obi_one.scientific.library.simulation.neuron.staging.stage_sonata_from_config",
         mock_stage_sonata,
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.staging.MEModelCircuit",
+        "obi_one.scientific.library.simulation.neuron.staging.MEModelCircuit",
         mock_me_model,
     )
 
@@ -72,11 +72,11 @@ def test_stage_memodel_as_circuit_from_id(monkeypatch, tmp_path):
     mock_build_circuit = MagicMock()
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.staging.stage_sonata_from_memodel",
+        "obi_one.scientific.library.simulation.neuron.staging.stage_sonata_from_memodel",
         mock_stage_sonata,
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.staging._build_memodel_circuit",
+        "obi_one.scientific.library.simulation.neuron.staging._build_memodel_circuit",
         mock_build_circuit,
     )
 
@@ -134,7 +134,9 @@ def test_get_simulation_parameters_success(
         {"node_sets_file": "nodes.json", "node_set": "All", "run": {"tstop": 100}},
         {"All": {"node_id": [1, 2, 3]}},
     ]
-    monkeypatch.setattr("obi_one.scientific.library.simulation.staging.load_json", mock_load_json)
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
+    )
 
     params = test_module.get_simulation_parameters(
         simulation_backend=simulation_backend,
@@ -158,7 +160,9 @@ def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
         {"node_sets_file": "nodes.json", "node_set": "Foo", "run": {"tstop": 100}},
         {"All": {"node_id": [1, 2, 3]}},
     ]
-    monkeypatch.setattr("obi_one.scientific.library.simulation.staging.load_json", mock_load_json)
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
+    )
 
     with pytest.raises(KeyError, match="Node set 'Foo' not found"):
         test_module.get_simulation_parameters(

@@ -1,15 +1,15 @@
 from unittest.mock import patch
 
 import pytest
-from obi_one.scientific.library.simulation.schemas import (
+
+from obi_one.scientific.library.simulation.neuron import process as test_module
+from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     NeuronMechanismBuild,
     SimulationResults,
 )
-
-from obi_one.scientific.library.simulation import process as test_module
 from obi_one.types import SimulationBackend
 
 
@@ -55,8 +55,8 @@ def test_collect_simulation_outputs(tmp_path):
         test_module._collect_simulation_outputs(tmp_path)
 
 
-@patch("obi_one.scientific.library.simulation.process._run_bluecellulab_simulation")
-@patch("obi_one.scientific.library.simulation.process._collect_simulation_outputs")
+@patch("obi_one.scientific.library.simulation.neuron.process._run_bluecellulab_simulation")
+@patch("obi_one.scientific.library.simulation.neuron.process._collect_simulation_outputs")
 def test_run_simulation_bluecellulab(mock_collect, mock_run, tmp_path):
     mechanism_build = _neuron_mechanism_build(tmp_path)
     parameters = BluecellulabSimulationParameters(
@@ -81,8 +81,8 @@ def test_run_simulation_bluecellulab(mock_collect, mock_run, tmp_path):
     assert results == expected_results
 
 
-@patch("obi_one.scientific.library.simulation.process._run_neurodamus_simulation")
-@patch("obi_one.scientific.library.simulation.process._collect_simulation_outputs")
+@patch("obi_one.scientific.library.simulation.neuron.process._run_neurodamus_simulation")
+@patch("obi_one.scientific.library.simulation.neuron.process._collect_simulation_outputs")
 def test_run_simulation_neurodamus(mock_collect, mock_run, tmp_path):
     mechanism_build = _neurodamus_mechanism_build(tmp_path)
     parameters = NeurodamusSimulationParameters(
@@ -104,7 +104,7 @@ def test_run_simulation_neurodamus(mock_collect, mock_run, tmp_path):
     assert results == expected_results
 
 
-@patch("obi_one.scientific.library.simulation.process.run_and_log")
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
 def test_run_bluecellulab_simulation(mock_run_and_log, tmp_path):
     mechanism_build = _neuron_mechanism_build(tmp_path)
     parameters = BluecellulabSimulationParameters(
@@ -135,7 +135,7 @@ def test_run_bluecellulab_simulation(mock_run_and_log, tmp_path):
     ]
 
 
-@patch("obi_one.scientific.library.simulation.process.run_and_log")
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
 def test_run_neurodamus_simulation(mock_run_and_log, monkeypatch, tmp_path):
     monkeypatch.setenv("NEURODAMUS_PYTHON", "/opt/neurodamus")
     mechanism_build = _neurodamus_mechanism_build(tmp_path)
@@ -169,7 +169,7 @@ def test_run_neurodamus_simulation(mock_run_and_log, monkeypatch, tmp_path):
     )
 
 
-@patch("obi_one.scientific.library.simulation.process.run_and_log")
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
 def test_compile_neuron_mechanisms(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -200,8 +200,8 @@ def test_compile_neuron_mechanisms(mock_run_and_log, tmp_path):
     )
 
 
-@patch("obi_one.scientific.library.simulation.process.find_file")
-@patch("obi_one.scientific.library.simulation.process.run_and_log")
+@patch("obi_one.scientific.library.simulation.neuron.process.find_file")
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
 def test_compile_neurodamus_mechanisms(mock_run_and_log, mock_find_file, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
