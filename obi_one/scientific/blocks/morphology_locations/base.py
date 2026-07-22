@@ -51,7 +51,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     )
 
     number_of_locations: int | list[int] = Field(
-        default=1,
+        default=20,
         title="Number of Locations",
         description="Number of locations to generate on morphology.",
         json_schema_extra={
