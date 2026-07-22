@@ -12,7 +12,7 @@ from obi_one.scientific.library.simulation.neuron.staging import stage_ion_chann
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulation_execution.base import (
+from obi_one.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )

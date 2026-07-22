@@ -2,23 +2,23 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-from obi_one.scientific.library.simulation.schemas import (
+
+from obi_one.scientific.library.simulation.neuron.schemas import (
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     SimulationResults,
 )
-
-from obi_one.scientific.tasks.simulation_execution import (
+from obi_one.scientific.tasks.simulation_execution.neuron import (
     circuit_simulation_execution as test_module,
 )
-from obi_one.scientific.tasks.simulation_execution.circuit_simulation_execution import (
+from obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution import (
     CircuitSimulationExecutionSingleConfig,
     CircuitSimulationExecutionTask,
 )
 from obi_one.types import SimulationBackend
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.base"
-_CIRCUIT = "obi_one.scientific.tasks.simulation_execution.circuit_simulation_execution"
+_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
+_CIRCUIT = "obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution"
 
 
 @pytest.fixture

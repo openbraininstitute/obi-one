@@ -1,4 +1,4 @@
-from obi_one.scientific.tasks.simulation_execution.circuit_simulation_execution import (
+from obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution import (
     CircuitSimulationExecutionSingleConfig,
     CircuitSimulationExecutionTask,
 )

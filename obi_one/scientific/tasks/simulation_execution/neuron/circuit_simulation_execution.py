@@ -7,7 +7,7 @@ from entitysdk import models
 
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.simulation.neuron.staging import stage_circuit
-from obi_one.scientific.tasks.simulation_execution.base import (
+from obi_one.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )

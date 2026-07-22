@@ -2,25 +2,25 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-from obi_one.scientific.library.simulation.schemas import (
+
+from obi_one.core.info import Info
+from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
+from obi_one.scientific.library.simulation.neuron.schemas import (
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     SimulationResults,
 )
-
-from obi_one.core.info import Info
-from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulation_execution.single_neuron_synaptome_simulation_execution import (  # noqa: E501
+from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_synaptome_simulation_execution import (  # noqa: E501
     SingleNeuronSynaptomeSimulationExecutionSingleConfig,
     SingleNeuronSynaptomeSimulationExecutionTask,
 )
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.base"
-_CIRCUIT = "obi_one.scientific.tasks.simulation_execution.circuit_simulation_execution"
+_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
+_CIRCUIT = "obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution"
 
 
 @pytest.fixture
