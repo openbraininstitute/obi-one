@@ -2,9 +2,9 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+from obi_one.scientific.library.simulation.schemas import SimulationMetadata, SimulationResults
 
 from obi_one.scientific.library.simulation import registration as test_module
-from obi_one.scientific.library.simulation.schemas import SimulationMetadata, SimulationResults
 
 
 @pytest.fixture
