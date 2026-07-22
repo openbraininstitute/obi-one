@@ -209,3 +209,31 @@ def test_execute_tracked_registers_and_updates_activity(
         entity_type=test_module.IonChannelModelSimulationExecutionTask.activity_type,
         attrs_or_entity={"generated_ids": ["gen-789"]},
     )
+
+
+@patch(f"{_ION_CHANNEL}.deserialize_obi_object_from_json_data")
+@patch(f"{_ION_CHANNEL}.db_sdk.select_json_asset_content")
+def test_get_generation_single_config(
+    mock_select_json, mock_deserialize, config, generation_config
+):
+    mock_select_json.return_value = {"type": "ion_channel"}
+    mock_deserialize.return_value = generation_config
+
+    task = IonChannelModelSimulationExecutionTask(config=config)
+    result = task.get_generation_single_config(db_client=MagicMock())
+
+    assert result is generation_config
+    mock_select_json.assert_called_once()
+
+
+@patch(f"{_ION_CHANNEL}.deserialize_obi_object_from_json_data")
+@patch(f"{_ION_CHANNEL}.db_sdk.select_json_asset_content")
+def test_get_generation_single_config_wrong_type(mock_select_json, mock_deserialize, config):
+    mock_select_json.return_value = {"type": "other"}
+    mock_deserialize.return_value = MagicMock()
+
+    task = IonChannelModelSimulationExecutionTask(config=config)
+    with pytest.raises(
+        test_module.OBIONEError, match="Expected IonChannelModelSimulationSingleConfig"
+    ):
+        task.get_generation_single_config(db_client=MagicMock())

@@ -22,6 +22,10 @@ from obi_one.types import TaskType
             TaskType.single_neuron_synaptome_simulation_execution,
             test_module.SingleNeuronSynaptomeSimulationExecutionTask,
         ),
+        (
+            TaskType.circuit_simulation_neurodamus_machine,
+            test_module.CircuitSimulationExecutionTask,
+        ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationTask),
     ],
 )
@@ -46,6 +50,10 @@ def test_get_task_type(task_type, task_class):
             TaskType.single_neuron_synaptome_simulation_execution,
             test_module.SingleNeuronSynaptomeSimulationExecutionSingleConfig,
         ),
+        (
+            TaskType.circuit_simulation_neurodamus_machine,
+            test_module.CircuitSimulationExecutionSingleConfig,
+        ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationSingleConfig),
     ],
 )
@@ -63,6 +71,7 @@ def test_get_task_type_single_config(task_type, single_config_class):
         (TaskType.ion_channel_model_simulation_execution, None),
         (TaskType.single_neuron_simulation_execution, None),
         (TaskType.single_neuron_synaptome_simulation_execution, None),
+        (TaskType.circuit_simulation_neurodamus_machine, None),
     ],
 )
 def test_get_task_type_config_asset_label(task_type, asset_label):
