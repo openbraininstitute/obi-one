@@ -68,22 +68,28 @@ class SimulationExecutionTask(Task):
                 entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
                 entity_type=self.activity_type,
             )
+            L.info("Activity: %s(id=%s)", type(execution_activity), execution_activity.id)
 
         simulation_entity = self._get_simulation_entity(db_client)
         simulation_metadata = SimulationMetadata(
             simulation_id=simulation_entity.id,
         )
+        L.info("Simulation: %s", simulation_entity.id)
 
         staged_circuit = self._stage_circuit(
             db_client=db_client,
             data_dir=data_dir,
             simulation_entity=simulation_entity,
         )
+        L.info("Circuit staged at %s", staged_circuit.directory)
+
         mechanism_build = compile_mechanisms(
             mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
             output_dir=staged_circuit.directory.resolve(),
             simulation_backend=self.simulation_backend,
         )
+        L.info("Mechanisms compiled: %s", mechanism_build)
+
         staged_simulation_config_path = stage_simulation(
             client=db_client,
             model=simulation_entity,
@@ -91,16 +97,21 @@ class SimulationExecutionTask(Task):
             output_dir=data_dir,
             override_results_dir=results_dir,
         )
+        L.info("Simulation staged at %s", staged_simulation_config_path)
+
         simulation_parameters = get_simulation_parameters(
             simulation_backend=self.simulation_backend,
             simulation_config_file=staged_simulation_config_path,
             mechanism_build=mechanism_build,
         )
+        L.info("Collected simulation parameters: %s", simulation_parameters)
+
         simulation_results = run_simulation(
             parameters=simulation_parameters,
             results_dir=results_dir,
             simulation_backend=self.simulation_backend,
         )
+        L.info("Collected simulation results: %s", simulation_results)
 
         if execution_activity is not None:
             L.info("Registering simulation results...")
@@ -109,10 +120,13 @@ class SimulationExecutionTask(Task):
                 simulation_results=simulation_results,
                 simulation_metadata=simulation_metadata,
             )
+            L.info("Generated %s(id=%s)", type(generated_entity), generated_entity.id)
+
             db_client.update_entity(
                 entity_id=execution_activity.id,
                 entity_type=self.activity_type,
                 attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
             )
+            L.info("Updated %s(id=%s)", type(execution_activity), execution_activity.id)
 
         L.info("Simulation completed.")
