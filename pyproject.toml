@@ -234,10 +234,6 @@ max-branches = 12
 max-statements = 50
 max-public-methods = 60
 
-[tool.ty.analysis]
-# Optional meshing dependency (obi-one[meshing]); not installed in the default lint env.
-allowed-unresolved-imports = ["ultraliser.**"]
-
 [tool.ty.src]
 # Legacy modules kept for reference; excluded from ty type checking.
 # (ty has no config-level force-exclude; this is honoured when ty walks a parent dir,

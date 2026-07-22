@@ -21,7 +21,7 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
 try:
-    import ultraliser
+    import ultraliser  # ty: ignore[unresolved-import]
 
     HAS_MESHING = True
 except ImportError:
@@ -54,12 +54,12 @@ def _generate_lods(
         raise RuntimeError(msg)
 
     if mesh_format in {"obj", "glb"}:
-        mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)
+        mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)  # ty: ignore[unresolved-attribute]
     else:
         msg = f"Unsupported mesh format for LOD generation: {mesh_format}"
         raise RuntimeError(msg)
 
-    generator = ultraliser.LODGenerator(mesh)
+    generator = ultraliser.LODGenerator(mesh)  # ty: ignore[unresolved-attribute]
     generator.generate_web_lods(str(output_dir))
 
     lod_files: dict[os.PathLike, os.PathLike] = {
