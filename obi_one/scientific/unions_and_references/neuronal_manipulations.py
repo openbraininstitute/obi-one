@@ -26,9 +26,12 @@ class NeuronalManipulationReference(BlockReference):
     allowed_block_types: ClassVar[Any] = NeuronalManipulationUnion
 
 
-CircuitNeuronalManipulationUnion = Annotated[
+_CIRCUIT_NEURONAL_MANIPULATIONS = (
     CircuitBySectionListMechanismVariableNeuronalManipulation
-    | CircuitByNeuronMechanismVariableNeuronalManipulation,
+    | CircuitByNeuronMechanismVariableNeuronalManipulation
+)
+CircuitNeuronalManipulationUnion = Annotated[
+    _CIRCUIT_NEURONAL_MANIPULATIONS,
     Discriminator("type"),
 ]
 
@@ -38,5 +41,5 @@ class CircuitNeuronalManipulationReference(BlockReference):
 
     allowed_block_types: ClassVar[Any] = CircuitNeuronalManipulationUnion
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_NEURONAL_MANIPULATIONS)
+        "allowed_block_types": BlockReference.get_class_names(_CIRCUIT_NEURONAL_MANIPULATIONS)
     }

@@ -118,6 +118,15 @@ def _resolve_neuron_set_and_get_templates(
 
         # Load circuit
         config_path = temp_dir_path / "circuit_config.json"
+        snap_circuit = SnapCircuit(str(config_path))
+
+        # Stage all nodes.h5 files upfront so that neuron set resolution
+        # (which accesses property_names via bluepysnap) can open them.
+        for population in snap_circuit.nodes.population_names:
+            nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
+            nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
+            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
+
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
         # Resolve neuron set → node IDs per population (new API)
@@ -127,7 +136,6 @@ def _resolve_neuron_set_and_get_templates(
             msg = f"Neuron set resolved to no node IDs for circuit {circuit_id}."
             raise ValueError(msg)
 
-        snap_circuit = SnapCircuit(str(config_path))
         node_to_template: dict[tuple[str, int], str] = {}
         populations: list[str] = []
 
@@ -137,10 +145,9 @@ def _resolve_neuron_set_and_get_templates(
 
             populations.append(population)
 
-            # Stage the population's nodes.h5
+            # Resolve the population's nodes.h5 (already staged above)
             nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
             nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
-            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
 
             # Read model_template for those node IDs
             nodes_path = temp_dir_path / nodes_relative
@@ -197,6 +204,15 @@ def get_circuit_node_ids(
             L.debug("node_sets.json not available, continuing without it")
 
         config_path = temp_dir_path / "circuit_config.json"
+
+        # Stage all nodes.h5 files upfront so that neuron set resolution
+        # (which accesses property_names via bluepysnap) can open them.
+        snap_circuit = SnapCircuit(str(config_path))
+        for population in snap_circuit.nodes.population_names:
+            nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
+            nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
+            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
+
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
         ids_per_population = neuron_set.get_neuron_ids(obi_circuit)

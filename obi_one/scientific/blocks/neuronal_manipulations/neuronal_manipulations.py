@@ -133,13 +133,14 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
             List of SONATA modification dicts, one per section list.
         """
         node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
+        prefix = f"{self.block_name}__" if self._block_name else ""
 
         modifications = []
         for section_list, value in self.modification.section_list_modifications.items():
             if section_list == "all":
                 modifications.append(
                     {
-                        "name": f"modify_{self.modification.variable_name}_all",
+                        "name": f"{prefix}modify_{self.modification.variable_name}_all",
                         "node_set": node_set,
                         "type": "configure_all_sections",
                         "section_configure": f"%s.{self.modification.variable_name} = {value}",
@@ -149,7 +150,9 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 
             modifications.extend(
                 {
-                    "name": f"modify_{self.modification.variable_name}_{expanded_section_list}",
+                    "name": (
+                        f"{prefix}modify_{self.modification.variable_name}_{expanded_section_list}"
+                    ),
                     "node_set": node_set,
                     "type": "section_list",
                     "section_configure": (
@@ -200,12 +203,14 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         if self.modification.new_value is None:
             return []
 
+        prefix = f"{self.block_name}__" if self._block_name else ""
+
         # Handle RANGE variables (including section properties)
         if self.modification.variable_type == "RANGE":
             node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
             return [
                 {
-                    "name": f"modify_{self.modification.variable_name}_all",
+                    "name": f"{prefix}modify_{self.modification.variable_name}_all",
                     "node_set": node_set,
                     "type": "configure_all_sections",
                     "section_configure": (
@@ -225,7 +230,7 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, default_node_set)
         return [
             {
-                "name": f"modify_{self.modification.variable_name}_all",
+                "name": f"{prefix}modify_{self.modification.variable_name}_all",
                 "node_set": node_set,
                 "type": "configure_all_sections",
                 "section_configure": (
