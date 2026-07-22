@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock, patch
@@ -9,13 +10,14 @@ import pytest
 from entitysdk.models import Asset, Circuit
 from entitysdk.models.asset import AssetLabel, ContentType, StorageType
 from entitysdk.models.circuit import CircuitBuildCategory, CircuitScale
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.file import _create_temp_dir
 from app.endpoints.circuit_visualization import router
+from app.errors import ApiErrorCode
 from app.schemas.circuit_visualization import Node, Section
 from app.services.circuit_visualization import (
     circuit_asset_id,
@@ -145,10 +147,9 @@ def test_circuit_dict():
     }
 
 
-def test_circuit_asset_id(mock_client, test_circuit_dict, test_asset_dict):
-    test_circuit = Circuit(
-        **test_circuit_dict, assets=[Asset(**test_asset_dict)], scale=CircuitScale.small
-    )
+@pytest.mark.parametrize("scale", [CircuitScale.single, CircuitScale.pair, CircuitScale.small])
+def test_circuit_asset_id(scale, mock_client, test_circuit_dict, test_asset_dict):
+    test_circuit = Circuit(**test_circuit_dict, assets=[Asset(**test_asset_dict)], scale=scale)
 
     expected_asset_id = test_circuit.assets[0].id
 
@@ -159,6 +160,30 @@ def test_circuit_asset_id(mock_client, test_circuit_dict, test_asset_dict):
 
     assert result == expected_asset_id
     mock_client.get_entity.assert_called_once_with(entity_id=test_circuit.id, entity_type=Circuit)
+
+
+@pytest.mark.parametrize(
+    "scale",
+    [
+        CircuitScale.microcircuit,
+        CircuitScale.region,
+        CircuitScale.system,
+        CircuitScale.whole_brain,
+    ],
+)
+def test_circuit_asset_id_rejects_large_scales(
+    scale, mock_client, test_circuit_dict, test_asset_dict
+):
+    test_circuit = Circuit(**test_circuit_dict, assets=[Asset(**test_asset_dict)], scale=scale)
+
+    mock_client.get_entity.return_value = test_circuit
+
+    with pytest.raises(HTTPException) as exc_info:
+        circuit_asset_id(mock_client, cast("UUID", test_circuit.id))
+
+    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+    assert exc_info.value.detail["code"] == ApiErrorCode.INVALID_REQUEST
+    mock_client.select_assets.assert_not_called()
 
 
 @pytest.fixture
