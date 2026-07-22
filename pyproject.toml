@@ -90,6 +90,7 @@ service = [
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
     "python-multipart",
+    "sentry-sdk>=2.65.0",
     "starlette",
     "uvicorn",
 ]
