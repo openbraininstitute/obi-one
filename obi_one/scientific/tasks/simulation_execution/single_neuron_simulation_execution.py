@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, cast, override
 
 import entitysdk
 from entitysdk import models
@@ -18,6 +18,9 @@ from obi_one.scientific.tasks.simulation_execution.base import (
 )
 from obi_one.utils import db_sdk
 from obi_one.utils.filesystem import create_dir
+
+if TYPE_CHECKING:
+    from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
 class SingleNeuronSimulationExecutionSingleConfig(SimulationExecutionSingleConfig):
@@ -52,6 +55,6 @@ class SingleNeuronSimulationExecutionTask(SimulationExecutionTask):
         generation_single_config = self.get_generation_single_config(db_client)
         return stage_memodel_as_circuit(
             client=db_client,
-            circuit=generation_single_config.initialize.circuit,
+            circuit=cast("MEModelCircuit", generation_single_config.initialize.circuit),
             output_dir=create_dir(data_dir / "circuit"),
         )

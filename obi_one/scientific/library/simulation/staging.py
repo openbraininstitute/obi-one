@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
@@ -20,6 +20,9 @@ from obi_one.scientific.library.simulation.schemas import (
 )
 from obi_one.types import SimulationBackend
 from obi_one.utils.io import load_json
+
+if TYPE_CHECKING:
+    from entitysdk.models import MEModel
 
 L = logging.getLogger(__name__)
 
@@ -89,7 +92,7 @@ def stage_memodel_as_circuit(
 
     circuit_config_path = stage_sonata_from_memodel(
         client=client,
-        memodel=circuit.entity(db_client=client),
+        memodel=cast("MEModel", circuit.entity(db_client=client)),
         output_dir=output_dir,
     )
     return _build_memodel_circuit(circuit_config_path)

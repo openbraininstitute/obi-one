@@ -28,7 +28,7 @@ class CircuitSimulationExecutionTask(SimulationExecutionTask):
     def _get_simulation_entity(self, db_client: entitysdk.client.Client) -> models.Simulation:
         simulation_entity = db_sdk.get_identifiable(
             client=db_client,
-            identifiable_id=self.config.single_entity.id,  # ty:ignore[invalid-argument-type]
+            identifiable_id=self.config.single_entity.id,
             identifiable_type=models.Simulation,
         )
         L.info("Fetched simulation config %s", simulation_entity.id)

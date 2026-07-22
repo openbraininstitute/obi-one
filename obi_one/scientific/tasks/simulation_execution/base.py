@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 from uuid import UUID
 
 import entitysdk
@@ -20,6 +20,9 @@ from obi_one.scientific.library.simulation.staging import get_simulation_paramet
 from obi_one.types import SimulationBackend
 from obi_one.utils.filesystem import create_dir
 
+if TYPE_CHECKING:
+    from entitysdk.models import Simulation
+
 L = logging.getLogger(__name__)
 
 
@@ -30,11 +33,12 @@ class SimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
 class SimulationExecutionTask(Task):
     """Run a staged simulation and optionally register its outputs."""
 
+    config: SimulationExecutionSingleConfig
     activity_type: ClassVar[type[Activity]] = models.SimulationExecution
     simulation_backend: ClassVar[SimulationBackend] = SimulationBackend.neurodamus
 
     def _get_simulation_entity(self, db_client: entitysdk.client.Client) -> models.Simulation:  # noqa: ARG002
-        return self.config.single_entity  # ty:ignore[invalid-return-type]
+        return cast("Simulation", self.config.single_entity)
 
     @abstractmethod
     def _stage_circuit(

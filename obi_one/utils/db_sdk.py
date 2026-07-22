@@ -488,7 +488,7 @@ def resolve_circuit(
             db_client=db_client, dest_dir=dest_dir, entity_cache=entity_cache
         )
         circuit_entity = circuit.entity(db_client=db_client)
-        return staged_circuit, circuit_entity
+        return staged_circuit, circuit_entity  # ty:ignore[invalid-return-type]
 
     msg = f"Unsupported circuit type: {type(circuit)}"
     raise OBIONEError(msg)
