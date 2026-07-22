@@ -155,6 +155,7 @@ class EFeature(OBIBaseModel):
             overrides.update(self.custom_efel_settings)
         return overrides
 
+
 # =========================================================================
 # Concrete feature classes and per-protocol unions.
 # Everything below is generated; see the module docstring for the source.
@@ -171,6 +172,7 @@ class SpikeShapeFeature(EFeature, abc.ABC):
 
 class SubthresholdFeature(EFeature, abc.ABC):
     """eFEL subthreshold features; groups its subclasses, adds no fields."""
+
 
 # -------------------------------------------------------------------------
 # Spike event features
@@ -499,6 +501,7 @@ class Interburst15PercentVoltageFeature(SpikeEventFeature):
     """eFEL ``interburst_voltage`` (ISI Python efeature variant)."""
 
     efel_name: ClassVar[str] = "interburst_voltage"
+
 
 # -------------------------------------------------------------------------
 # Spike shape features
@@ -900,6 +903,7 @@ class AP2BeginWidthFeature(SpikeShapeFeature):
 
     efel_name: ClassVar[str] = "AP2_begin_width"
 
+
 # -------------------------------------------------------------------------
 # Subthreshold features
 # -------------------------------------------------------------------------
@@ -1059,6 +1063,7 @@ class InactivationTimeConstantFeature(SubthresholdFeature):
     """eFEL ``inactivation_time_constant``."""
 
     efel_name: ClassVar[str] = "inactivation_time_constant"
+
 
 # -------------------------------------------------------------------------
 # Valid features per protocol: class tuples and discriminated unions
