@@ -2,14 +2,14 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-
-from obi_one.core.info import Info
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.simulation.schemas import (
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     SimulationResults,
 )
+
+from obi_one.core.info import Info
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,

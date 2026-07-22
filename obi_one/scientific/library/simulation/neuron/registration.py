@@ -3,7 +3,10 @@ import logging
 from entitysdk import Client, models
 from entitysdk.types import AssetLabel, ContentType
 
-from obi_one.scientific.library.simulation.schemas import SimulationMetadata, SimulationResults
+from obi_one.scientific.library.simulation.neuron.schemas import (
+    SimulationMetadata,
+    SimulationResults,
+)
 
 L = logging.getLogger(__name__)
 

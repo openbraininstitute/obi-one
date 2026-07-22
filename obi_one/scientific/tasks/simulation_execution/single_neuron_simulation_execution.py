@@ -8,7 +8,7 @@ from entitysdk.types import AssetLabel
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.simulation.staging import stage_memodel_as_circuit
+from obi_one.scientific.library.simulation.neuron.staging import stage_memodel_as_circuit
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationSingleConfig,
 )

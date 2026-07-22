@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import cast
 
-from obi_one.scientific.library.simulation.schemas import (
+from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     MechanismBuild,
     NeurodamusMechanismBuild,

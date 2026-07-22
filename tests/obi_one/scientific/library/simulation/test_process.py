@@ -1,8 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-
-from obi_one.scientific.library.simulation import process as test_module
 from obi_one.scientific.library.simulation.schemas import (
     BluecellulabSimulationParameters,
     NeurodamusMechanismBuild,
@@ -10,6 +8,8 @@ from obi_one.scientific.library.simulation.schemas import (
     NeuronMechanismBuild,
     SimulationResults,
 )
+
+from obi_one.scientific.library.simulation import process as test_module
 from obi_one.types import SimulationBackend
 
 

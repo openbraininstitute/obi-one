@@ -10,7 +10,7 @@ from entitysdk.staging.memodel import stage_sonata_from_memodel
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.library.simulation.schemas import (
+from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     MechanismBuild,
     NeurodamusMechanismBuild,

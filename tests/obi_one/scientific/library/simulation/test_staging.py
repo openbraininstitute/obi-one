@@ -1,15 +1,15 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.simulation import staging as test_module
 from obi_one.scientific.library.simulation.schemas import (
     BluecellulabSimulationParameters,
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     NeuronMechanismBuild,
 )
+
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.simulation import staging as test_module
 from obi_one.types import SimulationBackend
 
 

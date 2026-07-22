@@ -2,12 +2,12 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-
 from obi_one.scientific.library.simulation.schemas import (
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     SimulationResults,
 )
+
 from obi_one.scientific.tasks.simulation_execution import (
     circuit_simulation_execution as test_module,
 )

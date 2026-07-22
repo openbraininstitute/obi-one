@@ -13,10 +13,10 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.simulation.process import compile_mechanisms, run_simulation
-from obi_one.scientific.library.simulation.registration import register_simulation_results
-from obi_one.scientific.library.simulation.schemas import SimulationMetadata
-from obi_one.scientific.library.simulation.staging import get_simulation_parameters
+from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms, run_simulation
+from obi_one.scientific.library.simulation.neuron.registration import register_simulation_results
+from obi_one.scientific.library.simulation.neuron.schemas import SimulationMetadata
+from obi_one.scientific.library.simulation.neuron.staging import get_simulation_parameters
 from obi_one.types import SimulationBackend
 from obi_one.utils.filesystem import create_dir
 
