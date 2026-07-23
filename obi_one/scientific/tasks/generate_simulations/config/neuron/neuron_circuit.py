@@ -29,6 +29,9 @@ from obi_one.scientific.unions_and_references.manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
@@ -54,6 +57,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
@@ -72,6 +76,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
+            MorphologyLocationsReference.__name__: "Default: None",
         },
     }
 

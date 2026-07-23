@@ -2,7 +2,10 @@ from types import SimpleNamespace
 
 import pytest
 
+import obi_one as obi
 from obi_one.scientific.library import circuit as test_module
+
+from tests.utils import CIRCUIT_DIR
 
 
 class _FakePopulation:
@@ -356,3 +359,67 @@ def test_mechanisms_dir_for_subclass(fake_snap_circuit, tmp_path):
     mech_dir = tmp_path / "mechanisms"
     mech_dir.mkdir()
     assert c.mechanisms_dir == mech_dir
+
+
+def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
+    circuit = obi.Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+
+    pop_cfg = circuit._population_config(circuit.default_population_name)
+
+    assert "morphologies_dir" in pop_cfg
+
+    morph_path = circuit.get_morphology_path(
+        node_id=0,
+        population=circuit.default_population_name,
+    )
+
+    assert morph_path.exists()
+    assert morph_path.suffix in {".asc", ".swc", ".h5"}
+
+
+def test_circuit_resolves_morphology_name_that_already_includes_directory(monkeypatch, tmp_path):
+    cfg = tmp_path / "circuit_config.json"
+    cfg.write_text("{}")
+    morph_path = tmp_path / "morphologies" / "cell.swc"
+    morph_path.parent.mkdir()
+    morph_path.write_text("")
+
+    class _Population:
+        type = "biophysical"
+
+        @staticmethod
+        def get(_node_id):
+            return SimpleNamespace(morphology="morphologies/cell")
+
+    class _Nodes:
+        def __init__(self):
+            self.population_names = ["All"]
+            self.node_sets = SimpleNamespace(content={})
+
+        @staticmethod
+        def __getitem__(_population):
+            return _Population()
+
+    class _SnapCircuit:
+        def __init__(self):
+            self.nodes = _Nodes()
+            self.edges = _FakeEdges({})
+            self.node_sets = self.nodes.node_sets
+            self.config = {
+                "manifest": {"$BASE_DIR": "."},
+                "components": {},
+                "networks": {
+                    "nodes": [
+                        {"populations": {"All": {"morphologies_dir": "$BASE_DIR/morphologies"}}}
+                    ]
+                },
+            }
+
+    monkeypatch.setattr(test_module.snap, "Circuit", lambda _path: _SnapCircuit())
+
+    circuit = test_module.Circuit(name="c1", path=str(cfg))
+
+    assert circuit.get_morphology_path(node_id=0, population="All") == morph_path

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, ClassVar
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import (
     Field,
@@ -9,11 +9,9 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
-from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.constants import (
     DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
@@ -26,6 +24,9 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
+)
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
 )
 from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
@@ -109,16 +110,40 @@ class StimulusWithDuration(BaseStimulus):
 
 
 class ContinuousStimulusWithoutTimestamps(BaseStimulus):
-    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
-        default=None,
-        title="Neuron Set",
-        description="Neuron set to which the stimulus is applied.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
-            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
-        },
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | MorphologyLocationsReference | None = (
+        Field(
+            default=None,
+            title="Target",
+            description=(
+                "Neuron set or morphology-location rule to which the stimulus is applied."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+                SchemaKey.REFERENCE_TYPES: [
+                    *NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+                    MorphologyLocationsReference.__name__,
+                ],
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
+            },
+        )
     )
+
+    _materialized_compartment_set_name: str | None = PrivateAttr(default=None)
+
+    def set_materialized_compartment_set_target(self, name: str) -> None:
+        self._materialized_compartment_set_name = name
+
+    def _target_entry(self) -> dict[str, Any]:
+        if self._materialized_compartment_set_name is not None:
+            return {"compartment_set": self._materialized_compartment_set_name}
+
+        neuron_set = cast("NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None", self.neuron_set)
+        return {
+            "node_set": resolve_neuron_set_ref_to_node_set(
+                neuron_set,
+                self._default_node_set,
+            )
+        }
 
     _represents_physical_electrode: bool = PrivateAttr(default=False)
     """Default is False. If True, the signal will be implemented \
@@ -142,20 +167,6 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
 
-        if (self.neuron_set is not None) and (
-            self.neuron_set.block.get_neuron_set_population_type()
-            not in {
-                NeuronSetPopulationType.BIOPHYSICAL,
-                NeuronSetPopulationType.POINT,
-                NeuronSetPopulationType.NONVIRTUAL,
-            }
-        ):
-            msg = (
-                f"Neuron Set '{self.neuron_set.block.block_name}' for {self.__class__.__name__}: "
-                f"'{self.block_name}' should be non-virtual (biophysical or point)!"
-            )
-            raise OBIONEError(msg)
-
         return self._generate_config()
 
 
@@ -168,7 +179,7 @@ class ContinuousStimulus(
 class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
-    title: ClassVar[str] = "Constant Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Constant Current Clamp (Absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -187,7 +198,7 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.amplitude,
@@ -199,7 +210,7 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
 class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
-    title: ClassVar[str] = "Constant Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Constant Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -219,7 +230,7 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "percent_start": self.percentage_of_threshold_current,
@@ -231,7 +242,7 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
 class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
-    title: ClassVar[str] = "Linear Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Linear Current Clamp (Absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -261,7 +272,7 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.amplitude_start,
@@ -276,7 +287,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
     over time.
     """
 
-    title: ClassVar[str] = "Linear Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Linear Current Clamp (Relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -306,7 +317,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "percent_start": self.percentage_of_threshold_current_start,
@@ -319,7 +330,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
 class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
-    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Normally Distributed Current Clamp (Absolute)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -348,7 +359,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "mean": self.mean_amplitude,
@@ -363,7 +374,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
     current.
     """
 
-    title: ClassVar[str] = "Normally Distributed Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Normally Distributed Current Clamp (Relative)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -393,7 +404,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "mean_percent": self.mean_percentage_of_threshold_current,
@@ -408,7 +419,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
     absolute amplitude and temporal width.
     """
 
-    title: ClassVar[str] = "Multi Pulse Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Multi Pulse Current Clamp (Absolute)"
 
     _module: str = "pulse"
     _input_type: str = "current_clamp"
@@ -452,7 +463,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.amplitude,
@@ -466,7 +477,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
 class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
-    title: ClassVar[str] = "Sinusoidal Somatic Current Clamp (Absolute)"
+    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
 
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
@@ -509,7 +520,7 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "amp_start": self.maximum_amplitude,
@@ -523,7 +534,7 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
 class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
-    title: ClassVar[str] = "Subthreshold Somatic Current Clamp (Relative)"
+    title: ClassVar[str] = "Subthreshold Current Clamp (Relative)"
 
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
@@ -545,7 +556,7 @@ class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "percent_less": self.percentage_below_threshold,
@@ -560,7 +571,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
     The holding current is pre-defined for each cell.
     """
 
-    title: ClassVar[str] = "Hyperpolarizing Somatic Current Clamp"
+    title: ClassVar[str] = "Hyperpolarizing Current Clamp"
 
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
@@ -569,7 +580,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,
@@ -657,7 +668,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "voltage": self.level1_voltage,
             "duration_levels": [0, self.level1_duration, self.level2_duration],
             "voltage_levels": [self.level1_voltage, self.level2_voltage, self.level3_voltage],
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,
@@ -699,7 +710,7 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
             "duration_levels": [0]
             + [combination.duration for combination in self.duration_voltage[:-1]],
             "voltage_levels": [combination.voltage for combination in self.duration_voltage],
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            **self._target_entry(),
             "module": self._module,
             "input_type": self._input_type,
             "represents_physical_electrode": self._represents_physical_electrode,

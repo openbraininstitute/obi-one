@@ -209,6 +209,13 @@ def mapped_circuit_properties_endpoint(
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
                 == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.scale
+                in {
+                    entitysdk.types.CircuitScale.single,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.pair,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.small,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                },
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: any(
                     INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names  # ty:ignore[unresolved-attribute, unsupported-operator]
                     for population in circuit_metrics.biophysical_node_populations
@@ -242,6 +249,7 @@ def mapped_circuit_properties_endpoint(
             # If we can't get the circuit entity, set default usability
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+                CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
                 CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
                 CircuitUsability.SHOW_POINT_NEURON_SETS: False,
@@ -254,6 +262,7 @@ def mapped_circuit_properties_endpoint(
         # For MEModel entities, set default usability
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+            CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
             CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
             CircuitUsability.SHOW_POINT_NEURON_SETS: False,

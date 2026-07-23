@@ -2,6 +2,7 @@ import morphio
 import pandas  # noqa: ICN001
 from pydantic import Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
@@ -18,12 +19,19 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     """Clustered random locations."""
 
     n_clusters: int | list[int] = Field(
-        title="Number of clusters", description="Number of location clusters to generate"
+        title="Number of clusters",
+        description="Number of location clusters to generate",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
     cluster_max_distance: float | list[float] = Field(
         title="Cluster maximum distance",
         description="Maximum distance in um of generated locations from the center of their \
             cluster",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
@@ -92,16 +100,25 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         title="Path distance mean",
         description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
     path_dist_sd: float | list[float] = Field(
         title="Path distance mean",
         description="SD of a Gaussian, defined on soma path distance in um. Used to determine \
             locations.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
     n_groups_per_cluster: int | list[int] = Field(
         default=1,
         title="Number of groups per cluster",
         description="Number of conceptual groups per location cluster to generate",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
