@@ -6,11 +6,11 @@ The hierarchy has three levels:
   amplitudes, role flags, feature selection).
 * a *shape* intermediate per BluePyEfe eCode class (:class:`StepShapeProtocol`,
   :class:`SAHPShapeProtocol`, …). The stimulus shape decides which timing
-  parameters exist, so each intermediate fixes ``ecode`` and declares exactly
-  the timing fields its eCode reads — ``ton``/``toff`` for a plain step, all
-  four for sAHP, ``ton`` alone for a ramp, none at all for SpikeRec. A protocol
-  therefore has no timing field it cannot use, and the schema tells the
-  frontend which inputs to render without a separate list.
+  parameters exist, so each intermediate fixes ``ecode_class`` and declares
+  exactly the timing fields its eCode reads — ``ton``/``toff`` for a plain
+  step, all four for sAHP, ``ton`` alone for a ramp, none at all for SpikeRec.
+  A protocol therefore has no timing field it cannot use, and the schema tells
+  the frontend which inputs to render without a separate list.
 * a concrete class per protocol (:class:`IDRestProtocol`, :class:`IVProtocol`,
   …), which fixes ``protocol_name`` and narrows ``features`` to its own
   feature union.
@@ -293,7 +293,7 @@ class Protocol(OBIBaseModel, abc.ABC):
 class StepShapeProtocol(Protocol, abc.ABC):
     """Single rectangular step (``Step`` eCode): onset and end only."""
 
-    ecode: ClassVar[str] = "Step"
+    ecode_class: ClassVar[str] = "Step"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -302,7 +302,7 @@ class StepShapeProtocol(Protocol, abc.ABC):
 class SAHPShapeProtocol(Protocol, abc.ABC):
     """Two-step with a short depolarising pulse (``SAHP`` eCode): 4 timing points."""
 
-    ecode: ClassVar[str] = "SAHP"
+    ecode_class: ClassVar[str] = "SAHP"
 
     ton: float = ton_field()
     tmid: float = tmid_field()
@@ -313,7 +313,7 @@ class SAHPShapeProtocol(Protocol, abc.ABC):
 class RampShapeProtocol(Protocol, abc.ABC):
     """Linearly rising stimulus (``Ramp`` eCode): only the onset is configurable."""
 
-    ecode: ClassVar[str] = "Ramp"
+    ecode_class: ClassVar[str] = "Ramp"
 
     ton: float = ton_field()
 
@@ -321,7 +321,7 @@ class RampShapeProtocol(Protocol, abc.ABC):
 class HyperDePolShapeProtocol(Protocol, abc.ABC):
     """Hyperpolarising then depolarising step (``HyperDePol`` eCode): 3 timing points."""
 
-    ecode: ClassVar[str] = "HyperDePol"
+    ecode_class: ClassVar[str] = "HyperDePol"
 
     ton: float = ton_field()
     tmid: float = tmid_field()
@@ -331,7 +331,7 @@ class HyperDePolShapeProtocol(Protocol, abc.ABC):
 class DeHyperPolShapeProtocol(Protocol, abc.ABC):
     """Depolarising then hyperpolarising step (``DeHyperPol`` eCode): 3 timing points."""
 
-    ecode: ClassVar[str] = "DeHyperPol"
+    ecode_class: ClassVar[str] = "DeHyperPol"
 
     ton: float = ton_field()
     tmid: float = tmid_field()
@@ -341,7 +341,7 @@ class DeHyperPolShapeProtocol(Protocol, abc.ABC):
 class NegCheopsShapeProtocol(Protocol, abc.ABC):
     """Negative triangular ramps (``NegCheops`` eCode); inner ramp times are not exposed."""
 
-    ecode: ClassVar[str] = "NegCheops"
+    ecode_class: ClassVar[str] = "NegCheops"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -350,7 +350,7 @@ class NegCheopsShapeProtocol(Protocol, abc.ABC):
 class PosCheopsShapeProtocol(Protocol, abc.ABC):
     """Positive triangular ramps (``PosCheops`` eCode); inner ramp times are not exposed."""
 
-    ecode: ClassVar[str] = "PosCheops"
+    ecode_class: ClassVar[str] = "PosCheops"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -359,7 +359,7 @@ class PosCheopsShapeProtocol(Protocol, abc.ABC):
 class SpikeRecShapeProtocol(Protocol, abc.ABC):
     """Train of short suprathreshold pulses (``SpikeRec`` eCode): timing is not configurable."""
 
-    ecode: ClassVar[str] = "SpikeRec"
+    ecode_class: ClassVar[str] = "SpikeRec"
 
     # SpikeRec exposes no configurable stimulus timing.
 
@@ -367,7 +367,7 @@ class SpikeRecShapeProtocol(Protocol, abc.ABC):
 class SineSpecShapeProtocol(Protocol, abc.ABC):
     """Chirp / resonance stimulus (``SineSpec`` eCode)."""
 
-    ecode: ClassVar[str] = "SineSpec"
+    ecode_class: ClassVar[str] = "SineSpec"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -376,7 +376,7 @@ class SineSpecShapeProtocol(Protocol, abc.ABC):
 class PinkNoiseShapeProtocol(Protocol, abc.ABC):
     """Pink-noise stimulus (``PinkNoise`` eCode)."""
 
-    ecode: ClassVar[str] = "PinkNoise"
+    ecode_class: ClassVar[str] = "PinkNoise"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -385,7 +385,7 @@ class PinkNoiseShapeProtocol(Protocol, abc.ABC):
 class CapCheckShapeProtocol(Protocol, abc.ABC):
     """Capacitance-check pulse (``CapCheck`` eCode)."""
 
-    ecode: ClassVar[str] = "CapCheck"
+    ecode_class: ClassVar[str] = "CapCheck"
 
     ton: float = ton_field()
     toff: float = toff_field()

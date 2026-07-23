@@ -84,7 +84,7 @@ def _partition_protocols(
     ecode_metadata: dict[str, dict] = {}
     skipped: list[str] = []
     for protocol in protocols:
-        ecode = protocol.ecode
+        ecode = protocol.ecode_class
         user_timing = protocol.timing_override()
         if ecode in _TON_ONLY_ECODES:
             ton = user_timing.get("ton", ton_by_protocol.get(protocol.protocol_name))
@@ -332,7 +332,7 @@ class EModelEFeatureExtractionTask(Task):
 
         # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
         # auto-detect it; the rest auto-detect their timing or use defaults.
-        ton_names = [p.protocol_name for p in all_protocols if p.ecode in _TON_ONLY_ECODES]
+        ton_names = [p.protocol_name for p in all_protocols if p.ecode_class in _TON_ONLY_ECODES]
         ton_per_protocol = _discover_timing(nwb_paths, ton_names) if ton_names else {}
 
         protocols_cfg, ecodes_metadata_dict, skipped = _partition_protocols(
