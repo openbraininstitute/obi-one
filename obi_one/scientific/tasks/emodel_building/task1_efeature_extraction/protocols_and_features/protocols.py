@@ -3,7 +3,7 @@
 The hierarchy has three levels:
 
 * :class:`Protocol` — the base, holding the fields every protocol shares (LJP,
-  amplitudes, role flags, per-protocol eFEL settings, feature selection).
+  amplitudes, role flags, feature selection).
 * a *shape* intermediate per BluePyEfe eCode class (:class:`StepShapeProtocol`,
   :class:`SAHPShapeProtocol`, …). The stimulus shape decides which timing
   parameters exist, so each intermediate fixes ``ecode`` and declares exactly
@@ -29,7 +29,7 @@ the concrete protocol rather than to the shape.
 import abc
 from typing import Annotated, Any, ClassVar, get_args
 
-from pydantic import Discriminator, Field, model_validator
+from pydantic import Discriminator, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
@@ -115,33 +115,21 @@ class Protocol(OBIBaseModel, abc.ABC):
     ``0.0`` they are auto-detected from each ``ElectricalCellRecording``'s NWB
     asset at task execution time.
 
-    Per-protocol custom eFEL settings are available via
-    ``custom_efel_settings``. Per-feature eFEL detection knobs (threshold,
-    strict_stiminterval, interp_step, stim_start, stim_end) live on
-    :class:`EFeature` and override the protocol level.
+    Per-feature eFEL detection knobs (threshold, strict_stiminterval,
+    interp_step, stim_start, stim_end) live on :class:`EFeature` and override
+    the global-level settings.
     """
 
     # -- static description, set by the shape intermediate / concrete class ---
-    protocol_name: ClassVar[str] = ""
-    """Canonical protocol name, as it appears in recording metadata."""
 
-    ecode: ClassVar[str] = "Step"
-    """Name of the BluePyEfe eCode class implementing this stimulus shape."""
-
-    name: str = Field(
-        default="",
-        title="Protocol name",
-        description=(
-            "Protocol name as it appears in the recording metadata. Defaults to"
-            " the class's canonical name; override it when the recordings use a"
-            " variant spelling."
-        ),
-    )
+    protocol_name: ClassVar[str] = "Step"
+    """Name of the BluePyEfe protocol name class implementing this stimulus shape."""
 
     # ------------------------------------------------------------------
     # LJP — a property of the recording, so it applies to every shape. The
     # stimulus timing fields are declared by the shape intermediates, since
-    # which ones exist depends on the eCode.
+    # which ones exist depends on the protocol
+    # shape (eCode) and thus the protocol class.
     # ------------------------------------------------------------------
     ljp: float = Field(
         default=0.0,
@@ -235,19 +223,6 @@ class Protocol(OBIBaseModel, abc.ABC):
     )
 
     # ------------------------------------------------------------------
-    # Custom eFEL settings (picker)
-    # ------------------------------------------------------------------
-    custom_efel_settings: dict[str, float | bool] = Field(
-        default_factory=dict,
-        title="Custom eFEL settings",
-        description=(
-            "Per-protocol eFEL settings applied to all features of this protocol."
-            " Keys are eFEL setting names. Overridden by per-feature settings."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
-    )
-
-    # ------------------------------------------------------------------
     # Features — keyed by eFEL feature name
     # ------------------------------------------------------------------
     features: tuple[EFeature, ...] = Field(
@@ -259,13 +234,6 @@ class Protocol(OBIBaseModel, abc.ABC):
             " can actually extract."
         ),
     )
-
-    @model_validator(mode="after")
-    def _apply_class_defaults(self) -> "Protocol":
-        """Fill name and features from the class's static description."""
-        if not self.name:
-            self.name = self.protocol_name
-        return self
 
     @classmethod
     def feature_classes(cls) -> tuple[type[EFeature], ...]:
@@ -298,15 +266,6 @@ class Protocol(OBIBaseModel, abc.ABC):
     def selected_efeatures(self) -> list[EFeature]:
         """Return every :class:`EFeature` whose ``extract`` flag is set."""
         return [f for f in self.features if f.extract]
-
-    def efel_settings_override(self) -> dict:
-        """Build the per-protocol ``efel_settings`` overrides.
-
-        Returns only the ``custom_efel_settings`` dict (or empty). Per-feature
-        settings override these values in the cascade (global -> protocol ->
-        feature).
-        """
-        return dict(self.custom_efel_settings)
 
     def timing_override(self) -> dict:
         """Return user-set timing/LJP fields as a dict (0.0 values omitted).
@@ -763,4 +722,4 @@ def protocol_from_name(protocol_name: str, **kwargs: Any) -> Protocol:
             " See PROTOCOL_CLASSES for the available protocols."
         )
         raise KeyError(msg)
-    return cls(name=protocol_name, **kwargs)
+    return cls(**kwargs)
