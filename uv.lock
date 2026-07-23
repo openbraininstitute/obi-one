@@ -989,14 +989,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.5"
+version = "0.19.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/4a/e8c09e6fe42765ae8b5bea4fa12be91589abd8fa4dc8a1d6561c039c180b/entitysdk-0.19.5.tar.gz", hash = "sha256:249b604a45730ada252053a6b816e7ab6201962ef154ebfb38de6e118e28a247", size = 92063, upload-time = "2026-07-20T11:11:08.848Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/2f/cd95a5b103096924c6abdd925adcbb9b374761ad1da844fe1f5ccbd71ab4/entitysdk-0.19.7.tar.gz", hash = "sha256:ab613ef79c5b137047ad123260fc33fc0f17c294abb65429aedf4cf0066d4b0e", size = 92152, upload-time = "2026-07-22T06:59:44.03Z" }
 
 [[package]]
 name = "executing"
@@ -2217,9 +2217,9 @@ dependencies = [
     { name = "scikit-image" },
     { name = "scipy" },
 ]
-sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha512:976bcf603ce6fc192941a170ac88ba18c371e7d59c053fd200cb691f163a0259ef9126cb358c943ac36915f7cc44e4fe451d1f348b3ccd37bdbf281868ac5106" }
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha512:976bcf603ce6fc192941a170ac88ba18c371e7d59c053fd200cb691f163a0259ef9126cb358c943ac36915f7cc44e4fe451d1f348b3ccd37bdbf281868ac5106", upload-time = "2026-03-24T13:23:51.355Z" }
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha512:7f42255c55d93a23190a598930acbc7f729090cf2e68bd804c405364d631e300984cad13976138dbcc95b649f2e9aa5443114b772af99a3a59821c741d7e56cb" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha512:7f42255c55d93a23190a598930acbc7f729090cf2e68bd804c405364d631e300984cad13976138dbcc95b649f2e9aa5443114b772af99a3a59821c741d7e56cb", upload-time = "2026-03-24T13:23:51.355Z" },
 ]
 
 [[package]]
