@@ -3,7 +3,6 @@
 import logging
 import operator
 from pathlib import Path
-from statistics import median
 from typing import Any, ClassVar
 
 import entitysdk
@@ -13,10 +12,6 @@ from pydantic import PrivateAttr
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
-)
-from obi_one.scientific.library.electrical_cell_recording_properties import (
-    read_amplitudes_from_nwb,
-    read_timing_from_nwb,
 )
 from obi_one.scientific.tasks.emodel_building import _shared
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.settings import (
@@ -35,222 +30,98 @@ EMODEL_NAME = "emodel"
 RECIPES_RELPATH = "config/recipes.json"
 TARGETS_CONFIG_RELPATH = "config/extract_config/targets.json"
 
-# Global eFEL defaults passed as the recipe's ``efel_settings`` dict. Per-feature
-# overrides (threshold/strict_stiminterval/interp_step/stim_start/stim_end +
-# custom_efel_settings on EFeature) take priority via the cascade.
-DEFAULT_EFEL_SETTINGS: dict[str, float | bool] = {
-    "Threshold": -20.0,
-    "strict_stiminterval": True,
-    "interp_step": 0.025,
-}
-
-# bluepyefe eCodes that don't auto-detect their stimulus timing. ``Ramp`` needs
-# only ``ton``, which this stage reads from the NWB current (``read_timing_from_nwb``)
-# and supplies. ``DeHyperPol`` also needs mid-transition points we can't recover
-# from the current alone, so protocols routing to it are skipped at extraction
-# (with a warning) rather than crashing the whole run.
-_TON_ONLY_ECODES = frozenset({"Ramp"})
-_TIMING_UNSUPPORTED_ECODES = frozenset({"DeHyperPol"})
-
-
-def _discover_timing(
-    nwb_paths: list[Path],
-    protocol_names: list[str],
-) -> dict[str, float]:
-    """Median stimulus onset (``ton``, ms) per protocol across the NWBs.
-
-    Protocols with no detectable onset in any NWB are omitted.
-    """
-    collected: dict[str, list[float]] = {p: [] for p in protocol_names}
-    for path in nwb_paths:
-        for protocol_name, ton in read_timing_from_nwb(path, protocol_names).items():
-            collected[protocol_name].append(ton)
-    return {p: median(v) for p, v in collected.items() if v}
-
-
-def _partition_protocols(
-    protocols: tuple,
-    ton_by_protocol: dict[str, float],
-) -> tuple[list, dict[str, dict], list[str]]:
-    """Split protocols into ``(extractable, ecode_metadata, skipped)``.
-
-    ``ecode_metadata`` maps each extractable protocol to the per-protocol config
-    passed to bluepyefe. User-provided timing (``protocol.timing_override()``)
-    takes priority; for ``Ramp`` protocols that don't auto-detect, the
-    auto-detected ``ton_by_protocol`` is used as a fallback. Protocols whose
-    eCode needs timing we can't supply are returned in ``skipped``.
-    """
-    extractable: list = []
-    ecode_metadata: dict[str, dict] = {}
-    skipped: list[str] = []
-    for protocol in protocols:
-        ecode = protocol.ecode_class
-        user_timing = protocol.timing_override()
-        if ecode in _TON_ONLY_ECODES:
-            ton = user_timing.get("ton", ton_by_protocol.get(protocol.protocol_name))
-            if ton is None:
-                skipped.append(protocol.protocol_name)
-                continue
-            ecode_metadata[protocol.protocol_name] = {**user_timing, "ton": ton}
-        elif ecode in _TIMING_UNSUPPORTED_ECODES:
-            skipped.append(protocol.protocol_name)
-            continue
-        else:
-            ecode_metadata[protocol.protocol_name] = user_timing
-        extractable.append(protocol)
-    return extractable, ecode_metadata, skipped
+# Fitness weight applied to every target. Amplitudes come from the recordings'
+# discovered values (``AMPLITUDES_BY_PROTOCOL``), so each target matches a trace
+# exactly and the tolerance only guards float-precision differences in the
+# amplitude bluepyefe recomputes from the trace.
+DEFAULT_TARGET_WEIGHT = 1.0
+AMPLITUDE_TOLERANCE = 1e-3
 
 
 def _build_files_metadata(
     *,
     nwb_paths_with_ljp: list[tuple[Path, float]],
-    ecodes_metadata_dict: dict,
+    ecode_timing: dict[str, dict],
 ) -> list[dict]:
-    """Build files_metadata rows for NWB datasets (one file per cell).
+    """Build ``files_metadata`` rows for the NWB datasets (one file per cell).
 
-    Each recording carries its own LJP, read from the ``ElectricalCellRecording``
-    entity.
+    Each recording carries its own LJP (read from the ``ElectricalCellRecording``
+    entity); the per-protocol stimulus timing in ``ecode_timing`` is shared across
+    cells. Timing left unset is omitted so bluepyefe auto-detects it from the NWB.
     """
     return [
         {
             "cell_name": path.stem,
             "filepath": str(path),
-            "ecodes": {
-                ecode: {**meta, "ljp": ljp}
-                for ecode, meta in ecodes_metadata_dict.items()
-            },
+            "ecodes": {ecode: {**timing, "ljp": ljp} for ecode, timing in ecode_timing.items()},
         }
         for path, ljp in sorted(nwb_paths_with_ljp, key=operator.itemgetter(0))
     ]
 
 
-def _discover_amplitudes(
-    nwb_paths: list[Path],
-    protocol_names: list[str],
-) -> dict[str, list[float]]:
-    """Union of step amplitudes (nA) discovered across every NWB, per protocol."""
-    combined: dict[str, set[float]] = {p: set() for p in protocol_names}
-    for path in nwb_paths:
-        per_file = read_amplitudes_from_nwb(path, protocol_names)
-        for protocol_name, amps in per_file.items():
-            combined[protocol_name].update(amps)
-    return {p: sorted(v) for p, v in combined.items()}
+def _build_targets(
+    protocols: tuple,
+    global_efel_settings: dict,
+) -> tuple[list[dict], list[str]]:
+    """Flatten the per-protocol selection into ``bluepyefe.extract`` target rows.
 
-
-def _build_targets_formatted(
-    protocols: list,
-    amplitudes_per_protocol: dict[str, list[float]],
-    *,
-    threshold_based: bool = False,
-) -> list[dict]:
-    """Flatten the per-protocol selection into ``bluepyefe.extract`` rows.
-
-    Amplitude selection (rule 7):
-    - If ``threshold_based=True`` and the protocol has ``extraction_amplitudes``
-      set, those relative (% of rheobase) amplitudes are used.
-    - Otherwise, fall back to the NWB-discovered amplitudes from
-      ``amplitudes_per_protocol``. When falling back in relative mode a warning
-      is logged (the discovered amplitudes may be absolute nA).
-
-    Protocols with no amplitudes from either source contribute zero rows.
+    For every protocol, every ``(amplitude, is_validation)`` pair in
+    ``extraction_amplitudes`` and every feature in ``features`` yields one target.
+    Each target's ``efel_settings`` apply the cascade feature > protocol > global.
+    Amplitudes flagged ``is_validation`` are returned as ``{protocol}_{amplitude}``
+    validation-protocol names for the recipe.
     """
     rows: list[dict] = []
+    validation_names: list[str] = []
     for protocol in protocols:
-        ecode = protocol.protocol_name
-
-        # Amplitude selection per rule 7.
-        ea = protocol.extraction_amplitudes
-        if threshold_based and ea:
-            amplitudes = [ea] if isinstance(ea, (int, float)) else list(ea)
-        else:
-            amplitudes = amplitudes_per_protocol.get(ecode, ())
-            if threshold_based and not amplitudes:
-                L.warning(
-                    "Protocol %s: threshold_based=True but no extraction_amplitudes set"
-                    " and no amplitudes discovered from NWB. No rows will be generated.",
-                    ecode,
-                )
-
-        for amplitude in amplitudes:
-            for feature in protocol.selected_efeatures():
-                # Same exclusion as the L5PC pipeline: skip ohmic_input_resistance for IV_0.
-                if (
-                    ecode == "IV"
-                    and amplitude == 0
-                    and feature.efel_name == "ohmic_input_resistance_vb_ssse"
-                ):
-                    continue
-                row = {
+        protocol_overrides = protocol.efel_settings_overrides()
+        for amplitude, is_validation in protocol.extraction_amplitudes:
+            if is_validation:
+                validation_names.append(f"{protocol.protocol_name}_{amplitude}")
+            rows.extend(
+                {
                     "efeature": feature.efel_name,
-                    "protocol": ecode,
+                    "protocol": protocol.protocol_name,
                     "amplitude": amplitude,
-                    "tolerance": feature.tolerance,
-                    "weight": feature.weight,
-                    "efel_settings": feature.efel_settings_override(),
+                    "tolerance": AMPLITUDE_TOLERANCE,
+                    "weight": DEFAULT_TARGET_WEIGHT,
+                    "efel_settings": {
+                        **global_efel_settings,
+                        **protocol_overrides,
+                        **feature.efel_settings_overrides(),
+                    },
                 }
-                rows.append(row)
-    return rows
+                for feature in protocol.features
+            )
+    return rows, validation_names
 
 
 def _build_extraction_recipes(
     settings: Settings,
     *,
-    threshold_based: bool = False,
-    validation_protocol_names: list[str] | None = None,
-    protocols: tuple = (),
+    validation_protocol_names: list[str],
 ) -> dict:
     """Build a minimal BluePyEModel ``recipes.json`` for the extraction step.
 
     Only the ``pipeline_settings`` consumed by ``extract_save_features_protocols``
-    are populated — extracting experimental e-features needs no morphology,
-    mechanisms or model parameters. ``features`` points at the file that the
-    optimisation stage consumes; ``path_extract_config`` at the targets
-    configuration stored through the access point at execution time.
-
-    ``extract_absolute_amplitudes`` is the inverse of ``threshold_based``:
-    - Default (threshold_based=False): absolute amplitudes from NWB (nA).
-    - threshold_based=True: relative amplitudes (% of rheobase).
-
-    R_in and RMP protocols are derived from per-protocol flags
-    (``is_rin_protocol``, ``is_rmp_protocol``) and are only emitted when
-    ``threshold_based=True``.
+    are populated — no morphology, mechanisms or model parameters are needed.
+    Amplitudes are absolute (nA), so ``extract_absolute_amplitudes`` is always True.
+    ``efel_settings`` is the global base of the cascade; the per-target overrides in
+    the targets configuration refine it (feature > protocol > global).
     """
-    # Derive R_in / RMP protocol from per-protocol flags.
-    name_rin_protocol = None
-    name_rmp_protocol = None
-    rheobase_protocol_names: list[str] = []
-
-    for protocol in protocols:
-        if threshold_based and getattr(protocol, "is_rin_protocol", False):
-            name_rin_protocol = [protocol.protocol_name, protocol.rin_amplitude or None]
-        if threshold_based and getattr(protocol, "is_rmp_protocol", False):
-            name_rmp_protocol = [protocol.protocol_name, protocol.rmp_amplitude or None]
-        if getattr(protocol, "is_rheobase_protocol", False):
-            rheobase_protocol_names.append(protocol.protocol_name)
-
     pipeline_settings: dict = {
         "path_extract_config": TARGETS_CONFIG_RELPATH,
-        "extract_absolute_amplitudes": not threshold_based,
-        "plot_extraction": settings.plot_extraction,
+        "extract_absolute_amplitudes": True,
+        "plot_extraction": True,
         "default_std_value": settings.default_std_value,
-        "efel_settings": DEFAULT_EFEL_SETTINGS,
-        "name_rmp_protocol": name_rmp_protocol,
-        "name_Rin_protocol": name_rin_protocol,
+        "efel_settings": settings.global_efel_settings(),
         "extraction_threshold_value_save": settings.threshold_nvalue_save,
         "bound_max_std": settings.bound_max_std,
         "interpolate_RMP_extraction": settings.interpolate_rmp,
         "threshold_efeature_std": settings.threshold_efeature_std or None,
         "minimum_protocol_delay": settings.minimum_protocol_delay,
-        "validation_protocols": sorted(
-            {p.strip() for p in settings.validation_protocols.split(",") if p.strip()}
-            | set(validation_protocol_names or [])
-        ),
+        "validation_protocols": sorted(set(validation_protocol_names)),
     }
-
-    if rheobase_protocol_names:
-        pipeline_settings["rheobase_strategy_extraction"] = "absolute"
-        pipeline_settings["rheobase_settings_extraction"] = {"spike_threshold": 1}
-
     return {
         EMODEL_NAME: {
             "features": EXTRACTED_FEATURES_FILENAME,
@@ -264,26 +135,22 @@ class EModelEFeatureExtractionTask(Task):
 
     Extraction is routed through BluePyEModel's
     :func:`bluepyemodel.efeatures_extraction.efeatures_extraction.extract_save_features_protocols`
-    (the entry point that also backs ``EModel_pipeline.extract_efeatures``) rather
-    than calling ``bluepyefe.extract.extract_efeatures`` directly, so the targets,
-    pipeline settings and fitness-calculator output all flow through the
-    BluePyEModel local access point. The function is invoked directly (instead of
-    via ``EModel_pipeline``) to avoid importing the Nexus access point and its
-    optional dependencies.
+    rather than calling ``bluepyefe.extract.extract_efeatures`` directly, so the
+    targets, pipeline settings and fitness-calculator output all flow through the
+    BluePyEModel local access point.
 
     Steps performed in ``coordinate_output_root``:
 
     1. Download the NWB asset of every ``ElectricalCellRecording`` listed in
        ``initialize.electrical_cell_recording`` into ``./ephys_data/<id>/``.
-    2. Build ``files_metadata`` + ``targets`` rows from the user-provided blocks
-       into a
+    2. Build ``files_metadata`` + ``targets`` rows from the per-protocol blocks
+       (amplitudes, stimulus timing and the eFEL settings cascade) into a
        :class:`bluepyemodel.efeatures_extraction.targets_configuration.TargetsConfiguration`.
     3. Write a minimal ``./config/recipes.json`` (extraction ``pipeline_settings``
        only) and store the targets configuration through the local access point.
-    4. Run ``extract_save_features_protocols`` on that access point, which extracts
-       the e-features and writes the fitness-calculator configuration to
-       ``./extracted_features.json`` for the optimisation stage to slot into
-       ``config/features/<emodel>.json``.
+    4. Run ``extract_save_features_protocols`` on that access point, writing the
+       fitness-calculator configuration to ``./extracted_features.json`` for the
+       optimisation stage.
     """
 
     name: ClassVar[str] = "EModel EFeature Extraction"
@@ -312,64 +179,33 @@ class EModelEFeatureExtractionTask(Task):
             downloaded.append((path, ljp))
         return downloaded
 
-    def _build_targets_configuration(self, downloaded: list[tuple[Path, float]]) -> Any:
-        """Assemble the BluePyEModel ``TargetsConfiguration`` from the NWBs.
+    def _build_targets_configuration(
+        self, downloaded: list[tuple[Path, float]]
+    ) -> tuple[Any, list[str]]:
+        """Assemble the BluePyEModel ``TargetsConfiguration`` from the recordings.
 
-        Reads per-protocol step amplitudes and, for eCodes that need it, the
-        stimulus onset (``ton``) from the NWB currents; drops protocols whose
-        timing can't be recovered (with a warning); and builds files_metadata +
-        targets. Per-protocol ecode metadata carries each recording's LJP plus
-        the detected ``ton`` for Ramp protocols.
+        Stimulus timing and amplitudes come from the per-protocol config (the
+        amplitudes were discovered up front via the mapped-properties endpoint), so
+        the NWBs only need downloading — no timing or amplitude discovery happens
+        here. Returns the configuration and the validation-protocol names.
         """
         from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
             TargetsConfiguration,
         )
 
-        nwb_paths = [path for path, _ in downloaded]
+        protocols = self.config.efeatures_by_protocol.selection.protocols
+        ecode_timing = {p.protocol_name: p.stim_timing() for p in protocols}
 
-        all_protocols = self.config.efeatures_by_protocol.selection.protocols
-
-        # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
-        # auto-detect it; the rest auto-detect their timing or use defaults.
-        ton_names = [p.protocol_name for p in all_protocols if p.ecode_class in _TON_ONLY_ECODES]
-        ton_per_protocol = _discover_timing(nwb_paths, ton_names) if ton_names else {}
-
-        protocols_cfg, ecodes_metadata_dict, skipped = _partition_protocols(
-            all_protocols, ton_per_protocol
-        )
-        if skipped:
-            L.warning(
-                "Skipping protocols whose bluepyefe eCode needs stimulus timing not "
-                "recoverable from the NWB: %s",
-                skipped,
-            )
-
-        amplitudes_per_protocol = _discover_amplitudes(
-            nwb_paths, [p.protocol_name for p in protocols_cfg]
-        )
-        L.info("Discovered amplitudes per protocol (nA): %s", amplitudes_per_protocol)
-
-        files = _build_files_metadata(
-            nwb_paths_with_ljp=downloaded,
-            ecodes_metadata_dict=ecodes_metadata_dict,
-        )
+        files = _build_files_metadata(nwb_paths_with_ljp=downloaded, ecode_timing=ecode_timing)
         if not files:
             msg = "No NWB ephys files were downloaded for extraction."
             raise FileNotFoundError(msg)
 
-        rheobase_protocols = [
-            p.protocol_name for p in all_protocols if getattr(p, "is_rheobase_protocol", False)
-        ]
-
-        return TargetsConfiguration(
-            files=files,
-            targets=_build_targets_formatted(
-                protocols_cfg,
-                amplitudes_per_protocol,
-                threshold_based=self.config.efeatures_by_protocol.selection.threshold_based,
-            ),
-            protocols_rheobase=rheobase_protocols,
+        targets, validation_names = _build_targets(
+            protocols, self.config.settings.global_efel_settings()
         )
+        configuration = TargetsConfiguration(files=files, targets=targets, protocols_rheobase=[])
+        return configuration, validation_names
 
     def execute(
         self,
@@ -388,22 +224,15 @@ class EModelEFeatureExtractionTask(Task):
         # 1. Download the NWB ephys assets from entitycore (with per-recording LJP).
         downloaded = self._download_recordings(coord_root / "ephys_data", db_client)
 
-        # 2. Build the targets configuration (amplitudes + timing read from the NWB).
-        targets_configuration = self._build_targets_configuration(downloaded)
+        # 2. Build the targets configuration + collect validation-protocol names.
+        targets_configuration, validation_names = self._build_targets_configuration(downloaded)
 
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
-        validation_protocol_names = [
-            p.protocol_name
-            for p in self.config.efeatures_by_protocol.selection.protocols
-            if getattr(p, "validation", False)
-        ]
         _shared.write_recipes(
             _build_extraction_recipes(
                 self.config.settings,
-                threshold_based=self.config.efeatures_by_protocol.selection.threshold_based,
-                validation_protocol_names=validation_protocol_names,
-                protocols=self.config.efeatures_by_protocol.selection.protocols,
+                validation_protocol_names=validation_names,
             ),
             coord_root / RECIPES_RELPATH,
         )

@@ -118,9 +118,8 @@ class Protocol(OBIBaseModel, abc.ABC):
     user-specified; when left at ``0.0`` it is auto-detected from each
     ``ElectricalCellRecording``'s NWB asset at task execution time.
 
-    Per-feature eFEL detection knobs (threshold, strict_stiminterval,
-    interp_step, stim_start, stim_end) live on :class:`EFeature` and override
-    the global-level settings.
+    Per-feature eFEL detection knobs (threshold, interp_step, stim_start,
+    stim_end) live on :class:`EFeature` and override the global-level settings.
     """
 
     # -- static description, set by the shape intermediate / concrete class ---
@@ -160,34 +159,62 @@ class Protocol(OBIBaseModel, abc.ABC):
     )
 
     threshold: float | None = Field(
-        default=-20.0,
+        default=None,
         title="Threshold",
-        description="eFEL ``Threshold``: voltage above which a spike is detected (mV).",
+        description=(
+            "eFEL ``Threshold``: voltage above which a spike is detected (mV)."
+            " Leave unset to inherit the global value; features may override it."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
-    strict_stiminterval: bool = Field(
-        default=True,
-        title="Strict stim interval",
-        description=(
-            "eFEL ``strict_stiminterval``: only count spikes strictly within"
-            " [stim_start, stim_end]."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    interp_step: PositiveFloat = Field(
-        default=0.025,
+    interp_step: PositiveFloat | None = Field(
+        default=None,
         title="Interpolation step",
         description=(
-            "eFEL ``interp_step``: time step the trace is resampled to before extraction (ms)."
+            "eFEL ``interp_step``: time step the trace is resampled to before extraction"
+            " (ms). Leave unset to inherit the global value; features may override it."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
+
+    def efel_settings_overrides(self) -> dict:
+        """Return this protocol's own eFEL setting overrides (only what it sets).
+
+        Unset (``None``) values are omitted so the extraction task can cascade
+        feature > protocol > global.
+        """
+        overrides: dict[str, float | bool] = {}
+        if self.threshold is not None:
+            overrides["Threshold"] = self.threshold
+        if self.interp_step is not None:
+            overrides["interp_step"] = self.interp_step
+        return overrides
+
+    def stim_timing(self) -> dict:
+        """Return user-set stimulus timing, keyed as bluepyefe eCode metadata.
+
+        Maps the shape's ``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2`` to
+        bluepyefe's ``ton``/``toff``/``tmid``/``tmid2``; 0.0 values are omitted so
+        bluepyefe auto-detects them from the NWB.
+        """
+        mapping = {
+            "stim_start": "ton",
+            "stim_end": "toff",
+            "stim_mid": "tmid",
+            "stim_mid_2": "tmid2",
+        }
+        timing: dict[str, float] = {}
+        for attr, key in mapping.items():
+            value = getattr(self, attr, 0.0)
+            if value:
+                timing[key] = value
+        return timing
 
 # ---------------------------------------------------------------------------
 # Shape intermediates — one per BluePyEfe eCode class.
@@ -512,6 +539,7 @@ class CapCheckProtocol(CapCheckShapeProtocol):
     features: tuple[efeatures.SubthresholdFeatureUnion, ...] = _features_field(
         efeatures.SUBTHRESHOLD_FEATURES
     )
+
 
 ProtocolUnion = Annotated[
     IDRestProtocol

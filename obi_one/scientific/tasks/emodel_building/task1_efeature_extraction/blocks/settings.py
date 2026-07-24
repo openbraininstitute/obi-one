@@ -17,14 +17,36 @@ from obi_one.core.units import Units
 
 
 class Settings(Block):
-    """Advanced extraction settings (statistical knobs and output toggles)."""
+    """Advanced extraction settings (statistical knobs and output toggles).
 
-    plot_extraction: bool = Field(
-        default=True,
-        title="Plot extraction",
-        description="Whether to render extraction figures alongside the JSON output.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    Also holds the global eFEL detection knobs (``threshold``, ``interp_step``)
+    — the base of the settings cascade. Protocols and features may override them
+    (feature > protocol > global); left unset there, the global value applies.
+    """
+
+    # -- Global eFEL detection knobs (base of the cascade) --------------------
+    threshold: float | list[float] = Field(
+        default=-20.0,
+        title="Threshold",
+        description="Global eFEL ``Threshold``: voltage above which a spike is detected (mV).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
     )
+    interp_step: PositiveFloat | list[PositiveFloat] = Field(
+        default=0.025,
+        title="Interpolation step",
+        description=(
+            "Global eFEL ``interp_step``: time step the trace is resampled to before"
+            " extraction (ms)."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+
     default_std_value: PositiveFloat | list[PositiveFloat] = Field(
         default=0.01,
         title="Default std value",
@@ -75,3 +97,15 @@ class Settings(Block):
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
+
+    def global_efel_settings(self) -> dict:
+        """Return the global eFEL settings dict — the base of the cascade.
+
+        ``strict_stiminterval`` is fixed to True (only count spikes strictly within
+        the stimulus interval) rather than exposed as a setting.
+        """
+        return {
+            "Threshold": self.threshold,
+            "strict_stiminterval": True,
+            "interp_step": self.interp_step,
+        }

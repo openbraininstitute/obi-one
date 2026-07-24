@@ -134,8 +134,9 @@ Always-present eFEL settings (default to eFEL's own defaults; override the
 global `Settings` value, overridden in turn by a feature that sets the same
 field):
 
-`threshold` (`Threshold`, default -20.0), `strict_stiminterval` (default True),
-`interp_step` (default 0.025).
+`threshold` (`Threshold`, default -20.0) and `interp_step` (default 0.025).
+`strict_stiminterval` is fixed to True in the emitted eFEL settings and is not
+exposed as a per-level knob.
 
 Additional eFEL settings can be added via `custom_efel_settings` (a dict of
 key-value pairs using eFEL's native setting names).
@@ -157,7 +158,6 @@ eFEL defaults, overridden in turn by `custom_efel_settings`):
 | `weight` | fitness weight (bluepyefe `Target.weight`) |
 | `tolerance` | amplitude tolerance for matching recordings |
 | `threshold` | eFEL `Threshold` (default -20.0) |
-| `strict_stiminterval` | eFEL `strict_stiminterval` (default True) |
 | `interp_step` | eFEL `interp_step` (default 0.025) |
 | `stim_start` | eFEL `stim_start` — per-feature stimulus onset (ms), overrides the protocol |
 | `stim_end` | eFEL `stim_end` — per-feature stimulus end (ms), overrides the protocol |

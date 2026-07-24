@@ -65,21 +65,17 @@ def stim_mid_2_field() -> Any:
 
 
 class EFeature(OBIBaseModel):
-    """Generic eFEL feature with per-feature tunable parameters.
+    """Generic eFEL feature with per-feature setting overrides.
 
-    Each instance carries:
-    - ``efel_name``: the eFEL feature key, fixed by the concrete class
-    - ``extract``: on/off switch for inclusion in extraction
-    - ``weight``, ``tolerance``: fitness function parameters
-    - Per-feature eFEL setting overrides (threshold, stim window, custom)
+    A concrete feature fixes ``efel_name``; instances carry only the eFEL
+    detection knobs the user may override for this feature: ``threshold`` and
+    ``interp_step`` (``None`` = inherit the protocol, then global, value), plus
+    the stimulus-window overrides ``stim_start``/``stim_end`` (and
+    ``stim_mid``/``stim_mid_2`` on two-step features) declared on the
+    feature-category subclasses.
 
-    The three always-present eFEL settings (``Threshold``,
-    ``strict_stiminterval``, ``interp_step``) default to eFEL's own defaults
-    and are always emitted in ``efel_settings_override()``. The per-feature
-    stimulus-window overrides (``stim_start``/``stim_end``, plus
-    ``stim_mid``/``stim_mid_2`` on two-step features) live on the
-    feature-category subclasses; ``stim_start``/``stim_end`` are emitted when
-    set. Further eFEL settings can be added via ``custom_efel_settings``.
+    ``efel_settings_overrides()`` returns only the settings this feature actually
+    sets, so the extraction task can cascade them: feature > protocol > global.
     """
 
     efel_name: ClassVar[str] = ""
@@ -89,19 +85,23 @@ class EFeature(OBIBaseModel):
     # Always-present eFEL settings with eFEL defaults pre-filled
     # ------------------------------------------------------------------
     threshold: float | None = Field(
-        default=-20.0,
+        default=None,
         title="Threshold",
-        description="eFEL ``Threshold``: voltage above which a spike is detected (mV).",
+        description=(
+            "eFEL ``Threshold``: voltage above which a spike is detected (mV)."
+            " Leave unset to inherit the protocol (then global) value."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
     interp_step: PositiveFloat | None = Field(
-        default=0.025,
+        default=None,
         title="Interpolation step",
         description=(
-            "eFEL ``interp_step``: time step the trace is resampled to before extraction (ms)."
+            "eFEL ``interp_step``: time step the trace is resampled to before extraction"
+            " (ms). Leave unset to inherit the protocol (then global) value."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -109,27 +109,22 @@ class EFeature(OBIBaseModel):
         },
     )
 
-    def efel_settings_override(self) -> dict:
-        """Build the per-feature ``efel_settings`` overrides for this target row.
+    def efel_settings_overrides(self) -> dict:
+        """Return this feature's own eFEL setting overrides (only what it sets).
 
-        The 3 always-present settings are always emitted. ``stim_start`` and
-        ``stim_end`` are emitted only when non-zero. Additional settings from
-        ``custom_efel_settings`` are merged on top. Each setting overrides the
-        protocol- and global-level eFEL setting for this feature.
+        Unset (``None``) values are omitted so the extraction task can cascade
+        feature > protocol > global. ``stim_start``/``stim_end`` (declared on the
+        feature-category subclasses) are included only when non-zero.
         """
-        overrides: dict[str, float | bool] = {
-            "Threshold": self.threshold,
-            "strict_stiminterval": self.strict_stiminterval,
-            "interp_step": self.interp_step,
-        }
-        stim_start = getattr(self, "stim_start", 0.0)
-        if stim_start:
-            overrides["stim_start"] = stim_start
-        stim_end = getattr(self, "stim_end", 0.0)
-        if stim_end:
-            overrides["stim_end"] = stim_end
-        if self.custom_efel_settings:
-            overrides.update(self.custom_efel_settings)
+        overrides: dict[str, float | bool] = {}
+        if self.threshold is not None:
+            overrides["Threshold"] = self.threshold
+        if self.interp_step is not None:
+            overrides["interp_step"] = self.interp_step
+        for key in ("stim_start", "stim_end"):
+            value = getattr(self, key, 0.0)
+            if value:
+                overrides[key] = value
         return overrides
 
 
