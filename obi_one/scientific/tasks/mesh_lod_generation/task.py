@@ -21,7 +21,7 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
 try:
-    import ultraliser
+    import ultraliser  # ty: ignore[unresolved-import]
 
     HAS_MESHING = True
 except ImportError:

@@ -11,14 +11,14 @@ def test_run_success_logs_and_returns(tmp_path, caplog):
     mock_result = Mock()
     mock_result.stdout = "hello\n"
     mock_result.stderr = "warn\n"
+    custom_env = {"FOO": "bar"}
 
     with (
         patch("obi_one.utils.process.subprocess.run", return_value=mock_result) as mock_run,
         caplog.at_level(logging.DEBUG),
     ):
-        result = test_module.run_and_log(["echo", "hello"], cwd=tmp_path)
+        result = test_module.run_and_log(["echo", "hello"], cwd=tmp_path, env=custom_env)
 
-    # subprocess called correctly
     mock_run.assert_called_once_with(
         ["echo", "hello"],
         check=True,
@@ -26,12 +26,11 @@ def test_run_success_logs_and_returns(tmp_path, caplog):
         text=True,
         shell=False,
         cwd=tmp_path,
+        env=custom_env,
     )
 
-    # return value
     assert result == mock_result
 
-    # logs
     assert "Command: echo hello" in caplog.text
     assert "stdout: hello" in caplog.text
     assert "stderr: warn" in caplog.text

@@ -3,7 +3,10 @@ import logging
 from entitysdk import Client, models
 from entitysdk.types import AssetLabel, ContentType
 
-from obi_one.scientific.library.simulation.schemas import SimulationMetadata, SimulationResults
+from obi_one.scientific.library.simulation.neuron.schemas import (
+    SimulationMetadata,
+    SimulationResults,
+)
 
 L = logging.getLogger(__name__)
 
@@ -19,7 +22,7 @@ def register_simulation_results(
     client: Client,
     simulation_metadata: SimulationMetadata,
     simulation_results: SimulationResults,
-) -> None:
+) -> models.SimulationResult:
     # TODO: Add proper name, consider adding a description
     simulation_result = client.register_entity(
         models.SimulationResult(
@@ -61,4 +64,4 @@ def register_simulation_results(
             asset.label,
         )
 
-    return simulation_result  # ty:ignore[invalid-return-type]
+    return simulation_result
