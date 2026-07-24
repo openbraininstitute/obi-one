@@ -20,6 +20,9 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
     CreateExtracellularRecordingArrayScanConfig,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
 )
@@ -134,6 +137,7 @@ def activate_scan_config_endpoints() -> None:
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
         (EMSynapseMappingScanConfig, "generate", "", False),
+        (EModelOptimizationScanConfig, "generate", "", False),
         (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),
