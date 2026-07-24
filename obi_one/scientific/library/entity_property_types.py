@@ -9,6 +9,7 @@ class EntityType(StrEnum):
 class MappedPropertiesGroup(StrEnum):
     CIRCUIT = "Circuit"
     ION_CHANNEL_MODEL = "IonChannelModel"
+    INPUTS = "Inputs"
 
 
 class CircuitMappedProperties(StrEnum):
@@ -20,6 +21,12 @@ class CircuitMappedProperties(StrEnum):
     NEURONAL_POPULATION = "NeuronalPopulation"
     MECHANISM_VARIABLES_BY_ION_CHANNEL = "MechanismVariablesByIonChannel"
     NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION = "NodePropertyUniqueValuesByPopulation"
+
+
+class ElectricalCellRecordingMappedProperties(StrEnum):
+    PROTOCOLS = "Protocols"
+    PROTOCOLS_BY_RECORDING = "ProtocolsByRecording"
+    AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
 
 
 class CircuitUsability(StrEnum):

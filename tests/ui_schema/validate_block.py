@@ -188,6 +188,42 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
+def validate_float_optional(schema: dict, param: str, ref: str) -> None:
+    any_of = schema.get("anyOf", [{}, {}])
+    if any_of[0].get("type") != "number":
+        msg = (
+            f"Validation error at {ref}: float_optional param {param} should "
+            "be a union with a 'number' as first element"
+        )
+        raise ValidationError(msg) from None
+
+    if any_of[1].get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: float_optional param {param} should "
+            "be a union with 'null' as second element"
+        )
+        raise ValidationError(msg) from None
+
+    test_value = determine_minimum_valid_numeric_value(schema)
+
+    try:
+        validate(test_value, schema)
+
+    except ValidationError:
+        msg = f"Validation error at {ref}: float_optional param {param} failed to validate a float"
+        raise ValidationError(msg) from None
+
+    try:
+        validate(None, schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: float_optional param {param} failed "
+            "to validate a null value"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> None:
     validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
@@ -571,6 +607,25 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
+def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) -> None:
+    location = f"{param} at {ref}"
+
+    # The field is a `$ref` to the object backing the widget (with the extras as
+    # siblings), so the `object` type the component spec requires lives on the
+    # referenced schema rather than on the field itself.
+    target_ref = schema.get("$ref") or (schema.get("allOf") or [{}])[0].get("$ref")
+    assert target_ref is not None, (
+        f"Validation error at {location}: select_efeatures_by_protocol param {param}"
+        " should reference the object holding the selection"
+    )
+    assert resolve_ref(openapi_schema, target_ref).get("type") == "object", (
+        f"Validation error at {location}: select_efeatures_by_protocol param {param}"
+        " should reference a schema of type 'object'"
+    )
+    # Which efeatures are valid per protocol is carried by each protocol's
+    # `features` union in the schema, so there is no catalogue extra to check.
+
+
 def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     assert schema.get("type") == "array", (
         f"Validation error at {ref}: voltage_duration param {param} should be of type 'array'"
@@ -624,6 +679,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_float_param_sweep(schema, param, ref)
         case UIElement.INT_PARAMETER_SWEEP:
             validate_int_param_sweep(schema, param, ref)
+        case UIElement.FLOAT_OPTIONAL:
+            validate_float_optional(schema, param, ref)
         case UIElement.ENTITY_PROPERTY_DROPDOWN:
             validate_entity_property_dropdown(schema, param, ref)
         case UIElement.REFERENCE:
@@ -650,6 +707,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON:
             validate_ion_channel_variable_modification_by_neuron(schema, param, ref)
+        case UIElement.SELECT_EFEATURES_BY_PROTOCOL:
+            validate_select_efeatures_by_protocol(schema, param, ref)
         case UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE:
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case UIElement.VOLTAGE_DURATION:

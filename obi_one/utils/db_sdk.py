@@ -75,6 +75,131 @@ def create_activity(
     return activity
 
 
+def fetch_asset_by_label(
+    *,
+    client: Client,
+    entity: Entity,
+    asset_label: AssetLabel,
+    output_path: Path,
+) -> Path:
+    """Fetch a single asset matching the given label to output_path.
+
+    Uses fetch_assets (checks local data store first).
+    Returns the path to the fetched file.
+    """
+    from entitysdk.utils.filesystem import create_dir  # noqa: PLC0415
+
+    output_dir = create_dir(output_path)
+    asset = client.fetch_assets(
+        entity,
+        selection={"label": asset_label},
+        output_path=output_dir,
+    ).one()
+    return asset.path
+
+
+def get_recording_protocols(
+    recording_ids: list[str],
+    db_client: Client,
+) -> dict[str, list[str]]:
+    """Return ``{recording_id: [protocol_class_name, ...]}`` for each recording.
+
+    Reads the stimulus names from each ``ElectricalCellRecording`` entity (no NWB
+    download) and maps them to the matching ``Protocol`` subclass name via
+    ``protocol_class_name_for``. Stimuli with no matching protocol are dropped.
+    """
+    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
+
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501, PLC0415
+        protocol_class_name_for,
+    )
+
+    by_recording: dict[str, list[str]] = {}
+    for rid in recording_ids:
+        entity = db_client.get_entity(
+            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_type=ElectricalCellRecording,
+        )
+        stimuli = entity.stimuli or []
+        class_names = {
+            class_name
+            for s in stimuli
+            if s.name and (class_name := protocol_class_name_for(s.name)) is not None
+        }
+        by_recording[rid] = sorted(class_names)
+    return by_recording
+
+
+def get_recording_amplitudes(
+    recording_ids: list[str],
+    db_client: Client,
+) -> dict[str, list[float]]:
+    """Return ``{protocol_class_name: [step_amplitude_nA, ...]}`` unioned across recordings.
+
+    Unlike protocol names, amplitudes are not stored on the entity, so each
+    ``ElectricalCellRecording``'s NWB asset is downloaded and its per-protocol step
+    amplitudes (nA) are estimated with ``read_amplitudes_from_nwb``. Results are then
+    keyed by the matching ``Protocol`` subclass name (via ``protocol_class_name_for``)
+    so they align with :func:`get_recording_protocols`; stimuli with no matching
+    protocol are dropped.
+    """
+    import tempfile  # noqa: PLC0415
+
+    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
+
+    from obi_one.scientific.library.electrical_cell_recording_properties import (  # noqa: PLC0415
+        read_amplitudes_from_nwb,
+    )
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501, PLC0415
+        protocol_class_name_for,
+    )
+
+    combined: dict[str, set[float]] = {}
+    for rid in recording_ids:
+        entity = db_client.get_entity(
+            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_type=ElectricalCellRecording,
+        )
+        protocol_names = sorted({s.name for s in (entity.stimuli or []) if s.name})
+        if not protocol_names:
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            asset = db_client.fetch_assets(
+                entity,
+                selection={"content_type": ContentType.application_nwb},
+                output_path=Path(tmp),
+            ).one()
+            per_protocol = read_amplitudes_from_nwb(Path(asset.path), protocol_names)
+        for raw_name, amplitudes in per_protocol.items():
+            class_name = protocol_class_name_for(raw_name)
+            if class_name is not None:
+                combined.setdefault(class_name, set()).update(amplitudes)
+    return {protocol: sorted(values) for protocol, values in combined.items()}
+
+
+def fetch_directory_asset_by_label(
+    *,
+    client: Client,
+    entity: Entity,
+    asset_label: AssetLabel,
+    output_path: Path,
+) -> Path:
+    """Fetch a directory asset matching the given label to output_path.
+
+    Uses fetch_assets (checks local data store first).
+    Returns the path to the fetched directory.
+    """
+    from entitysdk.utils.filesystem import create_dir  # noqa: PLC0415
+
+    output_dir = create_dir(output_path)
+    asset = client.fetch_assets(
+        entity,
+        selection={"label": asset_label, "content_type": ContentType.application_vnd_directory},
+        output_path=output_dir,
+    ).one()
+    return asset.path
+
+
 def select_asset_content(
     *,
     client: Client,
