@@ -38,6 +38,13 @@ from obi_one.scientific.library.entity_property_types import (
     ElectricalCellRecordingMappedProperties,
     MappedPropertiesGroup,
 )
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.constants import (
+    INHERIT_NOTE,
+    SPIKE_DETECTION_THRESHOLD_DESCRIPTION,
+    SPIKE_DETECTION_THRESHOLD_TITLE,
+    TRACE_RESAMPLING_TIMESTEP_DESCRIPTION,
+    TRACE_RESAMPLING_TIMESTEP_TITLE,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # noqa: E501
     efeatures,
 )
@@ -118,9 +125,9 @@ class Protocol(OBIBaseModel, abc.ABC):
     user-specified; when left at ``0.0`` it is auto-detected from each
     ``ElectricalCellRecording``'s NWB asset at task execution time.
 
-    Per-feature eFEL detection knobs (spike_detection_threshold, interp_step,
-    stim_start, stim_end) live on :class:`EFeature` and override the global-level
-    settings.
+    Per-feature eFEL detection knobs (spike_detection_threshold,
+    trace_resampling_timestep, stim_start, stim_end) live on :class:`EFeature` and
+    override the global-level settings.
     """
 
     # -- static description, set by the shape intermediate / concrete class ---
@@ -161,23 +168,17 @@ class Protocol(OBIBaseModel, abc.ABC):
 
     spike_detection_threshold: float | None = Field(
         default=None,
-        title="Spike detection threshold",
-        description=(
-            "eFEL ``Threshold``: voltage above which a spike is detected (mV)."
-            " Leave unset to inherit the global value; features may override it."
-        ),
+        title=SPIKE_DETECTION_THRESHOLD_TITLE,
+        description=f"{SPIKE_DETECTION_THRESHOLD_DESCRIPTION} {INHERIT_NOTE}",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
-    interp_step: PositiveFloat | None = Field(
+    trace_resampling_timestep: PositiveFloat | None = Field(
         default=None,
-        title="Interpolation step",
-        description=(
-            "eFEL ``interp_step``: time step the trace is resampled to before extraction"
-            " (ms). Leave unset to inherit the global value; features may override it."
-        ),
+        title=TRACE_RESAMPLING_TIMESTEP_TITLE,
+        description=f"{TRACE_RESAMPLING_TIMESTEP_DESCRIPTION} {INHERIT_NOTE}",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -193,8 +194,8 @@ class Protocol(OBIBaseModel, abc.ABC):
         overrides: dict[str, float | bool] = {}
         if self.spike_detection_threshold is not None:
             overrides["Threshold"] = self.spike_detection_threshold
-        if self.interp_step is not None:
-            overrides["interp_step"] = self.interp_step
+        if self.trace_resampling_timestep is not None:
+            overrides["interp_step"] = self.trace_resampling_timestep
         return overrides
 
     def stim_timing(self) -> dict:

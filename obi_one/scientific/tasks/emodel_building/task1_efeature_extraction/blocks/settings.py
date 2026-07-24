@@ -14,34 +14,37 @@ from pydantic import Field, PositiveFloat
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.constants import (
+    SPIKE_DETECTION_THRESHOLD_DESCRIPTION,
+    SPIKE_DETECTION_THRESHOLD_TITLE,
+    TRACE_RESAMPLING_TIMESTEP_DESCRIPTION,
+    TRACE_RESAMPLING_TIMESTEP_TITLE,
+)
 
 
 class Settings(Block):
     """Advanced extraction settings (statistical knobs and output toggles).
 
     Also holds the global eFEL detection knobs (``spike_detection_threshold``,
-    ``interp_step``) — the base of the settings cascade. Protocols and features
-    may override them (feature > protocol > global); left unset there, the global
-    value applies.
+    ``trace_resampling_timestep``) — the base of the settings cascade. Protocols
+    and features may override them (feature > protocol > global); left unset
+    there, the global value applies.
     """
 
     # -- Global eFEL detection knobs (base of the cascade) --------------------
     spike_detection_threshold: float | list[float] = Field(
         default=-20.0,
-        title="Spike detection threshold",
-        description="Global eFEL ``Threshold``: voltage above which a spike is detected (mV).",
+        title=SPIKE_DETECTION_THRESHOLD_TITLE,
+        description=SPIKE_DETECTION_THRESHOLD_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
-    interp_step: PositiveFloat | list[PositiveFloat] = Field(
+    trace_resampling_timestep: PositiveFloat | list[PositiveFloat] = Field(
         default=0.025,
-        title="Interpolation step",
-        description=(
-            "Global eFEL ``interp_step``: time step the trace is resampled to before"
-            " extraction (ms)."
-        ),
+        title=TRACE_RESAMPLING_TIMESTEP_TITLE,
+        description=TRACE_RESAMPLING_TIMESTEP_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -108,5 +111,5 @@ class Settings(Block):
         return {
             "Threshold": self.spike_detection_threshold,
             "strict_stiminterval": True,
-            "interp_step": self.interp_step,
+            "interp_step": self.trace_resampling_timestep,
         }
