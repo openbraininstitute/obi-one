@@ -27,7 +27,7 @@ the concrete protocol rather than to the shape.
 """
 
 import abc
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, get_args
 
 from pydantic import Discriminator, Field, PositiveFloat
 
@@ -51,6 +51,7 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocol
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
     EFeature,
 )
+
 
 class Protocol(OBIBaseModel, abc.ABC):
     """Base class for every ephys protocol.
@@ -569,3 +570,29 @@ ProtocolUnion = Annotated[
     | SineSpecProtocol
     | PinkNoiseProtocol
     | CapCheckProtocol, Discriminator("type")]
+
+
+# Concrete protocol classes, longest ``protocol_name`` first — used to map a
+# recording's stimulus name to the matching protocol class.
+_PROTOCOL_CLASSES: tuple[type[Protocol], ...] = tuple(
+    sorted(
+        get_args(get_args(ProtocolUnion)[0]),
+        key=lambda cls: len(cls.protocol_name),
+        reverse=True,
+    )
+)
+
+
+def protocol_class_name_for(stimulus_name: str) -> str | None:
+    """Return the ``Protocol`` subclass name matching a recording's stimulus name.
+
+    Mirrors BluePyEfe's lookup: the protocol whose ``protocol_name`` is a
+    case-insensitive substring of the stimulus name wins, longest name first (so
+    ``"IDthresh_250"`` resolves to ``IDThreshProtocol``, not ``IDRestProtocol``).
+    Returns ``None`` when no protocol matches.
+    """
+    lowered = stimulus_name.lower()
+    for cls in _PROTOCOL_CLASSES:
+        if cls.protocol_name.lower() in lowered:
+            return cls.__name__
+    return None

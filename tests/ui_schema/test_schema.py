@@ -15,6 +15,7 @@ from .validate_block import (
     validate_float_optional,
     validate_hidden_refs_not_required,
     validate_neuron_set_combination,
+    validate_select_efeatures_by_protocol,
     validate_string,
     validate_type,
 )
@@ -347,3 +348,37 @@ def test_float_optional_rejects_missing_null():
     schema["anyOf"][1] = {"type": "array", "items": {"type": "number"}}
     with pytest.raises(ValidationError, match="null"):
         validate_float_optional(schema, FLOAT_OPTIONAL_FIELD, "ref")
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `select_efeatures_by_protocol` UI element validator.
+# ---------------------------------------------------------------------------
+
+# ProtocolAndFeatureSelection.selection uses UIElement.SELECT_EFEATURES_BY_PROTOCOL:
+# a $ref to the SelectEFeaturesByProtocol object (type "object") holding the protocols.
+SELECT_EFEATURES_BLOCK = "ProtocolAndFeatureSelection"
+SELECT_EFEATURES_FIELD = "selection"
+
+
+def _select_efeatures_schema() -> dict:
+    """Return a deep copy of the real `select_efeatures_by_protocol` field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][SELECT_EFEATURES_BLOCK]["properties"][
+            SELECT_EFEATURES_FIELD
+        ]
+    )
+
+
+def test_select_efeatures_by_protocol_valid_schema_passes():
+    # The real, generated field references the SelectEFeaturesByProtocol object.
+    validate_select_efeatures_by_protocol(
+        _select_efeatures_schema(), SELECT_EFEATURES_FIELD, SELECT_EFEATURES_BLOCK
+    )
+
+
+def test_select_efeatures_by_protocol_rejects_missing_object_reference():
+    schema = _select_efeatures_schema()
+    schema.pop("$ref", None)
+    schema.pop("allOf", None)
+    with pytest.raises(AssertionError, match="should reference the object"):
+        validate_select_efeatures_by_protocol(schema, SELECT_EFEATURES_FIELD, "ref")

@@ -89,12 +89,17 @@ def get_recording_protocols(
     recording_ids: list[str],
     db_client: Client,
 ) -> dict[str, list[str]]:
-    """Return ``{recording_id: [protocol_name, ...]}`` for each recording.
+    """Return ``{recording_id: [protocol_class_name, ...]}`` for each recording.
 
-    Reads protocol names from the ``stimuli`` field of each
-    ``ElectricalCellRecording`` entity — no NWB download required.
+    Reads the stimulus names from each ``ElectricalCellRecording`` entity (no NWB
+    download) and maps them to the matching ``Protocol`` subclass name via
+    ``protocol_class_name_for``. Stimuli with no matching protocol are dropped.
     """
     from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
+
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501, PLC0415
+        protocol_class_name_for,
+    )
 
     by_recording: dict[str, list[str]] = {}
     for rid in recording_ids:
@@ -103,7 +108,12 @@ def get_recording_protocols(
             entity_type=ElectricalCellRecording,
         )
         stimuli = entity.stimuli or []
-        by_recording[rid] = sorted({s.name for s in stimuli if s.name})
+        class_names = {
+            class_name
+            for s in stimuli
+            if s.name and (class_name := protocol_class_name_for(s.name)) is not None
+        }
+        by_recording[rid] = sorted(class_names)
     return by_recording
 
 
@@ -111,11 +121,14 @@ def get_recording_amplitudes(
     recording_ids: list[str],
     db_client: Client,
 ) -> dict[str, list[float]]:
-    """Return ``{protocol_name: [step_amplitude_nA, ...]}`` unioned across recordings.
+    """Return ``{protocol_class_name: [step_amplitude_nA, ...]}`` unioned across recordings.
 
     Unlike protocol names, amplitudes are not stored on the entity, so each
     ``ElectricalCellRecording``'s NWB asset is downloaded and its per-protocol step
-    amplitudes (nA) are estimated with ``read_amplitudes_from_nwb``.
+    amplitudes (nA) are estimated with ``read_amplitudes_from_nwb``. Results are then
+    keyed by the matching ``Protocol`` subclass name (via ``protocol_class_name_for``)
+    so they align with :func:`get_recording_protocols`; stimuli with no matching
+    protocol are dropped.
     """
     import tempfile  # noqa: PLC0415
 
@@ -123,6 +136,9 @@ def get_recording_amplitudes(
 
     from obi_one.scientific.library.electrical_cell_recording_properties import (  # noqa: PLC0415
         read_amplitudes_from_nwb,
+    )
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501, PLC0415
+        protocol_class_name_for,
     )
 
     combined: dict[str, set[float]] = {}
@@ -141,8 +157,10 @@ def get_recording_amplitudes(
                 output_path=Path(tmp),
             ).one()
             per_protocol = read_amplitudes_from_nwb(Path(asset.path), protocol_names)
-        for protocol_name, amplitudes in per_protocol.items():
-            combined.setdefault(protocol_name, set()).update(amplitudes)
+        for raw_name, amplitudes in per_protocol.items():
+            class_name = protocol_class_name_for(raw_name)
+            if class_name is not None:
+                combined.setdefault(class_name, set()).update(amplitudes)
     return {protocol: sorted(values) for protocol, values in combined.items()}
 
 
