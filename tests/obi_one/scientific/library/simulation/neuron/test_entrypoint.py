@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from obi_one.scientific.library.simulation import entrypoint as test_module
+from obi_one.scientific.library.simulation.neuron import entrypoint as test_module
 from obi_one.types import SimulationBackend
 
 
