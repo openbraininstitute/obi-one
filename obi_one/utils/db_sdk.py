@@ -107,6 +107,45 @@ def get_recording_protocols(
     return by_recording
 
 
+def get_recording_amplitudes(
+    recording_ids: list[str],
+    db_client: Client,
+) -> dict[str, list[float]]:
+    """Return ``{protocol_name: [step_amplitude_nA, ...]}`` unioned across recordings.
+
+    Unlike protocol names, amplitudes are not stored on the entity, so each
+    ``ElectricalCellRecording``'s NWB asset is downloaded and its per-protocol step
+    amplitudes (nA) are estimated with ``read_amplitudes_from_nwb``.
+    """
+    import tempfile  # noqa: PLC0415
+
+    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
+
+    from obi_one.scientific.library.electrical_cell_recording_properties import (  # noqa: PLC0415
+        read_amplitudes_from_nwb,
+    )
+
+    combined: dict[str, set[float]] = {}
+    for rid in recording_ids:
+        entity = db_client.get_entity(
+            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_type=ElectricalCellRecording,
+        )
+        protocol_names = sorted({s.name for s in (entity.stimuli or []) if s.name})
+        if not protocol_names:
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            asset = db_client.fetch_assets(
+                entity,
+                selection={"content_type": ContentType.application_nwb},
+                output_path=Path(tmp),
+            ).one()
+            per_protocol = read_amplitudes_from_nwb(Path(asset.path), protocol_names)
+        for protocol_name, amplitudes in per_protocol.items():
+            combined.setdefault(protocol_name, set()).update(amplitudes)
+    return {protocol: sorted(values) for protocol, values in combined.items()}
+
+
 def fetch_directory_asset_by_label(
     *,
     client: Client,

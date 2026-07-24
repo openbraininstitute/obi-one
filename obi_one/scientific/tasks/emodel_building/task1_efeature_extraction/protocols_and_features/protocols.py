@@ -2,13 +2,13 @@
 
 The hierarchy has three levels:
 
-* :class:`Protocol` — the base, holding the fields every protocol shares (LJP,
-  amplitudes, role flags, feature selection).
+* :class:`Protocol` — the base, holding the fields every protocol shares
+  (amplitudes, role flags, feature selection).
 * a *shape* intermediate per BluePyEfe eCode class (:class:`StepShapeProtocol`,
   :class:`SAHPShapeProtocol`, …). The stimulus shape decides which timing
   parameters exist, so each intermediate fixes ``ecode_class`` and declares
-  exactly the timing fields its eCode reads — ``ton``/``toff`` for a plain
-  step, all four for sAHP, ``ton`` alone for a ramp, none at all for SpikeRec.
+  exactly the timing fields its eCode reads — ``stim_start``/``stim_end`` for a plain
+  step, all four for sAHP, ``stim_start`` alone for a ramp, none at all for SpikeRec.
   A protocol therefore has no timing field it cannot use, and the schema tells
   the frontend which inputs to render without a separate list.
 * a concrete class per protocol (:class:`IDRestProtocol`, :class:`IVProtocol`,
@@ -27,13 +27,17 @@ the concrete protocol rather than to the shape.
 """
 
 import abc
-from typing import Annotated, Any, ClassVar, get_args
+from typing import Annotated, Any, ClassVar
 
-from pydantic import Discriminator, Field
+from pydantic import Discriminator, Field, PositiveFloat
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.library.entity_property_types import (
+    ElectricalCellRecordingMappedProperties,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # noqa: E501
     efeatures,
 )
@@ -55,34 +59,34 @@ def _timing_field(title: str, description: str) -> Any:
     )
 
 
-def ton_field() -> Any:
-    """Stimulus onset, declared by shapes whose eCode reads ``ton``."""
+def stim_start_field() -> Any:
+    """Stimulus onset, declared by shapes whose eCode reads ``stim_start``."""
     return _timing_field(
-        "Stimulus onset (ton)",
+        "Stimulus onset (stim_start)",
         "Stimulus onset time (ms). Set to 0 to auto-detect from the NWB.",
     )
 
 
-def toff_field() -> Any:
-    """Stimulus end, declared by shapes whose eCode reads ``toff``."""
+def stim_end_field() -> Any:
+    """Stimulus end, declared by shapes whose eCode reads ``stim_end``."""
     return _timing_field(
-        "Stimulus end (toff)",
+        "Stimulus end (stim_end)",
         "Stimulus end time (ms). Set to 0 to auto-detect from the NWB.",
     )
 
 
-def tmid_field() -> Any:
+def stim_mid_field() -> Any:
     """First mid-transition, declared by two-step shapes."""
     return _timing_field(
-        "Mid-transition 1 (tmid)",
+        "Mid-transition 1 (stim_mid)",
         "First mid-transition point for two-step protocols (ms). Set to 0 to auto-detect.",
     )
 
 
-def tmid2_field() -> Any:
+def stim_mid_2_field() -> Any:
     """Second mid-transition, declared by the sAHP shape."""
     return _timing_field(
-        "Mid-transition 2 (tmid2)",
+        "Mid-transition 2 (stim_mid_2)",
         "Second mid-transition point for two-step protocols (ms). Set to 0 to auto-detect.",
     )
 
@@ -110,10 +114,9 @@ class Protocol(OBIBaseModel, abc.ABC):
     Subclasses supply the static description of the protocol through class
     variables; instances carry only what the user can edit.
 
-    Protocol-level stimulus timing (``ton``/``toff``/``tmid``/``tmid2``) and
-    liquid junction potential (``ljp``) may be user-specified; when left at
-    ``0.0`` they are auto-detected from each ``ElectricalCellRecording``'s NWB
-    asset at task execution time.
+    Protocol-level stimulus timing (``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2``) may be
+    user-specified; when left at ``0.0`` it is auto-detected from each
+    ``ElectricalCellRecording``'s NWB asset at task execution time.
 
     Per-feature eFEL detection knobs (threshold, strict_stiminterval,
     interp_step, stim_start, stim_end) live on :class:`EFeature` and override
@@ -122,104 +125,25 @@ class Protocol(OBIBaseModel, abc.ABC):
 
     # -- static description, set by the shape intermediate / concrete class ---
 
-    protocol_name: ClassVar[str] = "Step"
+    protocol_name: ClassVar[str] = ""
     """Name of the BluePyEfe protocol name class implementing this stimulus shape."""
-
-    # ------------------------------------------------------------------
-    # LJP — a property of the recording, so it applies to every shape. The
-    # stimulus timing fields are declared by the shape intermediates, since
-    # which ones exist depends on the protocol
-    # shape (eCode) and thus the protocol class.
-    # ------------------------------------------------------------------
-    ljp: float = Field(
-        default=0.0,
-        title="Liquid junction potential (LJP)",
-        description=(
-            "Liquid junction potential correction (mV). Set to 0 to use the recording's LJP."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIVOLTS,
-        },
-    )
 
     # ------------------------------------------------------------------
     # Per-protocol extraction amplitudes (threshold-based / relative mode)
     # ------------------------------------------------------------------
-    extraction_amplitudes: float | list[float] = Field(
-        default=0.0,
+    extraction_amplitudes: tuple[tuple[float, bool], ...] = Field(
+        default=(),
         title="Extraction amplitudes",
         description=(
-            "Amplitudes (% of rheobase) to extract from this protocol. Only used"
-            " when global ``threshold_based`` is enabled. Set to 0 to fall back to"
-            " NWB-discovered amplitudes (which may be in absolute nA — a warning"
-            " is logged)."
+            "Step amplitudes (nA) to extract from this protocol, populated from the"
+            " recordings' NWBs via the ``AmplitudesByProtocol`` property of"
+            " ``/declared/mapped-electrical-cell-recording-properties``. Each amplitude is"
+            " paired with a boolean marking whether it is used for validation."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-
-    # ------------------------------------------------------------------
-    # Validation hold-out (per-protocol)
-    # ------------------------------------------------------------------
-    validation: bool = Field(
-        default=False,
-        title="Validation protocol",
-        description=(
-            "If True, this protocol's features are extracted but marked as"
-            " validation-only in the output JSON so the optimiser excludes them."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-
-    # ------------------------------------------------------------------
-    # Per-protocol role flags (Rin, RMP, Rheobase)
-    # ------------------------------------------------------------------
-    is_rin_protocol: bool = Field(
-        default=False,
-        title="Use as R_in protocol",
-        description=(
-            "If True, this protocol is used to compute input resistance."
-            " Automatically adds ``ohmic_input_resistance_vb_ssse`` to features."
-            " Only relevant when ``threshold_based`` is enabled."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    rin_amplitude: float = Field(
-        default=-20.0,
-        title="R_in amplitude (%)",
-        description=(
-            "Amplitude (% of rheobase) for the R_in measurement."
-            " Only used when ``is_rin_protocol`` is True. Default: -20%."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    is_rmp_protocol: bool = Field(
-        default=False,
-        title="Use as RMP protocol",
-        description=(
-            "If True, this protocol is used to compute resting membrane potential."
-            " Automatically adds ``voltage_base`` to features."
-            " Only relevant when ``threshold_based`` is enabled."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    rmp_amplitude: float = Field(
-        default=0.0,
-        title="RMP amplitude (%)",
-        description=(
-            "Amplitude (% of rheobase) for the RMP measurement."
-            " Only used when ``is_rmp_protocol`` is True. Default: 0%."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    is_rheobase_protocol: bool = Field(
-        default=False,
-        title="Use for rheobase",
-        description=(
-            "If True, this protocol is used to estimate rheobase (lowest amplitude"
-            " inducing at least 1 spike). Typically IDthresh or IDThreshold."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        json_schema_extra={
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.INPUTS,
+            SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.AMPLITUDES_BY_PROTOCOL,
+        },
     )
 
     # ------------------------------------------------------------------
@@ -235,52 +159,35 @@ class Protocol(OBIBaseModel, abc.ABC):
         ),
     )
 
-    @classmethod
-    def feature_classes(cls) -> tuple[type[EFeature], ...]:
-        """Return the feature classes this protocol's ``features`` union allows.
-
-        Read off the annotation rather than kept in a parallel list, so the
-        union stays the single statement of what a protocol can extract.
-        """
-        args = get_args(cls.model_fields["features"].annotation)
-        if not args:
-            return ()
-        item = args[0]
-        inner = get_args(item)  # unwrap Annotated[union, Discriminator]
-        if not inner:
-            return (item,) if isinstance(item, type) else ()
-        return get_args(inner[0])
-
-    def select(self, *efel_names: str) -> "Protocol":
-        """Mark the named features for extraction, ignoring any not valid here."""
-        wanted = set(efel_names)
-        for feature in self.features:
-            if feature.efel_name in wanted:
-                feature.extract = True
-        return self
-
-    def feature(self, efel_name: str) -> EFeature | None:
-        """Return this protocol's feature with ``efel_name``, or None."""
-        return next((f for f in self.features if f.efel_name == efel_name), None)
-
-    def selected_efeatures(self) -> list[EFeature]:
-        """Return every :class:`EFeature` whose ``extract`` flag is set."""
-        return [f for f in self.features if f.extract]
-
-    def timing_override(self) -> dict:
-        """Return user-set timing/LJP fields as a dict (0.0 values omitted).
-
-        Only the timing fields this protocol's shape actually declares are
-        considered, plus ``ljp``. Used by the extraction task to override
-        auto-detected NWB timing.
-        """
-        result: dict[str, float] = {}
-        for key in ("ton", "toff", "tmid", "tmid2", "ljp"):
-            value = getattr(self, key, 0.0)
-            if value:
-                result[key] = value
-        return result
-
+    threshold: float | None = Field(
+        default=-20.0,
+        title="Threshold",
+        description="eFEL ``Threshold``: voltage above which a spike is detected (mV).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
+    )
+    strict_stiminterval: bool = Field(
+        default=True,
+        title="Strict stim interval",
+        description=(
+            "eFEL ``strict_stiminterval``: only count spikes strictly within"
+            " [stim_start, stim_end]."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    interp_step: PositiveFloat = Field(
+        default=0.025,
+        title="Interpolation step",
+        description=(
+            "eFEL ``interp_step``: time step the trace is resampled to before extraction (ms)."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
 
 # ---------------------------------------------------------------------------
 # Shape intermediates — one per BluePyEfe eCode class.
@@ -295,8 +202,8 @@ class StepShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "Step"
 
-    ton: float = ton_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 class SAHPShapeProtocol(Protocol, abc.ABC):
@@ -304,10 +211,10 @@ class SAHPShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "SAHP"
 
-    ton: float = ton_field()
-    tmid: float = tmid_field()
-    tmid2: float = tmid2_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_mid: float = stim_mid_field()
+    stim_mid_2: float = stim_mid_2_field()
+    stim_end: float = stim_end_field()
 
 
 class RampShapeProtocol(Protocol, abc.ABC):
@@ -315,7 +222,7 @@ class RampShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "Ramp"
 
-    ton: float = ton_field()
+    stim_start: float = stim_start_field()
 
 
 class HyperDePolShapeProtocol(Protocol, abc.ABC):
@@ -323,9 +230,9 @@ class HyperDePolShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "HyperDePol"
 
-    ton: float = ton_field()
-    tmid: float = tmid_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_mid: float = stim_mid_field()
+    stim_end: float = stim_end_field()
 
 
 class DeHyperPolShapeProtocol(Protocol, abc.ABC):
@@ -333,9 +240,9 @@ class DeHyperPolShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "DeHyperPol"
 
-    ton: float = ton_field()
-    tmid: float = tmid_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_mid: float = stim_mid_field()
+    stim_end: float = stim_end_field()
 
 
 class NegCheopsShapeProtocol(Protocol, abc.ABC):
@@ -343,8 +250,8 @@ class NegCheopsShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "NegCheops"
 
-    ton: float = ton_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 class PosCheopsShapeProtocol(Protocol, abc.ABC):
@@ -352,8 +259,8 @@ class PosCheopsShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "PosCheops"
 
-    ton: float = ton_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 class SpikeRecShapeProtocol(Protocol, abc.ABC):
@@ -369,8 +276,8 @@ class SineSpecShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "SineSpec"
 
-    ton: float = ton_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 class PinkNoiseShapeProtocol(Protocol, abc.ABC):
@@ -378,8 +285,8 @@ class PinkNoiseShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "PinkNoise"
 
-    ton: float = ton_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 class CapCheckShapeProtocol(Protocol, abc.ABC):
@@ -387,8 +294,8 @@ class CapCheckShapeProtocol(Protocol, abc.ABC):
 
     ecode_class: ClassVar[str] = "CapCheck"
 
-    ton: float = ton_field()
-    toff: float = toff_field()
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 # ---------------------------------------------------------------------------
@@ -606,8 +513,7 @@ class CapCheckProtocol(CapCheckShapeProtocol):
         efeatures.SUBTHRESHOLD_FEATURES
     )
 
-
-_PROTOCOLS = (
+ProtocolUnion = Annotated[
     IDRestProtocol
     | IDThreshProtocol
     | IVProtocol
@@ -633,93 +539,4 @@ _PROTOCOLS = (
     | SpikeRecProtocol
     | SineSpecProtocol
     | PinkNoiseProtocol
-    | CapCheckProtocol
-)
-
-ProtocolUnion = Annotated[_PROTOCOLS, Discriminator("type")]
-
-# Ordered longest-name-first so that e.g. "IDthresh" wins over "IDrest" would-be
-# prefixes and "IRhyperpol" is not shadowed by a shorter alias.
-PROTOCOL_CLASSES: tuple[type[Protocol], ...] = tuple(
-    sorted(
-        (
-            IDRestProtocol,
-            IDThreshProtocol,
-            IVProtocol,
-            APWaveformProtocol,
-            FirePatternProtocol,
-            SpontaneousProtocol,
-            SpontAPsProtocol,
-            DeltaProtocol,
-            StartHoldProtocol,
-            StartNoHoldProtocol,
-            GenericStepProtocol,
-            SAHPProtocol,
-            IDHyperpolProtocol,
-            IRHyperpolProtocol,
-            IDDepolProtocol,
-            IRDepolProtocol,
-            RampProtocol,
-            APThresholdProtocol,
-            HyperDePolProtocol,
-            DeHyperPolProtocol,
-            NegCheopsProtocol,
-            PosCheopsProtocol,
-            SpikeRecProtocol,
-            SineSpecProtocol,
-            PinkNoiseProtocol,
-            CapCheckProtocol,
-        ),
-        key=lambda cls: len(cls.protocol_name),
-        reverse=True,
-    )
-)
-
-# Alternative spellings seen in recording metadata, mapped to their protocol.
-PROTOCOL_ALIASES: dict[str, type[Protocol]] = {
-    "idthres": IDThreshProtocol,
-    "idthreshold": IDThreshProtocol,
-    "ap_thresh": APThresholdProtocol,
-    "apthresh": APThresholdProtocol,
-    "sponaps": SpontAPsProtocol,
-    "sponnohold30": SpontaneousProtocol,
-    "sponhold30": SpontaneousProtocol,
-    "spontnohold30": SpontaneousProtocol,
-    "sponthold30": SpontaneousProtocol,
-    "spontaneousnohold": SpontaneousProtocol,
-    "genericstep": GenericStepProtocol,
-}
-
-
-def protocol_class_for_name(protocol_name: str) -> type[Protocol] | None:
-    """Return the protocol class matching ``protocol_name``, or None.
-
-    Mirrors BluePyEfe's own lookup (``cell.Cell.read_recordings``): a registry
-    key that is a case-insensitive substring of the protocol name wins, so
-    ``"IDrest_250"`` resolves to :class:`IDRestProtocol`. Longer names are
-    tried first so more specific protocols beat shorter ones.
-    """
-    lowered = protocol_name.lower()
-    for alias, cls in sorted(PROTOCOL_ALIASES.items(), key=lambda kv: -len(kv[0])):
-        if alias in lowered:
-            return cls
-    for cls in PROTOCOL_CLASSES:
-        if cls.protocol_name.lower() in lowered:
-            return cls
-    return None
-
-
-def protocol_from_name(protocol_name: str, **kwargs: Any) -> Protocol:
-    """Build the protocol matching ``protocol_name``, with its valid features.
-
-    Raises:
-        KeyError: if no protocol matches, mirroring BluePyEfe's behaviour.
-    """
-    cls = protocol_class_for_name(protocol_name)
-    if cls is None:
-        msg = (
-            f"There is no protocol matching the stimulus name {protocol_name!r}."
-            " See PROTOCOL_CLASSES for the available protocols."
-        )
-        raise KeyError(msg)
-    return cls(**kwargs)
+    | CapCheckProtocol, Discriminator("type")]

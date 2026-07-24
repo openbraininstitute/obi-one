@@ -108,16 +108,15 @@ def _build_files_metadata(
 ) -> list[dict]:
     """Build files_metadata rows for NWB datasets (one file per cell).
 
-    Each recording carries its own LJP (read from the ``ElectricalCellRecording``
-    entity). If the user set a per-protocol LJP override (via
-    ``protocol.timing_override()``), it takes priority over the recording's LJP.
+    Each recording carries its own LJP, read from the ``ElectricalCellRecording``
+    entity.
     """
     return [
         {
             "cell_name": path.stem,
             "filepath": str(path),
             "ecodes": {
-                ecode: {**meta, "ljp": meta.get("ljp", ljp)}
+                ecode: {**meta, "ljp": ljp}
                 for ecode, meta in ecodes_metadata_dict.items()
             },
         }

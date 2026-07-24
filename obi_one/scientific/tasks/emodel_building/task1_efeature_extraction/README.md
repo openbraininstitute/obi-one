@@ -140,9 +140,9 @@ field):
 Additional eFEL settings can be added via `custom_efel_settings` (a dict of
 key-value pairs using eFEL's native setting names).
 
-User-editable stimulus timing and LJP (None = auto-detect from NWB):
+User-editable stimulus timing (None = auto-detect from NWB):
 
-`ton`, `toff`, `tmid`, `tmid2`, `ljp`.
+`ton`, `toff`, `tmid`, `tmid2`.
 
 ---
 
@@ -176,13 +176,13 @@ have an illustrative figure in the eFEL docs name it via
 
 These per-protocol/per-recording values are read from each
 `ElectricalCellRecording`'s NWB asset at execution time. The timing fields
-(`ton`, `toff`, `tmid`, `tmid2`) and `ljp` can be overridden by the user on
-the `Protocol` class; when left `None`, they are auto-detected from the NWB.
+(`ton`, `toff`, `tmid`, `tmid2`) can be overridden by the user on the
+`Protocol` class; when left `None`, they are auto-detected from the NWB.
 
 - **Stimulus timing:** `ton`, `toff`, `tmid`, `tmid2`, `tend`, `t1`–`t4`
 - **Amplitudes:** `amp`, `hypamp`, `amp2` (discovered per protocol, in nA)
 - **Units / sampling:** `i_unit`, `v_unit`, `t_unit`, `dt`
-- **Liquid junction potential:** `ljp` (read from the entity / NWB, or user-set)
+- **Liquid junction potential:** `ljp` (read from the `ElectricalCellRecording` entity)
 
 ## eFEL doc figures with no model class (47)
 

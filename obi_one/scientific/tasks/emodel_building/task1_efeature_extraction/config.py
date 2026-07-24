@@ -12,6 +12,7 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
@@ -60,6 +61,9 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             BlockGroup.PROTOCOLS_FEATURES,
             BlockGroup.SETTINGS,
         ],
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.INPUTS: "/declared/mapped-electrical-cell-recording-properties",
+        }
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (
@@ -89,7 +93,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             "Per-protocol timing, amplitudes and e-feature selection. The"
             " frontend renders a ``select_efeatures_by_protocol`` picker,"
             " restricted to the protocols returned by"
-            " ``/declared/electrical-cell-recording-protocols`` for the chosen"
+            " ``/declared/mapped-electrical-cell-recording-properties`` for the chosen"
             " recordings."
         ),
         json_schema_extra={

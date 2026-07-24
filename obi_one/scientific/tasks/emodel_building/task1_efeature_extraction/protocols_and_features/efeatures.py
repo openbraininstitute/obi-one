@@ -6,13 +6,62 @@ each protocol.
 """
 
 import abc
-from typing import Annotated, ClassVar
+from typing import Annotated, Any, ClassVar
 
 from pydantic import Discriminator, Field, PositiveFloat
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+
+
+def _stim_timing_field(title: str, description: str) -> Any:
+    """Build a per-feature eFEL stimulus-timing override (ms); 0.0 uses the protocol value."""
+    return Field(
+        default=0.0,
+        title=title,
+        description=description,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+
+
+def stim_start_field() -> Any:
+    """Per-feature ``stim_start`` override, declared by the feature-category subclasses."""
+    return _stim_timing_field(
+        "Stim start",
+        "eFEL ``stim_start``: stimulus onset for this feature (ms). Overrides the"
+        " protocol-level value; set to 0 to use the protocol's detected onset.",
+    )
+
+
+def stim_end_field() -> Any:
+    """Per-feature ``stim_end`` override, declared by the feature-category subclasses."""
+    return _stim_timing_field(
+        "Stim end",
+        "eFEL ``stim_end``: stimulus end for this feature (ms). Overrides the"
+        " protocol-level value; set to 0 to use the protocol's detected end.",
+    )
+
+
+def stim_mid_field() -> Any:
+    """Per-feature ``stim_mid`` override, declared by two-step (sAHP) features only."""
+    return _stim_timing_field(
+        "Stim mid",
+        "First mid-transition for two-step (sAHP) protocols (ms). Overrides the"
+        " protocol-level value; set to 0 to use the protocol's detected value.",
+    )
+
+
+def stim_mid_2_field() -> Any:
+    """Per-feature ``stim_mid_2`` override, declared by two-step (sAHP) features only."""
+    return _stim_timing_field(
+        "Stim mid 2",
+        "Second mid-transition for two-step (sAHP) protocols (ms). Overrides the"
+        " protocol-level value; set to 0 to use the protocol's detected value.",
+    )
 
 
 class EFeature(OBIBaseModel):
@@ -26,42 +75,20 @@ class EFeature(OBIBaseModel):
 
     The three always-present eFEL settings (``Threshold``,
     ``strict_stiminterval``, ``interp_step``) default to eFEL's own defaults
-    and are always emitted in ``efel_settings_override()``. Two additional
-    optional fields (``stim_start``, ``stim_end``) are emitted only when set.
-    Further eFEL settings can be added via ``custom_efel_settings``.
+    and are always emitted in ``efel_settings_override()``. The per-feature
+    stimulus-window overrides (``stim_start``/``stim_end``, plus
+    ``stim_mid``/``stim_mid_2`` on two-step features) live on the
+    feature-category subclasses; ``stim_start``/``stim_end`` are emitted when
+    set. Further eFEL settings can be added via ``custom_efel_settings``.
     """
 
     efel_name: ClassVar[str] = ""
     """The eFEL feature key, fixed by each concrete feature class."""
-    extract: bool = Field(
-        default=False,
-        title="Extract",
-        description="Whether to include this efeature in the bluepyefe extraction.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    weight: PositiveFloat = Field(
-        default=1.0,
-        title="Weight",
-        description=(
-            "Relative weight of this efeature in the fitness function (passed to"
-            " ``bluepyefe``'s Target ``weight`` parameter)."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    tolerance: PositiveFloat = Field(
-        default=20.0,
-        title="Tolerance",
-        description=(
-            "Amplitude tolerance (in % of rheobase, or pA when"
-            " ``extract_absolute_amplitudes=True``) used to match recordings to"
-            " the requested target amplitude."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
+
     # ------------------------------------------------------------------
     # Always-present eFEL settings with eFEL defaults pre-filled
     # ------------------------------------------------------------------
-    threshold: float = Field(
+    threshold: float | None = Field(
         default=-20.0,
         title="Threshold",
         description="eFEL ``Threshold``: voltage above which a spike is detected (mV).",
@@ -91,49 +118,6 @@ class EFeature(OBIBaseModel):
         },
     )
 
-    # ------------------------------------------------------------------
-    # Optional per-feature stimulus window overrides
-    # ------------------------------------------------------------------
-    stim_start: float = Field(
-        default=0.0,
-        title="Stim start",
-        description=(
-            "eFEL ``stim_start``: stimulus onset time for this feature (ms)."
-            " Overrides the protocol-level value. Set to 0 to use the"
-            " protocol's detected onset."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-    stim_end: float = Field(
-        default=0.0,
-        title="Stim end",
-        description=(
-            "eFEL ``stim_end``: stimulus end time for this feature (ms)."
-            " Overrides the protocol-level value. Set to 0 to use the"
-            " protocol's detected end."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-
-    # ------------------------------------------------------------------
-    # Additional eFEL settings (picker)
-    # ------------------------------------------------------------------
-    custom_efel_settings: dict[str, float | bool] = Field(
-        default_factory=dict,
-        title="Custom eFEL settings",
-        description=(
-            "Additional eFEL settings beyond the always-present Threshold,"
-            " strict_stiminterval, and interp_step. Keys are eFEL setting names."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
-    )
-
     def efel_settings_override(self) -> dict:
         """Build the per-feature ``efel_settings`` overrides for this target row.
 
@@ -147,10 +131,12 @@ class EFeature(OBIBaseModel):
             "strict_stiminterval": self.strict_stiminterval,
             "interp_step": self.interp_step,
         }
-        if self.stim_start:
-            overrides["stim_start"] = self.stim_start
-        if self.stim_end:
-            overrides["stim_end"] = self.stim_end
+        stim_start = getattr(self, "stim_start", 0.0)
+        if stim_start:
+            overrides["stim_start"] = stim_start
+        stim_end = getattr(self, "stim_end", 0.0)
+        if stim_end:
+            overrides["stim_end"] = stim_end
         if self.custom_efel_settings:
             overrides.update(self.custom_efel_settings)
         return overrides
@@ -163,15 +149,24 @@ class EFeature(OBIBaseModel):
 
 
 class SpikeEventFeature(EFeature, abc.ABC):
-    """eFEL spike-event features; groups its subclasses, adds no fields."""
+    """eFEL spike-event features; carries the per-feature stimulus window."""
+
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 class SpikeShapeFeature(EFeature, abc.ABC):
-    """eFEL spike-shape features; groups its subclasses, adds no fields."""
+    """eFEL spike-shape features; carries the per-feature stimulus window."""
+
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 class SubthresholdFeature(EFeature, abc.ABC):
-    """eFEL subthreshold features; groups its subclasses, adds no fields."""
+    """eFEL subthreshold features; carries the per-feature stimulus window."""
+
+    stim_start: float = stim_start_field()
+    stim_end: float = stim_end_field()
 
 
 # -------------------------------------------------------------------------
@@ -207,6 +202,8 @@ class DepolBlockBoolFeature(SpikeEventFeature):
     """eFEL ``depol_block_bool``."""
 
     efel_name: ClassVar[str] = "depol_block_bool"
+    stim_mid: float = stim_mid_field()
+    stim_mid_2: float = stim_mid_2_field()
 
 
 class DoubletISIFeature(SpikeEventFeature):
@@ -255,6 +252,8 @@ class MeanFrequencyFeature(SpikeEventFeature):
     """eFEL ``mean_frequency``."""
 
     efel_name: ClassVar[str] = "mean_frequency"
+    stim_mid: float = stim_mid_field()
+    stim_mid_2: float = stim_mid_2_field()
 
 
 class NumberInitialSpikesFeature(SpikeEventFeature):
@@ -512,12 +511,16 @@ class AHPDepthFeature(SpikeShapeFeature):
     """eFEL ``AHP_depth``."""
 
     efel_name: ClassVar[str] = "AHP_depth"
+    stim_mid: float = stim_mid_field()
+    stim_mid_2: float = stim_mid_2_field()
 
 
 class AHPTimeFromPeakFeature(SpikeShapeFeature):
     """eFEL ``AHP_time_from_peak``."""
 
     efel_name: ClassVar[str] = "AHP_time_from_peak"
+    stim_mid: float = stim_mid_field()
+    stim_mid_2: float = stim_mid_2_field()
 
 
 class AP1AmpFeature(SpikeShapeFeature):
@@ -949,6 +952,8 @@ class VoltageBaseFeature(SubthresholdFeature):
     """eFEL ``voltage_base``."""
 
     efel_name: ClassVar[str] = "voltage_base"
+    stim_mid: float = stim_mid_field()
+    stim_mid_2: float = stim_mid_2_field()
 
 
 class SteadyStateVoltageStimendFeature(SubthresholdFeature):
