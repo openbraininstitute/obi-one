@@ -68,8 +68,9 @@ class EFeature(OBIBaseModel):
     """Generic eFEL feature with per-feature setting overrides.
 
     A concrete feature fixes ``efel_name``; instances carry only the eFEL
-    detection knobs the user may override for this feature: ``threshold`` and
-    ``interp_step`` (``None`` = inherit the protocol, then global, value), plus
+    detection knobs the user may override for this feature:
+    ``spike_detection_threshold`` and ``interp_step`` (``None`` = inherit the
+    protocol, then global, value), plus
     the stimulus-window overrides ``stim_start``/``stim_end`` (and
     ``stim_mid``/``stim_mid_2`` on two-step features) declared on the
     feature-category subclasses.
@@ -84,9 +85,9 @@ class EFeature(OBIBaseModel):
     # ------------------------------------------------------------------
     # Always-present eFEL settings with eFEL defaults pre-filled
     # ------------------------------------------------------------------
-    threshold: float | None = Field(
+    spike_detection_threshold: float | None = Field(
         default=None,
-        title="Threshold",
+        title="Spike detection threshold",
         description=(
             "eFEL ``Threshold``: voltage above which a spike is detected (mV)."
             " Leave unset to inherit the protocol (then global) value."
@@ -117,8 +118,8 @@ class EFeature(OBIBaseModel):
         feature-category subclasses) are included only when non-zero.
         """
         overrides: dict[str, float | bool] = {}
-        if self.threshold is not None:
-            overrides["Threshold"] = self.threshold
+        if self.spike_detection_threshold is not None:
+            overrides["Threshold"] = self.spike_detection_threshold
         if self.interp_step is not None:
             overrides["interp_step"] = self.interp_step
         for key in ("stim_start", "stim_end"):

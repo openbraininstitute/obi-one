@@ -118,8 +118,9 @@ class Protocol(OBIBaseModel, abc.ABC):
     user-specified; when left at ``0.0`` it is auto-detected from each
     ``ElectricalCellRecording``'s NWB asset at task execution time.
 
-    Per-feature eFEL detection knobs (threshold, interp_step, stim_start,
-    stim_end) live on :class:`EFeature` and override the global-level settings.
+    Per-feature eFEL detection knobs (spike_detection_threshold, interp_step,
+    stim_start, stim_end) live on :class:`EFeature` and override the global-level
+    settings.
     """
 
     # -- static description, set by the shape intermediate / concrete class ---
@@ -158,9 +159,9 @@ class Protocol(OBIBaseModel, abc.ABC):
         ),
     )
 
-    threshold: float | None = Field(
+    spike_detection_threshold: float | None = Field(
         default=None,
-        title="Threshold",
+        title="Spike detection threshold",
         description=(
             "eFEL ``Threshold``: voltage above which a spike is detected (mV)."
             " Leave unset to inherit the global value; features may override it."
@@ -190,8 +191,8 @@ class Protocol(OBIBaseModel, abc.ABC):
         feature > protocol > global.
         """
         overrides: dict[str, float | bool] = {}
-        if self.threshold is not None:
-            overrides["Threshold"] = self.threshold
+        if self.spike_detection_threshold is not None:
+            overrides["Threshold"] = self.spike_detection_threshold
         if self.interp_step is not None:
             overrides["interp_step"] = self.interp_step
         return overrides

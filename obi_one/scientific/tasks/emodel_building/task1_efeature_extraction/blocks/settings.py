@@ -19,15 +19,16 @@ from obi_one.core.units import Units
 class Settings(Block):
     """Advanced extraction settings (statistical knobs and output toggles).
 
-    Also holds the global eFEL detection knobs (``threshold``, ``interp_step``)
-    — the base of the settings cascade. Protocols and features may override them
-    (feature > protocol > global); left unset there, the global value applies.
+    Also holds the global eFEL detection knobs (``spike_detection_threshold``,
+    ``interp_step``) — the base of the settings cascade. Protocols and features
+    may override them (feature > protocol > global); left unset there, the global
+    value applies.
     """
 
     # -- Global eFEL detection knobs (base of the cascade) --------------------
-    threshold: float | list[float] = Field(
+    spike_detection_threshold: float | list[float] = Field(
         default=-20.0,
-        title="Threshold",
+        title="Spike detection threshold",
         description="Global eFEL ``Threshold``: voltage above which a spike is detected (mV).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -105,7 +106,7 @@ class Settings(Block):
         the stimulus interval) rather than exposed as a setting.
         """
         return {
-            "Threshold": self.threshold,
+            "Threshold": self.spike_detection_threshold,
             "strict_stiminterval": True,
             "interp_step": self.interp_step,
         }
