@@ -12,6 +12,7 @@ from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
+    validate_float_optional,
     validate_hidden_refs_not_required,
     validate_neuron_set_combination,
     validate_string,
@@ -308,3 +309,41 @@ def test_neuron_set_combination_rejects_non_list_reference_types():
     schema["reference_types"] = "BiophysicalNeuronSetReference"
     with pytest.raises(ValueError, match="must be a list of strings"):
         validate_neuron_set_combination(schema, "combined_with", "ref")
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `float_optional` UI element validator.
+# ---------------------------------------------------------------------------
+
+# IDRestProtocol.spike_detection_threshold uses UIElement.FLOAT_OPTIONAL (a nullable
+# `float | None` eFEL override where `null` means "inherit from the level above").
+FLOAT_OPTIONAL_BLOCK = "IDRestProtocol"
+FLOAT_OPTIONAL_FIELD = "spike_detection_threshold"
+
+
+def _float_optional_schema() -> dict:
+    """Return a deep copy of a real `float_optional` field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][FLOAT_OPTIONAL_BLOCK]["properties"][
+            FLOAT_OPTIONAL_FIELD
+        ]
+    )
+
+
+def test_float_optional_valid_schema_passes():
+    # The real, generated schema (a `number | null` union) must validate.
+    validate_float_optional(_float_optional_schema(), FLOAT_OPTIONAL_FIELD, FLOAT_OPTIONAL_BLOCK)
+
+
+def test_float_optional_rejects_non_number_first():
+    schema = _float_optional_schema()
+    schema["anyOf"][0] = {"type": "string"}
+    with pytest.raises(ValidationError, match="number"):
+        validate_float_optional(schema, FLOAT_OPTIONAL_FIELD, "ref")
+
+
+def test_float_optional_rejects_missing_null():
+    schema = _float_optional_schema()
+    schema["anyOf"][1] = {"type": "array", "items": {"type": "number"}}
+    with pytest.raises(ValidationError, match="null"):
+        validate_float_optional(schema, FLOAT_OPTIONAL_FIELD, "ref")

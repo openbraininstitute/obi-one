@@ -32,21 +32,21 @@ class Settings(Block):
     """
 
     # -- Global eFEL detection knobs (base of the cascade) --------------------
-    spike_detection_threshold: float | list[float] = Field(
+    spike_detection_threshold: float | None = Field(
         default=-20.0,
         title=SPIKE_DETECTION_THRESHOLD_TITLE,
         description=SPIKE_DETECTION_THRESHOLD_DESCRIPTION,
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
             SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
-    trace_resampling_timestep: PositiveFloat | list[PositiveFloat] = Field(
+    trace_resampling_timestep: PositiveFloat | None = Field(
         default=0.025,
         title=TRACE_RESAMPLING_TIMESTEP_TITLE,
         description=TRACE_RESAMPLING_TIMESTEP_DESCRIPTION,
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -106,10 +106,13 @@ class Settings(Block):
         """Return the global eFEL settings dict — the base of the cascade.
 
         ``strict_stiminterval`` is fixed to True (only count spikes strictly within
-        the stimulus interval) rather than exposed as a setting.
+        the stimulus interval) rather than exposed as a setting. A threshold or
+        resampling timestep left unset (None) is omitted so eFEL falls back to its
+        own default.
         """
-        return {
-            "Threshold": self.spike_detection_threshold,
-            "strict_stiminterval": True,
-            "interp_step": self.trace_resampling_timestep,
-        }
+        efel_settings: dict[str, float | bool] = {"strict_stiminterval": True}
+        if self.spike_detection_threshold is not None:
+            efel_settings["Threshold"] = self.spike_detection_threshold
+        if self.trace_resampling_timestep is not None:
+            efel_settings["interp_step"] = self.trace_resampling_timestep
+        return efel_settings

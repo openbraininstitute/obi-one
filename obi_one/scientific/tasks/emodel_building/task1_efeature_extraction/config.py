@@ -29,6 +29,16 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.s
 
 L = logging.getLogger(__name__)
 
+# Base of the eFEL feature documentation; the frontend appends ``#<efel_name>``
+# to deep-link a specific feature.
+EFEL_DOC_BASE_URL = "https://efel.readthedocs.io/en/latest/eFeatures.html"
+
+# Root of the eFEL docs' figure directory. Each feature class names its own
+# figure file via SchemaKey.EFEL_FEATURE_IMAGE; the frontend joins the two.
+EFEL_FIGURES_BASE_URL = (
+    "https://raw.githubusercontent.com/openbraininstitute/eFEL/master/docs/source/_static/figures"
+)
+
 
 class BlockGroup(StrEnum):
     """Block groups for the extraction stage."""
@@ -61,6 +71,8 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             BlockGroup.PROTOCOLS_FEATURES,
             BlockGroup.SETTINGS,
         ],
+        SchemaKey.EFEL_DOC_BASE_URL: EFEL_DOC_BASE_URL,
+        SchemaKey.EFEL_FIGURES_BASE_URL: EFEL_FIGURES_BASE_URL,
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.INPUTS: "/declared/mapped-electrical-cell-recording-properties",
         }

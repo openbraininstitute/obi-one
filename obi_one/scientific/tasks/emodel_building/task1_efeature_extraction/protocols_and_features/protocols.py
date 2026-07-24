@@ -52,6 +52,109 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocol
     EFeature,
 )
 
+class Protocol(OBIBaseModel, abc.ABC):
+    """Base class for every ephys protocol.
+
+    Subclasses supply the static description of the protocol through class
+    variables; instances carry only what the user can edit.
+
+    Protocol-level stimulus timing (``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2``) may be
+    user-specified; when left at ``0.0`` it is auto-detected from each
+    ``ElectricalCellRecording``'s NWB asset at task execution time.
+
+    Per-feature eFEL detection knobs (spike_detection_threshold,
+    trace_resampling_timestep, stim_start, stim_end) live on :class:`EFeature` and
+    override the global-level settings.
+    """
+
+    # -- static description, set by the shape intermediate / concrete class ---
+
+    protocol_name: ClassVar[str] = ""
+    """Name of the BluePyEfe protocol name class implementing this stimulus shape."""
+
+    # ------------------------------------------------------------------
+    # Per-protocol extraction amplitudes (threshold-based / relative mode)
+    # ------------------------------------------------------------------
+    extraction_amplitudes: tuple[tuple[float, bool], ...] = Field(
+        default=(),
+        title="Extraction amplitudes",
+        description=(
+            "Step amplitudes (nA) to extract from this protocol, populated from the"
+            " recordings' NWBs via the ``AmplitudesByProtocol`` property of"
+            " ``/declared/mapped-electrical-cell-recording-properties``. Each amplitude is"
+            " paired with a boolean marking whether it is used for validation."
+        ),
+        json_schema_extra={
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.INPUTS,
+            SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.AMPLITUDES_BY_PROTOCOL,
+        },
+    )
+
+    # ------------------------------------------------------------------
+    # Features — keyed by eFEL feature name
+    # ------------------------------------------------------------------
+    features: tuple[EFeature, ...] = Field(
+        default=(),
+        title="Features",
+        description=(
+            "eFEL features valid for this protocol. Concrete protocols narrow this"
+            " to their own feature union, so it can only hold features the protocol"
+            " can actually extract."
+        ),
+    )
+
+    spike_detection_threshold: float | None = Field(
+        default=None,
+        title=SPIKE_DETECTION_THRESHOLD_TITLE,
+        description=f"{SPIKE_DETECTION_THRESHOLD_DESCRIPTION} {INHERIT_NOTE}",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
+    )
+    trace_resampling_timestep: PositiveFloat | None = Field(
+        default=None,
+        title=TRACE_RESAMPLING_TIMESTEP_TITLE,
+        description=f"{TRACE_RESAMPLING_TIMESTEP_DESCRIPTION} {INHERIT_NOTE}",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+
+    def efel_settings_overrides(self) -> dict:
+        """Return this protocol's own eFEL setting overrides (only what it sets).
+
+        Unset (``None``) values are omitted so the extraction task can cascade
+        feature > protocol > global.
+        """
+        overrides: dict[str, float | bool] = {}
+        if self.spike_detection_threshold is not None:
+            overrides["Threshold"] = self.spike_detection_threshold
+        if self.trace_resampling_timestep is not None:
+            overrides["interp_step"] = self.trace_resampling_timestep
+        return overrides
+
+    def stim_timing(self) -> dict:
+        """Return user-set stimulus timing, keyed as bluepyefe eCode metadata.
+
+        Maps the shape's ``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2`` to
+        bluepyefe's ``ton``/``toff``/``tmid``/``tmid2``; 0.0 values are omitted so
+        bluepyefe auto-detects them from the NWB.
+        """
+        mapping = {
+            "stim_start": "ton",
+            "stim_end": "toff",
+            "stim_mid": "tmid",
+            "stim_mid_2": "tmid2",
+        }
+        timing: dict[str, float] = {}
+        for attr, key in mapping.items():
+            value = getattr(self, attr, 0.0)
+            if value:
+                timing[key] = value
+        return timing
+
 
 def _timing_field(title: str, description: str) -> Any:
     """Build a stimulus-timing field (ms); 0.0 means auto-detect from the NWB."""
@@ -113,110 +216,6 @@ def _features_field(feature_classes: tuple[type[EFeature], ...]) -> Any:
             " ``extract`` flag, weight, tolerance and eFEL setting overrides."
         ),
     )
-
-
-class Protocol(OBIBaseModel, abc.ABC):
-    """Base class for every ephys protocol.
-
-    Subclasses supply the static description of the protocol through class
-    variables; instances carry only what the user can edit.
-
-    Protocol-level stimulus timing (``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2``) may be
-    user-specified; when left at ``0.0`` it is auto-detected from each
-    ``ElectricalCellRecording``'s NWB asset at task execution time.
-
-    Per-feature eFEL detection knobs (spike_detection_threshold,
-    trace_resampling_timestep, stim_start, stim_end) live on :class:`EFeature` and
-    override the global-level settings.
-    """
-
-    # -- static description, set by the shape intermediate / concrete class ---
-
-    protocol_name: ClassVar[str] = ""
-    """Name of the BluePyEfe protocol name class implementing this stimulus shape."""
-
-    # ------------------------------------------------------------------
-    # Per-protocol extraction amplitudes (threshold-based / relative mode)
-    # ------------------------------------------------------------------
-    extraction_amplitudes: tuple[tuple[float, bool], ...] = Field(
-        default=(),
-        title="Extraction amplitudes",
-        description=(
-            "Step amplitudes (nA) to extract from this protocol, populated from the"
-            " recordings' NWBs via the ``AmplitudesByProtocol`` property of"
-            " ``/declared/mapped-electrical-cell-recording-properties``. Each amplitude is"
-            " paired with a boolean marking whether it is used for validation."
-        ),
-        json_schema_extra={
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.INPUTS,
-            SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.AMPLITUDES_BY_PROTOCOL,
-        },
-    )
-
-    # ------------------------------------------------------------------
-    # Features — keyed by eFEL feature name
-    # ------------------------------------------------------------------
-    features: tuple[EFeature, ...] = Field(
-        default=(),
-        title="Features",
-        description=(
-            "eFEL features valid for this protocol. Concrete protocols narrow this"
-            " to their own feature union, so it can only hold features the protocol"
-            " can actually extract."
-        ),
-    )
-
-    spike_detection_threshold: float | None = Field(
-        default=None,
-        title=SPIKE_DETECTION_THRESHOLD_TITLE,
-        description=f"{SPIKE_DETECTION_THRESHOLD_DESCRIPTION} {INHERIT_NOTE}",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIVOLTS,
-        },
-    )
-    trace_resampling_timestep: PositiveFloat | None = Field(
-        default=None,
-        title=TRACE_RESAMPLING_TIMESTEP_TITLE,
-        description=f"{TRACE_RESAMPLING_TIMESTEP_DESCRIPTION} {INHERIT_NOTE}",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-
-    def efel_settings_overrides(self) -> dict:
-        """Return this protocol's own eFEL setting overrides (only what it sets).
-
-        Unset (``None``) values are omitted so the extraction task can cascade
-        feature > protocol > global.
-        """
-        overrides: dict[str, float | bool] = {}
-        if self.spike_detection_threshold is not None:
-            overrides["Threshold"] = self.spike_detection_threshold
-        if self.trace_resampling_timestep is not None:
-            overrides["interp_step"] = self.trace_resampling_timestep
-        return overrides
-
-    def stim_timing(self) -> dict:
-        """Return user-set stimulus timing, keyed as bluepyefe eCode metadata.
-
-        Maps the shape's ``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2`` to
-        bluepyefe's ``ton``/``toff``/``tmid``/``tmid2``; 0.0 values are omitted so
-        bluepyefe auto-detects them from the NWB.
-        """
-        mapping = {
-            "stim_start": "ton",
-            "stim_end": "toff",
-            "stim_mid": "tmid",
-            "stim_mid_2": "tmid2",
-        }
-        timing: dict[str, float] = {}
-        for attr, key in mapping.items():
-            value = getattr(self, attr, 0.0)
-            if value:
-                timing[key] = value
-        return timing
 
 # ---------------------------------------------------------------------------
 # Shape intermediates — one per BluePyEfe eCode class.

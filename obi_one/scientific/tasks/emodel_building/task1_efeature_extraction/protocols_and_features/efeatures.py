@@ -97,7 +97,7 @@ class EFeature(OBIBaseModel):
         title=SPIKE_DETECTION_THRESHOLD_TITLE,
         description=f"{SPIKE_DETECTION_THRESHOLD_DESCRIPTION} {INHERIT_NOTE}",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
             SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
@@ -106,7 +106,7 @@ class EFeature(OBIBaseModel):
         title=TRACE_RESAMPLING_TIMESTEP_TITLE,
         description=f"{TRACE_RESAMPLING_TIMESTEP_DESCRIPTION} {INHERIT_NOTE}",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
