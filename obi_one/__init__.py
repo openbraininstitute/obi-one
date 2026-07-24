@@ -48,6 +48,7 @@ __all__ = [
     "CircuitExtractionSingleConfig",
     "CircuitExtractionTask",
     "CircuitFromID",
+    "CircuitRecordingUnion",
     "CircuitSimulationScanConfig",
     "CircuitSimulationSingleConfig",
     "CircuitStimulusUnion",
@@ -87,6 +88,7 @@ __all__ = [
     "ExcitatoryNeurons",
     "ExcitatoryTsodyksMarkramSynapticModel",
     "ExponentialDistribution",
+    "ExtracellularElectrodeArrayRecordingBlock",
     "ExtracellularLocations",
     "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
@@ -198,6 +200,7 @@ __all__ = [
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
+    "SimulatableExtracellularRecordingArrayFromID",
     "Simulation",
     "SimulationsForm",
     "SingleConfigMixin",
@@ -358,6 +361,9 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllVirtualNeurons,
 )
 from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
 from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
@@ -434,6 +440,9 @@ from obi_one.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
 )
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -572,7 +581,11 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
-from obi_one.scientific.unions_and_references.recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions_and_references.recordings import (
+    CircuitRecordingUnion,
+    RecordingReference,
+    RecordingUnion,
+)
 from obi_one.scientific.unions_and_references.scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,

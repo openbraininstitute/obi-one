@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Annotated
 
 import entitysdk
@@ -46,14 +47,17 @@ class Recording(Block, ABC):
     )
 
     _default_node_set: str = PrivateAttr(default="All")
+    _sonata_simulation_config_directory: Path | None = PrivateAttr(default=None)
 
     def config(
         self,
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
+        sonata_simulation_config_directory: Path | None = None,
     ) -> dict:
         self._default_node_set = default_node_set
+        self._sonata_simulation_config_directory = sonata_simulation_config_directory
 
         if (self.neuron_set is not None) and (
             self.neuron_set.block.get_neuron_set_population_type()
