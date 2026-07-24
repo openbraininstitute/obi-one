@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # ruff:file-ignore[assert]
+from typing import Protocol
 import contextlib
 import heapq
 import logging
@@ -13,6 +14,7 @@ from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timezone
 from functools import partial, singledispatch
 from pathlib import Path
+from typing import Protocol
 
 import bluepysnap
 import bluepysnap.frame_report
@@ -39,17 +41,30 @@ KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 
 
 class NetworkOperation(BaseModel):
+    """Operations to apply to the brian2.Network after an event fires."""
     add: list
     remove: list
 
 
+class EventHandler(Protocol):
+    """Protocol for event-driven simulation interventions."""
+
+    @property
+    def at(self) -> list[float]:
+        """Times (in ms) at which this handler should fire."""
+
+    def __call__(self, t: float, net: "Brian2Network") -> NetworkOperation:
+        """Execute the event. Return objects to add/remove from the network."""
+
+
 class Event(BaseModel):
     at: float  # time at which the simulation calls the Event (in ms)
-    # function to call at time `at`; parameters are the time being called, and the network - returns
+    # function to call at time `at`; parameters are the time being called, and the network
+    # returns NetworkOperation
     func: Callable[[float, "Brian2Network"], NetworkOperation]
 
     def __lt__(self, other: "Event") -> bool:
-        """The at which the event should fire is used to sort in the heapq."""
+        """The time at which the event should fire is used to sort in the heapq."""
         return self.at < other.at
 
 
@@ -443,8 +458,8 @@ def _get_reports(
 def _write_spikes(
     filepath: Path,
     population_name: str,
-    timestamps: tuple[float, ...],
-    node_ids: tuple[int, ...],
+    timestamps: np.ndarray,
+    node_ids: np.ndarray,
     sorting: str = "by_time",
     unit: str = "ms",
 ) -> Path:
@@ -466,18 +481,20 @@ def _write_spikes(
     sorting_type = h5py.enum_dtype(sorting_dict)
     sorting_value = sorting_dict[sorting]
 
-    if node_ids and sorting == "by_time":
-        timestamps, node_ids = zip(*sorted(zip(timestamps, node_ids, strict=True)), strict=True)
-    elif node_ids and sorting == "by_id":
-        node_ids, timestamps = zip(*sorted(zip(node_ids, timestamps, strict=True)), strict=True)
+    if sorting == "by_time":
+        idx = np.argsort(timestamps)
+    elif sorting == "by_id":
+        idx = np.argsort(node_ids)
 
     with h5py.File(filepath, "w") as h5f:
         h5f.create_group("spikes")
         gpop_spikes = h5f.create_group(f"/spikes/{population_name}")
         gpop_spikes.attrs.create("sorting", data=sorting_value, dtype=sorting_type)
-        dtimestamps = gpop_spikes.create_dataset("timestamps", data=timestamps, dtype=np.double)
+        dtimestamps = gpop_spikes.create_dataset(
+            "timestamps", data=timestamps[idx], dtype=np.double
+        )
         dtimestamps.attrs.create("units", data=unit, dtype=string_dtype)
-        gpop_spikes.create_dataset("node_ids", data=node_ids, dtype=np.uint64)
+        gpop_spikes.create_dataset("node_ids", data=node_ids[idx], dtype=np.uint64)
 
     return filepath
 
@@ -786,21 +803,17 @@ def _write_reports(
     report_id_mapping: np.ndarray,
 ) -> None:
     """Write all reports configured in `simulation`."""
+    L.debug("Writing reports")
     output_dir = Path(simulation.output.output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    spikes = [
-        (k, v / brian2.units.ms) for k, vs in spike_monitor.spike_trains().items() for v in vs
-    ]
-
-    node_ids, timestamps = zip(*spikes, strict=True) if spikes else ((), ())
-    L.info("%d neurons spiked %d times", len(spike_monitor.spike_trains()), len(node_ids))
+    L.info("Neurons spiked %d times", len(spike_monitor.i[:]))
     Path(simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
     _write_spikes(
         filepath=simulation.output.spikes_file,
         population_name=_get_single_node_population(simulation.circuit),
-        timestamps=timestamps,
-        node_ids=node_ids,
+        timestamps=spike_monitor.t[:] / brian2.units.ms,
+        node_ids=spike_monitor.i[:],
     )
 
     if state_monitor is None:
@@ -866,10 +879,11 @@ def run_sonata_brian2_trial(
     queue = list(net.events)
     heapq.heapify(queue)
 
+    report = "text" #if profile else None
     current_t = 0.0
     while current_t < simulation.run.tstop:
         next_t = min(queue[0].at, simulation.run.tstop) if queue else simulation.run.tstop
-        network.run((next_t - current_t) * brian2.units.ms, profile=profile)
+        network.run((next_t - current_t) * brian2.units.ms, profile=profile, report=report)
         current_t = next_t
 
         while queue and queue[0].at <= current_t:
