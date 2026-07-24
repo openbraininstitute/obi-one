@@ -97,16 +97,7 @@ class EFeature(OBIBaseModel):
             SchemaKey.UNITS: Units.MILLIVOLTS,
         },
     )
-    strict_stiminterval: bool = Field(
-        default=True,
-        title="Strict stim interval",
-        description=(
-            "eFEL ``strict_stiminterval``: only count spikes strictly within"
-            " [stim_start, stim_end]."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    interp_step: PositiveFloat = Field(
+    interp_step: PositiveFloat | None = Field(
         default=0.025,
         title="Interpolation step",
         description=(
