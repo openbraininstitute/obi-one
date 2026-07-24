@@ -4,6 +4,8 @@ from typing import ClassVar
 import entitysdk
 from pydantic import Field
 
+from entitysdk.types import EntityType
+
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.recordings.base import Recording
@@ -34,8 +36,14 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
             "being simulated."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
             SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {
+                "type": EntityType.simulatable_extracellular_recording_array,
+                # SchemaKey.FILTERS: {
+                #     "circuit_id__isequal": {"circuit_id"},
+                # },
+            },
         },
     )
 
