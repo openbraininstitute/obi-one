@@ -35,9 +35,9 @@ EMODEL_NAME = "emodel"
 RECIPES_RELPATH = "config/recipes.json"
 TARGETS_CONFIG_RELPATH = "config/extract_config/targets.json"
 
-# Global eFEL defaults passed as the recipe's ``efel_settings`` dict. In manual
-# mode, per-feature overrides (threshold/strict_stiminterval/interp_step/stim_start
-# /stim_end + custom_efel_settings) take priority via the cascade.
+# Global eFEL defaults passed as the recipe's ``efel_settings`` dict. Per-feature
+# overrides (threshold/strict_stiminterval/interp_step/stim_start/stim_end +
+# custom_efel_settings on EFeature) take priority via the cascade.
 DEFAULT_EFEL_SETTINGS: dict[str, float | bool] = {
     "Threshold": -20.0,
     "strict_stiminterval": True,
@@ -84,19 +84,19 @@ def _partition_protocols(
     ecode_metadata: dict[str, dict] = {}
     skipped: list[str] = []
     for protocol in protocols:
-        ecode = protocol.ecode
+        ecode = protocol.ecode_class
         user_timing = protocol.timing_override()
         if ecode in _TON_ONLY_ECODES:
-            ton = user_timing.get("ton", ton_by_protocol.get(protocol.name))
+            ton = user_timing.get("ton", ton_by_protocol.get(protocol.protocol_name))
             if ton is None:
-                skipped.append(protocol.name)
+                skipped.append(protocol.protocol_name)
                 continue
-            ecode_metadata[protocol.name] = {**user_timing, "ton": ton}
+            ecode_metadata[protocol.protocol_name] = {**user_timing, "ton": ton}
         elif ecode in _TIMING_UNSUPPORTED_ECODES:
-            skipped.append(protocol.name)
+            skipped.append(protocol.protocol_name)
             continue
         else:
-            ecode_metadata[protocol.name] = user_timing
+            ecode_metadata[protocol.protocol_name] = user_timing
         extractable.append(protocol)
     return extractable, ecode_metadata, skipped
 
@@ -157,9 +157,7 @@ def _build_targets_formatted(
     """
     rows: list[dict] = []
     for protocol in protocols:
-        ecode = protocol.name
-        # eFEL overrides cascade global -> protocol -> feature.
-        protocol_efel = protocol.efel_settings_override()
+        ecode = protocol.protocol_name
 
         # Amplitude selection per rule 7.
         ea = protocol.extraction_amplitudes
@@ -189,7 +187,7 @@ def _build_targets_formatted(
                     "amplitude": amplitude,
                     "tolerance": feature.tolerance,
                     "weight": feature.weight,
-                    "efel_settings": {**protocol_efel, **feature.efel_settings_override()},
+                    "efel_settings": feature.efel_settings_override(),
                 }
                 rows.append(row)
     return rows
@@ -225,11 +223,11 @@ def _build_extraction_recipes(
 
     for protocol in protocols:
         if threshold_based and getattr(protocol, "is_rin_protocol", False):
-            name_rin_protocol = [protocol.name, protocol.rin_amplitude or None]
+            name_rin_protocol = [protocol.protocol_name, protocol.rin_amplitude or None]
         if threshold_based and getattr(protocol, "is_rmp_protocol", False):
-            name_rmp_protocol = [protocol.name, protocol.rmp_amplitude or None]
+            name_rmp_protocol = [protocol.protocol_name, protocol.rmp_amplitude or None]
         if getattr(protocol, "is_rheobase_protocol", False):
-            rheobase_protocol_names.append(protocol.name)
+            rheobase_protocol_names.append(protocol.protocol_name)
 
     pipeline_settings: dict = {
         "path_extract_config": TARGETS_CONFIG_RELPATH,
@@ -334,7 +332,7 @@ class EModelEFeatureExtractionTask(Task):
 
         # Stimulus onset for protocols whose eCode (Ramp) needs it but doesn't
         # auto-detect it; the rest auto-detect their timing or use defaults.
-        ton_names = [p.name for p in all_protocols if p.ecode in _TON_ONLY_ECODES]
+        ton_names = [p.protocol_name for p in all_protocols if p.ecode_class in _TON_ONLY_ECODES]
         ton_per_protocol = _discover_timing(nwb_paths, ton_names) if ton_names else {}
 
         protocols_cfg, ecodes_metadata_dict, skipped = _partition_protocols(
@@ -347,7 +345,9 @@ class EModelEFeatureExtractionTask(Task):
                 skipped,
             )
 
-        amplitudes_per_protocol = _discover_amplitudes(nwb_paths, [p.name for p in protocols_cfg])
+        amplitudes_per_protocol = _discover_amplitudes(
+            nwb_paths, [p.protocol_name for p in protocols_cfg]
+        )
         L.info("Discovered amplitudes per protocol (nA): %s", amplitudes_per_protocol)
 
         files = _build_files_metadata(
@@ -359,7 +359,7 @@ class EModelEFeatureExtractionTask(Task):
             raise FileNotFoundError(msg)
 
         rheobase_protocols = [
-            p.name for p in all_protocols if getattr(p, "is_rheobase_protocol", False)
+            p.protocol_name for p in all_protocols if getattr(p, "is_rheobase_protocol", False)
         ]
 
         return TargetsConfiguration(
@@ -395,7 +395,7 @@ class EModelEFeatureExtractionTask(Task):
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
         validation_protocol_names = [
-            p.name
+            p.protocol_name
             for p in self.config.efeatures_by_protocol.selection.protocols
             if getattr(p, "validation", False)
         ]

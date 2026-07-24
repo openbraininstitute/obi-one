@@ -3,14 +3,14 @@
 The hierarchy has three levels:
 
 * :class:`Protocol` — the base, holding the fields every protocol shares (LJP,
-  amplitudes, role flags, per-protocol eFEL settings, feature selection).
+  amplitudes, role flags, feature selection).
 * a *shape* intermediate per BluePyEfe eCode class (:class:`StepShapeProtocol`,
   :class:`SAHPShapeProtocol`, …). The stimulus shape decides which timing
-  parameters exist, so each intermediate fixes ``ecode`` and declares exactly
-  the timing fields its eCode reads — ``ton``/``toff`` for a plain step, all
-  four for sAHP, ``ton`` alone for a ramp, none at all for SpikeRec. A protocol
-  therefore has no timing field it cannot use, and the schema tells the
-  frontend which inputs to render without a separate list.
+  parameters exist, so each intermediate fixes ``ecode_class`` and declares
+  exactly the timing fields its eCode reads — ``ton``/``toff`` for a plain
+  step, all four for sAHP, ``ton`` alone for a ramp, none at all for SpikeRec.
+  A protocol therefore has no timing field it cannot use, and the schema tells
+  the frontend which inputs to render without a separate list.
 * a concrete class per protocol (:class:`IDRestProtocol`, :class:`IVProtocol`,
   …), which fixes ``protocol_name`` and narrows ``features`` to its own
   feature union.
@@ -29,7 +29,7 @@ the concrete protocol rather than to the shape.
 import abc
 from typing import Annotated, Any, ClassVar, get_args
 
-from pydantic import Discriminator, Field, model_validator
+from pydantic import Discriminator, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
@@ -115,33 +115,21 @@ class Protocol(OBIBaseModel, abc.ABC):
     ``0.0`` they are auto-detected from each ``ElectricalCellRecording``'s NWB
     asset at task execution time.
 
-    Per-protocol custom eFEL settings are available via
-    ``custom_efel_settings``. Per-feature eFEL detection knobs (threshold,
-    strict_stiminterval, interp_step, stim_start, stim_end) live on
-    :class:`EFeature` and override the protocol level.
+    Per-feature eFEL detection knobs (threshold, strict_stiminterval,
+    interp_step, stim_start, stim_end) live on :class:`EFeature` and override
+    the global-level settings.
     """
 
     # -- static description, set by the shape intermediate / concrete class ---
-    protocol_name: ClassVar[str] = ""
-    """Canonical protocol name, as it appears in recording metadata."""
 
-    ecode: ClassVar[str] = "Step"
-    """Name of the BluePyEfe eCode class implementing this stimulus shape."""
-
-    name: str = Field(
-        default="",
-        title="Protocol name",
-        description=(
-            "Protocol name as it appears in the recording metadata. Defaults to"
-            " the class's canonical name; override it when the recordings use a"
-            " variant spelling."
-        ),
-    )
+    protocol_name: ClassVar[str] = "Step"
+    """Name of the BluePyEfe protocol name class implementing this stimulus shape."""
 
     # ------------------------------------------------------------------
     # LJP — a property of the recording, so it applies to every shape. The
     # stimulus timing fields are declared by the shape intermediates, since
-    # which ones exist depends on the eCode.
+    # which ones exist depends on the protocol
+    # shape (eCode) and thus the protocol class.
     # ------------------------------------------------------------------
     ljp: float = Field(
         default=0.0,
@@ -235,19 +223,6 @@ class Protocol(OBIBaseModel, abc.ABC):
     )
 
     # ------------------------------------------------------------------
-    # Custom eFEL settings (picker)
-    # ------------------------------------------------------------------
-    custom_efel_settings: dict[str, float | bool] = Field(
-        default_factory=dict,
-        title="Custom eFEL settings",
-        description=(
-            "Per-protocol eFEL settings applied to all features of this protocol."
-            " Keys are eFEL setting names. Overridden by per-feature settings."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY},
-    )
-
-    # ------------------------------------------------------------------
     # Features — keyed by eFEL feature name
     # ------------------------------------------------------------------
     features: tuple[EFeature, ...] = Field(
@@ -259,13 +234,6 @@ class Protocol(OBIBaseModel, abc.ABC):
             " can actually extract."
         ),
     )
-
-    @model_validator(mode="after")
-    def _apply_class_defaults(self) -> "Protocol":
-        """Fill name and features from the class's static description."""
-        if not self.name:
-            self.name = self.protocol_name
-        return self
 
     @classmethod
     def feature_classes(cls) -> tuple[type[EFeature], ...]:
@@ -299,15 +267,6 @@ class Protocol(OBIBaseModel, abc.ABC):
         """Return every :class:`EFeature` whose ``extract`` flag is set."""
         return [f for f in self.features if f.extract]
 
-    def efel_settings_override(self) -> dict:
-        """Build the per-protocol ``efel_settings`` overrides.
-
-        Returns only the ``custom_efel_settings`` dict (or empty). Per-feature
-        settings override these values in the cascade (global -> protocol ->
-        feature).
-        """
-        return dict(self.custom_efel_settings)
-
     def timing_override(self) -> dict:
         """Return user-set timing/LJP fields as a dict (0.0 values omitted).
 
@@ -334,7 +293,7 @@ class Protocol(OBIBaseModel, abc.ABC):
 class StepShapeProtocol(Protocol, abc.ABC):
     """Single rectangular step (``Step`` eCode): onset and end only."""
 
-    ecode: ClassVar[str] = "Step"
+    ecode_class: ClassVar[str] = "Step"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -343,7 +302,7 @@ class StepShapeProtocol(Protocol, abc.ABC):
 class SAHPShapeProtocol(Protocol, abc.ABC):
     """Two-step with a short depolarising pulse (``SAHP`` eCode): 4 timing points."""
 
-    ecode: ClassVar[str] = "SAHP"
+    ecode_class: ClassVar[str] = "SAHP"
 
     ton: float = ton_field()
     tmid: float = tmid_field()
@@ -354,7 +313,7 @@ class SAHPShapeProtocol(Protocol, abc.ABC):
 class RampShapeProtocol(Protocol, abc.ABC):
     """Linearly rising stimulus (``Ramp`` eCode): only the onset is configurable."""
 
-    ecode: ClassVar[str] = "Ramp"
+    ecode_class: ClassVar[str] = "Ramp"
 
     ton: float = ton_field()
 
@@ -362,7 +321,7 @@ class RampShapeProtocol(Protocol, abc.ABC):
 class HyperDePolShapeProtocol(Protocol, abc.ABC):
     """Hyperpolarising then depolarising step (``HyperDePol`` eCode): 3 timing points."""
 
-    ecode: ClassVar[str] = "HyperDePol"
+    ecode_class: ClassVar[str] = "HyperDePol"
 
     ton: float = ton_field()
     tmid: float = tmid_field()
@@ -372,7 +331,7 @@ class HyperDePolShapeProtocol(Protocol, abc.ABC):
 class DeHyperPolShapeProtocol(Protocol, abc.ABC):
     """Depolarising then hyperpolarising step (``DeHyperPol`` eCode): 3 timing points."""
 
-    ecode: ClassVar[str] = "DeHyperPol"
+    ecode_class: ClassVar[str] = "DeHyperPol"
 
     ton: float = ton_field()
     tmid: float = tmid_field()
@@ -382,7 +341,7 @@ class DeHyperPolShapeProtocol(Protocol, abc.ABC):
 class NegCheopsShapeProtocol(Protocol, abc.ABC):
     """Negative triangular ramps (``NegCheops`` eCode); inner ramp times are not exposed."""
 
-    ecode: ClassVar[str] = "NegCheops"
+    ecode_class: ClassVar[str] = "NegCheops"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -391,7 +350,7 @@ class NegCheopsShapeProtocol(Protocol, abc.ABC):
 class PosCheopsShapeProtocol(Protocol, abc.ABC):
     """Positive triangular ramps (``PosCheops`` eCode); inner ramp times are not exposed."""
 
-    ecode: ClassVar[str] = "PosCheops"
+    ecode_class: ClassVar[str] = "PosCheops"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -400,7 +359,7 @@ class PosCheopsShapeProtocol(Protocol, abc.ABC):
 class SpikeRecShapeProtocol(Protocol, abc.ABC):
     """Train of short suprathreshold pulses (``SpikeRec`` eCode): timing is not configurable."""
 
-    ecode: ClassVar[str] = "SpikeRec"
+    ecode_class: ClassVar[str] = "SpikeRec"
 
     # SpikeRec exposes no configurable stimulus timing.
 
@@ -408,7 +367,7 @@ class SpikeRecShapeProtocol(Protocol, abc.ABC):
 class SineSpecShapeProtocol(Protocol, abc.ABC):
     """Chirp / resonance stimulus (``SineSpec`` eCode)."""
 
-    ecode: ClassVar[str] = "SineSpec"
+    ecode_class: ClassVar[str] = "SineSpec"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -417,7 +376,7 @@ class SineSpecShapeProtocol(Protocol, abc.ABC):
 class PinkNoiseShapeProtocol(Protocol, abc.ABC):
     """Pink-noise stimulus (``PinkNoise`` eCode)."""
 
-    ecode: ClassVar[str] = "PinkNoise"
+    ecode_class: ClassVar[str] = "PinkNoise"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -426,7 +385,7 @@ class PinkNoiseShapeProtocol(Protocol, abc.ABC):
 class CapCheckShapeProtocol(Protocol, abc.ABC):
     """Capacitance-check pulse (``CapCheck`` eCode)."""
 
-    ecode: ClassVar[str] = "CapCheck"
+    ecode_class: ClassVar[str] = "CapCheck"
 
     ton: float = ton_field()
     toff: float = toff_field()
@@ -763,4 +722,4 @@ def protocol_from_name(protocol_name: str, **kwargs: Any) -> Protocol:
             " See PROTOCOL_CLASSES for the available protocols."
         )
         raise KeyError(msg)
-    return cls(name=protocol_name, **kwargs)
+    return cls(**kwargs)
