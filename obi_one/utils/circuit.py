@@ -26,6 +26,17 @@ from obi_one.utils.filesystem import filter_extension
 
 L = logging.getLogger(__name__)
 
+# Properties to ignore in SNAP validation
+# TODO: Refine SNAP validation
+# https://github.com/openbraininstitute/prod-build-circuit/issues/49
+_IGNORE_EDGE_PROPERTIES: list[str] = [
+    "afferent_surface_x",
+    "afferent_surface_y",
+    "afferent_surface_z",
+    "spine_length",
+    "afferent_section_type",
+]
+
 
 def fix_node_sets_file(circuit_path: Path) -> None:
     """Fixes the node sets file in case references are broken.
@@ -170,7 +181,11 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
 def run_validation(circuit_path: str | Path) -> None:
     """Run SONATA circuit validation."""
     errors = snap.circuit_validation.validate(
-        str(circuit_path), skip_slow=False, only_errors=True, print_errors=False
+        str(circuit_path),
+        skip_slow=False,
+        only_errors=True,
+        print_errors=False,
+        ignore_edge_properties=_IGNORE_EDGE_PROPERTIES,
     )
     if len(errors) > 0:
         msg = f"Circuit validation error(s) found:\n{errors}"
