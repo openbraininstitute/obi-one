@@ -143,8 +143,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
         resources=MachineResources(
-            cores=1,
-            memory=2,
+            cores=4,
+            memory=8,
             timelimit="01:00",
             compute_cell="local",
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -161,8 +161,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
         resources=MachineResources(
-            cores=1,
-            memory=2,
+            cores=4,
+            memory=8,
             timelimit="01:00",
             compute_cell="local",
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -179,8 +179,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
         resources=MachineResources(
-            cores=1,
-            memory=2,
+            cores=4,
+            memory=8,
             timelimit="01:00",
             compute_cell="local",
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
