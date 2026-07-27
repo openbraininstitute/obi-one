@@ -45,14 +45,12 @@ def test_section_type_options_only_returns_present_target_types():
     morphology = morphio.Morphology(DATA_DIR / "cell_morphology.asc")
 
     assert _values_and_labels(section_type_options(morphology)) == [
-        (2, "Axon"),
         (3, "Basal dendrite"),
     ]
 
 
 def test_static_section_type_options_returns_all_target_types():
     assert _values_and_labels(static_section_type_options()) == [
-        (2, "Axon"),
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]
@@ -74,7 +72,6 @@ def test_morphology_source_section_type_options_supports_direct_cell_morphology_
     options = morphology_source_section_type_options(client, morphology.id)
 
     assert _values_and_labels(options) == [
-        (2, "Axon"),
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]
@@ -141,7 +138,6 @@ def test_memodel_section_type_options_uses_linked_morphology():
     options = memodel_section_type_options(client, memodel_id)
 
     assert _values_and_labels(options) == [
-        (2, "Axon"),
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]
@@ -164,7 +160,6 @@ def test_memodel_section_type_options_fetches_linked_morphology():
     options = memodel_section_type_options(client, memodel_id)
 
     assert _values_and_labels(options) == [
-        (2, "Axon"),
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]
@@ -210,7 +205,6 @@ def test_memodel_with_synapses_section_type_options():
     options = memodel_with_synapses_section_type_options(client, circuit_id)
 
     assert _values_and_labels(options) == [
-        (2, "Axon"),
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]
@@ -402,7 +396,6 @@ def test_morphology_source_returns_static_options_for_supported_multi_neuron_cir
     client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
 
     assert _values_and_labels(morphology_source_section_type_options(client, source_id)) == [
-        (2, "Axon"),
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]

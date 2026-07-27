@@ -245,8 +245,8 @@ def validate_morphology_section_type_selection(schema: dict, param: str, ref: st
         raise ValidationError(msg)
 
     try:
-        validate([2, 3, 4], schema)
-        validate([[2], [3, 4]], schema)
+        validate([3, 4], schema)
+        validate([[3], [3, 4]], schema)
         validate(None, schema)
     except ValidationError:
         msg = (

@@ -16,7 +16,6 @@ from app.services.circuit_visualization import (
 )
 
 _SECTION_TYPE_LABELS = {
-    morphio.SectionType.axon: "Axon",
     morphio.SectionType.basal_dendrite: "Basal dendrite",
     morphio.SectionType.apical_dendrite: "Apical dendrite",
 }
