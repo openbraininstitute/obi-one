@@ -3,7 +3,7 @@
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
 simplified point-neuron or single-compartment circuits while preserving network
 connectivity. Supports multiple simplification target models (single-compartment,
-LIF, AdEx, Izhikevich, GLIF, GIF).
+LIF, AdEx, Izhikevich, GLIF, GIF) with optional export to NEST or Brian2 format.
 """
 
 import json
@@ -35,7 +35,9 @@ L = logging.getLogger(__name__)
 
 # Mapping from simplification algorithm to target simulator.
 # single_compartment produces a NEURON-compatible biophysical single-compartment circuit.
-# Point-neuron models (lif, adex, izhikevich, glif, gif) target NEST.
+# Point-neuron modes: lif/adex/izhikevich/glif/gif are exported to NEST format;
+# Brian2 export is supported by sonata_simplify but mapped separately via the
+# circuit config's target_simulator field written by the exporter.
 ALGORITHM_TARGET_SIMULATOR: dict[str, str] = {
     "single_compartment": "NEURON",
     "lif": "NEST",
@@ -77,7 +79,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
         " network connectivity. Supports multiple target models (single-compartment,"
-        " LIF, AdEx, Izhikevich, GLIF, GIF)."
+        " LIF, AdEx, Izhikevich, GLIF, GIF) with optional export to NEST or Brian2 format."
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
