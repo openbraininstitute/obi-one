@@ -2,9 +2,8 @@ from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
-from pydantic import Field
-
 from entitysdk.types import EntityType
+from pydantic import Field
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
@@ -40,9 +39,10 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
             SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
             SchemaKey.ENTITY_QUERY: {
                 "type": EntityType.simulatable_extracellular_recording_array,
-                # SchemaKey.FILTERS: {
-                #     "circuit_id__isequal": {"circuit_id"},
-                # },
+                SchemaKey.FILTERS: {
+                    "circuit_id": {"circuit_id"},
+                },
+                SchemaKey.VALUE_FROM: "initialize.circuit",
             },
         },
     )

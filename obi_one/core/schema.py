@@ -31,6 +31,9 @@ class SchemaKey(StrEnum):
     UI_ENABLED = "ui_enabled"
     UI_HIDDEN = "ui_hidden"
     UNITS = "units"
+    # path to a sibling field whose entity id should populate entity_query filters.
+    # Used by the frontend; e.g. "initialize.circuit" for a circuit model_identifier.
+    VALUE_FROM = "value_from"
 
 
 class UIElement(StrEnum):
