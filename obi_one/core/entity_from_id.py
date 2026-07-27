@@ -3,7 +3,7 @@ from enum import Enum
 from typing import ClassVar
 
 import entitysdk
-from entitysdk.models.entity import Entity, Identifiable
+from entitysdk.models.entity import Entity
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
