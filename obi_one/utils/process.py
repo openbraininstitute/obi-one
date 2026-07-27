@@ -1,4 +1,5 @@
 import logging
+import os
 import shlex
 import subprocess  # noqa: S404
 from pathlib import Path
@@ -6,13 +7,21 @@ from pathlib import Path
 L = logging.getLogger(__name__)
 
 
-def run_and_log(command: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
+def run_and_log(
+    command: list[str], cwd: Path | None = None, env: dict | None = None
+) -> subprocess.CompletedProcess:
     """Run a subprocess command and log stdout/stderr."""
     cmd_str = shlex.join(command)
     L.info("Command: %s", cmd_str)
     try:
         result = subprocess.run(  # noqa: S603
-            command, check=True, capture_output=True, text=True, shell=False, cwd=cwd
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=False,
+            cwd=cwd,
+            env=env or os.environ,
         )
     except subprocess.CalledProcessError as e:
         L.error("Return code: %s", e.returncode)
