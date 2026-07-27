@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import ClassVar
 
-import entitysdk
+from entitysdk import Client, models
+from entitysdk.staging.circuit import stage_circuit
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
@@ -11,14 +12,14 @@ from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircui
 
 
 class CircuitFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[entitysdk.models.entity.Entity]] = entitysdk.models.Circuit  # ty:ignore[possibly-missing-submodule]
-    _entity: entitysdk.models.Circuit | None = PrivateAttr(default=None)  # ty:ignore[possibly-missing-submodule]
+    entitysdk_class: ClassVar[type[models.Entity]] = models.Circuit
+    _entity: models.Circuit | None = PrivateAttr(default=None)
 
     def stage_circuit(
         self,
         *,
         dest_dir: Path = Path(),
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,
     ) -> Circuit:
         for asset in self.entity(db_client=db_client).assets:
@@ -28,9 +29,9 @@ class CircuitFromID(EntityFromID):
                     raise FileExistsError(msg)
 
                 if (not entity_cache) | (entity_cache and not dest_dir.exists()):
-                    entitysdk.staging.circuit.stage_circuit(  # ty:ignore[possibly-missing-submodule]
+                    stage_circuit(
                         client=db_client,
-                        model=self.entity(db_client),
+                        model=self.entity(db_client),  # ty:ignore[invalid-argument-type]
                         output_dir=dest_dir,
                         max_concurrent=4,
                     )
@@ -46,21 +47,21 @@ class CircuitFromID(EntityFromID):
 
 
 class MEModelWithSynapsesCircuitFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[entitysdk.models.entity.Entity]] = entitysdk.models.Circuit  # ty:ignore[possibly-missing-submodule]
-    _entity: entitysdk.models.Circuit | None = PrivateAttr(default=None)  # ty:ignore[possibly-missing-submodule]
+    entitysdk_class: ClassVar[type[models.Entity]] = models.Circuit
+    _entity: models.Circuit | None = PrivateAttr(default=None)
 
-    def entity(self, db_client: entitysdk.client.Client) -> entitysdk.models.Circuit:  # ty:ignore[possibly-missing-submodule]
+    def entity(self, db_client: Client) -> models.Circuit:
         entity = super().entity(db_client=db_client)
         if entity.scale != "single":  # ty:ignore[unresolved-attribute]
             msg = "Entity must be a circuit of scale 'single'."
             raise OBIONEError(msg)
-        return entity
+        return entity  # ty:ignore[invalid-return-type]
 
     def stage_circuit(
         self,
         *,
         dest_dir: Path = Path(),
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,
     ) -> MEModelWithSynapsesCircuit:
         for asset in self.entity(db_client=db_client).assets:
@@ -70,7 +71,7 @@ class MEModelWithSynapsesCircuitFromID(EntityFromID):
                     raise FileExistsError(msg)
 
                 if (not entity_cache) | (entity_cache and not dest_dir.exists()):
-                    entitysdk.staging.circuit.stage_circuit(  # ty:ignore[possibly-missing-submodule]
+                    stage_circuit(
                         client=db_client,
                         model=self.entity(db_client),
                         output_dir=dest_dir,

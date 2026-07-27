@@ -426,11 +426,13 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, mo
     [
         TaskType.circuit_extraction,
         TaskType.circuit_simulation_inait_machine,
-        TaskType.circuit_simulation_neuron,
+        TaskType.circuit_simulation_neurodamus_machine,
         TaskType.circuit_simulation_neurodamus_cluster,
         TaskType.circuit_simulation_brian2_machine,
         TaskType.morphology_skeletonization,
         TaskType.ion_channel_model_simulation_execution,
+        TaskType.single_neuron_simulation_execution,
+        TaskType.single_neuron_synaptome_simulation_execution,
         TaskType.em_synapse_mapping,
     ],
 )
@@ -441,20 +443,24 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     expected_subtype = {
         TaskType.circuit_extraction: ServiceSubtype.CIRCUIT_EXTRACTION,
         TaskType.circuit_simulation_neurodamus_cluster: ServiceSubtype.SMALL_SIM,
+        TaskType.circuit_simulation_neurodamus_machine: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_inait_machine: ServiceSubtype.SMALL_SIM,
-        TaskType.circuit_simulation_neuron: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_brian2_machine: ServiceSubtype.BRIAN2_CIRCUIT_SIMULATION,
         TaskType.ion_channel_model_simulation_execution: ServiceSubtype.ION_CHANNEL_SIM,
+        TaskType.single_neuron_simulation_execution: ServiceSubtype.SINGLE_CELL_SIM,
+        TaskType.single_neuron_synaptome_simulation_execution: ServiceSubtype.SYNAPTOME_SIM,
         TaskType.morphology_skeletonization: ServiceSubtype.NEURON_MESH_SKELETONIZATION,
         TaskType.em_synapse_mapping: ServiceSubtype.EM_SYNAPSE_MAPPING,
     }
     expected_count = {
         TaskType.circuit_extraction: 1,
         TaskType.circuit_simulation_neurodamus_cluster: 1,
+        TaskType.circuit_simulation_neurodamus_machine: 1,
         TaskType.circuit_simulation_inait_machine: 1,
-        TaskType.circuit_simulation_neuron: 1,
         TaskType.circuit_simulation_brian2_machine: 1,
         TaskType.ion_channel_model_simulation_execution: 1,
+        TaskType.single_neuron_simulation_execution: 1,
+        TaskType.single_neuron_synaptome_simulation_execution: 1,
         TaskType.morphology_skeletonization: 800,
         TaskType.em_synapse_mapping: 1,
     }
