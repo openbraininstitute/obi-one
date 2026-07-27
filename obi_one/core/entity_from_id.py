@@ -37,28 +37,3 @@ class EntityFromID(OBIBaseModel, abc.ABC):
     def __str__(self) -> str:
         """Returns a string representation."""
         return f"{self.__class__.__name__}_{self.id_str}"
-
-
-class IdentifiableFromID(OBIBaseModel, abc.ABC):
-    """Base class for references to Identifiable objects (controlled vocabularies like Species, BrainRegion, EType).
-
-    These are not full Entity objects (no assets), but they are identifiable
-    database records that can be fetched by ID.
-    """  # noqa: E501
-
-    entitysdk_class: ClassVar[type[Identifiable]] = None  # ty:ignore[invalid-assignment]
-    id_str: str = Field(description="ID of the identifiable in string format.")
-    _entity: Identifiable | None = PrivateAttr(default=None)
-
-    @classmethod
-    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Identifiable:
-        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)  # ty:ignore[invalid-argument-type]
-
-    def entity(self, db_client: entitysdk.client.Client) -> Identifiable:
-        if self._entity is None:
-            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
-        return self._entity
-
-    def __str__(self) -> str:
-        """Returns a string representation."""
-        return f"{self.__class__.__name__}_{self.id_str}"
