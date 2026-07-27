@@ -75,7 +75,7 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         SchemaKey.EFEL_FIGURES_BASE_URL: EFEL_FIGURES_BASE_URL,
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.INPUTS: "/declared/mapped-electrical-cell-recording-properties",
-        }
+        },
     }
 
     _campaign_task_config_type: ClassVar[TaskConfigType] = (

@@ -218,6 +218,7 @@ def _features_field(feature_classes: tuple[type[EFeature], ...]) -> Any:
         ),
     )
 
+
 # ---------------------------------------------------------------------------
 # Shape intermediates — one per BluePyEfe eCode class.
 #
@@ -569,7 +570,9 @@ ProtocolUnion = Annotated[
     | SpikeRecProtocol
     | SineSpecProtocol
     | PinkNoiseProtocol
-    | CapCheckProtocol, Discriminator("type")]
+    | CapCheckProtocol,
+    Discriminator("type"),
+]
 
 
 # Concrete protocol classes, longest ``protocol_name`` first — used to map a
