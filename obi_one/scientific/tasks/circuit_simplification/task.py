@@ -2,8 +2,8 @@
 
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
 simplified point-neuron or single-compartment circuits while preserving network
-connectivity. Supports multiple simplification target models and optional export to
-NEST or BRIAN2 formats.
+connectivity. Supports multiple simplification target models (single-compartment,
+LIF, AdEx, Izhikevich, GLIF, GIF).
 """
 
 import json
@@ -32,6 +32,18 @@ from obi_one.utils import db_sdk
 from obi_one.utils.circuit_registration import register as circuit_registration
 
 L = logging.getLogger(__name__)
+
+# Mapping from simplification algorithm to target simulator.
+# single_compartment produces a NEURON-compatible biophysical single-compartment circuit.
+# Point-neuron models (lif, adex, izhikevich, glif, gif) target NEST.
+ALGORITHM_TARGET_SIMULATOR: dict[str, str] = {
+    "single_compartment": "NEURON",
+    "lif": "NEST",
+    "adex": "NEST",
+    "izhikevich": "NEST",
+    "glif": "NEST",
+    "gif": "NEST",
+}
 
 
 class BlockGroup(StrEnum):
@@ -65,7 +77,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
         " network connectivity. Supports multiple target models (single-compartment,"
-        " LIF, AdEx, Izhikevich, GLIF, GIF) and optional export to NEST or BRIAN2 formats."
+        " LIF, AdEx, Izhikevich, GLIF, GIF)."
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
@@ -235,6 +247,8 @@ class CircuitSimplificationTask(Task):
         algorithm_name: str,
     ) -> models.Circuit | None:
         """Register a simplified circuit entity with derivation link to parent."""
+        from entitysdk.types import TargetSimulator  # noqa: PLC0415
+
         parent = self._circuit_entity
 
         campaign_str = self.config.info.campaign_name.replace(" ", "-")
@@ -242,6 +256,10 @@ class CircuitSimplificationTask(Task):
         circuit_descr = (
             f"{self.config.info.campaign_description} - Simplified using '{algorithm_name}'"
         )
+
+        # Determine target simulator based on algorithm
+        simulator_key = ALGORITHM_TARGET_SIMULATOR.get(algorithm_name, "NEURON")
+        target_simulator = TargetSimulator(simulator_key)
 
         return circuit_registration.register_circuit(
             client=db_client,
@@ -251,7 +269,7 @@ class CircuitSimplificationTask(Task):
             build_category=parent.build_category,  # ty:ignore[unresolved-attribute]
             brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute, invalid-argument-type]
             subject=parent.subject,  # ty:ignore[unresolved-attribute, invalid-argument-type]
-            target_simulator=parent.target_simulator,  # ty:ignore[unresolved-attribute]
+            target_simulator=target_simulator,
             experiment_date=parent.experiment_date,  # ty:ignore[unresolved-attribute]
             license=parent.license,  # ty:ignore[unresolved-attribute]
             atlas=None,
@@ -271,7 +289,7 @@ class CircuitSimplificationTask(Task):
             "manifest": {"$BASE_DIR": str(Path(input_circuit_path).parent)},
             "network": str(Path(input_circuit_path).name),
             "output": {
-                "output_dir": str(output_dir / "output"),
+                "output_dir": str(output_dir),
                 "spikes_file": "spikes.h5",
             },
             "run": {
@@ -341,11 +359,10 @@ class CircuitSimplificationTask(Task):
                 simplification_mode=algorithm_name,
             )
 
-            # Run the pipeline
-            pipeline.run()
-
-            # The simplified circuit is in output_dir
-            simplified_circuit_path = output_dir / "circuit_config.json"
+            # Run the pipeline — returns the actual output directory (may have a
+            # timestamp prefix added internally by the pipeline).
+            simplified_circuit_dir = pipeline.run()
+            simplified_circuit_path = simplified_circuit_dir / "circuit_config.json"
 
             if not simplified_circuit_path.exists():
                 L.warning(
