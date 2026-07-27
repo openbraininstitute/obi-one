@@ -4,10 +4,10 @@ from http import HTTPStatus
 
 from entitysdk import models
 from fastapi import APIRouter, Depends
-from starlette.requests import Request
 
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
+from app.dependencies.http_client import HttpClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.contributor import OrganizationPreview, PersonPreview
 from app.services.contributor_metadata import (
@@ -39,11 +39,10 @@ def get_contributor(
     identifier: str,
     db_client: DatabaseClientDep,
     user_context: UserContextDep,  # noqa: ARG001
-    request: Request,
+    http_client: HttpClientDep,
 ) -> PersonPreview | OrganizationPreview:
     """Look up a contributor by ORCID or ROR ID."""
     id_type, normalized = resolve_identifier(identifier)
-    http_client = request.state.http_client
 
     match id_type:
         case IdentifierType.orcid:
@@ -92,11 +91,10 @@ def register_contributor(
     identifier: str,
     db_client: DatabaseClientDep,
     user_context: UserContextDep,  # noqa: ARG001
-    request: Request,
+    http_client: HttpClientDep,
 ) -> dict:
     """Register a contributor by resolving metadata and creating it in entitycore."""
     id_type, normalized = resolve_identifier(identifier)
-    http_client = request.state.http_client
 
     match id_type:
         case IdentifierType.orcid:
