@@ -27,12 +27,15 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 
-def stage_circuit(*, client: Client, model: models.Circuit, output_dir: Path) -> Circuit:
+def stage_circuit(
+    *, client: Client, model: models.Circuit, output_dir: Path, max_concurrent: int = 1
+) -> Circuit:
     """Stage circuit."""
     circuit_config_path: Path = stage_circuit_entity(
         client=client,
         model=model,
         output_dir=output_dir,
+        max_concurrent=max_concurrent,
     )
     return Circuit(name=cast("str", model.name), path=str(circuit_config_path))
 
