@@ -15,8 +15,6 @@ class LoadAssetMethod(Enum):
 
 
 class EntityFromID(OBIBaseModel, abc.ABC):
-    """Base class for entity references that resolve to full Entity objects (with assets)."""
-
     entitysdk_class: ClassVar[type[Entity]] = None  # ty:ignore[invalid-assignment]
     id_str: str = Field(description="ID of the entity in string format.")
     _entity: Entity | None = PrivateAttr(default=None)
