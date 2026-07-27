@@ -86,7 +86,7 @@ class Protocol(OBIBaseModel, abc.ABC):
             " paired with a boolean marking whether it is used for validation."
         ),
         json_schema_extra={
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.INPUTS,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS,
             SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.AMPLITUDES_BY_PROTOCOL,
         },
     )
