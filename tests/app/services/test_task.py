@@ -9,6 +9,7 @@ import entitysdk
 import httpx
 import libsonata
 import pytest
+from entitysdk.common import ProjectContext
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
@@ -31,7 +32,11 @@ TASK_TYPES = [
 @pytest.fixture
 def db_client():
     """Database client."""
-    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # noqa: S106
+    return entitysdk.Client(
+        api_url="http://my-url",
+        token_manager="my-token",  # noqa: S106
+        project_context=ProjectContext(virtual_lab_id=VIRTUAL_LAB_ID, project_id=PROJECT_ID),
+    )
 
 
 @pytest.fixture
