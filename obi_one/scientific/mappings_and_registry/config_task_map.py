@@ -58,10 +58,6 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
-from obi_one.scientific.tasks.ion_channel_model_simulation_execution import (
-    IonChannelModelSimulationExecutionSingleConfig,
-    IonChannelModelSimulationExecutionTask,
-)
 from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
@@ -85,6 +81,16 @@ from obi_one.scientific.tasks.morphology_locations import (
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
+)
+from obi_one.scientific.tasks.simulation_execution import (
+    CircuitSimulationExecutionSingleConfig,
+    CircuitSimulationExecutionTask,
+    IonChannelModelSimulationExecutionSingleConfig,
+    IonChannelModelSimulationExecutionTask,
+    SingleNeuronSimulationExecutionSingleConfig,
+    SingleNeuronSimulationExecutionTask,
+    SingleNeuronSynaptomeSimulationExecutionSingleConfig,
+    SingleNeuronSynaptomeSimulationExecutionTask,
 )
 from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
@@ -124,6 +130,16 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.ion_channel_model_simulation_execution: (
         IonChannelModelSimulationExecutionTask,
         IonChannelModelSimulationExecutionSingleConfig,
+        None,
+    ),
+    TaskType.single_neuron_simulation_execution: (
+        SingleNeuronSimulationExecutionTask,
+        SingleNeuronSimulationExecutionSingleConfig,
+        None,
+    ),
+    TaskType.single_neuron_synaptome_simulation_execution: (
+        SingleNeuronSynaptomeSimulationExecutionTask,
+        SingleNeuronSynaptomeSimulationExecutionSingleConfig,
         None,
     ),
     TaskType.mesh_lod_generation: (
@@ -210,6 +226,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.morphology_metrics: (
         MorphologyMetricsTask,
         MorphologyMetricsSingleConfig,
+        None,
+    ),
+    TaskType.circuit_simulation_neurodamus_machine: (
+        CircuitSimulationExecutionTask,
+        CircuitSimulationExecutionSingleConfig,
         None,
     ),
 }

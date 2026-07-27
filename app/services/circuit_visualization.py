@@ -35,12 +35,12 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         ) from e
 
-    if circuit.scale not in {CircuitScale.small, CircuitScale.pair}:
+    if circuit.scale not in {CircuitScale.single, CircuitScale.pair, CircuitScale.small}:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Circuit's scale should be 'small' or 'pair'",
+                "detail": "Circuit's scale should be 'single', 'pair' or 'small'",
             },
         )
 
