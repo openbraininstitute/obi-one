@@ -74,7 +74,9 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         SchemaKey.EFEL_DOC_BASE_URL: EFEL_DOC_BASE_URL,
         SchemaKey.EFEL_FIGURES_BASE_URL: EFEL_FIGURES_BASE_URL,
         SchemaKey.PROPERTY_ENDPOINTS: {
-            MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS: "/declared/mapped-electrical-cell-recording-properties",
+            MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS: (
+                "/declared/mapped-electrical-cell-recording-properties"
+            ),
         },
     }
 
