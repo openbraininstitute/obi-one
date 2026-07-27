@@ -755,7 +755,10 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
     ("target_simulator_name", "circuit_scale", "expected_task"),
     [
         ("LearningEngine", "system", TaskType.circuit_simulation_inait_machine),
-        ("NEURON", "small", TaskType.circuit_simulation_neuron),
+        ("NEURON", "small", TaskType.circuit_simulation_neurodamus_machine),
+        ("NEURON", "single", TaskType.circuit_simulation_neurodamus_machine),
+        ("NEURON", "pair", TaskType.circuit_simulation_neurodamus_machine),
+        ("CORENEURON", "small", TaskType.circuit_simulation_neurodamus_machine),
         ("CORENEURON", "microcircuit", TaskType.circuit_simulation_neurodamus_cluster),
         ("Brian2", "small", TaskType.circuit_simulation_brian2_machine),
     ],
@@ -821,7 +824,7 @@ def test_select_simulation_task_falls_back_to_circuit_target_simulator():
             config_type=entitysdk.models.Simulation,
         )
 
-    assert task_type == TaskType.circuit_simulation_neuron
+    assert task_type == TaskType.circuit_simulation_neurodamus_machine
 
 
 def test_select_simulation_task_raises_for_unsupported_target_simulator():

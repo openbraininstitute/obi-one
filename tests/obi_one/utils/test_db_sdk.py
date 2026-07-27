@@ -2,7 +2,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import entitysdk
@@ -13,7 +13,11 @@ from entitysdk.models import Asset, Entity, SimulationExecution
 from entitysdk.types import AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils import db_sdk as test_module
+
+from tests.utils import CIRCUIT_DIR
 
 
 @pytest.fixture
@@ -43,6 +47,37 @@ def mock_entity_with_assets():
         Mock(spec=Asset, label=AssetLabel.circuit_extraction_config),
     ]
     return config
+
+
+def test_get_identifiable():
+    identifiable_id = uuid4()
+    resource = Mock(id=identifiable_id)
+    client = Mock()
+    client.get_entity.return_value = resource
+
+    result = test_module.get_identifiable(
+        client=client,
+        identifiable_id=identifiable_id,
+        identifiable_type=SimulationExecution,
+    )
+
+    assert result is resource
+    client.get_entity.assert_called_once_with(
+        entity_id=identifiable_id,
+        entity_type=SimulationExecution,
+    )
+
+
+def test_get_identifiable_raises_when_id_missing():
+    client = Mock()
+    client.get_entity.return_value = Mock(id=None)
+
+    with pytest.raises(OBIONEError, match="has no ID"):
+        test_module.get_identifiable(
+            client=client,
+            identifiable_id=uuid4(),
+            identifiable_type=SimulationExecution,
+        )
 
 
 def test_get_entity_asset_by_label(client, mock_entity_with_assets):
@@ -537,6 +572,87 @@ def test_add_image_assets_success_webp_and_png(tmp_path):
 
     assert assets == [uploaded_a, uploaded_b]
     assert client.upload_file.call_count == 2
+
+
+def test_resolve_circuit_local_instance():
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit = Circuit(name="local", path=str(circuit_path))
+
+    resolved, entity = test_module.resolve_circuit(
+        circuit,
+        db_client=Mock(),
+        entity_cache=False,
+        cache_root=Path("/cache"),
+        temp_dir=Path("/temp"),
+    )
+
+    assert resolved is circuit
+    assert entity is None
+
+
+def test_resolve_circuit_from_id_without_cache(tmp_path):
+    db_client = Mock()
+    circuit_from_id = CircuitFromID(id_str="circuit-1")
+    staged_circuit = Mock(spec=Circuit)
+    circuit_entity = Mock()
+
+    with (
+        patch.object(CircuitFromID, "stage_circuit", return_value=staged_circuit) as mock_stage,
+        patch.object(CircuitFromID, "entity", return_value=circuit_entity),
+    ):
+        resolved, entity = test_module.resolve_circuit(
+            circuit_from_id,
+            db_client=db_client,
+            entity_cache=False,
+            cache_root=tmp_path / "cache",
+            temp_dir=tmp_path / "temp",
+        )
+
+    assert resolved is staged_circuit
+    assert entity is circuit_entity
+    mock_stage.assert_called_once_with(
+        db_client=db_client,
+        dest_dir=tmp_path / "temp" / "sonata_circuit",
+        entity_cache=False,
+    )
+
+
+def test_resolve_circuit_from_id_with_cache(tmp_path):
+    db_client = Mock()
+    circuit_from_id = CircuitFromID(id_str="circuit-1")
+    staged_circuit = Mock(spec=Circuit)
+    circuit_entity = Mock()
+
+    with (
+        patch.object(CircuitFromID, "stage_circuit", return_value=staged_circuit) as mock_stage,
+        patch.object(CircuitFromID, "entity", return_value=circuit_entity),
+    ):
+        resolved, entity = test_module.resolve_circuit(
+            circuit_from_id,
+            db_client=db_client,
+            entity_cache=True,
+            cache_root=tmp_path / "cache",
+            temp_dir=tmp_path / "temp",
+        )
+
+    assert resolved is staged_circuit
+    assert entity is circuit_entity
+    mock_stage.assert_called_once_with(
+        db_client=db_client,
+        dest_dir=tmp_path / "cache" / "entity_cache" / "sonata_circuit" / "circuit-1",
+        entity_cache=True,
+    )
+
+
+def test_resolve_circuit_unsupported_type():
+    with pytest.raises(OBIONEError, match="Unsupported circuit type"):
+        test_module.resolve_circuit(
+            "not-a-circuit",
+            db_client=Mock(),
+            entity_cache=False,
+            cache_root=Path("/cache"),
+            temp_dir=Path("/temp"),
+        )
 
 
 def test_select_json_asset_content(client, httpx_mock):
