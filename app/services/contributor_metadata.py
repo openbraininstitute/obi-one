@@ -8,44 +8,19 @@ changing the public interface (fetch_orcid_metadata, fetch_ror_metadata).
 """
 
 import re
-from enum import StrEnum, auto
 from http import HTTPStatus
 
 import httpx
-from pydantic import BaseModel
 
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from app.types import IdentifierType, OrcidMetadata, RorMetadata
 
 ORCID_API_BASE_URL = "https://pub.orcid.org/v3.0"
 ROR_API_BASE_URL = "https://api.ror.org/v2/organizations"
 
 ORCID_PATTERN = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
 ROR_BARE_PATTERN = re.compile(r"^0[a-hj-km-np-tv-z0-9]{6}[0-9]{2}$")
-
-
-class IdentifierType(StrEnum):
-    orcid = auto()
-    ror = auto()
-
-
-class OrcidMetadata(BaseModel):
-    """Metadata for a person fetched from the ORCID API."""
-
-    orcid: str
-    given_name: str | None = None
-    family_name: str | None = None
-    pref_label: str
-
-
-class RorMetadata(BaseModel):
-    """Metadata for an organization fetched from the ROR API."""
-
-    ror_id: str
-    name: str
-    alternative_names: list[str] = []
-    types: list[str] = []
-    country: str | None = None
 
 
 def resolve_identifier(identifier: str) -> tuple[IdentifierType, str]:
