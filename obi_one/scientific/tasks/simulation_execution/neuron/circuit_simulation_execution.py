@@ -52,7 +52,7 @@ class CircuitSimulationExecutionTask(SimulationExecutionTask):
             client=db_client,
             model=circuit_entity,
             output_dir=create_dir(data_dir / "circuit"),
-            max_concurrent=4,
+            max_concurrent=8,
         )
         L.info("Staged circuit %s config at %s", circuit_entity.id, staged_circuit.path)
         return staged_circuit
