@@ -174,7 +174,7 @@ class EModelEFeatureExtractionTask(Task):
                 msg = f"Expected ElectricalCellRecordingFromID, got {type(recording).__name__}."
                 raise TypeError(msg)
             target_dir = ephys_data_root / recording.id_str
-            path = recording.download_asset(dest_dir=target_dir, db_client=db_client)
+            path = recording.download_nwb_asset(dest_dir=target_dir, db_client=db_client)
             ljp = recording.entity(db_client=db_client).ljp  # ty:ignore[unresolved-attribute]
             downloaded.append((path, ljp))
         return downloaded

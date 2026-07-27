@@ -15,7 +15,7 @@ class ElectricalCellRecordingFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = ElectricalCellRecording
     _entity: ElectricalCellRecording | None = PrivateAttr(default=None)
 
-    def download_asset(
+    def download_nwb_asset(
         self,
         dest_dir: Path = Path(),
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
