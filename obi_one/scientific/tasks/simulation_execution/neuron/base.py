@@ -18,6 +18,7 @@ from obi_one.scientific.library.simulation.neuron.registration import register_s
 from obi_one.scientific.library.simulation.neuron.schemas import SimulationMetadata
 from obi_one.scientific.library.simulation.neuron.staging import get_simulation_parameters
 from obi_one.types import SimulationBackend
+from obi_one.utils.benchmark import log_timing
 from obi_one.utils.filesystem import create_dir
 
 if TYPE_CHECKING:
@@ -76,57 +77,63 @@ class SimulationExecutionTask(Task):
         )
         L.info("Simulation: %s", simulation_entity.id)
 
-        staged_circuit = self._stage_circuit(
-            db_client=db_client,
-            data_dir=data_dir,
-            simulation_entity=simulation_entity,
-        )
+        with log_timing("stage_circuit"):
+            staged_circuit = self._stage_circuit(
+                db_client=db_client,
+                data_dir=data_dir,
+                simulation_entity=simulation_entity,
+            )
         L.info("Circuit staged at %s", staged_circuit.directory)
 
-        mechanism_build = compile_mechanisms(
-            mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
-            output_dir=staged_circuit.directory.resolve(),
-            simulation_backend=self.simulation_backend,
-        )
+        with log_timing("compile_mechanisms"):
+            mechanism_build = compile_mechanisms(
+                mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+                output_dir=staged_circuit.directory.resolve(),
+                simulation_backend=self.simulation_backend,
+            )
         L.info("Mechanisms compiled: %s", mechanism_build)
 
-        staged_simulation_config_path = stage_simulation(
-            client=db_client,
-            model=simulation_entity,
-            circuit_config_path=Path(staged_circuit.path),
-            output_dir=data_dir,
-            override_results_dir=results_dir,
-        )
+        with log_timing("stage_simulation"):
+            staged_simulation_config_path = stage_simulation(
+                client=db_client,
+                model=simulation_entity,
+                circuit_config_path=Path(staged_circuit.path),
+                output_dir=data_dir,
+                override_results_dir=results_dir,
+            )
         L.info("Simulation staged at %s", staged_simulation_config_path)
 
-        simulation_parameters = get_simulation_parameters(
-            simulation_backend=self.simulation_backend,
-            simulation_config_file=staged_simulation_config_path,
-            mechanism_build=mechanism_build,
-        )
+        with log_timing("get_simulation_parameters"):
+            simulation_parameters = get_simulation_parameters(
+                simulation_backend=self.simulation_backend,
+                simulation_config_file=staged_simulation_config_path,
+                mechanism_build=mechanism_build,
+            )
         L.info("Collected simulation parameters: %s", simulation_parameters)
 
-        simulation_results = run_simulation(
-            parameters=simulation_parameters,
-            results_dir=results_dir,
-            simulation_backend=self.simulation_backend,
-        )
+        with log_timing("run_simulation"):
+            simulation_results = run_simulation(
+                parameters=simulation_parameters,
+                results_dir=results_dir,
+                simulation_backend=self.simulation_backend,
+            )
         L.info("Collected simulation results: %s", simulation_results)
 
         if execution_activity is not None:
             L.info("Registering simulation results...")
-            generated_entity = register_simulation_results(
-                client=db_client,
-                simulation_results=simulation_results,
-                simulation_metadata=simulation_metadata,
-            )
-            L.info("Generated %s(id=%s)", type(generated_entity), generated_entity.id)
+            with log_timing("register_simulation_results"):
+                generated_entity = register_simulation_results(
+                    client=db_client,
+                    simulation_results=simulation_results,
+                    simulation_metadata=simulation_metadata,
+                )
+                L.info("Generated %s(id=%s)", type(generated_entity), generated_entity.id)
 
-            db_client.update_entity(
-                entity_id=execution_activity.id,
-                entity_type=self.activity_type,
-                attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
-            )
+                db_client.update_entity(
+                    entity_id=execution_activity.id,
+                    entity_type=self.activity_type,
+                    attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
+                )
             L.info("Updated %s(id=%s)", type(execution_activity), execution_activity.id)
 
         L.info("Simulation completed.")
