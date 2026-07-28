@@ -202,8 +202,8 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
-        from bluerecording import (  # ruff: ignore[import-outside-top-level]
-            compute_weights,  # ty:ignore[unresolved-import]
+        from bluerecording import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
+            compute_weights,
         )
         from bluerecording.weights import (  # ruff: ignore[import-outside-top-level] # ty:ignore[unresolved-import]
             Electrode,
