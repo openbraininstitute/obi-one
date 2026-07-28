@@ -4,7 +4,6 @@ from http import HTTPStatus
 
 from entitysdk import models
 from fastapi import APIRouter, Depends
-from starlette.requests import Request
 
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
@@ -68,40 +67,30 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
     # fragment with wildcards, PLUS a second search using just the first word.
     # Then compare normalized forms client-side.
 
-    seen_ids: set = set()
-    candidates = []
-
     # Pattern 1: fragments from whitespace-split words
-    words = name.lower().split()
-    fragments = ["".join(c for c in w if c.isalnum()) for w in words]
+    words = name.strip().lower().split()
+    fragments = ["".join(c for c in word if c.isalnum()) for word in words]
     fragments = [f for f in fragments if f]
-
     if fragments:
-        ilike_pattern = "%" + "%".join(fragments) + "%"
-        results = db_client.search_entity(
-            entity_type=models.Subject, query={"name__ilike": ilike_pattern}
-        ).all()
-        for r in results:
-            if r.id not in seen_ids:
-                seen_ids.add(r.id)
-                candidates.append(r)
+        ilike_pattern = "*" + "*".join(fragments) + "*"
+        for result in db_client.search_entity(
+            entity_type=models.Subject,
+            query={"name__ilike": ilike_pattern},
+        ):
+            if normalize_name_for_comparison(result.name) == normalized_input:
+                return result
 
     # Pattern 2: if the name has no spaces (e.g. "AverageRat"), also search with
     # a shorter fragment to catch existing entries stored with separators.
     # Use the first few alphanumeric characters as a broad match.
     if len(normalized_input) >= _DUPLICATE_SEARCH_PREFIX_LENGTH:
-        short_pattern = f"%{normalized_input[:_DUPLICATE_SEARCH_PREFIX_LENGTH]}%"
-        results = db_client.search_entity(
-            entity_type=models.Subject, query={"name__ilike": short_pattern}
-        ).all()
-        for r in results:
-            if r.id not in seen_ids:
-                seen_ids.add(r.id)
-                candidates.append(r)
-
-    for candidate in candidates:
-        if normalize_name_for_comparison(candidate.name) == normalized_input:
-            return candidate
+        short_pattern = f"*{normalized_input[:_DUPLICATE_SEARCH_PREFIX_LENGTH]}*"
+        for result in db_client.search_entity(
+            entity_type=models.Subject,
+            query={"name__ilike": short_pattern},
+        ):
+            if normalize_name_for_comparison(result.name) == normalized_input:
+                return result
 
     return None
 
@@ -119,7 +108,6 @@ def register_subject(
     json_model: SubjectRegisterRequest,
     db_client: DatabaseClientDep,
     user_context: UserContextDep,  # noqa: ARG001
-    request: Request,  # noqa: ARG001
 ) -> dict:
     """Register a new subject in entitycore."""
     # Duplicate name detection: normalize by stripping non-alphanumeric chars and lowercasing
