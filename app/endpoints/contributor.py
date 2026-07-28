@@ -8,14 +8,17 @@ from fastapi import APIRouter, Depends
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.http_client import HttpClientDep
-from app.dependencies.persistent_identifier import PersistentIdentifierDep
+from app.dependencies.persistent_identifier import (
+    OrcidPersistentIdentifier,
+    PersistentIdentifierDep,
+    RorPersistentIdentifier,
+)
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.contributor import OrganizationPreview, PersonPreview
 from app.services.contributor import (
     fetch_orcid_metadata,
     fetch_ror_metadata,
 )
-from app.types import IdentifierType
 
 router = APIRouter(
     prefix="/declared/contributor",
@@ -42,8 +45,8 @@ def get_contributor(
     identifier: PersistentIdentifierDep,
 ) -> PersonPreview | OrganizationPreview:
     """Look up a contributor by ORCID or ROR ID."""
-    match identifier.kind:
-        case IdentifierType.orcid:
+    match identifier:
+        case OrcidPersistentIdentifier():
             metadata = fetch_orcid_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Person, query={"orcid": identifier.url}
@@ -57,7 +60,7 @@ def get_contributor(
                 already_registered=existing is not None,
                 existing_id=existing.id if existing else None,
             )
-        case IdentifierType.ror:
+        case RorPersistentIdentifier():
             metadata = fetch_ror_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Organization, query={"ror_id": identifier.url}
@@ -91,8 +94,8 @@ def register_contributor(
     http_client: HttpClientDep,
 ) -> dict:
     """Register a contributor by resolving metadata and creating it in entitycore."""
-    match identifier.kind:
-        case IdentifierType.orcid:
+    match identifier:
+        case OrcidPersistentIdentifier():
             metadata = fetch_orcid_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Person, query={"orcid": identifier.url}
@@ -112,7 +115,7 @@ def register_contributor(
                 orcid=identifier.url,
             )
 
-        case IdentifierType.ror:
+        case RorPersistentIdentifier():
             metadata = fetch_ror_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
                 entity_type=models.Organization, query={"ror_id": identifier.url}
