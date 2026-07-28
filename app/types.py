@@ -40,3 +40,8 @@ class MachineExecutorImageType(StrEnum):
     python_3_12_compiler = auto()
     python_3_12_inait = auto()
     python_3_12_openmpi5_neuron9_neurodamus = auto()
+
+
+class IdentifierType(StrEnum):
+    orcid = auto()
+    ror = auto()
