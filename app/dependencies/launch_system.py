@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -26,7 +26,7 @@ LaunchSystemClientDep = Annotated[httpx.Client, Depends(get_client)]
 @asynccontextmanager
 async def get_async_client(
     user_context: UserContextDep,
-) -> AsyncIterator[httpx.AsyncClient]:
+) -> AsyncGenerator[httpx.AsyncClient]:
     token = user_context.token.credentials  # ty:ignore[unresolved-attribute]
     headers = {"Authorization": f"Bearer {token}"}
     async with httpx.AsyncClient(
