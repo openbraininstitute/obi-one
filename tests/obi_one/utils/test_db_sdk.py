@@ -8,6 +8,7 @@ from uuid import uuid4
 import entitysdk
 import httpx
 import pytest
+from entitysdk.common import ProjectContext
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Asset, Entity, SimulationExecution
 from entitysdk.types import AssetLabel, ContentType, ExecutorType, TaskActivityType
@@ -17,7 +18,7 @@ from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils import db_sdk as test_module
 
-from tests.utils import CIRCUIT_DIR
+from tests.utils import CIRCUIT_DIR, PROJECT_ID, VIRTUAL_LAB_ID
 
 
 @pytest.fixture
@@ -28,7 +29,11 @@ def mock_http_client():
 @pytest.fixture
 def client():
     """Mock entitysdk Client with spec."""
-    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # noqa: S106
+    return entitysdk.Client(
+        api_url="http://my-url",
+        token_manager="my-token",  # noqa: S106
+        project_context=ProjectContext(virtual_lab_id=VIRTUAL_LAB_ID, project_id=PROJECT_ID),
+    )
 
 
 @pytest.fixture
