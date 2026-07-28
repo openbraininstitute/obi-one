@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
+# ruff: file-ignore[assert]
 import contextlib
 import heapq
 import logging
@@ -681,7 +681,7 @@ def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Even
     ret = []
 
     for connection_override in simulation.to_libsonata.connection_overrides():
-        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # noqa: SLF001
+        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # ruff: ignore[private-member-access]
         ret.append(Event(at=co.at, func=co))
 
     return ret
@@ -919,12 +919,12 @@ def activity_wrapper(
         yield
     except Exception:
         _update_activity_status(
-            {"status": ActivityStatus.error, "end_time": datetime.now(tz=timezone.utc)}  # noqa: UP017
+            {"status": ActivityStatus.error, "end_time": datetime.now(tz=timezone.utc)}  # ruff: ignore[datetime-timezone-utc]
         )
         raise  # re-raise the exception so that it can be handled by the job wrapper
     else:
         _update_activity_status(
-            {"status": ActivityStatus.done, "end_time": datetime.now(tz=timezone.utc)}  # noqa: UP017
+            {"status": ActivityStatus.done, "end_time": datetime.now(tz=timezone.utc)}  # ruff: ignore[datetime-timezone-utc]
         )
 
 

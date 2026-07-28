@@ -1,5 +1,5 @@
 import logging
-from subprocess import CalledProcessError  # noqa: S404
+from subprocess import CalledProcessError  # ruff: ignore[suspicious-subprocess-import]
 from unittest.mock import Mock, patch
 
 import pytest

@@ -31,7 +31,7 @@ def client():
     """Mock entitysdk Client with spec."""
     return entitysdk.Client(
         api_url="http://my-url",
-        token_manager="my-token",  # noqa: S106
+        token_manager="my-token",  # ruff: ignore[hardcoded-password-func-arg]
         project_context=ProjectContext(virtual_lab_id=VIRTUAL_LAB_ID, project_id=PROJECT_ID),
     )
 

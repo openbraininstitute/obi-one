@@ -10,7 +10,7 @@ from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circui
 
 
 def test_estimate_circuit_extraction_count_from_neuron_set_size():
-    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # noqa: S106
+    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
     config_id = uuid4()
     task_config = SimpleNamespace()
     fake_circuit = SimpleNamespace()
@@ -48,7 +48,7 @@ def test_estimate_circuit_extraction_count_from_neuron_set_size():
 
 
 def test_estimate_circuit_extraction_count_raises_for_empty_set():
-    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # noqa: S106
+    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
     config_id = uuid4()
     task_config = SimpleNamespace()
     fake_circuit = SimpleNamespace()
@@ -85,7 +85,7 @@ def test_estimate_circuit_extraction_count_raises_for_empty_set():
 
 
 def test_estimate_circuit_extraction_count_with_circuit_from_id_staging():
-    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # noqa: S106
+    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
     config_id = uuid4()
     task_config = SimpleNamespace()
     staged_circuit = SimpleNamespace()

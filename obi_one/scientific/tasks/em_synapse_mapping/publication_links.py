@@ -13,7 +13,7 @@ L = logging.getLogger(__name__)
 def assemble_publication_links(
     db_client: Client,
     em_dataset: EMDenseReconstructionDataset,
-    lst_notices: list[str],  # NOQA: ARG001
+    lst_notices: list[str],  # ruff: ignore[unused-function-argument]
 ) -> dict:
     """Assemble publication links for an EM dataset.
 

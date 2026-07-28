@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 import httpx
@@ -22,6 +23,7 @@ def get_client(
 LaunchSystemClientDep = Annotated[httpx.Client, Depends(get_client)]
 
 
+@asynccontextmanager
 async def get_async_client(
     user_context: UserContextDep,
 ) -> AsyncIterator[httpx.AsyncClient]:

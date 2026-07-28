@@ -107,7 +107,7 @@ def try_generate_and_upload_mesh(
 
     try:
         return morphology_mesh.mesh_and_upload(client, entity_id, swc_bytes)
-    except Exception:  # noqa: BLE001
+    except Exception:  # ruff: ignore[blind-except]
         L.warning("GLB mesh generation failed for entity %s", entity_id, exc_info=True)
         return None
 
@@ -151,7 +151,7 @@ def register_morphology_with_assets_and_metrics(
         try:
             measurement_kinds = compute_morphometrics(analysis_path)
             measurement_annotation = register_morphometrics(client, entity_id, measurement_kinds)
-        except Exception:  # noqa: BLE001
+        except Exception:  # ruff: ignore[blind-except]
             L.warning("Morphometrics computation failed for %s", entity_id, exc_info=True)
 
     mesh_asset = None

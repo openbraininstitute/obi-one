@@ -60,7 +60,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
-        http_client.close()  # noqa: ASYNC212
+        http_client.close()  # ruff: ignore[blocking-http-call-httpx-in-async-function]
         L.info("Stopping application")
 
 

@@ -2,7 +2,7 @@ from enum import StrEnum, auto
 
 # re-export from obi-one so that obi_one is not
 # imported everywhere
-from obi_one.types import TaskType as TaskType  # noqa: PLC0414
+from obi_one.types import TaskType as TaskType  # ruff: ignore[useless-import-alias]
 
 
 class CallBackEvent(StrEnum):

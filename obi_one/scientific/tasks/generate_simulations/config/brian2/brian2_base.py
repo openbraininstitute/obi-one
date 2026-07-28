@@ -38,7 +38,7 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
 
     @property
     def default_neuron_set_reference(self) -> PointNeuronSetReference:
-        """Returns the default neuron set reference for the simulation (all point neurons)."""
+        """The default neuron set reference for the simulation (all point neurons)."""
         ref = PointNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )

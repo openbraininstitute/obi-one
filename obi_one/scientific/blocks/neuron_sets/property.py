@@ -119,7 +119,7 @@ class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
                 .reset_index()
             )
             df = self.property_filter.filter(df)  # ty:ignore[unresolved-attribute]
-        except Exception:  # noqa: BLE001
+        except Exception:  # ruff: ignore[blind-except]
             return []
         return df["node_ids"].to_numpy().tolist()
 

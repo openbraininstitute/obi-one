@@ -39,11 +39,11 @@ def test_stage_ion_channel_models_as_circuit(monkeypatch, tmp_path):
         id_str = "ic1"
 
         @staticmethod
-        def has_conductance(db_client):  # noqa: ARG004
+        def has_conductance(db_client):  # ruff: ignore[unused-static-method-argument]
             return True
 
         @staticmethod
-        def get_conductance_name(db_client):  # noqa: ARG004
+        def get_conductance_name(db_client):  # ruff: ignore[unused-static-method-argument]
             return "gbar"
 
     class MockICData:

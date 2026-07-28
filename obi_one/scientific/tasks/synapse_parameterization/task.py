@@ -58,7 +58,7 @@ class SynapseParameterizationTask(Task):
         (subject, species, brain region, hierarchy, parent) resolve cleanly.
         """
         # Deferred import: pulls in heavy circuit/asset tooling only when registering.
-        from obi_one.utils.circuit_registration.register import (  # noqa: PLC0415
+        from obi_one.utils.circuit_registration.register import (  # ruff: ignore[import-outside-top-level]
             register_circuit_from_metadata,
         )
 
