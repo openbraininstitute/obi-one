@@ -76,12 +76,16 @@ class CurrentStimulator(ABC):
         return node_sets.materialize(self.config.node_set, population)
 
     def get_currents(self, dt: float, simulation_length: float) -> brian2.TimedArray:
+        """Uses `_get_currents` to create a TimedArray to be used for simulation."""
         v = self._get_currents(dt, simulation_length)
         return brian2.TimedArray(v * brian2.units.mA, dt=dt * brian2.units.ms)
 
     @abstractmethod
     def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:
-        pass
+        """Get array of current values to be injected.
+
+        Starts at t=0, each array element is the value at that time, the timestep is `dt`.
+        """
 
 
 class Linear(CurrentStimulator):
@@ -144,6 +148,7 @@ class Sinusoidal(CurrentStimulator):
 
 @singledispatch
 def _create_input(conf: libsonata.SimulationConfig.InputBase) -> CurrentStimulator:
+    """Fallback for unknown inputs."""
     msg = f"Unsupported input config: {type(conf)}"
     raise RuntimeError(msg)
 
@@ -159,6 +164,7 @@ for type_, klass in STIMULATION_TYPES.items():
 
 
 def _convert_to_known_unit(v: str) -> brian2.Unit | int:
+    """Convert a string unit to the brian2 equivalent."""
     if v == "1":  # unitless is `1` in brian2
         return int(v)
     if v not in KNOWN_UNITS:
@@ -237,6 +243,7 @@ def _make_poisson(
     config: libsonata.SimulationConfig.Poisson,
     n0: brian2.NeuronGroup,
 ) -> tuple[brian2.NeuronGroup, list]:
+    """Create a poisson stimulus."""
     L.info("Making Poisson Stimulus: rate: %f Hz, weight: %f mV", config.rate, config.weight)
 
     population_name = _get_single_node_population(simulation.circuit)
@@ -283,6 +290,12 @@ def _get_spike_replay(
     synapses: brian2.Synapses,
     synapse_template: SynapseTemplate,
 ) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses]:
+    """Create a SpikeGeneratorGroup from a spike file and network connectivity.
+
+    Unfortunately, a new set of synapses needs to be created, and
+    network connectivity needs to be recreated - one cannot piggy-back on the
+    existing network.
+    """
     assert len(input_.reader.get_population_names()) == 1
     population_name = next(iter(input_.reader.get_population_names()))
 
@@ -405,19 +418,23 @@ class Inputs:
         return model, objs, indicators
 
 
-def _get_inputs(
+def _get_non_current_inputs(
     simulation: bluepysnap.Simulation,
     n0: brian2.NeuronGroup,
     synapses: brian2.Synapses,
     synapse_template: SynapseTemplate,
 ) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
+    """Filter inputs that are known from the SONATA config, return simulatable brian objects."""
     inputs = []
-    for input_ in simulation.inputs.values():
+    for name, input_ in simulation.inputs.items():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
             inputs += _get_spike_replay(simulation, input_, n0, synapses, synapse_template)
         elif isinstance(input_, libsonata.SimulationConfig.Poisson):
             n0, poissons = _make_poisson(simulation, input_, n0)
             inputs += poissons
+        elif type(input_) not in STIMULATION_TYPES:
+            msg = f"Input {name} of type: `{type(input_)}` is not currently supported."
+            raise RuntimeError(msg)
 
     return n0, inputs
 
@@ -507,6 +524,10 @@ def _write_spikes(
 
 
 def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2.NeuronGroup:
+    """Create the NeuronGroup based on the SONATA simulation config.
+
+    Only a single population is supported, no virtual nodes.
+    """
     circuit = simulation.circuit
     assert len(circuit.nodes.population_names) == 1, "Only one population supported"
     nodes = circuit.nodes[next(iter(circuit.nodes.population_names))]
@@ -667,6 +688,7 @@ def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Even
 
 
 def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
+    """Create a Brian2 network from a SONATA configuration."""
     brian2.defaultclock.dt = simulation.run.dt * brian2.units.ms
     brian2.seed(simulation.run.random_seed)
 
@@ -681,7 +703,7 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
 
     state_monitor, report_id_mapping = _get_reports(simulation, neurons)
 
-    neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
+    neurons, inputs = _get_non_current_inputs(simulation, neurons, synapses, synapse_template)
 
     net = Brian2Network(
         neurons=neurons,
