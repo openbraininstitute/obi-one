@@ -88,12 +88,13 @@ def test_no_stim_or_report(tmp_path):
 
 
 def test_spike_replay(tmp_path):
-    timestamps = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1)
+    timestamps = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1])
+    node_ids = np.array([0] * len(timestamps))
     path = test_module._write_spikes(
         tmp_path / "spikes.h5",
         population_name="drosophila",
         timestamps=timestamps,
-        node_ids=tuple([0] * len(timestamps)),
+        node_ids=node_ids,
     )
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
@@ -425,7 +426,7 @@ def test_current_stim_report(tmp_path):
 
 
 def test_current_stim_report_failure(tmp_path):
-    config = {
+    config: dict = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
