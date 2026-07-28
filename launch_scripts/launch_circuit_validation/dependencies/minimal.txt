@@ -1,0 +1,8 @@
+# Minimal deps for circuit_validation task (avoids heavy C++ builds like pylmesh)
+entitysdk>=0.18.0
+obi-auth
+bluepysnap
+bluecellulab
+libsonata
+h5py
+numpy
