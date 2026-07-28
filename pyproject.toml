@@ -39,7 +39,7 @@ dependencies = [
     "bluecellulab>=2.6.99",
     "blueetl",
     "bluepyefe>=2.3.57",
-    "bluepysnap>=3.0.5",
+    "bluepysnap>=3.0.7",
     "brainbuilder>=0.20.4",
     "brian2",
     "caveclient>=7.11.0",
