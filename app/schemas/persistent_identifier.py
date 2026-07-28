@@ -11,20 +11,26 @@ from app.types import IdentifierType
 ORCID_URL_PREFIX = "https://orcid.org/"
 ROR_URL_PREFIX = "https://ror.org/"
 
-ORCID_PATTERN = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
-ROR_BARE_PATTERN = re.compile(r"^0[a-hj-km-np-tv-z0-9]{6}[0-9]{2}$")
+ORCID_ID_PATTERN = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
+ROR_ID_PATTERN = re.compile(r"^0[a-hj-km-np-tv-z0-9]{6}[0-9]{2}$")
 
 
 def _validate_orcid_url(url: str) -> str:
-    """Validate ORCID format and checksum, raising ApiError on failure."""
-    bare = url.removeprefix(ORCID_URL_PREFIX)
-    if not ORCID_PATTERN.match(bare):
+    """Validate ORCID URL format and checksum, raising ApiError on failure."""
+    if not url.startswith(ORCID_URL_PREFIX):
+        raise ApiError(
+            message=f"Invalid ORCID URL: '{url}'. Expected prefix '{ORCID_URL_PREFIX}'",
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
+    orcid_id = url.removeprefix(ORCID_URL_PREFIX)
+    if not ORCID_ID_PATTERN.match(orcid_id):
         raise ApiError(
             message=f"Invalid ORCID format: '{url}'",
             error_code=ApiErrorCode.INVALID_REQUEST,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
-    if not _validate_orcid_checksum(bare):
+    if not _validate_orcid_checksum(orcid_id):
         raise ApiError(
             message=f"Invalid ORCID checksum: '{url}'",
             error_code=ApiErrorCode.INVALID_REQUEST,
@@ -49,21 +55,29 @@ def _validate_orcid_checksum(orcid: str) -> bool:
     return digits[-1] == expected
 
 
-def _validate_ror_url(identifier: str) -> str:
-    """Validate ROR ID format and checksum, raising ApiError on failure."""
-    bare = identifier.removeprefix(ROR_URL_PREFIX)
-    if not ROR_BARE_PATTERN.match(bare):
+def _validate_ror_url(url: str) -> str:
+    """Validate ROR URL format and checksum, raising ApiError on failure."""
+    if not url.startswith(ROR_URL_PREFIX):
         raise ApiError(
-            message=f"Invalid ROR ID format: '{identifier}'",
+            message=f"Invalid ROR URL: '{url}'. Expected prefix '{ROR_URL_PREFIX}'",
             error_code=ApiErrorCode.INVALID_REQUEST,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
-    if not _validate_ror_checksum(bare):
+    ror_id = url.removeprefix(ROR_URL_PREFIX)
+    if not ROR_ID_PATTERN.match(ror_id):
         raise ApiError(
-            message=f"Invalid ROR ID checksum: '{identifier}'",
+            message=f"Invalid ROR ID format: '{url}'",
             error_code=ApiErrorCode.INVALID_REQUEST,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
+    if not _validate_ror_checksum(ror_id):
+        raise ApiError(
+            message=f"Invalid ROR ID checksum: '{url}'",
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
+
+    return url
 
 
 # Crockford Base32 alphabet (excludes I, L, O, U)

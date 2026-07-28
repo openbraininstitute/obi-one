@@ -7,7 +7,6 @@ To switch metadata providers, update the implementation in this module without
 changing the public interface (fetch_orcid_metadata, fetch_ror_metadata).
 """
 
-import re
 from http import HTTPStatus
 
 import httpx
@@ -19,11 +18,6 @@ from app.schemas.persistent_identifier import OrcidPersistentIdentifier, RorPers
 
 ORCID_API_BASE_URL = "https://pub.orcid.org/v3.0"
 ROR_API_BASE_URL = "https://api.ror.org/v2/organizations"
-ORCID_URL_PREFIX = "https://orcid.org/"
-ROR_URL_PREFIX = "https://ror.org/"
-
-ORCID_PATTERN = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
-ROR_BARE_PATTERN = re.compile(r"^0[a-hj-km-np-tv-z0-9]{6}[0-9]{2}$")
 
 
 def fetch_orcid_metadata(
@@ -43,8 +37,8 @@ def fetch_orcid_metadata(
     Raises:
         ApiError: if the ORCID cannot be resolved or the response is invalid.
     """
-    bare_orcid = identifier.id
-    url = f"{ORCID_API_BASE_URL}/{bare_orcid}/record"
+    orcid_id = identifier.id
+    url = f"{ORCID_API_BASE_URL}/{orcid_id}/record"
 
     try:
         response = http_client.request(
@@ -54,7 +48,7 @@ def fetch_orcid_metadata(
             follow_redirects=True,
         )
     except httpx.RequestError as e:
-        L.warning("ORCID API request error for %s: %r", bare_orcid, e)
+        L.warning("ORCID API request error for %s: %r", orcid_id, e)
         raise ApiError(
             message="Failed to connect to ORCID API",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -63,13 +57,13 @@ def fetch_orcid_metadata(
 
     if response.status_code == HTTPStatus.NOT_FOUND:
         raise ApiError(
-            message=f"ORCID not found: {bare_orcid}",
+            message=f"ORCID not found: {orcid_id}",
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
     if not response.is_success:
-        L.warning("ORCID API error for %s: status %s", bare_orcid, response.status_code)
+        L.warning("ORCID API error for %s: status %s", orcid_id, response.status_code)
         raise ApiError(
             message=f"ORCID API returned status {response.status_code}",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -87,10 +81,10 @@ def fetch_orcid_metadata(
     pref_label = credit_name or f"{given_name or ''} {family_name or ''}".strip()
 
     return OrcidMetadata(
-        orcid=bare_orcid,
+        orcid=orcid_id,
         given_name=given_name,
         family_name=family_name,
-        pref_label=pref_label or bare_orcid,
+        pref_label=pref_label or orcid_id,
     )
 
 
@@ -111,8 +105,8 @@ def fetch_ror_metadata(
     Raises:
         ApiError: if the ROR ID cannot be resolved or the response is invalid.
     """
-    bare_ror = identifier.id
-    url = f"{ROR_API_BASE_URL}/{bare_ror}"
+    ror_id = identifier.id
+    url = f"{ROR_API_BASE_URL}/{ror_id}"
 
     try:
         response = http_client.request(
@@ -122,7 +116,7 @@ def fetch_ror_metadata(
             follow_redirects=True,
         )
     except httpx.RequestError as e:
-        L.warning("ROR API request error for %s: %r", bare_ror, e)
+        L.warning("ROR API request error for %s: %r", ror_id, e)
         raise ApiError(
             message="Failed to connect to ROR API",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -131,13 +125,13 @@ def fetch_ror_metadata(
 
     if response.status_code == HTTPStatus.NOT_FOUND:
         raise ApiError(
-            message=f"ROR ID not found: {bare_ror}",
+            message=f"ROR ID not found: {ror_id}",
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
     if not response.is_success:
-        L.warning("ROR API error for %s: status %s", bare_ror, response.status_code)
+        L.warning("ROR API error for %s: status %s", ror_id, response.status_code)
         raise ApiError(
             message=f"ROR API returned status {response.status_code}",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -154,7 +148,7 @@ def fetch_ror_metadata(
     )
     if not primary_name:
         # Fallback: first name entry, or the raw ID
-        primary_name = names[0]["value"] if names else bare_ror
+        primary_name = names[0]["value"] if names else ror_id
 
     alt_names = [n["value"] for n in names if "ror_display" not in n.get("types", [])]
 
@@ -168,7 +162,7 @@ def fetch_ror_metadata(
     )
 
     return RorMetadata(
-        ror_id=bare_ror,
+        ror_id=ror_id,
         name=primary_name,
         alternative_names=alt_names,
         types=org_types,

@@ -11,7 +11,7 @@ from app.dependencies.http_client import HttpClientDep
 from app.dependencies.persistent_identifier import PersistentIdentifierDep
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.contributor import OrganizationPreview, PersonPreview
-from app.services.contributor_metadata import (
+from app.services.contributor import (
     fetch_orcid_metadata,
     fetch_ror_metadata,
 )
@@ -28,9 +28,9 @@ router = APIRouter(
     "",
     summary="Look up a contributor by ORCID or ROR ID.",
     description=(
-        "Looks up a contributor by their unique identifier (ORCID for persons, "
-        "ROR ID for organizations). Accepts bare identifiers or full URLs "
-        "(e.g. https://orcid.org/... or https://ror.org/...). "
+        "Looks up a contributor by their unique identifier URL "
+        "(ORCID for persons, ROR for organizations), e.g. "
+        "https://orcid.org/... or https://ror.org/.... "
         "Returns the existing record if already registered, or a preview of "
         "the metadata resolved from the identifier."
     ),
@@ -79,8 +79,7 @@ def get_contributor(
     summary="Register a contributor by ORCID or ROR ID.",
     description=(
         "Registers a new contributor (person or organization) by resolving "
-        "metadata from their unique identifier (ORCID or ROR ID). "
-        "Accepts bare identifiers or full URLs. "
+        "metadata from their unique identifier URL (ORCID or ROR). "
         "Returns 409 if the contributor is already registered."
     ),
     status_code=HTTPStatus.CREATED,

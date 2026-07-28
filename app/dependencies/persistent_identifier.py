@@ -7,36 +7,35 @@ from app.errors import ApiError, ApiErrorCode
 from app.schemas.persistent_identifier import (
     ORCID_URL_PREFIX,
     ROR_URL_PREFIX,
-    IdentifierType,
-    PersistentIdentifier,
+    OrcidPersistentIdentifier,
+    RorPersistentIdentifier,
 )
+from app.types import IdentifierType
 
 
-def get_persistent_identifier(identifier: str) -> PersistentIdentifier:
-
+def get_persistent_identifier(
+    identifier: str,
+) -> OrcidPersistentIdentifier | RorPersistentIdentifier:
     stripped = identifier.strip()
 
-    if identifier.startswith(ORCID_URL_PREFIX):
-        return PersistentIdentifier(
-            type=IdentifierType.orcid,
-            url=stripped,
-        )
+    if stripped.startswith(ORCID_URL_PREFIX):
+        return OrcidPersistentIdentifier(kind=IdentifierType.orcid, url=stripped)
 
-    if identifier.startswith(ROR_URL_PREFIX):
-        return PersistentIdentifier(
-            type=IdentifierType.ror,
-            url=stripped,
-        )
+    if stripped.startswith(ROR_URL_PREFIX):
+        return RorPersistentIdentifier(kind=IdentifierType.ror, url=stripped)
 
     raise ApiError(
         message=(
             f"Invalid identifier format: '{identifier}'. "
-            "Expected ORCID (https://orcid.org/0000-0000-0000-000X)"
-            "or ROR ID (https://ror.org/0xxxxxxxxx)"
+            "Expected an ORCID URL (https://orcid.org/0000-0000-0000-000X) "
+            "or a ROR URL (https://ror.org/0xxxxxxxxx)."
         ),
         error_code=ApiErrorCode.INVALID_REQUEST,
         http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
     )
 
 
-PersistentIdentifierDep = Annotated[PersistentIdentifier, Depends(get_persistent_identifier)]
+PersistentIdentifierDep = Annotated[
+    OrcidPersistentIdentifier | RorPersistentIdentifier,
+    Depends(get_persistent_identifier),
+]

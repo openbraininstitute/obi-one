@@ -56,6 +56,6 @@ class RorMetadata(BaseModel):
 
     ror_id: str
     name: str
-    alternative_names: list[str] = []
-    types: list[str] = []
+    alternative_names: list[str] = Field(default_factory=list)
+    types: list[str] = Field(default_factory=list)
     country: str | None = None
