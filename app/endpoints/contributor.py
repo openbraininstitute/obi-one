@@ -8,14 +8,14 @@ from fastapi import APIRouter, Depends
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.http_client import HttpClientDep
+from app.dependencies.persistent_identifier import PersistentIdentifierDep
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.contributor import OrganizationPreview, PersonPreview
 from app.services.contributor_metadata import (
-    IdentifierType,
     fetch_orcid_metadata,
     fetch_ror_metadata,
-    resolve_identifier,
 )
+from app.types import IdentifierType
 
 router = APIRouter(
     prefix="/declared/contributor",
@@ -36,41 +36,39 @@ router = APIRouter(
     ),
 )
 def get_contributor(
-    identifier: str,
     db_client: DatabaseClientDep,
     user_context: UserContextDep,  # noqa: ARG001
     http_client: HttpClientDep,
+    identifier: PersistentIdentifierDep,
 ) -> PersonPreview | OrganizationPreview:
     """Look up a contributor by ORCID or ROR ID."""
-    id_type, normalized = resolve_identifier(identifier)
-
-    match id_type:
+    match identifier.kind:
         case IdentifierType.orcid:
-            metadata = fetch_orcid_metadata(orcid=normalized, http_client=http_client)
+            metadata = fetch_orcid_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
-                entity_type=models.Person, query={"orcid": normalized}
+                entity_type=models.Person, query={"orcid": identifier.url}
             ).one_or_none()
             return PersonPreview(
-                identifier=normalized,
+                identifier=identifier.url,
                 name=metadata.pref_label,
                 given_name=metadata.given_name,
                 family_name=metadata.family_name,
-                orcid=normalized,
+                orcid=identifier.url,
                 already_registered=existing is not None,
                 existing_id=existing.id if existing else None,
             )
         case IdentifierType.ror:
-            metadata = fetch_ror_metadata(ror_id=normalized, http_client=http_client)
+            metadata = fetch_ror_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
-                entity_type=models.Organization, query={"ror_id": normalized}
+                entity_type=models.Organization, query={"ror_id": identifier.url}
             ).one_or_none()
             return OrganizationPreview(
-                identifier=normalized,
+                identifier=identifier.url,
                 name=metadata.name,
                 alternative_name=(
                     metadata.alternative_names[0] if metadata.alternative_names else None
                 ),
-                ror_id=normalized,
+                ror_id=identifier.url,
                 already_registered=existing is not None,
                 existing_id=existing.id if existing else None,
             )
@@ -88,19 +86,17 @@ def get_contributor(
     status_code=HTTPStatus.CREATED,
 )
 def register_contributor(
-    identifier: str,
+    identifier: PersistentIdentifierDep,
     db_client: DatabaseClientDep,
     user_context: UserContextDep,  # noqa: ARG001
     http_client: HttpClientDep,
 ) -> dict:
     """Register a contributor by resolving metadata and creating it in entitycore."""
-    id_type, normalized = resolve_identifier(identifier)
-
-    match id_type:
+    match identifier.kind:
         case IdentifierType.orcid:
-            metadata = fetch_orcid_metadata(orcid=normalized, http_client=http_client)
+            metadata = fetch_orcid_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
-                entity_type=models.Person, query={"orcid": normalized}
+                entity_type=models.Person, query={"orcid": identifier.url}
             ).one_or_none()
             if existing:
                 raise ApiError(
@@ -114,13 +110,13 @@ def register_contributor(
                 pref_label=metadata.pref_label,
                 given_name=metadata.given_name,
                 family_name=metadata.family_name,
-                orcid=f"https://orcid.org/{normalized}",
+                orcid=identifier.url,
             )
 
         case IdentifierType.ror:
-            metadata = fetch_ror_metadata(ror_id=normalized, http_client=http_client)
+            metadata = fetch_ror_metadata(identifier=identifier, http_client=http_client)
             existing = db_client.search_entity(
-                entity_type=models.Organization, query={"ror_id": normalized}
+                entity_type=models.Organization, query={"ror_id": identifier.url}
             ).one_or_none()
             if existing:
                 raise ApiError(
@@ -135,7 +131,7 @@ def register_contributor(
                 alternative_name=(
                     metadata.alternative_names[0] if metadata.alternative_names else None
                 ),
-                ror_id=f"https://ror.org/{normalized}",
+                ror_id=identifier.url,
             )
 
     registered = db_client.register_entity(entity=entity)

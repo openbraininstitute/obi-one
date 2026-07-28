@@ -4,16 +4,23 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from entitysdk import models
 
 from app.application import app
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiError, ApiErrorCode
-from app.services.contributor_metadata import OrcidMetadata, RorMetadata
+from app.schemas.contributor import OrcidMetadata, RorMetadata
+from app.services.contributor_metadata import (
+    ORCID_URL_PREFIX,
+    ROR_URL_PREFIX,
+)
 
 _BASE = "/declared/contributor"
 
 VALID_ORCID = "0000-0000-1234-5672"
+VALID_ORCID_URL = f"{ORCID_URL_PREFIX}{VALID_ORCID}"
 VALID_ROR = "00tsmxy07"
+VALID_ROR_URL = f"{ROR_URL_PREFIX}{VALID_ROR}"
 
 ORCID_METADATA = OrcidMetadata(
     orcid=VALID_ORCID,
@@ -79,13 +86,13 @@ class TestGetContributorOrcid:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["identifier"] == VALID_ORCID
+        assert data["identifier"] == VALID_ORCID_URL
         assert data["identifier_type"] == "orcid"
         assert data["name"] == "Jane Doe"
         assert data["given_name"] == "Jane"
         assert data["family_name"] == "Doe"
         assert data["agent_type"] == "person"
-        assert data["orcid"] == VALID_ORCID
+        assert data["orcid"] == VALID_ORCID_URL
         assert data["already_registered"] is False
 
     def test_existing_person(self, client, mock_db_client):
@@ -131,12 +138,12 @@ class TestGetContributorRor:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["identifier"] == VALID_ROR
+        assert data["identifier"] == VALID_ROR_URL
         assert data["identifier_type"] == "ror"
         assert data["name"] == "Open Brain Institute"
         assert data["alternative_name"] == "Open Brain Platform"
         assert data["agent_type"] == "organization"
-        assert data["ror_id"] == VALID_ROR
+        assert data["ror_id"] == VALID_ROR_URL
         assert data["already_registered"] is False
 
     def test_existing_organization(self, client, mock_db_client):
@@ -180,6 +187,12 @@ class TestRegisterContributorOrcid:
         data = resp.json()
         assert data["pref_label"] == "Jane Doe"
         mock_db_client.register_entity.assert_called_once()
+        registered_entity = mock_db_client.register_entity.call_args.kwargs["entity"]
+        assert registered_entity.orcid == VALID_ORCID_URL
+        mock_db_client.search_entity.assert_called_once_with(
+            entity_type=models.Person,
+            query={"orcid": VALID_ORCID_URL},
+        )
 
     def test_register_existing_person_returns_409(self, client, mock_db_client):
         """POST for existing ORCID returns 409."""

@@ -14,135 +14,27 @@ import httpx
 
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-from app.types import IdentifierType, OrcidMetadata, RorMetadata
+from app.schemas.contributor import OrcidMetadata, RorMetadata
+from app.schemas.persistent_identifier import OrcidPersistentIdentifier, RorPersistentIdentifier
 
 ORCID_API_BASE_URL = "https://pub.orcid.org/v3.0"
 ROR_API_BASE_URL = "https://api.ror.org/v2/organizations"
+ORCID_URL_PREFIX = "https://orcid.org/"
+ROR_URL_PREFIX = "https://ror.org/"
 
 ORCID_PATTERN = re.compile(r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
 ROR_BARE_PATTERN = re.compile(r"^0[a-hj-km-np-tv-z0-9]{6}[0-9]{2}$")
 
 
-def resolve_identifier(identifier: str) -> tuple[IdentifierType, str]:
-    """Validate, classify, and normalize an identifier in one step.
-
-    Accepts bare identifiers or full URLs (https://orcid.org/... or https://ror.org/...).
-    Returns the identifier type and the bare normalized form.
-    Raises ApiError with 422 if the format is unrecognized or checksum is invalid.
-    """
-    stripped = identifier.strip()
-
-    # URL forms: strip prefix and branch early
-    if stripped.startswith("https://orcid.org/"):
-        bare = stripped.rsplit("/", 1)[-1]
-        _assert_valid_orcid(bare, identifier)
-        return IdentifierType.orcid, bare
-
-    if stripped.startswith(("https://ror.org/", "http://ror.org/")):
-        bare = stripped.rsplit("/", 1)[-1]
-        _assert_valid_ror(bare, identifier)
-        return IdentifierType.ror, bare
-
-    # Bare forms
-    if ORCID_PATTERN.match(stripped):
-        _assert_valid_orcid(stripped, identifier)
-        return IdentifierType.orcid, stripped
-
-    if ROR_BARE_PATTERN.match(stripped):
-        _assert_valid_ror(stripped, identifier)
-        return IdentifierType.ror, stripped
-
-    raise ApiError(
-        message=(
-            f"Invalid identifier format: '{identifier}'. "
-            "Expected ORCID (0000-0000-0000-000X with optional https://orcid.org/ prefix) "
-            "or ROR ID (0xxxxxxxxx with optional https://ror.org/ prefix)."
-        ),
-        error_code=ApiErrorCode.INVALID_REQUEST,
-        http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-    )
-
-
-def _assert_valid_orcid(bare: str, original: str) -> None:
-    """Validate ORCID format and checksum, raising ApiError on failure."""
-    if not ORCID_PATTERN.match(bare):
-        raise ApiError(
-            message=f"Invalid ORCID format: '{original}'",
-            error_code=ApiErrorCode.INVALID_REQUEST,
-            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        )
-    if not _validate_orcid_checksum(bare):
-        raise ApiError(
-            message=f"Invalid ORCID checksum: '{original}'",
-            error_code=ApiErrorCode.INVALID_REQUEST,
-            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        )
-
-
-def _assert_valid_ror(bare: str, original: str) -> None:
-    """Validate ROR ID format and checksum, raising ApiError on failure."""
-    if not ROR_BARE_PATTERN.match(bare):
-        raise ApiError(
-            message=f"Invalid ROR ID format: '{original}'",
-            error_code=ApiErrorCode.INVALID_REQUEST,
-            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        )
-    if not _validate_ror_checksum(bare):
-        raise ApiError(
-            message=f"Invalid ROR ID checksum: '{original}'",
-            error_code=ApiErrorCode.INVALID_REQUEST,
-            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        )
-
-
-def _validate_orcid_checksum(orcid: str) -> bool:
-    """Validate ORCID checksum using ISO 7064 Mod 11,2.
-
-    The last character is the check digit (0-9 or X).
-    """
-    digits = orcid.replace("-", "")
-    total = 0
-    for char in digits[:-1]:
-        total = (total + int(char)) * 2
-    remainder = total % 11
-    check = (12 - remainder) % 11
-    expected = "X" if check == 10 else str(check)  # noqa: PLR2004
-    return digits[-1] == expected
-
-
-# Crockford Base32 alphabet (excludes I, L, O, U)
-_CROCKFORD_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"
-
-
-def _validate_ror_checksum(ror_id: str) -> bool:
-    """Validate ROR ID checksum using ISO 7064 Mod 97-10.
-
-    The ROR ID structure: 0 + 6 Crockford Base32 chars + 2 decimal check digits.
-    To validate: decode the 6 Base32 chars to a number, append check digits, mod 97 == 1.
-    """
-    base32_chars = ror_id[1:7]  # 6 Crockford Base32 characters
-    check_digits = ror_id[7:9]  # 2 decimal check digits
-
-    # Decode Crockford Base32 to integer
-    number = 0
-    for char in base32_chars:
-        idx = _CROCKFORD_ALPHABET.index(char)
-        number = number * 32 + idx
-
-    # Combine with check digits and validate mod 97
-    combined = number * 100 + int(check_digits)
-    return combined % 97 == 1
-
-
 def fetch_orcid_metadata(
     *,
-    orcid: str,
+    identifier: OrcidPersistentIdentifier,
     http_client: httpx.Client,
 ) -> OrcidMetadata:
     """Fetch person metadata from the ORCID Public API.
 
     Args:
-        orcid: validated ORCID identifier (e.g. "0000-0002-1825-0097").
+        identifier: ORCID persistent identifier
         http_client: shared httpx client instance.
 
     Returns:
@@ -151,7 +43,8 @@ def fetch_orcid_metadata(
     Raises:
         ApiError: if the ORCID cannot be resolved or the response is invalid.
     """
-    url = f"{ORCID_API_BASE_URL}/{orcid}/record"
+    bare_orcid = identifier.id
+    url = f"{ORCID_API_BASE_URL}/{bare_orcid}/record"
 
     try:
         response = http_client.request(
@@ -161,7 +54,7 @@ def fetch_orcid_metadata(
             follow_redirects=True,
         )
     except httpx.RequestError as e:
-        L.warning("ORCID API request error for %s: %r", orcid, e)
+        L.warning("ORCID API request error for %s: %r", bare_orcid, e)
         raise ApiError(
             message="Failed to connect to ORCID API",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -170,13 +63,13 @@ def fetch_orcid_metadata(
 
     if response.status_code == HTTPStatus.NOT_FOUND:
         raise ApiError(
-            message=f"ORCID not found: {orcid}",
+            message=f"ORCID not found: {bare_orcid}",
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
     if not response.is_success:
-        L.warning("ORCID API error for %s: status %s", orcid, response.status_code)
+        L.warning("ORCID API error for %s: status %s", bare_orcid, response.status_code)
         raise ApiError(
             message=f"ORCID API returned status {response.status_code}",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -194,22 +87,22 @@ def fetch_orcid_metadata(
     pref_label = credit_name or f"{given_name or ''} {family_name or ''}".strip()
 
     return OrcidMetadata(
-        orcid=orcid,
+        orcid=bare_orcid,
         given_name=given_name,
         family_name=family_name,
-        pref_label=pref_label or orcid,
+        pref_label=pref_label or bare_orcid,
     )
 
 
 def fetch_ror_metadata(
     *,
-    ror_id: str,
+    identifier: RorPersistentIdentifier,
     http_client: httpx.Client,
 ) -> RorMetadata:
     """Fetch organization metadata from the ROR API v2.
 
     Args:
-        ror_id: validated bare ROR identifier (e.g. "03yrm5c26").
+        identifier: ROR persistent identifier
         http_client: shared httpx client instance.
 
     Returns:
@@ -218,7 +111,8 @@ def fetch_ror_metadata(
     Raises:
         ApiError: if the ROR ID cannot be resolved or the response is invalid.
     """
-    url = f"{ROR_API_BASE_URL}/{ror_id}"
+    bare_ror = identifier.id
+    url = f"{ROR_API_BASE_URL}/{bare_ror}"
 
     try:
         response = http_client.request(
@@ -228,7 +122,7 @@ def fetch_ror_metadata(
             follow_redirects=True,
         )
     except httpx.RequestError as e:
-        L.warning("ROR API request error for %s: %r", ror_id, e)
+        L.warning("ROR API request error for %s: %r", bare_ror, e)
         raise ApiError(
             message="Failed to connect to ROR API",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -237,13 +131,13 @@ def fetch_ror_metadata(
 
     if response.status_code == HTTPStatus.NOT_FOUND:
         raise ApiError(
-            message=f"ROR ID not found: {ror_id}",
+            message=f"ROR ID not found: {bare_ror}",
             error_code=ApiErrorCode.NOT_FOUND,
             http_status_code=HTTPStatus.NOT_FOUND,
         )
 
     if not response.is_success:
-        L.warning("ROR API error for %s: status %s", ror_id, response.status_code)
+        L.warning("ROR API error for %s: status %s", bare_ror, response.status_code)
         raise ApiError(
             message=f"ROR API returned status {response.status_code}",
             error_code=ApiErrorCode.GENERIC_ERROR,
@@ -260,7 +154,7 @@ def fetch_ror_metadata(
     )
     if not primary_name:
         # Fallback: first name entry, or the raw ID
-        primary_name = names[0]["value"] if names else ror_id
+        primary_name = names[0]["value"] if names else bare_ror
 
     alt_names = [n["value"] for n in names if "ror_display" not in n.get("types", [])]
 
@@ -274,7 +168,7 @@ def fetch_ror_metadata(
     )
 
     return RorMetadata(
-        ror_id=ror_id,
+        ror_id=bare_ror,
         name=primary_name,
         alternative_names=alt_names,
         types=org_types,

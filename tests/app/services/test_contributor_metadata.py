@@ -69,30 +69,30 @@ class TestResolveIdentifierType:
 
 
 class TestResolveIdentifier:
-    def test_bare_ror_unchanged(self):
+    def test_bare_ror_normalized_to_url(self):
         id_type, normalized = resolve_identifier("00tsmxy07")
         assert id_type == IdentifierType.ror
-        assert normalized == "00tsmxy07"
+        assert normalized == "https://ror.org/00tsmxy07"
 
-    def test_ror_url_stripped(self):
+    def test_ror_url_preserved(self):
         id_type, normalized = resolve_identifier("https://ror.org/00tsmxy07")
         assert id_type == IdentifierType.ror
-        assert normalized == "00tsmxy07"
+        assert normalized == "https://ror.org/00tsmxy07"
 
-    def test_ror_http_url_stripped(self):
+    def test_ror_http_url_normalized_to_https(self):
         id_type, normalized = resolve_identifier("http://ror.org/00tsmxy07")
         assert id_type == IdentifierType.ror
-        assert normalized == "00tsmxy07"
+        assert normalized == "https://ror.org/00tsmxy07"
 
-    def test_bare_orcid_unchanged(self):
+    def test_bare_orcid_normalized_to_url(self):
         id_type, normalized = resolve_identifier("0000-0000-1234-5672")
         assert id_type == IdentifierType.orcid
-        assert normalized == "0000-0000-1234-5672"
+        assert normalized == "https://orcid.org/0000-0000-1234-5672"
 
-    def test_orcid_url_stripped(self):
+    def test_orcid_url_preserved(self):
         id_type, normalized = resolve_identifier("https://orcid.org/0000-0000-1234-5672")
         assert id_type == IdentifierType.orcid
-        assert normalized == "0000-0000-1234-5672"
+        assert normalized == "https://orcid.org/0000-0000-1234-5672"
 
 
 ORCID_RESPONSE = {
@@ -135,6 +135,19 @@ class TestFetchOrcidMetadata:
         result = fetch_orcid_metadata(orcid="0000-0000-1234-5672", http_client=http_client)
 
         assert result.pref_label == "Jane S. Doe"
+
+    def test_success_with_full_url(self):
+        http_client = MagicMock()
+        http_client.request.return_value = _make_response(200, ORCID_RESPONSE)
+
+        result = fetch_orcid_metadata(
+            orcid="https://orcid.org/0000-0000-1234-5672",
+            http_client=http_client,
+        )
+
+        assert result.orcid == "0000-0000-1234-5672"
+        http_client.request.assert_called_once()
+        assert "/0000-0000-1234-5672/record" in http_client.request.call_args.kwargs["url"]
 
     def test_not_found(self):
         http_client = MagicMock()
