@@ -1,6 +1,7 @@
 """Endpoints for user-driven subject registration."""
 
 from http import HTTPStatus
+from typing import cast
 
 from entitysdk import models
 from fastapi import APIRouter, Depends
@@ -77,7 +78,7 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
             entity_type=models.Subject,
             query={"name__ilike": ilike_pattern},
         ):
-            if normalize_name_for_comparison(result.name) == normalized_input:
+            if normalize_name_for_comparison(cast("str", result.name)) == normalized_input:
                 return result
 
     # Pattern 2: if the name has no spaces (e.g. "AverageRat"), also search with
@@ -89,7 +90,7 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
             entity_type=models.Subject,
             query={"name__ilike": short_pattern},
         ):
-            if normalize_name_for_comparison(result.name) == normalized_input:
+            if normalize_name_for_comparison(cast("str", result.name)) == normalized_input:
                 return result
 
     return None
