@@ -740,16 +740,16 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
     assert simulation_config["compartment_sets_file"] == "compartment_sets.json"
 
     input_config = simulation_config["inputs"]["LocationCurrentClamp_0"]
-    assert input_config["compartment_set"] == "LocationCurrentClamp__locations"
+    assert input_config["compartment_set"] == "ClampLocations"
     assert "locations" not in input_config
     assert "node_set" not in input_config
 
     with compartment_sets_path.open("r") as f:
         compartment_sets = json.load(f)
 
-    assert set(compartment_sets) == {"LocationCurrentClamp__locations"}
+    assert set(compartment_sets) == {"ClampLocations"}
 
-    generated_set = compartment_sets["LocationCurrentClamp__locations"]
+    generated_set = compartment_sets["ClampLocations"]
     assert generated_set["population"] == circuit.default_population_name
     assert len(generated_set["compartment_set"]) == 2
 
@@ -820,12 +820,12 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
         population=circuit.default_population_name,
     )
 
-    comp_set = materialized["LocationCurrentClamp__locations"]
+    comp_set = materialized["ClampLocations"]
     materialized_target = form.stimuli["LocationCurrentClamp"].neuron_set
 
     assert isinstance(materialized_target, MorphologyLocationsReference)
 
-    actual_rows = comp_set.to_sonata_dict()["LocationCurrentClamp__locations"]["compartment_set"]
+    actual_rows = comp_set.to_sonata_dict()["ClampLocations"]["compartment_set"]
 
     actual_df = pd.DataFrame(
         actual_rows,

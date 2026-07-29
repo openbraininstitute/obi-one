@@ -34,7 +34,11 @@ def materialize_locations_to_compartment_sets(
         if neuron_set_ref is None:
             neuron_set_ref = single_config.default_neuron_set_reference
 
-        comp_set_name = f"{stimulus.block_name}__locations"
+        comp_set_name = target_ref.block_name
+
+        if comp_set_name in materialized:
+            stimulus.set_materialized_compartment_set_target(comp_set_name)
+            continue
 
         comp_set = build_compartment_set_for_neuron_set(
             name=comp_set_name,

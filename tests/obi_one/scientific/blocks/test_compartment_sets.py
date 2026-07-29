@@ -178,7 +178,7 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
         "build_compartment_set_for_neuron_set"
     ) as build_compartment_set:
         build_compartment_set.return_value = MaterializedCompartmentSet(
-            name="stimulus__locations",
+            name="locations",
             population="pop",
         )
 
@@ -193,6 +193,7 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
         )
 
     build_compartment_set.assert_called_once()
+    assert build_compartment_set.call_args.kwargs["name"] == "locations"
     assert build_compartment_set.call_args.kwargs["neuron_set"] is default_ref
 
 
