@@ -11,8 +11,6 @@ from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.subject import SubjectRegisterRequest, normalize_name, split_name
 
-_DUPLICATE_SEARCH_PREFIX_LENGTH = 4
-
 router = APIRouter(
     prefix="/declared/subject",
     tags=["declared"],
@@ -55,7 +53,7 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
     considered duplicate names.
     """
     normalized_input = normalize_name(name)
-    if not normalized_input:  # empty
+    if not normalized_input:
         return None
 
     ilike_pattern = "*" + "?".join(split_name(name)) + "*"
@@ -84,7 +82,6 @@ def register_subject(
     user_context: UserContextDep,  # noqa: ARG001
 ) -> dict:
     """Register a new subject in entitycore."""
-    # Duplicate name detection: normalize by stripping non-alphanumeric chars and lowercasing
     existing = _find_duplicate_subject_name(db_client, json_model.name)
 
     if existing:
@@ -94,7 +91,6 @@ def register_subject(
             http_status_code=HTTPStatus.CONFLICT,
         )
 
-    # Resolve species (and optionally strain) by ID
     species = db_client.get_entity(entity_type=models.Species, entity_id=json_model.species_id)
     strain = (
         db_client.get_entity(entity_type=models.Strain, entity_id=json_model.strain_id)

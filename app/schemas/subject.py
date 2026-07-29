@@ -2,11 +2,10 @@
 
 import re
 from datetime import timedelta
-from typing import Self
 from uuid import UUID
 
 from entitysdk.types import AgePeriod, Sex
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # Blocklist: whole-word matches only (case-insensitive) to avoid false positives like "testes"
 _BLOCKLIST_WORDS = {"test", "tmp", "todo", "placeholder", "example", "foo", "bar", "asdf", "xxx"}
@@ -49,13 +48,14 @@ def normalize_name(name: str) -> str:
 
 
 def split_name(name: str) -> list[str]:
-    return re.split(r"[^a-z0-9]+", name.lower())
+    """Split a name into alphanumeric tokens for ILIKE pattern matching."""
+    return [part for part in re.split(r"[^a-z0-9]+", name.lower()) if part]
 
 
 class SubjectRegisterRequest(BaseModel):
     """Request body for registering a new subject."""
 
-    model_config = ConfigDict(from_attributes=True, ser_json_timedelta="float")
+    model_config = ConfigDict(ser_json_timedelta="float")
 
     name: str = Field(description="Unique name for the subject")
     description: str = Field(description="Description of the subject")
@@ -63,10 +63,8 @@ class SubjectRegisterRequest(BaseModel):
     strain_id: UUID | None = Field(default=None, description="ID of the strain entity (optional)")
     sex: Sex = Field(description="Sex of the subject (male or female)")
     weight: float | None = Field(default=None, description="Weight in grams", gt=0.0)
-    age_value: timedelta = Field(..., description="Age value interval", gt=timedelta(0))
-    age_period: AgePeriod | None = Field(
-        default=None, description="Age period (prenatal or postnatal)"
-    )
+    age_value: timedelta = Field(description="Age value", gt=timedelta(0))
+    age_period: AgePeriod = Field(description="Age period (prenatal or postnatal)")
 
     @field_validator("name", mode="before")
     @classmethod
@@ -97,11 +95,3 @@ class SubjectRegisterRequest(BaseModel):
 
         _check_blocklist(value, "Description")
         return value
-
-    @model_validator(mode="after")
-    def age_period_mandatory_with_age_value(self) -> Self:
-        """Age period must be provided together with age_value."""
-        if not self.age_period:
-            msg = "age_period must be provided when age_value is provided"
-            raise ValueError(msg)
-        return self

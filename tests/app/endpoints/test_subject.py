@@ -32,11 +32,9 @@ def _search_result(*, results=None, one_or_none=None):
     return mock
 
 
-def _make_mock_db_client(*, search_results=None, search_one_or_none=None):
+def _make_mock_db_client():
     mock_client = MagicMock()
-    mock_client.search_entity.return_value = _search_result(
-        results=search_results, one_or_none=search_one_or_none
-    )
+    mock_client.search_entity.return_value = _search_result()
     return mock_client
 
 
