@@ -87,7 +87,7 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
     return circuit_path, circuit_path_compressed
 
 
-def register_circuit(  # noqa: PLR0913, PLR0914, C901
+def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, complex-structure]
     client: Client,
     circuit_path: str | Path,
     *,

@@ -59,7 +59,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         },
     )
 
-    def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: ARG002
+    def get_populations(self, circuit: Circuit) -> list[str]:  # ruff: ignore[unused-method-argument]
         """Returns population names included in the neuron set."""
         return [self.population]
 

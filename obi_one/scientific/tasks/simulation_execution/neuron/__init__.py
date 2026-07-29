@@ -6,11 +6,11 @@ from obi_one.scientific.tasks.simulation_execution.neuron.ion_channel_simulation
     IonChannelModelSimulationExecutionSingleConfig,
     IonChannelModelSimulationExecutionTask,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_simulation_execution import (  # noqa: E501
+from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_simulation_execution import (  # ruff: ignore[line-too-long]
     SingleNeuronSimulationExecutionSingleConfig,
     SingleNeuronSimulationExecutionTask,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_synaptome_simulation_execution import (  # noqa: E501
+from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_synaptome_simulation_execution import (  # ruff: ignore[line-too-long]
     SingleNeuronSynaptomeSimulationExecutionSingleConfig,
     SingleNeuronSynaptomeSimulationExecutionTask,
 )

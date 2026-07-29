@@ -47,7 +47,7 @@ def stage_ion_channel_models_as_circuit(
     ion_channel_model_data_dict = {}
     for key, ic_data in ion_channel_models.items():
         # ic_data: IonChannelModel Block
-        # ic_data.ion_channel_model: IonChannelModelFromID  # noqa: ERA001
+        # ic_data.ion_channel_model: IonChannelModelFromID  # ruff: ignore[commented-out-code]
         conductance = {}
         if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(
             db_client=client

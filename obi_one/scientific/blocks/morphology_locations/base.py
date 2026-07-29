@@ -2,7 +2,7 @@ import abc
 from typing import Self
 
 import morphio
-import pandas  # noqa: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block

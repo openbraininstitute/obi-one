@@ -23,7 +23,7 @@ def generate_compressed_circuit_asset(
     circuit and is used directly (no recompression).  Otherwise the standard
     compression pipeline is executed.
     """
-    from obi_one.utils import db_sdk  # noqa: PLC0415
+    from obi_one.utils import db_sdk  # ruff: ignore[import-outside-top-level]
 
     if circuit_path.suffix == ".gz":
         L.info("circuit_path is a .gz file; using it directly as compressed circuit.")
@@ -33,7 +33,7 @@ def generate_compressed_circuit_asset(
             msg = "output_dir is required when circuit_path is not a compressed file."
             raise ValueError(msg)
 
-        from obi_one.utils import circuit as circuit_utils  # noqa: PLC0415
+        from obi_one.utils import circuit as circuit_utils  # ruff: ignore[import-outside-top-level]
 
         compressed_circuit = circuit_utils.run_circuit_folder_compression(
             circuit_path=circuit_path,
@@ -60,7 +60,10 @@ def generate_connectivity_matrix_asset(
 
     Returns the matrix_dir, matrix_config, and edge_population for downstream use.
     """
-    from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
+    from obi_one.utils import (  # ruff: ignore[import-outside-top-level]
+        circuit as circuit_utils,
+        db_sdk,
+    )
 
     (
         matrix_dir,
@@ -91,7 +94,10 @@ def generate_connectivity_plot_assets(
 
     Returns the plot_dir and plot_files for downstream use (overview figure generation).
     """
-    from obi_one.utils import circuit as circuit_utils, db_sdk  # noqa: PLC0415
+    from obi_one.utils import (  # ruff: ignore[import-outside-top-level]
+        circuit as circuit_utils,
+        db_sdk,
+    )
 
     plot_dir, plot_files = circuit_utils.run_basic_connectivity_plots(
         matrix_config=matrix_config,
@@ -121,7 +127,7 @@ def generate_overview_image_asset(
     If ``image_path`` is provided, it is used directly and generation is skipped.
     Accepted formats: .png or .webp.
     """
-    from obi_one.utils import db_sdk  # noqa: PLC0415
+    from obi_one.utils import db_sdk  # ruff: ignore[import-outside-top-level]
 
     if image_path is not None:
         L.info(f"Using provided overview image: {image_path}")
@@ -130,7 +136,7 @@ def generate_overview_image_asset(
         viz_path = output_dir / expected_name
         shutil.copy(image_path, viz_path)
     else:
-        from obi_one.utils import circuit as circuit_utils  # noqa: PLC0415
+        from obi_one.utils import circuit as circuit_utils  # ruff: ignore[import-outside-top-level]
 
         viz_path = circuit_utils.generate_overview_figure(
             plot_dir, output_dir / f"{OVERVIEW_IMAGE_NAME}.png"
@@ -162,7 +168,7 @@ def generate_sim_designer_image_asset(
     If ``image_path`` is provided, it is used directly and generation is skipped.
     Accepted format: .png.
     """
-    from obi_one.utils import db_sdk  # noqa: PLC0415
+    from obi_one.utils import db_sdk  # ruff: ignore[import-outside-top-level]
 
     if image_path is not None:
         L.info(f"Using provided sim designer image: {image_path}")
@@ -171,7 +177,7 @@ def generate_sim_designer_image_asset(
         viz_path = output_dir / expected_name
         shutil.copy(image_path, viz_path)
     else:
-        from obi_one.utils import circuit as circuit_utils  # noqa: PLC0415
+        from obi_one.utils import circuit as circuit_utils  # ruff: ignore[import-outside-top-level]
 
         viz_path = circuit_utils.generate_overview_figure(
             plot_dir, output_dir / f"{SIM_DESIGNER_IMAGE_NAME}.png"
@@ -179,7 +185,7 @@ def generate_sim_designer_image_asset(
 
         # Fall back to template if no figure was generated
         if viz_path is None:
-            from importlib.resources import files  # noqa: PLC0415
+            from importlib.resources import files  # ruff: ignore[import-outside-top-level]
 
             template = Path(
                 str(files("obi_one.scientific.library").joinpath("circuit_template.png"))
@@ -250,7 +256,7 @@ def generate_additional_circuit_assets(
             client=client,
             circuit_entity=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         L.warning(f"Compressed circuit asset generation/registration failed: {e}")
 
     if edge_population is not None:
@@ -262,7 +268,7 @@ def generate_additional_circuit_assets(
                 client=client,
                 circuit_entity=circuit_entity,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # ruff: ignore[blind-except]
             L.warning(f"Connectivity matrix asset generation/registration failed: {e}")
             matrix_config = None
 
@@ -275,7 +281,7 @@ def generate_additional_circuit_assets(
                     client=client,
                     circuit_entity=circuit_entity,
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # ruff: ignore[blind-except]
                 L.warning(f"Connectivity plot assets generation/registration failed: {e}")
 
     try:
@@ -286,7 +292,7 @@ def generate_additional_circuit_assets(
             client=client,
             circuit_entity=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         L.warning(f"Overview image asset generation/registration failed: {e}")
 
     try:
@@ -297,5 +303,5 @@ def generate_additional_circuit_assets(
             client=client,
             circuit_entity=circuit_entity,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         L.warning(f"Sim designer image asset generation/registration failed: {e}")

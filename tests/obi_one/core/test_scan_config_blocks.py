@@ -259,7 +259,7 @@ class TestScanConfigSerialization:
 class TestAddBlockUnknownReferenceType:
     def test_add_block_with_unknown_reference_type_raises(self):
         """Adding a block when the reference type is not in the registry should raise."""
-        from obi_one.core.exception import OBIONEError  # noqa: PLC0415
+        from obi_one.core.exception import OBIONEError  # ruff: ignore[import-outside-top-level]
 
         class UnregisteredRefConfig(ScanConfig):
             single_coord_class_name: ClassVar[str] = ""

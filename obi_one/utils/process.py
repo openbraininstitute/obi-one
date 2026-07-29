@@ -1,7 +1,7 @@
 import logging
 import os
 import shlex
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from pathlib import Path
 
 L = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ def run_and_log(
     cmd_str = shlex.join(command)
     L.info("Command: %s", cmd_str)
     try:
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
             command,
             check=True,
             capture_output=True,

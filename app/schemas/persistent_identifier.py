@@ -51,7 +51,7 @@ def _validate_orcid_checksum(orcid: str) -> bool:
         total = (total + int(char)) * 2
     remainder = total % 11
     check = (12 - remainder) % 11
-    expected = "X" if check == 10 else str(check)  # noqa: PLR2004
+    expected = "X" if check == 10 else str(check)  # ruff: ignore[magic-value-comparison]
     return digits[-1] == expected
 
 

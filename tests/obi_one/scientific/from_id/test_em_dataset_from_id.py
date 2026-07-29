@@ -15,7 +15,7 @@ _MODULE = "obi_one.scientific.from_id.em_dataset_from_id"
 
 
 def _make_dataset():
-    return EMDataSetFromID(id_str="dataset-1", auth_token="fake-token")  # noqa: S106
+    return EMDataSetFromID(id_str="dataset-1", auth_token="fake-token")  # ruff: ignore[hardcoded-password-func-arg]
 
 
 def _http_error(status=503):
@@ -52,7 +52,7 @@ class TestRetryConfiguration:
         mock_cave.assert_called_once_with(
             "stack",
             server_address="http://cave",
-            auth_token="fake-token",  # noqa: S106
+            auth_token="fake-token",  # ruff: ignore[hardcoded-password-func-arg]
         )
         assert mock_cave.return_value.version == 7
 
