@@ -37,7 +37,10 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
-        description="Neuron set whose morphologies the locations are generated on.",
+        description=(
+            "Neuron set whose morphologies are used to generate locations. If omitted, "
+            "locations are generated for the default biophysical neuron set."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
@@ -47,7 +50,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     random_seed: int | list[int] = Field(
         default=0,
         title="Random Seed",
-        description="Seed for the random generation of locations.",
+        description="Seed used when randomly selecting morphology locations.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
@@ -56,7 +59,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     number_of_locations: int | list[int] = Field(
         default=20,
         title="Number of Locations",
-        description="Number of locations to generate on morphology.",
+        description="Total number of morphology locations to generate for each targeted neuron.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
@@ -65,8 +68,8 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         default=(3, 4),
         title="Section Types",
         description=(
-            "Neurite section types to generate locations on. "
-            "Defaults to basal and apical dendrites."
+            "Neurite section types where locations may be generated. Defaults to basal and "
+            "apical dendrites."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,

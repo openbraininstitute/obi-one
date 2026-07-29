@@ -104,13 +104,16 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     morphology_locations: dict[str, MorphologyLocationUnion] = Field(
         default_factory=dict,
         title="Morphology Locations",
-        description="Rules to generate locations on morphologies.",
+        description=(
+            "Reusable rules for selecting precise locations on neuronal morphologies. "
+            "Stimuli can reference these locations to target compartments instead of whole cells."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
-            SchemaKey.SINGULAR_NAME: "Morphology Locations",
+            SchemaKey.SINGULAR_NAME: "Morphology Location",
             SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

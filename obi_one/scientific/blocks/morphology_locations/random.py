@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import morphio
 import pandas  # noqa: ICN001
 from pydantic import Field
@@ -14,6 +16,8 @@ _MIN_PD_SD = 0.1
 
 class RandomMorphologyLocations(MorphologyLocationsBlock):
     """Completely random locations without constraint."""
+
+    title: ClassVar[str] = "Random Morphology Locations"
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         locs = generate_neurite_locations_on(
@@ -40,11 +44,15 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
 class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
     """Completely random locations, but grouped into abstract groups."""
 
+    title: ClassVar[str] = "Random Grouped Morphology Locations"
+
     n_groups: int | list[int] = Field(
         default=1,
-        title="Number of groups",
-        description="Number of groups of locations to \
-            generate",
+        title="Number of Groups",
+        description=(
+            "Number of conceptual groups to assign across the generated random locations. "
+            "Groups can be used by downstream workflows to keep subsets of locations distinct."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },

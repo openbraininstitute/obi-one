@@ -1,8 +1,11 @@
+from typing import ClassVar
+
 import morphio
 import pandas  # noqa: ICN001
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
@@ -13,20 +16,27 @@ from obi_one.scientific.library.morphology_locations import (
 class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     """Locations around a specified path distance."""
 
+    title: ClassVar[str] = "Path Distance Morphology Locations"
+
     path_dist_mean: float | list[float] = Field(
-        title="Path distance mean",
-        description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
-            locations.",
+        title="Path Distance Mean",
+        description=(
+            "Target soma path distance for generated locations. Locations are sampled around "
+            "this distance along the morphology."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
     path_dist_tolerance: float | list[float] = Field(
-        title="Path distance tolerance",
-        description="Amount of deviation in um from mean path distance that is tolerated. Must be \
-            > 1.0",
+        title="Path Distance Tolerance",
+        description=(
+            "Allowed deviation from the target soma path distance. Must be greater than 1.0."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
 

@@ -1,8 +1,11 @@
+from typing import ClassVar
+
 import morphio
 import pandas  # noqa: ICN001
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
@@ -18,19 +21,27 @@ _MIN_PD_SD = 0.1
 class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     """Clustered random locations."""
 
+    title: ClassVar[str] = "Clustered Morphology Locations"
+
     n_clusters: int | list[int] = Field(
-        title="Number of clusters",
-        description="Number of location clusters to generate",
+        title="Number of Clusters",
+        description=(
+            "Number of clusters to generate. The total number of locations is divided across "
+            "these clusters."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
     cluster_max_distance: float | list[float] = Field(
-        title="Cluster maximum distance",
-        description="Maximum distance in um of generated locations from the center of their \
-            cluster",
+        title="Cluster Maximum Distance",
+        description=(
+            "Maximum soma path distance between each generated location and the center of "
+            "its cluster."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
 
@@ -69,6 +80,8 @@ class ClusteredGroupedMorphologyLocations(
 ):
     """Clustered random locations, grouped in to conceptual groups."""
 
+    title: ClassVar[str] = "Clustered Grouped Morphology Locations"
+
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
@@ -96,26 +109,31 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     groups within each cluster. This exposes the full possible complexity.
     """
 
+    title: ClassVar[str] = "Clustered Path Distance Morphology Locations"
+
     path_dist_mean: float | list[float] = Field(
-        title="Path distance mean",
-        description="Mean of a Gaussian, defined on soma path distance in um. Used to determine \
-            locations.",
+        title="Path Distance Mean",
+        description=("Mean soma path distance used to bias where cluster centers are selected."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
     path_dist_sd: float | list[float] = Field(
-        title="Path distance mean",
-        description="SD of a Gaussian, defined on soma path distance in um. Used to determine \
-            locations.",
+        title="Path Distance Standard Deviation",
+        description=(
+            "Standard deviation of the soma path-distance distribution used to select "
+            "cluster centers."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
     n_groups_per_cluster: int | list[int] = Field(
         default=1,
-        title="Number of groups per cluster",
-        description="Number of conceptual groups per location cluster to generate",
+        title="Number of Groups per Cluster",
+        description=("Number of conceptual groups to assign within each generated cluster."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
