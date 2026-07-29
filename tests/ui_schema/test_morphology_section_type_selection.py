@@ -1,3 +1,5 @@
+import pytest
+
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
@@ -26,6 +28,18 @@ def test_morphology_section_type_selection_schema():
         "section_types",
         "#/components/schemas/RandomMorphologyLocations",
     )
+
+
+def test_morphology_section_type_selection_rejects_invalid_mapped_property():
+    schema = RandomMorphologyLocations.model_json_schema()["properties"]["section_types"]
+    schema[SchemaKey.PROPERTY] = "NodeSet"
+
+    with pytest.raises(ValueError, match="property must be one of"):
+        validate_morphology_section_type_selection(
+            schema,
+            "section_types",
+            "#/components/schemas/RandomMorphologyLocations",
+        )
 
 
 def test_morphology_endpoint_is_available_for_neuron_simulation_configs():

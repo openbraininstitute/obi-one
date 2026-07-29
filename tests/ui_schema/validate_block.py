@@ -1,6 +1,7 @@
 import logging
 import math
 import sys
+from enum import StrEnum
 
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
@@ -9,6 +10,10 @@ from app.application import app
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+    MorphologyMappedProperties,
+)
 
 L = logging.getLogger()
 
@@ -42,6 +47,17 @@ def validate_string(schema: dict, prop: str, ref: str) -> None:
 
     if type(value) is not str:
         msg = f"Validation error at {ref}: {prop} must be a string. Got: {type(value)}"
+        raise ValueError(msg)
+
+
+def validate_enum_value(schema: dict, prop: str, enum_type: type[StrEnum], ref: str) -> None:
+    value = schema.get(prop)
+    allowed_values = {member.value for member in enum_type}
+    if value not in allowed_values:
+        msg = (
+            f"Validation error at {ref}: {prop} must be one of {sorted(allowed_values)}. "
+            f"Got: {value}"
+        )
         raise ValueError(msg)
 
 
@@ -203,8 +219,18 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
 
 
 def validate_morphology_section_type_selection(schema: dict, param: str, ref: str) -> None:
-    validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
-    validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
+    validate_enum_value(
+        schema,
+        SchemaKey.PROPERTY_GROUP,
+        MappedPropertiesGroup,
+        f"{param} at {ref}",
+    )
+    validate_enum_value(
+        schema,
+        SchemaKey.PROPERTY,
+        MorphologyMappedProperties,
+        f"{param} at {ref}",
+    )
 
     any_of = schema.get("anyOf", [])
     if len(any_of) != 3:
