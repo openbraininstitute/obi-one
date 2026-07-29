@@ -2299,7 +2299,7 @@ requires-dist = [
     { name = "ipykernel", marker = "extra == 'notebooks'" },
     { name = "jupyter", marker = "extra == 'notebooks'" },
     { name = "jupyterlab", marker = "extra == 'notebooks'", specifier = ">=4.4.8" },
-    { name = "libsonata", specifier = ">=0.1.36" },
+    { name = "libsonata", specifier = ">=0.2.0" },
     { name = "morph-spines" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
