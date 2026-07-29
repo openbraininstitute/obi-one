@@ -1,5 +1,4 @@
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 import httpx
@@ -23,10 +22,9 @@ def get_client(
 LaunchSystemClientDep = Annotated[httpx.Client, Depends(get_client)]
 
 
-@asynccontextmanager
 async def get_async_client(
     user_context: UserContextDep,
-) -> AsyncGenerator[httpx.AsyncClient]:
+) -> AsyncIterator[httpx.AsyncClient]:
     token = user_context.token.credentials  # ty:ignore[unresolved-attribute]
     headers = {"Authorization": f"Bearer {token}"}
     async with httpx.AsyncClient(
@@ -35,7 +33,8 @@ async def get_async_client(
         verify=not settings.LAUNCH_SYSTEM_DISABLE_SSL_VERIFY,
         timeout=httpx.Timeout(connect=10.0, read=None, write=10.0, pool=10.0),
     ) as client:
-        yield client
+        # FastAPI guarantees cleanup, so it's safe to ignore
+        yield client  # ruff: ignore[yield-in-context-manager-in-async-generator]
 
 
 LaunchSystemAsyncClientDep = Annotated[httpx.AsyncClient, Depends(get_async_client)]

@@ -1,3 +1,4 @@
+from contextlib import suppress
 from types import SimpleNamespace
 
 import httpx
@@ -33,7 +34,12 @@ def test_get_client_sets_correct_headers(mock_user_context):
 
 @pytest.mark.anyio
 async def test_get_async_client(mock_user_context):
-    async with get_async_client(mock_user_context) as client:
-        assert isinstance(client, httpx.AsyncClient)
-        assert str(client.base_url) == settings.LAUNCH_SYSTEM_URL
-        assert client.headers["Authorization"] == "Bearer test-token"
+    gen = get_async_client(mock_user_context)
+    client = await anext(gen)
+
+    assert isinstance(client, httpx.AsyncClient)
+    assert str(client.base_url) == settings.LAUNCH_SYSTEM_URL
+    assert client.headers["Authorization"] == "Bearer test-token"
+
+    with suppress(StopAsyncIteration):
+        await anext(gen)
