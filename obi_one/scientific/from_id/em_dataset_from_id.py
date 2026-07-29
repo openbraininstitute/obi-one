@@ -2,8 +2,8 @@ import functools
 from collections.abc import Callable
 from typing import ClassVar
 
-import numpy  # NOQA: ICN001
-import pandas  # NOQA: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
+import pandas  # ruff: ignore[unconventional-import-alias]
 import requests
 from caveclient import CAVEclient, set_session_defaults
 from entitysdk import Client

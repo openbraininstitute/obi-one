@@ -1,5 +1,5 @@
 import morphio
-import pandas  # noqa: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -31,7 +31,7 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.number_of_locations, list):  # noqa: SIM102
+        if not isinstance(self.number_of_locations, list):  # ruff: ignore[collapsible-if]
             if self.number_of_locations <= 0:
                 msg = f"Number of locations: {self.number_of_locations} <= 0"
                 raise ValueError(msg)
@@ -66,7 +66,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.n_groups, list):  # noqa: SIM102
+        if not isinstance(self.n_groups, list):  # ruff: ignore[collapsible-if]
             if self.n_groups <= 0:
                 msg = f"Number of groups: {self.n_groups} <= 0"
                 raise ValueError(msg)

@@ -10,11 +10,11 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     NeurodamusSimulationParameters,
     SimulationResults,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_synaptome_simulation_execution import (  # noqa: E501
+from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_synaptome_simulation_execution import (  # ruff: ignore[line-too-long]
     SingleNeuronSynaptomeSimulationExecutionSingleConfig,
     SingleNeuronSynaptomeSimulationExecutionTask,
 )

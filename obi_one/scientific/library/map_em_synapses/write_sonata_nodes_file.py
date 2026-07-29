@@ -1,6 +1,6 @@
 import os
 
-import pandas  # NOQA: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 import voxcell
 from entitysdk import Client
 from voxcell import CellCollection
@@ -25,7 +25,7 @@ def get_specified_tables(
     return dict(dict_tpls), lst_notices
 
 
-def resolve_position_to_xyz(resolutions: list):  # NOQA: ANN201
+def resolve_position_to_xyz(resolutions: list):  # ruff: ignore[missing-return-type-undocumented-public-function]
     def func(lst_xyz: list) -> pandas.Series:
         if hasattr(lst_xyz, "__iter__"):
             return pandas.Series(

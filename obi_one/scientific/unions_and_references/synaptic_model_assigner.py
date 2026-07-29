@@ -29,7 +29,7 @@ class SynapticModelAssignerReference(BlockReference):
 
     @property
     def block(self) -> SynapseModelAssigner:
-        """Returns the block associated with this reference."""
+        """The block associated with this reference."""
         if isinstance(super().block, SynapseModelAssigner):
             return cast("SynapseModelAssigner", super().block)
         msg = f"Expected block of type SynapseModelAssigner, but got {type(super().block)}"

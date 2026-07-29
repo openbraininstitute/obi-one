@@ -21,7 +21,7 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
 try:
-    import ultraliser  # ty: ignore[unresolved-import]
+    import ultraliser
 
     HAS_MESHING = True
 except ImportError:
@@ -105,7 +105,7 @@ class MeshLODGenerationTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client | None = None,
-        entity_cache: bool = False,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> str:
         resolved_client = db_client if db_client is not None else self.client

@@ -20,6 +20,7 @@ from app.endpoints import (
     circuit_properties,
     circuit_visualization,
     config_validation,
+    contributor,
     convert_morphology_to_registered_mesh,
     count_scan_coordinates,
     ephys_metrics,
@@ -61,7 +62,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
-        http_client.close()  # noqa: ASYNC212
+        http_client.close()  # ruff: ignore[blocking-http-call-httpx-in-async-function]
         L.info("Stopping application")
 
 
@@ -189,3 +190,4 @@ activate_scan_config_endpoints()
 app.include_router(scan_config.router)
 app.include_router(task.router)
 app.include_router(publication.router)
+app.include_router(contributor.router)
