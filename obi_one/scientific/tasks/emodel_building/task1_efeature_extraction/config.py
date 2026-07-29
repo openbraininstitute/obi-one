@@ -162,13 +162,6 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
         L.info("Campaign entity registered: %s", campaign.id)
         return
 
-    def create_campaign_generation_entity(  # noqa: PLR6301
-        self,
-        generated: list,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
-
 
 class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`EModelEFeatureExtractionScanConfig`."""
