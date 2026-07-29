@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from app.dependencies.auth import UserContextDep, user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
-from app.schemas.subject import SubjectRegisterRequest, normalize_name_for_comparison
+from app.schemas.subject import SubjectRegisterRequest, normalize_name, split_name
 
 _DUPLICATE_SEARCH_PREFIX_LENGTH = 4
 
@@ -54,44 +54,17 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
     "average rat", "AverageRat", "Average-rat", "Average_rat" are all
     considered duplicate names.
     """
-    normalized_input = normalize_name_for_comparison(name)
-    if not normalized_input:
+    normalized_input = normalize_name(name)
+    if not normalized_input:  # empty
         return None
 
-    # Strategy: build ILIKE patterns that are broad enough to catch all variants.
-    # We insert '%' between each alphanumeric character of the normalized name
-    # so that "averagerat" becomes "%a%v%e%r%a%g%e%r%a%t%" — this matches any
-    # string containing those characters in order regardless of separators.
-    # However, this could be too broad for long names and too slow.
-    #
-    # Practical approach: search using each word of the original name as an ilike
-    # fragment with wildcards, PLUS a second search using just the first word.
-    # Then compare normalized forms client-side.
+    ilike_pattern = "*" + "?".join(split_name(name)) + "*"
 
-    # Pattern 1: fragments from whitespace-split words
-    words = name.strip().lower().split()
-    fragments = ["".join(c for c in word if c.isalnum()) for word in words]
-    fragments = [f for f in fragments if f]
-    if fragments:
-        ilike_pattern = "*" + "*".join(fragments) + "*"
-        for result in db_client.search_entity(
-            entity_type=models.Subject,
-            query={"name__ilike": ilike_pattern},
-        ):
-            if normalize_name_for_comparison(cast("str", result.name)) == normalized_input:
-                return result
-
-    # Pattern 2: if the name has no spaces (e.g. "AverageRat"), also search with
-    # a shorter fragment to catch existing entries stored with separators.
-    # Use the first few alphanumeric characters as a broad match.
-    if len(normalized_input) >= _DUPLICATE_SEARCH_PREFIX_LENGTH:
-        short_pattern = f"*{normalized_input[:_DUPLICATE_SEARCH_PREFIX_LENGTH]}*"
-        for result in db_client.search_entity(
-            entity_type=models.Subject,
-            query={"name__ilike": short_pattern},
-        ):
-            if normalize_name_for_comparison(cast("str", result.name)) == normalized_input:
-                return result
+    for result in db_client.search_entity(
+        entity_type=models.Subject, query={"name__ilike": ilike_pattern}
+    ):
+        if normalize_name(cast("str", result.name)) == normalized_input:
+            return result
 
     return None
 

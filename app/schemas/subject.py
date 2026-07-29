@@ -38,7 +38,7 @@ def _check_blocklist(value: str, field_label: str) -> None:
             raise ValueError(msg)
 
 
-def normalize_name_for_comparison(name: str) -> str:
+def normalize_name(name: str) -> str:
     """Normalize a name for duplicate name comparison.
 
     Strips all non-alphanumeric characters (spaces, hyphens, underscores, etc.)
@@ -46,6 +46,10 @@ def normalize_name_for_comparison(name: str) -> str:
     "AverageRat", "Average-rat", "Average_rat" all produce the same key.
     """
     return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def split_name(name: str) -> list[str]:
+    return re.split(r"[^a-z0-9]+", name.lower())
 
 
 class SubjectRegisterRequest(BaseModel):

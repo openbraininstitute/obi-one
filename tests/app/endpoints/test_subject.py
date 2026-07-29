@@ -4,11 +4,12 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from entitysdk.models import Species
+from entitysdk.models import Species, Strain, Subject
 
 from app.application import app
 from app.dependencies.entitysdk import get_client
-from app.schemas.subject import normalize_name_for_comparison
+from app.endpoints.subject import _find_duplicate_subject_name
+from app.schemas.subject import normalize_name, split_name
 
 _BASE = "/declared/subject"
 
@@ -53,11 +54,15 @@ def _stub_successful_register(mock_db_client, *, name="Mouse Alpha", description
     mock_db_client.register_entity.return_value = mock_registered
 
 
-def _existing_subject(*, name):
+def _existing_subject(*, name, subject_id=None):
     existing = MagicMock()
-    existing.id = uuid4()
+    existing.id = subject_id or uuid4()
     existing.name = name
     return existing
+
+
+def _ilike_pattern_for(name: str) -> str:
+    return "*" + "?".join(split_name(name)) + "*"
 
 
 @pytest.fixture
@@ -86,6 +91,9 @@ def test_get_subject_found(client, mock_db_client):
 
     assert resp.status_code == 200
     assert resp.json()["name"] == "Mouse Alpha"
+    mock_db_client.search_entity.assert_called_once_with(
+        entity_type=Subject, query={"name": "Mouse Alpha"}
+    )
 
 
 def test_get_subject_not_found(client):
@@ -106,6 +114,10 @@ def test_register_new_subject(client, mock_db_client):
     assert resp.status_code == 201
     assert resp.json()["name"] == "Mouse Alpha"
     mock_db_client.register_entity.assert_called_once()
+    mock_db_client.search_entity.assert_called_once_with(
+        entity_type=Subject,
+        query={"name__ilike": "*mouse?alpha*"},
+    )
 
 
 @pytest.mark.parametrize(
@@ -122,6 +134,10 @@ def test_register_duplicate_returns_409(client, mock_db_client, existing_name):
     assert resp.status_code == 409
     assert "already exists" in resp.json()["message"]
     mock_db_client.register_entity.assert_not_called()
+    mock_db_client.search_entity.assert_called_once_with(
+        entity_type=Subject,
+        query={"name__ilike": "*mouse?alpha*"},
+    )
 
 
 def test_register_no_duplicate_with_different_name(client, mock_db_client):
@@ -134,6 +150,92 @@ def test_register_no_duplicate_with_different_name(client, mock_db_client):
 
     assert resp.status_code == 201
     mock_db_client.register_entity.assert_called_once()
+
+
+def test_register_ilike_returns_multiple_candidates_one_matches(client, mock_db_client):
+    """ILIKE can return broad matches; only normalized equality yields 409."""
+    matching_id = uuid4()
+    mock_db_client.search_entity.return_value = _search_result(
+        results=[
+            _existing_subject(name="Mouse Beta"),
+            _existing_subject(name="mouse-alpha", subject_id=matching_id),
+            _existing_subject(name="Mouse Gamma"),
+        ]
+    )
+
+    resp = client.post(f"{_BASE}", json=VALID_SUBJECT)
+
+    assert resp.status_code == 409
+    assert str(matching_id) in resp.json()["message"]
+    mock_db_client.register_entity.assert_not_called()
+
+
+def test_register_ilike_empty_results_creates_subject(client, mock_db_client):
+    mock_db_client.search_entity.return_value = _search_result(results=[])
+    _stub_successful_register(mock_db_client)
+
+    resp = client.post(f"{_BASE}", json=VALID_SUBJECT)
+
+    assert resp.status_code == 201
+    mock_db_client.search_entity.assert_called_once_with(
+        entity_type=Subject,
+        query={"name__ilike": "*mouse?alpha*"},
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "expected_ilike"),
+    [
+        ("Mouse Alpha", "*mouse?alpha*"),
+        ("SingleWord", "*singleword*"),
+        ("Three Word Name", "*three?word?name*"),
+    ],
+)
+def test_register_builds_expected_ilike_pattern(client, mock_db_client, name, expected_ilike):
+    _stub_successful_register(mock_db_client, name=name)
+
+    resp = client.post(f"{_BASE}", json={**VALID_SUBJECT, "name": name})
+
+    assert resp.status_code == 201
+    mock_db_client.search_entity.assert_called_once_with(
+        entity_type=Subject,
+        query={"name__ilike": expected_ilike},
+    )
+
+
+def test_register_with_strain_and_weight(client, mock_db_client):
+    species_id = uuid4()
+    strain_id = uuid4()
+    species = Species(id=species_id, name="Mus musculus", taxonomy_id="10090")
+    strain = Strain(id=strain_id, name="C57BL/6", taxonomy_id="10090", species_id=species_id)
+
+    mock_db_client.get_entity.side_effect = [species, strain]
+    mock_registered = MagicMock()
+    mock_registered.model_dump.return_value = {
+        "id": str(uuid4()),
+        "name": "Mouse Alpha",
+        "description": VALID_SUBJECT["description"],
+        "sex": "male",
+        "weight": 25.5,
+    }
+    mock_db_client.register_entity.return_value = mock_registered
+
+    resp = client.post(
+        f"{_BASE}",
+        json={
+            **VALID_SUBJECT,
+            "species_id": str(species_id),
+            "strain_id": str(strain_id),
+            "weight": 25.5,
+        },
+    )
+
+    assert resp.status_code == 201
+    assert mock_db_client.get_entity.call_count == 2
+    registered_subject = mock_db_client.register_entity.call_args.kwargs["entity"]
+    assert registered_subject.species == species
+    assert registered_subject.strain == strain
+    assert registered_subject.weight == pytest.approx(25.5)
 
 
 def test_register_missing_required_fields(client):
@@ -150,6 +252,14 @@ def test_register_age_period_required_with_age_value(client):
     resp = client.post(
         f"{_BASE}",
         json={k: v for k, v in VALID_SUBJECT.items() if k != "age_period"},
+    )
+    assert resp.status_code == 422
+
+
+def test_register_missing_age_value(client):
+    resp = client.post(
+        f"{_BASE}",
+        json={k: v for k, v in VALID_SUBJECT.items() if k != "age_value"},
     )
     assert resp.status_code == 422
 
@@ -188,6 +298,10 @@ def test_whitespace_normalization(client, mock_db_client):
 
     resp = client.post(f"{_BASE}", json={**VALID_SUBJECT, "name": "  Mouse   Alpha  "})
     assert resp.status_code == 201
+    mock_db_client.search_entity.assert_called_once_with(
+        entity_type=Subject,
+        query={"name__ilike": "*mouse?alpha*"},
+    )
 
 
 def test_special_characters_allowed(client, mock_db_client):
@@ -223,6 +337,34 @@ def test_empty_name_after_strip(client):
     assert resp.status_code == 422
 
 
+def test_find_duplicate_subject_name_empty_normalized_returns_none(mock_db_client):
+    assert _find_duplicate_subject_name(mock_db_client, "---") is None
+    mock_db_client.search_entity.assert_not_called()
+
+
+def test_find_duplicate_subject_name_uses_ilike_and_compares_normalized(mock_db_client):
+    match = _existing_subject(name="Average-Rat")
+    mock_db_client.search_entity.return_value = _search_result(
+        results=[_existing_subject(name="Average Mouse"), match]
+    )
+
+    found = _find_duplicate_subject_name(mock_db_client, "Average Rat")
+
+    assert found is match
+    mock_db_client.search_entity.assert_called_once_with(
+        entity_type=Subject,
+        query={"name__ilike": _ilike_pattern_for("Average Rat")},
+    )
+
+
+def test_find_duplicate_subject_name_no_normalized_match(mock_db_client):
+    mock_db_client.search_entity.return_value = _search_result(
+        results=[_existing_subject(name="Average Mouse")]
+    )
+
+    assert _find_duplicate_subject_name(mock_db_client, "Average Rat") is None
+
+
 @pytest.mark.parametrize(
     ("name", "expected"),
     [
@@ -237,8 +379,8 @@ def test_empty_name_after_strip(client):
         ("---", ""),
     ],
 )
-def test_normalize_name_for_comparison(name, expected):
-    assert normalize_name_for_comparison(name) == expected
+def test_normalize_name(name, expected):
+    assert normalize_name(name) == expected
 
 
 def test_normalize_name_all_variants_equal():
@@ -252,5 +394,19 @@ def test_normalize_name_all_variants_equal():
         "average-RAT",
         " Average  Rat ",
     ]
-    normalized = {normalize_name_for_comparison(v) for v in variants}
+    normalized = {normalize_name(v) for v in variants}
     assert normalized == {"averagerat"}
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("Mouse Alpha", ["mouse", "alpha"]),
+        ("Average-Rat", ["average", "rat"]),
+        ("Average_rat", ["average", "rat"]),
+        ("AverageRat", ["averagerat"]),
+        ("Three Word Name", ["three", "word", "name"]),
+    ],
+)
+def test_split_name(name, expected):
+    assert split_name(name) == expected
