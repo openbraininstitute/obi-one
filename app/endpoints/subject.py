@@ -6,7 +6,7 @@ from typing import cast
 from entitysdk import models
 from fastapi import APIRouter, Depends
 
-from app.dependencies.auth import UserContextDep, user_verified
+from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.subject import SubjectRegisterRequest, normalize_name, split_name
@@ -26,7 +26,6 @@ router = APIRouter(
 def get_subject(
     name: str,
     db_client: DatabaseClientDep,
-    user_context: UserContextDep,  # noqa: ARG001
 ) -> dict:
     """Look up a subject by name."""
     existing = db_client.search_entity(
@@ -79,7 +78,6 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
 def register_subject(
     json_model: SubjectRegisterRequest,
     db_client: DatabaseClientDep,
-    user_context: UserContextDep,  # noqa: ARG001
 ) -> dict:
     """Register a new subject in entitycore."""
     existing = _find_duplicate_subject_name(db_client, json_model.name)
