@@ -135,8 +135,6 @@ def register_subject(
         sex=json_model.sex,
         weight=json_model.weight,
         age_value=json_model.age_value,
-        age_min=json_model.age_min,
-        age_max=json_model.age_max,
         age_period=json_model.age_period,
         species=species,
         strain=strain,

@@ -17,6 +17,8 @@ VALID_SUBJECT = {
     "description": "Adult male C57BL/6 mouse used in experiments",
     "species_id": str(uuid4()),
     "sex": "male",
+    "age_value": 86400,
+    "age_period": "postnatal",
 }
 
 
@@ -145,19 +147,10 @@ def test_register_invalid_sex(client):
 
 
 def test_register_age_period_required_with_age_value(client):
-    resp = client.post(f"{_BASE}", json={**VALID_SUBJECT, "age_value": 86400})
-    assert resp.status_code == 422
-
-
-def test_register_age_value_and_range_conflict(client):
-    data = {
-        **VALID_SUBJECT,
-        "age_value": 86400,
-        "age_min": 43200,
-        "age_max": 172800,
-        "age_period": "postnatal",
-    }
-    resp = client.post(f"{_BASE}", json=data)
+    resp = client.post(
+        f"{_BASE}",
+        json={k: v for k, v in VALID_SUBJECT.items() if k != "age_period"},
+    )
     assert resp.status_code == 422
 
 
