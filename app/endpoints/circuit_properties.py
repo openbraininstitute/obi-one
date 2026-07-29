@@ -209,7 +209,8 @@ def mapped_circuit_properties_endpoint(
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
                 == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
-                CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.scale
+                CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
+                and circuit.scale
                 in {
                     entitysdk.types.CircuitScale.single,  # ty:ignore[possibly-missing-submodule]
                     entitysdk.types.CircuitScale.pair,  # ty:ignore[possibly-missing-submodule]

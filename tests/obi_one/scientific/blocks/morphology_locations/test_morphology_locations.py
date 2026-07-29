@@ -9,6 +9,15 @@ from obi_one.scientific.library.entity_property_types import (
 )
 
 
+def test_random_morphology_locations_defaults_to_dendrite_section_types():
+    locations = obi.RandomMorphologyLocations(
+        random_seed=0,
+        number_of_locations=2,
+    )
+
+    assert locations.section_types == (3, 4)
+
+
 def test_random_morphology_locations_accepts_tuple_section_types():
     locations = obi.RandomMorphologyLocations(
         random_seed=0,
@@ -35,6 +44,15 @@ def test_random_morphology_locations_rejects_invalid_section_type():
             random_seed=0,
             number_of_locations=2,
             section_types=(1,),
+        )
+
+
+def test_random_morphology_locations_rejects_axon_section_type():
+    with pytest.raises(ValidationError):
+        obi.RandomMorphologyLocations(
+            random_seed=0,
+            number_of_locations=2,
+            section_types=(2,),
         )
 
 

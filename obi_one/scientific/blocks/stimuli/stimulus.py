@@ -5,6 +5,7 @@ from pydantic import (
     Field,
     NonNegativeFloat,
     PrivateAttr,
+    model_validator,
 )
 
 from obi_one.core.block import Block
@@ -129,6 +130,27 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     )
 
     _materialized_compartment_set_name: str | None = PrivateAttr(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def infer_morphology_locations_target_reference_type(cls, data: Any) -> Any:
+        """Keep frontend references unambiguous when Target points at morphology locations."""
+        if not isinstance(data, dict):
+            return data
+
+        target = data.get("neuron_set")
+        if (
+            isinstance(target, dict)
+            and "type" not in target
+            and target.get("block_dict_name") == "morphology_locations"
+        ):
+            data = data.copy()
+            data["neuron_set"] = {
+                **target,
+                "type": MorphologyLocationsReference.__name__,
+            }
+
+        return data
 
     def set_materialized_compartment_set_target(self, name: str) -> None:
         self._materialized_compartment_set_name = name

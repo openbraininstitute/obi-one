@@ -1,4 +1,4 @@
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, get_args
 
 from pydantic import Discriminator
 
@@ -31,6 +31,10 @@ class MorphologyLocationsReference(BlockReference):
     """Reference to a block that generates morphology locations."""
 
     allowed_block_types: ClassVar[Any] = MorphologyLocationUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(get_args(MorphologyLocationUnion)[0])
+    }
 
 
 __all__ = ["MorphologyLocationUnion", "MorphologyLocationsReference"]

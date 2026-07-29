@@ -25,6 +25,12 @@ def _circuit_metrics():
     )
 
 
+def _db_client(scale: entitysdk.types.CircuitScale):
+    return SimpleNamespace(
+        get_entity=lambda **_: SimpleNamespace(scale=scale, has_morphologies=True),
+    )
+
+
 @pytest.mark.parametrize(
     "scale",
     [
@@ -37,13 +43,10 @@ def _circuit_metrics():
 def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
     monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
-    db_client = SimpleNamespace(
-        get_entity=lambda **_: SimpleNamespace(scale=scale),
-    )
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",
-        db_client=db_client,
+        db_client=_db_client(scale),
     )
 
     assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is True
@@ -60,13 +63,10 @@ def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatc
 def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
     monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
-    db_client = SimpleNamespace(
-        get_entity=lambda **_: SimpleNamespace(scale=scale),
-    )
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",
-        db_client=db_client,
+        db_client=_db_client(scale),
     )
 
     assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is False
