@@ -20,7 +20,7 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
 
     path_dist_mean: float | list[float] = Field(
         default=100.0,
-        title="Path Distance Target",
+        title="Path Distance Sampling Mean",
         description=(
             "Target soma path distance used to bias where candidate locations are selected. "
             "Final locations are sampled uniformly from valid morphology intervals within "
@@ -33,7 +33,7 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     )
     path_dist_tolerance: float | list[float] = Field(
         default=50.0,
-        title="Max Distance from Path Distance Target",
+        title="Max Distance to Path Distance Sampling Mean",
         description=(
             "Allowed deviation from the target soma path distance. Locations are sampled "
             "uniformly from valid morphology intervals within this tolerance. Must be greater "

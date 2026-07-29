@@ -115,7 +115,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
 
     path_dist_mean: float | list[float] = Field(
         default=100.0,
-        title="Cluster Path Distance Target",
+        title="Cluster Path Distance Sampling Mean",
         description=("Target soma path distance used to bias where cluster centers are selected."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
