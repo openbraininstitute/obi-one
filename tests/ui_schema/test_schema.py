@@ -60,7 +60,7 @@ def validate_dict(schema: dict, element: str, form_ref: str) -> None:
         raise ValueError(msg)
 
 
-def validate_group_order(schema: dict, form_ref: str) -> None:  # noqa: C901
+def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[complex-structure]
     groups: list[str] = validate_array(schema, SchemaKey.GROUP_ORDER, str, form_ref)
 
     used_groups: dict[str, list[int]] = defaultdict(list)
@@ -179,7 +179,7 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dic
         ref = block_schema.get("$ref")
 
         if ref:
-            block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
+            block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # ruff: ignore[redefined-loop-name]
 
         validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
@@ -195,7 +195,7 @@ def validate_block_union(schema: dict, key: str, config_ref: str, form: dict) ->
         ref = block_schema.get("$ref")
 
         if ref:
-            block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # noqa: PLW2901
+            block_schema = {**block_schema, **resolve_ref(openapi_schema, ref)}  # ruff: ignore[redefined-loop-name]
 
         validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
@@ -231,7 +231,7 @@ def validate_config(form: dict, config_ref: str) -> None:
         ref = root_element_schema.get("$ref")
 
         if ref:
-            root_element_schema = {  # noqa: PLW2901
+            root_element_schema = {  # ruff: ignore[redefined-loop-name]
                 **root_element_schema,
                 **resolve_ref(openapi_schema, ref),
             }

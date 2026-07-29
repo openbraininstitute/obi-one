@@ -64,8 +64,8 @@ class SingleCoordinateScanParams(OBIBaseModel):
 
     @property
     def scan_multi_dim_index(self) -> dict[str, int]:
-        """Return a dictionary with the multi-dimensional index of the scan parameters."""
-        d = {}
+        """Dictionary with the multi-dimensional index of the scan parameters."""
+        d: dict = {}
         for scan_param in self.scan_params:
             d[scan_param.location_str] = scan_param.index_in_scan_dimension
         return d

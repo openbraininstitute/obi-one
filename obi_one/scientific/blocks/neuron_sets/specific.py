@@ -89,7 +89,7 @@ class AllPopulationNeurons(AllNeuronsBase):
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
 
-    def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
+    def get_populations(self, circuit: Circuit) -> list[str]:  # ruff: ignore[no-self-use]
         """Returns all population names in the circuit."""
         return Circuit.get_node_population_names(
             circuit.sonata_circuit,
@@ -117,7 +117,7 @@ class AllBiophysicalNeurons(AllNeuronsBase):
         },
     }
 
-    def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
+    def get_populations(self, circuit: Circuit) -> list[str]:  # ruff: ignore[no-self-use]
         """Returns all biophysical population names."""
         return Circuit.get_node_population_names(
             circuit.sonata_circuit,
@@ -143,7 +143,7 @@ class AllPointNeurons(AllNeuronsBase):
         },
     }
 
-    def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
+    def get_populations(self, circuit: Circuit) -> list[str]:  # ruff: ignore[no-self-use]
         """Returns all point neuron population names."""
         return Circuit.get_node_population_names(
             circuit.sonata_circuit,
@@ -169,7 +169,7 @@ class AllVirtualNeurons(AllNeuronsBase):
         },
     }
 
-    def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
+    def get_populations(self, circuit: Circuit) -> list[str]:  # ruff: ignore[no-self-use]
         """Returns all virtual population names."""
         return Circuit.get_node_population_names(
             circuit.sonata_circuit,
@@ -189,7 +189,7 @@ class AllNonVirtualNeurons(AllNeuronsBase):
         NeuronSetPopulationType.NONVIRTUAL
     )
 
-    def get_populations(self, circuit: Circuit) -> list[str]:  # noqa: PLR6301
+    def get_populations(self, circuit: Circuit) -> list[str]:  # ruff: ignore[no-self-use]
         """Returns all non-virtual population names."""
         return Circuit.get_node_population_names(
             circuit.sonata_circuit,

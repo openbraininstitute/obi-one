@@ -27,12 +27,15 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 
-def stage_circuit(*, client: Client, model: models.Circuit, output_dir: Path) -> Circuit:
+def stage_circuit(
+    *, client: Client, model: models.Circuit, output_dir: Path, max_concurrent: int = 1
+) -> Circuit:
     """Stage circuit."""
     circuit_config_path: Path = stage_circuit_entity(
         client=client,
         model=model,
         output_dir=output_dir,
+        max_concurrent=max_concurrent,
     )
     return Circuit(name=cast("str", model.name), path=str(circuit_config_path))
 
@@ -44,7 +47,7 @@ def stage_ion_channel_models_as_circuit(
     ion_channel_model_data_dict = {}
     for key, ic_data in ion_channel_models.items():
         # ic_data: IonChannelModel Block
-        # ic_data.ion_channel_model: IonChannelModelFromID  # noqa: ERA001
+        # ic_data.ion_channel_model: IonChannelModelFromID  # ruff: ignore[commented-out-code]
         conductance = {}
         if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(
             db_client=client

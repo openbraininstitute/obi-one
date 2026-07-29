@@ -292,7 +292,7 @@ def test_validate_nwb_file_cleanup_on_error(
 ):
     saved_path = tmp_path / "cleanup.nwb"
 
-    def fake_save(file: UploadFile, suffix: str) -> str:  # noqa: ARG001
+    def fake_save(file: UploadFile, suffix: str) -> str:  # ruff: ignore[unused-function-argument]
         file.file.seek(0)
         content = file.file.read()
         saved_path.write_bytes(content)
@@ -377,7 +377,7 @@ def test_validate_nwb_file_background_cleanup(
 ):
     saved_path = tmp_path / "background.nwb"
 
-    def fake_save(file: UploadFile, suffix: str) -> str:  # noqa: ARG001
+    def fake_save(file: UploadFile, suffix: str) -> str:  # ruff: ignore[unused-function-argument]
         file.file.seek(0)
         content = file.file.read()
         saved_path.write_bytes(content)

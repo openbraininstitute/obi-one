@@ -669,7 +669,7 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
-def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, complex-structure]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)

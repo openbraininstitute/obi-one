@@ -38,7 +38,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_chan
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
@@ -86,8 +86,8 @@ def create_endpoint_for_scan_config(
             raise HTTPException(status_code=500, detail=error_msg)
 
         campaign = None
-        try:
-            with tempfile.TemporaryDirectory() as tdir:
+        with tempfile.TemporaryDirectory() as tdir:
+            try:
                 grid_scan = GridScanGenerationTask(
                     form=form,
                     # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
@@ -100,25 +100,25 @@ def create_endpoint_for_scan_config(
                 if execute_single_config_task:
                     run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
-        except Exception as e:
-            error_msg = str(e)
+            except Exception as e:
+                error_msg = str(e)
 
-            if len(e.args) == 1:
-                error_msg = str(e.args[0])
-            elif len(e.args) > 1:
-                error_msg = str(e.args)
+                if len(e.args) == 1:
+                    error_msg = str(e.args[0])
+                elif len(e.args) > 1:
+                    error_msg = str(e.args)
 
-            L.error(error_msg)
+                L.error(error_msg)
 
-            raise HTTPException(status_code=500, detail=error_msg) from e
+                raise HTTPException(status_code=500, detail=error_msg) from e
 
-        else:
-            L.info("Grid scan generated successfully")
-            if campaign is not None:
-                return str(campaign.id)
+            else:
+                L.info("Grid scan generated successfully")
+                if campaign is not None:
+                    return str(campaign.id)
 
-            L.info("No campaign generated")
-            return ""
+                L.info("No campaign generated")
+                return ""
 
 
 def activate_scan_config_endpoints() -> None:

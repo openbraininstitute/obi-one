@@ -192,7 +192,7 @@ def task_success_endpoint(
         service_subtype=json_model.accounting_service_subtype,
         count=json_model.count,
         project_id=user_context.project_id,
-        http_client=accounting_factory._http_client,  # noqa: SLF001  # ty:ignore[invalid-argument-type]
+        http_client=accounting_factory._http_client,  # ruff: ignore[private-member-access]  # ty:ignore[invalid-argument-type]
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
 
@@ -204,7 +204,7 @@ def task_success_endpoint(
 )
 def read_job(
     job_id: UUID,
-    user_context: UserContextDep,  # noqa: ARG001
+    user_context: UserContextDep,  # ruff: ignore[unused-function-argument]
     ls_client: LaunchSystemClientDep,
 ) -> JobRead:
     """Proxy GET /{job_id} to the launch-system."""
@@ -218,7 +218,7 @@ def read_job(
 )
 async def stream_job(
     job_id: UUID,
-    user_context: UserContextDep,  # noqa: ARG001
+    user_context: UserContextDep,  # ruff: ignore[unused-function-argument]
     ls_async_client: LaunchSystemAsyncClientDep,
 ) -> StreamingResponse:
     """Proxy GET /{job_id}/stream from the launch-system as NDJSON."""
