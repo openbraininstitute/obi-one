@@ -87,7 +87,7 @@ def fetch_asset_by_label(
     Uses fetch_assets (checks local data store first).
     Returns the path to the fetched file.
     """
-    from entitysdk.utils.filesystem import create_dir  # noqa: PLC0415
+    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
 
     output_dir = create_dir(output_path)
     asset = client.fetch_assets(
@@ -108,9 +108,9 @@ def get_recording_protocols(
     download) and maps them to the matching ``Protocol`` subclass name via
     ``protocol_class_name_for``. Stimuli with no matching protocol are dropped.
     """
-    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
+    from entitysdk.models import ElectricalCellRecording  # ruff: ignore[import-outside-top-level]
 
-    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501, PLC0415
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long, import-outside-top-level]
         protocol_class_name_for,
     )
 
@@ -143,14 +143,14 @@ def get_recording_amplitudes(
     so they align with :func:`get_recording_protocols`; stimuli with no matching
     protocol are dropped.
     """
-    import tempfile  # noqa: PLC0415
+    import tempfile  # ruff: ignore[import-outside-top-level]
 
-    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
+    from entitysdk.models import ElectricalCellRecording  # ruff: ignore[import-outside-top-level]
 
-    from obi_one.scientific.library.electrical_cell_recording_properties import (  # noqa: PLC0415
+    from obi_one.scientific.library.electrical_cell_recording_properties import (  # ruff: ignore[import-outside-top-level]
         read_amplitudes_from_nwb,
     )
-    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501, PLC0415
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long, import-outside-top-level]
         protocol_class_name_for,
     )
 
@@ -189,7 +189,7 @@ def fetch_directory_asset_by_label(
     Uses fetch_assets (checks local data store first).
     Returns the path to the fetched directory.
     """
-    from entitysdk.utils.filesystem import create_dir  # noqa: PLC0415
+    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
 
     output_dir = create_dir(output_path)
     asset = client.fetch_assets(

@@ -5,7 +5,7 @@ from pydantic import Field
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long]
     APWaveformProtocol,
     IDRestProtocol,
     IDThreshProtocol,

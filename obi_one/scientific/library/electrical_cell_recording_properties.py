@@ -89,7 +89,7 @@ def read_amplitudes_from_nwb(
     """
     requested = set(protocol_names)
     amps: dict[str, set[float]] = {p: set() for p in protocol_names}
-    with h5py.File(str(nwb_path), "r") as f:  # noqa: PLR1702
+    with h5py.File(str(nwb_path), "r") as f:  # ruff: ignore[too-many-nested-blocks]
         if "data_organization" not in f or "stimulus" not in f:
             return {p: [] for p in protocol_names}
         stim_pres = f["stimulus"]["presentation"]

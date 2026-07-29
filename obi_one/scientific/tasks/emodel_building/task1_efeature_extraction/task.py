@@ -189,7 +189,7 @@ class EModelEFeatureExtractionTask(Task):
         the NWBs only need downloading — no timing or amplitude discovery happens
         here. Returns the configuration and the validation-protocol names.
         """
-        from bluepyemodel.efeatures_extraction.targets_configuration import (  # noqa: PLC0415
+        from bluepyemodel.efeatures_extraction.targets_configuration import (  # ruff: ignore[import-outside-top-level]
             TargetsConfiguration,
         )
 
@@ -211,11 +211,13 @@ class EModelEFeatureExtractionTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
-        from bluepyemodel.access_point import get_access_point  # noqa: PLC0415
-        from bluepyemodel.efeatures_extraction.efeatures_extraction import (  # noqa: PLC0415
+        from bluepyemodel.access_point import (  # ruff: ignore[import-outside-top-level]
+            get_access_point,
+        )
+        from bluepyemodel.efeatures_extraction.efeatures_extraction import (  # ruff: ignore[import-outside-top-level]
             extract_save_features_protocols,
         )
 
@@ -264,9 +266,9 @@ class EModelEFeatureExtractionTask(Task):
 
         return coord_root
 
-    def _build_figures_manifest(self, figures_dir: Path) -> dict:  # noqa: PLR6301
+    def _build_figures_manifest(self, figures_dir: Path) -> dict:  # ruff: ignore[no-self-use]
         """Build a manifest.json describing all PDF figure files in the directory."""
-        import re  # noqa: PLC0415
+        import re  # ruff: ignore[import-outside-top-level]
 
         files_list = []
         for pdf_path in sorted(figures_dir.rglob("*.pdf")):
@@ -309,10 +311,10 @@ class EModelEFeatureExtractionTask(Task):
         db_client: entitysdk.client.Client,
     ) -> None:
         """Register a TaskResult entity and upload extraction output assets."""
-        import json  # noqa: PLC0415
+        import json  # ruff: ignore[import-outside-top-level]
 
-        from entitysdk.models import TaskResult  # noqa: PLC0415
-        from entitysdk.types import (  # noqa: PLC0415
+        from entitysdk.models import TaskResult  # ruff: ignore[import-outside-top-level]
+        from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
             AssetLabel,
             ContentType,
             TaskResultType,
@@ -384,8 +386,8 @@ class EModelEFeatureExtractionTask(Task):
         # format is not compatible with the allowed content type.
 
         # Link input ElectricalCellRecording entities to the TaskResult via Derivation.
-        from entitysdk.models import Derivation  # noqa: PLC0415
-        from entitysdk.types import DerivationType  # noqa: PLC0415
+        from entitysdk.models import Derivation  # ruff: ignore[import-outside-top-level]
+        from entitysdk.types import DerivationType  # ruff: ignore[import-outside-top-level]
 
         for recording in self.config.initialize.electrical_cell_recording:
             recording_entity = recording.entity(db_client=db_client)

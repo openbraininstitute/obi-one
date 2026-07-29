@@ -45,10 +45,10 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.constant
     TRACE_RESAMPLING_TIMESTEP_DESCRIPTION,
     TRACE_RESAMPLING_TIMESTEP_TITLE,
 )
-from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # ruff: ignore[line-too-long]
     efeatures,
 )
-from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.efeatures import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.efeatures import (  # ruff: ignore[line-too-long]
     EFeature,
 )
 

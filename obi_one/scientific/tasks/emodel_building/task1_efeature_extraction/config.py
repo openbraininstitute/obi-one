@@ -17,7 +17,7 @@ from obi_one.scientific.library.info_scan_config.config import (
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.initialize import (
     ExtractionInitialize,
 )
-from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.protocol_and_feature_selection import (  # noqa: E501
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.protocol_and_feature_selection import (  # ruff: ignore[line-too-long]
     ProtocolAndFeatureSelection,
 )
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.settings import (
