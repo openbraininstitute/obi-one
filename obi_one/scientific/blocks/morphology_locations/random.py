@@ -15,7 +15,7 @@ _MIN_PD_SD = 0.1
 
 
 class RandomMorphologyLocations(MorphologyLocationsBlock):
-    """Completely random locations without constraint."""
+    """Uniformly distributed random locations."""
 
     title: ClassVar[str] = "Random Morphology Locations"
 

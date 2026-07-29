@@ -19,10 +19,12 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     title: ClassVar[str] = "Path Distance Morphology Locations"
 
     path_dist_mean: float | list[float] = Field(
-        title="Path Distance Mean",
+        default=100.0,
+        title="Path Distance Target",
         description=(
-            "Target soma path distance for generated locations. Candidate morphology intervals "
-            "are centered around this distance."
+            "Target soma path distance used to bias where candidate locations are selected. "
+            "Final locations are sampled uniformly from valid morphology intervals within "
+            "the path-distance tolerance."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -30,7 +32,8 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
         },
     )
     path_dist_tolerance: float | list[float] = Field(
-        title="Path Distance Tolerance",
+        default=50.0,
+        title="Max Distance from Path Distance Target",
         description=(
             "Allowed deviation from the target soma path distance. Locations are sampled "
             "uniformly from valid morphology intervals within this tolerance. Must be greater "

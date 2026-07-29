@@ -21,19 +21,21 @@ _MIN_PD_SD = 0.1
 class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     """Clustered locations with cluster centers randomly distributed across selected neurites."""
 
-    title: ClassVar[str] = "Clustered Morphology Locations"
+    title: ClassVar[str] = "Random Clustered Morphology Locations"
 
     n_clusters: int | list[int] = Field(
+        default=5,
         title="Number of Clusters",
         description=(
-            "Number of clusters to generate. The total number of locations is divided across "
-            "these clusters."
+            "Number of randomly placed clusters to generate. The total number of locations is "
+            "divided across these clusters."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
     cluster_max_distance: float | list[float] = Field(
+        default=50.0,
         title="Maximum Distance from Cluster Center",
         description=(
             "Maximum soma path distance between each generated location and its cluster center. "
@@ -112,14 +114,18 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     title: ClassVar[str] = "Clustered Path Distance Morphology Locations"
 
     path_dist_mean: float | list[float] = Field(
-        title="Cluster Path Distance Mean",
-        description=("Mean soma path distance used to bias where cluster centers are selected."),
+        default=100.0,
+        title="Cluster Path Distance Target",
+        description=(
+            "Target soma path distance used to bias where cluster centers are selected."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
     path_dist_sd: float | list[float] = Field(
+        default=50.0,
         title="Cluster Path Distance Standard Deviation",
         description=(
             "Standard deviation of the soma path-distance distribution used to select "
