@@ -166,7 +166,7 @@ def get_recording_amplitudes(
         with tempfile.TemporaryDirectory() as tmp:
             asset = db_client.fetch_assets(
                 entity,
-                selection={"content_type": ContentType.application_nwb},
+                selection={"content_type": ContentType.application_nwb, "label": AssetLabel.nwb},
                 output_path=Path(tmp),
             ).one()
             per_protocol = read_amplitudes_from_nwb(Path(asset.path), protocol_names)

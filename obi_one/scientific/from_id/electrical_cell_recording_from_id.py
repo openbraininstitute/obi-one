@@ -4,7 +4,7 @@ from typing import ClassVar
 import entitysdk
 from entitysdk.models import ElectricalCellRecording
 from entitysdk.models.entity import Entity
-from entitysdk.types import ContentType
+from entitysdk.types import AssetLabel, ContentType
 from entitysdk.utils.filesystem import create_dir
 from pydantic import PrivateAttr
 
@@ -23,7 +23,7 @@ class ElectricalCellRecordingFromID(EntityFromID):
         output_dir = create_dir(dest_dir)
         asset = db_client.fetch_assets(
             self.entity(db_client=db_client),
-            selection={"content_type": ContentType.application_nwb},
+            selection={"content_type": ContentType.application_nwb, "label": AssetLabel.nwb},
             output_path=output_dir,
         ).one()
 
