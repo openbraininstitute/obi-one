@@ -6,7 +6,7 @@ from typing import Self
 from uuid import UUID
 
 from entitysdk.types import AgePeriod, Sex
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Blocklist: whole-word matches only (case-insensitive) to avoid false positives like "testes"
 _BLOCKLIST_WORDS = {"test", "tmp", "todo", "placeholder", "example", "foo", "bar", "asdf", "xxx"}
@@ -50,6 +50,8 @@ def normalize_name_for_comparison(name: str) -> str:
 
 class SubjectRegisterRequest(BaseModel):
     """Request body for registering a new subject."""
+
+    model_config = ConfigDict(from_attributes=True, ser_json_timedelta="float")
 
     name: str = Field(description="Unique name for the subject")
     description: str = Field(description="Description of the subject")
