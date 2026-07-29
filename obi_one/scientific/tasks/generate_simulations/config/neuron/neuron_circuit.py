@@ -81,9 +81,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
-            MappedPropertiesGroup.MORPHOLOGY: (
-                "/mapped-morphology-properties/{circuit_id}"
-            ),
+            MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),
         },
     }
 

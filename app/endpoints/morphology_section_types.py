@@ -46,8 +46,7 @@ def _raise_discovery_error(entity_id: UUID, exc: Exception) -> NoReturn:
     "/mapped-morphology-properties/{entity_id}",
     summary="Mapped morphology properties",
     description=(
-        "Returns section types available in an MEModel, MEModel-with-synapses, "
-        "or cell morphology."
+        "Returns section types available in an MEModel, MEModel-with-synapses, or cell morphology."
     ),
 )
 def mapped_morphology_properties_endpoint(
