@@ -10,12 +10,15 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
-    MorphologySourceMappedProperties,
+    MorphologyMappedProperties,
 )
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
 )
+
+SectionType = Literal[3, 4]
+SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]] | None
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
@@ -58,7 +61,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-    section_types: tuple[Literal[3, 4], ...] | list[tuple[Literal[3, 4], ...]] | None = Field(
+    section_types: SectionTypes = Field(
         default=(3, 4),
         title="Section Types",
         description=(
@@ -67,8 +70,8 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY_SOURCE,
-            SchemaKey.PROPERTY: MorphologySourceMappedProperties.SECTION_TYPES,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY,
+            SchemaKey.PROPERTY: MorphologyMappedProperties.SECTION_TYPES,
         },
     )
 

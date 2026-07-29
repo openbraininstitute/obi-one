@@ -41,8 +41,8 @@ class MorphologyLocationsScanConfig(ScanConfig):
     )
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
-            MappedPropertiesGroup.MORPHOLOGY_SOURCE: (
-                "/mapped-morphology-source-properties/{morphology_id}"
+            MappedPropertiesGroup.MORPHOLOGY: (
+                "/mapped-morphology-properties/{morphology_id}"
             ),
         },
     }

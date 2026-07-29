@@ -142,7 +142,7 @@ def _memodel_with_synapses_section_type_options(
     circuit: Circuit,
 ) -> list[MorphologySectionTypeOption]:
     if circuit.scale != CircuitScale.single or circuit.number_neurons != 1:
-        msg = "MEModel-with-synapses source must be a single-neuron circuit."
+        msg = "MEModel-with-synapses circuit must be a single-neuron circuit."
         raise ValueError(msg)
     if circuit.id is None:
         msg = "MEModel-with-synapses circuit is missing an id."
@@ -187,13 +187,13 @@ def _circuit_section_type_options(
     return _memodel_with_synapses_section_type_options(client, circuit)
 
 
-def morphology_source_section_type_options(
+def morphology_section_type_options(
     client: Client,
-    source_id: UUID,
+    entity_id: UUID,
 ) -> list[MorphologySectionTypeOption]:
     for entity_type in (MEModel, CellMorphology, Circuit):
         try:
-            entity = client.get_entity(entity_id=source_id, entity_type=entity_type)
+            entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)
         except EntitySDKError:
             continue
 
@@ -205,6 +205,6 @@ def morphology_source_section_type_options(
             return _circuit_section_type_options(client, entity)
 
     msg = (
-        f"Entity {source_id} is not an MEModel, MEModel-with-synapses circuit, or cell morphology."
+        f"Entity {entity_id} is not an MEModel, MEModel-with-synapses circuit, or cell morphology."
     )
     raise EntitySDKError(msg)

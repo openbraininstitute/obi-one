@@ -9,7 +9,7 @@ class EntityType(StrEnum):
 class MappedPropertiesGroup(StrEnum):
     CIRCUIT = "Circuit"
     ION_CHANNEL_MODEL = "IonChannelModel"
-    MORPHOLOGY_SOURCE = "MorphologySource"
+    MORPHOLOGY = "Morphology"
 
 
 class CircuitMappedProperties(StrEnum):
@@ -23,7 +23,7 @@ class CircuitMappedProperties(StrEnum):
     NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION = "NodePropertyUniqueValuesByPopulation"
 
 
-class MorphologySourceMappedProperties(StrEnum):
+class MorphologyMappedProperties(StrEnum):
     SECTION_TYPES = "SectionTypes"
 
 

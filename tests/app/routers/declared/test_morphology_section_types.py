@@ -23,52 +23,52 @@ def _client():
     return TestClient(app), db_client
 
 
-@patch(f"{ROUTER_MODULE}.morphology_source_section_type_options")
-def test_mapped_morphology_source_properties(mock_options):
+@patch(f"{ROUTER_MODULE}.morphology_section_type_options")
+def test_mapped_morphology_properties(mock_options):
     client, db_client = _client()
-    source_id = uuid4()
+    entity_id = uuid4()
     mock_options.return_value = [
-        MorphologySectionTypeOption(value=2, label="Axon"),
+        MorphologySectionTypeOption(value=3, label="Basal dendrite"),
         MorphologySectionTypeOption(value=4, label="Apical dendrite"),
     ]
 
-    response = client.get(f"/declared/mapped-morphology-source-properties/{source_id}")
+    response = client.get(f"/declared/mapped-morphology-properties/{entity_id}")
 
     assert response.status_code == 200
     assert response.json() == {
         "SectionTypes": [
-            {"value": 2, "label": "Axon"},
+            {"value": 3, "label": "Basal dendrite"},
             {"value": 4, "label": "Apical dendrite"},
         ],
         "usability": {},
     }
-    mock_options.assert_called_once_with(db_client, source_id)
+    mock_options.assert_called_once_with(db_client, entity_id)
 
 
-@patch(f"{ROUTER_MODULE}.morphology_source_section_type_options")
-def test_mapped_morphology_source_properties_not_found(mock_options):
+@patch(f"{ROUTER_MODULE}.morphology_section_type_options")
+def test_mapped_morphology_properties_not_found(mock_options):
     client, _db_client = _client()
-    source_id = uuid4()
+    entity_id = uuid4()
     mock_options.side_effect = EntitySDKError("not found")
 
-    response = client.get(f"/declared/mapped-morphology-source-properties/{source_id}")
+    response = client.get(f"/declared/mapped-morphology-properties/{entity_id}")
 
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "NOT_FOUND"
 
 
-@patch(f"{ROUTER_MODULE}.morphology_source_section_type_options")
-def test_mapped_morphology_source_properties_invalid_source(mock_options):
+@patch(f"{ROUTER_MODULE}.morphology_section_type_options")
+def test_mapped_morphology_properties_invalid_entity(mock_options):
     client, _db_client = _client()
-    source_id = uuid4()
+    entity_id = uuid4()
     mock_options.side_effect = ValueError("unsupported morphology")
 
-    response = client.get(f"/declared/mapped-morphology-source-properties/{source_id}")
+    response = client.get(f"/declared/mapped-morphology-properties/{entity_id}")
 
     assert response.status_code == 422
     assert response.json()["detail"] == {
         "code": "INVALID_REQUEST",
         "detail": (
-            f"Could not discover morphology section types for {source_id}: unsupported morphology"
+            f"Could not discover morphology section types for {entity_id}: unsupported morphology"
         ),
     }

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.scientific.library.entity_property_types import (
-    MorphologySourceMappedProperties,
+    MorphologyMappedProperties,
 )
 
 
@@ -10,10 +10,10 @@ class MorphologySectionTypeOption(BaseModel):
     label: str
 
 
-class MorphologySourceProperties(BaseModel):
+class MorphologyProperties(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     section_types: list[MorphologySectionTypeOption] = Field(
-        alias=MorphologySourceMappedProperties.SECTION_TYPES
+        alias=MorphologyMappedProperties.SECTION_TYPES
     )
     usability: dict[str, bool] = Field(default_factory=dict)

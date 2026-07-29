@@ -28,8 +28,8 @@ def test_morphology_section_type_selection_schema():
     )
 
 
-def test_morphology_source_endpoint_is_available_for_neuron_simulation_configs():
-    endpoint = "/mapped-morphology-source-properties/{circuit_id}"
+def test_morphology_endpoint_is_available_for_neuron_simulation_configs():
+    endpoint = "/mapped-morphology-properties/{circuit_id}"
 
     for config_class in (
         CircuitSimulationScanConfig,
@@ -38,7 +38,7 @@ def test_morphology_source_endpoint_is_available_for_neuron_simulation_configs()
     ):
         schema = config_class.model_json_schema()
         property_endpoints = schema[SchemaKey.PROPERTY_ENDPOINTS]
-        assert property_endpoints[MappedPropertiesGroup.MORPHOLOGY_SOURCE] == endpoint
+        assert property_endpoints[MappedPropertiesGroup.MORPHOLOGY] == endpoint
         assert property_endpoints[MappedPropertiesGroup.CIRCUIT] == (
             "/mapped-circuit-properties/{circuit_id}"
         )
@@ -47,11 +47,11 @@ def test_morphology_source_endpoint_is_available_for_neuron_simulation_configs()
         assert schema[SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS]
 
 
-def test_direct_morphology_uses_generic_source_endpoint_with_supported_placeholder():
+def test_direct_morphology_uses_generic_endpoint_with_supported_placeholder():
     property_endpoints = MorphologyLocationsScanConfig.model_json_schema()[
         SchemaKey.PROPERTY_ENDPOINTS
     ]
 
-    assert property_endpoints[MappedPropertiesGroup.MORPHOLOGY_SOURCE] == (
-        "/mapped-morphology-source-properties/{morphology_id}"
+    assert property_endpoints[MappedPropertiesGroup.MORPHOLOGY] == (
+        "/mapped-morphology-properties/{morphology_id}"
     )

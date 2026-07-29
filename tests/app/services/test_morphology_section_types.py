@@ -15,7 +15,7 @@ from app.services.morphology_section_types import (
     _load_cell_morphology,
     memodel_section_type_options,
     memodel_with_synapses_section_type_options,
-    morphology_source_section_type_options,
+    morphology_section_type_options,
     section_type_options,
     static_section_type_options,
 )
@@ -56,7 +56,7 @@ def test_static_section_type_options_returns_all_target_types():
     ]
 
 
-def test_morphology_source_section_type_options_supports_direct_cell_morphology_id():
+def test_morphology_section_type_options_supports_direct_cell_morphology_id():
     morphology = CellMorphology.model_validate(
         json.loads((DATA_DIR / "cell_morphology.json").read_bytes())
     )
@@ -69,7 +69,7 @@ def test_morphology_source_section_type_options_supports_direct_cell_morphology_
     client.get_entity.side_effect = _entity_lookup({CellMorphology: morphology})
     client.download_content.return_value = (DATA_DIR / "cell_morphology.swc").read_bytes()
 
-    options = morphology_source_section_type_options(client, morphology.id)
+    options = morphology_section_type_options(client, morphology.id)
 
     assert _values_and_labels(options) == [
         (3, "Basal dendrite"),
@@ -181,7 +181,7 @@ def test_memodel_linked_morphology_requires_id():
 
 
 def test_memodel_with_synapses_section_type_options():
-    source_dir = SINGLE_NEURON_CIRCUIT_DIR / "SingleNeuronCircuit__top_nodes_dim6__IDX0"
+    fixture_dir = SINGLE_NEURON_CIRCUIT_DIR / "SingleNeuronCircuit__top_nodes_dim6__IDX0"
     circuit_id = uuid4()
     asset_id = uuid4()
     circuit = Circuit.model_construct(
@@ -198,7 +198,7 @@ def test_memodel_with_synapses_section_type_options():
 
     def copy_asset(*, output_path, asset_path, **_kwargs):
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source_dir / asset_path, output_path)
+        shutil.copyfile(fixture_dir / asset_path, output_path)
 
     client.download_file.side_effect = copy_asset
 
@@ -324,43 +324,43 @@ def test_memodel_with_synapses_requires_one_biophysical_node(mock_download, mock
 
 
 @patch(f"{SERVICE_MODULE}._memodel_section_type_options")
-def test_morphology_source_dispatches_to_memodel(mock_options):
-    source_id = uuid4()
-    memodel = MEModel.model_construct(id=source_id)
+def test_morphology_dispatches_to_memodel(mock_options):
+    entity_id = uuid4()
+    memodel = MEModel.model_construct(id=entity_id)
     expected = [MorphologySectionTypeOption(value=3, label="Basal dendrite")]
     mock_options.return_value = expected
     client = MagicMock(entitysdk.client.Client)
     client.get_entity.side_effect = _entity_lookup({MEModel: memodel})
 
-    assert morphology_source_section_type_options(client, source_id) == expected
+    assert morphology_section_type_options(client, entity_id) == expected
 
     assert client.get_entity.call_args_list == [
-        call(entity_id=source_id, entity_type=MEModel),
+        call(entity_id=entity_id, entity_type=MEModel),
     ]
     mock_options.assert_called_once_with(client, memodel)
 
 
 @patch(f"{SERVICE_MODULE}.section_type_options")
 @patch(f"{SERVICE_MODULE}._load_cell_morphology")
-def test_morphology_source_dispatches_to_cell_morphology(mock_load, mock_options):
-    source_id = uuid4()
-    morphology = CellMorphology.model_construct(id=source_id, assets=[])
-    expected = [MorphologySectionTypeOption(value=2, label="Axon")]
+def test_morphology_dispatches_to_cell_morphology(mock_load, mock_options):
+    entity_id = uuid4()
+    morphology = CellMorphology.model_construct(id=entity_id, assets=[])
+    expected = [MorphologySectionTypeOption(value=3, label="Basal dendrite")]
     mock_options.return_value = expected
     client = MagicMock(entitysdk.client.Client)
     client.get_entity.side_effect = _entity_lookup({CellMorphology: morphology})
 
-    assert morphology_source_section_type_options(client, source_id) == expected
+    assert morphology_section_type_options(client, entity_id) == expected
 
     mock_load.assert_called_once_with(client, morphology)
     mock_options.assert_called_once_with(mock_load.return_value)
 
 
 @patch(f"{SERVICE_MODULE}._memodel_with_synapses_section_type_options")
-def test_morphology_source_dispatches_to_memodel_with_synapses(mock_options):
-    source_id = uuid4()
+def test_morphology_dispatches_to_memodel_with_synapses(mock_options):
+    entity_id = uuid4()
     circuit = Circuit.model_construct(
-        id=source_id,
+        id=entity_id,
         scale=CircuitScale.single,
         number_neurons=1,
         has_morphologies=True,
@@ -370,12 +370,12 @@ def test_morphology_source_dispatches_to_memodel_with_synapses(mock_options):
     client = MagicMock(entitysdk.client.Client)
     client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
 
-    assert morphology_source_section_type_options(client, source_id) == expected
+    assert morphology_section_type_options(client, entity_id) == expected
 
     assert client.get_entity.call_args_list == [
-        call(entity_id=source_id, entity_type=MEModel),
-        call(entity_id=source_id, entity_type=CellMorphology),
-        call(entity_id=source_id, entity_type=Circuit),
+        call(entity_id=entity_id, entity_type=MEModel),
+        call(entity_id=entity_id, entity_type=CellMorphology),
+        call(entity_id=entity_id, entity_type=Circuit),
     ]
     mock_options.assert_called_once_with(client, circuit)
 
@@ -384,10 +384,10 @@ def test_morphology_source_dispatches_to_memodel_with_synapses(mock_options):
     "scale",
     [CircuitScale.pair, CircuitScale.small, CircuitScale.microcircuit],
 )
-def test_morphology_source_returns_static_options_for_supported_multi_neuron_circuits(scale):
-    source_id = uuid4()
+def test_morphology_returns_static_options_for_supported_multi_neuron_circuits(scale):
+    entity_id = uuid4()
     circuit = Circuit.model_construct(
-        id=source_id,
+        id=entity_id,
         scale=scale,
         number_neurons=10,
         has_morphologies=True,
@@ -395,7 +395,7 @@ def test_morphology_source_returns_static_options_for_supported_multi_neuron_cir
     client = MagicMock(entitysdk.client.Client)
     client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
 
-    assert _values_and_labels(morphology_source_section_type_options(client, source_id)) == [
+    assert _values_and_labels(morphology_section_type_options(client, entity_id)) == [
         (3, "Basal dendrite"),
         (4, "Apical dendrite"),
     ]
@@ -403,10 +403,10 @@ def test_morphology_source_returns_static_options_for_supported_multi_neuron_cir
     client.download_file.assert_not_called()
 
 
-def test_morphology_source_rejects_supported_circuit_without_morphologies():
-    source_id = uuid4()
+def test_morphology_rejects_supported_circuit_without_morphologies():
+    entity_id = uuid4()
     circuit = Circuit.model_construct(
-        id=source_id,
+        id=entity_id,
         scale=CircuitScale.microcircuit,
         number_neurons=10,
         has_morphologies=False,
@@ -415,7 +415,7 @@ def test_morphology_source_rejects_supported_circuit_without_morphologies():
     client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
 
     with pytest.raises(ValueError, match="has no morphologies"):
-        morphology_source_section_type_options(client, source_id)
+        morphology_section_type_options(client, entity_id)
 
     client.select_assets.assert_not_called()
     client.download_file.assert_not_called()
@@ -425,10 +425,10 @@ def test_morphology_source_rejects_supported_circuit_without_morphologies():
     "scale",
     [CircuitScale.region, CircuitScale.system, CircuitScale.whole_brain],
 )
-def test_morphology_source_rejects_large_circuit_section_type_options(scale):
-    source_id = uuid4()
+def test_morphology_rejects_large_circuit_section_type_options(scale):
+    entity_id = uuid4()
     circuit = Circuit.model_construct(
-        id=source_id,
+        id=entity_id,
         scale=scale,
         number_neurons=100,
         has_morphologies=True,
@@ -437,36 +437,36 @@ def test_morphology_source_rejects_large_circuit_section_type_options(scale):
     client.get_entity.side_effect = _entity_lookup({Circuit: circuit})
 
     with pytest.raises(ValueError, match="only supported up to microcircuit"):
-        morphology_source_section_type_options(client, source_id)
+        morphology_section_type_options(client, entity_id)
 
     client.select_assets.assert_not_called()
     client.download_file.assert_not_called()
 
 
-def test_morphology_source_rejects_unexpected_entity_type():
-    source_id = uuid4()
+def test_morphology_rejects_unexpected_entity_type():
+    entity_id = uuid4()
     client = MagicMock(entitysdk.client.Client)
     client.get_entity.return_value = object()
 
-    with pytest.raises(EntitySDKError, match=rf"Entity {source_id} is not an MEModel"):
-        morphology_source_section_type_options(client, source_id)
+    with pytest.raises(EntitySDKError, match=rf"Entity {entity_id} is not an MEModel"):
+        morphology_section_type_options(client, entity_id)
 
     assert client.get_entity.call_count == 3
 
 
-def test_morphology_source_rejects_unsupported_entity():
-    source_id = uuid4()
+def test_morphology_rejects_unsupported_entity():
+    entity_id = uuid4()
     client = MagicMock(entitysdk.client.Client)
     client.get_entity.side_effect = EntitySDKError("not found")
 
     with pytest.raises(
         EntitySDKError,
-        match=rf"Entity {source_id} is not an MEModel, MEModel-with-synapses circuit",
+        match=rf"Entity {entity_id} is not an MEModel, MEModel-with-synapses circuit",
     ):
-        morphology_source_section_type_options(client, source_id)
+        morphology_section_type_options(client, entity_id)
 
     assert client.get_entity.call_args_list == [
-        call(entity_id=source_id, entity_type=MEModel),
-        call(entity_id=source_id, entity_type=CellMorphology),
-        call(entity_id=source_id, entity_type=Circuit),
+        call(entity_id=entity_id, entity_type=MEModel),
+        call(entity_id=entity_id, entity_type=CellMorphology),
+        call(entity_id=entity_id, entity_type=Circuit),
     ]
