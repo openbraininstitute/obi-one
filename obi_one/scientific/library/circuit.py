@@ -191,7 +191,7 @@ class Circuit(OBIBaseModel):
         node = self.sonata_circuit.nodes[pop].get(node_id)
         try:
             return node.morphology
-        except Exception:  # noqa: BLE001
+        except Exception:  # ruff: ignore[blind-except]
             try:
                 return node["morphology"]
             except Exception as e:
