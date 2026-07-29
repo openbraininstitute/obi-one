@@ -14,15 +14,15 @@ from obi_one.scientific.library.morphology_locations import (
 
 
 class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
-    """Locations around a specified path distance."""
+    """Locations uniformly sampled near a specified soma path distance."""
 
     title: ClassVar[str] = "Path Distance Morphology Locations"
 
     path_dist_mean: float | list[float] = Field(
         title="Path Distance Mean",
         description=(
-            "Target soma path distance for generated locations. Locations are sampled around "
-            "this distance along the morphology."
+            "Target soma path distance for generated locations. Candidate morphology intervals "
+            "are centered around this distance."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -32,7 +32,9 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     path_dist_tolerance: float | list[float] = Field(
         title="Path Distance Tolerance",
         description=(
-            "Allowed deviation from the target soma path distance. Must be greater than 1.0."
+            "Allowed deviation from the target soma path distance. Locations are sampled "
+            "uniformly from valid morphology intervals within this tolerance. Must be greater "
+            "than 1.0."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,

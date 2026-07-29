@@ -19,7 +19,7 @@ _MIN_PD_SD = 0.1
 
 
 class ClusteredMorphologyLocations(MorphologyLocationsBlock):
-    """Clustered random locations."""
+    """Clustered locations with cluster centers randomly distributed across selected neurites."""
 
     title: ClassVar[str] = "Clustered Morphology Locations"
 
@@ -34,10 +34,10 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
         },
     )
     cluster_max_distance: float | list[float] = Field(
-        title="Cluster Maximum Distance",
+        title="Maximum Distance from Cluster Center",
         description=(
-            "Maximum soma path distance between each generated location and the center of "
-            "its cluster."
+            "Maximum soma path distance between each generated location and its cluster center. "
+            "Locations are sampled uniformly from valid morphology intervals within this distance."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -105,14 +105,14 @@ class ClusteredGroupedMorphologyLocations(
 
 
 class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
-    """Clustered random locations around a specified path distance. Also creates
-    groups within each cluster. This exposes the full possible complexity.
+    """Locations uniformly sampled within clusters whose centers are normally distributed
+    around a specified soma path distance.
     """
 
     title: ClassVar[str] = "Clustered Path Distance Morphology Locations"
 
     path_dist_mean: float | list[float] = Field(
-        title="Path Distance Mean",
+        title="Cluster Path Distance Mean",
         description=("Mean soma path distance used to bias where cluster centers are selected."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -120,7 +120,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         },
     )
     path_dist_sd: float | list[float] = Field(
-        title="Path Distance Standard Deviation",
+        title="Cluster Path Distance Standard Deviation",
         description=(
             "Standard deviation of the soma path-distance distribution used to select "
             "cluster centers."
@@ -132,7 +132,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     )
     n_groups_per_cluster: int | list[int] = Field(
         default=1,
-        title="Number of Groups per Cluster",
+        title="Groups per Cluster",
         description=("Number of conceptual groups to assign within each generated cluster."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,

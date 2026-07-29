@@ -859,6 +859,14 @@ def test_continuous_stimulus_exposes_single_target_field():
     assert fields["neuron_set"].title == "Target"
     assert "MorphologyLocationsReference" in reference_types
     assert "RandomMorphologyLocations" in morphology_locations_ref_schema["allowed_block_types"]
+    assert (
+        "RandomGroupedMorphologyLocations"
+        not in morphology_locations_ref_schema["allowed_block_types"]
+    )
+    assert (
+        "ClusteredGroupedMorphologyLocations"
+        not in morphology_locations_ref_schema["allowed_block_types"]
+    )
     assert "locations" not in fields
     assert "compartment_set" not in fields
 
