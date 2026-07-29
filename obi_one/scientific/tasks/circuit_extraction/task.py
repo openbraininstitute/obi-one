@@ -83,7 +83,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
     def default_neuron_set_reference(
         self,
     ) -> BiophysicalNeuronSetReference:
-        """Returns the default neuron set reference for the simulation."""
+        """The default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
@@ -97,7 +97,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
     def default_point_neuron_set_reference(
         self,
     ) -> PointNeuronSetReference:
-        """Returns the default point neuron set reference for the simulation."""
+        """The default point neuron set reference for the simulation."""
         ref = PointNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
         )
@@ -349,7 +349,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(  # noqa: C901, PLR0914, PLR0915
+    def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]

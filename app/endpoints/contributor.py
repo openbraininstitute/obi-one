@@ -40,7 +40,7 @@ router = APIRouter(
 )
 def get_contributor(
     db_client: DatabaseClientDep,
-    user_context: UserContextDep,  # noqa: ARG001
+    user_context: UserContextDep,  # ruff: ignore[unused-function-argument]
     http_client: HttpClientDep,
     identifier: PersistentIdentifierDep,
 ) -> PersonPreview | OrganizationPreview:
@@ -90,7 +90,7 @@ def get_contributor(
 def register_contributor(
     identifier: PersistentIdentifierDep,
     db_client: DatabaseClientDep,
-    user_context: UserContextDep,  # noqa: ARG001
+    user_context: UserContextDep,  # ruff: ignore[unused-function-argument]
     http_client: HttpClientDep,
 ) -> dict:
     """Register a contributor by resolving metadata and creating it in entitycore."""

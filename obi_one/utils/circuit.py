@@ -12,6 +12,9 @@ from typing import TYPE_CHECKING
 import bluepysnap as snap
 import bluepysnap.circuit_validation
 
+from obi_one.core.exception import OBIONEError
+from obi_one.core.path import NamedPath
+
 if TYPE_CHECKING:
     import pandas as pd
 import h5py
@@ -203,7 +206,7 @@ def get_morph_dirs(
     dest_morph_dirs = {}
     for morph_ext in ["swc", "asc", "h5"]:
         try:
-            morph_folder = original_circuit.nodes[pop_name].morph._get_morphology_base(  # noqa: SLF001
+            morph_folder = original_circuit.nodes[pop_name].morph._get_morphology_base(  # ruff: ignore[private-member-access]
                 morph_ext
             )
             # TODO: Should not use private function!! But required to get path
@@ -223,7 +226,7 @@ def get_morph_dirs(
             # Morphology folder does not contain morphologies
             continue
 
-        dest_morph_dirs[morph_ext] = pop.morph._get_morphology_base(morph_ext)  # noqa: SLF001
+        dest_morph_dirs[morph_ext] = pop.morph._get_morphology_base(morph_ext)  # ruff: ignore[private-member-access]
         # TODO: Should not use private function!!
         src_morph_dirs[morph_ext] = morph_folder
     return src_morph_dirs, dest_morph_dirs
@@ -354,7 +357,7 @@ def _any_not_empty(data_series: pd.Series) -> bool:
     return any(v not in {"", "none", "null"} for v in values)
 
 
-def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # noqa: C901
+def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff: ignore[complex-structure]
     """Returns circuit properties derived from the circuit files.
 
     Args:
@@ -418,9 +421,7 @@ def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) ->
     Uses the circular 2D network plot if available. Returns None if no suitable
     figure is found.
     """
-    from PIL import Image  # noqa: PLC0415
-
-    from obi_one.core.exception import OBIONEError  # noqa: PLC0415
+    from PIL import Image  # ruff: ignore[import-outside-top-level]
 
     # Use circular view from basic connectivity plots, if existing
     if basic_plots_dir:
@@ -485,11 +486,13 @@ def run_circuit_folder_compression(
     Returns:
         Path to the generated .gz file.
     """
-    from obi_one.core.exception import OBIONEError  # noqa: PLC0415
-    from obi_one.core.path import NamedPath  # noqa: PLC0415
-    from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-    from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.tasks.folder_compression import (  # noqa: PLC0415
+    from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
+        run_tasks_for_generated_scan,
+    )
+    from obi_one.core.scan_generation import (  # ruff: ignore[import-outside-top-level]
+        GridScanGenerationTask,
+    )
+    from obi_one.scientific.tasks.folder_compression import (  # ruff: ignore[import-outside-top-level]
         FolderCompressionScanConfig,
     )
 
@@ -538,10 +541,13 @@ def run_connectivity_matrix_extraction(
     Returns:
         Tuple of (output_dir, matrix_config_path, edge_population_name).
     """
-    from obi_one.core.exception import OBIONEError  # noqa: PLC0415
-    from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-    from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # noqa: PLC0415
+    from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
+        run_tasks_for_generated_scan,
+    )
+    from obi_one.core.scan_generation import (  # ruff: ignore[import-outside-top-level]
+        GridScanGenerationTask,
+    )
+    from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # ruff: ignore[import-outside-top-level]
         ConnectivityMatrixExtractionScanConfig,
     )
 
@@ -610,14 +616,18 @@ def run_basic_connectivity_plots(
     Returns:
         Tuple of (output_dir, list of plot filenames).
     """
-    from conntility import ConnectivityMatrix  # noqa: PLC0415
+    from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
 
-    from obi_one.core.exception import OBIONEError  # noqa: PLC0415
-    from obi_one.core.path import NamedPath  # noqa: PLC0415
-    from obi_one.core.run_tasks import run_tasks_for_generated_scan  # noqa: PLC0415
-    from obi_one.core.scan_generation import GridScanGenerationTask  # noqa: PLC0415
-    from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE  # noqa: PLC0415
-    from obi_one.scientific.tasks.basic_connectivity_plots import (  # noqa: PLC0415
+    from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
+        run_tasks_for_generated_scan,
+    )
+    from obi_one.core.scan_generation import (  # ruff: ignore[import-outside-top-level]
+        GridScanGenerationTask,
+    )
+    from obi_one.scientific.library.constants import (  # ruff: ignore[import-outside-top-level]
+        MAX_SMALL_MICROCIRCUIT_SIZE,
+    )
+    from obi_one.scientific.tasks.basic_connectivity_plots import (  # ruff: ignore[import-outside-top-level]
         BasicConnectivityPlotsScanConfig,
     )
 

@@ -55,13 +55,13 @@ def test_get_exp_date_none():
 def test_get_exp_date_day_month_year():
     """Test parsing of dd.mm.YYYY format."""
     result = get_exp_date({"experiment_date": "27.03.2024"})
-    assert result == datetime(2024, 3, 27)  # noqa: DTZ001
+    assert result == datetime(2024, 3, 27)  # ruff: ignore[call-datetime-without-tzinfo]
 
 
 def test_get_exp_date_month_year():
     """Test parsing of 'Month, YYYY' format."""
     result = get_exp_date({"experiment_date": "November, 2024"})
-    assert result == datetime(2024, 11, 1)  # noqa: DTZ001
+    assert result == datetime(2024, 11, 1)  # ruff: ignore[call-datetime-without-tzinfo]
 
 
 def test_get_exp_date_unsupported_format():

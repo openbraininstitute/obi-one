@@ -60,7 +60,7 @@ class DecodedToken(BaseModel):
             # the signature can be ignored because the token will be validated with KeyCloak
             decoded = jwt.decode(token.credentials, options={"verify_signature": False})
             return cls.model_validate(decoded)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # ruff: ignore[blind-except]
             L.info("Unable to decode token as JWT [%s]", e)
         return None
 

@@ -68,7 +68,7 @@ def _run_simulation(
     sim_config = bluepysnap.Simulation(path)
 
     if plot_voltage:
-        import matplotlib.pyplot as plt  # noqa: PLC0415
+        import matplotlib.pyplot as plt  # ruff: ignore[import-outside-top-level]
 
         sim_config.reports["test_plot"].filter().trace(plot_type="all")
         plt.savefig("test.png")

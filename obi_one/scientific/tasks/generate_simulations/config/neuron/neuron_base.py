@@ -51,7 +51,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     def default_neuron_set_reference(
         self,
     ) -> BiophysicalNeuronSetReference:
-        """Returns the default neuron set reference for the simulation."""
+        """The default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
@@ -65,7 +65,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     def default_virtual_neuron_set_reference(
         self,
     ) -> VirtualNeuronSetReference:
-        """Returns the default virtual neuron set reference for the simulation."""
+        """The default virtual neuron set reference for the simulation."""
         ref = VirtualNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_virtual_node_set_name
         )
@@ -77,7 +77,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     def default_point_neuron_set_reference(
         self,
     ) -> PointNeuronSetReference:
-        """Returns the default point neuron set reference for the simulation."""
+        """The default point neuron set reference for the simulation."""
         ref = PointNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
         )

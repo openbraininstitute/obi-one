@@ -38,7 +38,7 @@ class SimulationExecutionTask(Task):
     activity_type: ClassVar[type[Activity]] = models.SimulationExecution
     simulation_backend: ClassVar[SimulationBackend] = SimulationBackend.neurodamus
 
-    def _get_simulation_entity(self, db_client: entitysdk.client.Client) -> models.Simulation:  # noqa: ARG002
+    def _get_simulation_entity(self, db_client: entitysdk.client.Client) -> models.Simulation:  # ruff: ignore[unused-method-argument]
         return cast("Simulation", self.config.single_entity)
 
     @abstractmethod
@@ -55,7 +55,7 @@ class SimulationExecutionTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client,
-        entity_cache: bool = False,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: UUID | str | None,
     ) -> None:
         """Prepare inputs, run the simulation, and optionally register outputs."""
