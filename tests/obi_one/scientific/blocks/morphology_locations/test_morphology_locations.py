@@ -63,3 +63,32 @@ def test_morphology_locations_have_circuit_usability_metadata():
 
     assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
     assert usability[SchemaKey.PROPERTY] == CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS
+
+
+@pytest.mark.parametrize(
+    ("block_type", "kwargs"),
+    [
+        (obi.RandomMorphologyLocations, {"random_seed": -1}),
+        (obi.RandomMorphologyLocations, {"number_of_locations": 0}),
+        (obi.ClusteredMorphologyLocations, {"n_clusters": 0}),
+        (obi.ClusteredMorphologyLocations, {"cluster_max_distance": -1.0}),
+        (obi.PathDistanceMorphologyLocations, {"path_dist_mean": -1.0}),
+        (obi.PathDistanceMorphologyLocations, {"path_dist_tolerance": 0.0}),
+        (obi.ClusteredPathDistanceMorphologyLocations, {"path_dist_sd": 0.0}),
+    ],
+)
+def test_morphology_locations_reject_invalid_numeric_parameters(block_type, kwargs):
+    with pytest.raises(ValidationError):
+        block_type(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "block_type",
+    [
+        obi.ClusteredMorphologyLocations,
+        obi.ClusteredPathDistanceMorphologyLocations,
+    ],
+)
+def test_clustered_morphology_locations_require_at_least_one_location_per_cluster(block_type):
+    with pytest.raises(ValidationError, match="Number of locations"):
+        block_type(number_of_locations=2, n_clusters=3)

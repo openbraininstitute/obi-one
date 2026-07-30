@@ -1,12 +1,14 @@
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 import morphio
 import pandas  # noqa: ICN001
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat, PositiveInt
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+from obi_one.scientific.blocks.morphology_locations.base import (
+    MorphologyLocationsBlock,
+)
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
 )
@@ -16,6 +18,7 @@ from obi_one.scientific.library.morphology_locations import (
 )
 
 _MIN_PD_SD = 0.1
+PathDistanceStandardDeviationParameter = Annotated[float, Field(ge=_MIN_PD_SD)]
 
 
 class ClusteredMorphologyLocations(MorphologyLocationsBlock):
@@ -23,7 +26,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
 
     title: ClassVar[str] = "Random Clustered Morphology Locations"
 
-    n_clusters: int | list[int] = Field(
+    n_clusters: PositiveInt | list[PositiveInt] = Field(
         default=5,
         title="Number of Clusters",
         description=(
@@ -34,7 +37,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
-    cluster_max_distance: float | list[float] = Field(
+    cluster_max_distance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=50.0,
         title="Maximum Distance from Cluster Center",
         description=(
@@ -113,7 +116,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
 
     title: ClassVar[str] = "Clustered Path Distance Morphology Locations"
 
-    path_dist_mean: float | list[float] = Field(
+    path_dist_mean: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
         title="Cluster Path Distance Sampling Mean",
         description=("Target soma path distance used to bias where cluster centers are selected."),
@@ -122,7 +125,9 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
             SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
-    path_dist_sd: float | list[float] = Field(
+    path_dist_sd: (
+        PathDistanceStandardDeviationParameter | list[PathDistanceStandardDeviationParameter]
+    ) = Field(
         default=50.0,
         title="Cluster Path Distance Standard Deviation",
         description=(
@@ -134,7 +139,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
             SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
-    n_groups_per_cluster: int | list[int] = Field(
+    n_groups_per_cluster: PositiveInt | list[PositiveInt] = Field(
         default=1,
         title="Groups per Cluster",
         description=("Number of conceptual groups to assign within each generated cluster."),

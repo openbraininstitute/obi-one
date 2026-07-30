@@ -2,7 +2,7 @@ from typing import ClassVar
 
 import morphio
 import pandas  # noqa: ICN001
-from pydantic import Field
+from pydantic import Field, PositiveInt
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
@@ -46,7 +46,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
 
     title: ClassVar[str] = "Random Grouped Morphology Locations"
 
-    n_groups: int | list[int] = Field(
+    n_groups: PositiveInt | list[PositiveInt] = Field(
         default=1,
         title="Number of Groups",
         description=(

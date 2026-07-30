@@ -1,8 +1,8 @@
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 import morphio
 import pandas  # noqa: ICN001
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -12,13 +12,15 @@ from obi_one.scientific.library.morphology_locations import (
     generate_neurite_locations_on,
 )
 
+PathDistanceToleranceParameter = Annotated[float, Field(ge=1.0)]
+
 
 class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
     """Locations uniformly sampled near a specified soma path distance."""
 
     title: ClassVar[str] = "Path Distance Morphology Locations"
 
-    path_dist_mean: float | list[float] = Field(
+    path_dist_mean: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
         title="Path Distance Sampling Mean",
         description=(
@@ -31,18 +33,20 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
             SchemaKey.UNITS: Units.MICROMETERS,
         },
     )
-    path_dist_tolerance: float | list[float] = Field(
-        default=50.0,
-        title="Max Distance to Path Distance Sampling Mean",
-        description=(
-            "Allowed deviation from the target soma path distance. Locations are sampled "
-            "uniformly from valid morphology intervals within this tolerance. Must be greater "
-            "than 1.0."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MICROMETERS,
-        },
+    path_dist_tolerance: PathDistanceToleranceParameter | list[PathDistanceToleranceParameter] = (
+        Field(
+            default=50.0,
+            title="Max Distance to Path Distance Sampling Mean",
+            description=(
+                "Allowed deviation from the target soma path distance. Locations are sampled "
+                "uniformly from valid morphology intervals within this tolerance. Must be at "
+                "least 1.0."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.MICROMETERS,
+            },
+        )
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:

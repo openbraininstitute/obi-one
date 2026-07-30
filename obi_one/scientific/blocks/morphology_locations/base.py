@@ -3,7 +3,7 @@ from typing import ClassVar, Literal, Self
 
 import morphio
 import pandas  # noqa: ICN001
-from pydantic import Field, model_validator
+from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
@@ -47,7 +47,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
 
-    random_seed: int | list[int] = Field(
+    random_seed: NonNegativeInt | list[NonNegativeInt] = Field(
         default=0,
         title="Random Seed",
         description="Seed used when randomly selecting morphology locations.",
@@ -56,7 +56,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
 
-    number_of_locations: int | list[int] = Field(
+    number_of_locations: PositiveInt | list[PositiveInt] = Field(
         default=20,
         title="Number of Locations",
         description="Total number of morphology locations to generate for each targeted neuron.",
