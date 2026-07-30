@@ -250,7 +250,7 @@ def select_places_from_candidate_list(
             selected[_SEG_MAX] - selected[_SEG_MIN]
         )
 
-        output = locs.loc[selected.index].sort_index().drop(columns=[_SEG_OFF])
+        output = locs.loc[selected.index].drop(columns=[_SEG_OFF])
         output[_SEG_OFF] = selected.to_numpy()
         return output
 
