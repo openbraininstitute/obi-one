@@ -105,7 +105,13 @@ class SynapseParameterizationTask(Task):
             per_edge_population.setdefault(assigner.edge_population_name, []).append(assigner)
         return per_edge_population
 
-    def execute(self, *, db_client: Client | None = None, entity_cache: bool = False) -> None:
+    def execute(
+        self,
+        *,
+        db_client: Client | None = None,
+        entity_cache: bool = False,
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+    ) -> None:
         if db_client is None:
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)

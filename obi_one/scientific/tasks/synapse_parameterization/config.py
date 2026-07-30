@@ -2,6 +2,7 @@ import logging
 from enum import StrEnum
 from typing import ClassVar
 
+from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -62,6 +63,13 @@ class SynapseParameterizationScanConfig(ScanConfig):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
     }
+
+    _campaign_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.circuit_synaptic_physiology_assignment__campaign
+    )
+    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.circuit_synaptic_physiology_assignment__config_generation
+    )
 
     class Initialize(Block):
         circuit: CircuitFromID = Field(
@@ -141,4 +149,9 @@ class SynapseParameterizationScanConfig(ScanConfig):
 
 
 class SynapseParameterizationSingleConfig(SynapseParameterizationScanConfig, SingleConfigMixin):
-    pass
+    _single_task_config_type: ClassVar[TaskConfigType] = (
+        TaskConfigType.circuit_synaptic_physiology_assignment__config
+    )
+    _single_task_activity_type: ClassVar[TaskActivityType] = (
+        TaskActivityType.circuit_synaptic_physiology_assignment__execution
+    )

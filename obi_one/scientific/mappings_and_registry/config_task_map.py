@@ -13,10 +13,6 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionSingleConfig,
     ConnectivityMatrixExtractionTask,
 )
-from obi_one.scientific.tasks.contribute import (
-    ContributeMorphologySingleConfig,
-    ContributeMorphologyTask,
-)
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArraySingleConfig,
     CreateExtracellularRecordingArrayTask,
@@ -90,6 +86,10 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationSingleConfig,
     SkeletonizationTask,
 )
+from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationSingleConfig,
+)
+from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.types import TaskType
 
 # Task registry: TaskType -> (task_cls, single_config_cls, asset_label)
@@ -105,6 +105,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
         GenerateSimulationTask,
         CircuitSimulationSingleConfig,
         None,
+    ),
+    TaskType.circuit_synaptic_physiology_assignment: (
+        SynapseParameterizationTask,
+        SynapseParameterizationSingleConfig,
+        AssetLabel.task_config,
     ),
     TaskType.em_synapse_mapping: (
         EMSynapseMappingTask,
@@ -155,11 +160,6 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.connectivity_matrix_extraction: (
         ConnectivityMatrixExtractionTask,
         ConnectivityMatrixExtractionSingleConfig,
-        None,
-    ),
-    TaskType.contribute_morphology: (
-        ContributeMorphologyTask,
-        ContributeMorphologySingleConfig,
         None,
     ),
     TaskType.electrophysiology_metrics: (
