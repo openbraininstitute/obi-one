@@ -720,8 +720,6 @@ class InputPoisson:
                     rate=self.config.rate * brian2.units.Hz,
                     weight=self.config.weight * brian2.units.mV,
                 )
-                # no refractory period for Poisson targets
-                net.neurons[start:end].rfc = 0 * brian2.units.ms
                 self._inputs.append(p)
 
             return NetworkOperation(add=list(self._inputs), remove=[])
