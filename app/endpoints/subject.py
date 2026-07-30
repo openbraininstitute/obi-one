@@ -55,7 +55,7 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
     if not normalized_input:
         return None
 
-    ilike_pattern = "*" + "?".join(split_name(name)) + "*"
+    ilike_pattern = "%" + "_".join(split_name(name)) + "%"
 
     for result in db_client.search_entity(
         entity_type=models.Subject, query={"name__ilike": ilike_pattern}
