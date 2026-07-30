@@ -31,7 +31,7 @@ router = APIRouter(
 def register_publication(
     json_model: PublicationRegisterRequest,
     db_client: DatabaseClientDep,
-    user_context: UserContextDep,  # noqa: ARG001
+    user_context: UserContextDep,  # ruff: ignore[unused-function-argument]
     request: Request,
 ) -> dict:
     """Register a publication by fetching metadata and creating it in entitycore."""

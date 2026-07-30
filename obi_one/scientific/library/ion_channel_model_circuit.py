@@ -32,7 +32,7 @@ class CircuitFromIonChannelModels:
             ion_channel_model_data_dict = {}
             for key, ic_data in self.ion_channel_data.items():
                 # ic_data: IonChannelModel Block
-                # ic_data.ion_channel_model: IonChannelModelFromID  # noqa: ERA001
+                # ic_data.ion_channel_model: IonChannelModelFromID  # ruff: ignore[commented-out-code]
                 conductance = {}
                 if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(
                     db_client=db_client

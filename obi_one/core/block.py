@@ -31,7 +31,7 @@ class Block(OBIBaseModel, extra="forbid"):
     _block_name = None
 
     @classmethod
-    def __get_pydantic_json_schema__(  # noqa: PLW3201
+    def __get_pydantic_json_schema__(  # ruff: ignore[bad-dunder-method-name]
         cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
         """Order the schema properties by priority when generating the JSON schema."""
@@ -41,7 +41,7 @@ class Block(OBIBaseModel, extra="forbid"):
 
     @property
     def block_name(self) -> str:
-        """Returns the block name."""
+        """The block name."""
         if self._block_name is None:
             msg = "Block name has not been set. Please add the block to a form and validate."
             raise ValueError(msg)

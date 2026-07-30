@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
+# ruff: file-ignore[assert]
 import contextlib
 import heapq
 import logging
@@ -745,7 +745,7 @@ def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Even
     ret = []
 
     for connection_override in simulation.to_libsonata.connection_overrides():
-        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # noqa: SLF001
+        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # ruff: ignore[private-member-access]
         ret.extend(Event(at=at, func=co) for at in co.at)
 
     return ret
@@ -755,7 +755,7 @@ def _gather_poisson(simulation: bluepysnap.Simulation) -> list[Event]:
     ret = []
     for input_ in simulation.inputs.values():
         if isinstance(input_, libsonata.SimulationConfig.Poisson):
-            pi = InputPoisson(input_, Path(simulation._simulation_config_path))  # noqa: SLF001
+            pi = InputPoisson(input_, Path(simulation._simulation_config_path))  # ruff: ignore[private-member-access]
             ret.extend(Event(at=at, func=pi) for at in pi.at)
 
     return ret
@@ -922,7 +922,7 @@ def run_sonata_brian2_trial(
     _write_reports(simulation, net.spike_monitor, net.state_monitor, net.report_id_mapping)
 
     if profile:
-        print(brian2.profiling_summary(net=network))  # noqa: T201
+        print(brian2.profiling_summary(net=network))  # ruff: ignore[print]
     return net
 
 

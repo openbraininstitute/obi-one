@@ -43,7 +43,7 @@ class Circuit(OBIBaseModel):
 
     @property
     def directory(self) -> Path:
-        """Return circuit directory."""
+        """Circuit directory."""
         return Path(self.path).parent
 
     @property
@@ -67,8 +67,8 @@ class Circuit(OBIBaseModel):
 
     @property
     def node_sets(self) -> list:
-        """Returns list of available node sets."""
-        return list(self.sonata_circuit.node_sets.content.keys())
+        """List of available node sets."""
+        return list(self.sonata_circuit.node_sets.content)
 
     @staticmethod
     def get_node_population_names(
@@ -110,7 +110,7 @@ class Circuit(OBIBaseModel):
 
     @property
     def default_population_name(self) -> str:
-        """Returns the default node population name."""
+        """The default node population name."""
         return self._default_population_name(self.sonata_circuit)
 
     @staticmethod
@@ -174,7 +174,7 @@ class Circuit(OBIBaseModel):
 
     @property
     def default_edge_population_name(self) -> str | None:
-        """Returns the default edge population name."""
+        """The default edge population name."""
         return self._default_edge_population_name(self.sonata_circuit)
 
     @property

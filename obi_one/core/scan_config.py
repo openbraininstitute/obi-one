@@ -57,7 +57,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     ) -> entitysdk.models.Entity | None:  # ty:ignore[possibly-missing-submodule]
         return self._campaign
 
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: PLR6301, ARG002
+    def input_entities(self, db_client: Client) -> list[Entity]:  # ruff: ignore[no-self-use, unused-method-argument]
         return []
 
     @property
@@ -134,7 +134,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def block_mapping(self) -> dict:
-        """Returns a mapping of block class names to block_dict_name and reference_type."""
+        """Mapping of block class names to block_dict_name and reference_type."""
         if self._block_mapping is None:
             # Get type annotations of the instance's class
             annotations = get_all_annotations(self.__class__)

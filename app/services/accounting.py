@@ -230,7 +230,7 @@ def _get_simulation_duration_ms(
         tstop = config.get("run", {}).get("tstop")
         if tstop is not None:
             return float(tstop)
-    except Exception:  # noqa: BLE001
+    except Exception:  # ruff: ignore[blind-except]
         L.warning(f"Could not read sonata_simulation_config for simulation {simulation.id}")
 
     # Fallback to scan_parameters
