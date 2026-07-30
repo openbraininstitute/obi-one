@@ -60,7 +60,7 @@ def _existing_subject(*, name, subject_id=None):
 
 
 def _ilike_pattern_for(name: str) -> str:
-    return "*" + "?".join(split_name(name)) + "*"
+    return "%" + "_".join(split_name(name)) + "%"
 
 
 @pytest.fixture
@@ -114,7 +114,7 @@ def test_register_new_subject(client, mock_db_client):
     mock_db_client.register_entity.assert_called_once()
     mock_db_client.search_entity.assert_called_once_with(
         entity_type=Subject,
-        query={"name__ilike": "*mouse?alpha*"},
+        query={"name__ilike": "%mouse_alpha%"},
     )
 
 
@@ -134,7 +134,7 @@ def test_register_duplicate_returns_409(client, mock_db_client, existing_name):
     mock_db_client.register_entity.assert_not_called()
     mock_db_client.search_entity.assert_called_once_with(
         entity_type=Subject,
-        query={"name__ilike": "*mouse?alpha*"},
+        query={"name__ilike": "%mouse_alpha%"},
     )
 
 
@@ -177,16 +177,16 @@ def test_register_ilike_empty_results_creates_subject(client, mock_db_client):
     assert resp.status_code == 201
     mock_db_client.search_entity.assert_called_once_with(
         entity_type=Subject,
-        query={"name__ilike": "*mouse?alpha*"},
+        query={"name__ilike": "%mouse_alpha%"},
     )
 
 
 @pytest.mark.parametrize(
     ("name", "expected_ilike"),
     [
-        ("Mouse Alpha", "*mouse?alpha*"),
-        ("SingleWord", "*singleword*"),
-        ("Three Word Name", "*three?word?name*"),
+        ("Mouse Alpha", "%mouse_alpha%"),
+        ("SingleWord", "%singleword%"),
+        ("Three Word Name", "%three_word_name%"),
     ],
 )
 def test_register_builds_expected_ilike_pattern(client, mock_db_client, name, expected_ilike):
@@ -298,7 +298,7 @@ def test_whitespace_normalization(client, mock_db_client):
     assert resp.status_code == 201
     mock_db_client.search_entity.assert_called_once_with(
         entity_type=Subject,
-        query={"name__ilike": "*mouse?alpha*"},
+        query={"name__ilike": "%mouse_alpha%"},
     )
 
 
