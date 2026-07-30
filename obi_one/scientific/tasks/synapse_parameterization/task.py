@@ -8,6 +8,7 @@ from entitysdk import Client, models, types
 from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
@@ -20,7 +21,6 @@ from obi_one.scientific.tasks.synapse_parameterization.utils import (
 from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerUnion,
 )
-from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class SynapseParameterizationTask(Task):
         (subject, species, brain region, hierarchy, parent) resolve cleanly.
         """
         # Deferred import: pulls in heavy circuit/asset tooling only when registering.
-        from obi_one.utils.circuit_registration.register import (  # ruff: ignore[import-outside-top-level]
+        from obi_one.db_sdk.registration.circuit.register import (  # ruff: ignore[import-outside-top-level]
             register_circuit_from_metadata,
         )
 

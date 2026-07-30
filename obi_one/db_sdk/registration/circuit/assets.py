@@ -4,9 +4,14 @@ import json
 import logging
 from pathlib import Path
 
-from entitysdk import Client, models
+from entitysdk import Client, MultipartUploadTransferConfig, models
+
+from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
+
+OVERVIEW_IMAGE_NAME = "circuit_visualization"
+SIM_DESIGNER_IMAGE_NAME = "simulation_designer_image"
 
 
 def _check_required_contents(file_path: Path, contents: list[str], *, is_directory: bool) -> None:
@@ -194,3 +199,107 @@ def register_asset(
         )
     L.info(f"'{asset_label}' asset uploaded under ID {asset.id}")
     return asset
+
+
+def add_compressed_circuit_asset(
+    client: Client, compressed_file: Path, registered_circuit: models.Circuit
+) -> models.Asset:
+    """Upload a compressed circuit file asset to a registered circuit entity."""
+    asset_label = "compressed_sonata_circuit"
+
+    if not compressed_file.exists():
+        msg = f"Compressed circuit file '{compressed_file}' does not exist!"
+        raise FileNotFoundError(msg)
+
+    # Upload compressed file asset
+    transfer_config = MultipartUploadTransferConfig()
+    compressed_asset = client.upload_file(
+        entity_id=registered_circuit.id,
+        entity_type=models.Circuit,
+        file_path=compressed_file,
+        file_content_type="application/gzip",  # ty:ignore[invalid-argument-type]
+        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+        transfer_config=transfer_config,
+    )
+    L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
+    return compressed_asset
+
+
+def add_connectivity_matrix_asset(
+    client: Client, matrix_dir: Path, registered_circuit: models.Circuit
+) -> models.Asset:
+    """Upload connectivity matrix directory asset to a registered circuit entity."""
+    asset_label = "circuit_connectivity_matrices"
+
+    if not matrix_dir.is_dir():
+        msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
+        raise FileNotFoundError(msg)
+
+    # Collect matrix files
+    matrix_files = {
+        str(path.relative_to(matrix_dir)): path for path in matrix_dir.rglob("*") if path.is_file()
+    }
+    L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
+
+    # Upload directory asset
+    matrix_asset = client.upload_directory(
+        label=asset_label,  # ty:ignore[invalid-argument-type]
+        name=asset_label,
+        entity_id=registered_circuit.id,
+        entity_type=models.Circuit,
+        paths=matrix_files,  # ty:ignore[invalid-argument-type]
+    )
+    L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
+    return matrix_asset
+
+
+def add_image_assets(
+    client: Client,
+    plot_dir: Path,
+    plot_files: list,
+    registered_circuit: models.Circuit,
+) -> list[models.Asset]:
+    """Upload connectivity plot assets to a registered circuit entity.
+
+    Note: Image files will be converted to .webp, if needed.
+    """
+    asset_label_map = {
+        "node_stats": ("node_stats", "webp"),
+        "small_adj_and_stats": ("network_stats_a", "webp"),
+        "small_network_in_2D": ("network_stats_b", "webp"),
+        "network_global_stats": ("network_stats_a", "webp"),
+        "network_pathway_stats": ("network_stats_b", "webp"),
+        OVERVIEW_IMAGE_NAME: ("circuit_visualization", "webp"),
+        SIM_DESIGNER_IMAGE_NAME: ("simulation_designer_image", "png"),
+    }
+    if not plot_dir.is_dir():
+        msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
+        raise FileNotFoundError(msg)
+
+    # Upload image file assets (incl. conversion to .webp format if needed)
+    plot_assets = []
+    for file in plot_files:
+        file_path = plot_dir / file
+        if not file_path.is_file():
+            msg = f"Connectivity plot '{file_path.name}' does not exist!"
+            raise FileNotFoundError(msg)
+        if file_path.stem not in asset_label_map:
+            msg = f"No asset label for plot '{file_path.name}' - SKIPPING!"
+            L.warning(msg)
+            continue
+        asset_label, fmt = asset_label_map[file_path.stem]
+        if fmt == "webp":
+            file_path = convert_image_to_webp(image_path=file_path)
+        if "." + fmt != file_path.suffix:
+            msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
+            raise ValueError(msg)
+        plot_asset = client.upload_file(
+            entity_id=registered_circuit.id,
+            entity_type=models.Circuit,
+            file_path=file_path,
+            file_content_type=f"image/{fmt}",  # ty:ignore[invalid-argument-type]
+            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+        )
+        L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
+        plot_assets.append(plot_asset)
+    return plot_assets

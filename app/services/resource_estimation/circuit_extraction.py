@@ -8,11 +8,11 @@ from app.schemas.accounting import AccountingParameters
 from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.core.registry import task_registry
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.utils import db_sdk
 
 
 def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:

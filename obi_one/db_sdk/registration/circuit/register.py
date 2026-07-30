@@ -8,16 +8,14 @@ from uuid import UUID
 from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
-from obi_one.scientific.library.circuit import Circuit as OBICircuit
-from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
-from obi_one.utils.circuit_registration.assets import register_asset
-from obi_one.utils.circuit_registration.generate import generate_additional_circuit_assets
-from obi_one.utils.circuit_registration.links import (
+from obi_one.db_sdk.registration.circuit.assets import register_asset
+from obi_one.db_sdk.registration.circuit.generate import generate_additional_circuit_assets
+from obi_one.db_sdk.registration.circuit.links import (
     register_contributions,
     register_derivation,
     register_publication_links,
 )
-from obi_one.utils.circuit_registration.resolve import (
+from obi_one.db_sdk.registration.circuit.resolve import (
     check_hierarchy_species,
     check_if_circuit_exists,
     get_brain_region,
@@ -30,6 +28,8 @@ from obi_one.utils.circuit_registration.resolve import (
     get_root_circuit,
     get_subject,
 )
+from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
 from obi_one.utils.io import extract_tar_gz
 
 L = logging.getLogger(__name__)
