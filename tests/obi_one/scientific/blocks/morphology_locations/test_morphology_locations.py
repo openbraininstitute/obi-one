@@ -81,6 +81,7 @@ def test_morphology_locations_have_circuit_usability_metadata():
     [
         (obi.RandomMorphologyLocations, {"random_seed": -1}),
         (obi.RandomMorphologyLocations, {"number_of_locations": 0}),
+        (obi.RandomMorphologyLocations, {"number_of_locations": 20_001}),
         (obi.ClusteredMorphologyLocations, {"n_clusters": 0}),
         (obi.ClusteredMorphologyLocations, {"cluster_max_distance": -1.0}),
         (obi.PathDistanceMorphologyLocations, {"path_dist_mean": -1.0}),

@@ -1,5 +1,5 @@
 import abc
-from typing import ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 import morphio
 import pandas  # noqa: ICN001
@@ -19,6 +19,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 
 SectionType = Literal[3, 4]
 SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]] | None
+MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS = 20_000
 
 
 class MorphologyLocationsBlock(Block, abc.ABC):
@@ -56,10 +57,16 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
 
-    number_of_locations: PositiveInt | list[PositiveInt] = Field(
+    number_of_locations: (
+        Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]
+        | list[Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]]
+    ) = Field(
         default=20,
         title="Number of Locations",
-        description="Total number of morphology locations to generate for each targeted neuron.",
+        description=(
+            "Total number of morphology locations to generate for each targeted neuron. "
+            f"Maximum: {MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS}."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
