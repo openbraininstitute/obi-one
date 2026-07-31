@@ -23,6 +23,7 @@ class TaskType(StrEnum):
     circuit_simulation_neurodamus_machine = auto()
     circuit_simulation_brian2_machine = auto()
     em_synapse_mapping = auto()
+    efeature_extraction = auto()
     extracellular_recording_weights_calculation = auto()
     ion_channel_model_simulation_execution = auto()
     single_neuron_simulation_execution = auto()
