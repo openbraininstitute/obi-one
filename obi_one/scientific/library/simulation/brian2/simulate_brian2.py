@@ -28,11 +28,13 @@ from entitysdk import Client, ProjectContext, models
 from entitysdk.models.activity import Activity
 from entitysdk.staging import stage_simulation
 from entitysdk.token_manager import TokenFromFunction
-from entitysdk.types import ActivityStatus, AssetLabel, ContentType
+from entitysdk.types import ActivityStatus
 from entitysdk.utils.store import LocalAssetStore
 from obi_auth import get_token
 from obi_auth.typedef import AuthMode, DeploymentEnvironment
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+from obi_one.db_sdk.registration.simulation_result import register_simulation_results
 
 REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_path=True)
 L = logging.getLogger(__name__)
@@ -1030,35 +1032,20 @@ def sonata_main(
         run_sonata_brian2_trial(simulation_config_file, profile=profile)
 
     L.info("Registering simulation result")
-    simulation_result = client.register_entity(
-        models.SimulationResult(
-            name="Simulation result",
-            description="",
-            simulation_id=simulation_id,
-        )
-    )
     L.info("Uploading assets for simulation")
-    assert simulation_result.id
-
     simulation_config = libsonata.SimulationConfig.from_file(simulation_config_file)
 
-    client.upload_file(
-        entity_id=simulation_result.id,
-        entity_type=models.SimulationResult,
-        file_path=Path(simulation_config.output.output_dir) / simulation_config.output.spikes_file,
-        file_content_type=ContentType.application_x_hdf5,
-        asset_label=AssetLabel.spike_report,
+    simulation_result = register_simulation_results(
+        client=client,
+        simulation_id=simulation_id,
+        spike_report_file=Path(simulation_config.output.output_dir)
+        / simulation_config.output.spikes_file,
+        voltage_report_files=[
+            Path(simulation_config.report(name).file_name)
+            for name in simulation_config.list_report_names
+        ],
     )
-
-    for name in simulation_config.list_report_names:
-        report = simulation_config.report(name)
-        client.upload_file(
-            entity_id=simulation_result.id,
-            entity_type=models.SimulationResult,
-            file_path=Path(report.file_name),
-            file_content_type=ContentType.application_x_hdf5,
-            asset_label=AssetLabel.voltage_report,
-        )
+    assert simulation_result.id
 
     L.info("Updating simulation execution")
     client.update_entity(

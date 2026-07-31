@@ -8,8 +8,9 @@ the inner modules.
 
 ```
 registration/
-├── circuit/      assets.py, generate.py, links.py, register.py, resolve.py
-└── morphology/   register.py
+├── circuit/            assets.py, generate.py, links.py, register.py, resolve.py
+├── morphology/         register.py
+└── simulation_result/  register.py
 ```
 
 ## What belongs here
@@ -37,16 +38,7 @@ publication links.
 
 Assessed 2026-07-30. Ranked by how cleanly they would drop in.
 
-### 1. `scientific/library/simulation/neuron/registration.py` → `registration/simulation_result/`
-
-67 lines, entirely registration: builds `models.SimulationResult` and uploads the spike and
-voltage reports. Its only caller is `tasks/simulation_execution/neuron/base.py`.
-
-The real win is deduplication — `library/simulation/brian2/simulate_brian2.py:957` registers
-the same entity with the same reports inline in `sonata_main`. Two implementations of one
-thing; a shared module collapses them.
-
-### 2. `tasks/skeletonization/registration.py` → `registration/morphology/`
+### 1. `tasks/skeletonization/registration.py` → `registration/morphology/`
 
 154 lines, entirely registration: a `DigitalReconstructionCellMorphologyProtocol`, then a
 `CellMorphology`, then `Contribution` and `Derivation`.
@@ -58,7 +50,7 @@ despite where they live. Hoisting them to a shared `registration/links.py` is pr
 better first step, and may leave little enough behind that this file can just stay put and
 call into `registration/morphology/`.
 
-### 3. `tasks/ion_channel_modeling.py` — extract, don't move
+### 2. `tasks/ion_channel_modeling.py` — extract, don't move
 
 The largest remaining registration surface: roughly 180 of 620 lines across
 `create_campaign_entity_with_config` (:222), `create_campaign_generation_entity` (:254),
@@ -70,13 +62,13 @@ registering `IonChannelModelingCampaign`, `IonChannelModelingConfig`, `IonChanne
 These are methods on `IonChannelFittingTask`, interleaved with fitting compute. Untangling
 them is a real refactor, not a file move.
 
-### 4. `tasks/create_recording_array/create_recording_array.py` — extract, don't move
+### 3. `tasks/create_recording_array/create_recording_array.py` — extract, don't move
 
 About 48 lines registering `SimulatableExtracellularRecordingArray` plus three assets
 (`register_entity` at :257, uploads at :260/:276/:285), inline in `execute()` and mixed with
 BlueRecording weight computation.
 
-### 5. GLB mesh upload — deduplicate first
+### 4. GLB mesh upload — deduplicate first
 
 `library/morphology_mesh.py:47` and `app/endpoints/convert_morphology_to_registered_mesh.py:108`
 are both called `mesh_and_upload` and both upload an `AssetLabel.cell_surface_mesh` GLB.
@@ -101,3 +93,15 @@ already-bound name and lets the real uploader run.
 intercepts exactly `register_entity`, `upload_file` and `update_entity`, and asserts on call
 counts. Any refactor changing which client methods get called will silently break config
 validation without failing here first.
+
+**libsonata always gives report files an `.h5` suffix.** `simulation_result/register.py`
+resolves each voltage report's content type from its extension, which is only safe because
+`SimulationConfig.report(name).file_name` appends `.h5` when the configured name lacks it —
+verified: `weird.dat` comes back as `weird.dat.h5`. That is why `simulate_brian2.sonata_main`
+could drop its hardcoded `application_x_hdf5` without any behaviour change.
+
+**SimulationResult name and description are parameterized but unused.** Both backends take
+the defaults, `"Simulation result"` / `"Simulation result"`. Before the two implementations
+merged, neuron registered `"simulation_result"` / `"Simulation result"` and brian2
+registered `"Simulation result"` / `""`. The arguments remain available for future
+backends — just keep existing callers on the defaults.
