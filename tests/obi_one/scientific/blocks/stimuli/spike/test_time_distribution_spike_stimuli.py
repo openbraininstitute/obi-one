@@ -284,8 +284,8 @@ class TestSpikeTimeDistributionSpikeStimulus:
 
         distribution = mock_sample.call_args.args[0]
         assert isinstance(distribution, obi.FloatUniformDistribution)
-        assert distribution.low == 0.0  # noqa: RUF069
-        assert distribution.high == 25.0  # noqa: RUF069
+        assert distribution.low == 0.0  # ruff: ignore[float-equality-comparison]
+        assert distribution.high == 25.0  # ruff: ignore[float-equality-comparison]
 
 
 class TestSpikeTimeStimulusIndexingConvention:

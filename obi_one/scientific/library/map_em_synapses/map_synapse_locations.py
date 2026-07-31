@@ -1,5 +1,5 @@
-import numpy  # NOQA: ICN001
-import pandas  # NOQA: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
+import pandas  # ruff: ignore[unconventional-import-alias]
 from caveclient import CAVEclient
 from morph_spines import MorphologyWithSpines
 from neurom.core import Morphology
@@ -168,7 +168,7 @@ def map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas.
     else:
         chunk_ab = numpy.arange(0, len(pts) + chunk_sz, chunk_sz)
         res = []
-        for a, b in zip(chunk_ab[:-1], chunk_ab[1:], strict=False):  # NOQA: RUF007
+        for a, b in zip(chunk_ab[:-1], chunk_ab[1:], strict=False):  # ruff: ignore[zip-instead-of-pairwise]
             res.append(_map_points_to_segs_df(segs, pts.iloc[a:b].to_numpy()))  # ty:ignore[unresolved-attribute]
         res = pandas.concat(res, axis=0)
     res.index = pts.index  # ty:ignore[unresolved-attribute]
@@ -230,7 +230,9 @@ def calc_section_offset(
     syns: pandas.DataFrame, morph: MorphologyWithSpines, prefix: str = ""
 ) -> numpy.ndarray:
     try:
-        from conntility.subcellular import MorphologyPathDistanceCalculator  # NOQA: PLC0415
+        from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
+            MorphologyPathDistanceCalculator,
+        )
     except ImportError:
         err_str = "Optional dependency Connectome-Utilities not installed!"
         raise RuntimeError(err_str) from None
@@ -372,7 +374,7 @@ def edges_dataframe_for_spine_syns(
 def map_afferents_to_spiny_morphology(
     m: MorphologyWithSpines,
     syns: pandas.DataFrame,
-    add_quality_info: bool = False,  # NOQA: FBT001, FBT002
+    add_quality_info: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
 ) -> pandas.DataFrame:
     segs_df = morph_to_segs_df(m)  # ty:ignore[invalid-argument-type]
     spine_and_soma_points = morph_to_spine_and_soma_df(m)

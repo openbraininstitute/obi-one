@@ -60,7 +60,7 @@ def _get_required_extra_storage_space(disk_space_gb_required: float) -> int | No
     raise ValueError(msg)
 
 
-def estimate_task_resources(  # noqa: PLR0914
+def estimate_task_resources(  # ruff: ignore[too-many-locals]
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
     task_definition: TaskDefinition,

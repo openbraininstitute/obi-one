@@ -24,7 +24,7 @@ class SynapticModelReference(BlockReference):
 
     @property
     def block(self) -> SynapticModelBase:
-        """Returns the block associated with this reference."""
+        """The block associated with this reference."""
         if isinstance(super().block, SynapticModelBase):
             return cast("SynapticModelBase", super().block)
         msg = f"Expected block of type SynapticModelBase, but got {type(super().block)}"

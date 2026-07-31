@@ -33,7 +33,8 @@ async def get_async_client(
         verify=not settings.LAUNCH_SYSTEM_DISABLE_SSL_VERIFY,
         timeout=httpx.Timeout(connect=10.0, read=None, write=10.0, pool=10.0),
     ) as client:
-        yield client
+        # FastAPI guarantees cleanup, so it's safe to ignore
+        yield client  # ruff: ignore[yield-in-context-manager-in-async-generator]
 
 
 LaunchSystemAsyncClientDep = Annotated[httpx.AsyncClient, Depends(get_async_client)]

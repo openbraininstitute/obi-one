@@ -1,5 +1,5 @@
 import morphio
-import pandas  # noqa: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 from pydantic import Field
 
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
@@ -39,12 +39,12 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_mean, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_mean < 0:
                 msg = f"Path distance mean: {self.path_dist_mean} < 0"
                 raise ValueError(msg)
 
-        if not isinstance(self.path_dist_tolerance, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_tolerance, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_tolerance < 1.0:
                 msg = f"Path dist tolerance: {self.path_dist_tolerance} < 1.0 (numerical stability)"
                 raise ValueError(msg)

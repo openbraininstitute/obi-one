@@ -35,12 +35,12 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         ) from e
 
-    if circuit.scale not in {CircuitScale.small, CircuitScale.pair}:
+    if circuit.scale not in {CircuitScale.single, CircuitScale.pair, CircuitScale.small}:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Circuit's scale should be 'small' or 'pair'",
+                "detail": "Circuit's scale should be 'single', 'pair' or 'small'",
             },
         )
 
@@ -64,7 +64,7 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     return asset.id
 
 
-def get_population_nodes(  # noqa: PLR0914
+def get_population_nodes(  # ruff: ignore[too-many-locals]
     population_name: str,
     db_client: Client,
     circuit_id: UUID,
@@ -92,7 +92,7 @@ def get_population_nodes(  # noqa: PLR0914
             },
         ) from e
 
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         storage = libsonata.NodeStorage(str(nodes_file_path))
         population = storage.open_population(population_name)
 
@@ -167,7 +167,7 @@ def get_nodes(
     asset_id: UUID,
 ) -> Nodes:
     all_nodes = []
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         for pop_name in config.node_populations:
             pop_properties = config.node_population_properties(pop_name)
 
@@ -311,7 +311,7 @@ def get_morphology_data(morphology: morphio.Morphology) -> list[SectionDict]:
         )
 
     for section in morphology.iter():
-        if section.is_root:  # noqa: SIM108
+        if section.is_root:  # ruff: ignore[if-else-block-instead-of-if-exp]
             parent_id = "soma" if has_soma else None
         else:
             parent_id = str(section.parent.id)

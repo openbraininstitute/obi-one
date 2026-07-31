@@ -322,6 +322,9 @@ async def _run_pipeline(
                 upload_morphology_file(client, entity_uuid, converted_files.swc)
             if converted_files.hdf5 and converted_files.hdf5.exists():
                 upload_morphology_file(client, entity_uuid, converted_files.hdf5)
+        except EntitySDKError as err:
+            _raise_entitysdk_failure("registration", err)
+        try:
             measurement_annotation = register_morphometrics(client, entity_uuid, measurement_list)
         except EntitySDKError as err:
             _raise_entitysdk_failure("registration", err)

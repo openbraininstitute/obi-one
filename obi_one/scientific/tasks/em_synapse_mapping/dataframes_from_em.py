@@ -1,6 +1,6 @@
 import logging
 
-import pandas  # NOQA: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 from entitysdk import Client
 from voxcell import CellCollection
 

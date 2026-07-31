@@ -128,6 +128,7 @@ def _evaluate_accounting_parameters(
             service_subtype = ServiceSubtype.CIRCUIT_EXTRACTION
         case (
             TaskType.circuit_simulation_neuron
+            | TaskType.circuit_simulation_neurodamus_machine
             | TaskType.circuit_simulation_neurodamus_cluster
             | TaskType.circuit_simulation_inait_machine
         ):
@@ -148,6 +149,12 @@ def _evaluate_accounting_parameters(
         case TaskType.ion_channel_model_simulation_execution:
             count = 1
             service_subtype = ServiceSubtype.ION_CHANNEL_SIM
+        case TaskType.single_neuron_simulation_execution:
+            count = 1
+            service_subtype = ServiceSubtype.SINGLE_CELL_SIM
+        case TaskType.single_neuron_synaptome_simulation_execution:
+            count = 1
+            service_subtype = ServiceSubtype.SYNAPTOME_SIM
         case TaskType.morphology_skeletonization:
             count = estimate_skeletonization_count(db_client=db_client, config_id=config_id)
             service_subtype = ServiceSubtype.NEURON_MESH_SKELETONIZATION
@@ -223,7 +230,7 @@ def _get_simulation_duration_ms(
         tstop = config.get("run", {}).get("tstop")
         if tstop is not None:
             return float(tstop)
-    except Exception:  # noqa: BLE001
+    except Exception:  # ruff: ignore[blind-except]
         L.warning(f"Could not read sonata_simulation_config for simulation {simulation.id}")
 
     # Fallback to scan_parameters

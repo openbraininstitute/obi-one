@@ -165,7 +165,7 @@ def mapped_circuit_properties_endpoint(
 
     # Try fetching circuit metrics (nodesets). This succeeds for Circuit entities
     # but fails for MEModel entities which are not stored as Circuit in the DB.
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         circuit_metrics = get_circuit_metrics(
             circuit_id=circuit_id,
             db_client=db_client,

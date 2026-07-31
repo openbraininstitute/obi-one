@@ -1,5 +1,5 @@
 import morphio
-import pandas  # noqa: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 from pydantic import Field
 
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
@@ -49,7 +49,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
             if self.n_clusters < 1:
                 msg = f"Number of clusters {self.n_clusters} < 1"
                 raise ValueError(msg)
-            if not isinstance(self.number_of_locations, list):  # noqa: SIM102
+            if not isinstance(self.number_of_locations, list):  # ruff: ignore[collapsible-if]
                 if self.number_of_locations < self.n_clusters:
                     msg = f"Number of locations: {self.number_of_locations} \
                         < number of clusters: {self.n_clusters}"
@@ -124,17 +124,17 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     def _check_parameter_values(self) -> None:
         super()._check_parameter_values()
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_mean, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_mean < 0:
                 msg = f"Path distance mean: {self.path_dist_mean} < 0"
                 raise ValueError(msg)
 
-        if not isinstance(self.path_dist_sd, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_sd, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_sd < _MIN_PD_SD:
                 msg = f"Path distance std: {self.path_dist_sd} < {_MIN_PD_SD} (numerical stability)"
                 raise ValueError(msg)
 
-        if not isinstance(self.n_groups_per_cluster, list):  # noqa: SIM102
+        if not isinstance(self.n_groups_per_cluster, list):  # ruff: ignore[collapsible-if]
             if self.n_groups_per_cluster < 1:
                 msg = f"Number of groups per cluster: {self.n_groups_per_cluster} < 1"
                 raise ValueError(msg)
