@@ -31,9 +31,15 @@ def run_task_for_single_configs(
     *,
     db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     entity_cache: bool = False,
+    execution_activity_id: str | None = None,
 ) -> list[Any]:
     return [
-        run_task_for_single_config(single_config, db_client=db_client, entity_cache=entity_cache)
+        run_task_for_single_config(
+            single_config,
+            db_client=db_client,
+            entity_cache=entity_cache,
+            execution_activity_id=execution_activity_id,
+        )
         for single_config in single_configs
     ]
 
@@ -43,9 +49,13 @@ def run_tasks_for_generated_scan(
     *,
     db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     entity_cache: bool = False,
+    execution_activity_id: str | None = None,
 ) -> Any:
     return run_task_for_single_configs(
-        scan_generation.single_configs, db_client=db_client, entity_cache=entity_cache
+        scan_generation.single_configs,
+        db_client=db_client,
+        entity_cache=entity_cache,
+        execution_activity_id=execution_activity_id,
     )
 
 

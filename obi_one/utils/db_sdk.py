@@ -75,6 +75,74 @@ def create_activity(
     return activity
 
 
+def fetch_asset_by_label(
+    *,
+    client: Client,
+    entity: Entity,
+    asset_label: AssetLabel,
+    output_path: Path,
+) -> Path:
+    """Fetch a single asset matching the given label to output_path.
+
+    Uses fetch_assets (checks local data store first).
+    Returns the path to the fetched file.
+    """
+    from entitysdk.utils.filesystem import create_dir  # noqa: PLC0415
+
+    output_dir = create_dir(output_path)
+    asset = client.fetch_assets(
+        entity,
+        selection={"label": asset_label},
+        output_path=output_dir,
+    ).one()
+    return asset.path
+
+
+def get_recording_protocols(
+    recording_ids: list[str],
+    db_client: Client,
+) -> dict[str, list[str]]:
+    """Return ``{recording_id: [protocol_name, ...]}`` for each recording.
+
+    Reads protocol names from the ``stimuli`` field of each
+    ``ElectricalCellRecording`` entity — no NWB download required.
+    """
+    from entitysdk.models import ElectricalCellRecording  # noqa: PLC0415
+
+    by_recording: dict[str, list[str]] = {}
+    for rid in recording_ids:
+        entity = db_client.get_entity(
+            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_type=ElectricalCellRecording,
+        )
+        stimuli = entity.stimuli or []
+        by_recording[rid] = sorted({s.name for s in stimuli if s.name})
+    return by_recording
+
+
+def fetch_directory_asset_by_label(
+    *,
+    client: Client,
+    entity: Entity,
+    asset_label: AssetLabel,
+    output_path: Path,
+) -> Path:
+    """Fetch a directory asset matching the given label to output_path.
+
+    Uses fetch_assets (checks local data store first).
+    Returns the path to the fetched directory.
+    """
+    from entitysdk.utils.filesystem import create_dir  # noqa: PLC0415
+
+    output_dir = create_dir(output_path)
+    asset = client.fetch_assets(
+        entity,
+        selection={"label": asset_label, "content_type": ContentType.application_vnd_directory},
+        output_path=output_dir,
+    ).one()
+    return asset.path
+
+
 def select_asset_content(
     *,
     client: Client,
