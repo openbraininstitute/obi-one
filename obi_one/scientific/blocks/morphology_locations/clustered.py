@@ -1,8 +1,8 @@
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 import morphio
 import pandas  # noqa: ICN001
-from pydantic import Field, NonNegativeFloat, PositiveInt
+from pydantic import Field, NonNegativeFloat, PositiveInt, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -67,18 +67,19 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
         ).drop(columns=[_CEN_IDX])
         return locs
 
-    def _check_parameter_values(self) -> None:
-        # Only check whenever list are resolved to individual objects
-        if not isinstance(self.n_clusters, list):
-            if self.n_clusters < 1:
-                msg = f"Number of clusters {self.n_clusters} < 1"
-                raise ValueError(msg)
-            if not isinstance(self.number_of_locations, list):  # noqa: SIM102
-                if self.number_of_locations < self.n_clusters:
-                    msg = f"Number of locations: {self.number_of_locations} \
-                        < number of clusters: {self.n_clusters}"
-                    raise ValueError(msg)
+    @model_validator(mode="after")
+    def validate_number_of_locations(self) -> Self:
+        if (
+            not isinstance(self.n_clusters, list)
+            and not isinstance(self.number_of_locations, list)
+            and self.number_of_locations < self.n_clusters
+        ):
+            raise ValueError(
+                "Number of locations must be greater than or equal to "
+                "the number of clusters."
+            )
 
+        return self
 
 class ClusteredGroupedMorphologyLocations(
     ClusteredMorphologyLocations, RandomGroupedMorphologyLocations
