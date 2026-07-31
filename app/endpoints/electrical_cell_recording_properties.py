@@ -4,11 +4,11 @@ from typing import Annotated
 import entitysdk.client
 import entitysdk.exception
 from fastapi import APIRouter, Depends, HTTPException, Query
-from obi_one.utils.db_sdk import get_recording_amplitudes, get_recording_protocols
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
+from obi_one.db_sdk.db_sdk import get_recording_amplitudes, get_recording_protocols
 from obi_one.scientific.library.entity_property_types import (
     ElectricalCellRecordingMappedProperties,
 )
