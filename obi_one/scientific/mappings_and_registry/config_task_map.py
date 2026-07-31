@@ -159,16 +159,12 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         single_config_cls=EModelEFeatureExtractionSingleConfig,
         scan_config_cls=EModelEFeatureExtractionScanConfig,
         asset_label=AssetLabel.task_config,
-        campaign_task_config_type=(
-            TaskConfigType.efeature_extraction__campaign
-        ),
+        campaign_task_config_type=(TaskConfigType.efeature_extraction__campaign),
         campaign_generation_task_activity_type=(
             TaskActivityType.efeature_extraction__config_generation
         ),
         single_task_config_type=TaskConfigType.efeature_extraction__config,
-        single_task_activity_type=(
-            TaskActivityType.efeature_extraction__execution
-        ),
+        single_task_activity_type=(TaskActivityType.efeature_extraction__execution),
     ),
     TaskType.extracellular_recording_weights_calculation: TaskRegistration(
         task_cls=CreateExtracellularRecordingArrayTask,
