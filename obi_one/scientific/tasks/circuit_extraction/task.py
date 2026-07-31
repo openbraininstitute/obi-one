@@ -19,6 +19,8 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.neuron_sets.specific import (
@@ -44,7 +46,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
 )
-from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
+from obi_one.utils import circuit as circuit_utils
 from obi_one.utils.benchmark import BenchmarkTracker
 
 if settings.circuit_extraction.benchmarking_enabled:

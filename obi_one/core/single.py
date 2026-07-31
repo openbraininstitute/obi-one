@@ -15,7 +15,7 @@ from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
 from obi_one.core.registry import task_registry
 from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 

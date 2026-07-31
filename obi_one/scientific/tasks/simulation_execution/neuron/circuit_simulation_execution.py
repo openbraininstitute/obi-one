@@ -5,13 +5,13 @@ from typing import override
 import entitysdk
 from entitysdk import models
 
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.simulation.neuron.staging import stage_circuit
 from obi_one.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )
-from obi_one.utils import db_sdk
 from obi_one.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)

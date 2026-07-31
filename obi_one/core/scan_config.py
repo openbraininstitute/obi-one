@@ -21,7 +21,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 

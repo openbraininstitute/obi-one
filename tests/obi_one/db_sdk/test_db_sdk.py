@@ -1,7 +1,6 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -14,9 +13,9 @@ from entitysdk.models import Asset, Entity, SimulationExecution
 from entitysdk.types import AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
+from obi_one.db_sdk import db_sdk as test_module
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.utils import db_sdk as test_module
 
 from tests.utils import CIRCUIT_DIR, PROJECT_ID, VIRTUAL_LAB_ID
 
@@ -380,203 +379,6 @@ def test_get_execution_activity():
 
     assert result is execution_activity
     client.get_entity.assert_called_once()
-
-
-def test_add_circuit_folder_asset_missing_folder(tmp_path):
-    client = Mock()
-    with pytest.raises(FileNotFoundError, match="Circuit folder does not exist"):
-        test_module.add_circuit_folder_asset(
-            client=client,
-            circuit_path=tmp_path / "missing" / "circuit_config.json",
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_circuit_folder_asset_missing_circuit_config(tmp_path):
-    circuit_folder = tmp_path / "circuit"
-    circuit_folder.mkdir()
-    (circuit_folder / "node_sets.json").write_text("{}")
-    client = Mock()
-
-    with pytest.raises(FileNotFoundError, match="Circuit config file not found"):
-        test_module.add_circuit_folder_asset(
-            client=client,
-            circuit_path=circuit_folder / "circuit_config.json",
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_circuit_folder_asset_missing_node_sets(tmp_path):
-    circuit_folder = tmp_path / "circuit"
-    circuit_folder.mkdir()
-    (circuit_folder / "circuit_config.json").write_text("{}")
-    client = Mock()
-
-    with pytest.raises(FileNotFoundError, match="Node sets file not found"):
-        test_module.add_circuit_folder_asset(
-            client=client,
-            circuit_path=circuit_folder / "circuit_config.json",
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_circuit_folder_asset_success(tmp_path):
-    circuit_folder = tmp_path / "circuit"
-    circuit_folder.mkdir()
-    (circuit_folder / "circuit_config.json").write_text("{}")
-    (circuit_folder / "node_sets.json").write_text("{}")
-    (circuit_folder / "nodes.h5").write_text("x")
-    client = Mock()
-    directory_asset = SimpleNamespace(id=uuid4())
-    client.upload_directory.return_value = directory_asset
-
-    result = test_module.add_circuit_folder_asset(
-        client=client,
-        circuit_path=circuit_folder / "circuit_config.json",
-        registered_circuit=Mock(id=uuid4()),
-    )
-
-    assert result is directory_asset
-    client.upload_directory.assert_called_once()
-
-
-def test_add_compressed_circuit_asset_missing_file(tmp_path):
-    client = Mock()
-    with pytest.raises(FileNotFoundError, match="does not exist"):
-        test_module.add_compressed_circuit_asset(
-            client=client,
-            compressed_file=tmp_path / "missing.tar.gz",
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_compressed_circuit_asset_success(tmp_path):
-    compressed_file = tmp_path / "circuit.tar.gz"
-    compressed_file.write_bytes(b"abc")
-    client = Mock()
-    compressed_asset = SimpleNamespace(id=uuid4())
-    client.upload_file.return_value = compressed_asset
-
-    result = test_module.add_compressed_circuit_asset(
-        client=client,
-        compressed_file=compressed_file,
-        registered_circuit=Mock(id=uuid4()),
-    )
-
-    assert result is compressed_asset
-    client.upload_file.assert_called_once()
-
-
-def test_add_connectivity_matrix_asset_missing_dir(tmp_path):
-    client = Mock()
-    with pytest.raises(FileNotFoundError, match="does not exist"):
-        test_module.add_connectivity_matrix_asset(
-            client=client,
-            matrix_dir=tmp_path / "missing",
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_connectivity_matrix_asset_success(tmp_path):
-    matrix_dir = tmp_path / "matrices"
-    matrix_dir.mkdir()
-    (matrix_dir / "m1.npy").write_text("x")
-    client = Mock()
-    matrix_asset = SimpleNamespace(id=uuid4())
-    client.upload_directory.return_value = matrix_asset
-
-    result = test_module.add_connectivity_matrix_asset(
-        client=client,
-        matrix_dir=matrix_dir,
-        registered_circuit=Mock(id=uuid4()),
-    )
-
-    assert result is matrix_asset
-    client.upload_directory.assert_called_once()
-
-
-def test_add_image_assets_missing_dir(tmp_path):
-    client = Mock()
-    with pytest.raises(FileNotFoundError, match="does not exist"):
-        test_module.add_image_assets(
-            client=client,
-            plot_dir=tmp_path / "missing",
-            plot_files=[],
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_image_assets_missing_file(tmp_path):
-    plot_dir = tmp_path / "plots"
-    plot_dir.mkdir()
-    client = Mock()
-    with pytest.raises(FileNotFoundError, match="does not exist"):
-        test_module.add_image_assets(
-            client=client,
-            plot_dir=plot_dir,
-            plot_files=["node_stats.png"],
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_image_assets_skip_unknown_plot(tmp_path):
-    plot_dir = tmp_path / "plots"
-    plot_dir.mkdir()
-    (plot_dir / "unknown.png").write_bytes(b"x")
-    client = Mock()
-
-    assets = test_module.add_image_assets(
-        client=client,
-        plot_dir=plot_dir,
-        plot_files=["unknown.png"],
-        registered_circuit=Mock(id=uuid4()),
-    )
-
-    assert assets == []
-    client.upload_file.assert_not_called()
-
-
-def test_add_image_assets_format_mismatch(tmp_path):
-    plot_dir = tmp_path / "plots"
-    plot_dir.mkdir()
-    (plot_dir / "simulation_designer_image.jpg").write_bytes(b"x")
-    client = Mock()
-
-    with pytest.raises(ValueError, match="File format mismatch"):
-        test_module.add_image_assets(
-            client=client,
-            plot_dir=plot_dir,
-            plot_files=["simulation_designer_image.jpg"],
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-
-def test_add_image_assets_success_webp_and_png(tmp_path):
-    plot_dir = tmp_path / "plots"
-    plot_dir.mkdir()
-    node_stats_png = plot_dir / "node_stats.png"
-    node_stats_png.write_bytes(b"x")
-    sim_png = plot_dir / "simulation_designer_image.png"
-    sim_png.write_bytes(b"y")
-
-    client = Mock()
-    uploaded_a = SimpleNamespace(id=uuid4())
-    uploaded_b = SimpleNamespace(id=uuid4())
-    client.upload_file.side_effect = [uploaded_a, uploaded_b]
-
-    converted = plot_dir / "node_stats.webp"
-    converted.write_bytes(b"z")
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(test_module, "convert_image_to_webp", Mock(return_value=Path(converted)))
-        assets = test_module.add_image_assets(
-            client=client,
-            plot_dir=plot_dir,
-            plot_files=["node_stats.png", "simulation_designer_image.png"],
-            registered_circuit=Mock(id=uuid4()),
-        )
-
-    assert assets == [uploaded_a, uploaded_b]
-    assert client.upload_file.call_count == 2
 
 
 def test_resolve_circuit_local_instance():

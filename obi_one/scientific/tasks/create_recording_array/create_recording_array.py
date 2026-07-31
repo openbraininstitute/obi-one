@@ -17,6 +17,7 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
@@ -25,7 +26,6 @@ from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
-from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
