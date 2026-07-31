@@ -78,28 +78,24 @@ def union_member_names(union: Any) -> set[str]:
     return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
 
 
-def reference_field_names(block_class: type) -> list[str]:
-    """Names of the fields on ``block_class`` that hold a block reference.
+def reference_types_in(annotation: Any) -> set[type]:
+    """Every ``BlockReference`` subclass reachable inside a field annotation.
 
-    Reference fields are declared as ``SomeReference | ... | None`` and sometimes nest a further
-    union inside, so both levels are searched.
+    References are nested to varying depths: directly in a union (``SomeReference | None``), one
+    union deeper, and inside the tuple-of-tuples that ``CombinedBaseNeuronSet.combined_with``
+    uses. The search is fully recursive so no field shape is silently missed.
     """
+    if inspect.isclass(annotation) and issubclass(annotation, BlockReference):
+        return {annotation}
+    return {found for arg in typing.get_args(annotation) for found in reference_types_in(arg)}
 
-    def holds_a_reference(annotation: Any) -> bool:
-        for arg in typing.get_args(annotation):
-            if inspect.isclass(arg) and issubclass(arg, BlockReference):
-                return True
-            if any(
-                inspect.isclass(nested) and issubclass(nested, BlockReference)
-                for nested in typing.get_args(arg)
-            ):
-                return True
-        return False
 
+def reference_field_names(block_class: type) -> list[str]:
+    """Names of the fields on ``block_class`` that hold a block reference."""
     return [
         name
         for name, field_info in block_class.model_fields.items()
-        if holds_a_reference(field_info.annotation)
+        if reference_types_in(field_info.annotation)
     ]
 
 

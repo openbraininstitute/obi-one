@@ -14,6 +14,7 @@ block type is covered here without anyone editing this file.
 import pytest
 
 import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
 from obi_one.scientific.blocks.neuron_sets.population import PointPopulationNeuronSet
 from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
     ByNeuronMechanismVariableNeuronalManipulation,
@@ -48,6 +49,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     build_config,
     generate,
     reference_field_names,
+    reference_types_in,
     union_member_names,
 )
 
@@ -60,6 +62,48 @@ MORPHOLOGY_LOCATIONS = sorted(union_member_names(MorphologyLocationUnion))
 COMBINED_NEURON_SETS = sorted(
     name for name in union_member_names(NEURONSimulationNeuronSetUnion) if "Combined" in name
 )
+
+ALL_BLOCK_UNIONS = (
+    CircuitStimulusUnion,
+    RecordingUnion,
+    SynapticManipulationsUnion,
+    NeuronalManipulationUnion,
+    MorphologyLocationUnion,
+    NEURONSimulationNeuronSetUnion,
+)
+
+BLOCK_CLASSES = {
+    name: cls
+    for union in ALL_BLOCK_UNIONS
+    for name in union_member_names(union)
+    for cls in [
+        getattr(obi, name, None)
+        or {
+            "ByNeuronMechanismVariableNeuronalManipulation": (
+                ByNeuronMechanismVariableNeuronalManipulation
+            ),
+            "BySectionListMechanismVariableNeuronalManipulation": (
+                BySectionListMechanismVariableNeuronalManipulation
+            ),
+            "AllNeurons": AllNeurons,
+        }[name]
+    ]
+}
+
+# Every reference-holding field a simulation-generation block can have, each with a case below.
+# Seven name neuron sets, one names timestamps, one names a distribution.
+COVERED_REFERENCE_FIELDS = {
+    "neuron_set",
+    "source_neuron_set",
+    "targeted_neuron_set",
+    "presynaptic_neuron_set",
+    "postsynaptic_neuron_set",
+    "base_neuron_set",
+    "combined_with",
+    "initialize.node_set",
+    "timestamps",
+    "distribution",
+}
 
 # Neuronal manipulations take a required `modification`, so each needs a factory rather than
 # bare construction. Their `neuron_set` is still left unset, which is what these cases are for.
@@ -105,8 +149,43 @@ def _input_entry(result, name: str) -> dict:
     return result.inputs[f"{name}_0"]
 
 
-class TestReferenceFieldsAreAllOptional:
-    """The precondition for everything else in this module."""
+class TestEveryReferenceFieldIsExercised:
+    """Proves the sweeps below reach every reference field, not just the neuron set ones.
+
+    Simulation-generation blocks carry three kinds of reference: neuron sets (seven differently
+    named fields), timestamps and distributions. It is easy to cover the neuron set fields and
+    assume the rest came along, so the covered set is asserted against what introspection finds.
+    A new reference field on any block fails this test until it is added to the list and given a
+    case below.
+    """
+
+    def test_the_covered_fields_are_all_the_fields_there_are(self):
+        found = {
+            field
+            for union in ALL_BLOCK_UNIONS
+            for name in union_member_names(union)
+            for field in reference_field_names(BLOCK_CLASSES[name])
+        }
+        found |= {
+            f"initialize.{field}"
+            for field in reference_field_names(CircuitSimulationSingleConfig.Initialize)
+        }
+
+        assert found == COVERED_REFERENCE_FIELDS
+
+    def test_the_three_reference_kinds_are_all_represented(self):
+        kinds = {
+            reference.__name__
+            for union in ALL_BLOCK_UNIONS
+            for name in union_member_names(union)
+            for field_info in BLOCK_CLASSES[name].model_fields.values()
+            for reference in reference_types_in(field_info.annotation)
+        }
+
+        assert "TimestampsReference" in kinds
+        assert "AllDistributionsReference" in kinds
+        assert "MorphologyLocationsReference" in kinds
+        assert any(name.endswith("NeuronSetReference") for name in kinds)
 
     @pytest.mark.parametrize(
         "name",
@@ -119,6 +198,14 @@ class TestReferenceFieldsAreAllOptional:
         assert fields, f"{name} was expected to have at least one reference field"
         for field in fields:
             assert block_class.model_fields[field].default is None
+
+    @pytest.mark.parametrize("name", COMBINED_NEURON_SETS)
+    def test_a_combined_neuron_set_starts_with_no_operands(self, name):
+        """``combined_with`` is the one reference field that defaults to empty rather than None."""
+        block_class = getattr(obi, name)
+
+        assert block_class.model_fields["base_neuron_set"].default is None
+        assert block_class.model_fields["combined_with"].default == ()
 
     def test_a_block_constructed_with_no_arguments_has_no_targets(self):
         stimulus = obi.ConstantCurrentClampSomaticStimulus()
@@ -193,6 +280,37 @@ class TestUnsetReferencesResolveToTheDefault:
             DEFAULT_POINT_NODE_SET if is_point else EXPECTED_COMBINED_DEFAULTS[name]
         )
         assert base.block_name in result.node_sets
+
+    @pytest.mark.parametrize("name", COMBINED_NEURON_SETS)
+    def test_combined_neuron_set_operands_are_filled_too(
+        self, name, circuit, point_circuit, tmp_path
+    ):
+        """``combined_with`` entries are ``(reference, operation)`` pairs whose reference can
+        also be unset, and each one is filled with the same population default as the base."""
+        is_point = name == "PointCombinedNeuronSet"
+        combined = getattr(obi, name)(
+            base_neuron_set=None, combined_with=((None, "union"), (None, "union"))
+        )
+        blocks: dict = {"Combined": combined}
+        if is_point:
+            blocks = {"Target": PointPopulationNeuronSet(population=POINT_POPULATION), **blocks}
+
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=point_circuit if is_point else circuit,
+            blocks=blocks,
+        )
+        if is_point:
+            config.initialize.node_set = config.neuron_sets["Target"].ref
+
+        generate(config, tmp_path)
+
+        expected = EXPECTED_COMBINED_DEFAULTS[name]
+        operands = config.neuron_sets["Combined"].combined_with
+        assert len(operands) == 2
+        for reference, _operation in operands:
+            assert reference is not None
+            assert reference.block_name == expected
 
     @pytest.mark.parametrize("name", MORPHOLOGY_LOCATIONS)
     def test_morphology_locations_target_the_default_neuron_set(
@@ -496,6 +614,24 @@ class TestUnsetTimestampsAndDistributions:
         result = generate(config, tmp_path)
 
         assert set(result.inputs) == {"Clamp_0"}
+
+    @pytest.mark.parametrize(
+        "name", ["ConnectSynapticManipulation", "DisconnectSynapticManipulation"]
+    )
+    def test_a_delayed_manipulation_without_timestamps_applies_at_zero(
+        self, name, circuit, tmp_path
+    ):
+        """These two are the only manipulations carrying a timestamps reference."""
+        config = build_config(
+            CircuitSimulationSingleConfig, circuit=circuit, blocks={"Manip": _block(name)}
+        )
+
+        result = generate(config, tmp_path)
+
+        assert config.synaptic_manipulations["Manip"].timestamps is None
+        overrides = result.sonata_config["connection_overrides"]
+        assert len(overrides) == 1
+        assert overrides[0]["delay"] == pytest.approx(0.0)
 
     @pytest.mark.parametrize(
         "name",
