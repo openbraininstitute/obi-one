@@ -55,3 +55,29 @@ class Block:
         )
 
 ```
+
+## Float optional
+
+ui_element: `float_optional`
+
+- Should have an `anyOf` property.
+- Should accept a `number` and `null` (a nullable float — **not** swept).
+- _The single `number` value must come first, `null` second._
+- `null` means the value is unset — e.g. "inherit from the level above".
+- Optional `minimum` and `maximum` on the `number` and an optional `units` string.
+
+Reference schema [float_optional](reference_schemas/float_optional.jsonc)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    spike_detection_threshold: float | None = Field(  # single value first, then None
+            default=None,
+            title="Spike detection threshold",
+            description="eFEL Threshold. Leave unset to inherit from the level above.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
+                SchemaKey.UNITS: Units.MILLIVOLTS,
+            })
+```

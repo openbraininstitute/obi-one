@@ -5,7 +5,7 @@ from entitysdk import Client
 from entitysdk.models import TaskActivity
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 

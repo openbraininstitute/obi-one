@@ -31,14 +31,14 @@ from app.services.morphology import (
     MorphologyFiles,
     validate_and_convert_morphology,
 )
-from obi_one.scientific.library.morphology_measurement_annotation import (
-    compute_morphometrics,
-)
-from obi_one.scientific.library.morphology_registration import (
+from obi_one.db_sdk.registration.morphology import (
     register_morphometrics,
     try_generate_and_upload_mesh,
     upload_morphology_content,
     upload_morphology_file,
+)
+from obi_one.scientific.library.morphology_measurement_annotation import (
+    compute_morphometrics,
 )
 
 if TYPE_CHECKING:

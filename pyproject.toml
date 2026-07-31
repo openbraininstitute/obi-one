@@ -48,7 +48,7 @@ dependencies = [
     "morph_spines",
     "morph-tool",
     "neurom",
-    "libsonata>=0.1.36",
+    "libsonata>=0.2.0",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
@@ -59,6 +59,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
+emodel = [
+    "bluepyemodel>=1.0.43",
+]
+
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = [
     "connectome-analysis>=1.0.1",
@@ -97,7 +102,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies
 all = [
-    "obi-one[connectivity,meshing,notebooks,service]",
+    "obi-one[connectivity,emodel,meshing,notebooks,service]",
 ]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.

@@ -5,7 +5,7 @@ import pytest
 from entitysdk.exception import EntitySDKError
 
 from app.errors import ApiError
-from obi_one.scientific.library.morphology_registration import (
+from obi_one.db_sdk.registration.morphology import (
     register_morphometrics,
     try_generate_and_upload_mesh,
     upload_morphology_content,

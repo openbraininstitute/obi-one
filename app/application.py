@@ -23,6 +23,7 @@ from app.endpoints import (
     contributor,
     convert_morphology_to_registered_mesh,
     count_scan_coordinates,
+    electrical_cell_recording_properties,
     ephys_metrics,
     extracellular_locations,
     ion_channel_properties,
@@ -35,6 +36,7 @@ from app.endpoints import (
     multi_values,
     publication,
     scan_config,
+    subject,
     task,
     validate_electrophysiology_protocol_nwb,
 )
@@ -175,6 +177,7 @@ app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
 app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
+app.include_router(electrical_cell_recording_properties.router)
 app.include_router(ephys_metrics.router)
 app.include_router(extracellular_locations.router)
 app.include_router(ion_channel_properties.router)
@@ -188,6 +191,7 @@ app.include_router(multi_values.router)
 app.include_router(validate_electrophysiology_protocol_nwb.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
+app.include_router(subject.router)
 app.include_router(task.router)
 app.include_router(publication.router)
 app.include_router(contributor.router)

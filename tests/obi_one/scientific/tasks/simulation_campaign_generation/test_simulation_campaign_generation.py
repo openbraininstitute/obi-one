@@ -740,16 +740,16 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
     assert simulation_config["compartment_sets_file"] == "compartment_sets.json"
 
     input_config = simulation_config["inputs"]["LocationCurrentClamp_0"]
-    assert input_config["compartment_set"] == "LocationCurrentClamp__locations"
+    assert input_config["compartment_set"] == "ClampLocations"
     assert "locations" not in input_config
     assert "node_set" not in input_config
 
     with compartment_sets_path.open("r") as f:
         compartment_sets = json.load(f)
 
-    assert set(compartment_sets) == {"LocationCurrentClamp__locations"}
+    assert set(compartment_sets) == {"ClampLocations"}
 
-    generated_set = compartment_sets["LocationCurrentClamp__locations"]
+    generated_set = compartment_sets["ClampLocations"]
     assert generated_set["population"] == circuit.default_population_name
     assert len(generated_set["compartment_set"]) == 2
 
@@ -820,25 +820,32 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
         population=circuit.default_population_name,
     )
 
-    comp_set = materialized["LocationCurrentClamp__locations"]
+    comp_set = materialized["ClampLocations"]
     materialized_target = form.stimuli["LocationCurrentClamp"].neuron_set
 
     assert isinstance(materialized_target, MorphologyLocationsReference)
 
-    actual_rows = comp_set.to_sonata_dict()["LocationCurrentClamp__locations"]["compartment_set"]
+    actual_rows = comp_set.to_sonata_dict()["ClampLocations"]["compartment_set"]
 
     actual_df = pd.DataFrame(
         actual_rows,
         columns=["node_id", "section_id", "offset"],
     )
 
-    expected = pd.DataFrame(
-        {
-            "node_id": 0,
-            "section_id": expected_df["section_id"].astype(int),
-            "offset": expected_df["normalized_section_offset"].astype(float),
-        }
-    ).reset_index(drop=True)
+    # to_sonata_dict emits entries in canonical SONATA order (sorted by node_id, section_id,
+    # offset, then deduplicated), which is not the order the locations were generated in.
+    expected = (
+        pd.DataFrame(
+            {
+                "node_id": 0,
+                "section_id": expected_df["section_id"].astype(int),
+                "offset": expected_df["normalized_section_offset"].astype(float),
+            }
+        )
+        .sort_values(["node_id", "section_id", "offset"])
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
 
     actual = actual_df.astype(
         {
@@ -859,6 +866,14 @@ def test_continuous_stimulus_exposes_single_target_field():
     assert fields["neuron_set"].title == "Target"
     assert "MorphologyLocationsReference" in reference_types
     assert "RandomMorphologyLocations" in morphology_locations_ref_schema["allowed_block_types"]
+    assert (
+        "RandomGroupedMorphologyLocations"
+        not in morphology_locations_ref_schema["allowed_block_types"]
+    )
+    assert (
+        "ClusteredGroupedMorphologyLocations"
+        not in morphology_locations_ref_schema["allowed_block_types"]
+    )
     assert "locations" not in fields
     assert "compartment_set" not in fields
 

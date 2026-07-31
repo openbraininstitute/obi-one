@@ -7,6 +7,7 @@ from entitysdk.types import AssetLabel
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.exception import OBIONEError
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.simulation.neuron.staging import stage_memodel_as_circuit
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
@@ -16,7 +17,6 @@ from obi_one.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )
-from obi_one.utils import db_sdk
 from obi_one.utils.filesystem import create_dir
 
 if TYPE_CHECKING:

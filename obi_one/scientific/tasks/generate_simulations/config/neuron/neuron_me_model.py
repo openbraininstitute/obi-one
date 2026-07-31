@@ -8,6 +8,7 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
@@ -99,7 +100,7 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            MorphologyLocationsReference.__name__: "Default: None",
+            MorphologyLocationsReference.__name__: DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
