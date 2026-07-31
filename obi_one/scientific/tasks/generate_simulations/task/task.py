@@ -19,13 +19,18 @@ from obi_one.scientific.from_id.circuit_from_id import (
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.compartment_sets import MaterializedCompartmentSet
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
+    write_circuit_compartment_set_file,
     write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
+    materialize_locations_to_compartment_sets,
 )
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
@@ -50,10 +55,14 @@ class GenerateSimulationTask(Task):
 
     CONFIG_FILE_NAME: ClassVar[str] = "simulation_config.json"
     NODE_SETS_FILE_NAME: ClassVar[str] = "node_sets.json"
+    COMPARTMENT_SETS_FILE_NAME: ClassVar[str] = "compartment_sets.json"
 
     _sonata_config: dict = PrivateAttr(default={})
     _circuit: Circuit | MEModelCircuit | None = PrivateAttr(default=None)
     _entity_cache: bool = PrivateAttr(default=False)
+    _materialized_compartment_sets: dict[str, MaterializedCompartmentSet] = PrivateAttr(
+        default_factory=dict
+    )
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -188,7 +197,7 @@ class GenerateSimulationTask(Task):
         This is only done if the config has a neuron_sets attribute.
         """
 
-        def is_optional_neuronsetreference(attr_value: type) -> bool:
+        def accepts_optional_neuron_set_reference(attr_value: type) -> bool:
             none_type = type(None)
             args = get_args(attr_value)
             none_args = [arg for arg in args if arg is none_type]
@@ -196,7 +205,7 @@ class GenerateSimulationTask(Task):
             return (
                 len(none_args) == 1
                 and len(reference_args) >= 1
-                and all(
+                and any(
                     isinstance(arg, type)
                     and issubclass(arg, (BaseNeuronSetReference, NeuronSetReference))
                     for arg in reference_args
@@ -207,7 +216,7 @@ class GenerateSimulationTask(Task):
             type_hints = get_type_hints(block.__class__)
 
             for attr_name, attr_type in type_hints.items():
-                if is_optional_neuronsetreference(attr_type):
+                if accepts_optional_neuron_set_reference(attr_type):
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
                         # A Brian2 Poisson stimulus with no target drives the `sugar` node set,
@@ -218,8 +227,26 @@ class GenerateSimulationTask(Task):
                         else:
                             setattr(block, attr_name, self._default_neuron_set_ref())
 
+    def _ensure_morphology_locations_have_neuron_set_reference(self) -> None:
+        """Ensure morphology locations have a neuron-set target.
+
+        MEModel configs do not expose a neuron_sets dictionary because the staged circuit contains
+        a single real neuron. In that case, use the implicit default AllNeurons target.
+        """
+        morphology_locations = getattr(self.config, "morphology_locations", None)
+        if not isinstance(morphology_locations, dict):
+            return
+
+        for locations_block in morphology_locations.values():
+            if getattr(locations_block, "neuron_set", None) is not None:
+                continue
+
+            locations_block.neuron_set = self.config.default_neuron_set_reference
+
     def _ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists(self) -> None:
         """Ensure all blocks have a NeuronSetReference if the neuron_sets dictionary exists."""
+        self._ensure_morphology_locations_have_neuron_set_reference()
+
         if hasattr(self.config, "neuron_sets"):
             for recording in getattr(self.config, "recordings", {}).values():
                 self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
@@ -232,6 +259,23 @@ class GenerateSimulationTask(Task):
             for neuron_set in list(getattr(self.config, "neuron_sets", {}).values()):
                 if isinstance(neuron_set, CombinedBaseNeuronSet):
                     self._ensure_combined_neuron_set_has_references(neuron_set)
+
+    def _materialize_location_targets(self) -> None:
+        circuit = self._circuit
+        if circuit is None:
+            msg = "Circuit must be resolved before materializing location targets."
+            raise OBIONEError(msg)
+
+        population = circuit.default_population_name
+
+        self._materialized_compartment_sets.update(
+            materialize_locations_to_compartment_sets(
+                single_config=self.config,
+                circuit=circuit,
+                node_population=population,
+                population=population,
+            )
+        )
 
     def _ensure_combined_neuron_set_has_references(self, neuron_set: CombinedBaseNeuronSet) -> None:
         """Ensure a combined neuron set's base and combined_with references are filled."""
@@ -447,6 +491,28 @@ class GenerateSimulationTask(Task):
         )
         self._sonata_config["node_sets_file"] = self.NODE_SETS_FILE_NAME
 
+    def _write_materialized_compartment_sets_file(self) -> None:
+        if self._materialized_compartment_sets:
+            compartment_sets_dict: dict = {}
+            sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
+
+            for cs_key, comp_set in self._materialized_compartment_sets.items():
+                if cs_key != comp_set.name:
+                    msg = "Materialized compartment set name mismatch."
+                    raise OBIONEError(msg)
+
+                compartment_sets_dict.update(comp_set.to_sonata_dict())
+
+            write_circuit_compartment_set_file(
+                sonata_circuit,
+                str(self.config.coordinate_output_root),
+                compartment_sets=compartment_sets_dict,
+                file_name=self.COMPARTMENT_SETS_FILE_NAME,
+                overwrite_if_exists=False,
+            )
+
+            self._sonata_config["compartment_sets_file"] = self.COMPARTMENT_SETS_FILE_NAME
+
     def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
         if db_client:
             if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
@@ -482,10 +548,25 @@ class GenerateSimulationTask(Task):
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-                file_path=Path(self.config.coordinate_output_root, "node_sets.json"),
+                file_path=Path(self.config.coordinate_output_root, self.NODE_SETS_FILE_NAME),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
                 asset_label="custom_node_sets",  # ty:ignore[invalid-argument-type]
             )
+
+            compartment_sets_path = Path(
+                self.config.coordinate_output_root,
+                self.COMPARTMENT_SETS_FILE_NAME,
+            )
+            if compartment_sets_path.exists():
+                L.info("-- Upload compartment_sets.json")
+                _ = db_client.upload_file(
+                    entity_id=self.config.single_entity.id,
+                    entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+                    file_path=compartment_sets_path,
+                    file_name=self.COMPARTMENT_SETS_FILE_NAME,
+                    file_content_type="application/json",  # ty:ignore[invalid-argument-type]
+                    asset_label="compartment_sets",  # ty:ignore[invalid-argument-type]
+                )
 
             L.info("-- Upload spike replay files")
             for input_ in self._sonata_config["inputs"]:
@@ -504,7 +585,7 @@ class GenerateSimulationTask(Task):
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
-                file_path=Path(self.config.coordinate_output_root, "simulation_config.json"),
+                file_path=Path(self.config.coordinate_output_root, self.CONFIG_FILE_NAME),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
                 asset_label="sonata_simulation_config",  # ty:ignore[invalid-argument-type]
             )
@@ -522,10 +603,12 @@ class GenerateSimulationTask(Task):
         self._resolve_circuit(db_client)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
+        self._materialize_location_targets()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports(db_client)
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
+        self._write_materialized_compartment_sets_file()
         self._update_simulation_number_neurons(db_client)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)
