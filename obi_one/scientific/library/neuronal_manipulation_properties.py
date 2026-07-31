@@ -113,7 +113,7 @@ def _resolve_neuron_set_and_get_templates(
         # Stage node_sets.json (needed for neuron set resolution)
         try:
             _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "node_sets.json")
-        except Exception:  # noqa: BLE001
+        except Exception:  # ruff: ignore[blind-except]
             L.debug("node_sets.json not available, continuing without it")
 
         # Load circuit
@@ -200,7 +200,7 @@ def get_circuit_node_ids(
         _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "circuit_config.json")
         try:
             _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "node_sets.json")
-        except Exception:  # noqa: BLE001
+        except Exception:  # ruff: ignore[blind-except]
             L.debug("node_sets.json not available, continuing without it")
 
         config_path = temp_dir_path / "circuit_config.json"
@@ -277,7 +277,7 @@ def _build_emodel_groups(
             mechanism_vars = _build_mechanism_variables_by_ion_channel_response(
                 variables, channel_mapping
             )
-        except Exception:  # noqa: BLE001
+        except Exception:  # ruff: ignore[blind-except]
             L.warning(
                 "Failed to get mechanism variables for emodel %s",
                 emodel_id,
