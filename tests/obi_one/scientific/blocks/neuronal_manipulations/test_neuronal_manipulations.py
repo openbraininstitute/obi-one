@@ -10,6 +10,9 @@ from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations imp
     CircuitByNeuronMechanismVariableNeuronalManipulation,
     CircuitBySectionListMechanismVariableNeuronalManipulation,
 )
+from obi_one.scientific.tasks.generate_simulations.task.task import (
+    GenerateSimulationTask,
+)
 
 
 class TestBySectionListMechanismVariableNeuronalManipulationConfig:
@@ -208,3 +211,54 @@ class TestCircuitVariantsConfig:
         )
         result = block.config(default_node_set="All")
         assert result == {"Ca_HVA2": {"gCa_HVAbar_Ca_HVA2": 0.3}}
+
+
+class TestGlobalMechanismsMerge:
+    """Regression test: GLOBAL neuronal manipulation must merge into existing mechanisms dict.
+
+    Before the fix, _add_sonata_simulation_config_manipulations replaced
+    conditions["mechanisms"] entirely, wiping ProbAMPANMDA_EMS and ProbGABAAB_EMS.
+    """
+
+    def test_global_manipulation_merges_into_existing_mechanisms(self):
+        """GLOBAL variable config is merged into conditions.mechanisms, not replaced."""
+        # Build a mock config with a GLOBAL neuronal manipulation
+        mod = ByNeuronModification(
+            channel_name="NaTg",
+            variable_name="vhalf_NaTg",
+            variable_type="GLOBAL",
+            new_value=-52.0,
+        )
+        block = ByNeuronMechanismVariableNeuronalManipulation(modification=mod)
+        block.set_block_name("mod_NaTg")
+
+        mock_config = MagicMock()
+        mock_config.default_node_set_name = "All"
+        mock_config.neuronal_manipulations = {"mod_NaTg": block}
+        # No synaptic_manipulations attribute → hasattr returns False
+        del mock_config.synaptic_manipulations
+
+        # Call the method directly without instantiating the full Pydantic task
+        sonata_config = {
+            "conditions": {
+                "mechanisms": {
+                    "ProbAMPANMDA_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+                    "ProbGABAAB_EMS": {"init_depleted": True, "minis_single_vesicle": True},
+                }
+            }
+        }
+        GenerateSimulationTask._add_sonata_simulation_config_manipulations(
+            type(
+                "_FakeTask",
+                (),
+                {"config": mock_config, "_sonata_config": sonata_config},
+            )()
+        )
+
+        mechanisms = sonata_config["conditions"]["mechanisms"]
+        # Original entries must still be present
+        assert "ProbAMPANMDA_EMS" in mechanisms
+        assert "ProbGABAAB_EMS" in mechanisms
+        # New GLOBAL variable must be added
+        assert "NaTg" in mechanisms
+        assert mechanisms["NaTg"] == {"vhalf_NaTg": -52.0}

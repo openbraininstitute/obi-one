@@ -178,7 +178,7 @@ class GenerateSimulationTask(Task):
             if range_modifications:
                 self._sonata_config["conditions"]["modifications"] = range_modifications
             if mechanisms:
-                self._sonata_config["conditions"]["mechanisms"] = mechanisms
+                self._sonata_config["conditions"].setdefault("mechanisms", {}).update(mechanisms)
 
     def _ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
         self, block: Block
