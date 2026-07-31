@@ -1,0 +1,16 @@
+{
+  "anyOf": [
+    // Single value must come first, null second
+    {
+      "type": "number"
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "title": "Spike detection threshold",
+  "description": "eFEL Threshold: voltage above which a spike is detected (mV). Leave unset to inherit from the level above (feature > protocol > global).",
+  "default": null,
+  "units": "millivolts",
+  "ui_element": "float_optional"
+}
