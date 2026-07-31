@@ -6,7 +6,13 @@ from pathlib import Path
 
 from entitysdk import Client, models
 
-from obi_one.utils.db_sdk import OVERVIEW_IMAGE_NAME, SIM_DESIGNER_IMAGE_NAME
+from obi_one.db_sdk.registration.circuit.assets import (
+    OVERVIEW_IMAGE_NAME,
+    SIM_DESIGNER_IMAGE_NAME,
+    add_compressed_circuit_asset,
+    add_connectivity_matrix_asset,
+    add_image_assets,
+)
 
 L = logging.getLogger(__name__)
 
@@ -23,8 +29,6 @@ def generate_compressed_circuit_asset(
     circuit and is used directly (no recompression).  Otherwise the standard
     compression pipeline is executed.
     """
-    from obi_one.utils import db_sdk  # ruff: ignore[import-outside-top-level]
-
     if circuit_path.suffix == ".gz":
         L.info("circuit_path is a .gz file; using it directly as compressed circuit.")
         compressed_circuit = circuit_path
@@ -42,7 +46,7 @@ def generate_compressed_circuit_asset(
         )
 
     if client and circuit_entity:
-        db_sdk.add_compressed_circuit_asset(
+        add_compressed_circuit_asset(
             client=client,
             compressed_file=compressed_circuit,
             registered_circuit=circuit_entity,
@@ -60,10 +64,7 @@ def generate_connectivity_matrix_asset(
 
     Returns the matrix_dir, matrix_config, and edge_population for downstream use.
     """
-    from obi_one.utils import (  # ruff: ignore[import-outside-top-level]
-        circuit as circuit_utils,
-        db_sdk,
-    )
+    from obi_one.utils import circuit as circuit_utils  # ruff: ignore[import-outside-top-level]
 
     (
         matrix_dir,
@@ -75,7 +76,7 @@ def generate_connectivity_matrix_asset(
         edge_population=edge_population,
     )
     if client and circuit_entity:
-        db_sdk.add_connectivity_matrix_asset(
+        add_connectivity_matrix_asset(
             client=client,
             matrix_dir=matrix_dir,
             registered_circuit=circuit_entity,
@@ -94,10 +95,7 @@ def generate_connectivity_plot_assets(
 
     Returns the plot_dir and plot_files for downstream use (overview figure generation).
     """
-    from obi_one.utils import (  # ruff: ignore[import-outside-top-level]
-        circuit as circuit_utils,
-        db_sdk,
-    )
+    from obi_one.utils import circuit as circuit_utils  # ruff: ignore[import-outside-top-level]
 
     plot_dir, plot_files = circuit_utils.run_basic_connectivity_plots(
         matrix_config=matrix_config,
@@ -105,7 +103,7 @@ def generate_connectivity_plot_assets(
         output_root=output_dir,
     )
     if client and circuit_entity:
-        db_sdk.add_image_assets(
+        add_image_assets(
             client=client,
             plot_dir=plot_dir,
             plot_files=plot_files,
@@ -127,8 +125,6 @@ def generate_overview_image_asset(
     If ``image_path`` is provided, it is used directly and generation is skipped.
     Accepted formats: .png or .webp.
     """
-    from obi_one.utils import db_sdk  # ruff: ignore[import-outside-top-level]
-
     if image_path is not None:
         L.info(f"Using provided overview image: {image_path}")
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -147,7 +143,7 @@ def generate_overview_image_asset(
         return
 
     if client and circuit_entity:
-        db_sdk.add_image_assets(
+        add_image_assets(
             client=client,
             plot_dir=output_dir,
             plot_files=[viz_path.name],
@@ -168,8 +164,6 @@ def generate_sim_designer_image_asset(
     If ``image_path`` is provided, it is used directly and generation is skipped.
     Accepted format: .png.
     """
-    from obi_one.utils import db_sdk  # ruff: ignore[import-outside-top-level]
-
     if image_path is not None:
         L.info(f"Using provided sim designer image: {image_path}")
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -195,7 +189,7 @@ def generate_sim_designer_image_asset(
             shutil.copy(template, viz_path)
 
     if client and circuit_entity:
-        db_sdk.add_image_assets(
+        add_image_assets(
             client=client,
             plot_dir=output_dir,
             plot_files=[viz_path.name],

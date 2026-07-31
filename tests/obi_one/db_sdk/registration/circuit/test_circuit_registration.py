@@ -4,11 +4,13 @@ import json as json_module
 import shutil
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 import pytest
 
-from obi_one.utils.circuit_registration import (
+from obi_one.db_sdk.registration.circuit import (
     check_hierarchy_species,
     check_if_circuit_exists,
     find_agent,
@@ -30,16 +32,19 @@ from obi_one.utils.circuit_registration import (
     register_derivation,
     register_publication_links,
 )
-from obi_one.utils.circuit_registration.assets import (
+from obi_one.db_sdk.registration.circuit.assets import (
     _check_matrix_folder,
     _check_required_contents,
+    add_compressed_circuit_asset,
+    add_connectivity_matrix_asset,
+    add_image_assets,
 )
-from obi_one.utils.circuit_registration.generate import (
+from obi_one.db_sdk.registration.circuit.generate import (
     generate_compressed_circuit_asset,
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
 )
-from obi_one.utils.circuit_registration.register import _resolve_target_simulator
+from obi_one.db_sdk.registration.circuit.register import _resolve_target_simulator
 
 from tests.utils import CIRCUIT_DIR
 
@@ -591,7 +596,7 @@ def test_register_derivation_success():
     parent = MagicMock()
     circuit = MagicMock()
 
-    with patch("obi_one.utils.circuit_registration.links.models.Derivation"):
+    with patch("obi_one.db_sdk.registration.circuit.links.models.Derivation"):
         result = register_derivation(
             client=client,
             from_entity=parent,
@@ -635,7 +640,7 @@ def test_register_contributions_new():
     role = MagicMock()
     role.name = "unspecified"
 
-    with patch("obi_one.utils.circuit_registration.links.models.Contribution"):
+    with patch("obi_one.db_sdk.registration.circuit.links.models.Contribution"):
         result = register_contributions(
             client=client,
             contribution_dict={"John Doe": {"agent": agent, "role": role}},
@@ -669,7 +674,7 @@ def test_register_contributions_already_exists():
     mock_contr_model.role.name = "unspecified"
 
     with patch(
-        "obi_one.utils.circuit_registration.links.models.Contribution",
+        "obi_one.db_sdk.registration.circuit.links.models.Contribution",
         return_value=mock_contr_model,
     ):
         # search_entity for _contribution_exists returns the existing match
@@ -715,7 +720,9 @@ def test_register_publication_links_new():
 
     pub_entity = MagicMock(DOI="10.1234/test")
 
-    with patch("obi_one.utils.circuit_registration.links.models.ScientificArtifactPublicationLink"):
+    with patch(
+        "obi_one.db_sdk.registration.circuit.links.models.ScientificArtifactPublicationLink"
+    ):
         result = register_publication_links(
             client=client,
             publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
@@ -735,7 +742,9 @@ def test_register_publication_links_already_exists():
 
     pub_entity = MagicMock(DOI="10.1234/test")
 
-    with patch("obi_one.utils.circuit_registration.links.models.ScientificArtifactPublicationLink"):
+    with patch(
+        "obi_one.db_sdk.registration.circuit.links.models.ScientificArtifactPublicationLink"
+    ):
         result = register_publication_links(
             client=client,
             publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
@@ -949,7 +958,7 @@ class _FakeCircuit:
 
 
 _patch_models_circuit = patch(
-    "obi_one.utils.circuit_registration.register.models.Circuit", _FakeCircuit
+    "obi_one.db_sdk.registration.circuit.register.models.Circuit", _FakeCircuit
 )
 
 
@@ -997,8 +1006,8 @@ def test_register_circuit_registers_entity():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register.register_asset"),
-        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         result = register_circuit(
             client=client,
@@ -1029,9 +1038,11 @@ def test_register_circuit_with_derivation():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register.register_asset"),
-        patch("obi_one.utils.circuit_registration.register.register_derivation") as mock_derivation,
-        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
             client=client,
@@ -1062,9 +1073,9 @@ def test_register_circuit_skip_additional_assets():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
         patch(
-            "obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
     ):
         register_circuit(
@@ -1095,9 +1106,9 @@ def test_register_circuit_skip_validation():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register.register_asset"),
-        patch("obi_one.utils.circuit_registration.register.run_validation") as mock_validation,
-        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
             client=client,
@@ -1127,9 +1138,9 @@ def test_register_circuit_runs_validation_by_default():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register.register_asset"),
-        patch("obi_one.utils.circuit_registration.register.run_validation") as mock_validation,
-        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
             client=client,
@@ -1210,9 +1221,9 @@ def test_register_circuit_from_compressed_gz(tmp_path):
 
     with (
         _patch_models_circuit,
-        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
         patch(
-            "obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
     ):
         result = register_circuit(
@@ -1269,7 +1280,9 @@ def test_generate_compressed_circuit_asset_with_gz_file(tmp_path):
     client = MagicMock()
     circuit_entity = MagicMock()
 
-    with patch("obi_one.utils.db_sdk.add_compressed_circuit_asset") as mock_add:
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.add_compressed_circuit_asset"
+    ) as mock_add:
         generate_compressed_circuit_asset(
             circuit_path=gz_file,
             client=client,
@@ -1305,7 +1318,7 @@ def test_generate_overview_image_asset_with_provided_image(tmp_path):
     client = MagicMock()
     circuit_entity = MagicMock()
 
-    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
         generate_overview_image_asset(
             plot_dir=None,
             output_dir=output_dir,
@@ -1334,7 +1347,7 @@ def test_generate_sim_designer_image_asset_with_provided_image(tmp_path):
     client = MagicMock()
     circuit_entity = MagicMock()
 
-    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
         generate_sim_designer_image_asset(
             plot_dir=None,
             output_dir=output_dir,
@@ -1363,7 +1376,7 @@ def test_generate_overview_image_asset_webp_format(tmp_path):
     client = MagicMock()
     circuit_entity = MagicMock()
 
-    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
         generate_overview_image_asset(
             plot_dir=None,
             output_dir=output_dir,
@@ -1388,7 +1401,7 @@ def test_generate_overview_image_asset_no_registration_without_client(tmp_path):
     output_dir = tmp_path / "output"
     output_dir.mkdir()
 
-    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
         generate_overview_image_asset(
             plot_dir=None,
             output_dir=output_dir,
@@ -1409,7 +1422,7 @@ def test_generate_overview_image_asset_skipped_when_no_figure_available(tmp_path
     client = MagicMock()
     circuit_entity = MagicMock()
 
-    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
         generate_overview_image_asset(
             plot_dir=None,
             output_dir=output_dir,
@@ -1430,7 +1443,7 @@ def test_generate_sim_designer_image_asset_falls_back_to_template(tmp_path):
     client = MagicMock()
     circuit_entity = MagicMock()
 
-    with patch("obi_one.utils.db_sdk.add_image_assets") as mock_add:
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
         generate_sim_designer_image_asset(
             plot_dir=None,
             output_dir=output_dir,
@@ -1521,15 +1534,15 @@ def test_register_circuit_from_metadata_missing_target_simulator():
     }
 
     with (
-        patch("obi_one.utils.circuit_registration.register.check_if_circuit_exists"),
-        patch("obi_one.utils.circuit_registration.register.get_subject"),
-        patch("obi_one.utils.circuit_registration.register.get_brain_region_hierarchy"),
-        patch("obi_one.utils.circuit_registration.register.check_hierarchy_species"),
-        patch("obi_one.utils.circuit_registration.register.get_brain_region"),
-        patch("obi_one.utils.circuit_registration.register.get_license"),
-        patch("obi_one.utils.circuit_registration.register.get_root_circuit"),
-        patch("obi_one.utils.circuit_registration.register.get_parent_circuit"),
-        patch("obi_one.utils.circuit_registration.register.get_exp_date"),
+        patch("obi_one.db_sdk.registration.circuit.register.check_if_circuit_exists"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_subject"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region_hierarchy"),
+        patch("obi_one.db_sdk.registration.circuit.register.check_hierarchy_species"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_license"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_root_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_parent_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_exp_date"),
         pytest.raises(KeyError, match="target_simulator"),
     ):
         register_circuit_from_metadata(
@@ -1537,3 +1550,154 @@ def test_register_circuit_from_metadata_missing_target_simulator():
             circuit_metadata=metadata,
             circuit_path="/some/path",
         )
+
+
+# --- add_compressed_circuit_asset ---
+
+
+def test_add_compressed_circuit_asset_missing_file(tmp_path):
+    client = Mock()
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        add_compressed_circuit_asset(
+            client=client,
+            compressed_file=tmp_path / "missing.tar.gz",
+            registered_circuit=Mock(id=uuid4()),
+        )
+
+
+def test_add_compressed_circuit_asset_success(tmp_path):
+    compressed_file = tmp_path / "circuit.tar.gz"
+    compressed_file.write_bytes(b"abc")
+    client = Mock()
+    compressed_asset = SimpleNamespace(id=uuid4())
+    client.upload_file.return_value = compressed_asset
+
+    result = add_compressed_circuit_asset(
+        client=client,
+        compressed_file=compressed_file,
+        registered_circuit=Mock(id=uuid4()),
+    )
+
+    assert result is compressed_asset
+    client.upload_file.assert_called_once()
+
+
+# --- add_connectivity_matrix_asset ---
+
+
+def test_add_connectivity_matrix_asset_missing_dir(tmp_path):
+    client = Mock()
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        add_connectivity_matrix_asset(
+            client=client,
+            matrix_dir=tmp_path / "missing",
+            registered_circuit=Mock(id=uuid4()),
+        )
+
+
+def test_add_connectivity_matrix_asset_success(tmp_path):
+    matrix_dir = tmp_path / "matrices"
+    matrix_dir.mkdir()
+    (matrix_dir / "m1.npy").write_text("x")
+    client = Mock()
+    matrix_asset = SimpleNamespace(id=uuid4())
+    client.upload_directory.return_value = matrix_asset
+
+    result = add_connectivity_matrix_asset(
+        client=client,
+        matrix_dir=matrix_dir,
+        registered_circuit=Mock(id=uuid4()),
+    )
+
+    assert result is matrix_asset
+    client.upload_directory.assert_called_once()
+
+
+# --- add_image_assets ---
+
+
+def test_add_image_assets_missing_dir(tmp_path):
+    client = Mock()
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        add_image_assets(
+            client=client,
+            plot_dir=tmp_path / "missing",
+            plot_files=[],
+            registered_circuit=Mock(id=uuid4()),
+        )
+
+
+def test_add_image_assets_missing_file(tmp_path):
+    plot_dir = tmp_path / "plots"
+    plot_dir.mkdir()
+    client = Mock()
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        add_image_assets(
+            client=client,
+            plot_dir=plot_dir,
+            plot_files=["node_stats.png"],
+            registered_circuit=Mock(id=uuid4()),
+        )
+
+
+def test_add_image_assets_skip_unknown_plot(tmp_path):
+    plot_dir = tmp_path / "plots"
+    plot_dir.mkdir()
+    (plot_dir / "unknown.png").write_bytes(b"x")
+    client = Mock()
+
+    assets = add_image_assets(
+        client=client,
+        plot_dir=plot_dir,
+        plot_files=["unknown.png"],
+        registered_circuit=Mock(id=uuid4()),
+    )
+
+    assert assets == []
+    client.upload_file.assert_not_called()
+
+
+def test_add_image_assets_format_mismatch(tmp_path):
+    plot_dir = tmp_path / "plots"
+    plot_dir.mkdir()
+    (plot_dir / "simulation_designer_image.jpg").write_bytes(b"x")
+    client = Mock()
+
+    with pytest.raises(ValueError, match="File format mismatch"):
+        add_image_assets(
+            client=client,
+            plot_dir=plot_dir,
+            plot_files=["simulation_designer_image.jpg"],
+            registered_circuit=Mock(id=uuid4()),
+        )
+
+
+def test_add_image_assets_success_webp_and_png(tmp_path):
+    plot_dir = tmp_path / "plots"
+    plot_dir.mkdir()
+    node_stats_png = plot_dir / "node_stats.png"
+    node_stats_png.write_bytes(b"x")
+    sim_png = plot_dir / "simulation_designer_image.png"
+    sim_png.write_bytes(b"y")
+
+    client = Mock()
+    uploaded_a = SimpleNamespace(id=uuid4())
+    uploaded_b = SimpleNamespace(id=uuid4())
+    client.upload_file.side_effect = [uploaded_a, uploaded_b]
+
+    converted = plot_dir / "node_stats.webp"
+    converted.write_bytes(b"z")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            "obi_one.db_sdk.registration.circuit.assets.convert_image_to_webp",
+            Mock(return_value=Path(converted)),
+        )
+        assets = add_image_assets(
+            client=client,
+            plot_dir=plot_dir,
+            plot_files=["node_stats.png", "simulation_designer_image.png"],
+            registered_circuit=Mock(id=uuid4()),
+        )
+
+    assert assets == [uploaded_a, uploaded_b]
+    assert client.upload_file.call_count == 2
