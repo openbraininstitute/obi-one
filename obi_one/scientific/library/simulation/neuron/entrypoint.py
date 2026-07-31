@@ -36,12 +36,12 @@ class MPIProcess:
 
     @property
     def rank(self) -> int:
-        """Return the current rank id of the MPI process."""
+        """The current rank id of the MPI process."""
         return int(self.parallel_context.id())
 
     @property
     def size(self) -> int:
-        """Return the total number of MPI processes."""
+        """The total number of MPI processes."""
         return int(self.parallel_context.nhost())
 
 
@@ -181,7 +181,7 @@ def run_bluecellulab(
         if process.rank == 0:
             logger.info("Initializing BlueCelluLab simulation")
 
-        try:
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
             config_data = load_json(simulation_config)
 
             t_stop = config_data["run"]["tstop"]
@@ -218,8 +218,8 @@ def run_bluecellulab(
 
         logger.info("Rank %d: Processing %d cells ", process.rank, len(cell_ids_for_this_rank))
 
-        try:
-            logger.info("Rank %d: Instantiating cells...", process.rank)
+        logger.info("Rank %d: Instantiating cells...", process.rank)
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
             sim.instantiate_gids(cell_ids_for_this_rank, **instantiate_params)  # ty:ignore[invalid-argument-type]
 
             logger.info("Rank %d: Setting up recordings...", process.rank)
@@ -321,7 +321,7 @@ def _save_reports_and_outputs(
 
 
 def run_neurodamus(
-    simulation_config: str | Path,  # noqa: ARG001
+    simulation_config: str | Path,  # ruff: ignore[unused-function-argument]
 ) -> None:
     """Run simulation using Neurodamus backend."""
     logger.warning(

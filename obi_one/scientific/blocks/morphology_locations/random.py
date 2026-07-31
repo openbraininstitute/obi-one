@@ -1,7 +1,7 @@
 from typing import ClassVar
 
 import morphio
-import pandas  # noqa: ICN001
+import pandas as pd
 from pydantic import Field, PositiveInt
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -19,7 +19,7 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
 
     title: ClassVar[str] = "Random Morphology Locations"
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -35,7 +35,7 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.number_of_locations, list):  # noqa: SIM102
+        if not isinstance(self.number_of_locations, list):  # ruff: ignore[collapsible-if]
             if self.number_of_locations <= 0:
                 msg = f"Number of locations: {self.number_of_locations} <= 0"
                 raise ValueError(msg)
@@ -58,7 +58,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
         },
     )
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -74,7 +74,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.n_groups, list):  # noqa: SIM102
+        if not isinstance(self.n_groups, list):  # ruff: ignore[collapsible-if]
             if self.n_groups <= 0:
                 msg = f"Number of groups: {self.n_groups} <= 0"
                 raise ValueError(msg)

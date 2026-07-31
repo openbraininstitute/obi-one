@@ -133,7 +133,7 @@ class TemporaryPartialCircuit:
 
         # Fetch circuit files in temp directory
         self.temp_dir = tempfile.TemporaryDirectory()
-        try:
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
             # Fetch circuit config
             circuit_config_file = self._fetch_file("circuit_config.json")
             circuit = obi.Circuit(name=str(self._circuit_id), path=str(circuit_config_file))

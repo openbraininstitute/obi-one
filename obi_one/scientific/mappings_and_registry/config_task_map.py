@@ -23,6 +23,12 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
 from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTask
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
+    EModelEFeatureExtractionSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
@@ -46,7 +52,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_chan
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.task.task import (
@@ -109,6 +115,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.em_synapse_mapping: (
         EMSynapseMappingTask,
         EMSynapseMappingSingleConfig,
+        AssetLabel.task_config,
+    ),
+    TaskType.efeature_extraction: (
+        EModelEFeatureExtractionTask,
+        EModelEFeatureExtractionSingleConfig,
         AssetLabel.task_config,
     ),
     TaskType.extracellular_recording_weights_calculation: (

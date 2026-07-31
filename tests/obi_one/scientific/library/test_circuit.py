@@ -148,7 +148,7 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_population_name(c) == "bio"
 
-    def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # noqa: ARG001
+    def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         if not incl_point:
             return []
         return []
@@ -160,7 +160,7 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
     )
     assert fake_snap_circuit.Circuit._default_population_name(c) is None
 
-    def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # noqa: ARG001
+    def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         return ["a", "b"]
 
     monkeypatch.setattr(
@@ -188,7 +188,7 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "e_bio"
 
-    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
         return []
 
     monkeypatch.setattr(
@@ -210,7 +210,7 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
         target=_FakePopulation("biophysical", name="bio"),
     )
 
-    def fake_get_edge_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_edge_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
         return ["a", "b"]
 
     monkeypatch.setattr(
@@ -238,7 +238,7 @@ def test_default_edge_population_name_infer_from_name(fake_snap_circuit, monkeyp
         target=_FakePopulation("biophysical", name="bio"),
     )
 
-    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
         return ["bio__bio__chemical", "other_intrinsic"]
 
     monkeypatch.setattr(

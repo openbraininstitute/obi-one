@@ -1,7 +1,7 @@
 from typing import Annotated, ClassVar
 
 import morphio
-import pandas  # noqa: ICN001
+import pandas as pd
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -49,7 +49,7 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
         )
     )
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=self.number_of_locations,  # ty:ignore[invalid-argument-type]
@@ -65,12 +65,12 @@ class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_mean, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_mean < 0:
                 msg = f"Path distance mean: {self.path_dist_mean} < 0"
                 raise ValueError(msg)
 
-        if not isinstance(self.path_dist_tolerance, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_tolerance, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_tolerance < 1.0:
                 msg = f"Path dist tolerance: {self.path_dist_tolerance} < 1.0 (numerical stability)"
                 raise ValueError(msg)

@@ -144,7 +144,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
         with cfg_file.open("r") as f:
             cfg = json.load(f)
 
-        assert cfg.pop("version") == 2.4  # noqa: RUF069
+        assert cfg.pop("version") == 2.4  # ruff: ignore[float-equality-comparison]
         assert cfg.pop("target_simulator") == "NEURON"
         assert cfg.pop("run") == {"dt": 0.025, "random_seed": 1, "tstop": 3000.0}
         mech_dict = {
@@ -211,7 +211,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
         assert len(cfg) == 0  # No additional entries
 
 
-def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
+def _check_generated_obi_config(tmp_path, scan):  # ruff: ignore[too-many-locals]
     cfg_file = tmp_path / scan.output_root / "obi_one_scan.json"
     with cfg_file.open("r") as f:
         cfg = json.load(f)
@@ -353,7 +353,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     assert len(cfg) == 0  # No additional entries
 
 
-def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
+def _check_generated_instance_configs(tmp_path, scan):  # ruff: ignore[too-many-locals]
     for instance in scan.single_configs:
         cfg_file = tmp_path / scan.output_root / str(instance.idx) / "obi_one_coordinate.json"
         with cfg_file.open("r") as f:
@@ -665,7 +665,7 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     assert dist_stim.distribution.block_name == "constant_dist"
 
 
-def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # noqa: PLR0914
+def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # ruff: ignore[too-many-locals]
     sim_duration = 3000.0
 
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
@@ -832,13 +832,20 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
         columns=["node_id", "section_id", "offset"],
     )
 
-    expected = pd.DataFrame(
-        {
-            "node_id": 0,
-            "section_id": expected_df["section_id"].astype(int),
-            "offset": expected_df["normalized_section_offset"].astype(float),
-        }
-    ).reset_index(drop=True)
+    # to_sonata_dict emits entries in canonical SONATA order (sorted by node_id, section_id,
+    # offset, then deduplicated), which is not the order the locations were generated in.
+    expected = (
+        pd.DataFrame(
+            {
+                "node_id": 0,
+                "section_id": expected_df["section_id"].astype(int),
+                "offset": expected_df["normalized_section_offset"].astype(float),
+            }
+        )
+        .sort_values(["node_id", "section_id", "offset"])
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
 
     actual = actual_df.astype(
         {

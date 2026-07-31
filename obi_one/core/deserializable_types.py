@@ -8,7 +8,7 @@ The key is the class name (matching the 'type' field in JSON), and the
 value is the module where that class is defined.
 """
 
-# ruff: noqa: E501 — long lines are unavoidable in a path mapping dict
+# ruff: file-ignore[line-too-long] — long lines are unavoidable in a path mapping dict
 
 from importlib import import_module
 
@@ -64,6 +64,9 @@ TYPE_MAP: dict[str, str] = {
     "MorphologyMetricsSingleConfig": "obi_one.scientific.tasks.morphology_metrics",
     "SkeletonizationScanConfig": "obi_one.scientific.tasks.skeletonization",
     "SkeletonizationSingleConfig": "obi_one.scientific.tasks.skeletonization",
+    # EModel optimization workflows
+    "EModelEFeatureExtractionScanConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
+    "EModelEFeatureExtractionSingleConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
     # __init__.py aliases (class is re-exported under this name)
     "CoupledScan": "obi_one",
     "GridScan": "obi_one",

@@ -113,7 +113,7 @@ def get_exp_date(circuit_metadata: dict) -> datetime | None:
 
     for fmt in ("%d.%m.%Y", "%B, %Y"):
         try:
-            exp_date = datetime.strptime(exp_date_str, fmt)  # noqa: DTZ007
+            exp_date = datetime.strptime(exp_date_str, fmt)  # ruff: ignore[call-datetime-strptime-without-zone]
         except ValueError:
             continue
         L.info(f"Experiment date: {exp_date}")

@@ -80,6 +80,10 @@ __all__ = [
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
     "EMSynapseMappingTask",
+    "EModelEFeatureExtractionScanConfig",
+    "EModelEFeatureExtractionSingleConfig",
+    "EModelEFeatureExtractionTask",
+    "ElectricalCellRecordingFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -434,6 +438,9 @@ from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
+)
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -446,7 +453,7 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
 from obi_one.scientific.mappings_and_registry.block_reference_registry import (
-    AllBlockReferenceTypes,  # noqa: F401
+    AllBlockReferenceTypes,  # ruff: ignore[unused-import]
 )
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_configs_task_type,
@@ -485,6 +492,13 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import (
 from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingTask,
 )
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
+    EModelEFeatureExtractionScanConfig,
+    EModelEFeatureExtractionSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
@@ -519,7 +533,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
@@ -596,13 +610,13 @@ from obi_one.scientific.unions_and_references.synaptic_models import (
 from obi_one.scientific.unions_and_references.tasks import TasksUnion
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference, TimestampsUnion
 
-LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # noqa: RUF067
-PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # noqa: RUF067
+LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # ruff: ignore[non-empty-init-module]
+PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # ruff: ignore[non-empty-init-module]
 
 
-class GridScan(GridScanGenerationTask):  # noqa: RUF067
+class GridScan(GridScanGenerationTask):  # ruff: ignore[non-empty-init-module]
     pass
 
 
-class CoupledScan(CoupledScanGenerationTask):  # noqa: RUF067
+class CoupledScan(CoupledScanGenerationTask):  # ruff: ignore[non-empty-init-module]
     pass

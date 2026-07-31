@@ -20,6 +20,8 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.neuron_sets.specific import (
@@ -45,7 +47,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
 )
-from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
+from obi_one.utils import circuit as circuit_utils
 from obi_one.utils.benchmark import BenchmarkTracker
 
 if settings.circuit_extraction.benchmarking_enabled:
@@ -83,7 +85,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
     def default_neuron_set_reference(
         self,
     ) -> BiophysicalNeuronSetReference:
-        """Returns the default neuron set reference for the simulation."""
+        """The default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
@@ -97,7 +99,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
     def default_point_neuron_set_reference(
         self,
     ) -> PointNeuronSetReference:
-        """Returns the default point neuron set reference for the simulation."""
+        """The default point neuron set reference for the simulation."""
         ref = PointNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
         )
@@ -349,7 +351,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(  # noqa: C901, PLR0914, PLR0915
+    def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]

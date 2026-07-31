@@ -2,7 +2,7 @@ import abc
 from typing import Annotated, ClassVar, Literal, Self
 
 import morphio
-import pandas  # noqa: ICN001
+import pandas as pd
 from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 
 from obi_one.core.block import Block
@@ -86,7 +86,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
     )
 
     @abc.abstractmethod
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         """Returns a generated list of points for the morphology."""
 
     @abc.abstractmethod
@@ -99,6 +99,6 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         self._check_parameter_values()
         return self
 
-    def points_on(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def points_on(self, morphology: morphio.Morphology) -> pd.DataFrame:
         self.enforce_no_multi_param()
         return self._make_points(morphology)

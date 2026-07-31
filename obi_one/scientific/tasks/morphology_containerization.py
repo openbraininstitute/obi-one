@@ -359,9 +359,9 @@ class MorphologyContainerizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         L.info(f"Running morphology containerization for '{self.config.initialize.circuit}'")
 
@@ -417,8 +417,8 @@ class MorphologyContainerizationTask(Task):
             # before (but removing all other references to the original morphology folders)
 
             # Save original config file
-            # cname, cext = os.path.splitext(circuit_config)  # noqa: ERA001
-            # shutil.copy(circuit_config, cname + "__BAK__" + cext)  # noqa: ERA001
+            # cname, cext = os.path.splitext(circuit_config)  # ruff: ignore[commented-out-code]
+            # shutil.copy(circuit_config, cname + "__BAK__" + cext)  # ruff: ignore[commented-out-code]
 
             with Path(circuit_config).open(encoding="utf-8") as f:
                 cfg_dict = json.load(f)

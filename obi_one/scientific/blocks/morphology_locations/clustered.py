@@ -1,8 +1,8 @@
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar
 
 import morphio
-import pandas  # noqa: ICN001
-from pydantic import Field, NonNegativeFloat, PositiveInt, model_validator
+import pandas as pd
+from pydantic import Field, NonNegativeFloat, PositiveInt
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -50,7 +50,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
         },
     )
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
@@ -67,19 +67,19 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
         ).drop(columns=[_CEN_IDX])
         return locs
 
-    @model_validator(mode="after")
-    def validate_number_of_locations(self) -> Self:
+    def _check_parameter_values(self) -> None:
+        # Only check whenever lists are resolved to individual objects
         if (
             not isinstance(self.n_clusters, list)
             and not isinstance(self.number_of_locations, list)
             and self.number_of_locations < self.n_clusters
         ):
-            raise ValueError(
-                "Number of locations must be greater than or equal to "
-                "the number of clusters."
+            msg = (
+                f"Number of locations: {self.number_of_locations} "
+                f"< number of clusters: {self.n_clusters}"
             )
+            raise ValueError(msg)
 
-        return self
 
 class ClusteredGroupedMorphologyLocations(
     ClusteredMorphologyLocations, RandomGroupedMorphologyLocations
@@ -88,7 +88,7 @@ class ClusteredGroupedMorphologyLocations(
 
     title: ClassVar[str] = "Clustered Grouped Morphology Locations"
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
@@ -149,7 +149,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         },
     )
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         # TODO: This rounds down. Could make missing points
         # in a second call to generate_neurite_locations_on
         n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
@@ -169,17 +169,17 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     def _check_parameter_values(self) -> None:
         super()._check_parameter_values()
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_mean, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_mean < 0:
                 msg = f"Path distance mean: {self.path_dist_mean} < 0"
                 raise ValueError(msg)
 
-        if not isinstance(self.path_dist_sd, list):  # noqa: SIM102
+        if not isinstance(self.path_dist_sd, list):  # ruff: ignore[collapsible-if]
             if self.path_dist_sd < _MIN_PD_SD:
                 msg = f"Path distance std: {self.path_dist_sd} < {_MIN_PD_SD} (numerical stability)"
                 raise ValueError(msg)
 
-        if not isinstance(self.n_groups_per_cluster, list):  # noqa: SIM102
+        if not isinstance(self.n_groups_per_cluster, list):  # ruff: ignore[collapsible-if]
             if self.n_groups_per_cluster < 1:
                 msg = f"Number of groups per cluster: {self.n_groups_per_cluster} < 1"
                 raise ValueError(msg)

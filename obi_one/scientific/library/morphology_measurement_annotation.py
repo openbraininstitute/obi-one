@@ -277,7 +277,7 @@ def _process_measurement(
     elements = [label, data, unit]
 
     if isinstance(data, list) and data:
-        try:
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
             min_val = float(np.min(data))
             max_val = float(np.max(data))
             median_val = float(np.median(data))

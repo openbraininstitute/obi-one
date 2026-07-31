@@ -78,7 +78,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     def default_neuron_set_reference(
         self,
     ) -> BiophysicalNeuronSetReference:
-        """Returns the default neuron set reference for the simulation."""
+        """The default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
@@ -169,7 +169,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     @property
     def target_simulator(self) -> SimulatorType:
-        """Returns the target simulator for the simulation campaign."""
+        """The target simulator for the simulation campaign."""
         if self._target_simulator is None:
             msg = "Target simulator not specified for simulation campaign."
             raise NotImplementedError(msg)
@@ -177,7 +177,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     @property
     def timestep(self) -> PositiveFloat:
-        """Returns the simulation timestep."""
+        """The simulation timestep."""
         if self._timestep is None:
             msg = "Timestep not specified for simulation campaign."
             raise NotImplementedError(msg)
