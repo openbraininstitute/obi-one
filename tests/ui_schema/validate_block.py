@@ -1,6 +1,7 @@
 import logging
 import math
 import sys
+from enum import StrEnum
 
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
@@ -9,6 +10,10 @@ from app.application import app
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+    MorphologyMappedProperties,
+)
 
 L = logging.getLogger()
 
@@ -42,6 +47,17 @@ def validate_string(schema: dict, prop: str, ref: str) -> None:
 
     if type(value) is not str:
         msg = f"Validation error at {ref}: {prop} must be a string. Got: {type(value)}"
+        raise ValueError(msg)
+
+
+def validate_enum_value(schema: dict, prop: str, enum_type: type[StrEnum], ref: str) -> None:
+    value = schema.get(prop)
+    allowed_values = {member.value for member in enum_type}
+    if value not in allowed_values:
+        msg = (
+            f"Validation error at {ref}: {prop} must be one of {sorted(allowed_values)}. "
+            f"Got: {value}"
+        )
         raise ValueError(msg)
 
 
@@ -234,6 +250,70 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
         msg = (
             f"Validation error at {ref}: entity_property_dropdown param {param} failed"
             "to validate a string"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_morphology_section_type_selection(schema: dict, param: str, ref: str) -> None:
+    validate_enum_value(
+        schema,
+        SchemaKey.PROPERTY_GROUP,
+        MappedPropertiesGroup,
+        f"{param} at {ref}",
+    )
+    validate_enum_value(
+        schema,
+        SchemaKey.PROPERTY,
+        MorphologyMappedProperties,
+        f"{param} at {ref}",
+    )
+
+    any_of = schema.get("anyOf", [])
+    if len(any_of) != 3:
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should be a union of array[int], array[array[int]], and null"
+        )
+        raise ValidationError(msg)
+
+    single_selection_schema, scan_schema, null_schema = any_of
+    if (
+        single_selection_schema.get("type") != "array"
+        or single_selection_schema.get("items", {}).get("type") != "integer"
+    ):
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have array[int] as its first union member"
+        )
+        raise ValidationError(msg)
+
+    scan_items = scan_schema.get("items", {})
+    if (
+        scan_schema.get("type") != "array"
+        or scan_items.get("type") != "array"
+        or scan_items.get("items", {}).get("type") != "integer"
+    ):
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have array[array[int]] as its second union member"
+        )
+        raise ValidationError(msg)
+
+    if null_schema.get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have null as its third union member"
+        )
+        raise ValidationError(msg)
+
+    try:
+        validate([3, 4], schema)
+        validate([[3], [3, 4]], schema)
+        validate(None, schema)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "failed to validate supported values"
         )
         raise ValidationError(msg) from None
 
@@ -703,6 +783,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
+        case UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION:
+            validate_morphology_section_type_selection(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON:
