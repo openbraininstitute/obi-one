@@ -32,6 +32,12 @@ class ElectricalCellRecordingMappedProperties(StrEnum):
     AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
 
 
+class ElectricalCellRecordingMappedProperties(StrEnum):
+    PROTOCOLS = "Protocols"
+    PROTOCOLS_BY_RECORDING = "ProtocolsByRecording"
+    AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
+
+
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
