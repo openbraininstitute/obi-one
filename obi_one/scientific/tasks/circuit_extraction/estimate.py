@@ -10,9 +10,9 @@ from entitysdk.client import Client
 from entitysdk.types import AssetLabel
 
 from obi_one import deserialize_obi_object_from_json_data
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionSingleConfig
-from obi_one.utils import db_sdk
 
 
 def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> int:

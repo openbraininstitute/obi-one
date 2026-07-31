@@ -10,6 +10,7 @@ class MappedPropertiesGroup(StrEnum):
     CIRCUIT = "Circuit"
     ION_CHANNEL_MODEL = "IonChannelModel"
     MORPHOLOGY = "Morphology"
+    ELECTRICAL_CELL_RECORDINGS = "ElectricalCellRecordings"
 
 
 class CircuitMappedProperties(StrEnum):
@@ -25,6 +26,10 @@ class CircuitMappedProperties(StrEnum):
 
 class MorphologyMappedProperties(StrEnum):
     SECTION_TYPES = "SectionTypes"
+class ElectricalCellRecordingMappedProperties(StrEnum):
+    PROTOCOLS = "Protocols"
+    PROTOCOLS_BY_RECORDING = "ProtocolsByRecording"
+    AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
 
 
 class CircuitUsability(StrEnum):

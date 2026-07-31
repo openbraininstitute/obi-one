@@ -12,8 +12,10 @@ from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
+    validate_float_optional,
     validate_hidden_refs_not_required,
     validate_neuron_set_combination,
+    validate_select_efeatures_by_protocol,
     validate_string,
     validate_type,
 )
@@ -308,3 +310,75 @@ def test_neuron_set_combination_rejects_non_list_reference_types():
     schema["reference_types"] = "BiophysicalNeuronSetReference"
     with pytest.raises(ValueError, match="must be a list of strings"):
         validate_neuron_set_combination(schema, "combined_with", "ref")
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `float_optional` UI element validator.
+# ---------------------------------------------------------------------------
+
+# IDRestProtocol.spike_detection_threshold uses UIElement.FLOAT_OPTIONAL (a nullable
+# `float | None` eFEL override where `null` means "inherit from the level above").
+FLOAT_OPTIONAL_BLOCK = "IDRestProtocol"
+FLOAT_OPTIONAL_FIELD = "spike_detection_threshold"
+
+
+def _float_optional_schema() -> dict:
+    """Return a deep copy of a real `float_optional` field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][FLOAT_OPTIONAL_BLOCK]["properties"][
+            FLOAT_OPTIONAL_FIELD
+        ]
+    )
+
+
+def test_float_optional_valid_schema_passes():
+    # The real, generated schema (a `number | null` union) must validate.
+    validate_float_optional(_float_optional_schema(), FLOAT_OPTIONAL_FIELD, FLOAT_OPTIONAL_BLOCK)
+
+
+def test_float_optional_rejects_non_number_first():
+    schema = _float_optional_schema()
+    schema["anyOf"][0] = {"type": "string"}
+    with pytest.raises(ValidationError, match="number"):
+        validate_float_optional(schema, FLOAT_OPTIONAL_FIELD, "ref")
+
+
+def test_float_optional_rejects_missing_null():
+    schema = _float_optional_schema()
+    schema["anyOf"][1] = {"type": "array", "items": {"type": "number"}}
+    with pytest.raises(ValidationError, match="null"):
+        validate_float_optional(schema, FLOAT_OPTIONAL_FIELD, "ref")
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `select_efeatures_by_protocol` UI element validator.
+# ---------------------------------------------------------------------------
+
+# ProtocolAndFeatureSelection.selection uses UIElement.SELECT_EFEATURES_BY_PROTOCOL:
+# a $ref to the SelectEFeaturesByProtocol object (type "object") holding the protocols.
+SELECT_EFEATURES_BLOCK = "ProtocolAndFeatureSelection"
+SELECT_EFEATURES_FIELD = "selection"
+
+
+def _select_efeatures_schema() -> dict:
+    """Return a deep copy of the real `select_efeatures_by_protocol` field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][SELECT_EFEATURES_BLOCK]["properties"][
+            SELECT_EFEATURES_FIELD
+        ]
+    )
+
+
+def test_select_efeatures_by_protocol_valid_schema_passes():
+    # The real, generated field references the SelectEFeaturesByProtocol object.
+    validate_select_efeatures_by_protocol(
+        _select_efeatures_schema(), SELECT_EFEATURES_FIELD, SELECT_EFEATURES_BLOCK
+    )
+
+
+def test_select_efeatures_by_protocol_rejects_missing_object_reference():
+    schema = _select_efeatures_schema()
+    schema.pop("$ref", None)
+    schema.pop("allOf", None)
+    with pytest.raises(AssertionError, match="should reference the object"):
+        validate_select_efeatures_by_protocol(schema, SELECT_EFEATURES_FIELD, "ref")

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
-from entitysdk import Client, MultipartUploadTransferConfig, models
+from entitysdk import Client, models
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
@@ -16,12 +16,8 @@ from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorTyp
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
-
-OVERVIEW_IMAGE_NAME = "circuit_visualization"
-SIM_DESIGNER_IMAGE_NAME = "simulation_designer_image"
 
 
 def get_identifiable[T: Identifiable](
@@ -73,6 +69,131 @@ def create_activity(
     activity = client.register_entity(activity)
     L.info(f"Activity {activity.id} of type '{activity_type.__name__}' created")
     return activity
+
+
+def fetch_asset_by_label(
+    *,
+    client: Client,
+    entity: Entity,
+    asset_label: AssetLabel,
+    output_path: Path,
+) -> Path:
+    """Fetch a single asset matching the given label to output_path.
+
+    Uses fetch_assets (checks local data store first).
+    Returns the path to the fetched file.
+    """
+    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
+
+    output_dir = create_dir(output_path)
+    asset = client.fetch_assets(
+        entity,
+        selection={"label": asset_label},
+        output_path=output_dir,
+    ).one()
+    return asset.path
+
+
+def get_recording_protocols(
+    recording_ids: list[str],
+    db_client: Client,
+) -> dict[str, list[str]]:
+    """Return ``{recording_id: [protocol_class_name, ...]}`` for each recording.
+
+    Reads the stimulus names from each ``ElectricalCellRecording`` entity (no NWB
+    download) and maps them to the matching ``Protocol`` subclass name via
+    ``protocol_class_name_for``. Stimuli with no matching protocol are dropped.
+    """
+    from entitysdk.models import ElectricalCellRecording  # ruff: ignore[import-outside-top-level]
+
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long, import-outside-top-level]
+        protocol_class_name_for,
+    )
+
+    by_recording: dict[str, list[str]] = {}
+    for rid in recording_ids:
+        entity = db_client.get_entity(
+            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_type=ElectricalCellRecording,
+        )
+        stimuli = entity.stimuli or []
+        class_names = {
+            class_name
+            for s in stimuli
+            if s.name and (class_name := protocol_class_name_for(s.name)) is not None
+        }
+        by_recording[rid] = sorted(class_names)
+    return by_recording
+
+
+def get_recording_amplitudes(
+    recording_ids: list[str],
+    db_client: Client,
+) -> dict[str, list[float]]:
+    """Return ``{protocol_class_name: [step_amplitude_nA, ...]}`` unioned across recordings.
+
+    Unlike protocol names, amplitudes are not stored on the entity, so each
+    ``ElectricalCellRecording``'s NWB asset is downloaded and its per-protocol step
+    amplitudes (nA) are estimated with ``read_amplitudes_from_nwb``. Results are then
+    keyed by the matching ``Protocol`` subclass name (via ``protocol_class_name_for``)
+    so they align with :func:`get_recording_protocols`; stimuli with no matching
+    protocol are dropped.
+    """
+    import tempfile  # ruff: ignore[import-outside-top-level]
+
+    from entitysdk.models import ElectricalCellRecording  # ruff: ignore[import-outside-top-level]
+
+    from obi_one.scientific.library.electrical_cell_recording_properties import (  # ruff: ignore[import-outside-top-level]
+        read_amplitudes_from_nwb,
+    )
+    from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long, import-outside-top-level]
+        protocol_class_name_for,
+    )
+
+    combined: dict[str, set[float]] = {}
+    for rid in recording_ids:
+        entity = db_client.get_entity(
+            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_type=ElectricalCellRecording,
+        )
+        protocol_names = sorted({s.name for s in (entity.stimuli or []) if s.name})
+        if not protocol_names:
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            asset = db_client.fetch_assets(
+                entity,
+                selection={"content_type": ContentType.application_nwb, "label": AssetLabel.nwb},
+                output_path=Path(tmp),
+            ).one()
+            per_protocol = read_amplitudes_from_nwb(Path(asset.path), protocol_names)
+        for raw_name, amplitudes in per_protocol.items():
+            class_name = protocol_class_name_for(raw_name)
+            if class_name is not None:
+                combined.setdefault(class_name, set()).update(amplitudes)
+    return {protocol: sorted(values) for protocol, values in combined.items()}
+
+
+def fetch_directory_asset_by_label(
+    *,
+    client: Client,
+    entity: Entity,
+    asset_label: AssetLabel,
+    output_path: Path,
+) -> Path:
+    """Fetch a directory asset matching the given label to output_path.
+
+    Uses fetch_assets (checks local data store first).
+    Returns the path to the fetched directory.
+    """
+    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
+
+    output_dir = create_dir(output_path)
+    asset = client.fetch_assets(
+        entity,
+        selection={"label": asset_label, "content_type": ContentType.application_vnd_directory},
+        output_path=output_dir,
+    ).one()
+    return asset.path
 
 
 def select_asset_content(
@@ -304,146 +425,6 @@ def get_execution_activity(
         entity_id=execution_activity_id,
         entity_type=TaskActivity,
     )
-
-
-def add_circuit_folder_asset(
-    client: Client, circuit_path: Path, registered_circuit: models.Circuit
-) -> models.Asset:
-    """Upload a circuit folder directory asset to a registered circuit entity."""
-    asset_label = "sonata_circuit"
-    circuit_folder = circuit_path.parent
-    if not circuit_folder.is_dir():
-        msg = "Circuit folder does not exist!"
-        raise FileNotFoundError(msg)
-
-    # Collect circuit files
-    circuit_files = {
-        str(path.relative_to(circuit_folder)): path
-        for path in circuit_folder.rglob("*")
-        if path.is_file()
-    }
-    L.info(f"{len(circuit_files)} files in '{circuit_folder}'")
-    if "circuit_config.json" not in circuit_files:
-        msg = "Circuit config file not found in circuit folder!"
-        raise FileNotFoundError(msg)
-    if "node_sets.json" not in circuit_files:
-        msg = "Node sets file not found in circuit folder!"
-        raise FileNotFoundError(msg)
-
-    # Upload asset
-    directory_asset = client.upload_directory(
-        label=asset_label,  # ty:ignore[invalid-argument-type]
-        name=asset_label,
-        entity_id=registered_circuit.id,
-        entity_type=models.Circuit,
-        paths=circuit_files,  # ty:ignore[invalid-argument-type]
-    )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
-    return directory_asset
-
-
-def add_compressed_circuit_asset(
-    client: Client, compressed_file: Path, registered_circuit: models.Circuit
-) -> models.Asset:
-    """Upload a compressed circuit file asset to a registered circuit entity."""
-    asset_label = "compressed_sonata_circuit"
-
-    if not compressed_file.exists():
-        msg = f"Compressed circuit file '{compressed_file}' does not exist!"
-        raise FileNotFoundError(msg)
-
-    # Upload compressed file asset
-    transfer_config = MultipartUploadTransferConfig()
-    compressed_asset = client.upload_file(
-        entity_id=registered_circuit.id,
-        entity_type=models.Circuit,
-        file_path=compressed_file,
-        file_content_type="application/gzip",  # ty:ignore[invalid-argument-type]
-        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
-        transfer_config=transfer_config,
-    )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
-    return compressed_asset
-
-
-def add_connectivity_matrix_asset(
-    client: Client, matrix_dir: Path, registered_circuit: models.Circuit
-) -> models.Asset:
-    """Upload connectivity matrix directory asset to a registered circuit entity."""
-    asset_label = "circuit_connectivity_matrices"
-
-    if not matrix_dir.is_dir():
-        msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
-        raise FileNotFoundError(msg)
-
-    # Collect matrix files
-    matrix_files = {
-        str(path.relative_to(matrix_dir)): path for path in matrix_dir.rglob("*") if path.is_file()
-    }
-    L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
-
-    # Upload directory asset
-    matrix_asset = client.upload_directory(
-        label=asset_label,  # ty:ignore[invalid-argument-type]
-        name=asset_label,
-        entity_id=registered_circuit.id,
-        entity_type=models.Circuit,
-        paths=matrix_files,  # ty:ignore[invalid-argument-type]
-    )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
-    return matrix_asset
-
-
-def add_image_assets(
-    client: Client,
-    plot_dir: Path,
-    plot_files: list,
-    registered_circuit: models.Circuit,
-) -> list[models.Asset]:
-    """Upload connectivity plot assets to a registered circuit entity.
-
-    Note: Image files will be converted to .webp, if needed.
-    """
-    asset_label_map = {
-        "node_stats": ("node_stats", "webp"),
-        "small_adj_and_stats": ("network_stats_a", "webp"),
-        "small_network_in_2D": ("network_stats_b", "webp"),
-        "network_global_stats": ("network_stats_a", "webp"),
-        "network_pathway_stats": ("network_stats_b", "webp"),
-        OVERVIEW_IMAGE_NAME: ("circuit_visualization", "webp"),
-        SIM_DESIGNER_IMAGE_NAME: ("simulation_designer_image", "png"),
-    }
-    if not plot_dir.is_dir():
-        msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
-        raise FileNotFoundError(msg)
-
-    # Upload image file assets (incl. conversion to .webp format if needed)
-    plot_assets = []
-    for file in plot_files:
-        file_path = plot_dir / file
-        if not file_path.is_file():
-            msg = f"Connectivity plot '{file_path.name}' does not exist!"
-            raise FileNotFoundError(msg)
-        if file_path.stem not in asset_label_map:
-            msg = f"No asset label for plot '{file_path.name}' - SKIPPING!"
-            L.warning(msg)
-            continue
-        asset_label, fmt = asset_label_map[file_path.stem]
-        if fmt == "webp":
-            file_path = convert_image_to_webp(image_path=file_path)
-        if "." + fmt != file_path.suffix:
-            msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
-            raise ValueError(msg)
-        plot_asset = client.upload_file(
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            file_path=file_path,
-            file_content_type=f"image/{fmt}",  # ty:ignore[invalid-argument-type]
-            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
-        )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
-        plot_assets.append(plot_asset)
-    return plot_assets
 
 
 def resolve_circuit(

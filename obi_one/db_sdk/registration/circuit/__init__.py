@@ -1,10 +1,10 @@
 """Circuit registration utilities for entitycore."""
 
-from obi_one.utils.circuit_registration.assets import (
+from obi_one.db_sdk.registration.circuit.assets import (
     CIRCUIT_ASSET_MAPPING,
     register_asset,
 )
-from obi_one.utils.circuit_registration.generate import (
+from obi_one.db_sdk.registration.circuit.generate import (
     generate_additional_circuit_assets,
     generate_compressed_circuit_asset,
     generate_connectivity_matrix_asset,
@@ -12,16 +12,16 @@ from obi_one.utils.circuit_registration.generate import (
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
 )
-from obi_one.utils.circuit_registration.links import (
+from obi_one.db_sdk.registration.circuit.links import (
     register_contributions,
     register_derivation,
     register_publication_links,
 )
-from obi_one.utils.circuit_registration.register import (
+from obi_one.db_sdk.registration.circuit.register import (
     register_circuit,
     register_circuit_from_metadata,
 )
-from obi_one.utils.circuit_registration.resolve import (
+from obi_one.db_sdk.registration.circuit.resolve import (
     check_hierarchy_species,
     check_if_circuit_exists,
     find_agent,
