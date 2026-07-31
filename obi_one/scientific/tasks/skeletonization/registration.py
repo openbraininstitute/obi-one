@@ -7,7 +7,7 @@ from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellM
 from entitysdk.types import AssetLabel, CellMorphologyProtocolDesign, DerivationType, StainingType
 
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.library.morphology_registration import (
+from obi_one.db_sdk.registration.morphology import (
     register_morphology_with_assets_and_metrics,
 )
 from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL, ROLE_NAME
