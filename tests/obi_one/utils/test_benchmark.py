@@ -126,3 +126,23 @@ def test_section_exception_still_records():
 
     assert "failing" in BenchmarkTracker._benchmarks
     assert BenchmarkTracker._benchmarks["failing"]["duration_s"] >= 0
+
+
+def test_print_summary_to_file_oserror_logs_warning(tmp_path, caplog):
+    """When the output file cannot be written, a warning is logged instead of raising."""
+    BenchmarkTracker.start_tracking()
+    with BenchmarkTracker.section("disk_full_test"):
+        pass
+
+    # Use a non-writable directory (read+execute only) to trigger OSError on file creation
+    readonly_dir = tmp_path / "readonly"
+    readonly_dir.mkdir()
+    readonly_dir.chmod(0o555)
+
+    output_file = readonly_dir / "results.json"
+
+    with caplog.at_level("WARNING", logger="obi_one.utils.benchmark"):
+        BenchmarkTracker.print_summary(output_path=output_file)
+
+    assert not output_file.exists()
+    assert any("Failed to save benchmark results" in r.message for r in caplog.records)
