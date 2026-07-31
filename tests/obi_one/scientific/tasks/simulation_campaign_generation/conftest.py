@@ -7,7 +7,9 @@ keeps every test a black-box check of "config in, SONATA artefacts out", so the 
 refactor of the task's internals.
 """
 
+import inspect
 import json
+import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -15,6 +17,7 @@ from typing import Any
 import pytest
 
 import obi_one as obi
+from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.library.memodel_circuit import (
     MEModelCircuit,
     MEModelWithSynapsesCircuit,
@@ -66,6 +69,44 @@ DEFAULT_POINT_NODE_SET = "Default: All Point Neurons"
 DEFAULT_BRIAN2_STIMULUS_NODE_SET = "Default: Sugar gustatory receptor neurons"
 
 
+def union_member_names(union: Any) -> set[str]:
+    """The block class names a discriminated block union accepts."""
+    inner = typing.get_args(union)[0]
+    if inspect.isclass(inner):
+        # A single-member "union" annotates the class directly.
+        return {inner.__name__}
+    return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
+
+
+def reference_field_names(block_class: type) -> list[str]:
+    """Names of the fields on ``block_class`` that hold a block reference.
+
+    Reference fields are declared as ``SomeReference | ... | None`` and sometimes nest a further
+    union inside, so both levels are searched.
+    """
+
+    def holds_a_reference(annotation: Any) -> bool:
+        for arg in typing.get_args(annotation):
+            if inspect.isclass(arg) and issubclass(arg, BlockReference):
+                return True
+            if any(
+                inspect.isclass(nested) and issubclass(nested, BlockReference)
+                for nested in typing.get_args(arg)
+            ):
+                return True
+        return False
+
+    return [
+        name
+        for name, field_info in block_class.model_fields.items()
+        if holds_a_reference(field_info.annotation)
+    ]
+
+
+# The node set names a generated SONATA config can refer to, by the key each section uses.
+NODE_SET_REFERENCE_KEYS = ("node_set", "cells", "source", "target")
+
+
 @dataclass
 class GeneratedSimulation:
     """Everything a generation run wrote to disk, already parsed."""
@@ -86,6 +127,29 @@ class GeneratedSimulation:
     @property
     def conditions(self) -> dict:
         return self.sonata_config["conditions"]
+
+    def referenced_node_sets(self) -> set[str]:
+        """Every node set name the generated config points at, from all its sections."""
+        sections = [
+            self.sonata_config.get("inputs", {}).values(),
+            self.sonata_config.get("reports", {}).values(),
+            self.sonata_config.get("connection_overrides", []),
+            self.conditions.get("modifications", []),
+        ]
+        names = {
+            entry[key]
+            for section in sections
+            for entry in section
+            for key in NODE_SET_REFERENCE_KEYS
+            if key in entry
+        }
+        if "node_set" in self.sonata_config:
+            names.add(self.sonata_config["node_set"])
+        return names
+
+    def dangling_node_sets(self) -> set[str]:
+        """Referenced node set names that were never written to ``node_sets.json``."""
+        return self.referenced_node_sets() - set(self.node_sets)
 
 
 @dataclass

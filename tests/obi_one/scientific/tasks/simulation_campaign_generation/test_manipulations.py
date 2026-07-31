@@ -6,9 +6,6 @@ The split, the merge into pre-existing mechanisms, and the list ordering are all
 responsibility rather than the blocks'.
 """
 
-import inspect
-import typing
-
 import pytest
 
 import obi_one as obi
@@ -33,6 +30,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     DEFAULT_BIOPHYSICAL_NODE_SET,
     build_config,
     generate,
+    union_member_names,
 )
 
 SYNAPTIC_MANIPULATIONS = {
@@ -45,19 +43,12 @@ SYNAPTIC_MANIPULATIONS = {
 }
 
 
-def _union_member_names(union) -> set[str]:
-    inner = typing.get_args(union)[0]
-    if inspect.isclass(inner):
-        return {inner.__name__}
-    return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
-
-
 class TestUnionCoverage:
     def test_every_synaptic_manipulation_is_exercised(self):
-        assert _union_member_names(SynapticManipulationsUnion) == set(SYNAPTIC_MANIPULATIONS)
+        assert union_member_names(SynapticManipulationsUnion) == set(SYNAPTIC_MANIPULATIONS)
 
     def test_every_neuronal_manipulation_is_exercised(self):
-        assert _union_member_names(NeuronalManipulationUnion) == {
+        assert union_member_names(NeuronalManipulationUnion) == {
             "BySectionListMechanismVariableNeuronalManipulation",
             "ByNeuronMechanismVariableNeuronalManipulation",
         }

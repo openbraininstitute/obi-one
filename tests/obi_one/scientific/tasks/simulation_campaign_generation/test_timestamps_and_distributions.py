@@ -5,9 +5,6 @@ and distributions shape the spike trains a distribution-driven stimulus writes. 
 here by generating a simulation and inspecting what came out.
 """
 
-import inspect
-import typing
-
 import h5py
 import numpy as np
 import pytest
@@ -24,6 +21,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     VIRTUAL_POPULATION,
     build_config,
     generate,
+    union_member_names,
 )
 
 TIMESTAMPS = {
@@ -51,13 +49,6 @@ DISTRIBUTIONS = {
 }
 
 
-def _union_member_names(union) -> set[str]:
-    inner = typing.get_args(union)[0]
-    if inspect.isclass(inner):
-        return {inner.__name__}
-    return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
-
-
 def _distribution_driven_config(circuit, distribution):
     source = VirtualPopulationIDNeuronSet(
         population=VIRTUAL_POPULATION,
@@ -82,10 +73,10 @@ def _distribution_driven_config(circuit, distribution):
 
 class TestUnionCoverage:
     def test_every_timestamps_block_is_exercised(self):
-        assert _union_member_names(TimestampsUnion) == set(TIMESTAMPS)
+        assert union_member_names(TimestampsUnion) == set(TIMESTAMPS)
 
     def test_every_distribution_is_exercised(self):
-        assert _union_member_names(AllDistributionsUnion) == set(DISTRIBUTIONS)
+        assert union_member_names(AllDistributionsUnion) == set(DISTRIBUTIONS)
 
 
 class TestTimestamps:

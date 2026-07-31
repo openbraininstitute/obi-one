@@ -1,8 +1,5 @@
 """How recording blocks become the ``reports`` section of the generated SONATA config."""
 
-import inspect
-import typing
-
 import pytest
 
 import obi_one as obi
@@ -25,6 +22,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     VIRTUAL_POPULATION,
     build_config,
     generate,
+    union_member_names,
 )
 
 SOMA_REPORT_SHAPE = {
@@ -36,23 +34,16 @@ SOMA_REPORT_SHAPE = {
 }
 
 
-def _union_member_names(union) -> set[str]:
-    inner = typing.get_args(union)[0]
-    if inspect.isclass(inner):
-        return {inner.__name__}
-    return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
-
-
 class TestUnionCoverage:
     def test_every_recording_in_the_circuit_union_is_exercised(self):
-        assert _union_member_names(RecordingUnion) == {
+        assert union_member_names(RecordingUnion) == {
             "SomaVoltageRecording",
             "TimeWindowSomaVoltageRecording",
         }
 
     def test_ion_channel_configs_add_a_variable_recording(self):
         """``IonChannelVariableRecording`` is reachable only from the database-backed config."""
-        assert _union_member_names(IonChannelModelRecordingUnion) - _union_member_names(
+        assert union_member_names(IonChannelModelRecordingUnion) - union_member_names(
             RecordingUnion
         ) == {"IonChannelVariableRecording"}
 

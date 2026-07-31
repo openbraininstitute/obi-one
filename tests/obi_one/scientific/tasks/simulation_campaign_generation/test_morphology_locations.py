@@ -6,9 +6,6 @@ materialises the locations against the circuit's morphologies, writes them to
 name instead of carrying a node set.
 """
 
-import inspect
-import typing
-
 import pytest
 
 import obi_one as obi
@@ -26,6 +23,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     DEFAULT_BIOPHYSICAL_NODE_SET,
     build_config,
     generate,
+    union_member_names,
 )
 
 MORPHOLOGY_POPULATION = "S1nonbarrel_neurons"
@@ -46,13 +44,6 @@ MORPHOLOGY_LOCATIONS = {
 }
 
 
-def _union_member_names(union) -> set[str]:
-    inner = typing.get_args(union)[0]
-    if inspect.isclass(inner):
-        return {inner.__name__}
-    return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
-
-
 def _locations_config(circuit, locations, *, neuron_set=None, name="Locations"):
     blocks: dict = {}
     if neuron_set is not None:
@@ -66,7 +57,7 @@ def _locations_config(circuit, locations, *, neuron_set=None, name="Locations"):
 
 class TestUnionCoverage:
     def test_every_selectable_morphology_location_block_is_exercised(self):
-        assert _union_member_names(MorphologyLocationUnion) == set(MORPHOLOGY_LOCATIONS)
+        assert union_member_names(MorphologyLocationUnion) == set(MORPHOLOGY_LOCATIONS)
 
 
 class TestCompartmentSetGeneration:

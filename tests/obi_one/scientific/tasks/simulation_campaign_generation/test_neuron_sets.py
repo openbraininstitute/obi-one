@@ -6,9 +6,6 @@ task applies when a neuron set reference is left unset -- which default gets inj
 that is an error.
 """
 
-import inspect
-import typing
-
 import pytest
 
 import obi_one as obi
@@ -69,14 +66,8 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     VIRTUAL_POPULATION,
     build_config,
     generate,
+    union_member_names,
 )
-
-
-def _union_member_names(union) -> set[str]:
-    """The class names a discriminated block union accepts."""
-    inner = typing.get_args(union)[0]
-    return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
-
 
 # One constructible instance per neuron set type in NEURONSimulationNeuronSetUnion. Combined sets
 # are exercised separately because they need references to other sets, and the deprecated sets
@@ -165,7 +156,7 @@ class TestUnionCoverage:
             | COMBINED_NEURON_SETS
         )
 
-        assert _union_member_names(NEURONSimulationNeuronSetUnion) - covered == set()
+        assert union_member_names(NEURONSimulationNeuronSetUnion) - covered == set()
 
     def test_all_virtual_neurons_is_not_selectable(self, circuit_config):
         """``AllVirtualNeurons`` only exists as the injected default, not as a user choice."""

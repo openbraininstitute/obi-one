@@ -6,9 +6,6 @@ cover every stimulus type reachable from a simulation config, plus the timestamp
 targeting rules that apply across them.
 """
 
-import inspect
-import typing
-
 import h5py
 import numpy as np
 import pytest
@@ -44,16 +41,8 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     VIRTUAL_POPULATION,
     build_config,
     generate,
+    union_member_names,
 )
-
-
-def _union_member_names(union) -> set[str]:
-    inner = typing.get_args(union)[0]
-    if inspect.isclass(inner):
-        # A single-member "union" annotates the class directly.
-        return {inner.__name__}
-    return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
-
 
 # Every continuous stimulus in CircuitStimulusUnion, with the SONATA module and input type it is
 # expected to emit. A refactor that reroutes a stimulus through the wrong branch shows up here.
@@ -108,19 +97,19 @@ class TestUnionCoverage:
     def test_every_circuit_stimulus_is_exercised(self):
         covered = set(CONTINUOUS_STIMULI) | set(SPIKE_STIMULI)
 
-        assert _union_member_names(CircuitStimulusUnion) - covered == set()
+        assert union_member_names(CircuitStimulusUnion) - covered == set()
 
     def test_me_model_and_learning_engine_stimuli_are_a_subset_of_the_circuit_ones(self):
         """Narrower unions reuse the same blocks, so the circuit coverage carries over."""
-        assert _union_member_names(MEModelStimulusUnion) <= set(CONTINUOUS_STIMULI)
-        assert _union_member_names(LearningEngineCircuitStimulusUnion) <= set(CONTINUOUS_STIMULI)
+        assert union_member_names(MEModelStimulusUnion) <= set(CONTINUOUS_STIMULI)
+        assert union_member_names(LearningEngineCircuitStimulusUnion) <= set(CONTINUOUS_STIMULI)
 
     def test_brian2_accepts_only_the_direct_poisson_stimulus(self):
-        assert _union_member_names(Brian2CircuitStimulusUnion) == {"Brian2DirectPoissonStimulus"}
+        assert union_member_names(Brian2CircuitStimulusUnion) == {"Brian2DirectPoissonStimulus"}
 
     def test_ion_channel_only_adds_the_voltage_clamps(self):
         """The SE clamps are reachable only from the ion channel config, which needs a database."""
-        assert _union_member_names(IonChannelModelStimulusUnion) - set(CONTINUOUS_STIMULI) == {
+        assert union_member_names(IonChannelModelStimulusUnion) - set(CONTINUOUS_STIMULI) == {
             "SEClampSomaticStimulus",
             "MultiLevelSEClampSomaticStimulus",
         }
