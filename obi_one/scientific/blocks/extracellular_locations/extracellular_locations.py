@@ -92,7 +92,7 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         },
     )
 
-    def _roll_degrees(self) -> float:  # noqa: PLR6301
+    def _roll_degrees(self) -> float:  # ruff: ignore[no-self-use]
         """Roll about the local ``+Y`` axis, in degrees; 0 for arrays with no lateral extent."""
         return 0.0
 

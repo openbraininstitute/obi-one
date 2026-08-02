@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# ruff: noqa: S101
+# ruff: file-ignore[assert]
 import contextlib
+import heapq
 import logging
 import math
 import os
@@ -8,12 +9,14 @@ import re
 import tempfile
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
-from datetime import UTC, datetime, timezone
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 from functools import partial, singledispatch
 from pathlib import Path
+from typing import Protocol
 
 import bluepysnap
+import bluepysnap.frame_report
 import bluepysnap.input
 import brian2
 import brian2.units
@@ -36,13 +39,45 @@ L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 
 
+class NetworkOperation(BaseModel):
+    """Operations to apply to the brian2.Network after an event fires."""
+
+    add: list
+    remove: list
+
+
+class EventHandler(Protocol):
+    """Protocol for event-driven simulation interventions."""
+
+    @property
+    def at(self) -> list[float]:
+        """Times (in ms) at which this handler should fire."""
+
+    def __call__(self, t: float, net: "Brian2Network") -> NetworkOperation:
+        """Execute the event. Return objects to add/remove from the network."""
+
+
+class Event(BaseModel):
+    at: float  # time at which the simulation calls the Event (in ms)
+    # function to call at time `at`; parameters are the time being called, and the network
+    # returns NetworkOperation
+    func: Callable[[float, "Brian2Network"], NetworkOperation]
+
+    def __lt__(self, other: "Event") -> bool:
+        """The time at which the event should fire is used to sort in the heapq."""
+        return self.at < other.at
+
+
 class Brian2Network(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    neurons: list[brian2.NeuronGroup]
-    synapses: list[brian2.Synapses]
+    neurons: brian2.NeuronGroup
+    synapses: brian2.Synapses
     spike_monitor: brian2.SpikeMonitor
+    state_monitor: brian2.StateMonitor | None
     inputs: list
+    report_id_mapping: np.ndarray
+    events: list[Event]
 
 
 class CurrentStimulator(ABC):
@@ -62,12 +97,16 @@ class CurrentStimulator(ABC):
         return node_sets.materialize(self.config.node_set, population)
 
     def get_currents(self, dt: float, simulation_length: float) -> brian2.TimedArray:
+        """Uses `_get_currents` to create a TimedArray to be used for simulation."""
         v = self._get_currents(dt, simulation_length)
         return brian2.TimedArray(v * brian2.units.mA, dt=dt * brian2.units.ms)
 
     @abstractmethod
     def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:
-        pass
+        """Get array of current values to be injected.
+
+        Starts at t=0, each array element is the value at that time, the timestep is `dt`.
+        """
 
 
 class Linear(CurrentStimulator):
@@ -130,6 +169,7 @@ class Sinusoidal(CurrentStimulator):
 
 @singledispatch
 def _create_input(conf: libsonata.SimulationConfig.InputBase) -> CurrentStimulator:
+    """Fallback for unknown inputs."""
     msg = f"Unsupported input config: {type(conf)}"
     raise RuntimeError(msg)
 
@@ -145,6 +185,7 @@ for type_, klass in STIMULATION_TYPES.items():
 
 
 def _convert_to_known_unit(v: str) -> brian2.Unit | int:
+    """Convert a string unit to the brian2 equivalent."""
     if v == "1":  # unitless is `1` in brian2
         return int(v)
     if v not in KNOWN_UNITS:
@@ -214,35 +255,8 @@ class SynapseTemplate(BaseModel):
 
 def _get_single_node_population(circuit: bluepysnap.Circuit) -> str:
     """Make sure there is only one node population, and retrieve its name."""
-    assert len(circuit.nodes.population_names) == 1
+    assert len(circuit.nodes.population_names) == 1, "Only one population supported"
     return next(iter(circuit.nodes.population_names))
-
-
-def _make_poisson(
-    simulation: bluepysnap.Simulation,
-    config: libsonata.SimulationConfig.Poisson,
-    n0: brian2.NeuronGroup,
-) -> tuple[brian2.NeuronGroup, list]:
-    L.info("Making Poisson Stimulus: rate: %f Hz, weight: %f mV", config.rate, config.weight)
-
-    population_name = _get_single_node_population(simulation.circuit)
-    node_ids = simulation.node_sets.to_libsonata.materialize(
-        config.node_set, simulation.circuit.nodes[population_name].to_libsonata
-    ).flatten()
-
-    poisson_inputs = []
-    for i in node_ids:
-        p = brian2.PoissonInput(
-            target=n0[i : i + 1],
-            target_var="v",
-            N=1,
-            rate=config.rate * brian2.units.Hz,
-            weight=config.weight * brian2.units.mV,
-        )
-        n0[i].rfc = 0 * brian2.units.ms  # no refractory period for Poisson targets
-        poisson_inputs.append(p)
-
-    return n0, poisson_inputs
 
 
 def _get_close_spikes(ids: np.ndarray, times: np.ndarray, window: float) -> np.ndarray:
@@ -269,6 +283,12 @@ def _get_spike_replay(
     synapses: brian2.Synapses,
     synapse_template: SynapseTemplate,
 ) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses]:
+    """Create a SpikeGeneratorGroup from a spike file and network connectivity.
+
+    Unfortunately, a new set of synapses needs to be created, and
+    network connectivity needs to be recreated - one cannot piggy-back on the
+    existing network.
+    """
     assert len(input_.reader.get_population_names()) == 1
     population_name = next(iter(input_.reader.get_population_names()))
 
@@ -391,28 +411,73 @@ class Inputs:
         return model, objs, indicators
 
 
-def _get_inputs(
+def _get_non_current_inputs(
     simulation: bluepysnap.Simulation,
     n0: brian2.NeuronGroup,
     synapses: brian2.Synapses,
     synapse_template: SynapseTemplate,
 ) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
+    """Filter inputs that are known from the SONATA config, return simulatable brian objects."""
     inputs = []
-    for input_ in simulation.inputs.values():
+    for name, input_ in simulation.inputs.items():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
             inputs += _get_spike_replay(simulation, input_, n0, synapses, synapse_template)
         elif isinstance(input_, libsonata.SimulationConfig.Poisson):
-            n0, poissons = _make_poisson(simulation, input_, n0)
-            inputs += poissons
+            pass
+        elif type(input_) not in STIMULATION_TYPES:
+            msg = f"Input {name} of type: `{type(input_)}` is not currently supported."
+            raise RuntimeError(msg)
 
     return n0, inputs
+
+
+def _get_reports(
+    simulation: bluepysnap.Simulation, neurons: brian2.NeuronGroup
+) -> tuple[brian2.StateMonitor | None, np.ndarray]:
+    """Get voltage reports."""
+    node_sets = simulation.node_sets.to_libsonata
+    population = simulation.circuit.nodes[
+        _get_single_node_population(simulation.circuit)
+    ].to_libsonata
+
+    selection = libsonata.Selection([])
+    for name, report in simulation.reports.items():
+        if isinstance(report, bluepysnap.frame_report.SomaReport):
+            config = report.to_libsonata
+            if config.sections != libsonata.SimulationConfig.Report.Sections.soma:
+                msg = f"only sections == `soma` is supported, found: `{config.sections}`"
+                raise RuntimeError(msg)
+            if config.variable_name != "v":
+                msg = "`variable_name`s other than `v` are not supported"
+                raise RuntimeError(msg)
+            if config.dt != simulation.run.dt:
+                msg = "`dt` other than simulation.run.dt are not supported"
+                raise RuntimeError(msg)
+            if not config.enabled:
+                L.warning("Skipping report: `%s` since not enabled", name)
+
+            if node_set := config.cells or simulation.to_libsonata.node_set:
+                selection |= node_sets.materialize(node_set, population)
+            else:
+                selection = population.select_all()
+        else:
+            msg = f"`{type(report)}` report type not handled, named {name}"
+            raise TypeError(msg)
+
+    if not selection:
+        return None, np.array([])
+
+    ids = np.sort(selection.flatten())
+    id_mapping = np.zeros(ids[-1] + 1, dtype=np.min_scalar_type(ids[-1]))
+    id_mapping[ids] = np.arange(len(ids))
+    return brian2.StateMonitor(neurons, ["v"], record=ids), id_mapping
 
 
 def _write_spikes(
     filepath: Path,
     population_name: str,
-    timestamps: tuple[float, ...],
-    node_ids: tuple[int, ...],
+    timestamps: np.ndarray,
+    node_ids: np.ndarray,
     sorting: str = "by_time",
     unit: str = "ms",
 ) -> Path:
@@ -434,26 +499,32 @@ def _write_spikes(
     sorting_type = h5py.enum_dtype(sorting_dict)
     sorting_value = sorting_dict[sorting]
 
-    if node_ids and sorting == "by_time":
-        timestamps, node_ids = zip(*sorted(zip(timestamps, node_ids, strict=True)), strict=True)
-    elif node_ids and sorting == "by_id":
-        node_ids, timestamps = zip(*sorted(zip(node_ids, timestamps, strict=True)), strict=True)
+    if sorting == "by_time":
+        idx = np.argsort(timestamps)
+    elif sorting == "by_id":
+        idx = np.argsort(node_ids)
 
     with h5py.File(filepath, "w") as h5f:
         h5f.create_group("spikes")
         gpop_spikes = h5f.create_group(f"/spikes/{population_name}")
         gpop_spikes.attrs.create("sorting", data=sorting_value, dtype=sorting_type)
-        dtimestamps = gpop_spikes.create_dataset("timestamps", data=timestamps, dtype=np.double)
+        dtimestamps = gpop_spikes.create_dataset(
+            "timestamps", data=timestamps[idx], dtype=np.double
+        )
         dtimestamps.attrs.create("units", data=unit, dtype=string_dtype)
-        gpop_spikes.create_dataset("node_ids", data=node_ids, dtype=np.uint64)
+        gpop_spikes.create_dataset("node_ids", data=node_ids[idx], dtype=np.uint64)
 
     return filepath
 
 
 def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2.NeuronGroup:
+    """Create the NeuronGroup based on the SONATA simulation config.
+
+    Only a single population is supported, no virtual nodes.
+    *All* neurons are loaded, not just the ones in the simulation_config::node_set
+    """
     circuit = simulation.circuit
-    assert len(circuit.nodes.population_names) == 1, "Only one population supported"
-    nodes = circuit.nodes[next(iter(circuit.nodes.population_names))]
+    nodes = circuit.nodes[_get_single_node_population(simulation.circuit)]
     L.info("Loading neuron population: `%s`, with %d ids", nodes.name, len(nodes.ids()))
 
     models_dir = Path(
@@ -501,6 +572,7 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
 def _create_synapses(
     circuit: bluepysnap.Circuit, neurons: brian2.NeuronGroup
 ) -> tuple[brian2.Synapses, SynapseTemplate]:
+    """Create synapses for circuit; all synapses are instantiated."""
     assert len(circuit.edges.population_names) == 1, "Only one population supported"
     edges = circuit.edges[next(iter(circuit.edges.population_names))]
     edge_pop = edges.to_libsonata
@@ -529,11 +601,14 @@ def _create_synapses(
         neurons,
         model=synapse_template.params.model,
         on_pre=synapse_template.params.on_pre,
-        delay=None
-        if synapse_template.params.delay is None
-        else synapse_template.params.delay.get(),
     )
     syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
+
+    syn.pre.delay = (
+        0.0 * brian2.units.ms
+        if synapse_template.params.delay is None
+        else synapse_template.params.delay.get()
+    )
 
     for name, unit in synapse_template.dynamics.items():
         values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
@@ -542,11 +617,155 @@ def _create_synapses(
     return syn, synapse_template
 
 
+class ConnectionOverride:
+    def __init__(
+        self, config: libsonata.SimulationConfig.ConnectionOverride, sim_config_path: Path
+    ) -> None:
+        """Ibid."""
+        if config.spont_minis is not None:
+            msg = "connection_overrides::spont_minis is not supported"
+            raise RuntimeError(msg)
+        if config.synapse_configure is not None:
+            msg = "connection_overrides::synapse_configure is not supported"
+            raise RuntimeError(msg)
+        if config.modoverride is not None:
+            msg = "connection_overrides::modoverride is not supported"
+            raise RuntimeError(msg)
+        if config.neuromodulation_dtc is not None:
+            msg = "connection_overrides::neuromodulation_dtc is not supported"
+            raise RuntimeError(msg)
+        if config.neuromodulation_strength is not None:
+            msg = "connection_overrides::neuromodulation_strength is not supported"
+            raise RuntimeError(msg)
+
+        self.config = config
+        self.sim_config_path = sim_config_path
+
+    @property
+    def at(self) -> list[float]:
+        """Time at which the override should start, in ms."""
+        return [self.config.delay]
+
+    def __call__(self, _t: float, net: Brian2Network) -> NetworkOperation:
+        L.debug(
+            "Connection override(%s): %s -> %s: weight: %s, synapse_delay_override: %s",
+            self.config.name,
+            self.config.source,
+            self.config.target,
+            self.config.weight,
+            self.config.synapse_delay_override,
+        )
+        simulation = bluepysnap.Simulation(self.sim_config_path)
+        circuit = simulation.circuit
+        node_sets = simulation.node_sets.to_libsonata
+
+        nodes = circuit.nodes[_get_single_node_population(circuit)].to_libsonata
+
+        src_ids = node_sets.materialize(self.config.source, nodes)
+        tgt_ids = node_sets.materialize(self.config.target, nodes)
+
+        edges = circuit.edges[next(iter(circuit.edges.population_names))]
+        edge_pop = edges.to_libsonata
+        # All synapses have been instantiated, so we can index using the `connecting_edges`
+        selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
+
+        if self.config.weight is not None:
+            net.synapses.w[selection.flatten()] = self.config.weight * brian2.units.mV
+
+        if self.config.synapse_delay_override is not None:
+            net.synapses.delay[selection.flatten()] = (
+                self.config.synapse_delay_override * brian2.units.ms
+            )
+
+        return NetworkOperation(add=[], remove=[])
+
+
+class InputPoisson:
+    def __init__(self, config: libsonata.SimulationConfig.Poisson, sim_config_path: Path) -> None:
+        """Ibid."""
+        if config.compartment_set:
+            msg = "`compartment_set` not supported"
+            raise RuntimeError(msg)
+        self.config = config
+        self.sim_config_path = sim_config_path
+        # the __call__should happen twice, once to create the stimuli (at `delay`),
+        # and once to stop it (at `delay + duration`)
+        self._inputs = []
+
+    @property
+    def at(self) -> list[float]:
+        """Time at which the Poisson stimulus should start and end, in ms."""
+        return [self.config.delay, self.config.delay + self.config.duration]
+
+    def __call__(self, t: float, net: Brian2Network) -> NetworkOperation:
+        if not self._inputs:
+            L.debug(
+                "Adding InputPoisson: %s: rate: %f weight: %f",
+                self.config.node_set,
+                self.config.rate,
+                self.config.weight,
+            )
+            assert self.config.delay <= t <= self.config.delay + self.config.duration
+            simulation = bluepysnap.Simulation(self.sim_config_path)
+            population_name = _get_single_node_population(simulation.circuit)
+            selections = simulation.node_sets.to_libsonata.materialize(
+                self.config.node_set, simulation.circuit.nodes[population_name].to_libsonata
+            )
+
+            for start, end in selections.ranges:
+                p = brian2.PoissonInput(
+                    target=net.neurons[start:end],
+                    target_var="v",
+                    N=1,
+                    rate=self.config.rate * brian2.units.Hz,
+                    weight=self.config.weight * brian2.units.mV,
+                )
+                self._inputs.append(p)
+
+            return NetworkOperation(add=list(self._inputs), remove=[])
+
+        assert self.config.delay + self.config.duration <= t
+        L.debug(
+            "Removing InputPoisson: %s: (delay: %s, duration: %s): rate: %f weight: %f",
+            self.config.node_set,
+            self.config.delay,
+            self.config.duration,
+            self.config.rate,
+            self.config.weight,
+        )
+        ret = NetworkOperation(add=[], remove=self._inputs)
+        self._inputs = []
+        return ret
+
+
+def _gather_connection_overrides(simulation: bluepysnap.Simulation) -> list[Event]:
+    """Get `connection_overrides` SONATA configuration blocks and make Events."""
+    ret = []
+
+    for connection_override in simulation.to_libsonata.connection_overrides():
+        co = ConnectionOverride(connection_override, Path(simulation._simulation_config_path))  # ruff: ignore[private-member-access]
+        ret.extend(Event(at=at, func=co) for at in co.at)
+
+    return ret
+
+
+def _gather_poisson(simulation: bluepysnap.Simulation) -> list[Event]:
+    ret = []
+    for input_ in simulation.inputs.values():
+        if isinstance(input_, libsonata.SimulationConfig.Poisson):
+            pi = InputPoisson(input_, Path(simulation._simulation_config_path))  # ruff: ignore[private-member-access]
+            ret.extend(Event(at=at, func=pi) for at in pi.at)
+
+    return ret
+
+
 def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
+    """Create a Brian2 network from a SONATA configuration."""
     brian2.defaultclock.dt = simulation.run.dt * brian2.units.ms
     brian2.seed(simulation.run.random_seed)
 
     current_inputs = Inputs(simulation)
+    events = _gather_connection_overrides(simulation) + _gather_poisson(simulation)
 
     neurons = _create_neurons(simulation, current_inputs)
 
@@ -554,48 +773,155 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
 
     spike_monitor = brian2.SpikeMonitor(neurons)
 
-    neurons, inputs = _get_inputs(simulation, neurons, synapses, synapse_template)
+    state_monitor, report_id_mapping = _get_reports(simulation, neurons)
+
+    neurons, inputs = _get_non_current_inputs(simulation, neurons, synapses, synapse_template)
 
     net = Brian2Network(
-        neurons=[neurons], synapses=[synapses], spike_monitor=spike_monitor, inputs=inputs
+        neurons=neurons,
+        synapses=synapses,
+        spike_monitor=spike_monitor,
+        inputs=inputs,
+        state_monitor=state_monitor,
+        report_id_mapping=report_id_mapping,
+        events=events,
     )
 
     return net
 
 
-def run_sonata_brian2_trial(simulation_config_path: Path) -> Path:
+def _write_soma_report(
+    output_path: Path,
+    name: str,
+    node_ids: np.ndarray,
+    values: np.ndarray,
+    unit: brian2.units.Unit,
+    start: float,
+    end: float,
+    dt: float,
+) -> None:
+    """Write soma report in SONATA format."""
+    values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
+    string_dtype = h5py.special_dtype(vlen=str)
+    with h5py.File(output_path, "w") as h5f:
+        g = h5f.create_group(f"/report/{name}")
+        g.create_dataset("data", data=values.T / unit, dtype=np.float32).attrs.create(
+            "units", data=str(unit), dtype=string_dtype
+        )
+        mapping = h5f.create_group(f"/report/{name}/mapping")
+        mapping.create_dataset("node_ids", data=node_ids, dtype=np.uint64)
+        mapping.create_dataset(
+            "index_pointers", data=np.arange(values.shape[0] + 1), dtype=np.uint64
+        )
+        mapping.create_dataset("element_ids", data=np.zeros(values.shape[0]), dtype=np.uint32)
+        mapping.create_dataset("time", data=(start, end, dt), dtype=np.double).attrs.create(
+            "units", data="ms", dtype=string_dtype
+        )
+
+
+def _write_reports(
+    simulation: bluepysnap.Simulation,
+    spike_monitor: brian2.SpikeMonitor,
+    state_monitor: brian2.StateMonitor | None,
+    report_id_mapping: np.ndarray,
+) -> None:
+    """Write all reports configured in `simulation`."""
+    L.debug("Writing reports")
+    output_dir = Path(simulation.output.output_dir)
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    L.info("Neurons spiked %d times", len(spike_monitor.i[:]))
+    Path(simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
+    _write_spikes(
+        filepath=simulation.output.spikes_file,
+        population_name=_get_single_node_population(simulation.circuit),
+        timestamps=spike_monitor.t[:] / brian2.units.ms,
+        node_ids=spike_monitor.i[:],
+    )
+
+    if state_monitor is None:
+        return
+
+    node_sets = simulation.node_sets.to_libsonata
+    population_name = _get_single_node_population(simulation.circuit)
+    population = simulation.circuit.nodes[population_name].to_libsonata
+
+    for report in simulation.reports.values():
+        if not isinstance(report, bluepysnap.frame_report.SomaReport):
+            continue
+
+        config = report.to_libsonata
+        if not config.enabled:
+            continue
+
+        if node_set := config.cells or simulation.to_libsonata.node_set:
+            selection = node_sets.materialize(node_set, population)
+        else:
+            selection = population.select_all()
+
+        ids = np.sort(selection.flatten())
+
+        Path(config.file_name).parent.mkdir(exist_ok=True, parents=True)
+
+        _write_soma_report(
+            config.file_name,
+            population_name,
+            ids,
+            state_monitor.v[report_id_mapping[ids], :],
+            unit=brian2.units.mV,
+            start=config.start_time,
+            end=min(config.end_time, simulation.run.tstop),
+            dt=simulation.run.dt,
+        )
+
+
+def run_sonata_brian2_trial(
+    simulation_config_path: Path, *, profile: bool = False
+) -> Brian2Network:
     """Returns the path to the spikes file."""
     simulation = bluepysnap.Simulation(simulation_config_path)
 
     brian2.start_scope()
     net = _build_brian2_network(simulation)
 
-    network = brian2.Network(net.neurons, net.synapses, net.spike_monitor, *net.inputs)
+    network = brian2.Network(
+        net.neurons,
+        net.synapses,
+        net.spike_monitor,
+        *net.inputs,
+        *([] if net.state_monitor is None else [net.state_monitor]),
+    )
 
     L.info(
         "Running simulation with `%s` backend",
         brian2.prefs.codegen.target,
     )
 
-    network.run(duration=simulation.run.tstop * brian2.units.ms)
+    L.info("Running simulation")
 
-    output_dir = Path(simulation.output.output_dir)
-    output_dir.mkdir(exist_ok=True, parents=True)
+    queue = list(net.events)
+    heapq.heapify(queue)
 
-    spikes = [
-        (k, v / brian2.units.ms) for k, vs in net.spike_monitor.spike_trains().items() for v in vs
-    ]
+    report = "text" if profile else None
+    current_t = 0.0
+    while current_t < simulation.run.tstop:
+        next_t = min(queue[0].at, simulation.run.tstop) if queue else simulation.run.tstop
+        network.run((next_t - current_t) * brian2.units.ms, profile=profile, report=report)
+        current_t = next_t
 
-    node_ids, timestamps = zip(*spikes, strict=True) if spikes else ((), ())
-    L.info("%d neurons spiked %d times", len(net.spike_monitor.spike_trains()), len(node_ids))
-    (output_dir / simulation.output.spikes_file).parent.mkdir(exist_ok=True, parents=True)
-    spikes_path = _write_spikes(
-        filepath=output_dir / simulation.output.spikes_file,
-        population_name=_get_single_node_population(simulation.circuit),
-        timestamps=timestamps,
-        node_ids=node_ids,
-    )
-    return spikes_path
+        while queue and queue[0].at <= current_t:
+            event = heapq.heappop(queue)
+            ops = event.func(current_t, net)
+            if ops.add:
+                network.add(*ops.add)
+            if ops.remove:
+                network.remove(*ops.remove)
+
+    _write_reports(simulation, net.spike_monitor, net.state_monitor, net.report_id_mapping)
+
+    if profile:
+        print(brian2.profiling_summary(net=network))  # ruff: ignore[print]
+    return net
 
 
 @click.group()
@@ -605,18 +931,21 @@ def cli() -> None:
 
 @cli.command()
 @click.option("--simulation-path", type=REQUIRED_PATH)
+@click.option("--profile", is_flag=True, help="Turn on internal brian2 profiling")
 @click.option("-v", "--verbose", count=True, help="Increase verbosity (-v for INFO, -vv for DEBUG)")
 def sonata_simulation(
     simulation_path: str,
     verbose: int,
+    *,
+    profile: bool,
 ) -> None:
 
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
     logging.basicConfig(level=log_level, force=True)
-    if verbose:
+    if verbose > 1:
         brian2.BrianLogger.log_level_debug()
 
-    run_sonata_brian2_trial(Path(simulation_path))
+    run_sonata_brian2_trial(Path(simulation_path), profile=profile)
 
 
 def _init_entitysdk_client(
@@ -669,14 +998,10 @@ def activity_wrapper(
     try:
         yield
     except Exception:
-        _update_activity_status(
-            {"status": ActivityStatus.error, "end_time": datetime.now(tz=timezone.utc)}  # noqa: UP017
-        )
+        _update_activity_status({"status": ActivityStatus.error, "end_time": datetime.now(tz=UTC)})
         raise  # re-raise the exception so that it can be handled by the job wrapper
     else:
-        _update_activity_status(
-            {"status": ActivityStatus.done, "end_time": datetime.now(tz=timezone.utc)}  # noqa: UP017
-        )
+        _update_activity_status({"status": ActivityStatus.done, "end_time": datetime.now(tz=UTC)})
 
 
 def sonata_main(
@@ -685,6 +1010,7 @@ def sonata_main(
     simulation_id: uuid.UUID,
     simulation_execution_id: uuid.UUID,
     workdir: Path,
+    profile: bool,
 ) -> None:
     L.info("Loading simulation %s", simulation_id)
     model = client.get_entity(entity_id=simulation_id, entity_type=models.Simulation)
@@ -701,7 +1027,7 @@ def sonata_main(
         activity_id=simulation_execution_id,
         activity_type=models.SimulationExecution,
     ):
-        spikes_report_filepath = run_sonata_brian2_trial(simulation_config_file)
+        run_sonata_brian2_trial(simulation_config_file, profile=profile)
 
     L.info("Registering simulation result")
     simulation_result = client.register_entity(
@@ -711,15 +1037,27 @@ def sonata_main(
             simulation_id=simulation_id,
         )
     )
-    if spikes_report_filepath:
-        L.info("Uploading assets for simulation")
-        assert simulation_result.id
+    L.info("Uploading assets for simulation")
+    assert simulation_result.id
+
+    simulation_config = libsonata.SimulationConfig.from_file(simulation_config_file)
+
+    client.upload_file(
+        entity_id=simulation_result.id,
+        entity_type=models.SimulationResult,
+        file_path=Path(simulation_config.output.output_dir) / simulation_config.output.spikes_file,
+        file_content_type=ContentType.application_x_hdf5,
+        asset_label=AssetLabel.spike_report,
+    )
+
+    for name in simulation_config.list_report_names:
+        report = simulation_config.report(name)
         client.upload_file(
             entity_id=simulation_result.id,
             entity_type=models.SimulationResult,
-            file_path=spikes_report_filepath,
+            file_path=Path(report.file_name),
             file_content_type=ContentType.application_x_hdf5,
-            asset_label=AssetLabel.spike_report,
+            asset_label=AssetLabel.voltage_report,
         )
 
     L.info("Updating simulation execution")
@@ -742,19 +1080,22 @@ def sonata_main(
 @click.option("--project-id", type=click.UUID)
 @click.option("--simulation-id", type=click.UUID)
 @click.option("--simulation-execution-id", type=click.UUID)
+@click.option("--profile", is_flag=True, help="Turn on internal brian2 profiling")
 @click.option("-v", "--verbose", count=True, help="Increase verbosity (-v for INFO, -vv for DEBUG)")
 def sonata_simulation_task(
     virtual_lab_id: uuid.UUID,
     project_id: uuid.UUID,
     simulation_id: uuid.UUID,
     simulation_execution_id: uuid.UUID,
+    *,
+    profile: bool,
     verbose: int,
 ) -> None:
 
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
     logging.basicConfig(level=log_level, force=True)
     L.setLevel(log_level)
-    if verbose:
+    if verbose > 1:
         brian2.BrianLogger.log_level_debug()
 
     client = _init_entitysdk_client(
@@ -770,6 +1111,7 @@ def sonata_simulation_task(
             simulation_id=simulation_id,
             simulation_execution_id=simulation_execution_id,
             workdir=Path(tmpdir),
+            profile=profile,
         )
 
 

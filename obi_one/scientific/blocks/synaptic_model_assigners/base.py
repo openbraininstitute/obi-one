@@ -5,7 +5,7 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_synaptic_models import (
+from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
 )
 

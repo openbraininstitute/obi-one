@@ -34,7 +34,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
-from obi_one.scientific.unions.unions_neuron_sets import (
+from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
 )
 
@@ -45,6 +45,7 @@ L = logging.getLogger(__name__)
 
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
+DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: No Locations"
 
 
 class BlockGroup(StrEnum):
@@ -52,6 +53,7 @@ class BlockGroup(StrEnum):
 
     SETUP_BLOCK_GROUP = "Setup"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    TARGETING_BLOCK_GROUP = "Targets"
     DISTRIBUTIONS_BLOCK_GROUP = "Distributions"
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
@@ -76,7 +78,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     def default_neuron_set_reference(
         self,
     ) -> BiophysicalNeuronSetReference:
-        """Returns the default neuron set reference for the simulation."""
+        """The default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
@@ -167,7 +169,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     @property
     def target_simulator(self) -> SimulatorType:
-        """Returns the target simulator for the simulation campaign."""
+        """The target simulator for the simulation campaign."""
         if self._target_simulator is None:
             msg = "Target simulator not specified for simulation campaign."
             raise NotImplementedError(msg)
@@ -175,7 +177,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     @property
     def timestep(self) -> PositiveFloat:
-        """Returns the simulation timestep."""
+        """The simulation timestep."""
         if self._timestep is None:
             msg = "Timestep not specified for simulation campaign."
             raise NotImplementedError(msg)
@@ -297,7 +299,7 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
 
         L.info("-- Upload simulation_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=self.single_entity.id,
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]

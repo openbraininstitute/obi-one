@@ -166,6 +166,8 @@ if __name__ == "__main__":
             {
                 "All": {"population": "drosophila"},
                 "0": {"population": "drosophila", "node_id": [0]},
+                # gustatory receptor neurons an untargeted Brian2 stimulus defaults to
+                "sugar": {"population": "drosophila", "node_id": [0, 1]},
             },
             fd,
         )

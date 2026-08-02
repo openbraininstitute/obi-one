@@ -6,7 +6,9 @@ from uuid import UUID
 
 import entitysdk.client
 import entitysdk.exception
+from entitysdk.models.asset import Asset
 from entitysdk.models.cell_morphology import CellMorphology
+from entitysdk.types import AssetLabel
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies.auth import user_verified
@@ -14,12 +16,12 @@ from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import run_morphology_analysis
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from obi_one.db_sdk.registration.morphology import register_morphometrics
 from obi_one.scientific.library.morphology_metrics import (
     MORPHOLOGY_METRICS,
     MorphologyMetricsOutput,
     get_morphology_metrics,
 )
-from obi_one.scientific.library.morphology_registration import register_morphometrics
 
 MORPHOLOGY_FORMAT_TO_CONTENT_TYPE = {
     "swc": "application/swc",
@@ -83,6 +85,20 @@ def _run_analysis_with_temp_file(
         return run_morphology_analysis(tmp.name)
 
 
+def _select_morphology_asset(
+    morphology: CellMorphology,
+    expected_content_type: str,
+) -> Asset | None:
+    return next(
+        (
+            asset
+            for asset in morphology.assets
+            if asset.content_type == expected_content_type and asset.label == AssetLabel.morphology
+        ),
+        None,
+    )
+
+
 def compute_measurement_kinds(
     cell_morphology_id: UUID,
     db_client: entitysdk.client.Client,
@@ -105,10 +121,7 @@ def compute_measurement_kinds(
         )
 
     expected_content_type = MORPHOLOGY_FORMAT_TO_CONTENT_TYPE[normalized_format]
-    asset = next(
-        (a for a in morphology.assets if a.content_type == expected_content_type),
-        None,
-    )
+    asset = _select_morphology_asset(morphology, expected_content_type)
     if not asset:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,

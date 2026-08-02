@@ -14,6 +14,17 @@ import psutil
 L = logging.getLogger(__name__)
 
 
+@contextmanager
+def log_timing(stage: str) -> Generator[None, None, None]:
+    """Log wall-clock duration for a named stage."""
+    start = time.perf_counter()
+    L.info("Starting %s...", stage)
+    try:
+        yield
+    finally:
+        L.info("Finished %s in %.2fs", stage, time.perf_counter() - start)
+
+
 class BenchmarkTracker:
     """Tracks benchmarks across multiple sections and outputs summary to stdout."""
 

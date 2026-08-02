@@ -7,7 +7,7 @@ from typing import ClassVar
 import entitysdk
 import morphio
 import neurom
-from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
+from entitysdk._server_schemas import AssetLabel, ContentType  # ruff: ignore[import-private-name]
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
@@ -43,7 +43,7 @@ class CellMorphologyFromID(EntityFromID):
                             msg = "Asset must have an id"
                             raise ValueError(msg)
                         content = db_client.download_content(
-                            entity_id=self.entity(db_client=db_client).id,  # ty:ignore[invalid-argument-type]
+                            entity_id=self.entity(db_client=db_client).id,
                             entity_type=self.entitysdk_type,
                             asset_id=asset.id,
                         ).decode(encoding="utf-8")
@@ -131,8 +131,8 @@ class CellMorphologyFromID(EntityFromID):
                 "generated__id": morph_entity.id,
             },
         ).one_or_none()
-        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
-        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[invalid-argument-type, not-subscriptable]
+        task_cfg = db_client.get_entity(entity_id=activity.used[0].id, entity_type=TaskConfig)  # ty:ignore[not-subscriptable, unresolved-attribute]
+        source_mesh = db_client.get_entity(entity_id=task_cfg.inputs[0].id, entity_type=EMCellMesh)  # ty:ignore[not-subscriptable]
         return source_mesh
 
     def write_spiny_neuron_h5(
@@ -149,7 +149,7 @@ class CellMorphologyFromID(EntityFromID):
                     msg = "Asset must have an id"
                     raise ValueError(msg)
                 db_client.download_file(
-                    entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+                    entity_id=entity.id,
                     entity_type=self.entitysdk_class,
                     asset_id=asset.id,
                     output_path=str(path_to),  # ty:ignore[invalid-argument-type]
@@ -167,7 +167,7 @@ class CellMorphologyFromID(EntityFromID):
         if not isinstance(path, Path):
             path = Path(path)
         if Path(path).is_dir():
-            path = path / (entity.name + ".h5")  # NOQA: PLR6104  # ty:ignore[unsupported-operator]
+            path = path / (entity.name + ".h5")  # ruff: ignore[non-augmented-assignment]  # ty:ignore[unsupported-operator]
 
         self.write_spiny_neuron_h5(path, db_client)  # ty:ignore[invalid-argument-type]
         spiny_morph = load_morphology_with_spines(str(path))

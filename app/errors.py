@@ -9,9 +9,9 @@ from typing import Any
 class AuthErrorReason(StrEnum):
     """Authentication and authorization errors."""
 
-    AUTH_TOKEN_MISSING = "The authorization token is missing"  # noqa: S105
-    AUTH_TOKEN_INVALID = "The authorization token is invalid"  # noqa: S105
-    AUTH_TOKEN_EXPIRED = "The authorization token is expired"  # noqa: S105
+    AUTH_TOKEN_MISSING = "The authorization token is missing"  # ruff: ignore[hardcoded-password-string]
+    AUTH_TOKEN_INVALID = "The authorization token is invalid"  # ruff: ignore[hardcoded-password-string]
+    AUTH_TOKEN_EXPIRED = "The authorization token is expired"  # ruff: ignore[hardcoded-password-string]
     NOT_AUTHENTICATED_USER = "User not authenticated"
     NOT_AUTHORIZED_USER = "User not authorized"
     NOT_AUTHORIZED_PROJECT = "User not authorized for the given virtual-lab-id or project-id"

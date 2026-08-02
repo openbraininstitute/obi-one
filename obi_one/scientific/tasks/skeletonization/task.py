@@ -29,7 +29,7 @@ class SkeletonizationTask(Task):
 
     @property
     def work_dir(self) -> WorkDir:
-        """Return the current working directory layout."""
+        """The current working directory layout."""
         return create_work_dir(output_dir=self.config.coordinate_output_root)
 
     def _create_inputs(self, db_client: Client, output_dir: Path) -> SkeletonizationInputs:
@@ -49,7 +49,7 @@ class SkeletonizationTask(Task):
         ).one()
         # fetch the full dataset from the nested Entity
         em_dense_reconstruction_dataset = db_client.get_entity(
-            em_cell_mesh.em_dense_reconstruction_dataset.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
+            em_cell_mesh.em_dense_reconstruction_dataset.id,  # ty:ignore[unresolved-attribute]
             entity_type=models.EMDenseReconstructionDataset,
         )
         cell_id = em_cell_mesh.dense_reconstruction_cell_id
@@ -78,7 +78,7 @@ class SkeletonizationTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client,
-        entity_cache: bool = False,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None,
     ) -> None:
         """Execute the skeletonization task.

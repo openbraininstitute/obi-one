@@ -112,11 +112,12 @@ def mesh_and_upload(
 ) -> Asset:
     """Convert SWC bytes to a GLB mesh and upload it as an asset on the given morphology."""
     L.info(f"register_morphology_mesh: meshing {cell_morphology_id}")
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            swc_path = Path(tmp_dir) / f"{uuid.uuid4()}.swc"
-            swc_path.write_bytes(swc_bytes)
 
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        swc_path = Path(tmp_dir) / f"{uuid.uuid4()}.swc"
+        swc_path.write_bytes(swc_bytes)
+
+        try:
             glb_path_str = _mesh_swc(str(swc_path), output_directory=tmp_dir)
             glb_path = Path(glb_path_str)
 
@@ -124,16 +125,16 @@ def mesh_and_upload(
 
             return _upload_glb_asset(db_client, cell_morphology_id, glb_path)
 
-    except ApiError:
-        raise
-    except Exception as err:
-        L.error(f"Meshing failed for {cell_morphology_id}: {err}")
-        raise ApiError(
-            message=f"Meshing failed for morphology {cell_morphology_id}.",
-            error_code=ApiErrorCode.INTERNAL_ERROR,
-            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            details=str(err),
-        ) from err
+        except ApiError:
+            raise
+        except Exception as err:
+            L.error(f"Meshing failed for {cell_morphology_id}: {err}")
+            raise ApiError(
+                message=f"Meshing failed for morphology {cell_morphology_id}.",
+                error_code=ApiErrorCode.INTERNAL_ERROR,
+                http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                details=str(err),
+            ) from err
 
 
 @router.post(

@@ -19,19 +19,19 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.unions.unions_ion_channel_model import (
+from obi_one.scientific.unions_and_references.ion_channel_model import (
     IonChannelModelReference,
     IonChannelModelUnion,
 )
-from obi_one.scientific.unions.unions_recordings import (
+from obi_one.scientific.unions_and_references.recordings import (
     IonChannelModelRecordingUnion,
     RecordingReference,
 )
-from obi_one.scientific.unions.unions_stimuli import (
+from obi_one.scientific.unions_and_references.stimuli import (
     IonChannelModelStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )

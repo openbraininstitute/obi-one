@@ -8,7 +8,7 @@ from obi_one.scientific.library.extracellular_locations import (
     extracellular_locations_block_dictionary_summary,
     extracellular_locations_block_summary,
 )
-from obi_one.scientific.unions.unions_extracellular_locations import (
+from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsUnion,
 )
 
