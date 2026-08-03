@@ -77,11 +77,11 @@ class TestEModelEFeatureExtractionTask:
                 "_get_execution_activity",
                 return_value=mock_activity,
             ) as mock_get_activity,
-            patch.object(task, "_register_task_result") as mock_register,
+            patch.object(
+                task, "_register_task_result", return_value=str(task_result_id)
+            ) as mock_register,
             patch.object(task, "_update_execution_activity") as mock_update_activity,
         ):
-            task._registered_task_result_id = str(task_result_id)
-
             task.execute(
                 db_client=mock_db_client,
                 execution_activity_id=str(mock_activity.id),
@@ -122,8 +122,6 @@ class TestEModelEFeatureExtractionTask:
             ),
             patch.object(task, "_update_execution_activity") as mock_update_activity,
         ):
-            task._registered_task_result_id = None
-
             task.execute(
                 db_client=mock_db_client,
                 execution_activity_id=str(mock_activity.id),

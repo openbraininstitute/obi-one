@@ -7,7 +7,6 @@ from typing import Any, ClassVar
 
 import entitysdk
 import httpx
-from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
@@ -160,8 +159,6 @@ class EModelEFeatureExtractionTask(Task):
 
     config: EModelEFeatureExtractionSingleConfig
 
-    _registered_task_result_id: str | None = PrivateAttr(default=None)
-
     def _download_recordings(
         self,
         ephys_data_root: Path,
@@ -257,9 +254,10 @@ class EModelEFeatureExtractionTask(Task):
             extract_save_features_protocols(access_point=access_point, mapper=map)
 
         # 5. Register TaskResult entity and upload assets to entitycore.
+        registered_task_result_id: str | None = None
         if db_client is not None:
             try:
-                self._register_task_result(coord_root, db_client)
+                registered_task_result_id = self._register_task_result(coord_root, db_client)
             except httpx.HTTPError as e:
                 L.warning(
                     "TaskResult registration failed (extraction output is still"
@@ -268,11 +266,11 @@ class EModelEFeatureExtractionTask(Task):
                     e,
                 )
 
-            if self._registered_task_result_id is not None:
+            if registered_task_result_id is not None:
                 self._update_execution_activity(
                     db_client=db_client,
                     execution_activity=execution_activity,
-                    generated=[self._registered_task_result_id],
+                    generated=[registered_task_result_id],
                 )
 
         return coord_root
@@ -320,8 +318,11 @@ class EModelEFeatureExtractionTask(Task):
         self,
         coord_root: Path,
         db_client: entitysdk.client.Client,
-    ) -> None:
-        """Register a TaskResult entity and upload extraction output assets."""
+    ) -> str | None:
+        """Register a TaskResult entity and upload extraction output assets.
+
+        Returns the registered TaskResult ID, or None if registration fails.
+        """
         import json  # ruff: ignore[import-outside-top-level]
 
         from entitysdk.models import TaskResult  # ruff: ignore[import-outside-top-level]
@@ -342,9 +343,6 @@ class EModelEFeatureExtractionTask(Task):
             )
         )
         L.info("TaskResult entity registered: %s", task_result.id)
-
-        # Store registered entity ID on the task instance for external access
-        self._registered_task_result_id = str(task_result.id)
 
         # Upload extracted features JSON.
         features_path = coord_root / EXTRACTED_FEATURES_FILENAME
@@ -413,3 +411,5 @@ class EModelEFeatureExtractionTask(Task):
             "Linked %d input recordings to TaskResult.",
             len(self.config.initialize.electrical_cell_recording),
         )
+
+        return str(task_result.id)
