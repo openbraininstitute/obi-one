@@ -18,7 +18,7 @@ from app.schemas.task import (
 from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
-APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
+APP_TAG = "commit:569496380598a8044d8138c692ca3681d77254ef"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
@@ -231,7 +231,9 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
+            dependencies=str(
+                OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"
+            ),
         ),
         resources=MachineResources(
             cores=1,

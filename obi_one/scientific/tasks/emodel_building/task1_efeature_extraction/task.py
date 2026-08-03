@@ -212,13 +212,17 @@ class EModelEFeatureExtractionTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> Path:
         from bluepyemodel.access_point import (  # ruff: ignore[import-outside-top-level]
             get_access_point,
         )
         from bluepyemodel.efeatures_extraction.efeatures_extraction import (  # ruff: ignore[import-outside-top-level]
             extract_save_features_protocols,
+        )
+
+        execution_activity = EModelEFeatureExtractionTask._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
         )
 
         coord_root = Path(self.config.coordinate_output_root).resolve()
@@ -256,6 +260,12 @@ class EModelEFeatureExtractionTask(Task):
         if db_client is not None:
             try:
                 self._register_task_result(coord_root, db_client)
+                if self._registered_task_result_id is not None:
+                    EModelEFeatureExtractionTask._update_execution_activity(
+                        db_client=db_client,
+                        execution_activity=execution_activity,
+                        generated=[self._registered_task_result_id],
+                    )
             except httpx.HTTPError as e:
                 L.warning(
                     "TaskResult registration failed (extraction output is still"

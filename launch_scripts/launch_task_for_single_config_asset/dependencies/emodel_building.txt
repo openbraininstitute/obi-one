@@ -1,1 +1,1 @@
-obi-one[emodel]
+obi-one[emodel] @ git+https://github.com/openbraininstitute/obi-one.git@fix/task-result-efeature
