@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -128,18 +129,20 @@ def test_section_exception_still_records():
     assert BenchmarkTracker._benchmarks["failing"]["duration_s"] >= 0
 
 
-def test_print_summary_to_file_oserror_logs_warning(tmp_path, caplog):
+def test_print_summary_to_file_oserror_logs_warning(tmp_path, caplog, monkeypatch):
     """When the output file cannot be written, a warning is logged instead of raising."""
     BenchmarkTracker.start_tracking()
     with BenchmarkTracker.section("disk_full_test"):
         pass
 
-    # Use a non-writable directory (read+execute only) to trigger OSError on file creation
-    readonly_dir = tmp_path / "readonly"
-    readonly_dir.mkdir()
-    readonly_dir.chmod(0o555)
+    output_file = tmp_path / "results.json"
 
-    output_file = readonly_dir / "results.json"
+    # Simulate a disk-full or permission error when opening the file for writing
+    def _raise_oserror(*_args, **_kwargs):
+        msg = "No space left on device"
+        raise OSError(msg)
+
+    monkeypatch.setattr(Path, "open", _raise_oserror)
 
     with caplog.at_level("WARNING", logger="obi_one.utils.benchmark"):
         BenchmarkTracker.print_summary(output_path=output_file)
