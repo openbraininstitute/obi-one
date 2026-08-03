@@ -44,6 +44,8 @@ def test_register_simulation_results_registers_entity_and_uploads_files(
         simulation_id=simulation_id,
         spike_report_file=spike_report_file,
         voltage_report_files=voltage_report_files,
+        name="Simulation result",
+        description="Simulation result",
     )
 
     mock_client.register_entity.assert_called_once()
@@ -73,27 +75,10 @@ def test_register_simulation_results_registers_entity_and_uploads_files(
         )
 
 
-def test_register_simulation_results_defaults_name_and_description(
+def test_register_simulation_results_passes_through_name_and_description(
     mock_client, simulation_id, spike_report_file
 ):
-    """Both the neuron and brian2 backends rely on these defaults."""
-    mock_client.register_entity.return_value = MagicMock(id="result-123")
-
-    test_module.register_simulation_results(
-        client=mock_client,
-        simulation_id=simulation_id,
-        spike_report_file=spike_report_file,
-        voltage_report_files=[],
-    )
-
-    entity_arg = mock_client.register_entity.call_args[0][0]
-    assert (entity_arg.name, entity_arg.description) == ("Simulation result", "Simulation result")
-
-
-def test_register_simulation_results_accepts_name_and_description_overrides(
-    mock_client, simulation_id, spike_report_file
-):
-    """No backend overrides these today, but the arguments are supported."""
+    """Each backend supplies its own name and description; there is no default."""
     mock_client.register_entity.return_value = MagicMock(id="result-123")
 
     test_module.register_simulation_results(

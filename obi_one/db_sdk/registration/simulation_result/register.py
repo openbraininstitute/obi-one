@@ -26,6 +26,12 @@ def _upload_report(
     asset_label: AssetLabel,
 ) -> None:
     """Upload a single report file as an asset on the simulation result."""
+    L.info(
+        "SimulationResult: Uploading Asset(path=%s, content_type=%s, label=%s)",
+        file_path,
+        file_content_type,
+        asset_label,
+    )
     asset = client.upload_file(
         entity_id=simulation_result.id,
         entity_type=type(simulation_result),
@@ -33,13 +39,7 @@ def _upload_report(
         file_content_type=file_content_type,
         asset_label=asset_label,
     )
-    L.info(
-        "SimulationResult: Attached Asset(id=%s, path=%s, content_type=%s, label=%s)",
-        asset.id,
-        asset.path,
-        asset.content_type,
-        asset.label,
-    )
+    L.info("SimulationResult: Attached Asset(id=%s)", asset.id)
 
 
 def register_simulation_results(
@@ -48,8 +48,8 @@ def register_simulation_results(
     simulation_id: UUID,
     spike_report_file: Path,
     voltage_report_files: Sequence[Path],
-    name: str = "Simulation result",
-    description: str = "Simulation result",
+    name: str,
+    description: str,
 ) -> models.SimulationResult:
     """Register a SimulationResult and attach its spike and voltage report assets.
 
@@ -59,14 +59,12 @@ def register_simulation_results(
         spike_report_file: Path to the spike report (HDF5).
         voltage_report_files: Paths to the voltage reports. The content type of each is
             derived from its extension via EXTENSION_TO_CONTENT_TYPE.
-        name: Name for the registered entity. Both current backends take the default.
-        description: Description for the registered entity. Both current backends take
-            the default.
+        name: Name for the registered entity.
+        description: Description for the registered entity.
 
     Returns:
         The registered SimulationResult entity.
     """
-    # TODO: Add proper name, consider adding a description
     simulation_result = client.register_entity(
         models.SimulationResult(
             name=name,

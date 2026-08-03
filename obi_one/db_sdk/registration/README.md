@@ -100,8 +100,8 @@ resolves each voltage report's content type from its extension, which is only sa
 verified: `weird.dat` comes back as `weird.dat.h5`. That is why `simulate_brian2.sonata_main`
 could drop its hardcoded `application_x_hdf5` without any behaviour change.
 
-**SimulationResult name and description are parameterized but unused.** Both backends take
-the defaults, `"Simulation result"` / `"Simulation result"`. Before the two implementations
-merged, neuron registered `"simulation_result"` / `"Simulation result"` and brian2
-registered `"Simulation result"` / `""`. The arguments remain available for future
-backends — just keep existing callers on the defaults.
+**SimulationResult name and description have no defaults.** Each backend passes them
+explicitly, so the shared function does not quietly own a value that call sites are assumed
+to want. Both currently pass `"Simulation result"` / `"Simulation result"`. Before the two
+implementations merged, neuron registered `"simulation_result"` / `"Simulation result"` and
+brian2 registered `"Simulation result"` / `""`.

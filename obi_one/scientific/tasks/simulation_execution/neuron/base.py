@@ -127,6 +127,8 @@ class SimulationExecutionTask(Task):
                     simulation_id=simulation_metadata.simulation_id,
                     spike_report_file=simulation_results.spike_report_file,
                     voltage_report_files=simulation_results.voltage_report_files,
+                    name="Simulation result",
+                    description="Simulation result",
                 )
                 L.info("Generated %s(id=%s)", type(generated_entity), generated_entity.id)
 

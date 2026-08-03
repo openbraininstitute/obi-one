@@ -1044,6 +1044,8 @@ def sonata_main(
             Path(simulation_config.report(name).file_name)
             for name in simulation_config.list_report_names
         ],
+        name="Simulation result",
+        description="Simulation result",
     )
     assert simulation_result.id
 
