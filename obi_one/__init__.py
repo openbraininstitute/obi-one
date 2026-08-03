@@ -145,6 +145,7 @@ __all__ = [
     "MorphologyDecontainerizationScanConfig",
     "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
+    "MorphologyLocationVoltageRecording",
     "MorphologyLocationsReference",
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
@@ -363,6 +364,9 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllVirtualNeurons,
 )
 from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.morphology_location import (
+    MorphologyLocationVoltageRecording,
+)
 from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
