@@ -38,30 +38,51 @@ what the runner can execute.
 | `ConstantCurrentClampSomaticStimulus` | `linear` |
 | `LinearCurrentClampSomaticStimulus` | `linear` |
 | `MultiPulseCurrentClampSomaticStimulus` | `pulse` |
-| `Brian2SinusoidalCurrentClampSomaticStimulus` | `sinusoidal` |
+| `SimulationDtSinusoidalCurrentClampSomaticStimulus` | `sinusoidal` |
+| `PoissonSpikeStimulus` and the other spike stimuli | `synapse_replay` |
 
 The current injections are played into the neurons as a `TimedArray` and summed per target
 neuron set. `Brian2DirectPoissonStimulus` instead kicks the membrane potential directly, bypassing
-the circuit's synapses.
+the circuit's synapses. The spike stimuli generate a spike file, which the runner replays through
+a `SpikeGeneratorGroup` wired with the circuit's *own* connectivity, so replayed spikes propagate
+to whatever the source neurons project onto.
 
 Stimuli that scale with a cell's threshold current (the relative variants), noise, Ornstein-
 Uhlenbeck, electric field and voltage clamp modules have no Brian2 counterpart and are not
-offered. Spike stimuli are excluded too: the runner reads a `synapse_replay` input's `node_set` as
-a filter on which *source* spikes to replay, which is not the target semantics the spike stimulus
-blocks emit.
+offered.
+
+!!! warning "A spike stimulus's target reads as a filter on its source"
+
+    `_get_spike_replay` materialises the input's `node_set` against the *spike file's* population
+    and uses it to mask which spikes are replayed. The generation task writes the stimulus's
+    **target** neuron set into that field, so on Brian2 the target behaves as a filter on the
+    source spikes. Leave the target unset (it then covers every point neuron and filters nothing),
+    or make sure it contains the source neuron set — a target that excludes the source replays
+    nothing at all, silently.
+
+Current amplitudes are nanoamps, as the blocks and SONATA's `current_clamp` inputs both describe
+them. How much depolarisation that buys depends on the model's membrane resistance: against the
+FlyWire model's 10 MΩ, 1 nA is worth about 10 mV.
 
 ### Recordings
 
 | Block | Notes |
 | --- | --- |
-| `Brian2SomaVoltageRecording` | Full length of the experiment |
-| `Brian2TimeWindowSomaVoltageRecording` | Restricted to a start and end time |
+| `SimulationDtSomaVoltageRecording` | Full length of the experiment |
+| `SimulationDtTimeWindowSomaVoltageRecording` | Restricted to a start and end time |
 
 These are the counterparts of `SomaVoltageRecording` and `TimeWindowSomaVoltageRecording`, minus
 the **Timestep** parameter. Brian2 samples its `StateMonitor` on the integration timestep and
 rejects a report asking for any other interval, so the recording's sampling interval is the
 simulation timestep rather than a parameter of its own. The same applies to the sinusoidal
-stimulus, which is why `Brian2SinusoidalCurrentClampSomaticStimulus` has no Timestep either.
+stimulus, which is why `SimulationDtSinusoidalCurrentClampSomaticStimulus` has no Timestep either.
+
+The blocks are named for this distinction rather than for Brian2: a `SimulationDt…` block is
+clocked by the simulation timestep, and the block that adds an independently settable interval
+derives from it — `SomaVoltageRecording` from `CustomDtRecording`, and
+`SinusoidalCurrentClampSomaticStimulus` from
+`SimulationDtSinusoidalCurrentClampSomaticStimulus`. Nothing about the `SimulationDt…` blocks is
+Brian2-specific, so any simulator with the same constraint can use them.
 
 Only soma voltage (`variable_name: "v"`) is reported.
 
@@ -93,3 +114,10 @@ The one exception is `Brian2DirectPoissonStimulus`: an untargeted Direct Poisson
 drives `"Default: Sugar gustatory receptor neurons"`, the `sugar` node set stimulated by the Shiu
 et al. (2024) FlyWire model. That set is small enough to stay under the block's neuron limit,
 which the whole circuit would exceed.
+
+## Worked example
+
+`examples/obi_one/scientific/tasks/generate_simulations/Brian2/brian2_flywire_simulation.ipynb`
+builds a campaign using every block listed above, stages the `FlyWire-v783-Brian2-LIF` circuit
+(138,639 neurons, 15,091,983 synapses) from the database, generates the SONATA config, and runs it
+through `simulate_brian2.py`'s `sonata-simulation` command.

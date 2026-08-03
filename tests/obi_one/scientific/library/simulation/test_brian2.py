@@ -3,6 +3,10 @@
 * using a synthetic `drosophila` model, 3 neurons, w/ all to all connectivity
 * see `tests/obi_one/scientific/library/simulation/data/create_data.py`
 * model is a simple exponential decay, where spikes cause an increase of `w` to the voltage
+
+`amp_start` is in nanoamps, and the synthetic model's `R_membrane` is 1 ohm against a 1 V
+threshold, so the amplitudes that make it spike are enormous (amperes, written as nA). A model
+with a realistic membrane resistance needs the single-digit nanoamps the SONATA field implies.
 """
 
 import copy
@@ -210,7 +214,7 @@ def test_current_stim(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3.0e09,
                 "delay": 0.1,
                 "duration": 4,
                 "node_set": "0",
@@ -235,7 +239,7 @@ def test_current_stim_groupby(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3.0e09,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -253,7 +257,7 @@ def test_current_stim_groupby(tmp_path):
             "linear0": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1.5e09,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -261,7 +265,7 @@ def test_current_stim_groupby(tmp_path):
             "linear1": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1.5e09,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -383,7 +387,7 @@ def test_current_stim_report(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3.0e09,
                 "delay": 0.1,
                 "duration": 4,
                 "node_set": "0",
@@ -473,7 +477,7 @@ def test_connection_override(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 12000,
+                "amp_start": 1.2e10,
                 "delay": 0,
                 "duration": 4,
                 "node_set": "0",
@@ -515,7 +519,7 @@ def test_connection_override_mid_simulation(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 12000,
+                "amp_start": 1.2e10,
                 "delay": 0,
                 "duration": 4,
                 "node_set": "0",

@@ -42,10 +42,8 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
+    "Brian2DirectPoissonStimulus",
     "Brian2RecordingUnion",
-    "Brian2SinusoidalCurrentClampSomaticStimulus",
-    "Brian2SomaVoltageRecording",
-    "Brian2TimeWindowSomaVoltageRecording",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -77,6 +75,7 @@ __all__ = [
     "CreateExtracellularRecordingArrayScanConfig",
     "CreateExtracellularRecordingArraySingleConfig",
     "CreateExtracellularRecordingArrayTask",
+    "CustomDtRecording",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
@@ -194,7 +193,6 @@ __all__ = [
     "RandomMorphologyLocations",
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
-    "Recording",
     "RecordingReference",
     "RecordingUnion",
     "RegularTimestamps",
@@ -208,6 +206,9 @@ __all__ = [
     "ScanConfigsUnion",
     "ScanGenerationTask",
     "Simulation",
+    "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+    "SimulationDtSomaVoltageRecording",
+    "SimulationDtTimeWindowSomaVoltageRecording",
     "SimulationsForm",
     "SingleConfigMixin",
     "SingleTimestamp",
@@ -366,13 +367,14 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPopulationNeurons,
     AllVirtualNeurons,
 )
-from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.base import CustomDtRecording
 from obi_one.scientific.blocks.recordings.soma import (
-    Brian2SomaVoltageRecording,
-    Brian2TimeWindowSomaVoltageRecording,
+    SimulationDtSomaVoltageRecording,
+    SimulationDtTimeWindowSomaVoltageRecording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
+from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.electric_field import (
     SpatiallyUniformElectricFieldStimulus,
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
@@ -395,7 +397,6 @@ from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
-    Brian2SinusoidalCurrentClampSomaticStimulus,
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
@@ -404,6 +405,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SimulationDtSinusoidalCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )

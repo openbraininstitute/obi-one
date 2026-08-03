@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import ClassVar, Self
 
 import entitysdk
@@ -7,14 +6,21 @@ from pydantic import Field, NonNegativeFloat, model_validator
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.recordings.base import BaseRecording, Recording
+from obi_one.scientific.blocks.recordings.base import CustomDtRecording, SimulationDtRecording
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
 
-class BaseSomaVoltageRecording(BaseRecording, ABC):
-    """The SONATA soma-voltage report shared by every soma voltage recording."""
+class SimulationDtSomaVoltageRecording(SimulationDtRecording):
+    """Records the soma voltage of a neuron set for the full length of the experiment.
+
+    The sampling interval is the simulation timestep. Brian2 samples its ``StateMonitor`` on the
+    integration timestep and rejects a report asking for any other interval, so it uses this
+    rather than :class:`SomaVoltageRecording`.
+    """
+
+    title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
 
     def _generate_config(
         self,
@@ -36,8 +42,14 @@ class BaseSomaVoltageRecording(BaseRecording, ABC):
         return sonata_config
 
 
-class BaseTimeWindowSomaVoltageRecording(BaseSomaVoltageRecording, ABC):
-    """A soma voltage recording restricted to a time window."""
+class SimulationDtTimeWindowSomaVoltageRecording(SimulationDtSomaVoltageRecording):
+    """Records the soma voltage of a neuron set over a specified time window.
+
+    As with :class:`SimulationDtSomaVoltageRecording`, the sampling interval is the simulation
+    timestep rather than a parameter of its own.
+    """
+
+    title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
 
     start_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
@@ -82,33 +94,13 @@ class BaseTimeWindowSomaVoltageRecording(BaseSomaVoltageRecording, ABC):
         return super()._generate_config(db_client=db_client)
 
 
-class SomaVoltageRecording(Recording, BaseSomaVoltageRecording):
+class SomaVoltageRecording(CustomDtRecording, SimulationDtSomaVoltageRecording):
     """Records the soma voltage of a neuron set for the full length of the experiment."""
 
     title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
 
 
-class TimeWindowSomaVoltageRecording(Recording, BaseTimeWindowSomaVoltageRecording):
+class TimeWindowSomaVoltageRecording(CustomDtRecording, SimulationDtTimeWindowSomaVoltageRecording):
     """Records the soma voltage of a neuron set over a specified time window."""
-
-    title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
-
-
-class Brian2SomaVoltageRecording(BaseSomaVoltageRecording):
-    """Records the soma voltage of a neuron set for the full length of the experiment.
-
-    Brian2 samples its ``StateMonitor`` on the integration timestep and rejects a report asking
-    for any other interval, so this variant has no Timestep of its own.
-    """
-
-    title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
-
-
-class Brian2TimeWindowSomaVoltageRecording(BaseTimeWindowSomaVoltageRecording):
-    """Records the soma voltage of a neuron set over a specified time window.
-
-    As with :class:`Brian2SomaVoltageRecording`, the sampling interval is the simulation
-    timestep rather than a separate parameter.
-    """
 
     title: ClassVar[str] = "Soma Voltage Recording (Time Window)"

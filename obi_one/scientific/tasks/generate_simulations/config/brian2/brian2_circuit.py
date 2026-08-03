@@ -13,6 +13,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
@@ -24,6 +25,10 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
     Brian2SimulationNeuronSetUnion,
+)
+from obi_one.scientific.unions_and_references.distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
 )
 from obi_one.scientific.unions_and_references.manipulations import (
     Brian2SynapticManipulationsUnion,
@@ -59,6 +64,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.SETUP_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
@@ -69,6 +75,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             # block's neuron limit (see Brian2SimulationScanConfig).
             PointNeuronSetReference.__name__: Brian2SimulationScanConfig.default_node_set_name,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
         },
     }
 
@@ -126,6 +133,19 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    distributions: dict[str, AllDistributionsUnion] = Field(
+        default_factory=dict,
+        title="Distributions",
+        description="Distributions used by stimuli (e.g. inter-spike interval distributions).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Distribution",
+            SchemaKey.GROUP: BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )

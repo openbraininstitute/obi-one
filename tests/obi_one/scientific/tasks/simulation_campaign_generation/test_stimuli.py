@@ -104,8 +104,21 @@ class TestUnionCoverage:
         assert union_member_names(MEModelStimulusUnion) <= set(CONTINUOUS_STIMULI)
         assert union_member_names(LearningEngineCircuitStimulusUnion) <= set(CONTINUOUS_STIMULI)
 
-    def test_brian2_accepts_only_the_direct_poisson_stimulus(self):
-        assert union_member_names(Brian2CircuitStimulusUnion) == {"Brian2DirectPoissonStimulus"}
+    def test_brian2_accepts_the_current_injections_the_poisson_kick_and_the_spike_replays(self):
+        """The Brian2 runner turns `linear`, `pulse` and `sinusoidal` into current injections.
+
+        It also understands `poisson` and `synapse_replay`. Its sinusoidal input has to be
+        sampled on the simulation timestep, hence the dedicated block rather than
+        `SinusoidalCurrentClampSomaticStimulus`.
+        """
+        assert union_member_names(Brian2CircuitStimulusUnion) == {
+            "Brian2DirectPoissonStimulus",
+            "ConstantCurrentClampSomaticStimulus",
+            "LinearCurrentClampSomaticStimulus",
+            "MultiPulseCurrentClampSomaticStimulus",
+            "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+            *SPIKE_STIMULI,
+        }
 
     def test_ion_channel_only_adds_the_voltage_clamps(self):
         """The SE clamps are reachable only from the ion channel config, which needs a database."""

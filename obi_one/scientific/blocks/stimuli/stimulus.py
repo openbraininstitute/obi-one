@@ -502,8 +502,15 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class BaseSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus, ABC):
-    """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
+class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
+    """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude.
+
+    The signal is sampled at the simulation timestep. Brian2 plays it through a ``TimedArray``
+    clocked by that timestep and rejects any other interval, so it uses this rather than
+    :class:`SinusoidalCurrentClampSomaticStimulus`.
+    """
+
+    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
 
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
@@ -550,7 +557,7 @@ class BaseSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus, ABC):
         return stim_dict
 
 
-class SinusoidalCurrentClampSomaticStimulus(BaseSinusoidalCurrentClampSomaticStimulus):
+class SinusoidalCurrentClampSomaticStimulus(SimulationDtSinusoidalCurrentClampSomaticStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
@@ -572,16 +579,6 @@ class SinusoidalCurrentClampSomaticStimulus(BaseSinusoidalCurrentClampSomaticSti
     def signal_timestep(self) -> PositiveFloat:
         """Timestep at which the sinusoid is sampled, in milliseconds (ms)."""
         return self.dt  # ty:ignore[invalid-return-type]
-
-
-class Brian2SinusoidalCurrentClampSomaticStimulus(BaseSinusoidalCurrentClampSomaticStimulus):
-    """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude.
-
-    Brian2 plays the generated signal through a ``TimedArray`` clocked by the simulation
-    timestep and rejects any other interval, so this variant has no Timestep of its own.
-    """
-
-    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
 
 
 class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):

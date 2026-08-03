@@ -20,11 +20,11 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 
 
-class BaseRecording(Block, ABC):
+class SimulationDtRecording(Block, ABC):
     """A recording sampled at the simulation timestep.
 
     Simulators that can only report on their own integration timestep (Brian2) build on this
-    directly; :class:`Recording` adds the user-settable interval the others accept.
+    directly; :class:`CustomDtRecording` adds the user-settable interval the others accept.
     """
 
     neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
@@ -95,7 +95,7 @@ class BaseRecording(Block, ABC):
         pass
 
 
-class Recording(BaseRecording, ABC):
+class CustomDtRecording(SimulationDtRecording, ABC):
     """A recording sampled at an interval chosen independently of the simulation timestep."""
 
     dt: (

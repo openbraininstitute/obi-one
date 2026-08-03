@@ -5,21 +5,23 @@ from pydantic import Discriminator
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
 from obi_one.scientific.blocks.recordings.soma import (
-    Brian2SomaVoltageRecording,
-    Brian2TimeWindowSomaVoltageRecording,
+    SimulationDtSomaVoltageRecording,
+    SimulationDtTimeWindowSomaVoltageRecording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
 
 _SOMA_VOLTAGE_RECORDINGS = SomaVoltageRecording | TimeWindowSomaVoltageRecording
 
-# Brian2 samples reports on its own integration timestep, so these carry no Timestep parameter.
-_BRIAN2_SOMA_VOLTAGE_RECORDINGS = Brian2SomaVoltageRecording | Brian2TimeWindowSomaVoltageRecording
+# Sampled on the simulation timestep, so these carry no Timestep parameter of their own.
+_SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS = (
+    SimulationDtSomaVoltageRecording | SimulationDtTimeWindowSomaVoltageRecording
+)
 
 
 RecordingUnion = Annotated[_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
 
-Brian2RecordingUnion = Annotated[_BRIAN2_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
+Brian2RecordingUnion = Annotated[_SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
 
 _RECORDINGS = IonChannelVariableRecording | _SOMA_VOLTAGE_RECORDINGS
 IonChannelModelRecordingUnion = Annotated[
@@ -27,7 +29,7 @@ IonChannelModelRecordingUnion = Annotated[
     Discriminator("type"),
 ]
 
-_ALL_RECORDINGS = _RECORDINGS | _BRIAN2_SOMA_VOLTAGE_RECORDINGS
+_ALL_RECORDINGS = _RECORDINGS | _SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS
 
 
 class RecordingReference(BlockReference):
