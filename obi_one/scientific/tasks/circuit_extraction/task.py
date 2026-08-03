@@ -358,7 +358,7 @@ class CircuitExtractionTask(Task):
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
-        # Start benchmark tracking
+        logging.basicConfig(level=logging.DEBUG)
         BenchmarkTracker.start_tracking()
 
         # Get execution activity (expected to be created and managed externally)
