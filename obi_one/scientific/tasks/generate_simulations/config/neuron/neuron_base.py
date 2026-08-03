@@ -6,11 +6,6 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.neuron_sets.specific import (
-    AllBiophysicalNeurons,
-    AllPointNeurons,
-    AllVirtualNeurons,
-)
 from obi_one.scientific.library.constants import (
     SIMULATION_TIMESTEP_MILLISECONDS,
     SONATA,
@@ -22,11 +17,6 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
     MorphologyLocationUnion,
-)
-from obi_one.scientific.unions_and_references.neuron_sets import (
-    BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
-    VirtualNeuronSetReference,
 )
 from obi_one.scientific.unions_and_references.recordings import (
     RecordingReference,
@@ -44,50 +34,6 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     _target_simulator: ClassVar[SimulatorType] = SimulatorType.NEURON
     _spike_location: ClassVar[str] = SONATA.SPIKE_LOCATION_SOMA
     _timestep: ClassVar[PositiveFloat] = SIMULATION_TIMESTEP_MILLISECONDS
-    default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
-    default_virtual_node_set_name: ClassVar[str] = "Default: All Virtual Neurons"
-    default_point_node_set_name: ClassVar[str] = "Default: All Point Neurons"
-    default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
-    default_virtual_neuron_set_type: ClassVar[type[AllVirtualNeurons]] = AllVirtualNeurons
-    default_point_neuron_set_type: ClassVar[type[AllPointNeurons]] = AllPointNeurons
-
-    @property
-    def default_neuron_set_reference(
-        self,
-    ) -> BiophysicalNeuronSetReference:
-        """The default neuron set reference for the simulation."""
-        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_node_set_name
-        )
-
-        default_neuron_set_block_reference.block = self.default_neuron_set_type()
-        default_neuron_set_block_reference.block.set_block_name(self.default_node_set_name)
-
-        return default_neuron_set_block_reference
-
-    @property
-    def default_virtual_neuron_set_reference(
-        self,
-    ) -> VirtualNeuronSetReference:
-        """The default virtual neuron set reference for the simulation."""
-        ref = VirtualNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_virtual_node_set_name
-        )
-        ref.block = self.default_virtual_neuron_set_type()
-        ref.block.set_block_name(self.default_virtual_node_set_name)
-        return ref
-
-    @property
-    def default_point_neuron_set_reference(
-        self,
-    ) -> PointNeuronSetReference:
-        """The default point neuron set reference for the simulation."""
-        ref = PointNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
-        )
-        ref.block = self.default_point_neuron_set_type()
-        ref.block.set_block_name(self.default_point_node_set_name)
-        return ref
 
     recordings: dict[str, RecordingUnion] = Field(
         default_factory=dict,
