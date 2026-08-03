@@ -20,6 +20,9 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
+from obi_one.scientific.unions_and_references.neuronal_manipulations import (
+    NeuronalManipulationReference,
+)
 from obi_one.scientific.unions_and_references.recordings import RecordingReference
 from obi_one.scientific.unions_and_references.stimuli import StimulusReference
 from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
@@ -38,6 +41,7 @@ AllBlockReferenceTypes = [
     PointNeuronSetReference,
     StimulusReference,
     SynapticManipulationsReference,
+    NeuronalManipulationReference,
     RecordingReference,
     TimestampsReference,
     MorphologyLocationsReference,

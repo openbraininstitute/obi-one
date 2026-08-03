@@ -312,18 +312,18 @@ class GenerateSimulationTask(Task):
 
     def _default_virtual_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
         """Returns the reference for the default virtual neuron set."""
-        ref = self.config.default_virtual_neuron_set_reference  # ty:ignore[unresolved-attribute]
+        ref = self.config.default_virtual_neuron_set_reference
         if (
             ref.block_name in self.config.neuron_sets  # ty:ignore[unresolved-attribute]
             and not isinstance(
                 self.config.neuron_sets[ref.block_name],  # ty:ignore[unresolved-attribute]
-                self.config.default_virtual_neuron_set_type,  # ty:ignore[unresolved-attribute]
+                self.config.default_virtual_neuron_set_type,
             )
         ):
             msg = (
                 f"Default virtual neuron set name '{ref.block_name}' already exists in "
                 f"neuron_sets but is not an "
-                f"{self.config.default_virtual_neuron_set_type.__name__} set!"  # ty:ignore[unresolved-attribute]
+                f"{self.config.default_virtual_neuron_set_type.__name__} set!"
             )
             raise OBIONEError(msg)
         if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
@@ -332,18 +332,18 @@ class GenerateSimulationTask(Task):
 
     def _default_point_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
         """Returns the reference for the default point neuron set."""
-        ref = self.config.default_point_neuron_set_reference  # ty:ignore[unresolved-attribute]
+        ref = self.config.default_point_neuron_set_reference
         if (
             ref.block_name in self.config.neuron_sets  # ty:ignore[unresolved-attribute]
             and not isinstance(
                 self.config.neuron_sets[ref.block_name],  # ty:ignore[unresolved-attribute]
-                self.config.default_point_neuron_set_type,  # ty:ignore[unresolved-attribute]
+                self.config.default_point_neuron_set_type,
             )
         ):
             msg = (
                 f"Default point neuron set name '{ref.block_name}' already exists in "
                 f"neuron_sets but is not an "
-                f"{self.config.default_point_neuron_set_type.__name__} set!"  # ty:ignore[unresolved-attribute]
+                f"{self.config.default_point_neuron_set_type.__name__} set!"
             )
             raise OBIONEError(msg)
         if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
