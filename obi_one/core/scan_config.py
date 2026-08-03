@@ -70,12 +70,12 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def campaign_task_config_type(self) -> TaskConfigType | None:
-        registration = task_registry.get_registration_for_config(type(self))
+        registration = task_registry.get_registration_for_scan_config(type(self))
         return registration.campaign_task_config_type if registration is not None else None
 
     @property
     def campaign_generation_task_activity_type(self) -> TaskActivityType | None:
-        registration = task_registry.get_registration_for_config(type(self))
+        registration = task_registry.get_registration_for_scan_config(type(self))
         return (
             registration.campaign_generation_task_activity_type
             if registration is not None

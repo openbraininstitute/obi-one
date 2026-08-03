@@ -302,8 +302,8 @@ for task_type, registration in TASK_MAP.items():
 # Backward-compatible convenience functions (delegate to the registry)
 
 
-def get_configs_task_type(config: object) -> type:
-    return task_registry.get_configs_task_type(config)
+def get_single_configs_task_type(config: object) -> type:
+    return task_registry.get_single_configs_task_type(config)
 
 
 def get_task_type(task_type: TaskType) -> type:

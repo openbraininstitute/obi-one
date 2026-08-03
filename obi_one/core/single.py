@@ -94,7 +94,7 @@ class SingleConfigMixin:
 
     @property
     def single_task_config_type(self) -> TaskConfigType | None:
-        registration = task_registry.get_registration_for_config(type(self))
+        registration = task_registry.get_registration_for_single_config(type(self))
         return registration.single_task_config_type if registration is not None else None
 
     def create_single_entity_with_config(

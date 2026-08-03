@@ -47,34 +47,52 @@ class TaskRegistry:
     def __init__(self) -> None:
         """Initialize empty registry maps."""
         self._task_type_map: dict[TaskType, TaskRegistration] = {}
-        # Both the ScanConfig and the SingleConfig class point at their registration,
-        # so either end of a task can look up the types it needs to register itself.
-        self._by_config_cls: dict[type, TaskRegistration] = {}
+        # Kept apart on purpose: only a SingleConfig may be dispatched to a Task, while
+        # the campaign types are read off the ScanConfig. Merging them would let a
+        # ScanConfig, which may still hold multi-value scan parameters, resolve to a Task.
+        self._by_single_config_cls: dict[type, TaskRegistration] = {}
+        self._by_scan_config_cls: dict[type, TaskRegistration] = {}
 
     def register_task(self, task_type: TaskType, registration: TaskRegistration) -> None:
         """Register a task with all its associated mappings in one call."""
         self._task_type_map[task_type] = registration
-        self._by_config_cls[registration.single_config_cls] = registration
+        self._by_single_config_cls[registration.single_config_cls] = registration
         if registration.scan_config_cls is not None:
-            self._by_config_cls[registration.scan_config_cls] = registration
+            self._by_scan_config_cls[registration.scan_config_cls] = registration
 
-    def get_registration_for_config(self, config_cls: type) -> TaskRegistration | None:
-        """Return the registration for a config class, or None if it has none.
+    @staticmethod
+    def _lookup(index: dict[type, TaskRegistration], config_cls: type) -> TaskRegistration | None:
+        """Return the registration for a config class, walking the MRO.
 
-        Walks the MRO so a subclass resolves the registration of the config it
-        derives from, matching the inheritance the config types used to rely on.
+        The MRO walk lets a subclass resolve the registration of the config it derives
+        from, matching the inheritance the config types used to rely on.
         """
         for klass in config_cls.__mro__:
-            registration = self._by_config_cls.get(klass)
+            registration = index.get(klass)
             if registration is not None:
                 return registration
         return None
 
-    def get_configs_task_type(self, config: object) -> type:
-        """Return the Task class for a given config instance."""
-        registration = self._by_config_cls.get(config.__class__)
+    def get_registration_for_single_config(self, config_cls: type) -> TaskRegistration | None:
+        """Return the registration for a SingleConfig class, or None if it has none."""
+        return self._lookup(self._by_single_config_cls, config_cls)
+
+    def get_registration_for_scan_config(self, config_cls: type) -> TaskRegistration | None:
+        """Return the registration for a ScanConfig class, or None if it has none.
+
+        A SingleConfig also resolves here, via its ScanConfig base.
+        """
+        return self._lookup(self._by_scan_config_cls, config_cls)
+
+    def get_single_configs_task_type(self, config: object) -> type:
+        """Return the Task class for a given SingleConfig instance.
+
+        Uses `__class__` rather than `type()` so that spec'd test doubles, which report
+        the spec via `__class__` only, resolve to the class they stand in for.
+        """
+        registration = self.get_registration_for_single_config(config.__class__)
         if registration is None:
-            msg = f"No task registered for config class '{config.__class__.__name__}'."
+            msg = f"No task registered for single config class '{config.__class__.__name__}'."
             raise KeyError(msg)
         return registration.task_cls
 
