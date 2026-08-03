@@ -2366,6 +2366,7 @@ dependencies = [
     { name = "pylmesh" },
     { name = "python-multipart" },
     { name = "scipy" },
+    { name = "sonata-simplify" },
 ]
 
 [package.optional-dependencies]
@@ -2488,6 +2489,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
+    { name = "sonata-simplify", editable = "../sonata_simplify" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
@@ -3385,6 +3387,39 @@ sdist = { url = "https://files.pythonhosted.org/packages/1f/ea/49c993d6dfdd7338c
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl", hash = "sha256:c106e05d5a61449cf6ba9a1e650227ecfb141590d2a98412103ff35d89fc7b2f", size = 24390, upload-time = "2026-03-09T03:43:24.361Z" },
 ]
+
+[[package]]
+name = "sonata-simplify"
+version = "0.1.0"
+source = { editable = "../sonata_simplify" }
+dependencies = [
+    { name = "click" },
+    { name = "h5py" },
+    { name = "numpy" },
+    { name = "pydantic" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "bluecellulab", marker = "extra == 'simulation'", specifier = ">=2.6.0" },
+    { name = "bluepysnap", marker = "extra == 'simulation'", specifier = ">=3.0.0,<4.0.0" },
+    { name = "brian2", marker = "extra == 'brian2'", specifier = ">=2.5.0" },
+    { name = "click", specifier = ">=8.0.0" },
+    { name = "efel", marker = "extra == 'simulation'", specifier = ">=5.0.0" },
+    { name = "h5py", specifier = ">=3.8.0" },
+    { name = "matplotlib", marker = "extra == 'simulation'", specifier = ">=3.5.0" },
+    { name = "neuron", marker = "extra == 'simulation'", specifier = ">=8.0.2" },
+    { name = "numpy", specifier = ">=2.0.0" },
+    { name = "pydantic", specifier = ">=2.5.2,<3.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "scipy", specifier = ">=1.10.0" },
+    { name = "tqdm", specifier = ">=4.65.0" },
+]
+provides-extras = ["simulation", "brian2", "dev"]
 
 [[package]]
 name = "sortedcontainers"

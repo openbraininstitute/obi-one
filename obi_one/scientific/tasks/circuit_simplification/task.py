@@ -22,29 +22,34 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.utils import db_sdk
-from obi_one.utils.circuit_registration import register as circuit_registration
 
 L = logging.getLogger(__name__)
 
-# Mapping from simplification algorithm to target simulator.
-# single_compartment produces a NEURON-compatible biophysical single-compartment circuit.
-# Point-neuron modes: lif/adex/izhikevich/glif/gif are exported to NEST format;
-# Brian2 export is supported by sonata_simplify but mapped separately via the
-# circuit config's target_simulator field written by the exporter.
-ALGORITHM_TARGET_SIMULATOR: dict[str, str] = {
-    "single_compartment": "NEURON",
-    "lif": "NEST",
-    "adex": "NEST",
-    "izhikevich": "NEST",
-    "glif": "NEST",
-    "gif": "NEST",
+# Mapping from simplification algorithm to simulator-specific exporters.
+# The SONATA output is always registered with target_simulator=NEURON.
+# Point-neuron algorithms additionally produce NEST and/or Brian2 exports,
+# each registered as a separate Circuit entity.
+ALGORITHM_EXPORTERS: dict[str, list[str]] = {
+    "single_compartment": [],
+    "lif": ["nest:iaf_psc_alpha"],
+    "adex": ["nest:aeif_cond_alpha", "brian2:adex"],
+    "izhikevich": [],
+    "glif": ["nest:glif_cond"],
+    "gif": [],
+}
+
+# Mapping from exporter name prefix to TargetSimulator enum value.
+_EXPORTER_SIMULATOR: dict[str, str] = {
+    "nest": "NEST",
+    "brian2": "Brian2",
 }
 
 
@@ -247,21 +252,29 @@ class CircuitSimplificationTask(Task):
         db_client: Client,
         circuit_path: Path,
         algorithm_name: str,
+        target_simulator: str = "NEURON",
+        name_suffix: str = "",
     ) -> models.Circuit | None:
-        """Register a simplified circuit entity with derivation link to parent."""
-        from entitysdk.types import TargetSimulator  # noqa: PLC0415
+        """Register a simplified circuit entity with derivation link to parent.
+
+        Args:
+            db_client: Entitycore client.
+            circuit_path: Path to the circuit_config.json to register.
+            algorithm_name: Simplification algorithm used.
+            target_simulator: Target simulator for this circuit (NEURON, NEST, Brian2).
+            name_suffix: Optional suffix appended to the circuit name (e.g. "__nest").
+        """
+        from entitysdk.types import TargetSimulator  # ruff: ignore[import-outside-top-level]
 
         parent = self._circuit_entity
 
         campaign_str = self.config.info.campaign_name.replace(" ", "-")
-        circuit_name = f"{parent.name}__{campaign_str}__{algorithm_name}"  # ty:ignore[unresolved-attribute]
+        circuit_name = f"{parent.name}__{campaign_str}__{algorithm_name}{name_suffix}"  # ty:ignore[unresolved-attribute]
         circuit_descr = (
             f"{self.config.info.campaign_description} - Simplified using '{algorithm_name}'"
         )
 
-        # Determine target simulator based on algorithm
-        simulator_key = ALGORITHM_TARGET_SIMULATOR.get(algorithm_name, "NEURON")
-        target_simulator = TargetSimulator(simulator_key)
+        sim = TargetSimulator(target_simulator)
 
         return circuit_registration.register_circuit(
             client=db_client,
@@ -271,7 +284,7 @@ class CircuitSimplificationTask(Task):
             build_category=parent.build_category,  # ty:ignore[unresolved-attribute]
             brain_region=parent.brain_region,  # ty:ignore[unresolved-attribute, invalid-argument-type]
             subject=parent.subject,  # ty:ignore[unresolved-attribute, invalid-argument-type]
-            target_simulator=target_simulator,
+            target_simulator=sim,
             experiment_date=parent.experiment_date,  # ty:ignore[unresolved-attribute]
             license=parent.license,  # ty:ignore[unresolved-attribute]
             atlas=None,
@@ -286,12 +299,28 @@ class CircuitSimplificationTask(Task):
 
         The pipeline expects a simulation config JSON that references the
         circuit config and output directory.
+
+        The pipeline auto-appends a timestamp to the output_dir name when the
+        directory does not yet exist. We therefore pass a neutral sub-path
+        ``output_dir / "simplified"`` so the final circuit lands at:
+            ``<coordinate_output_root>/<algorithm>/simplified``
+        rather than the timestamped double-nested path that would result from
+        passing ``output_dir`` directly.
         """
+        # Use a fixed sub-directory name so the pipeline's timestamp logic
+        # produces a clean path: <output_dir>/simplified  (no timestamp because
+        # the pipeline only timestamps when output_dir does NOT already exist,
+        # and we create it here first).
+        # Resolve to absolute path to avoid issues with relative path resolution.
+        output_dir = Path(output_dir).resolve()
+        circuit_output_dir = output_dir / "simplified"
+        circuit_output_dir.mkdir(parents=True, exist_ok=True)
+
         sim_config = {
-            "manifest": {"$BASE_DIR": str(Path(input_circuit_path).parent)},
-            "network": str(Path(input_circuit_path).name),
+            "manifest": {"$BASE_DIR": str(Path(input_circuit_path).parent.resolve())},
+            "network": "$BASE_DIR/" + str(Path(input_circuit_path).name),
             "output": {
-                "output_dir": str(output_dir),
+                "output_dir": str(circuit_output_dir),
                 "spikes_file": "spikes.h5",
             },
             "run": {
@@ -309,6 +338,72 @@ class CircuitSimplificationTask(Task):
             json.dump(sim_config, f, indent=2)
 
         return sim_config_path
+
+    @staticmethod
+    def _run_exporter(
+        exporter_name: str,
+        input_circuit_dir: Path,
+        output_dir: Path,
+    ) -> Path:
+        """Run a simulator-specific exporter on a simplified circuit.
+
+        Args:
+            exporter_name: Exporter registry key (e.g. "nest:aeif_cond_alpha").
+            input_circuit_dir: Directory containing the simplified circuit_config.json.
+            output_dir: Directory where the exported circuit will be written.
+
+        Returns:
+            Path to the export output directory.
+        """
+        from sonata_simplify.exporters import get_exporter  # ruff: ignore[import-outside-top-level]
+
+        exporter = get_exporter(
+            exporter_name,
+            input_circuit_dir=input_circuit_dir,
+            output_dir=output_dir,
+        )
+        return exporter.export()
+
+    def _run_and_register_exporters(
+        self,
+        db_client: Client,
+        algorithm_name: str,
+        simplified_circuit_dir: Path,
+        output_dir: Path,
+    ) -> list[str]:
+        """Run simulator-specific exporters and register each as a separate Circuit.
+
+        Returns a list of registered circuit entity IDs.
+        """
+        entity_ids: list[str] = []
+        exporters = ALGORITHM_EXPORTERS.get(algorithm_name, [])
+        for exporter_name in exporters:
+            L.info(f"Exporting '{algorithm_name}' to {exporter_name}")
+            export_dir = self._run_exporter(
+                exporter_name,
+                input_circuit_dir=simplified_circuit_dir,
+                output_dir=output_dir / f"export_{exporter_name.replace(':', '_')}",
+            )
+            export_circuit_path = export_dir / "circuit_config.json"
+            if not export_circuit_path.exists():
+                L.warning(f"Export circuit config not found at {export_circuit_path}")
+                continue
+
+            sim_key = exporter_name.split(":")[0]
+            sim_name = _EXPORTER_SIMULATOR.get(sim_key, "NEURON")
+            suffix = f"__{sim_key}"
+
+            if self._circuit_entity:
+                export_entity = self._register_output(
+                    db_client=db_client,
+                    circuit_path=export_circuit_path,
+                    algorithm_name=algorithm_name,
+                    target_simulator=sim_name,
+                    name_suffix=suffix,
+                )
+                if export_entity is not None:
+                    entity_ids.append(str(export_entity.id))
+        return entity_ids
 
     def execute(
         self,
@@ -335,15 +430,22 @@ class CircuitSimplificationTask(Task):
             temp_dir=self._create_temp_dir(),
         )
 
-        input_circuit_path = self._circuit.path
+        input_circuit_path = str(Path(self._circuit.path).resolve())
         simplification = self.config.simplification
 
         # Import sonata_simplify lazily (heavy dependencies)
-        from sonata_simplify.pipeline import SimplificationPipeline  # noqa: PLC0415
+        from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level]
+            SimplificationPipeline,
+        )
 
         output_circuit_ids: list[str] = []
 
-        for algorithm_name in simplification.algorithms:
+        # Handle both list and single string (from scan flattening)
+        algorithms = simplification.algorithms
+        if isinstance(algorithms, str):
+            algorithms = [algorithms]
+
+        for algorithm_name in algorithms:
             L.info(f"Running simplification with algorithm: {algorithm_name}")
 
             # Create output directory for this algorithm
@@ -373,7 +475,7 @@ class CircuitSimplificationTask(Task):
                 )
                 continue
 
-            # Register the simplified circuit entity
+            # Register the simplified SONATA circuit entity (target_simulator=NEURON)
             new_circuit_entity = None
             if db_client and self._circuit_entity:
                 new_circuit_entity = self._register_output(
@@ -383,6 +485,16 @@ class CircuitSimplificationTask(Task):
                 )
                 if new_circuit_entity is not None:
                     output_circuit_ids.append(str(new_circuit_entity.id))
+
+            # Run simulator-specific exporters and register each as a separate Circuit
+            if db_client and self._circuit_entity:
+                export_ids = self._run_and_register_exporters(
+                    db_client=db_client,
+                    algorithm_name=algorithm_name,
+                    simplified_circuit_dir=simplified_circuit_dir,
+                    output_dir=output_dir,
+                )
+                output_circuit_ids.extend(export_ids)
 
             L.info(f"Simplification with '{algorithm_name}' DONE")
 
