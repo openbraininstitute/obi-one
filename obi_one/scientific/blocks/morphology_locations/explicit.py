@@ -2,7 +2,7 @@ from typing import Annotated, override
 
 import morphio
 import numpy as np
-import pandas  # noqa: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
