@@ -149,9 +149,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 
             modifications.extend(
                 {
-                    "name": (
-                        f"modify_{self.modification.variable_name}_{expanded_section_list}"
-                    ),
+                    "name": (f"modify_{self.modification.variable_name}_{expanded_section_list}"),
                     "node_set": node_set,
                     "type": "section_list",
                     "section_configure": (
