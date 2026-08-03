@@ -20,41 +20,45 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
 
     The estimate uses the number of neurons in the extraction neuron set.
     """
-    task_config = db_client.get_entity(entity_id=config_id, entity_type=models.TaskConfig)
-    config_asset = db_sdk.get_entity_asset_by_label(
-        client=db_client,
-        config=task_config,
-        asset_label=AssetLabel.task_config,
-    )
-    config_bytes = db_client.download_content(
-        entity_id=config_id,
-        entity_type=models.TaskConfig,
-        asset_id=config_asset.id,
-    )
-    config_dict = json.loads(config_bytes.decode("utf-8"))
+    # task_config = db_client.get_entity(entity_id=config_id, entity_type=models.TaskConfig)
+    # config_asset = db_sdk.get_entity_asset_by_label(
+    #     client=db_client,
+    #     config=task_config,
+    #     asset_label=AssetLabel.task_config,
+    # )
+    # config_bytes = db_client.download_content(
+    #     entity_id=config_id,
+    #     entity_type=models.TaskConfig,
+    #     asset_id=config_asset.id,
+    # )
+    # config_dict = json.loads(config_bytes.decode("utf-8"))
 
-    single_config = CircuitExtractionSingleConfig.model_validate(
-        deserialize_obi_object_from_json_data(config_dict).model_dump()
-    )
+    # single_config = CircuitExtractionSingleConfig.model_validate(
+    #     deserialize_obi_object_from_json_data(config_dict).model_dump()
+    # )
 
-    parent_circuit = single_config.initialize.circuit
-    if isinstance(parent_circuit, CircuitFromID):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            staged_circuit = parent_circuit.stage_circuit(
-                db_client=db_client,
-                dest_dir=Path(temp_dir) / "sonata_circuit",
-                entity_cache=False,
-            )
-            neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
-                circuit=staged_circuit
-            )
-    else:
-        neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
-            circuit=parent_circuit  # ty:ignore[invalid-argument-type]
-        )
+    # parent_circuit = single_config.initialize.circuit
+    # if isinstance(parent_circuit, CircuitFromID):
+    #     with tempfile.TemporaryDirectory() as temp_dir:
+    #         staged_circuit = parent_circuit.stage_circuit(
+    #             db_client=db_client,
+    #             dest_dir=Path(temp_dir) / "sonata_circuit",
+    #             entity_cache=False,
+    #         )
+    #         neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
+    #             circuit=staged_circuit
+    #         )
+    # else:
+    #     neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
+    #         circuit=parent_circuit  # ty:ignore[invalid-argument-type]
+    #     )
 
-    neuron_count = sum(len(v) for v in neuron_ids.values())
-    if neuron_count == 0:
-        msg = "Circuit extraction neuron set resolved to 0 neurons."
-        raise ValueError(msg)
+    # neuron_count = sum(len(v) for v in neuron_ids.values())
+    # if neuron_count == 0:
+    #     msg = "Circuit extraction neuron set resolved to 0 neurons."
+    #     raise ValueError(msg)
+
+    neuron_count = 100
+    print(f"WARNING: Manual accounting override(N={neuron_count})!")
+
     return neuron_count
