@@ -31,14 +31,14 @@ from app.services.morphology import (
     MorphologyFiles,
     validate_and_convert_morphology,
 )
-from obi_one.scientific.library.morphology_measurement_annotation import (
-    compute_morphometrics,
-)
-from obi_one.scientific.library.morphology_registration import (
+from obi_one.db_sdk.registration.morphology import (
     register_morphometrics,
     try_generate_and_upload_mesh,
     upload_morphology_content,
     upload_morphology_file,
+)
+from obi_one.scientific.library.morphology_measurement_annotation import (
+    compute_morphometrics,
 )
 
 if TYPE_CHECKING:
@@ -322,6 +322,9 @@ async def _run_pipeline(
                 upload_morphology_file(client, entity_uuid, converted_files.swc)
             if converted_files.hdf5 and converted_files.hdf5.exists():
                 upload_morphology_file(client, entity_uuid, converted_files.hdf5)
+        except EntitySDKError as err:
+            _raise_entitysdk_failure("registration", err)
+        try:
             measurement_annotation = register_morphometrics(client, entity_uuid, measurement_list)
         except EntitySDKError as err:
             _raise_entitysdk_failure("registration", err)

@@ -6,7 +6,7 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_model_assigners.base import SynapseModelAssigner
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,

@@ -204,7 +204,7 @@ def protocol_created(metadata_with_protocol):
 def entitysdk_client():
     return Client(
         api_url=API_URL,
-        token_manager="token",  # noqa: S106
+        token_manager="token",  # ruff: ignore[hardcoded-password-func-arg]
         project_context=ProjectContext(virtual_lab_id=uuid4(), project_id=uuid4()),
     )
 

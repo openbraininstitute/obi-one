@@ -7,7 +7,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.recordings.base import Recording
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -19,7 +19,7 @@ class SomaVoltageRecording(Recording):
 
     def _generate_config(
         self,
-        db_client: entitysdk.client.Client | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client | None = None,  # ruff: ignore[unused-method-argument]
     ) -> dict:
         sonata_config = {}
 

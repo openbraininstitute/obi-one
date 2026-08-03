@@ -5,7 +5,6 @@ from collections.abc import Iterator, Mapping
 from enum import IntEnum, StrEnum, auto
 from os.path import realpath
 from pathlib import Path
-from typing import cast
 from uuid import UUID
 
 import numpy as np
@@ -505,7 +504,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
         return self.number_of_biophys_node_populations + self.number_of_virtual_node_populations
 
 
-def get_circuit_metrics(  # noqa: PLR0914, C901
+def get_circuit_metrics(  # ruff: ignore[too-many-locals, complex-structure]
     circuit_id: str,
     db_client: Client,
     level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None = None,
@@ -526,7 +525,7 @@ def get_circuit_metrics(  # noqa: PLR0914, C901
         error_msg = "Circuit must have exactly one directory asset."
         raise ValueError(error_msg)
 
-    asset_id = cast("UUID", directory_assets[0].id)
+    asset_id = directory_assets[0].id
 
     # db_client.download_content does not support `asset_path` at the time of writing this
     # Use db_client.fetch_file with temporary directory instead

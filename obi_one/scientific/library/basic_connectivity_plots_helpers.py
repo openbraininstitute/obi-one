@@ -97,10 +97,10 @@ def connection_probability_pathway(
 ) -> pd.DataFrame:  # TODO: Add directly to connalysis?
     """Compute the connection probability of the matrix for a given grouping of the nodes."""
 
-    def count_connections(mat: np.ndarray, *args) -> int:  # noqa: ARG001
+    def count_connections(mat: np.ndarray, *args) -> int:  # ruff: ignore[unused-function-argument]
         return mat.nnz  # ty:ignore[unresolved-attribute]
 
-    def count_nodes(mat: np.ndarray, *args) -> tuple[int, ...]:  # noqa: ARG001
+    def count_nodes(mat: np.ndarray, *args) -> tuple[int, ...]:  # ruff: ignore[unused-function-argument]
         return mat.shape
 
     # Setup analysis config per pathway
@@ -131,11 +131,11 @@ def connection_probability_pathway(
     out = conn.analyze(analysis_specs)
 
     # Compute connection probability
-    df = out["node_counts"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
+    df = out["node_counts"].unstack(f"idx-{grouping_prop}_post")  # ruff: ignore[pandas-use-of-dot-pivot-or-unstack]
     diag_values = np.diag(df.map(itemgetter(0)).to_numpy())
     diag = np.diag(diag_values)
     possible_connections = (df.map(lambda x: x[0] * x[1]) - diag).astype(int)
-    connections = out["connection_counts"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
+    connections = out["connection_counts"].unstack(f"idx-{grouping_prop}_post")  # ruff: ignore[pandas-use-of-dot-pivot-or-unstack]
     connection_prob = connections / possible_connections
     return connection_prob
 
@@ -167,7 +167,7 @@ def connection_probability_within_pathway(
         }
     }
     out = conn.analyze(analysis_specs)
-    return out["probability_within"].unstack(f"idx-{grouping_prop}_post")  # noqa: PD010
+    return out["probability_within"].unstack(f"idx-{grouping_prop}_post")  # ruff: ignore[pandas-use-of-dot-pivot-or-unstack]
 
 
 def directed_connection_probability_within(
@@ -320,7 +320,7 @@ def compute_global_connectivity(
 
 
 # Nodes
-def make_pie_plot(  # noqa: PLR0914
+def make_pie_plot(  # ruff: ignore[too-many-locals]
     ax: plt.Axes, conn: ConnectivityMatrix, grouping_prop: str, cmaps: dict[str, plt.Colormap]
 ) -> plt.Axes:
     category_counts = conn.vertices[grouping_prop].value_counts()
@@ -690,7 +690,7 @@ def plot_connection_probability_pathway_stats(
 # Plotting function for small microcircuits
 
 
-def plot_smallMC_network_stats(  # noqa: PLR0914, PLR0915
+def plot_smallMC_network_stats(  # ruff: ignore[too-many-locals, too-many-statements]
     conn: ConnectivityMatrix,
     full_width: int,
     color_indeg: tuple | None = None,
@@ -900,7 +900,7 @@ def plot_rc(ax: plt.Axes, arrowsize: int = 20, node_size: int = 100) -> plt.Axes
     return ax
 
 
-def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
+def plot_small_network(  # ruff: ignore[complex-structure, too-many-branches, too-many-arguments, too-many-locals]
     ax: plt.Axes,
     conn: ConnectivityMatrix,
     node_color: str | list | None = None,
@@ -1030,7 +1030,7 @@ def plot_small_network(  # noqa: C901, PLR0912, PLR0913, PLR0914
     return ax
 
 
-def make_MC_fig_template(  # noqa: PLR0914
+def make_MC_fig_template(  # ruff: ignore[too-many-locals]
     figsize: tuple[float, float],
     height_ratios: list[float] | None = None,
     width_ratios: list[float] | None = None,
@@ -1197,7 +1197,7 @@ def plot_network_legends(
     )
 
 
-def plot_smallMC(  # noqa: PLR0914
+def plot_smallMC(  # ruff: ignore[too-many-locals]
     conn: ConnectivityMatrix, cmap: plt.Colormap, full_width: int, textsize: int = 14
 ) -> plt.Figure:
     # Generate template for plot
@@ -1326,7 +1326,7 @@ def plot_smallMC(  # noqa: PLR0914
     return fig
 
 
-def plot_node_table(  # noqa: PLR0914
+def plot_node_table(  # ruff: ignore[too-many-locals]
     conn: ConnectivityMatrix,
     figsize: tuple[float, float],
     colors_cmap: str | None = None,  # name of discrete colormap from matplotlib

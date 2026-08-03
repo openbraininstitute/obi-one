@@ -115,7 +115,7 @@ class ElectrophysiologyMetricsOutput(BaseModel):
         return cls(feature_dict=raw)
 
 
-def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
+def get_electrophysiology_metrics(  # ruff: ignore[too-many-branches, too-many-locals, too-many-statements, complex-structure]
     trace_id: str,
     entity_client: entitysdk.client.Client,
     calculated_feature: CALCULATED_FEATURES | None = None,

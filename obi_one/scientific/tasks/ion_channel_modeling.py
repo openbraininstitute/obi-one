@@ -2,7 +2,7 @@
 
 import json
 import logging
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -75,8 +75,8 @@ except ImportError:
         temperature: float,
         mech_conductance_name: str,
         output_folder: Path,
-        savefig: bool,  # noqa: FBT001
-        show: bool,  # noqa: FBT001
+        savefig: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
+        show: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
     ) -> None:
         pass
 
@@ -312,7 +312,7 @@ class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMix
 
         L.info("-- Upload ion_channel_modeling_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=self.single_entity.id,
             entity_type=entitysdk.models.IonChannelModelingConfig,  # ty:ignore[possibly-missing-submodule]
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]
@@ -325,7 +325,7 @@ class IonChannelFittingTask(Task):
 
     @property
     def conductance_name(self) -> str:
-        """Get the conductance name for the generated ion channel model."""
+        """The conductance name for the generated ion channel model."""
         return f"g{self.config.initialize.ion_channel_name}bar"
 
     def download_input(
@@ -486,11 +486,11 @@ class IonChannelFittingTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
-        try:
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
             # download traces asset and metadata given id.
             # Get ljp (liquid junction potential) voltage corection from metadata
             trace_paths, trace_ljps = self.download_input(db_client=db_client)
@@ -567,8 +567,8 @@ class IonChannelFittingTask(Task):
             )
 
             # compile output mod file
-            subprocess.run(  # noqa: S603
-                [  # noqa: S607
+            subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+                [  # ruff: ignore[start-process-with-partial-path]
                     "nrnivmodl",
                     "-incflags",
                     "-DDISABLE_REPORTINGLIB",
@@ -615,6 +615,6 @@ class IonChannelFittingTask(Task):
 
         except Exception as e:
             error_message = f"Ion channel modeling failed: {e}"
-            raise Exception(error_message) from e  # noqa: TRY002
+            raise Exception(error_message) from e  # ruff: ignore[raise-vanilla-class]
         else:
             return model_id  # ty:ignore[invalid-return-type]

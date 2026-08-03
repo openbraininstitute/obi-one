@@ -102,7 +102,7 @@ def _override_check_user_info(
         (TOKEN_USER_2, UUID(UNRELATED_PROJECT_ID)): user_context_user_2,
     }
 
-    def mock_check_user_info(*, project_context, token, http_client):  # noqa: ARG001
+    def mock_check_user_info(*, project_context, token, http_client):  # ruff: ignore[unused-function-argument]
         return mapping[token.credentials, project_context.project_id]
 
     monkeypatch.setattr(auth, "_check_user_info", mock_check_user_info)

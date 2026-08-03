@@ -303,7 +303,7 @@ class NeuronSet(Block, abc.ABC):
 
         if not output_file.exists() or overwrite_if_exists:
             # Create new node sets file, overwrite if existing
-            if init_empty:  # noqa: SIM108
+            if init_empty:  # ruff: ignore[if-else-block-instead-of-if-exp]
                 # Initialize empty
                 node_sets = {}
             else:

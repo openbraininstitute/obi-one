@@ -22,7 +22,7 @@ from obi_one.scientific.library.circuit_metrics import (
 @pytest.fixture
 def db_client():
     """Database client."""
-    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # noqa: S106
+    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # ruff: ignore[hardcoded-password-func-arg]
 
 
 @pytest.mark.parametrize(
