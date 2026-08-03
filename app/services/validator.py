@@ -40,10 +40,10 @@ class _WriteInterceptingClient:
         mock.id = uuid4()
         return mock
 
-    def upload_file(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
+    def upload_file(self, *args: Any, **kwargs: Any) -> None:  # ruff: ignore[unused-method-argument]
         self.upload_call_count += 1
 
-    def update_entity(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
+    def update_entity(self, *args: Any, **kwargs: Any) -> None:  # ruff: ignore[unused-method-argument]
         self.update_call_count += 1
 
     def __getattr__(self, name: str) -> Any:
@@ -65,7 +65,7 @@ def run_grid_scan_validation(
 
     Returns an error string or None if valid.
     """
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         mock_client = _WriteInterceptingClient(db_client)
 
         with tempfile.TemporaryDirectory() as tdir:
@@ -92,7 +92,7 @@ def run_grid_scan_validation(
                 "Validation error: Expected update operations did not occur. "
                 "The validation logic may be outdated."
             )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         return str(e)
 
     return None

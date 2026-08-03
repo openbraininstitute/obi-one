@@ -76,7 +76,7 @@ def extracellular_locations_block_dictionary_summary(
     }
 
 
-def plot_extracellular_arrays(  # noqa: C901, PLR0914, PLR0915
+def plot_extracellular_arrays(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
     circuit: snap.Circuit,
     electrode_locations: dict[str, ExtracellularLocationsUnion],
 ) -> Figure:
@@ -120,7 +120,7 @@ def plot_extracellular_arrays(  # noqa: C901, PLR0914, PLR0915
         soma_sample = soma_xyz[rng.choice(len(soma_xyz), max_somas, replace=False)]
     soma_size, soma_alpha = _soma_marker_style(len(soma_xyz))
 
-    def set_extreme_ticks(ax, dims="xy", edges=False):  # noqa: ANN001, ANN202, FBT002
+    def set_extreme_ticks(ax, dims="xy", edges=False):  # ruff: ignore[missing-type-function-argument, missing-return-type-private-function, boolean-default-value-positional-argument]
         """Label only the extreme ticks (and 0, in range); keep the regular gridline marks.
 
         ``edges=True`` adds the axis limits themselves as labelled ticks, so the extreme labels sit
@@ -224,7 +224,7 @@ def plot_extracellular_arrays(  # noqa: C901, PLR0914, PLR0915
     ax3d.set_anchor("W")
     ax3d.view_init(elev=30, azim=-60)
     # Draw the Y axis on the top-left cube edge (matplotlib-internal axis placement).
-    ax3d.yaxis._axinfo["juggled"] = (2, 1, 0)  # noqa: SLF001  # ty:ignore[unresolved-attribute]
+    ax3d.yaxis._axinfo["juggled"] = (2, 1, 0)  # ruff: ignore[private-member-access]  # ty:ignore[unresolved-attribute]
     ax3d.set_xlabel("X (μm)")
     ax3d.set_ylabel("Y (μm)")
     ax3d.zaxis.set_rotate_label(False)

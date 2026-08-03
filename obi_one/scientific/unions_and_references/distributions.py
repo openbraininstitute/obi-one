@@ -46,7 +46,7 @@ class AllDistributionsReference(BlockReference):
 
     @property
     def block(self) -> Distribution:
-        """Returns the Distribution block associated with this reference."""
+        """The Distribution block associated with this reference."""
         return cast("Distribution", super().block)
 
     @block.setter

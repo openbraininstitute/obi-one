@@ -5,10 +5,10 @@ from entitysdk import Client
 from entitysdk.models import EMDenseReconstructionDataset
 from entitysdk.types import CircuitBuildCategory, TargetSimulator
 
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import assemble_publication_links
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import ResolvedNeuron
-from obi_one.utils import circuit_registration
 
 L = logging.getLogger(__name__)
 

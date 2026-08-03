@@ -2,7 +2,7 @@ import warnings
 
 import morphio
 import numpy as np
-import pandas  # noqa: ICN001
+import pandas  # ruff: ignore[unconventional-import-alias]
 import pandas as pd
 from scipy import stats
 from scipy.stats._distn_infrastructure import rv_frozen
@@ -87,9 +87,9 @@ def select_segments_as_cluster_centers(
 ) -> pandas.DataFrame:
     p = distr.pdf(locs[_SOM_PAD])  # ty:ignore[unresolved-attribute]
     if lst_sec_types is not None:
-        p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)  # noqa: PLR6104
+        p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)  # ruff: ignore[non-augmented-assignment]
 
-    selected_ids = np.random.choice(locs.index, n_pick, p=p / p.sum())  # noqa: NPY002
+    selected_ids = np.random.choice(locs.index, n_pick, p=p / p.sum())  # ruff: ignore[numpy-legacy-random]
     return locs.iloc[selected_ids]
 
 
@@ -244,9 +244,9 @@ def select_places_from_candidate_list(
     def randomly_pick_with_p(dataframe_in: pd.DataFrame) -> pd.DataFrame:
         dataframe_in = dataframe_in.droplevel(0)
         selected = dataframe_in.loc[
-            np.random.choice(dataframe_in.index, n, p=dataframe_in["p"] / dataframe_in["p"].sum())  # noqa: NPY002
+            np.random.choice(dataframe_in.index, n, p=dataframe_in["p"] / dataframe_in["p"].sum())  # ruff: ignore[numpy-legacy-random]
         ]
-        selected = selected[_SEG_MIN] + np.random.rand(n) * (  # noqa: NPY002
+        selected = selected[_SEG_MIN] + np.random.rand(n) * (  # ruff: ignore[numpy-legacy-random]
             selected[_SEG_MAX] - selected[_SEG_MIN]
         )
 
@@ -275,7 +275,7 @@ def map_presynaptic_ids(dataframe: pd.DataFrame, n_per_center: int) -> None:
 
         n_per_center (int): Numner of unique identifiers per center.
     """
-    rnd = np.random.randint(0, n_per_center, len(dataframe))  # noqa: NPY002
+    rnd = np.random.randint(0, n_per_center, len(dataframe))  # ruff: ignore[numpy-legacy-random]
     dataframe[_PRE_IDX] = dataframe[_CEN_IDX] * n_per_center + rnd
 
 
@@ -376,7 +376,7 @@ def generate_neurite_locations_on(
         seed (optional): Random seed. For reproducability.
     """
     if seed is not None:
-        np.random.seed(seed)  # noqa: NPY002
+        np.random.seed(seed)  # ruff: ignore[numpy-legacy-random]
 
     path_distance_calculator = MorphologyPathDistanceCalculator(m)
 

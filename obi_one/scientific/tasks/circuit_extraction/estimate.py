@@ -10,9 +10,9 @@ from entitysdk.client import Client
 from entitysdk.types import AssetLabel
 
 from obi_one import deserialize_obi_object_from_json_data
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionSingleConfig
-from obi_one.utils import db_sdk
 
 
 def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> int:
@@ -45,9 +45,13 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
                 dest_dir=Path(temp_dir) / "sonata_circuit",
                 entity_cache=False,
             )
-            neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=staged_circuit)
+            neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
+                circuit=staged_circuit
+            )
     else:
-        neuron_ids = single_config.neuron_set.get_neuron_ids(circuit=parent_circuit)  # ty:ignore[invalid-argument-type]
+        neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
+            circuit=parent_circuit  # ty:ignore[invalid-argument-type]
+        )
 
     neuron_count = sum(len(v) for v in neuron_ids.values())
     if neuron_count == 0:

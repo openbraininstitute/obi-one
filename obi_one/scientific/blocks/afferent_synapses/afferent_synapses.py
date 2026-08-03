@@ -2,11 +2,12 @@ import abc
 from typing import Self
 
 import bluepysnap as snap
-import numpy  # noqa: ICN001
-import pandas  # noqa: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
+import pandas  # ruff: ignore[unconventional-import-alias]
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.find_afferent_synapses import (
     add_section_types,
     all_syns_on,
@@ -72,7 +73,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         if self.section_types is not None:
             prop_filters["afferent_section_type"] = list(self.section_types)
 
-        morph, PD = morphology_and_pathdistance_calculator(circ, node_population, node_id)  # noqa: N806
+        morph, PD = morphology_and_pathdistance_calculator(circ, node_population, node_id)  # ruff: ignore[non-lowercase-variable-in-function]
         syns = all_syns_on(circ, node_population, node_id, node_props)
         add_section_types(syns, morph)
         drop_nan = not self.consider_nan_pass
@@ -100,7 +101,7 @@ class AfferentSynapsesBlock(Block, abc.ABC):
         self, circ: snap.Circuit, node_population: str, node_id: int
     ) -> pandas.DataFrame:
         self.enforce_no_multi_param()
-        numpy.random.seed(self.random_seed)  # noqa: NPY002
+        numpy.random.seed(self.random_seed)  # ruff: ignore[numpy-legacy-random]
         args = self.gather_synapse_info(circ, node_population, node_id)
         return self._select_syns(*args)
 
@@ -116,7 +117,7 @@ class RandomlySelectedNumberOfSynapses(AfferentSynapsesBlock):
         description="Number of synapses to pick",
     )
 
-    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002  # ty:ignore[invalid-method-override]
+    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-method-override]
         return select_randomly(syns, n=self.n, raise_insufficient=False)  # ty:ignore[invalid-argument-type]
 
     def _check_parameter_values(self) -> None:
@@ -136,7 +137,7 @@ class RandomlySelectedFractionOfSynapses(AfferentSynapsesBlock):
         description="Fracton of synapses to pick",
     )  # ty:ignore[invalid-assignment]
 
-    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # noqa: ARG002  # ty:ignore[invalid-method-override]
+    def _select_syns(self, syns: pandas.DataFrame, *args) -> pandas.DataFrame:  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-method-override]
         return select_randomly(syns, p=self.p, raise_insufficient=False)  # ty:ignore[invalid-argument-type]
 
     def _check_parameter_values(self) -> None:
@@ -165,7 +166,7 @@ class PathDistanceConstrainedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
         self,
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
-        *args,  # noqa: ARG002
+        *args,  # ruff: ignore[unused-method-argument]
     ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_minmax_distance(
             syns,
@@ -197,7 +198,7 @@ class PathDistanceConstrainedFractionOfSynapses(RandomlySelectedFractionOfSynaps
         self,
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
-        *args,  # noqa: ARG002
+        *args,  # ruff: ignore[unused-method-argument]
     ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_minmax_distance(
             syns,
@@ -233,7 +234,7 @@ class PathDistanceWeightedNumberOfSynapses(RandomlySelectedNumberOfSynapses):
         self,
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
-        *args,  # noqa: ARG002
+        *args,  # ruff: ignore[unused-method-argument]
     ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_by_path_distance(
             syns,
@@ -269,7 +270,7 @@ class PathDistanceWeightedFractionOfSynapses(RandomlySelectedFractionOfSynapses)
         self,
         syns: pandas.DataFrame,
         soma_pds: numpy.ndarray,
-        *args,  # noqa: ARG002
+        *args,  # ruff: ignore[unused-method-argument]
     ) -> pandas.DataFrame:  # ty:ignore[invalid-method-override]
         return select_by_path_distance(
             syns,
@@ -288,12 +289,20 @@ class ClusteredSynapsesByMaxDistance(AfferentSynapsesBlock):
     """
 
     n_clusters: int | list[int] = Field(
-        default=1, title="Number of clusters", description="Number of synapse clusters to find"
+        default=1,
+        title="Number of clusters",
+        description="Number of synapse clusters to find",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
     cluster_max_distance: float | list[float] = Field(
         title="Maximum distance of synapses from cluster center",
         description="Synapses within a cluster will be closer than this value\
             from the cluster center (in um)",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+        },
     )
 
     def _check_parameter_values(self) -> None:
@@ -325,7 +334,12 @@ class ClusteredSynapsesByCount(AfferentSynapsesBlock):
     """
 
     n_clusters: int | list[int] = Field(
-        default=1, title="Number of clusters", description="Number of synapse clusters to find"
+        default=1,
+        title="Number of clusters",
+        description="Number of synapse clusters to find",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
     n_per_cluster: int | list[int] = Field(
         title="Number of synapses per cluster",

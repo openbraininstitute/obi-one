@@ -11,7 +11,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import numpy  # NOQA: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
 from entitysdk import Client
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset
@@ -54,7 +54,7 @@ def resolve_provenance(
     return pt_root_id, source_mesh_entity, source_dataset
 
 
-def resolve_neuron(  # NOQA: PLR0914
+def resolve_neuron(  # ruff: ignore[too-many-locals]
     neuron_ref: CellMorphologyFromID | MEModelFromID,
     db_client: Client,
     out_root: Path,

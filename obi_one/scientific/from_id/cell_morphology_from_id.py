@@ -7,7 +7,7 @@ from typing import ClassVar
 import entitysdk
 import morphio
 import neurom
-from entitysdk._server_schemas import AssetLabel, ContentType  # NOQA: PLC2701
+from entitysdk._server_schemas import AssetLabel, ContentType  # ruff: ignore[import-private-name]
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
@@ -167,7 +167,7 @@ class CellMorphologyFromID(EntityFromID):
         if not isinstance(path, Path):
             path = Path(path)
         if Path(path).is_dir():
-            path = path / (entity.name + ".h5")  # NOQA: PLR6104  # ty:ignore[unsupported-operator]
+            path = path / (entity.name + ".h5")  # ruff: ignore[non-augmented-assignment]  # ty:ignore[unsupported-operator]
 
         self.write_spiny_neuron_h5(path, db_client)  # ty:ignore[invalid-argument-type]
         spiny_morph = load_morphology_with_spines(str(path))

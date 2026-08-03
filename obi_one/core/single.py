@@ -14,7 +14,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
 from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -64,8 +64,8 @@ class SingleCoordinateScanParams(OBIBaseModel):
 
     @property
     def scan_multi_dim_index(self) -> dict[str, int]:
-        """Return a dictionary with the multi-dimensional index of the scan parameters."""
-        d = {}
+        """Dictionary with the multi-dimensional index of the scan parameters."""
+        d: dict = {}
         for scan_param in self.scan_params:
             d[scan_param.location_str] = scan_param.index_in_scan_dimension
         return d
