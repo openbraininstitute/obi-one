@@ -212,7 +212,7 @@ class EModelEFeatureExtractionTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> Path:
         from bluepyemodel.access_point import (  # ruff: ignore[import-outside-top-level]
             get_access_point,
@@ -222,6 +222,10 @@ class EModelEFeatureExtractionTask(Task):
         )
 
         coord_root = Path(self.config.coordinate_output_root).resolve()
+
+        execution_activity = self._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
 
         # 1. Download the NWB ephys assets from entitycore (with per-recording LJP).
         downloaded = self._download_recordings(coord_root / "ephys_data", db_client)
@@ -262,6 +266,13 @@ class EModelEFeatureExtractionTask(Task):
                     " available locally at %s): %s",
                     coord_root,
                     e,
+                )
+
+            if self._registered_task_result_id is not None:
+                self._update_execution_activity(
+                    db_client=db_client,
+                    execution_activity=execution_activity,
+                    generated=[self._registered_task_result_id],
                 )
 
         return coord_root
@@ -339,7 +350,7 @@ class EModelEFeatureExtractionTask(Task):
         features_path = coord_root / EXTRACTED_FEATURES_FILENAME
         if features_path.exists():
             db_client.upload_file(
-                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                entity_id=task_result.id,
                 entity_type=TaskResult,
                 file_path=features_path,
                 asset_label=AssetLabel.efeature_extraction_features,
@@ -368,7 +379,7 @@ class EModelEFeatureExtractionTask(Task):
                     paths[rel] = str(file_path)
 
             db_client.upload_directory(
-                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                entity_id=task_result.id,
                 entity_type=TaskResult,
                 name="figures",
                 paths={Path(k): Path(v) for k, v in paths.items()},
