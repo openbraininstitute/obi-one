@@ -10,14 +10,23 @@ from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
-from obi_one.scientific.library.constants import MIN_TIMESTEP_MILLISECONDS
+from obi_one.scientific.library.constants import (
+    MIN_TIMESTEP_MILLISECONDS,
+    SIMULATION_TIMESTEP_MILLISECONDS,
+)
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
 )
 
 
-class Recording(Block, ABC):
+class BaseRecording(Block, ABC):
+    """A recording sampled at the simulation timestep.
+
+    Simulators that can only report on their own integration timestep (Brian2) build on this
+    directly; :class:`Recording` adds the user-settable interval the others accept.
+    """
+
     neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
@@ -31,29 +40,24 @@ class Recording(Block, ABC):
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
 
-    dt: (
-        Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
-        | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
-        | Annotated[NonNegativeFloatRange, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
-    ) = Field(
-        default=0.1,
-        title="Timestep",
-        description="Interval between recording time steps in milliseconds (ms).",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLISECONDS,
-        },
-    )
-
     _default_node_set: str = PrivateAttr(default="All")
+    _simulation_timestep: PositiveFloat = PrivateAttr(default=SIMULATION_TIMESTEP_MILLISECONDS)
+
+    @property
+    def recording_timestep(self) -> PositiveFloat:
+        """Interval between recorded samples in milliseconds (ms)."""
+        return self._simulation_timestep
 
     def config(
         self,
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
+        simulation_timestep: PositiveFloat | None = None,
     ) -> dict:
         self._default_node_set = default_node_set
+        if simulation_timestep is not None:
+            self._simulation_timestep = simulation_timestep
 
         if (self.neuron_set is not None) and (
             self.neuron_set.block.get_neuron_set_population_type()
@@ -89,3 +93,26 @@ class Recording(Block, ABC):
     @abstractmethod
     def _generate_config(self, db_client: entitysdk.client.Client | None = None) -> dict:
         pass
+
+
+class Recording(BaseRecording, ABC):
+    """A recording sampled at an interval chosen independently of the simulation timestep."""
+
+    dt: (
+        Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
+        | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
+        | Annotated[NonNegativeFloatRange, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
+    ) = Field(
+        default=0.1,
+        title="Timestep",
+        description="Interval between recording time steps in milliseconds (ms).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+
+    @property
+    def recording_timestep(self) -> PositiveFloat:
+        """Interval between recorded samples in milliseconds (ms)."""
+        return self.dt  # ty:ignore[invalid-return-type]

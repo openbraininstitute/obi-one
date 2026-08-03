@@ -26,6 +26,7 @@ from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
+    Brian2SinusoidalCurrentClampSomaticStimulus,
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
@@ -76,7 +77,17 @@ _FIELD_STIMULI = (
 
 _SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
 
-_BRIAN2_STIMULI = Brian2DirectPoissonStimulus
+# The Brian2 runner turns SONATA `linear`, `pulse` and `sinusoidal` inputs into current
+# injections, and `poisson` into a direct membrane kick. Relative-to-threshold, noise, electric
+# field and voltage clamp modules have no counterpart there, and `synapse_replay` reads its
+# node_set as a filter on the *source* spikes rather than as a target, so those stay out.
+_BRIAN2_STIMULI = (
+    Brian2DirectPoissonStimulus
+    | ConstantCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | Brian2SinusoidalCurrentClampSomaticStimulus
+)
 
 _LE_ABSOLUTE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus

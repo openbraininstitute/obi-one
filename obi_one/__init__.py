@@ -42,6 +42,10 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
+    "Brian2RecordingUnion",
+    "Brian2SinusoidalCurrentClampSomaticStimulus",
+    "Brian2SomaVoltageRecording",
+    "Brian2TimeWindowSomaVoltageRecording",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -364,6 +368,8 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 )
 from obi_one.scientific.blocks.recordings.base import Recording
 from obi_one.scientific.blocks.recordings.soma import (
+    Brian2SomaVoltageRecording,
+    Brian2TimeWindowSomaVoltageRecording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
@@ -389,6 +395,7 @@ from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import (
+    Brian2SinusoidalCurrentClampSomaticStimulus,
     ConstantCurrentClampSomaticStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
     LinearCurrentClampSomaticStimulus,
@@ -590,7 +597,11 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
-from obi_one.scientific.unions_and_references.recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions_and_references.recordings import (
+    Brian2RecordingUnion,
+    RecordingReference,
+    RecordingUnion,
+)
 from obi_one.scientific.unions_and_references.scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,
