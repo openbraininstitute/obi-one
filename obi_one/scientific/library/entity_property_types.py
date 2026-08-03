@@ -10,6 +10,7 @@ class MappedPropertiesGroup(StrEnum):
     CIRCUIT = "Circuit"
     ION_CHANNEL_MODEL = "IonChannelModel"
     NEURONAL_MANIPULATION = "NeuronalManipulation"
+    MORPHOLOGY = "Morphology"
     ELECTRICAL_CELL_RECORDINGS = "ElectricalCellRecordings"
 
 
@@ -24,6 +25,10 @@ class CircuitMappedProperties(StrEnum):
     NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION = "NodePropertyUniqueValuesByPopulation"
 
 
+class MorphologyMappedProperties(StrEnum):
+    SECTION_TYPES = "SectionTypes"
+
+
 class ElectricalCellRecordingMappedProperties(StrEnum):
     PROTOCOLS = "Protocols"
     PROTOCOLS_BY_RECORDING = "ProtocolsByRecording"
@@ -33,6 +38,7 @@ class ElectricalCellRecordingMappedProperties(StrEnum):
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
+    SHOW_MORPHOLOGY_LOCATIONS = "ShowMorphologyLocations"
     SHOW_BIOPHYSICAL_NEURON_SETS = "ShowBiophysicalNeuronSets"
     SHOW_POINT_NEURON_SETS = "ShowPointNeuronSets"
     SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"

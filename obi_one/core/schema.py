@@ -57,6 +57,7 @@ class UIElement(StrEnum):
     MODEL_IDENTIFIER_SCAN = "model_identifier_scan"
     MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
+    MORPHOLOGY_SECTION_TYPE_SELECTION = "morphology_section_type_selection"
     NEURON_IDS = "neuron_ids"
     REFERENCE = "reference"
     SELECT_EFEATURES_BY_PROTOCOL = "select_efeatures_by_protocol"
