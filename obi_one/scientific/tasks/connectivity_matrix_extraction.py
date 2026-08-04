@@ -29,7 +29,6 @@ class ConnectivityMatrixExtractionScanConfig(ScanConfig):
     table (dataframe) of selected node attributes.
     """
 
-    single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtractionSingleConfig"
     name: ClassVar[str] = "Connectivity Matrix Extraction"
     description: ClassVar[str] = (
         "Extracts a connectivity matrix of a given edge population of a SONATA circuit in"

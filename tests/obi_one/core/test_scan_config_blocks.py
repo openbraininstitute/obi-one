@@ -36,7 +36,6 @@ class TestRef(BlockReference):
 class SimpleConfig(ScanConfig):
     """ScanConfig with only a root-level Block, no dicts."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "SimpleConfig"
     description: ClassVar[str] = "Simple"
 
@@ -50,7 +49,6 @@ class SimpleConfig(ScanConfig):
 class DictBlockConfig(ScanConfig):
     """ScanConfig with a dictionary of Blocks, for block_mapping tests."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "DictBlockConfig"
     description: ClassVar[str] = "Has dict blocks"
 
@@ -75,7 +73,6 @@ class RefHolder(Block):
 class ConfigWithRefBlock(ScanConfig):
     """ScanConfig where a root-level block contains a BlockReference."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "ConfigWithRefBlock"
     description: ClassVar[str] = "Has ref block"
 
@@ -140,7 +137,6 @@ class TestBlockMappingMissingReferenceType:
         """If json_schema_extra lacks 'reference_type', should raise."""
 
         class BadConfig(ScanConfig):
-            single_coord_class_name: ClassVar[str] = ""
             name: ClassVar[str] = "Bad"
             description: ClassVar[str] = ""
 
@@ -262,7 +258,6 @@ class TestAddBlockUnknownReferenceType:
         from obi_one.core.exception import OBIONEError  # ruff: ignore[import-outside-top-level]
 
         class UnregisteredRefConfig(ScanConfig):
-            single_coord_class_name: ClassVar[str] = ""
             name: ClassVar[str] = "UnregisteredRefConfig"
             description: ClassVar[str] = "Has unregistered ref"
 

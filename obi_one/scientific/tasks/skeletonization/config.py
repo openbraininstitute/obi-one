@@ -27,7 +27,6 @@ class BlockGroup(StrEnum):
 class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for skeletonization scan configurations."""
 
-    single_coord_class_name: ClassVar[str] = "SkeletonizationSingleConfig"
     name: ClassVar[str] = "Skeletonization Campaign"
     description: ClassVar[str] = "Skeletonization campaign"
 

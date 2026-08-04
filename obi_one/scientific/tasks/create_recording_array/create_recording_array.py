@@ -40,7 +40,6 @@ class BlockGroup(StrEnum):
 class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
     """Description."""
 
-    single_coord_class_name: ClassVar[str] = "CreateExtracellularRecordingArraySingleConfig"
     name: ClassVar[str] = "Create Extracellular Recording Array"
     description: ClassVar[str] = "Description."
 
