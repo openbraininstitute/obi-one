@@ -48,7 +48,7 @@ The core uses a **block-based compositional pattern**:
 
 - **`OBIBaseModel`** (`base.py`) - Pydantic base model with discriminator-based type field for polymorphic serialization. All domain models inherit from this.
 - **`Block`** (`block.py`) - Composable, parameterizable component. Any field set to a list becomes a dimension in a parameter scan.
-- **`ScanConfig`** (`scan_config.py`) - Abstract configuration composed of Blocks. Defines a modeling use case (e.g., `CircuitSimulationScanConfig`). Has class variables `name`, `description`, `single_coord_class_name`.
+- **`ScanConfig`** (`scan_config.py`) - Abstract configuration composed of Blocks. Defines a modeling use case (e.g., `CircuitSimulationScanConfig`). Has class variables `name` and `description`. The SingleConfig it expands into comes from its `TaskRegistration` in `config_task_map.TASK_MAP`, via the `single_config_class` property.
 - **`SingleConfigMixin`** (`single.py`) - Enforces that all parameters are single values (no lists). Used for execution-ready configs after scan expansion.
 - **`Task`** (`task.py`) - Abstract execution unit with an `execute()` method.
 - **`ScanGenerationTask`** (`scan_generation.py`) - Expands a ScanConfig into SingleConfigs via Cartesian product of multi-value parameters, then runs each.

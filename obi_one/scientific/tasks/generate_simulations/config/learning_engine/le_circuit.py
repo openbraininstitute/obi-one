@@ -38,8 +38,6 @@ CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="t
 class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConfig):
     """LearningEngineCircuitSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "LearningEngineCircuitSimulationSingleConfig"
-
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [

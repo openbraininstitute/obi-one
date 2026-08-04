@@ -107,7 +107,7 @@ The package is split into **core/** and **scientific/** code.
 
 - **ScanConfig**: Defines configurations for specific modeling use cases. A Form is composed of one or multiple Blocks, which define the parameterization of a use case. Currently Forms can have both single Blocks and dictionaries of Blocks. Each Form has its own Initialize Block for specifying the base parameters of the use case.
 - **Block**: Defines a component of a ScanConfig. Blocks support the specification of parameters which should be scanned over in the multi-dimensional parameter scan. When using the Form (in a Jupyter Notebook for example), any parameter which is specified as a list is used as a dimension of a multi-dimensional parameter scan when passed to a Scan object.
-- **SingleConfig**: A single configuration instance within a scan.
+- **SingleConfig**: A single configuration instance within a scan. Which SingleConfig a given ScanConfig expands into is declared once in `config_task_map.TASK_MAP`, as the `scan_config_cls`/`single_config_cls` pair of that task's `TaskRegistration`. A ScanConfig reads it back through its `single_config_class` property, so the pairing does not have to be repeated on the config classes themselves.
 - **Task**: Defines executable tasks that operate on configurations.
 - **ScanGenerationTask**: Takes a single ScanConfig as input, an output path and a string for specifying how output files should be stored. The `scan.execute()` function can then be called which generates the multi-dimensional scan.
 

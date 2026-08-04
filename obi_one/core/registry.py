@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
+    from obi_one.core.base import OBIBaseModel
     from obi_one.types import TaskType
 
 
@@ -32,8 +33,8 @@ class TaskRegistration:
     """
 
     task_cls: type
-    single_config_cls: type
-    scan_config_cls: type | None = None
+    single_config_cls: type[OBIBaseModel]
+    scan_config_cls: type[OBIBaseModel] | None = None
     asset_label: AssetLabel | None = None
     campaign_task_config_type: TaskConfigType | None = None
     campaign_generation_task_activity_type: TaskActivityType | None = None

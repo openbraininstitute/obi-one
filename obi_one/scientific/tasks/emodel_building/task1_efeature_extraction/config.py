@@ -51,7 +51,6 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
     stage. No model assets are needed at this point.
     """
 
-    single_coord_class_name: ClassVar[str] = "EModelEFeatureExtractionSingleConfig"
     name: ClassVar[str] = "EModel EFeature Extraction"
     description: ClassVar[str] = (
         "Extract experimental e-features from ephys traces via BluePyEModel."
