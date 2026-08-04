@@ -1074,8 +1074,7 @@ def sonata_main(
     simulation_result = register_simulation_results(
         client=client,
         simulation_id=simulation_id,
-        spike_report_file=Path(simulation_config.output.output_dir)
-        / simulation_config.output.spikes_file,
+        spike_report_file=Path(simulation_config.output.spikes_file),
         voltage_report_files=[
             Path(simulation_config.report(name).file_name)
             for name in simulation_config.list_report_names
