@@ -162,7 +162,12 @@ class ConnectivityMatrixExtractionTask(Task):
             filter(lambda x: "@" not in x, c.edges[edge_popul].property_names)
         )  # Select any existing edge property w/o "@"
         cmat = ConnectivityMatrix.from_bluepy(
-            c, load_cfg, connectome=edge_popul, edge_property=dummy_edge_prop, agg_func=len
+            c,
+            load_cfg,
+            connectome=edge_popul,
+            edge_property=dummy_edge_prop,
+            agg_func=len,
+            show_progress=False,  # Suppress tqdm outputs
         )
         # Note: edge_property=<any property> and agg_func=len required to obtain the number
         # of synapses per connection
