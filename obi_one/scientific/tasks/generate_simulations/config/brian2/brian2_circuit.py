@@ -45,7 +45,6 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
     ``simulation_config.json`` will have ``target_simulator: "Brian2"``.
     """
 
-    single_coord_class_name: ClassVar[str] = "Brian2CircuitSimulationSingleConfig"
     name: ClassVar[str] = "Brian2 Simulation Campaign"
     description: ClassVar[str] = "Brian2-targeted SONATA simulation campaign"
 

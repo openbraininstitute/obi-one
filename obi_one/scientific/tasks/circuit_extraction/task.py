@@ -67,7 +67,6 @@ class BlockGroup(StrEnum):
 class CircuitExtractionScanConfig(InfoScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
     name: ClassVar[str] = "Circuit Extraction"
     description: ClassVar[str] = (
         "Extracts a sub-circuit from a SONATA circuit as defined by a neuron set. The output"

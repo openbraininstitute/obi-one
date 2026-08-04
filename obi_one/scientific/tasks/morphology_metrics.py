@@ -18,7 +18,6 @@ L = logging.getLogger(__name__)
 
 
 class MorphologyMetricsScanConfig(ScanConfig):
-    single_coord_class_name: ClassVar[str] = "MorphologyMetricsSingleConfig"
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
