@@ -102,8 +102,8 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
     Example section lists: axonal, apical, basal and somatic.
 
 
-    These correspond to `section lists` in the NEURON simulator nomenclature:
-    https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist.
+    These correspond to `section lists` in the NEURON simulator nomenclature. See [here]
+    (https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist).
     """
 
     title: ClassVar[str] = "Variable Modification by Section List"
@@ -244,8 +244,8 @@ class CircuitBySectionListMechanismVariableNeuronalManipulation(
     Example section lists: axonal, apical, basal and somatic.
 
 
-    These correspond to `section lists` in the NEURON simulator nomenclature:
-    https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist.
+    These correspond to `section lists` in the NEURON simulator nomenclature. See [here]
+    (https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist).
     """
 
     title: ClassVar[str] = "Variable Modification by Section List"
