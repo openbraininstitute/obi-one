@@ -4,7 +4,6 @@ from typing import ClassVar, Self
 
 from entitysdk.client import Client
 from entitysdk.models import Entity
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
@@ -84,13 +83,6 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
         ],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.em_synapse_mapping__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.em_synapse_mapping__config_generation
-    )
-
     def input_entities(self, db_client: Client) -> list[Entity]:
         if isinstance(self.initialize.neurons, EMSynapseMappingInputNamedTuple):
             return [n.entity(db_client=db_client) for n in self.initialize.neurons.elements]
@@ -166,7 +158,4 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
 
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.em_synapse_mapping__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.em_synapse_mapping__execution
-    )
+    """Single-coordinate EM synapse mapping configuration."""

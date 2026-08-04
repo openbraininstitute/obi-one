@@ -186,6 +186,23 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
+    TaskType.circuit_synaptic_physiology_assignment: TaskDefinition(
+        task_type=TaskType.circuit_synaptic_physiology_assignment,
+        config_type=TaskConfigType.circuit_synaptic_physiology_assignment__config,
+        activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+        ),
+    ),
     TaskType.em_synapse_mapping: TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
         config_type=TaskConfigType.em_synapse_mapping__config,

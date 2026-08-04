@@ -18,7 +18,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
-from obi_one.core.registry import block_ref_registry
+from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
@@ -48,8 +48,6 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 
     _campaign: Entity = None  # ty:ignore[invalid-assignment]
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
 
     @property
     def campaign(
@@ -61,22 +59,28 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         return []
 
     @property
-    def campaign_name(self) -> None:
+    def campaign_name(self) -> str:
         msg = "You must define a campaign_name property for your ScanConfig subclass."
         raise NotImplementedError(msg)
 
     @property
-    def campaign_description(self) -> None:
+    def campaign_description(self) -> str:
         msg = "You must define a campaign_description property for your ScanConfig subclass."
         raise NotImplementedError(msg)
 
     @property
-    def campaign_task_config_type(self) -> None:
-        return self._campaign_task_config_type  # ty:ignore[invalid-return-type]
+    def campaign_task_config_type(self) -> TaskConfigType | None:
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        return registration.campaign_task_config_type if registration is not None else None
 
     @property
-    def campaign_generation_task_activity_type(self) -> None:
-        return self._campaign_generation_task_activity_type  # ty:ignore[invalid-return-type]
+    def campaign_generation_task_activity_type(self) -> TaskActivityType | None:
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        return (
+            registration.campaign_generation_task_activity_type
+            if registration is not None
+            else None
+        )
 
     def create_campaign_entity_with_config(
         self,
@@ -96,7 +100,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             multiple_value_parameters_dictionary={
                 "scan_parameters": multiple_value_parameters_dictionary
             },
-            input_entities=self.input_entities(db_client=db_client),
+            input_entities=self.input_entities(db_client=db_client),  # ty:ignore[invalid-argument-type]
             task_config_file_path=output_root / SCAN_CONFIG_FILENAME,
         )
 
@@ -118,7 +122,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             client=db_client,
             activity_type=self.campaign_generation_task_activity_type,
             used=[self._campaign],
-            generated=generated,
+            generated=generated,  # ty:ignore[invalid-argument-type]
             activity_status=ActivityStatus.done,
             start_time=time_now,
             end_time=time_now,
