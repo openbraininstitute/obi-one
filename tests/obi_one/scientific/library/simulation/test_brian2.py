@@ -210,14 +210,14 @@ def test_poisson_compartment_set_unsupported(tmp_path):
 
 def test_current_stim(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 2, "dt": 0.01, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3000000000,
                 "delay": 0.1,
                 "duration": 4,
                 "node_set": "0",
@@ -242,7 +242,7 @@ def test_current_stim_groupby(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3000000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -260,7 +260,7 @@ def test_current_stim_groupby(tmp_path):
             "linear0": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1500000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -268,7 +268,7 @@ def test_current_stim_groupby(tmp_path):
             "linear1": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1500000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -522,7 +522,7 @@ def test_connection_override_mid_simulation(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 12000,
+                "amp_start": 12000000000,
                 "delay": 0,
                 "duration": 4,
                 "node_set": "0",
