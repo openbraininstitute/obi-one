@@ -141,4 +141,4 @@ class SynapseParameterizationScanConfig(ScanConfig):
 
 
 class SynapseParameterizationSingleConfig(SynapseParameterizationScanConfig, SingleConfigMixin):
-    pass
+    """Single-coordinate synapse parameterization configuration."""
