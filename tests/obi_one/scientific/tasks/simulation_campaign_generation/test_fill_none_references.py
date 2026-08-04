@@ -276,6 +276,69 @@ class TestTheStimulusTargetTagVariesByConfigFamily:
         )
 
 
+SIMULATION_CONFIG_CLASSES = (
+    CircuitSimulationSingleConfig,
+    MEModelSimulationSingleConfig,
+    Brian2CircuitSimulationSingleConfig,
+    LearningEngineCircuitSimulationSingleConfig,
+)
+
+
+class TestTheDefaultNamesReachTheSchema:
+    """What the UI shows as a placeholder has to be what generation will actually do."""
+
+    @pytest.mark.parametrize("config_class", SIMULATION_CONFIG_CLASSES)
+    def test_every_role_has_a_name(self, config_class):
+        assert set(config_class.default_block_reference_names()) == set(ReferenceTag)
+
+    @pytest.mark.parametrize("config_class", SIMULATION_CONFIG_CLASSES)
+    def test_every_name_is_a_string(self, config_class):
+        """A stray trailing comma turns one of these into a tuple, which the UI cannot show."""
+        for tag, name in config_class.default_block_reference_names().items():
+            assert isinstance(name, str), (tag, name)
+            assert name
+
+    @pytest.mark.parametrize("config_class", SIMULATION_CONFIG_CLASSES)
+    def test_the_names_are_published_in_the_json_schema(self, config_class):
+        published = config_class.model_json_schema()[SchemaKey.REFERENCE_TAG_DEFAULTS]
+
+        assert published == config_class.default_block_reference_names()
+
+    def test_the_names_agree_with_the_references_they_describe(self, circuit_config, circuit):
+        """The anti-drift check: a shown placeholder naming a different block would be a lie."""
+        config = circuit_config()
+        names = config.default_block_reference_names()
+
+        for tag, reference in config.default_block_references(circuit).items():
+            assert reference.block_name == names[tag], tag
+            assert reference.block.block_name == names[tag], tag
+
+    def test_the_names_agree_for_brian2_too(self, brian2_config, point_circuit):
+        """Brian2 is the family that overrides both, so it is where they could diverge."""
+        config = brian2_config()
+        names = config.default_block_reference_names()
+
+        for tag, reference in config.default_block_references(point_circuit).items():
+            assert reference.block_name == names[tag], tag
+
+    def test_the_roles_the_task_does_not_fill_are_still_named(self, circuit_config, circuit):
+        """The UI shows a placeholder for them even though a block, not the task, supplies it."""
+        config = circuit_config()
+        names = config.default_block_reference_names()
+        filled = set(config.default_block_references(circuit))
+
+        for tag in BLOCK_SUPPLIED_REFERENCE_TAGS:
+            assert tag not in filled
+            assert names[tag]
+
+    def test_brian2_names_the_stimulus_and_simulation_roles_differently(self):
+        """The distinction a type-keyed label cannot make: both are point neuron references."""
+        names = Brian2CircuitSimulationSingleConfig.default_block_reference_names()
+
+        assert names[ReferenceTag.STIMULUS_TARGET] == DEFAULT_BRIAN2_STIMULUS_NODE_SET
+        assert names[ReferenceTag.SIMULATION_TARGET] != names[ReferenceTag.STIMULUS_TARGET]
+
+
 class TestTheConfigOwnsItsSimulationTarget:
     """The other two things that vary by family, so the task needs no isinstance checks."""
 

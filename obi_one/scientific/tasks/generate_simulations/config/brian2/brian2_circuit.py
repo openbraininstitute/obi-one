@@ -61,7 +61,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             # only visible PointNeuronSetReference is a stimulus target -- label it with the
             # stimulus default (`sugar`), not the simulation default (all point neurons).
             PointNeuronSetReference.__name__: (
-                Brian2SimulationScanConfig.default_stimulus_node_set_name,
+                Brian2SimulationScanConfig.default_stimulus_node_set_name
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
         },

@@ -61,6 +61,7 @@ L = logging.getLogger(__name__)
 
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
+DEFAULT_SPIKE_TIME_DISTRIBUTION_NAME = "Default: Uniform over the stimulus duration"
 DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: No Locations"
 
 # Which reference type names a neuron set, given what the set contains. A default neuron set is
@@ -125,29 +126,73 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     default_virtual_neuron_set_type: ClassVar[type[AllVirtualNeurons]] = AllVirtualNeurons
     default_point_neuron_set_type: ClassVar[type[AllPointNeurons]] = AllPointNeurons
 
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Publish the default names into the schema, so the UI never drifts from the code."""
+        super().__init_subclass__(**kwargs)
+        cls.model_config["json_schema_extra"].update(  # ty:ignore[unresolved-attribute]
+            {SchemaKey.REFERENCE_TAG_DEFAULTS: cls.default_block_reference_names()}
+        )
+
+    @classmethod
+    def default_block_reference_names(cls) -> dict[str, str]:
+        """The name of the block a reference of each role resolves to when left unset.
+
+        Published in the config's schema so the UI can show, as a placeholder, what leaving a
+        reference unset will actually do. This is the source of the names used to build the
+        references themselves, so the two cannot disagree.
+
+        It is class-level because the UI reads the schema without a circuit. That holds even for
+        Brian2's stimulus default, whose name is fixed although building its reference needs the
+        circuit to resolve a population.
+        """
+        simulation_neuron_set = cls.default_node_set_name
+        return {
+            ReferenceTag.SIMULATION_TARGET: simulation_neuron_set,
+            ReferenceTag.STIMULUS_TARGET: simulation_neuron_set,
+            ReferenceTag.SPIKE_REPLAY_SOURCE: simulation_neuron_set,
+            ReferenceTag.SPIKE_REPLAY_TARGET: simulation_neuron_set,
+            ReferenceTag.RECORDING_TARGET: simulation_neuron_set,
+            ReferenceTag.SYNAPTIC_MANIPULATION_SOURCE: simulation_neuron_set,
+            ReferenceTag.SYNAPTIC_MANIPULATION_TARGET: simulation_neuron_set,
+            ReferenceTag.NEURONAL_MANIPULATION_TARGET: simulation_neuron_set,
+            ReferenceTag.MORPHOLOGY_LOCATIONS_TARGET: simulation_neuron_set,
+            ReferenceTag.ANY_NEURON_SET_OPERAND: simulation_neuron_set,
+            ReferenceTag.BIOPHYSICAL_NEURON_SET_OPERAND: simulation_neuron_set,
+            ReferenceTag.NON_VIRTUAL_NEURON_SET_OPERAND: simulation_neuron_set,
+            ReferenceTag.POINT_NEURON_SET_OPERAND: cls.default_point_node_set_name,
+            ReferenceTag.VIRTUAL_NEURON_SET_OPERAND: cls.default_virtual_node_set_name,
+            ReferenceTag.TIMESTAMPS: DEFAULT_TIMESTAMPS_NAME,
+            # The two roles the task does not fill. Naming them by role rather than by reference
+            # type is what lets these two differ, which keyed by AllDistributionsReference they
+            # could not.
+            ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION: DEFAULT_DISTRIBUTION_NAME,
+            ReferenceTag.SPIKE_TIME_DISTRIBUTION: DEFAULT_SPIKE_TIME_DISTRIBUTION_NAME,
+        }
+
     def default_block_references(
         self,
         circuit: Circuit,  # ruff: ignore[unused-method-argument]
     ) -> dict[str, BlockReference]:
-        """What each kind of unset block reference means for this simulation, keyed by its tag.
+        """What each kind of unset block reference resolves to, keyed by its tag.
 
         Most roles resolve to whatever the simulation runs, which each family varies through
         ``default_neuron_set_type`` rather than by overriding this. A family that needs a role to
         mean something else overrides this method. The circuit is passed in for families whose
         defaults name something that has to be resolved against it.
 
-        Two tags are deliberately absent. Both spike distribution defaults depend on the stimulus's
-        own parameters -- a spike time distribution spans that stimulus's duration -- so no
-        simulation-wide reference can express them and those blocks supply their own.
+        Two tags in ``default_block_reference_names`` are deliberately absent here. Both spike
+        distribution defaults depend on the stimulus's own parameters -- a spike time distribution
+        spans that stimulus's duration -- so no simulation-wide reference can express them and
+        those blocks supply their own.
         """
+        names = self.default_block_reference_names()
         simulation_neuron_set = build_neuron_set_reference(
-            self.default_node_set_name, self.default_neuron_set_type()
+            names[ReferenceTag.SIMULATION_TARGET], self.default_neuron_set_type()
         )
-        timestamps = TimestampsReference(
-            block_dict_name="timestamps", block_name=DEFAULT_TIMESTAMPS_NAME
-        )
+        timestamps_name = names[ReferenceTag.TIMESTAMPS]
+        timestamps = TimestampsReference(block_dict_name="timestamps", block_name=timestamps_name)
         timestamps.block = SingleTimestamp(start_time=0.0)
-        timestamps.block.set_block_name(DEFAULT_TIMESTAMPS_NAME)
+        timestamps.block.set_block_name(timestamps_name)
 
         return {
             ReferenceTag.SIMULATION_TARGET: simulation_neuron_set,
@@ -166,10 +211,11 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             ReferenceTag.BIOPHYSICAL_NEURON_SET_OPERAND: simulation_neuron_set,
             ReferenceTag.NON_VIRTUAL_NEURON_SET_OPERAND: simulation_neuron_set,
             ReferenceTag.POINT_NEURON_SET_OPERAND: build_neuron_set_reference(
-                self.default_point_node_set_name, self.default_point_neuron_set_type()
+                names[ReferenceTag.POINT_NEURON_SET_OPERAND], self.default_point_neuron_set_type()
             ),
             ReferenceTag.VIRTUAL_NEURON_SET_OPERAND: build_neuron_set_reference(
-                self.default_virtual_node_set_name, self.default_virtual_neuron_set_type()
+                names[ReferenceTag.VIRTUAL_NEURON_SET_OPERAND],
+                self.default_virtual_neuron_set_type(),
             ),
             ReferenceTag.TIMESTAMPS: timestamps,
         }

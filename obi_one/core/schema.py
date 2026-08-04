@@ -28,8 +28,14 @@ class SchemaKey(StrEnum):
     PROPERTY_ENDPOINTS = "property_endpoints"
     PROPERTY_GROUP = "property_group"
     REFERENCE_TAG = "reference_tag"
-    # Note: REFERENCE_TAG is not used by the UI. It names the role a block reference field plays,
-    # so a task can say what the field means when it is left unset. See ReferenceTag.
+    # Note: REFERENCE_TAG names the role a block reference field plays, so a task can say what the
+    # field means when it is left unset. See ReferenceTag.
+    REFERENCE_TAG_DEFAULTS = "reference_tag_defaults"
+    # Note: REFERENCE_TAG_DEFAULTS sits on a ScanConfig and gives, for each reference tag, the
+    # name of the block a field carrying that tag resolves to when left unset. The UI shows it as
+    # the placeholder for the field. Unlike DEFAULT_BLOCK_REFERENCE_LABELS, which is keyed by
+    # reference type and also decides whether a field is shown at all, this is keyed by role, so
+    # two fields of the same type that mean different things get their own answer.
     REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
     TITLE_BY_KEY = "title_by_key"

@@ -36,8 +36,16 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     default_stimulus_node_set_name: ClassVar[str] = "Default: Sugar gustatory receptor neurons"
     default_stimulus_node_set: ClassVar[str] = "sugar"
 
+    @classmethod
+    def default_block_reference_names(cls) -> dict[str, str]:
+        """As the base, except that an untargeted stimulus drives the `sugar` set."""
+        return {
+            **super().default_block_reference_names(),
+            ReferenceTag.STIMULUS_TARGET: cls.default_stimulus_node_set_name,
+        }
+
     def default_block_references(self, circuit: Circuit) -> dict[str, BlockReference]:
-        """As the base, except that an untargeted stimulus drives the `sugar` set.
+        """As the base, with the `sugar` set standing in for an untargeted stimulus.
 
         That set names an existing node set rather than a whole population, so unlike every other
         default it has to be resolved against the circuit.
@@ -45,7 +53,7 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
         return {
             **super().default_block_references(circuit),
             ReferenceTag.STIMULUS_TARGET: build_neuron_set_reference(
-                self.default_stimulus_node_set_name,
+                self.default_block_reference_names()[ReferenceTag.STIMULUS_TARGET],
                 PointPopulationPredefinedNeuronSet(
                     node_set=self.default_stimulus_node_set,
                     population=self._point_population(circuit),
