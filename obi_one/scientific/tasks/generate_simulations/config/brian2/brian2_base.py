@@ -4,6 +4,7 @@ from typing import ClassVar
 from libsonata import SimulatorType
 from pydantic import PositiveFloat
 
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.blocks.neuron_sets.predefined import PointPopulationPredefinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.specific import AllPointNeurons
@@ -13,10 +14,9 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
+    build_neuron_set_reference,
 )
-from obi_one.scientific.unions_and_references.neuron_sets import (
-    PointNeuronSetReference,
-)
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 
 class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
@@ -36,31 +36,28 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     default_stimulus_node_set_name: ClassVar[str] = "Default: Sugar gustatory receptor neurons"
     default_stimulus_node_set: ClassVar[str] = "sugar"
 
-    @property
-    def default_neuron_set_reference(self) -> PointNeuronSetReference:
-        """The default neuron set reference for the simulation (all point neurons)."""
-        ref = PointNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_node_set_name
-        )
-        ref.block = self.default_neuron_set_type()
-        ref.block.set_block_name(self.default_node_set_name)
-        return ref
+    def default_block_references(self, circuit: Circuit) -> dict[str, BlockReference]:
+        """As the base, except that an untargeted stimulus drives the `sugar` set.
 
-    def default_stimulus_neuron_set_reference(self, circuit: Circuit) -> PointNeuronSetReference:
-        """Returns the default neuron set reference for an untargeted stimulus (the `sugar` set).
-
-        It names an existing node set, so unlike the simulation default it has to resolve the
-        circuit's point population.
+        That set names an existing node set rather than a whole population, so unlike every other
+        default it has to be resolved against the circuit.
         """
-        ref = PointNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_stimulus_node_set_name
-        )
-        ref.block = PointPopulationPredefinedNeuronSet(
-            node_set=self.default_stimulus_node_set,
-            population=self._point_population(circuit),
-        )
-        ref.block.set_block_name(self.default_stimulus_node_set_name)
-        return ref
+        return {
+            **super().default_block_references(circuit),
+            ReferenceTag.STIMULUS_TARGET: build_neuron_set_reference(
+                self.default_stimulus_node_set_name,
+                PointPopulationPredefinedNeuronSet(
+                    node_set=self.default_stimulus_node_set,
+                    population=self._point_population(circuit),
+                ),
+            ),
+        }
+
+    def check_simulation_target(self, circuit: Circuit) -> None:
+        """Nothing to check: a Brian2 simulation can only reference point neuron sets.
+
+        Its neuron set union admits no virtual type, so the base class's check cannot fail here.
+        """
 
     @staticmethod
     def _point_population(circuit: Circuit) -> str:

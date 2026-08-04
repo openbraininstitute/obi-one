@@ -100,7 +100,7 @@ def _patch_resolved_timestamps(
     ]
     mock_timestamps_block.timestamps.return_value = values
 
-    def _resolve_timestamps(_ref: object, _default: object) -> object:
+    def _resolve_timestamps(_ref: object) -> object:
         return mock_timestamps_block
 
     monkeypatch.setattr(

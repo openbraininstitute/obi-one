@@ -27,6 +27,9 @@ class SchemaKey(StrEnum):
     PROPERTY = "property"
     PROPERTY_ENDPOINTS = "property_endpoints"
     PROPERTY_GROUP = "property_group"
+    REFERENCE_TAG = "reference_tag"
+    # Note: REFERENCE_TAG is not used by the UI. It names the role a block reference field plays,
+    # so a task can say what the field means when it is left unset. See ReferenceTag.
     REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
     TITLE_BY_KEY = "title_by_key"

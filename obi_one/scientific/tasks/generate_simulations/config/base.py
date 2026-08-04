@@ -10,6 +10,7 @@ from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.serialization_constants import (
@@ -18,16 +19,19 @@ from obi_one.core.serialization_constants import (
 )
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
     AllPointNeurons,
     AllVirtualNeurons,
 )
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
@@ -38,11 +42,17 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    resolve_neuron_set_ref_to_node_set,
+)
 from obi_one.scientific.unions_and_references.neuron_sets import (
+    BaseNeuronSetReference,
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 SONATA_VERSION = 2.4
 
@@ -52,6 +62,33 @@ L = logging.getLogger(__name__)
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
 DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: No Locations"
+
+# Which reference type names a neuron set, given what the set contains. A default neuron set is
+# built by the config rather than chosen by the user, so its reference type has to be derived
+# rather than declared -- and the set already knows what it holds.
+_NEURON_SET_REFERENCE_TYPES: dict[NeuronSetPopulationType, type[BaseNeuronSetReference]] = {
+    NeuronSetPopulationType.BIOPHYSICAL: BiophysicalNeuronSetReference,
+    NeuronSetPopulationType.POINT: PointNeuronSetReference,
+    NeuronSetPopulationType.VIRTUAL: VirtualNeuronSetReference,
+}
+
+
+def build_neuron_set_reference(name: str, neuron_set: NeuronSet) -> BaseNeuronSetReference:
+    """A resolved reference to a neuron set the config supplies rather than the user."""
+    population_type = neuron_set.get_neuron_set_population_type()
+    try:
+        reference_type = _NEURON_SET_REFERENCE_TYPES[population_type]
+    except KeyError as error:
+        msg = (
+            f"No reference type names a '{population_type}' neuron set, so "
+            f"{type(neuron_set).__name__} cannot be used as a default."
+        )
+        raise OBIONEError(msg) from error
+
+    reference = reference_type(block_dict_name="neuron_sets", block_name=name)
+    neuron_set.set_block_name(name)
+    reference.block = neuron_set
+    return reference
 
 
 class BlockGroup(StrEnum):
@@ -88,43 +125,104 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     default_virtual_neuron_set_type: ClassVar[type[AllVirtualNeurons]] = AllVirtualNeurons
     default_point_neuron_set_type: ClassVar[type[AllPointNeurons]] = AllPointNeurons
 
-    @property
-    def default_neuron_set_reference(
+    def default_block_references(
         self,
-    ) -> BiophysicalNeuronSetReference:
-        """The default neuron set reference for the simulation."""
-        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_node_set_name
+        circuit: Circuit,  # ruff: ignore[unused-method-argument]
+    ) -> dict[str, BlockReference]:
+        """What each kind of unset block reference means for this simulation, keyed by its tag.
+
+        Most roles resolve to whatever the simulation runs, which each family varies through
+        ``default_neuron_set_type`` rather than by overriding this. A family that needs a role to
+        mean something else overrides this method. The circuit is passed in for families whose
+        defaults name something that has to be resolved against it.
+
+        Two tags are deliberately absent. Both spike distribution defaults depend on the stimulus's
+        own parameters -- a spike time distribution spans that stimulus's duration -- so no
+        simulation-wide reference can express them and those blocks supply their own.
+        """
+        simulation_neuron_set = build_neuron_set_reference(
+            self.default_node_set_name, self.default_neuron_set_type()
         )
+        timestamps = TimestampsReference(
+            block_dict_name="timestamps", block_name=DEFAULT_TIMESTAMPS_NAME
+        )
+        timestamps.block = SingleTimestamp(start_time=0.0)
+        timestamps.block.set_block_name(DEFAULT_TIMESTAMPS_NAME)
 
-        default_neuron_set_block_reference.block = self.default_neuron_set_type()
-        default_neuron_set_block_reference.block.set_block_name(self.default_node_set_name)
-
-        return default_neuron_set_block_reference
+        return {
+            ReferenceTag.SIMULATION_TARGET: simulation_neuron_set,
+            ReferenceTag.STIMULUS_TARGET: simulation_neuron_set,
+            ReferenceTag.SPIKE_REPLAY_SOURCE: simulation_neuron_set,
+            ReferenceTag.SPIKE_REPLAY_TARGET: simulation_neuron_set,
+            ReferenceTag.RECORDING_TARGET: simulation_neuron_set,
+            ReferenceTag.SYNAPTIC_MANIPULATION_SOURCE: simulation_neuron_set,
+            ReferenceTag.SYNAPTIC_MANIPULATION_TARGET: simulation_neuron_set,
+            ReferenceTag.NEURONAL_MANIPULATION_TARGET: simulation_neuron_set,
+            ReferenceTag.MORPHOLOGY_LOCATIONS_TARGET: simulation_neuron_set,
+            # An unset operand of a combined neuron set means every neuron of that set's own
+            # population type, which differs from the simulation default only when the combined
+            # set is virtual or point.
+            ReferenceTag.ANY_NEURON_SET_OPERAND: simulation_neuron_set,
+            ReferenceTag.BIOPHYSICAL_NEURON_SET_OPERAND: simulation_neuron_set,
+            ReferenceTag.NON_VIRTUAL_NEURON_SET_OPERAND: simulation_neuron_set,
+            ReferenceTag.POINT_NEURON_SET_OPERAND: build_neuron_set_reference(
+                self.default_point_node_set_name, self.default_point_neuron_set_type()
+            ),
+            ReferenceTag.VIRTUAL_NEURON_SET_OPERAND: build_neuron_set_reference(
+                self.default_virtual_node_set_name, self.default_virtual_neuron_set_type()
+            ),
+            ReferenceTag.TIMESTAMPS: timestamps,
+        }
 
     @property
-    def default_virtual_neuron_set_reference(
-        self,
-    ) -> VirtualNeuronSetReference:
-        """The default virtual neuron set reference for the simulation."""
-        ref = VirtualNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_virtual_node_set_name
-        )
-        ref.block = self.default_virtual_neuron_set_type()
-        ref.block.set_block_name(self.default_virtual_node_set_name)
-        return ref
+    def simulation_node_set_name(self) -> str:
+        """The SONATA node set the simulation runs.
 
-    @property
-    def default_point_neuron_set_reference(
-        self,
-    ) -> PointNeuronSetReference:
-        """The default point neuron set reference for the simulation."""
-        ref = PointNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
+        Only meaningful once references have been filled. A config that offers no target has no
+        neuron sets dictionary either, so its node set is written from the default type directly.
+        """
+        if not hasattr(self.initialize, "node_set"):
+            return self.default_node_set_name
+
+        return resolve_neuron_set_ref_to_node_set(self.initialize.node_set)  # ty:ignore[invalid-argument-type]
+
+    def check_simulation_target(self, circuit: Circuit) -> None:
+        """Raise if the neuron set the simulation runs cannot actually be simulated.
+
+        Virtual neurons only emit pre-determined spikes, so a simulation targeting them would have
+        nothing to compute.
+        """
+        node_set = getattr(self.initialize, "node_set", None)
+        if not isinstance(node_set, BaseNeuronSetReference):
+            return
+
+        if node_set.block.get_neuron_set_population_type() in {
+            NeuronSetPopulationType.BIOPHYSICAL,
+            NeuronSetPopulationType.POINT,
+            NeuronSetPopulationType.NONVIRTUAL,
+        }:
+            return
+
+        non_virtual_populations = Circuit.get_node_population_names(
+            circuit.sonata_circuit,
+            incl_virtual=False,
+            incl_point=True,
         )
-        ref.block = self.default_point_neuron_set_type()
-        ref.block.set_block_name(self.default_point_node_set_name)
-        return ref
+        non_virtual_list = (
+            ", ".join(f"'{pop}'" for pop in non_virtual_populations)
+            if non_virtual_populations
+            else "none found"
+        )
+        msg = (
+            f"Simulation Neuron Set (Initialize -> Neuron Set): "
+            f"'{node_set.block_name}' is virtual. "
+            "Please use a non-virtual (biophysical or point) Neuron Set type. "
+            f"Available non-virtual populations: {non_virtual_list}. "
+            f"You may be able to reference one through an "
+            f"MultiPopulationPredefinedNeuronSet block type. "
+            "In future we will support population selection for any neuron set."
+        )
+        raise OBIONEError(msg)
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {

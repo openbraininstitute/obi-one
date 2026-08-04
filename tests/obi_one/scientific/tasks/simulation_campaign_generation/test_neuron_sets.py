@@ -56,6 +56,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     BIOPHYSICAL_POPULATION,
@@ -620,7 +621,7 @@ class TestDefaultNeuronSetErrors:
             },
         )
 
-        with pytest.raises(OBIONEError, match="Default virtual neuron set name"):
+        with pytest.raises(OBIONEError, match="is not an AllVirtualNeurons set"):
             generate(config, tmp_path)
 
     def test_reusing_the_point_default_name_for_another_type_is_rejected(self, circuit, tmp_path):
@@ -636,37 +637,50 @@ class TestDefaultNeuronSetErrors:
             },
         )
 
-        with pytest.raises(OBIONEError, match="Default point neuron set name"):
+        with pytest.raises(OBIONEError, match="is not an AllPointNeurons set"):
             generate(config, tmp_path)
 
 
 class TestDefaultReferenceTypes:
-    """The reference each config family hands out for its default neuron set."""
+    """The reference each config family hands out for its default neuron set.
 
-    def test_circuit_default_is_biophysical(self, circuit_config):
-        reference = circuit_config().default_neuron_set_reference
+    The reference type is derived from what the neuron set contains rather than declared, so a
+    family that changes its default neuron set gets the matching reference type for free.
+    """
+
+    def test_circuit_default_is_biophysical(self, circuit_config, circuit):
+        reference = circuit_config().default_block_references(circuit)[
+            ReferenceTag.SIMULATION_TARGET
+        ]
 
         assert isinstance(reference, BiophysicalNeuronSetReference)
         assert reference.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
         assert isinstance(reference.block, AllBiophysicalNeurons)
 
-    def test_circuit_virtual_and_point_defaults(self, circuit_config):
-        config = circuit_config()
+    def test_circuit_virtual_and_point_operand_defaults(self, circuit_config, circuit):
+        defaults = circuit_config().default_block_references(circuit)
+        virtual = defaults[ReferenceTag.VIRTUAL_NEURON_SET_OPERAND]
+        point = defaults[ReferenceTag.POINT_NEURON_SET_OPERAND]
 
-        assert isinstance(config.default_virtual_neuron_set_reference, VirtualNeuronSetReference)
-        assert isinstance(config.default_point_neuron_set_reference, PointNeuronSetReference)
-        assert isinstance(config.default_virtual_neuron_set_reference.block, AllVirtualNeurons)
-        assert isinstance(config.default_point_neuron_set_reference.block, AllPointNeurons)
+        assert isinstance(virtual, VirtualNeuronSetReference)
+        assert isinstance(point, PointNeuronSetReference)
+        assert isinstance(virtual.block, AllVirtualNeurons)
+        assert isinstance(point.block, AllPointNeurons)
 
-    def test_brian2_default_is_point(self, brian2_config):
-        reference = brian2_config().default_neuron_set_reference
+    def test_brian2_default_is_point(self, brian2_config, point_circuit):
+        reference = brian2_config().default_block_references(point_circuit)[
+            ReferenceTag.SIMULATION_TARGET
+        ]
 
         assert isinstance(reference, PointNeuronSetReference)
         assert reference.block_name == DEFAULT_POINT_NODE_SET
         assert isinstance(reference.block, AllPointNeurons)
 
-    def test_learning_engine_default_is_point(self, learning_engine_config):
-        reference = learning_engine_config().default_neuron_set_reference
+    def test_learning_engine_default_is_point(self, learning_engine_config, point_circuit):
+        reference = learning_engine_config().default_block_references(point_circuit)[
+            ReferenceTag.SIMULATION_TARGET
+        ]
 
         assert isinstance(reference, PointNeuronSetReference)
         assert reference.block_name == DEFAULT_POINT_NODE_SET
+        assert isinstance(reference.block, AllPointNeurons)

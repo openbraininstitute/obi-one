@@ -17,7 +17,9 @@ from typing import Any
 import pytest
 
 import obi_one as obi
+from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.schema import SchemaKey
 from obi_one.scientific.library.memodel_circuit import (
     MEModelCircuit,
     MEModelWithSynapsesCircuit,
@@ -38,6 +40,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 from tests.utils import CIRCUIT_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
@@ -97,6 +100,54 @@ def reference_field_names(block_class: type) -> list[str]:
         for name, field_info in block_class.model_fields.items()
         if reference_types_in(field_info.annotation)
     ]
+
+
+# Both spike distribution roles are resolved by the block, not the task: their defaults depend on
+# the stimulus's own parameters, so no simulation-wide reference can express them.
+BLOCK_SUPPLIED_REFERENCE_TAGS = {
+    ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION,
+    ReferenceTag.SPIKE_TIME_DISTRIBUTION,
+}
+
+
+def tagged_reference_fields(block: Any) -> list[tuple[str, ReferenceTag]]:
+    """The block's reference fields that declare what they mean when left unset."""
+    return [
+        (name, field_info.json_schema_extra[SchemaKey.REFERENCE_TAG])
+        for name, field_info in type(block).model_fields.items()
+        if isinstance(field_info.json_schema_extra, dict)
+        and SchemaKey.REFERENCE_TAG in field_info.json_schema_extra
+    ]
+
+
+def unfilled_reference_fields(config: Any) -> list[str]:
+    """Tagged references still unset anywhere in the config, as ``Block.field`` names.
+
+    Empty is the invariant ``_fill_none_references`` exists to provide. Roles the task deliberately
+    leaves to the block are excluded, since those are meant to still be ``None`` afterwards.
+    """
+    unfilled = []
+    for value in vars(config).values():
+        blocks = (
+            [value]
+            if isinstance(value, Block)
+            else list(value.values())
+            if isinstance(value, dict)
+            else []
+        )
+        for block in blocks:
+            if not isinstance(block, Block):
+                continue
+            for name, tag in tagged_reference_fields(block):
+                if tag in BLOCK_SUPPLIED_REFERENCE_TAGS:
+                    continue
+                field_value = getattr(block, name, None)
+                if field_value is None or (
+                    isinstance(field_value, tuple)
+                    and any(reference is None for reference, _ in field_value)
+                ):
+                    unfilled.append(f"{type(block).__name__}.{name}")
+    return unfilled
 
 
 # The node set names a generated SONATA config can refer to, by the key each section uses.

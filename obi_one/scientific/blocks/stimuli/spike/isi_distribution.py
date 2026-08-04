@@ -18,6 +18,7 @@ from obi_one.scientific.library.constants import (
     MAX_SIMULATION_LENGTH_MILLISECONDS,
 )
 from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 
 class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
@@ -48,6 +49,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.REFERENCE_TAG: ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION,
         },
     )
 

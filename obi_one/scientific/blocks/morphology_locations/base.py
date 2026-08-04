@@ -16,6 +16,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 SectionType = Literal[3, 4]
 SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]] | None
@@ -45,6 +46,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.MORPHOLOGY_LOCATIONS_TARGET,
         },
     )
 

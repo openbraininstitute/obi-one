@@ -107,7 +107,7 @@ class IonChannelVariableRecording(Recording):
             self.variable.validate_model_and_set_unit(db_client)
 
         sonata_config[self.block_name] = {
-            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",

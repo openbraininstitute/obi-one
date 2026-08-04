@@ -26,6 +26,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     Brian2SimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import PointNeuronSetReference
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.stimuli import (
     Brian2CircuitStimulusUnion,
     StimulusReference,
@@ -84,6 +85,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
+                SchemaKey.REFERENCE_TAG: ReferenceTag.SIMULATION_TARGET,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
                 SchemaKey.UI_HIDDEN: True,
             },

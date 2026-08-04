@@ -15,12 +15,11 @@ SONATA -> Brian2 runner
 
 from typing import Annotated, ClassVar
 
-from pydantic import Field, NonNegativeFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -32,7 +31,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     resolve_neuron_set_ref_to_neuron_set,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 
 class Brian2DirectPoissonStimulus(Block):
@@ -51,6 +50,7 @@ class Brian2DirectPoissonStimulus(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.STIMULUS_TARGET,
         },
     )
 
@@ -96,14 +96,7 @@ class Brian2DirectPoissonStimulus(Block):
         },
     )
 
-    _default_node_set: str = PrivateAttr(default="All")
-
-    def config(
-        self,
-        circuit: Circuit,
-        default_node_set: str = "sugar",
-        default_timestamps: TimestampsReference | None = None,
-    ) -> dict:
+    def config(self, circuit: Circuit) -> dict:
         """Return the SONATA inputs entry for this block.
 
         The biophysical check that :class:`ContinuousStimulusWithoutTimestamps`
@@ -111,18 +104,13 @@ class Brian2DirectPoissonStimulus(Block):
         ``v`` (or any target variable) and is valid for point-neuron and
         biophysical populations alike.
         """
-        self._default_node_set = default_node_set
-        _ = default_timestamps or SingleTimestamp(start_time=0.0)
-
-        # An untargeted stimulus has already been pointed at the `sugar` node set by the
-        # generation task (see Brian2SimulationScanConfig.default_stimulus_neuron_set_reference),
-        # which is small enough to stay under the limit; an explicit choice is checked here.
-        neuron_set = resolve_neuron_set_ref_to_neuron_set(
-            self.neuron_set,
-            self._default_node_set,  # ty:ignore[invalid-argument-type]
-        )
+        # An untargeted stimulus has already been pointed at the `sugar` node set by
+        # _fill_none_references (see Brian2SimulationScanConfig.default_stimulus_neuron_set_
+        # reference), which is small enough to stay under the limit; an explicit choice is
+        # checked here.
+        neuron_set = resolve_neuron_set_ref_to_neuron_set(self.neuron_set)
         max_n_neurons = 100
-        neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
+        neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)
         total_neurons = sum(len(ids) for ids in neuron_ids.values())
         if total_neurons > max_n_neurons:
             msg = (
@@ -134,7 +122,7 @@ class Brian2DirectPoissonStimulus(Block):
         return self._generate_config()
 
     def _generate_config(self) -> dict:
-        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
+        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set)
 
         return {
             self.block_name: {

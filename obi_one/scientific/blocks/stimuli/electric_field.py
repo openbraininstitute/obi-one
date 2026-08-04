@@ -19,6 +19,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 from .stimulus import ContinuousStimulus
 
@@ -56,6 +57,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.STIMULUS_TARGET,
         },
     )
 
@@ -136,7 +138,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set),
             "module": self._module,
             "input_type": self._input_type,
             "ramp_up_duration": self.ramp_up_duration,
