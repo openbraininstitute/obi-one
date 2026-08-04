@@ -7,9 +7,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.tasks.generate_simulations.config.base import (
-    DEFAULT_DISTRIBUTION_NAME,
-    DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
-    DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     CircuitFromID,
     SimulationSingleConfigMixin,
@@ -31,20 +28,11 @@ from obi_one.scientific.unions_and_references.manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
 )
-from obi_one.scientific.unions_and_references.morphology_locations import (
-    MorphologyLocationsReference,
-)
-from obi_one.scientific.unions_and_references.neuron_sets import (
-    BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
-    VirtualNeuronSetReference,
-)
 from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
 
@@ -64,20 +52,6 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
-        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            BiophysicalNeuronSetReference.__name__: (
-                NeuronSimulationScanConfig.default_node_set_name
-            ),
-            VirtualNeuronSetReference.__name__: (
-                NeuronSimulationScanConfig.default_virtual_node_set_name
-            ),
-            PointNeuronSetReference.__name__: (
-                NeuronSimulationScanConfig.default_point_node_set_name
-            ),
-            TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
-            AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
-            MorphologyLocationsReference.__name__: DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
-        },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
             MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),

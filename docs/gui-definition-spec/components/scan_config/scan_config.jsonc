@@ -14,6 +14,11 @@
   "description": "Description of the form",
   "group_order": ["Group 1", "Group 2"], // All groups must be used in at least one root element.
   "ui_enabled": true,
+  // The name each unset reference resolves to, keyed by the field's `reference_tag`.
+  // Preferred over `default_block_reference_labels`; see components/reference/reference.md.
+  "reference_tag_defaults": { "some_role": "Default: Some Block" },
+  // Optional fallback, keyed by reference type. Only needed for references that carry no
+  // `reference_tag`, or whose tag this form does not name.
   "default_block_reference_labels": { "Reference_1": "Label_1" },
   "properties_endpoint": {
     "circuit": "/mapped-circuit-properties/{circuit_id}"

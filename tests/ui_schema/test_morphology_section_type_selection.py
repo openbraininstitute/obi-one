@@ -58,7 +58,10 @@ def test_morphology_endpoint_is_available_for_neuron_simulation_configs():
         )
         assert schema[SchemaKey.UI_ENABLED] is True
         assert schema[SchemaKey.GROUP_ORDER]
-        assert schema[SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS]
+        # a form must name its reference defaults by role, by type, or both
+        assert schema.get(SchemaKey.REFERENCE_TAG_DEFAULTS) or schema.get(
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS
+        )
 
 
 def test_direct_morphology_uses_generic_endpoint_with_supported_placeholder():
