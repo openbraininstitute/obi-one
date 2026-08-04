@@ -276,13 +276,60 @@ def _get_close_spikes(ids: np.ndarray, times: np.ndarray, window: float) -> np.n
     return result_mask
 
 
+def _build_synapses(
+    source: brian2.NeuronGroup | brian2.SpikeGeneratorGroup,
+    target: brian2.NeuronGroup,
+    synapse_template: SynapseTemplate,
+    edge_pop: libsonata.EdgePopulation,
+    selection: libsonata.Selection,
+) -> brian2.Synapses:
+    """Create, connect, and configure a brian2.Synapses object from an edge population.
+
+    Args:
+        source: The presynaptic group (NeuronGroup or SpikeGeneratorGroup).
+        target: The postsynaptic NeuronGroup.
+        synapse_template: Template defining synapse model, on_pre, delay, and dynamics.
+        edge_pop: The libsonata EdgePopulation to read connectivity and attributes from.
+        selection: The libsonata Selection specifying which edges to instantiate.
+
+    Returns:
+        A fully configured brian2.Synapses object.
+    """
+    src = edge_pop.source_nodes(selection).flatten()
+    tgt = edge_pop.target_nodes(selection).flatten()
+
+    syn = brian2.Synapses(
+        source,
+        target,
+        model=synapse_template.params.model,
+        on_pre=synapse_template.params.on_pre,
+    )
+    syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
+    syn.pre.delay = (
+        0.0 * brian2.units.ms
+        if synapse_template.params.delay is None
+        else synapse_template.params.delay.get()
+    )
+
+    # Note: brian2 doesn't allow multiple synapses between two neurons;
+    # this matters if they are supposed to have different parameters.
+    # Currently we only support single connections.
+    assert selection.flat_size == len(syn), (
+        "Mismatch between synapse count, multiple synapses per connection?"
+    )
+    for name, unit in synapse_template.dynamics.items():
+        values = edge_pop.get_attribute(name, selection) * unit
+        setattr(syn, name, values)
+
+    return syn
+
+
 def _get_spike_replay(
     simulation: bluepysnap.Simulation,
     input_: bluepysnap.input.SynapseReplay,
     n0: brian2.NeuronGroup,
-    synapses: brian2.Synapses,
     synapse_template: SynapseTemplate,
-) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses]:
+) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses] | None:
     """Create a SpikeGeneratorGroup from a spike file and network connectivity.
 
     Unfortunately, a new set of synapses needs to be created, and
@@ -292,14 +339,8 @@ def _get_spike_replay(
     assert len(input_.reader.get_population_names()) == 1
     population_name = next(iter(input_.reader.get_population_names()))
 
-    node_ids = simulation.node_sets.to_libsonata.materialize(
-        input_.node_set, simulation.circuit.nodes[population_name].to_libsonata
-    ).flatten()
-
     spikes = input_.reader[population_name].get_dict()
     spikes, times = spikes["node_ids"], spikes["timestamps"]
-    mask = np.isin(spikes, node_ids)
-    spikes, times = spikes[mask], times[mask]
 
     spikes, times = spikes[times <= input_.duration], times[times <= input_.duration]
 
@@ -322,26 +363,33 @@ def _get_spike_replay(
         input_.node_set,
     )
 
+    circuit = simulation.circuit
+    target_node_ids = simulation.node_sets.to_libsonata.materialize(
+        input_.node_set, circuit.nodes[population_name].to_libsonata
+    ).flatten()
+
+    assert len(circuit.edges.population_names) == 1, "Only one population supported"
+    edges = circuit.edges[next(iter(circuit.edges.population_names))]
+    edge_pop = edges.to_libsonata
+    assert edges.source.name == edges.target.name == population_name, (
+        f"spikefile must have the same name (`{population_name}`) as the circuit source "
+        f"(`{edges.source.name}`) and target (`{edges.target.name}`)"
+    )
+    selection = edge_pop.efferent_edges(np.unique(spikes)) & edge_pop.afferent_edges(
+        target_node_ids
+    )
+    if not selection:
+        return None
+
     replay = brian2.SpikeGeneratorGroup(len(n0), indices=spikes, times=times * brian2.units.ms)
 
-    replay_connectivity = brian2.Synapses(
-        replay,
-        n0,
-        model=synapse_template.params.model,
-        on_pre=synapse_template.params.on_pre,
-        delay=None
-        if synapse_template.params.delay is None
-        else synapse_template.params.delay.get(),
+    replay_connectivity = _build_synapses(
+        source=replay,
+        target=n0,
+        synapse_template=synapse_template,
+        edge_pop=edge_pop,
+        selection=selection,
     )
-
-    replay_connectivity.connect(i=synapses.i[:], j=synapses.j[:])
-
-    edge_pop_name = next(iter(simulation.circuit.edges.population_names))
-    edges = simulation.circuit.edges[edge_pop_name]
-    edge_pop = edges.to_libsonata
-    for name, unit in synapse_template.dynamics.items():
-        values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
-        setattr(replay_connectivity, name, values)
 
     return (replay, replay_connectivity)
 
@@ -414,14 +462,15 @@ class Inputs:
 def _get_non_current_inputs(
     simulation: bluepysnap.Simulation,
     n0: brian2.NeuronGroup,
-    synapses: brian2.Synapses,
     synapse_template: SynapseTemplate,
 ) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
     """Filter inputs that are known from the SONATA config, return simulatable brian objects."""
     inputs = []
     for name, input_ in simulation.inputs.items():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
-            inputs += _get_spike_replay(simulation, input_, n0, synapses, synapse_template)
+            new_inputs = _get_spike_replay(simulation, input_, n0, synapse_template)
+            if new_inputs:
+                inputs += new_inputs
         elif isinstance(input_, libsonata.SimulationConfig.Poisson):
             pass
         elif type(input_) not in STIMULATION_TYPES:
@@ -578,12 +627,6 @@ def _create_synapses(
     edge_pop = edges.to_libsonata
     L.info("Loading synapses: `%s` with %d synapses", edge_pop.name, edge_pop.size)
 
-    models_dir = Path(
-        circuit.to_libsonata.edge_population_properties(edge_pop.name).point_neuron_models_dir
-    )
-    src = edge_pop.source_nodes(edge_pop.select_all()).flatten()
-    tgt = edge_pop.target_nodes(edge_pop.select_all()).flatten()
-
     if "model_template" in edge_pop.enumeration_names:
         template = edge_pop.enumeration_values("model_template")
         assert len(template) == 1
@@ -592,27 +635,20 @@ def _create_synapses(
         template = set(edge_pop.get_attribute("model_template", edge_pop.select_all()))
         template = next(iter(template))
 
+    models_dir = Path(
+        circuit.to_libsonata.edge_population_properties(edge_pop.name).point_neuron_models_dir
+    )
     ext, name = template.split(":")
     with (models_dir / f"{name}.{ext}").open() as fd:
         synapse_template = SynapseTemplate.model_validate_json(fd.read())
 
-    syn = brian2.Synapses(
-        neurons,
-        neurons,
-        model=synapse_template.params.model,
-        on_pre=synapse_template.params.on_pre,
+    syn = _build_synapses(
+        source=neurons,
+        target=neurons,
+        synapse_template=synapse_template,
+        edge_pop=edge_pop,
+        selection=edge_pop.select_all(),
     )
-    syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
-
-    syn.pre.delay = (
-        0.0 * brian2.units.ms
-        if synapse_template.params.delay is None
-        else synapse_template.params.delay.get()
-    )
-
-    for name, unit in synapse_template.dynamics.items():
-        values = edge_pop.get_attribute(name, edge_pop.select_all()) * unit
-        setattr(syn, name, values)
 
     return syn, synapse_template
 
@@ -775,7 +811,7 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
 
     state_monitor, report_id_mapping = _get_reports(simulation, neurons)
 
-    neurons, inputs = _get_non_current_inputs(simulation, neurons, synapses, synapse_template)
+    neurons, inputs = _get_non_current_inputs(simulation, neurons, synapse_template)
 
     net = Brian2Network(
         neurons=neurons,

@@ -143,6 +143,13 @@ def test_spike_replay(tmp_path):
     npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
     assert spikes[1] == spikes[2]
 
+    # set *target* node_set to only include 0, this means no spikes should be delivered
+    config["inputs"]["replay"]["node_set"] = "0"
+    spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    for i in range(3):
+        assert not spikes[i].any()
+
 
 def test_poisson(tmp_path):
     config = {
