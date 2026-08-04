@@ -4,17 +4,22 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
+from obi_one.scientific.blocks.recordings.morphology_location import (
+    MorphologyLocationVoltageRecording,
+)
 from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
 
-_SOMA_VOLTAGE_RECORDINGS = SomaVoltageRecording | TimeWindowSomaVoltageRecording
+_VOLTAGE_RECORDINGS = (
+    SomaVoltageRecording | TimeWindowSomaVoltageRecording | MorphologyLocationVoltageRecording
+)
 
 
-RecordingUnion = Annotated[_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
+RecordingUnion = Annotated[_VOLTAGE_RECORDINGS, Discriminator("type")]
 
-_RECORDINGS = IonChannelVariableRecording | _SOMA_VOLTAGE_RECORDINGS
+_RECORDINGS = IonChannelVariableRecording | _VOLTAGE_RECORDINGS
 IonChannelModelRecordingUnion = Annotated[
     _RECORDINGS,
     Discriminator("type"),
