@@ -146,9 +146,7 @@ class TestApiCompatibility:
 
     def test_algorithm_export_map_brian2_only_adex(self):
         """Brian2 export should only be available for AdEx."""
-        brian2_entries = {
-            k for k, v in ALGORITHM_EXPORT_MAP.items() if v[1] and "brian2" in v[1]
-        }
+        brian2_entries = {k for k, v in ALGORITHM_EXPORT_MAP.items() if v[1] and "brian2" in v[1]}
         assert brian2_entries == {"adex_brian2"}
 
 

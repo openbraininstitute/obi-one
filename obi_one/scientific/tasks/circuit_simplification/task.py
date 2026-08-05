@@ -386,7 +386,7 @@ class CircuitSimplificationTask(Task):
         # Add node set to the SONATA circuit object (in memory) and write to file.
         # This does NOT modify the input circuit files — it only writes a new
         # node_sets.json to the output directory.
-        sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[union-attr]
+        sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
         block.add_node_set_definition_to_sonata_circuit(
             self._circuit,  # ty:ignore[invalid-argument-type]
             sonata_circuit,

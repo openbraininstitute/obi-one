@@ -20,9 +20,7 @@ class TestSimplificationConfig:
     def test_algorithm_validation_rejects_unknown(self):
         """Test that unknown algorithms are rejected (Literal type fires first)."""
         with pytest.raises(ValueError, match="Input should be"):
-            CircuitSimplificationScanConfig.Simplification(
-                algorithms=["nonexistent_algo"]
-            )
+            CircuitSimplificationScanConfig.Simplification(algorithms=["nonexistent_algo"])
 
     def test_algorithm_validation_accepts_known(self):
         """Test that known algorithms are accepted."""

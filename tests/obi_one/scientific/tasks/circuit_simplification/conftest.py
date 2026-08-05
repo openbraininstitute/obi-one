@@ -20,11 +20,13 @@ def fake_simplified_circuit(tmp_path: Path) -> Path:
     d = tmp_path / "simplified"
     d.mkdir(parents=True)
     (d / "circuit_config.json").write_text(
-        json.dumps({
-            "version": "2.3",
-            "manifest": {"$BASE_DIR": "./"},
-            "networks": {"nodes": [], "edges": []},
-        })
+        json.dumps(
+            {
+                "version": "2.3",
+                "manifest": {"$BASE_DIR": "./"},
+                "networks": {"nodes": [], "edges": []},
+            }
+        )
     )
     return d
 
@@ -32,9 +34,7 @@ def fake_simplified_circuit(tmp_path: Path) -> Path:
 @pytest.fixture
 def mock_pipeline(fake_simplified_circuit: Path):
     """Mock SimplificationPipeline with autospec for API compatibility guard."""
-    with patch(
-        "sonata_simplify.pipeline.SimplificationPipeline", autospec=True
-    ) as m:
+    with patch("sonata_simplify.pipeline.SimplificationPipeline", autospec=True) as m:
         # run_recipe returns a list of output paths (one per target)
         m.return_value.run_recipe.return_value = [fake_simplified_circuit]
         yield m
