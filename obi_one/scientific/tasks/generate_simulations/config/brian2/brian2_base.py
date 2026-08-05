@@ -2,9 +2,10 @@ import abc
 from typing import ClassVar
 
 from libsonata import SimulatorType
-from pydantic import PositiveFloat
+from pydantic import Field, PositiveFloat
 
 from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.predefined import PointPopulationPredefinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.specific import AllPointNeurons
 from obi_one.scientific.library.circuit import Circuit
@@ -13,9 +14,18 @@ from obi_one.scientific.library.constants import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
+    BlockGroup,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
+)
+from obi_one.scientific.unions_and_references.recordings import (
+    Brian2RecordingUnion,
+    RecordingReference,
+)
+from obi_one.scientific.unions_and_references.timestamps import (
+    TimestampsReference,
+    TimestampsUnion,
 )
 
 
@@ -61,6 +71,31 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
         )
         ref.block.set_block_name(self.default_stimulus_node_set_name)
         return ref
+
+    recordings: dict[str, Brian2RecordingUnion] = Field(
+        default_factory=dict,
+        description="Recordings for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [RecordingReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Recording",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    timestamps: dict[str, TimestampsUnion] = Field(
+        default_factory=dict,
+        title="Timestamps",
+        description="Timestamps for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
 
     @staticmethod
     def _point_population(circuit: Circuit) -> str:

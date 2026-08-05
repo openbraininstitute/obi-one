@@ -101,7 +101,8 @@ class CurrentStimulator(ABC):
     def get_currents(self, dt: float, simulation_length: float) -> brian2.TimedArray:
         """Uses `_get_currents` to create a TimedArray to be used for simulation."""
         v = self._get_currents(dt, simulation_length)
-        return brian2.TimedArray(v * brian2.units.mA, dt=dt * brian2.units.ms)
+        # SONATA current_clamp amplitudes are nanoamps.
+        return brian2.TimedArray(v * brian2.units.nA, dt=dt * brian2.units.ms)
 
     @abstractmethod
     def _get_currents(self, dt: float, simulation_length: float) -> np.ndarray:

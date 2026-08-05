@@ -12,6 +12,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
     CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions_and_references.recordings import (
+    Brian2RecordingUnion,
     IonChannelModelRecordingUnion,
     RecordingUnion,
 )
@@ -46,6 +47,13 @@ class TestUnionCoverage:
         assert union_member_names(IonChannelModelRecordingUnion) - union_member_names(
             RecordingUnion
         ) == {"IonChannelVariableRecording"}
+
+    def test_brian2_uses_the_simulation_timestep_recordings(self):
+        """Brian2 rejects a report whose dt differs from the simulation's, so it gets its own."""
+        assert union_member_names(Brian2RecordingUnion) == {
+            "SimulationDtSomaVoltageRecording",
+            "SimulationDtTimeWindowSomaVoltageRecording",
+        }
 
 
 class TestSomaVoltageRecording:
@@ -156,10 +164,10 @@ class TestReportsSection:
         assert result.reports == {}
 
     def test_a_config_without_a_recordings_field_still_gets_an_empty_section(
-        self, brian2_config, tmp_path
+        self, learning_engine_config, tmp_path
     ):
-        """Brian2 configs expose no recordings, but the SONATA key is still emitted."""
-        config = brian2_config()
+        """Learning Engine configs expose no recordings, but the SONATA key is still emitted."""
+        config = learning_engine_config()
         assert not hasattr(config, "recordings")
 
         result = generate(config, tmp_path)

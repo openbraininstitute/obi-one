@@ -141,6 +141,7 @@ class GenerateSimulationTask(Task):
                     stimulus.config(
                         default_node_set=self.config.default_node_set_name,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
+                        simulation_timestep=self.config.timestep,
                     )
                 )
 
@@ -154,6 +155,7 @@ class GenerateSimulationTask(Task):
                     self.config.initialize.simulation_length,
                     self.config.default_node_set_name,
                     db_client,
+                    simulation_timestep=self.config.timestep,
                 )
             )
 

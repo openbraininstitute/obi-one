@@ -19,7 +19,10 @@ from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations imp
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsUnion
+from obi_one.scientific.unions_and_references.manipulations import (
+    Brian2SynapticManipulationsUnion,
+    SynapticManipulationsUnion,
+)
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
@@ -51,6 +54,17 @@ class TestUnionCoverage:
         assert union_member_names(NeuronalManipulationUnion) == {
             "BySectionListMechanismVariableNeuronalManipulation",
             "ByNeuronMechanismVariableNeuronalManipulation",
+        }
+
+    def test_brian2_excludes_the_mechanism_specific_manipulations(self):
+        """Brian2 honours a connection override's weight and delay.
+
+        It raises on `synapse_configure` and `modoverride`, which is what the magnesium and
+        acetylcholine manipulations emit.
+        """
+        assert union_member_names(Brian2SynapticManipulationsUnion) == {
+            "ConnectSynapticManipulation",
+            "DisconnectSynapticManipulation",
         }
 
 

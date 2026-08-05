@@ -6,14 +6,19 @@ from pydantic import Field, NonNegativeFloat, model_validator
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.base import CustomDtRecording, SimulationDtRecording
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
 
-class SomaVoltageRecording(Recording):
-    """Records the soma voltage of a neuron set for the full length of the experiment."""
+class SimulationDtSomaVoltageRecording(SimulationDtRecording):
+    """Records the soma voltage of a neuron set for the full length of the experiment.
+
+    The sampling interval is the simulation timestep. Brian2 samples its ``StateMonitor`` on the
+    integration timestep and rejects a report asking for any other interval, so it uses this
+    rather than :class:`SomaVoltageRecording`.
+    """
 
     title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
 
@@ -30,15 +35,19 @@ class SomaVoltageRecording(Recording):
             "compartments": "center",
             "variable_name": "v",
             "unit": "mV",
-            "dt": self.dt,
+            "dt": self.recording_timestep,
             "start_time": self._start_time,
             "end_time": self._end_time,
         }
         return sonata_config
 
 
-class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
-    """Records the soma voltage of a neuron set over a specified time window."""
+class SimulationDtTimeWindowSomaVoltageRecording(SimulationDtSomaVoltageRecording):
+    """Records the soma voltage of a neuron set over a specified time window.
+
+    As with :class:`SimulationDtSomaVoltageRecording`, the sampling interval is the simulation
+    timestep rather than a parameter of its own.
+    """
 
     title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
 
@@ -83,3 +92,15 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
         self._end_time = self.end_time  # ty:ignore[invalid-assignment]
 
         return super()._generate_config(db_client=db_client)
+
+
+class SomaVoltageRecording(CustomDtRecording, SimulationDtSomaVoltageRecording):
+    """Records the soma voltage of a neuron set for the full length of the experiment."""
+
+    title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
+
+
+class TimeWindowSomaVoltageRecording(CustomDtRecording, SimulationDtTimeWindowSomaVoltageRecording):
+    """Records the soma voltage of a neuron set over a specified time window."""
+
+    title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
