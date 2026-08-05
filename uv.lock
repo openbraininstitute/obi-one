@@ -993,14 +993,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.8"
+version = "0.19.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/f7/3fcda544cd6f86c0deb1d4442f7f5155971c21a1dd2722e540d108dfc9c6/entitysdk-0.19.8.tar.gz", hash = "sha256:fd5fe5313c0facb144e66f3d9553d1342b91e46f9f38063140fa0632d0b59b4c", size = 92353, upload-time = "2026-07-23T14:05:30.306Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/03/cfb677cc2b37a2ba5a2abc7dda779740a6415e96cd8c6b0effc9bd1b8a76/entitysdk-0.19.10.tar.gz", hash = "sha256:00b1e208d4ee2e12660e5a0f49a4c1802733a3a108bc9a8dd764e564ca7b2fc2", size = 93539, upload-time = "2026-08-03T15:53:25.847Z" }
 
 [[package]]
 name = "executing"
@@ -3403,23 +3403,42 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "bluecellulab", marker = "extra == 'all'", specifier = ">=2.6.0" },
     { name = "bluecellulab", marker = "extra == 'simulation'", specifier = ">=2.6.0" },
+    { name = "bluepysnap", marker = "extra == 'all'", specifier = ">=3.0.0,<4.0.0" },
     { name = "bluepysnap", marker = "extra == 'simulation'", specifier = ">=3.0.0,<4.0.0" },
+    { name = "brian2", marker = "extra == 'all'", specifier = ">=2.5.0" },
     { name = "brian2", marker = "extra == 'brian2'", specifier = ">=2.5.0" },
     { name = "click", specifier = ">=8.0.0" },
+    { name = "efel", marker = "extra == 'all'", specifier = ">=5.0.0" },
     { name = "efel", marker = "extra == 'simulation'", specifier = ">=5.0.0" },
     { name = "h5py", specifier = ">=3.8.0" },
+    { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.5.0" },
+    { name = "matplotlib", marker = "extra == 'imaging'", specifier = ">=3.5.0" },
+    { name = "matplotlib", marker = "extra == 'packaging'", specifier = ">=3.5.0" },
     { name = "matplotlib", marker = "extra == 'simulation'", specifier = ">=3.5.0" },
+    { name = "nest-simulator", marker = "extra == 'all'", specifier = ">=3.8.0" },
+    { name = "nest-simulator", marker = "extra == 'nest'", specifier = ">=3.8.0" },
+    { name = "neurom", marker = "extra == 'all'", specifier = ">=3.0.0" },
+    { name = "neurom", marker = "extra == 'imaging'", specifier = ">=3.0.0" },
+    { name = "neurom", marker = "extra == 'packaging'", specifier = ">=3.0.0" },
+    { name = "neuron", marker = "extra == 'all'", specifier = ">=8.0.2" },
     { name = "neuron", marker = "extra == 'simulation'", specifier = ">=8.0.2" },
     { name = "numpy", specifier = ">=2.0.0" },
+    { name = "pillow", marker = "extra == 'all'", specifier = ">=9.0.0" },
+    { name = "pillow", marker = "extra == 'imaging'", specifier = ">=9.0.0" },
+    { name = "pillow", marker = "extra == 'packaging'", specifier = ">=9.0.0" },
     { name = "pydantic", specifier = ">=2.5.2,<3.0.0" },
+    { name = "pytest", marker = "extra == 'all'", specifier = ">=7.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "pytest-cov", marker = "extra == 'all'", specifier = ">=4.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "ruff", marker = "extra == 'all'", specifier = ">=0.1.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "scipy", specifier = ">=1.10.0" },
     { name = "tqdm", specifier = ">=4.65.0" },
 ]
-provides-extras = ["simulation", "brian2", "dev"]
+provides-extras = ["simulation", "brian2", "nest", "imaging", "packaging", "dev", "all"]
 
 [[package]]
 name = "sortedcontainers"
