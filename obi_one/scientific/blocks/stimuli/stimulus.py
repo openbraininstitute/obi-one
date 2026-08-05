@@ -13,7 +13,6 @@ from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCo
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.constants import (
     DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
     DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
@@ -29,6 +28,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
@@ -49,9 +49,6 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
 
 
 class BaseStimulus(Block, ABC):
-    _default_node_set: str = PrivateAttr(default="All")
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))  # ty:ignore[invalid-assignment]
-
     @abstractmethod
     def _generate_config(self) -> dict:
         pass
@@ -65,16 +62,14 @@ class StimulusWithTimestamps(BaseStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
+            SchemaKey.REFERENCE_TAG: ReferenceTag.TIMESTAMPS,
         },
     )
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
     def _offset_timestamps(self) -> list[float]:
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps,
-            self._default_timestamps,  # ty:ignore[invalid-argument-type]
-        )
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(self.timestamps)
 
         offset_timestamps = [
             offset_timestamp
@@ -124,6 +119,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
                     *NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
                     MorphologyLocationsReference.__name__,
                 ],
+                SchemaKey.REFERENCE_TAG: ReferenceTag.STIMULUS_TARGET,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
@@ -160,12 +156,7 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
             return {"compartment_set": self._materialized_compartment_set_name}
 
         neuron_set = cast("NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None", self.neuron_set)
-        return {
-            "node_set": resolve_neuron_set_ref_to_node_set(
-                neuron_set,
-                self._default_node_set,
-            )
-        }
+        return {"node_set": resolve_neuron_set_ref_to_node_set(neuron_set)}
 
     _represents_physical_electrode: bool = PrivateAttr(default=False)
     """Default is False. If True, the signal will be implemented \
@@ -179,16 +170,8 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     but produce a membrane current, which is included in the \
     calculation of the extracellular signal."""
 
-    def config(
-        self,
-        default_node_set: str = "All",
-        default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
-    ) -> dict:
-        self._default_node_set = default_node_set
-        if default_timestamps is None:
-            default_timestamps = SingleTimestamp(start_time=0.0)
-        self._default_timestamps = default_timestamps
-
+    def config(self) -> dict:
+        """Returns the SONATA inputs entries for this stimulus."""
         return self._generate_config()
 
 

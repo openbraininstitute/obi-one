@@ -5,7 +5,6 @@ from pydantic import Field, PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     ALL_NEURON_SETS_REFERENCE_UNION,
@@ -13,6 +12,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
@@ -34,6 +34,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.SYNAPTIC_MANIPULATION_SOURCE,
             SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
@@ -45,25 +46,20 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.SYNAPTIC_MANIPULATION_TARGET,
             SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
         },
     )
 
-    _default_node_set: str = PrivateAttr(default="All")
-
-    def config(self, default_node_set: str = "All") -> dict:
-        self._default_node_set = default_node_set
+    def config(self) -> dict:
+        """Returns the SONATA connection_overrides entries for this manipulation."""
         return self._sonata_manipulations_list()
 
     def _sonata_manipulations_list(self) -> dict:
         sonata_config = {
             "name": self.block_name,
-            "source": resolve_neuron_set_ref_to_node_set(
-                self.presynaptic_neuron_set, self._default_node_set
-            ),
-            "target": resolve_neuron_set_ref_to_node_set(
-                self.postsynaptic_neuron_set, self._default_node_set
-            ),
+            "source": resolve_neuron_set_ref_to_node_set(self.presynaptic_neuron_set),
+            "target": resolve_neuron_set_ref_to_node_set(self.postsynaptic_neuron_set),
         }
 
         return [sonata_config]  # ty:ignore[invalid-return-type]
@@ -104,8 +100,6 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
 class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
     """Base class for synaptic manipulations applied with a delay at different timestamps."""
 
-    _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))  # ty:ignore[invalid-assignment]
-
     timestamps: TimestampsReference | None = Field(
         default=None,
         title="Timestamps",
@@ -113,6 +107,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
+            SchemaKey.REFERENCE_TAG: ReferenceTag.TIMESTAMPS,
         },
     )
 
@@ -136,10 +131,7 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
     _weight: float = PrivateAttr(default=0.0)
 
     def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
-        timestamps_block = resolve_timestamps_ref_to_timestamps_block(
-            self.timestamps,
-            self._default_timestamps,  # ty:ignore[invalid-argument-type]
-        )
+        timestamps_block = resolve_timestamps_ref_to_timestamps_block(self.timestamps)
 
         timestamps = timestamps_block.timestamps()
         n_timestamps = len(timestamps)

@@ -1,11 +1,13 @@
 import copy
 import logging
 from collections import defaultdict
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
 from jsonschema import ValidationError
 
+import obi_one as obi
 from obi_one.core.schema import SchemaKey, UIElement
 
 from .validate_block import (
@@ -58,6 +60,80 @@ def validate_dict(schema: dict, element: str, form_ref: str) -> None:
     if type(schema.get(element, {})) is not dict:
         msg = f"Validation error at {form_ref}: {element} must be a dictionary"
         raise ValueError(msg)
+
+
+def find_default_reference_label(reference_schema: dict, form: dict) -> str | None:
+    """The name a reference field resolves to when unset, or None if the form declares none.
+
+    Mirrors the UI: the field's role wins, because two fields of the same reference type can mean
+    different things and only the role tells them apart. The by-type labels are the fallback for
+    forms that predate the tags. Either source is sufficient on its own.
+    """
+    tag = reference_schema.get(SchemaKey.REFERENCE_TAG)
+    if tag:
+        by_tag = form.get(SchemaKey.REFERENCE_TAG_DEFAULTS, {}).get(tag)
+        if by_tag:
+            return by_tag
+
+    by_type = form.get(SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS, {})
+    return next(
+        (by_type[t] for t in reference_schema.get(SchemaKey.REFERENCE_TYPES, []) if by_type.get(t)),
+        None,
+    )
+
+
+def validate_default_reference_labels(form: dict, form_ref: str) -> None:
+    """A form must name a default for every reference it shows, by either route.
+
+    A reference with no default has no label for its default option, so the UI hides it. Hiding a
+    field the user is meant to fill is a silent failure, so it is an error here rather than a
+    surprise in the interface. Use ui_hidden to hide one deliberately.
+    """
+    validate_dict(form, SchemaKey.REFERENCE_TAG_DEFAULTS, form_ref)
+    validate_dict(form, SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS, form_ref)
+
+    for label in form.get(SchemaKey.REFERENCE_TAG_DEFAULTS, {}).values():
+        if not isinstance(label, str) or not label:
+            msg = (
+                f"Validation error at {form_ref}: every {SchemaKey.REFERENCE_TAG_DEFAULTS} value "
+                f"must be a non-empty string, got {label!r}"
+            )
+            raise ValueError(msg)
+
+    unlabelled = [
+        ref
+        for ref, reference_schema in iter_reference_schemas(form)
+        if not reference_schema.get(SchemaKey.UI_HIDDEN)
+        and find_default_reference_label(reference_schema, form) is None
+    ]
+    if unlabelled:
+        msg = (
+            f"Validation error at {form_ref}: no default is named for {', '.join(unlabelled)}. "
+            f"Give the field a {SchemaKey.REFERENCE_TAG} the form's "
+            f"{SchemaKey.REFERENCE_TAG_DEFAULTS} names, or list one of its "
+            f"{SchemaKey.REFERENCE_TYPES} in {SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS}."
+        )
+        raise ValueError(msg)
+
+
+def iter_reference_schemas(form: dict) -> Iterator[tuple[str, dict]]:
+    """Every reference field the form contains, wherever it is nested."""
+
+    def walk(node: object, path: str) -> Iterator[tuple[str, dict]]:
+        if isinstance(node, dict):
+            if node.get(SchemaKey.UI_ELEMENT) in {
+                UIElement.REFERENCE,
+                UIElement.NEURON_SET_COMBINATION,
+            }:
+                yield path, node
+            for key, value in node.items():
+                yield from walk(value, f"{path}.{key}" if path else str(key))
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                yield from walk(value, f"{path}[{index}]")
+
+    yield from walk(form.get("$defs", {}), "")
+    yield from walk(form.get("properties", {}), "")
 
 
 def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[complex-structure]
@@ -219,7 +295,7 @@ def validate_config(form: dict, config_ref: str) -> None:
 
     validate_string(form, "title", config_ref)
     validate_string(form, "description", config_ref)
-    validate_dict(form, SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS, config_ref)
+    validate_default_reference_labels(form, config_ref)
     validate_group_order(form, config_ref)
     validate_hidden_refs_not_required(form, config_ref)
 
@@ -261,6 +337,98 @@ def test_schema() -> None:
 # BiophysicalCombinedNeuronSet exercises the multi-reference (anyOf) neuron set slot, while
 # PointCombinedNeuronSet exercises the single-reference ($ref) slot.
 COMBINATION_BLOCKS = ["BiophysicalCombinedNeuronSet", "PointCombinedNeuronSet"]
+
+
+_TAGGED_REFERENCE = {
+    SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+    SchemaKey.REFERENCE_TYPES: ["PointNeuronSetReference"],
+    SchemaKey.REFERENCE_TAG: "stimulus_target",
+}
+
+
+def _form_with(reference: dict, **form_keys) -> dict:
+    return {
+        SchemaKey.UI_ENABLED: True,
+        "properties": {"initialize": {"properties": {"node_set": reference}}},
+        **form_keys,
+    }
+
+
+class TestDefaultReferenceLabels:
+    """A reference the form names no default for is silently hidden by the UI, so it is an error."""
+
+    def test_the_role_wins_over_the_reference_type(self):
+        label = find_default_reference_label(
+            _TAGGED_REFERENCE,
+            {
+                SchemaKey.REFERENCE_TAG_DEFAULTS: {"stimulus_target": "by role"},
+                SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {"PointNeuronSetReference": "by type"},
+            },
+        )
+
+        assert label == "by role"
+
+    def test_the_reference_type_is_the_fallback(self):
+        label = find_default_reference_label(
+            _TAGGED_REFERENCE,
+            {SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {"PointNeuronSetReference": "by type"}},
+        )
+
+        assert label == "by type"
+
+    def test_naming_it_by_role_alone_is_enough(self):
+        form = _form_with(
+            _TAGGED_REFERENCE,
+            **{SchemaKey.REFERENCE_TAG_DEFAULTS: {"stimulus_target": "Default: Sugar"}},
+        )
+
+        validate_default_reference_labels(form, "form")
+
+    def test_naming_it_by_type_alone_is_enough(self):
+        form = _form_with(
+            _TAGGED_REFERENCE,
+            **{SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {"PointNeuronSetReference": "Default"}},
+        )
+
+        validate_default_reference_labels(form, "form")
+
+    def test_a_reference_named_by_neither_is_rejected(self):
+        with pytest.raises(ValueError, match="no default is named for"):
+            validate_default_reference_labels(_form_with(_TAGGED_REFERENCE), "form")
+
+    def test_a_tag_the_form_does_not_name_is_rejected(self):
+        form = _form_with(
+            _TAGGED_REFERENCE,
+            **{SchemaKey.REFERENCE_TAG_DEFAULTS: {"a_different_role": "Default"}},
+        )
+
+        with pytest.raises(ValueError, match="no default is named for"):
+            validate_default_reference_labels(form, "form")
+
+    def test_a_deliberately_hidden_reference_needs_no_default(self):
+        form = _form_with({**_TAGGED_REFERENCE, SchemaKey.UI_HIDDEN: True})
+
+        validate_default_reference_labels(form, "form")
+
+    def test_an_empty_label_is_rejected_rather_than_shown_blank(self):
+        form = _form_with(
+            _TAGGED_REFERENCE,
+            **{
+                SchemaKey.REFERENCE_TAG_DEFAULTS: {"stimulus_target": ""},
+                SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {"PointNeuronSetReference": "Default"},
+            },
+        )
+
+        with pytest.raises(ValueError, match="must be a non-empty string"):
+            validate_default_reference_labels(form, "form")
+
+    def test_the_sweep_finds_references_in_a_real_form(self):
+        """Guards every case above against passing because nothing was inspected."""
+        form = obi.CircuitSimulationScanConfig.model_json_schema()
+
+        found = list(iter_reference_schemas(form))
+
+        assert len(found) > 5
 
 
 def _combination_schema(block_name: str) -> dict:

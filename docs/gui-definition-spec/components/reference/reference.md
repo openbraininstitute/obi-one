@@ -7,8 +7,20 @@ ui_element: `reference`
 - Should accept as input an `object` with `string` fields `block_name` and `block_dict_name`.
 - Second element should be `null`.
 - Should have a non-validating `reference_types` array of strings, listing every reference type the field accepts. Each entry is the class name of a `BlockReference` subclass and must match the type of one of the references allowed by the field's union.
+- May have a non-validating `reference_tag` string naming the *role* the field plays, e.g. `stimulus_target`. The role is what the configuration keys its defaults by.
 
-_References are hidden from the UI if either the `ui_hidden` property is `True` or none of the entries in `reference_types` is present in its configuration's `default_block_reference_labels` [See](../../gui-definition.md#scanconfigs-additional).
+### The default option
+
+Every reference offers a default option, labelled with the block the backend resolves the field to when it is left unset. That label is looked up in two places, in order:
+
+1. the configuration's `reference_tag_defaults`, keyed by this field's `reference_tag`;
+2. the configuration's `default_block_reference_labels`, keyed by reference type — the first entry in `reference_types` that has one.
+
+The role wins because a reference *type* can be shared by fields that mean different things, and only the role tells them apart. An unset inter-spike interval distribution defaults to an exponential while an unset spike time distribution defaults to a normal; both fields are `AllDistributionsReference`, so keyed by type the configuration can only carry one of those answers.
+
+Either source is sufficient on its own. A configuration that names all of its defaults by role need not publish `default_block_reference_labels` at all.
+
+_References are hidden from the UI if either the `ui_hidden` property is `True` or neither source names a default for the field._ A visible reference with no default has no label for its default option, so the schema tests reject that rather than let the field disappear silently — hide one deliberately with `ui_hidden`.
 
 Reference schema [reference](reference_schemas/reference.json)
 

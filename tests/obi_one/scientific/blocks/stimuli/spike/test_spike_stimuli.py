@@ -32,6 +32,16 @@ def _make_timestamps_ref(block):
     return ref
 
 
+def _zero_timestamps_ref():
+    """A block used outside a task has to have its references filled explicitly.
+
+    ``_fill_none_references`` normally does this, giving an unset timestamps reference a single
+    timestamp at the start of the simulation. These unit tests drive blocks directly, so they
+    supply the same thing themselves.
+    """
+    return _make_timestamps_ref(obi.SingleTimestamp(start_time=0.0))
+
+
 def _read_spike_file(path, population):
     with h5py.File(path, "r") as f:
         grp = f[f"spikes/{population}"]
@@ -88,7 +98,9 @@ class TestFullySynchronousSpikeStimulus:
 
 class TestPoissonSpikeStimulus:
     def test_reproducibility_with_same_seed(self):
-        stim = obi.PoissonSpikeStimulus(duration=500.0, frequency=10.0, random_seed=42)
+        stim = obi.PoissonSpikeStimulus(
+            duration=500.0, frequency=10.0, random_seed=42, timestamps=_zero_timestamps_ref()
+        )
         gids = [0, 1, 2]
         r1 = stim.generate_spikes_by_gid(gids)
         r2 = stim.generate_spikes_by_gid(gids)
@@ -97,8 +109,12 @@ class TestPoissonSpikeStimulus:
 
     def test_different_seeds_give_different_spikes(self):
         gids = [0]
-        stim_a = obi.PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=1)
-        stim_b = obi.PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=2)
+        stim_a = obi.PoissonSpikeStimulus(
+            duration=1000.0, frequency=20.0, random_seed=1, timestamps=_zero_timestamps_ref()
+        )
+        stim_b = obi.PoissonSpikeStimulus(
+            duration=1000.0, frequency=20.0, random_seed=2, timestamps=_zero_timestamps_ref()
+        )
         r_a = stim_a.generate_spikes_by_gid(gids)
         r_b = stim_b.generate_spikes_by_gid(gids)
         assert r_a[0] != r_b[0]
@@ -119,22 +135,32 @@ class TestPoissonSpikeStimulus:
 
     def test_timestamp_offset_shifts_window(self):
         stim = obi.PoissonSpikeStimulus(
-            duration=100.0, frequency=20.0, random_seed=7, timestamp_offset=50.0
+            duration=100.0,
+            frequency=20.0,
+            random_seed=7,
+            timestamp_offset=50.0,
+            timestamps=_zero_timestamps_ref(),
         )
         result = stim.generate_spikes_by_gid([0])
         for t in result[0]:
             assert 50.0 <= t <= 150.0
 
     def test_zero_duration_produces_no_spikes(self):
-        stim = obi.PoissonSpikeStimulus(duration=0.0, frequency=10.0, random_seed=0)
+        stim = obi.PoissonSpikeStimulus(
+            duration=0.0, frequency=10.0, random_seed=0, timestamps=_zero_timestamps_ref()
+        )
         result = stim.generate_spikes_by_gid([0, 1])
         for gid in [0, 1]:
             assert result[gid] == []
 
     def test_spike_count_scales_with_frequency(self):
         gids = list(range(3))
-        stim_low = obi.PoissonSpikeStimulus(duration=2000.0, frequency=5.0, random_seed=10)
-        stim_high = obi.PoissonSpikeStimulus(duration=2000.0, frequency=50.0, random_seed=10)
+        stim_low = obi.PoissonSpikeStimulus(
+            duration=2000.0, frequency=5.0, random_seed=10, timestamps=_zero_timestamps_ref()
+        )
+        stim_high = obi.PoissonSpikeStimulus(
+            duration=2000.0, frequency=50.0, random_seed=10, timestamps=_zero_timestamps_ref()
+        )
         r_low = stim_low.generate_spikes_by_gid(gids)
         r_high = stim_high.generate_spikes_by_gid(gids)
         total_low = sum(len(v) for v in r_low.values())
@@ -175,6 +201,7 @@ class TestSinusoidalPoissonSpikeStimulus:
             maximum_rate=20.0,
             modulation_frequency_hz=5.0,
             random_seed=42,
+            timestamps=_zero_timestamps_ref(),
         )
         gids = [0, 1]
         r1 = stim.generate_spikes_by_gid(gids)
@@ -210,6 +237,7 @@ class TestSinusoidalPoissonSpikeStimulus:
             modulation_frequency_hz=2.0,
             phase_degrees=0.0,
             random_seed=42,
+            timestamps=_zero_timestamps_ref(),
         )
         stim_90 = obi.SinusoidalPoissonSpikeStimulus(
             duration=1000.0,
@@ -218,6 +246,7 @@ class TestSinusoidalPoissonSpikeStimulus:
             modulation_frequency_hz=2.0,
             phase_degrees=90.0,
             random_seed=42,
+            timestamps=_zero_timestamps_ref(),
         )
         r0 = stim_0.generate_spikes_by_gid(gids)
         r90 = stim_90.generate_spikes_by_gid(gids)
@@ -268,6 +297,7 @@ class TestSinusoidalPoissonSpikeStimulus:
             modulation_frequency_hz=5.0,
             random_seed=0,
             timestamp_offset=100.0,
+            timestamps=_zero_timestamps_ref(),
         )
         result = stim.generate_spikes_by_gid([0])
         for t in result[0]:

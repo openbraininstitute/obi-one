@@ -100,7 +100,7 @@ def _patch_resolved_timestamps(
     ]
     mock_timestamps_block.timestamps.return_value = values
 
-    def _resolve_timestamps(_ref: object, _default: object) -> object:
+    def _resolve_timestamps(_ref: object) -> object:
         return mock_timestamps_block
 
     monkeypatch.setattr(
@@ -250,25 +250,6 @@ class TestInterSpikeIntervalDistributionSpikeStimulus:
         first_rep = sorted(t for t in timestamps_out if t < 25.0)
         second_rep = sorted(t - 50.0 for t in timestamps_out if 50.0 <= t < 75.0)
         assert first_rep != second_rep
-
-    def test_default_distribution_is_exponential_isi(self, monkeypatch):
-        stimulus = _make_isi_distribution_stimulus()
-        stimulus.distribution = None
-
-        mock_generate = MagicMock(return_value=[10.0])
-        monkeypatch.setattr(
-            InterSpikeIntervalDistributionSpikeStimulus,
-            "_generate_spike_train_from_distribution",
-            mock_generate,
-        )
-
-        _patch_resolved_timestamps(monkeypatch, [0.0])
-
-        stimulus.generate_spikes_by_gid([0])
-
-        distribution = mock_generate.call_args.args[0]
-        assert isinstance(distribution, obi.ExponentialDistribution)
-        assert distribution.scale == 50.0  # ruff: ignore[float-equality-comparison]
 
 
 class TestSpikeStimulusIndexingConvention:
