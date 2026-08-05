@@ -125,9 +125,9 @@ def _location_edge_properties(
             raise BuildSynaptomeError(msg) from exc
         segment_length = float(np.linalg.norm(end - start))
         if segment_length <= 0:
-        raise BuildSynaptomeError(
-            f"Morphology location section={section_id}, segment={segment_id} has zero length."
-        )
+            raise BuildSynaptomeError(
+                f"Morphology location section={section_id}, segment={segment_id} has zero length."
+            )
 
         if not 0.0 <= physical_offset <= segment_length:
             raise BuildSynaptomeError(
