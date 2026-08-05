@@ -1,6 +1,8 @@
 from enum import StrEnum
+from pathlib import Path
 from typing import ClassVar
 
+from entitysdk import Client
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -10,6 +12,10 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.build_synaptome import (
+    BuildSynaptomeResult,
+    build_synaptome_artifact,
+)
 from obi_one.scientific.unions.unions_distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
@@ -139,6 +145,7 @@ class BuildSynaptomeScanConfig(ScanConfig):
     )
     synapse_groups: dict[str, SynapseGroup] = Field(
         default_factory=dict,
+        min_length=1,
         title="Synapse groups",
         description="Incoming synapse groups to attach to the ME-model.",
         json_schema_extra={
@@ -152,3 +159,13 @@ class BuildSynaptomeScanConfig(ScanConfig):
 
 class BuildSynaptomeSingleConfig(BuildSynaptomeScanConfig, SingleConfigMixin):
     """Single-coordinate Build Synaptome config."""
+
+
+def build_synaptome(
+    config: BuildSynaptomeSingleConfig,
+    output_directory: Path,
+    *,
+    db_client: Client,
+) -> BuildSynaptomeResult:
+    """Build and validate a simulatable single-neuron SONATA synaptome."""
+    return build_synaptome_artifact(config, output_directory, db_client=db_client)

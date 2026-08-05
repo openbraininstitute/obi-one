@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "bluepysnap"
-version = "3.0.5"
+version = "3.0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -310,7 +310,7 @@ dependencies = [
     { name = "pandas" },
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/08/7e02f9e347c6a9b22f7bdb000c9abcdad9e5828b018dcb5999bf84c0d528/bluepysnap-3.0.5.tar.gz", hash = "sha256:e818e76e2a62fc8ddb844066fc462d6c715fab3c8fca500ea47b699b383a4adb", size = 1053136, upload-time = "2026-06-09T12:43:26.733Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/b1/58fefcd7212c9792ef2c3c544ae8c6f1825d429f16d8cafefc2ee9f4e132/bluepysnap-3.0.7.tar.gz", hash = "sha256:7671ef1e8a78dd19fb1b5743ae783a434264d5a165b37037868550d62db1577e", size = 969535, upload-time = "2026-07-24T12:07:56.578Z" }
 
 [[package]]
 name = "bluerecording"
@@ -906,14 +906,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.2"
+version = "0.19.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/69/90527f90ab96b650bb88f185fa131788abe6079e44c9f4443234d6ccc46a/entitysdk-0.19.2.tar.gz", hash = "sha256:308dedc77531963ab66bd8a5ab8ad3accdce3c5db7d751c911c5acdb1122cfc7", size = 90827, upload-time = "2026-07-08T13:16:27.367Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/5d/980a81507f401e2b37b69e15bbc980702a91877fc8d2bbfd1f915bec0970/entitysdk-0.19.11.tar.gz", hash = "sha256:9e0554950c0e436621af24593d960e1e2199030fb21ed63a6cac2b03ea52bdf0", size = 93558, upload-time = "2026-08-05T14:23:35.588Z" }
 
 [[package]]
 name = "executing"
@@ -2060,9 +2060,9 @@ dependencies = [
     { name = "scikit-image" },
     { name = "scipy" },
 ]
-sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha256:9369a7dc13de9d4294e982c952c397b31bbc17403e43794e6d28f8a2864cd509" }
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7.tar.gz", hash = "sha512:976bcf603ce6fc192941a170ac88ba18c371e7d59c053fd200cb691f163a0259ef9126cb358c943ac36915f7cc44e4fe451d1f348b3ccd37bdbf281868ac5106", upload-time = "2026-03-24T13:23:51.355Z" }
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha256:46a4221731317b131e2780b07d78bf5f0a2e698207467208de22ce09ac9e01c1" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/neuromorphomesh/0.2.7/neuromorphomesh-0.2.7-py3-none-any.whl", hash = "sha512:7f42255c55d93a23190a598930acbc7f729090cf2e68bd804c405364d631e300984cad13976138dbcc95b649f2e9aa5443114b772af99a3a59821c741d7e56cb", upload-time = "2026-03-24T13:23:51.355Z" },
 ]
 
 [[package]]
@@ -2282,7 +2282,7 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.99" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepysnap", specifier = ">=3.0.5" },
+    { name = "bluepysnap", specifier = ">=3.0.7" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
     { name = "brainbuilder", specifier = ">=0.20.4" },
     { name = "brian2" },
@@ -3457,7 +3457,7 @@ dependencies = [
     { name = "tqdm" },
 ]
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.2.4/ultraliser-2.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4120f998a7bcdaf09d9b7f46cc7790bb3b60160913d91e658b440a62adb5641a", upload-time = "2026-06-30T14:21:56.758Z" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/ultraliser/2.2.4/ultraliser-2.2.4-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha512:ab05ee1a04eed5cb0ed57d82f60e39edbafc315e75587997f0bf6acef5d4926b57c19e73bece353dbbb98b04c5790a026f7969bbe8013169c7eed08f15126f2d", size = 7911383, upload-time = "2026-06-30T14:21:56.758Z" },
 ]
 
 [[package]]
