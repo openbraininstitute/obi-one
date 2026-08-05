@@ -993,14 +993,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.10"
+version = "0.19.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/33/03/cfb677cc2b37a2ba5a2abc7dda779740a6415e96cd8c6b0effc9bd1b8a76/entitysdk-0.19.10.tar.gz", hash = "sha256:00b1e208d4ee2e12660e5a0f49a4c1802733a3a108bc9a8dd764e564ca7b2fc2", size = 93539, upload-time = "2026-08-03T15:53:25.847Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/5d/980a81507f401e2b37b69e15bbc980702a91877fc8d2bbfd1f915bec0970/entitysdk-0.19.11.tar.gz", hash = "sha256:9e0554950c0e436621af24593d960e1e2199030fb21ed63a6cac2b03ea52bdf0", size = 93558, upload-time = "2026-08-05T14:23:35.588Z" }
 
 [[package]]
 name = "executing"
@@ -2489,7 +2489,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
-    { name = "sonata-simplify", editable = "../sonata_simplify" },
+    { name = "sonata-simplify", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
@@ -3391,7 +3391,7 @@ wheels = [
 [[package]]
 name = "sonata-simplify"
 version = "0.1.0"
-source = { editable = "../sonata_simplify" }
+source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
 dependencies = [
     { name = "click" },
     { name = "h5py" },
@@ -3400,45 +3400,10 @@ dependencies = [
     { name = "scipy" },
     { name = "tqdm" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "bluecellulab", marker = "extra == 'all'", specifier = ">=2.6.0" },
-    { name = "bluecellulab", marker = "extra == 'simulation'", specifier = ">=2.6.0" },
-    { name = "bluepysnap", marker = "extra == 'all'", specifier = ">=3.0.0,<4.0.0" },
-    { name = "bluepysnap", marker = "extra == 'simulation'", specifier = ">=3.0.0,<4.0.0" },
-    { name = "brian2", marker = "extra == 'all'", specifier = ">=2.5.0" },
-    { name = "brian2", marker = "extra == 'brian2'", specifier = ">=2.5.0" },
-    { name = "click", specifier = ">=8.0.0" },
-    { name = "efel", marker = "extra == 'all'", specifier = ">=5.0.0" },
-    { name = "efel", marker = "extra == 'simulation'", specifier = ">=5.0.0" },
-    { name = "h5py", specifier = ">=3.8.0" },
-    { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.5.0" },
-    { name = "matplotlib", marker = "extra == 'imaging'", specifier = ">=3.5.0" },
-    { name = "matplotlib", marker = "extra == 'packaging'", specifier = ">=3.5.0" },
-    { name = "matplotlib", marker = "extra == 'simulation'", specifier = ">=3.5.0" },
-    { name = "nest-simulator", marker = "extra == 'all'", specifier = ">=3.8.0" },
-    { name = "nest-simulator", marker = "extra == 'nest'", specifier = ">=3.8.0" },
-    { name = "neurom", marker = "extra == 'all'", specifier = ">=3.0.0" },
-    { name = "neurom", marker = "extra == 'imaging'", specifier = ">=3.0.0" },
-    { name = "neurom", marker = "extra == 'packaging'", specifier = ">=3.0.0" },
-    { name = "neuron", marker = "extra == 'all'", specifier = ">=8.0.2" },
-    { name = "neuron", marker = "extra == 'simulation'", specifier = ">=8.0.2" },
-    { name = "numpy", specifier = ">=2.0.0" },
-    { name = "pillow", marker = "extra == 'all'", specifier = ">=9.0.0" },
-    { name = "pillow", marker = "extra == 'imaging'", specifier = ">=9.0.0" },
-    { name = "pillow", marker = "extra == 'packaging'", specifier = ">=9.0.0" },
-    { name = "pydantic", specifier = ">=2.5.2,<3.0.0" },
-    { name = "pytest", marker = "extra == 'all'", specifier = ">=7.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
-    { name = "pytest-cov", marker = "extra == 'all'", specifier = ">=4.0.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "ruff", marker = "extra == 'all'", specifier = ">=0.1.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "scipy", specifier = ">=1.10.0" },
-    { name = "tqdm", specifier = ">=4.65.0" },
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.1.0/sonata_simplify-0.1.0.tar.gz", hash = "sha512:a4eecc092b218553d36f6e2c4f7be3c0601f00efdd004d2805aee1ded47326b7ab89bb7179898f103c6f51faddbdcab0b14b44894fc697259f945ea8f9ecbcc0", size = 185371, upload-time = "2026-08-05T14:59:39.752Z" }
+wheels = [
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.1.0/sonata_simplify-0.1.0-py3-none-any.whl", hash = "sha512:de2ec1df73015e8c3fb72f85dd3d7f466165113fe36d3873e33a84866edc8d2ed15de487751be4b91f0ea39280f76fb80c1d076b6e123bbb15f9061d94cda031", size = 198114, upload-time = "2026-08-05T14:59:39.326Z" },
 ]
-provides-extras = ["simulation", "brian2", "nest", "imaging", "packaging", "dev", "all"]
 
 [[package]]
 name = "sortedcontainers"
