@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field, NonNegativeFloat
 
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.units import Units
@@ -41,25 +42,27 @@ class DeprecatedNeuronSet(NeuronSet, abc.ABC):
             "Please use an alternative neuron set instead."
         )
 
+    # These raise ConfigValidationError rather than NotImplementedError so the service can tell
+    # "this config is not runnable, the user must migrate it" apart from "this abstract method was
+    # never implemented", which is a genuine bug. NotImplementedError is used throughout obi_one
+    # for the latter, so the generate endpoints could only map it to a 500; ConfigValidationError
+    # they map to a 422 carrying the message below.
     def _resolve_ids(self, circuit: Circuit) -> list[int]:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
-        raise NotImplementedError(self.deprecation_error_message)
-
-    def _get_expression(self, circuit: Circuit) -> dict | list:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def get_node_set_definition(
         self, circuit: Circuit, *, force_resolve_ids: bool = False
     ) -> tuple[dict | list, dict]:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def get_populations(self, circuit: Circuit) -> list[str]:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def _get_expression(self, circuit: Circuit) -> dict | list:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
 
 class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):

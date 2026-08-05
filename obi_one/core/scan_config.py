@@ -235,7 +235,13 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     f"the block you are referencing, or should be an empty string to "
                     f"reference a root level block."
                 )
-                raise KeyError(msg) from None
+                # A ValueError, not the KeyError that got us here: this runs inside the
+                # `fill_block_references_and_names` model validator, and pydantic folds only
+                # ValueError/AssertionError into a ValidationError. Since a scan config is a
+                # FastAPI request body, validated before any endpoint code runs, any other type
+                # escapes unhandled and the caller gets an opaque 500 instead of a 422 carrying
+                # the message above.
+                raise ValueError(msg) from None
 
         elif not block_reference.block_dict_name and block_reference.block_name:
             # If the block_dict_name is empty, we assume the block_name

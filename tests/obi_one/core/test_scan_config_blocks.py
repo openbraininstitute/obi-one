@@ -6,7 +6,7 @@ These tests use minimal concrete subclasses to avoid importing scientific module
 from typing import Annotated, Any, ClassVar
 
 import pytest
-from pydantic import Discriminator, Field
+from pydantic import Discriminator, Field, ValidationError
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
@@ -188,8 +188,14 @@ class TestFillBlockReferences:
         assert config.ref_holder.ref_field.block is config.blocks["target_block"]
 
     def test_block_reference_bad_dict_name_raises(self):
+        """A reference naming a dictionary that does not exist is a validation error.
+
+        ``ValidationError`` rather than a bare exception because resolution runs inside a model
+        validator and a scan config is a FastAPI request body: only ValueError/AssertionError get
+        folded into a ValidationError, and anything else escapes body validation as an opaque 500.
+        """
         holder = RefHolder(ref_field=TestRef(block_dict_name="nonexistent_dict", block_name="x"))
-        with pytest.raises(KeyError):
+        with pytest.raises(ValidationError, match="nonexistent_dict"):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),
                 blocks={},
@@ -197,8 +203,12 @@ class TestFillBlockReferences:
             )
 
     def test_block_reference_bad_block_name_raises(self):
+        """A reference to a block name that is not in the dictionary is a validation error.
+
+        The common case: a typo, or a block deleted while something still targets it.
+        """
         holder = RefHolder(ref_field=TestRef(block_dict_name="blocks", block_name="missing"))
-        with pytest.raises(KeyError, match="missing"):
+        with pytest.raises(ValidationError, match="missing"):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),
                 blocks={"other": BlockTypeA()},
