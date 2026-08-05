@@ -20,6 +20,13 @@ import libsonata
 from bluepysnap import circuit_validation
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
+from entitysdk.types import DerivationType
+
+from obi_one.scientific.library.circuit_metrics import (
+    TYPES_OF_BIOPHYS_NODES,
+    TYPES_OF_POINT_NODES,
+    TYPES_OF_VIRTUAL_NODES,
+)
 
 if TYPE_CHECKING:
     import types
@@ -27,8 +34,35 @@ if TYPE_CHECKING:
 
     from bluepysnap import Circuit as SnapCircuitType
     from bluepysnap.nodes import NodePopulation
+    from entitysdk.types import TargetSimulator
 
 L = logging.getLogger(__name__)
+
+_ALLOWED_NEW_POPULATION_TYPES = frozenset(TYPES_OF_VIRTUAL_NODES) | frozenset(TYPES_OF_POINT_NODES)
+
+# Point-neuron population types must be compatible with the circuit target simulator.
+_POINT_TYPE_ALLOWED_SIMULATORS: dict[str, frozenset[str]] = {
+    "brian2_point": frozenset({"Brian2"}),
+    "inait_point_neuron_lif": frozenset({"LearningEngine"}),
+    "point_neuron": frozenset({"NEURON", "CORENEURON"}),
+    "point_process": frozenset({"NEURON", "CORENEURON"}),
+}
+
+
+def is_circuit_customization(circuit: models.Circuit) -> bool:
+    """Return True if the circuit has a ``circuit_customization`` derivation link."""
+    for deriv in circuit.generated_from_derivations or []:
+        if deriv.derivation_type == DerivationType.circuit_customization:
+            return True
+    return False
+
+
+def customization_parent_entity(circuit: models.Circuit) -> models.Entity | None:
+    """Return the parent entity from a ``circuit_customization`` derivation, if any."""
+    for deriv in circuit.generated_from_derivations or []:
+        if deriv.derivation_type == DerivationType.circuit_customization and deriv.used is not None:
+            return deriv.used
+    return None
 
 
 def run_circuit_validation(
@@ -59,8 +93,18 @@ def run_circuit_validation(
 
         circuit_config_path = stage_circuit(db_client, model=circuit, output_dir=staged_dir)
 
+        from bluepysnap import Circuit as SnapCircuit  # noqa: PLC0415
+
+        try:
+            snap_circuit = SnapCircuit(str(circuit_config_path))
+        except Exception as e:  # noqa: BLE001
+            msg = f"Could not open circuit for validation: {e}"
+            L.warning(msg)
+            _update_lifecycle_status(db_client, circuit_id, "disqualified")
+            return {"valid": False, "errors": [msg], "warnings": []}
+
         # Compile MOD files if present
-        mod_dir = _find_mod_dir(circuit_config_path)
+        mod_dir = _find_mod_dir(snap_circuit)
         has_mods = bool(mod_dir and mod_dir.exists() and any(mod_dir.glob("*.mod")))
         if has_mods:
             try:
@@ -73,17 +117,17 @@ def run_circuit_validation(
         warning_messages: list[str] = []
 
         # Morphology path existence check (issue k)
-        fatal_errors.extend(_validate_morphology_paths(circuit_config_path))
+        fatal_errors.extend(_validate_morphology_paths(snap_circuit))
 
         # Per-population HOC template existence check (issue l)
-        fatal_errors.extend(_validate_emodel_paths(circuit_config_path))
+        fatal_errors.extend(_validate_emodel_paths(snap_circuit))
 
         # ID mapping file validity check (issue j)
-        id_map_warnings = _validate_id_mapping_files(circuit_config_path)
+        id_map_warnings = _validate_id_mapping_files(circuit_config_path, snap_circuit)
         warning_messages.extend(id_map_warnings)
 
         # HOC template instantiation with bluecellulab
-        hoc_errors = _validate_hoc_loading(circuit_config_path, staged_dir, load_mods=has_mods)
+        hoc_errors = _validate_hoc_loading(snap_circuit, staged_dir, load_mods=has_mods)
         fatal_errors.extend(hoc_errors)
 
         # bluepysnap structural validation
@@ -93,31 +137,34 @@ def run_circuit_validation(
         warning_messages.extend(str(e) for e in snap_errors if e.level == "WARNING")
 
         # Subset checks: morphologies and emodels must exist in parent
-        if is_customization and circuit.root_circuit_id:
-            with tempfile.TemporaryDirectory() as parent_tmp:
-                parent_dir = Path(parent_tmp) / "parent"
-                parent_dir.mkdir()
-                try:
-                    parent = db_client.get_entity(
-                        entity_id=circuit.root_circuit_id, entity_type=models.Circuit
-                    )
-                    parent_config_path = stage_circuit(
-                        db_client, model=parent, output_dir=parent_dir
-                    )
-                except Exception as e:  # noqa: BLE001
-                    L.warning("Could not stage parent circuit for checks: %s", e)
-                else:
-                    fatal_errors.extend(
-                        _check_new_populations_not_biophysical(
-                            circuit_config_path, parent_config_path
+        if is_customization:
+            parent_entity = customization_parent_entity(circuit)
+
+            if parent_entity is not None:
+                with tempfile.TemporaryDirectory() as parent_tmp:
+                    parent_dir = Path(parent_tmp) / "parent"
+                    parent_dir.mkdir()
+                    try:
+                        parent = db_client.get_entity(
+                            entity_id=parent_entity.id, entity_type=models.Circuit
                         )
-                    )
-                    fatal_errors.extend(
-                        _check_content_subset_of_parent(circuit_config_path, parent_config_path)
-                    )
-                    warning_messages.extend(
-                        _check_node_columns_unchanged(circuit_config_path, parent_config_path)
-                    )
+                        parent_config_path = stage_circuit(
+                            db_client, model=parent, output_dir=parent_dir
+                        )
+                        parent_snap = SnapCircuit(str(parent_config_path))
+                    except Exception as e:  # noqa: BLE001
+                        L.warning("Could not stage parent circuit for checks: %s", e)
+                    else:
+                        fatal_errors.extend(
+                            _check_new_populations_not_biophysical(
+                                snap_circuit,
+                                parent_snap,
+                                target_simulator=circuit.target_simulator,
+                            )
+                        )
+                        fatal_errors.extend(
+                            _check_content_subset_of_parent(snap_circuit, parent_snap)
+                        )
 
         if fatal_errors:
             L.warning(
@@ -129,7 +176,7 @@ def run_circuit_validation(
         L.info("Circuit %s validation PASSED (%d warnings)", circuit_id, len(warning_messages))
 
         if is_customization:
-            _recompute_dynamic_params(circuit_config_path)
+            _recompute_dynamic_params(snap_circuit, circuit_config_path)
 
         _update_lifecycle_status(db_client, circuit_id, "active")
 
@@ -141,40 +188,44 @@ def run_circuit_validation(
 # ---------------------------------------------------------------------------
 
 
-def _validate_morphology_paths(circuit_config_path: Path) -> list[str]:
-    """Verify that the morphologies_dir referenced in the circuit config exists on disk.
+def _validate_morphology_paths(circuit: SnapCircuitType) -> list[str]:
+    """Verify that morphologies referenced by nodes actually exist.
 
-    Resolves per-population morphologies_dir (takes precedence over the component-level
-    default). Fails if the directory is missing or not a directory.
-    Skips populations that use alternate_morphologies (H5-based) instead.
+    Uses bluepysnap to resolve morphology file paths for a sample of nodes in each
+    biophysical population. This validates both file-based morphologies_dir and
+    alternate_morphologies (H5 containers) transparently.
     """
-    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    cfg = json.loads(config.expanded_json)
-    component_morph_dir = cfg.get("components", {}).get("morphologies_dir", "")
     errors = []
 
-    for entry in cfg.get("networks", {}).get("nodes", []):
-        for pop_name, pop_cfg in entry.get("populations", {}).items():
-            if pop_cfg.get("type") == "virtual":
-                continue
+    for pop_name in circuit.nodes.population_names:
+        pop = circuit.nodes[pop_name]
+        if getattr(pop, "type", None) not in TYPES_OF_BIOPHYS_NODES:
+            continue
 
-            # Skip if alternate_morphologies (H5-based) is defined
-            if pop_cfg.get("alternate_morphologies"):
+        # Sample node IDs to check morphology accessibility
+        try:
+            node_ids = pop.ids()
+            if len(node_ids) == 0:
                 continue
+            # Sample up to 10 nodes evenly distributed
+            sample_size = min(10, len(node_ids))
+            step = max(1, len(node_ids) // sample_size)
+            sample_ids = node_ids[::step][:sample_size]
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"Population '{pop_name}': could not retrieve node IDs: {e}")
+            continue
 
-            morph_dir_str = pop_cfg.get("morphologies_dir", "") or component_morph_dir
-            if not morph_dir_str:
-                continue
-
-            morph_dir = Path(morph_dir_str)
-            if not morph_dir.exists():
+        for node_id in sample_ids:
+            try:
+                filepath = pop.morph.get_filepath(node_id)
+                if not Path(filepath).exists():
+                    errors.append(f"Population '{pop_name}': morphology file not found: {filepath}")
+                    break  # one missing file is enough to flag the population
+            except Exception as e:  # noqa: BLE001
                 errors.append(
-                    f"Population '{pop_name}': morphologies_dir does not exist: {morph_dir}"
+                    f"Population '{pop_name}': morphology not accessible for node {node_id}: {e}"
                 )
-            elif not morph_dir.is_dir():
-                errors.append(
-                    f"Population '{pop_name}': morphologies_dir is not a directory: {morph_dir}"
-                )
+                break
 
     return errors
 
@@ -184,69 +235,51 @@ def _validate_morphology_paths(circuit_config_path: Path) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _validate_emodel_paths(circuit_config_path: Path) -> list[str]:  # noqa: C901
+def _validate_emodel_paths(circuit: SnapCircuitType) -> list[str]:  # noqa: C901
     """Check that all HOC template files referenced by biophysical populations exist.
 
-    Resolves biophysical_neuron_models_dir per population (population-level override
-    takes precedence over the component-level default).
+    Uses bluepysnap so population-level and component-level
+    ``biophysical_neuron_models_dir`` are resolved the same way as SNAP.
     """
-    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    cfg = json.loads(config.expanded_json)
-    component_hoc_dir = cfg.get("components", {}).get("biophysical_neuron_models_dir", "")
-    config_dir = circuit_config_path.parent
-    errors = []
+    errors: list[str] = []
 
-    for entry in cfg.get("networks", {}).get("nodes", []):
-        nodes_file_str = entry.get("nodes_file", "")
-        for pop_name, pop_cfg in entry.get("populations", {}).items():
-            if pop_cfg.get("type") == "virtual":
+    for pop_name in circuit.nodes.population_names:
+        pop = circuit.nodes[pop_name]
+        if getattr(pop, "type", None) not in TYPES_OF_BIOPHYS_NODES:
+            continue
+
+        hoc_dir_str = pop.config.get("biophysical_neuron_models_dir")
+        if not hoc_dir_str:
+            continue
+        hoc_dir = Path(hoc_dir_str)
+
+        if not hoc_dir.exists():
+            errors.append(
+                f"Population '{pop_name}': biophysical_neuron_models_dir does not exist: {hoc_dir}"
+            )
+            continue
+
+        if "model_template" not in pop.property_names:
+            continue
+
+        try:
+            templates = {t for t in pop.get(properties="model_template").unique().tolist() if t}
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"Population '{pop_name}': could not read model_template: {e}")
+            continue
+
+        for template_ref in templates:
+            if ":" not in str(template_ref):
                 continue
-
-            hoc_dir_str = pop_cfg.get("biophysical_neuron_models_dir", "") or component_hoc_dir
-            if not hoc_dir_str:
-                continue
-            hoc_dir = Path(hoc_dir_str)
-            if not hoc_dir.is_absolute():
-                hoc_dir = config_dir / hoc_dir
-
-            if not hoc_dir.exists():
+            kind, name = str(template_ref).split(":", 1)
+            hoc_file = hoc_dir / f"{name}.{kind}"
+            if not hoc_file.exists():
                 errors.append(
-                    f"Population '{pop_name}': biophysical_neuron_models_dir does not exist:"
-                    f" {hoc_dir}"
+                    f"Population '{pop_name}': HOC template '{hoc_file.name}'"
+                    f" not found in {hoc_dir}"
                 )
-                continue
-
-            if not nodes_file_str:
-                continue
-            templates = _read_model_templates(nodes_file_str, pop_name)
-            for template_ref in templates:
-                if ":" not in template_ref:
-                    continue
-                kind, name = template_ref.split(":", 1)
-                hoc_file = hoc_dir / f"{name}.{kind}"
-                if not hoc_file.exists():
-                    errors.append(
-                        f"Population '{pop_name}': HOC template '{hoc_file.name}'"
-                        f" not found in {hoc_dir}"
-                    )
 
     return errors
-
-
-def _read_model_templates(nodes_file: str, pop_name: str) -> set[str]:
-    """Read unique model_template values for a population from its H5 file."""
-    try:
-        with h5py.File(nodes_file, "r") as f:
-            if "nodes" not in f or pop_name not in f["nodes"]:
-                return set()
-            group = f["nodes"][pop_name].get("0", f["nodes"][pop_name])
-            if "model_template" not in group:
-                return set()
-            raw = group["model_template"][:]
-            return {t.decode() if isinstance(t, bytes) else str(t) for t in raw}
-    except Exception as e:  # noqa: BLE001
-        L.warning("Could not read model_template from '%s' (pop '%s'): %s", nodes_file, pop_name, e)
-        return set()
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +287,9 @@ def _read_model_templates(nodes_file: str, pop_name: str) -> set[str]:
 # ---------------------------------------------------------------------------
 
 
-def _validate_id_mapping_files(circuit_config_path: Path) -> list[str]:
+def _validate_id_mapping_files(
+    circuit_config_path: Path, circuit: SnapCircuitType
+) -> list[str]:
     """Validate the brainbuilder id_mapping.json if present.
 
     id_mapping.json is produced by brainbuilder's subcircuit extraction and referenced at
@@ -263,8 +298,7 @@ def _validate_id_mapping_files(circuit_config_path: Path) -> list[str]:
           "parent_name": "...", "original_name": "..." }
 
     When nodes are replaced (different count or IDs), the new_id values may exceed the
-    population size and the mapping becomes invalid. We warn and remove the file if stale
-    (removal only if it is a symlink, i.e. inherited from the parent circuit).
+    population size and the mapping becomes invalid. We warn and remove the stale file.
 
     Returns a list of warning messages.
     """
@@ -284,41 +318,30 @@ def _validate_id_mapping_files(circuit_config_path: Path) -> list[str]:
     except Exception as e:  # noqa: BLE001
         return [f"id_mapping.json: could not parse: {e}"]
 
-    pop_sizes = _get_population_sizes(cfg)
+    pop_sizes = _get_population_sizes(circuit)
     stale_populations = _find_stale_populations(mapping, pop_sizes)
 
     if not stale_populations:
         return []
 
     detail = "; ".join(stale_populations)
-    msg = f"id_mapping.json is stale after nodes replacement ({detail})"
-    if id_mapping_path.is_symlink():
-        id_mapping_path.unlink()
-        msg += " — file removed from the circuit (regenerate with brainbuilder if needed)"
-    else:
-        msg += (
-            " — file was not removed (not a parent symlink);"
-            " regenerate with brainbuilder or remove manually"
-        )
+    id_mapping_path.unlink()
+    msg = (
+        f"id_mapping.json is stale after nodes replacement ({detail}) — "
+        "file removed from the circuit (regenerate with brainbuilder if needed)"
+    )
     L.warning(msg)
     return [msg]
 
 
-def _get_population_sizes(cfg: dict) -> dict[str, int]:
-    """Build per-population node count from the H5 files referenced in the config."""
+def _get_population_sizes(circuit: SnapCircuitType) -> dict[str, int]:
+    """Return per-population node counts via bluepysnap ``population.size``."""
     pop_sizes: dict[str, int] = {}
-    for entry in cfg.get("networks", {}).get("nodes", []):
-        nodes_file = entry.get("nodes_file", "")
-        if not nodes_file:
-            continue
+    for pop_name in circuit.nodes.population_names:
         try:
-            with h5py.File(nodes_file, "r") as f:
-                for pname in f.get("nodes", {}):
-                    pop_group = f["nodes"][pname]
-                    if "node_type_id" in pop_group:
-                        pop_sizes[pname] = pop_group["node_type_id"].shape[0]
+            pop_sizes[pop_name] = int(circuit.nodes[pop_name].size)
         except Exception as e:  # noqa: BLE001
-            L.warning("Could not read population sizes from '%s': %s", nodes_file, e)
+            L.warning("Could not read size for population '%s': %s", pop_name, e)
     return pop_sizes
 
 
@@ -346,35 +369,28 @@ def _find_stale_populations(mapping: dict, pop_sizes: dict[str, int]) -> list[st
 
 
 def _validate_hoc_loading(
-    circuit_config_path: Path, working_dir: Path, *, load_mods: bool
+    circuit: SnapCircuitType, working_dir: Path, *, load_mods: bool
 ) -> list[str]:
     """Validate HOC templates by instantiating them with bluecellulab."""
-    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    cfg = json.loads(config.expanded_json)
-
-    all_hoc_files = _collect_hoc_files(cfg, working_dir)
+    all_hoc_files = _collect_hoc_files(circuit)
     if not all_hoc_files:
         return []
 
     if load_mods:
         _load_compiled_mechanisms(working_dir)
 
-    from obi_one.scientific.validations.emodels import bluecellulab_initializable  # noqa: PLC0415
-
-    errors = []
-
+    errors: list[str] = []
     for hoc_path in all_hoc_files:
-        L.info("Validating HOC template with bluecellulab: %s", hoc_path.name)
-        morph_path = _find_morphology_for_template(hoc_path.stem, circuit_config_path)
-        if not morph_path:
-            L.warning("No morphology found for template '%s' — skipping", hoc_path.name)
+        morph_path = _find_morphology_for_template(hoc_path.stem, circuit)
+        if morph_path is None:
+            L.info("Skipping HOC '%s': no matching morphology found", hoc_path.name)
             continue
         try:
-            bluecellulab_initializable(
-                hoc_path=str(hoc_path),
-                morphology_path=str(morph_path),
-                template_format="v6",
+            from obi_one.scientific.validations.emodels import (
+                bluecellulab_initializable,  # noqa: PLC0415
             )
+
+            bluecellulab_initializable(hoc_path, morph_path)
         except Exception as e:  # noqa: BLE001
             errors.append(f"HOC template '{hoc_path.name}' failed to instantiate: {e}")
             L.warning("Failed to instantiate HOC template %s: %s", hoc_path.name, e)
@@ -382,21 +398,19 @@ def _validate_hoc_loading(
     return errors
 
 
-def _collect_hoc_files(cfg: dict, working_dir: Path) -> list[Path]:
-    """Collect all HOC files from per-population biophysical_neuron_models_dir."""
-    component_hoc_dir = cfg.get("components", {}).get("biophysical_neuron_models_dir", "")
-
+def _collect_hoc_files(circuit: SnapCircuitType) -> list[Path]:
+    """Collect HOC files from each population's resolved biophysical_neuron_models_dir."""
     hoc_dirs: list[Path] = []
-    for entry in cfg.get("networks", {}).get("nodes", []):
-        for pop_cfg in entry.get("populations", {}).values():
-            if pop_cfg.get("type") == "virtual":
-                continue
-            dir_str = pop_cfg.get("biophysical_neuron_models_dir", "") or component_hoc_dir
-            if not dir_str:
-                continue
-            hoc_dir = Path(dir_str) if Path(dir_str).is_absolute() else working_dir / dir_str
-            if hoc_dir.exists() and hoc_dir not in hoc_dirs:
-                hoc_dirs.append(hoc_dir)
+    for pop_name in circuit.nodes.population_names:
+        pop = circuit.nodes[pop_name]
+        if getattr(pop, "type", None) not in TYPES_OF_BIOPHYS_NODES:
+            continue
+        dir_str = pop.config.get("biophysical_neuron_models_dir")
+        if not dir_str:
+            continue
+        hoc_dir = Path(dir_str)
+        if hoc_dir.exists() and hoc_dir not in hoc_dirs:
+            hoc_dirs.append(hoc_dir)
 
     return [f for d in hoc_dirs for f in d.glob("*.hoc")]
 
@@ -412,12 +426,9 @@ def _load_compiled_mechanisms(working_dir: Path) -> None:
         h.nrn_load_dll(str(mech_dir / "special.so"))
 
 
-def _find_morphology_for_template(template_name: str, circuit_config_path: Path) -> Path | None:
+def _find_morphology_for_template(template_name: str, circuit: SnapCircuitType) -> Path | None:
     """Find a morphology that uses the given HOC template via the nodes file."""
-    from bluepysnap import Circuit  # noqa: PLC0415
-
     try:
-        circuit = Circuit(str(circuit_config_path))
         for pop_name in circuit.nodes.population_names:
             pop = circuit.nodes[pop_name]
             if "model_template" not in pop.property_names:
@@ -457,13 +468,16 @@ def _update_lifecycle_status(db_client: Client, circuit_id: UUID, status: str) -
         L.warning("Failed to update lifecycle_status for circuit %s", circuit_id, exc_info=True)
 
 
-def _find_mod_dir(circuit_config_path: Path) -> Path | None:
-    """Find the mechanisms directory from circuit_config.json using libsonata."""
-    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    cfg = json.loads(config.expanded_json)
-    mod_dir = cfg.get("components", {}).get("mechanisms_dir", "")
-    if mod_dir:
-        return Path(mod_dir)
+def _find_mod_dir(circuit: SnapCircuitType) -> Path | None:
+    """Find a mechanisms directory via SNAP's resolved per-population ``mechanisms_dir``.
+
+    SNAP resolves both global ``components.mechanisms_dir`` and population-level
+    overrides into ``population.config``.
+    """
+    for pop_name in circuit.nodes.population_names:
+        mech = circuit.nodes[pop_name].config.get("mechanisms_dir")
+        if mech:
+            return Path(mech)
     return None
 
 
@@ -484,29 +498,21 @@ def _compile_mechanisms(mod_dir: Path, working_dir: Path) -> None:
     L.info("MOD compilation successful")
 
 
-def _recompute_dynamic_params(circuit_config_path: Path) -> None:
+def _recompute_dynamic_params(circuit: SnapCircuitType, circuit_config_path: Path) -> None:
     """Recompute dynamic parameters (holding/threshold current) for ME-models.
 
     Groups nodes by unique (model_template, morphology) to avoid redundant
     computation — a circuit with 4M nodes may have only ~500 unique me-types.
     """
-    from bluepysnap import Circuit  # noqa: PLC0415
-
-    try:
-        circuit = Circuit(str(circuit_config_path))
-    except Exception as e:  # noqa: BLE001
-        L.warning("Could not load circuit for dynamic params recomputation: %s", e)
-        return
-
     for pop_name in circuit.nodes.population_names:
         pop = circuit.nodes[pop_name]
         if "model_template" not in pop.property_names:
             continue
-        if pop.type == "virtual":
+        if getattr(pop, "type", None) not in TYPES_OF_BIOPHYS_NODES:
             continue
 
         L.info("Recomputing dynamic params for population '%s'", pop_name)
-        holding, threshold = _compute_population_dynamics(pop, circuit_config_path)
+        holding, threshold = _compute_population_dynamics(pop)
 
         if holding:
             _write_dynamics_to_h5(circuit_config_path, pop_name, holding, threshold)
@@ -516,19 +522,12 @@ def _recompute_dynamic_params(circuit_config_path: Path) -> None:
 
 def _compute_population_dynamics(  # noqa: PLR0914
     pop: NodePopulation,
-    circuit_config_path: Path,
 ) -> tuple[dict[int, float], dict[int, float]]:
     """Compute holding/threshold per unique (template, morphology) pair, then broadcast."""
     from bluecellulab.circuit.circuit_access.definition import EmodelProperties  # noqa: PLC0415
     from bluecellulab.tools import compute_memodel_properties_v2  # noqa: PLC0415
 
-    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    cfg = json.loads(config.expanded_json)
-    component_hoc_dir = cfg.get("components", {}).get("biophysical_neuron_models_dir", "")
-
-    # Resolve per-population hoc dir
-    pop_cfg = _get_pop_config(cfg, pop.name)
-    hoc_dir_str = (pop_cfg or {}).get("biophysical_neuron_models_dir", "") or component_hoc_dir
+    hoc_dir_str = pop.config.get("biophysical_neuron_models_dir")
     if not hoc_dir_str:
         return {}, {}
     hoc_dir = Path(hoc_dir_str)
@@ -585,14 +584,6 @@ def _compute_population_dynamics(  # noqa: PLR0914
             updated_threshold[nid] = t_val
 
     return updated_holding, updated_threshold
-
-
-def _get_pop_config(cfg: dict, pop_name: str) -> dict | None:
-    """Extract the population config dict from the expanded circuit config."""
-    for entry in cfg.get("networks", {}).get("nodes", []):
-        if pop_name in entry.get("populations", {}):
-            return entry["populations"][pop_name]
-    return None
 
 
 def _resolve_node_morphology(pop: NodePopulation, node_id: int) -> Path | None:
@@ -684,54 +675,68 @@ def _update_h5_dataset(
 # emodels that don't exist in the parent (adopted from PR #829).
 # ---------------------------------------------------------------------------
 
-_NON_BIOPHYSICAL_POPULATION_TYPES = {"virtual", "point_neuron"}
+
+def _normalize_target_simulator(target_simulator: TargetSimulator | str | None) -> str | None:
+    """Return the string value of a TargetSimulator enum or string."""
+    if target_simulator is None:
+        return None
+    return getattr(target_simulator, "value", None) or str(target_simulator)
+
+
+def _point_type_matches_simulator(pop_type: str, target_simulator: str | None) -> str | None:
+    """Return an error message if point population type is incompatible with the simulator."""
+    allowed = _POINT_TYPE_ALLOWED_SIMULATORS.get(pop_type)
+    if allowed is None:
+        return None
+    if target_simulator is None:
+        return f"point population type '{pop_type}' cannot be validated without a target_simulator"
+    if target_simulator not in allowed:
+        allowed_str = ", ".join(sorted(allowed))
+        return (
+            f"point population type '{pop_type}' is incompatible with target_simulator "
+            f"'{target_simulator}' (allowed: {allowed_str})"
+        )
+    return None
 
 
 def _check_new_populations_not_biophysical(
-    child_config_path: Path, parent_config_path: Path
+    child_circuit: SnapCircuitType,
+    parent_circuit: SnapCircuitType,
+    *,
+    target_simulator: TargetSimulator | str | None = None,
 ) -> list[str]:
-    """Reject new node populations that are biophysical.
+    """Reject new node populations that are biophysical or simulator-incompatible.
 
     New populations may only be virtual or point neurons — biophysical populations
-    require morphologies and HOC files that must come from the parent.
+    require morphologies and HOC files that must come from the parent. Point-neuron
+    types must also match the circuit ``target_simulator``.
     """
-    child_cfg = json.loads(libsonata.CircuitConfig.from_file(str(child_config_path)).expanded_json)
-    parent_cfg = json.loads(
-        libsonata.CircuitConfig.from_file(str(parent_config_path)).expanded_json
-    )
+    errors: list[str] = []
+    parent_pop_names = set(parent_circuit.nodes.population_names)
+    simulator = _normalize_target_simulator(target_simulator)
 
-    parent_pop_names = {
-        pop_name
-        for entry in parent_cfg.get("networks", {}).get("nodes", [])
-        for pop_name in entry.get("populations", {})
-    }
-
-    errors = []
-    for entry in child_cfg.get("networks", {}).get("nodes", []):
-        for pop_name, pop_cfg in entry.get("populations", {}).items():
-            if pop_name in parent_pop_names:
-                continue
-            pop_type = pop_cfg.get("type", "biophysical")
-            if pop_type not in _NON_BIOPHYSICAL_POPULATION_TYPES:
-                errors.append(
-                    f"New population '{pop_name}' has type '{pop_type}' — "
-                    f"only virtual or point_neuron populations can be added to a customized circuit"
-                )
+    for pop_name in child_circuit.nodes.population_names:
+        if pop_name in parent_pop_names:
+            continue
+        pop_type = getattr(child_circuit.nodes[pop_name], "type", None) or "biophysical"
+        if pop_type not in _ALLOWED_NEW_POPULATION_TYPES:
+            errors.append(
+                f"New population '{pop_name}' has type '{pop_type}' — "
+                f"only virtual or point neuron populations can be added to a customized circuit"
+            )
+            continue
+        if pop_type in TYPES_OF_POINT_NODES:
+            mismatch = _point_type_matches_simulator(pop_type, simulator)
+            if mismatch:
+                errors.append(f"New population '{pop_name}': {mismatch}")
     return errors
 
 
-def _check_content_subset_of_parent(child_config_path: Path, parent_config_path: Path) -> list[str]:
+def _check_content_subset_of_parent(
+    child_circuit: SnapCircuitType, parent_circuit: SnapCircuitType
+) -> list[str]:
     """Verify morphology names and model_templates in the child are a subset of the parent."""
-    from bluepysnap import Circuit as SnapCircuit  # noqa: PLC0415
-
     errors: list[str] = []
-    try:
-        parent_circuit = SnapCircuit(str(parent_config_path))
-        child_circuit = SnapCircuit(str(child_config_path))
-    except Exception as e:  # noqa: BLE001
-        L.warning("Could not load circuits for subset check: %s", e)
-        return errors
-
     errors.extend(_check_morphology_subset(child_circuit, parent_circuit))
     errors.extend(_check_emodel_subset(child_circuit, parent_circuit))
     return errors
@@ -778,51 +783,3 @@ def _get_model_templates(circuit: SnapCircuitType) -> set[str]:
             templates.update(nodes.get(properties="model_template").to_list())
     return templates
 
-
-def _check_node_columns_unchanged(child_config_path: Path, parent_config_path: Path) -> list[str]:
-    """Check that only model_template/etype columns differ from parent nodes.
-
-    Adopted from Aurélien's PR #837. Returns warnings (not errors) since dynamic
-    params are recomputed anyway.
-    """
-    warnings: list[str] = []
-    allowed_changes = {"model_template", "etype"}
-
-    child_config = libsonata.CircuitConfig.from_file(str(child_config_path))
-    parent_config = libsonata.CircuitConfig.from_file(str(parent_config_path))
-
-    for pop_name in child_config.node_populations:
-        if pop_name not in parent_config.node_populations:
-            continue
-
-        try:
-            child_pop = child_config.node_population(pop_name)
-            parent_pop = parent_config.node_population(pop_name)
-        except Exception:  # noqa: BLE001, S112
-            continue
-
-        child_attrs = set(child_pop.attribute_names)
-        parent_attrs = set(parent_pop.attribute_names)
-
-        if child_attrs != parent_attrs:
-            warnings.append(
-                f"Population '{pop_name}': attribute names differ from parent "
-                f"(added: {child_attrs - parent_attrs}, removed: {parent_attrs - child_attrs})"
-            )
-            continue
-
-        # Check each attribute for unexpected changes
-        selection = child_pop.select_all()
-        for attr in child_attrs - allowed_changes:
-            try:
-                child_vals = child_pop.get_attribute(attr, selection)
-                parent_vals = parent_pop.get_attribute(attr, selection)
-                if not (child_vals == parent_vals).all():
-                    warnings.append(
-                        f"Population '{pop_name}': attribute '{attr}' was modified "
-                        f"(only {allowed_changes} changes are expected)"
-                    )
-            except Exception:  # noqa: BLE001, S112
-                continue
-
-    return warnings

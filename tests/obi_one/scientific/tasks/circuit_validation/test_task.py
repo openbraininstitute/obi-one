@@ -1,7 +1,5 @@
 """Tests for circuit validation task — unit-testable helpers."""
 
-import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import h5py
@@ -12,9 +10,9 @@ from obi_one.scientific.tasks.circuit_validation.task import (
     _check_new_populations_not_biophysical,
     _collect_hoc_files,
     _find_stale_populations,
-    _get_pop_config,
-    _read_model_templates,
     _write_dynamics_to_h5,
+    customization_parent_entity,
+    is_circuit_customization,
 )
 
 # ---------------------------------------------------------------------------
@@ -53,112 +51,52 @@ class TestFindStalePopulations:
 
 
 # ---------------------------------------------------------------------------
-# _get_pop_config
-# ---------------------------------------------------------------------------
-
-
-class TestGetPopConfig:
-    def test_found(self):
-        cfg = {
-            "networks": {
-                "nodes": [
-                    {
-                        "nodes_file": "nodes.h5",
-                        "populations": {
-                            "pop_a": {"type": "biophysical", "morphologies_dir": "/m"},
-                        },
-                    }
-                ]
-            }
-        }
-        result = _get_pop_config(cfg, "pop_a")
-        assert result == {"type": "biophysical", "morphologies_dir": "/m"}
-
-    def test_not_found(self):
-        cfg = {"networks": {"nodes": [{"populations": {"other": {}}}]}}
-        assert _get_pop_config(cfg, "pop_a") is None
-
-    def test_empty_config(self):
-        assert _get_pop_config({}, "pop_a") is None
-
-
-# ---------------------------------------------------------------------------
-# _read_model_templates
-# ---------------------------------------------------------------------------
-
-
-class TestReadModelTemplates:
-    def test_reads_templates(self, tmp_path):
-        nodes_file = tmp_path / "nodes.h5"
-        with h5py.File(nodes_file, "w") as f:
-            grp = f.create_group("nodes/pop_a/0")
-            grp.create_dataset(
-                "model_template",
-                data=[b"hoc:CellA", b"hoc:CellB", b"hoc:CellA"],
-            )
-        result = _read_model_templates(str(nodes_file), "pop_a")
-        assert result == {"hoc:CellA", "hoc:CellB"}
-
-    def test_missing_population(self, tmp_path):
-        nodes_file = tmp_path / "nodes.h5"
-        with h5py.File(nodes_file, "w") as f:
-            f.create_group("nodes/other/0")
-        result = _read_model_templates(str(nodes_file), "pop_a")
-        assert result == set()
-
-    def test_no_model_template_column(self, tmp_path):
-        nodes_file = tmp_path / "nodes.h5"
-        with h5py.File(nodes_file, "w") as f:
-            grp = f.create_group("nodes/pop_a/0")
-            grp.create_dataset("morphology", data=[b"morph1"])
-        result = _read_model_templates(str(nodes_file), "pop_a")
-        assert result == set()
-
-    def test_corrupted_file(self, tmp_path):
-        nodes_file = tmp_path / "nodes.h5"
-        nodes_file.write_text("not hdf5")
-        result = _read_model_templates(str(nodes_file), "pop_a")
-        assert result == set()
-
-
-# ---------------------------------------------------------------------------
 # _collect_hoc_files
 # ---------------------------------------------------------------------------
 
 
 class TestCollectHocFiles:
-    def test_collects_from_component_dir(self, tmp_path):
+    def test_collects_from_population_config(self, tmp_path):
         hoc_dir = tmp_path / "hoc"
         hoc_dir.mkdir()
         (hoc_dir / "CellA.hoc").write_text("begintemplate CellA\nendtemplate CellA\n")
         (hoc_dir / "CellB.hoc").write_text("begintemplate CellB\nendtemplate CellB\n")
         (hoc_dir / "not_hoc.txt").write_text("ignored")
 
-        cfg = {
-            "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
-            "networks": {"nodes": [{"populations": {"pop_a": {"type": "biophysical"}}}]},
-        }
-        result = _collect_hoc_files(cfg, tmp_path)
+        mock_circuit = MagicMock()
+        mock_circuit.nodes.population_names = ["pop_a"]
+        mock_pop = MagicMock()
+        mock_pop.type = "biophysical"
+        mock_pop.config = {"biophysical_neuron_models_dir": str(hoc_dir)}
+        mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
+
+        result = _collect_hoc_files(mock_circuit)
         assert len(result) == 2
         assert all(f.suffix == ".hoc" for f in result)
 
-    def test_empty_when_no_dir(self, tmp_path):
-        cfg = {
-            "components": {},
-            "networks": {"nodes": [{"populations": {"pop_a": {}}}]},
-        }
-        assert _collect_hoc_files(cfg, tmp_path) == []
+    def test_empty_when_no_dir(self):
+        mock_circuit = MagicMock()
+        mock_circuit.nodes.population_names = ["pop_a"]
+        mock_pop = MagicMock()
+        mock_pop.type = "biophysical"
+        mock_pop.config = {}
+        mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
+
+        assert _collect_hoc_files(mock_circuit) == []
 
     def test_skips_virtual_populations(self, tmp_path):
         hoc_dir = tmp_path / "hoc"
         hoc_dir.mkdir()
         (hoc_dir / "cell.hoc").write_text("x")
 
-        cfg = {
-            "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
-            "networks": {"nodes": [{"populations": {"virt": {"type": "virtual"}}}]},
-        }
-        assert _collect_hoc_files(cfg, tmp_path) == []
+        mock_circuit = MagicMock()
+        mock_circuit.nodes.population_names = ["virt"]
+        mock_pop = MagicMock()
+        mock_pop.type = "virtual"
+        mock_pop.config = {"biophysical_neuron_models_dir": str(hoc_dir)}
+        mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
+
+        assert _collect_hoc_files(mock_circuit) == []
 
 
 # ---------------------------------------------------------------------------
@@ -218,81 +156,122 @@ class TestWriteDynamicsToH5:
 
 
 class TestCheckNewPopulationsNotBiophysical:
-    """New populations must be virtual or point_neuron, not biophysical."""
+    """New populations must be virtual/point and match target_simulator."""
 
-    def _make_config(self, tmp_path, name, populations):
-        """Create a minimal circuit_config.json with given populations."""
-        cfg = {
-            "manifest": {"$BASE_DIR": str(tmp_path)},
-            "networks": {
-                "nodes": [{"nodes_file": "nodes.h5", "populations": populations}],
-                "edges": [],
-            },
-        }
-        path = tmp_path / name
-        path.write_text(json.dumps(cfg))
-        return path
+    @staticmethod
+    def _snap_circuits(parent_pops: dict, child_pops: dict):
+        """Build parent/child SnapCircuit mocks from {name: type} maps."""
 
-    def test_new_virtual_allowed(self, tmp_path):
-        parent = self._make_config(tmp_path, "parent.json", {"pop_a": {"type": "biophysical"}})
-        child = self._make_config(
-            tmp_path,
-            "child.json",
-            {"pop_a": {"type": "biophysical"}, "new_virt": {"type": "virtual"}},
+        def _circuit(populations: dict):
+            circuit = MagicMock()
+            nodes_map = {}
+            for name, pop_type in populations.items():
+                pop = MagicMock()
+                pop.type = pop_type
+                nodes_map[name] = pop
+            circuit.nodes.population_names = list(populations)
+            circuit.nodes.__getitem__ = lambda _self, key, _n=nodes_map: _n[key]
+            return circuit
+
+        return _circuit(parent_pops), _circuit(child_pops)
+
+    def test_new_virtual_allowed(self):
+        parent_c, child_c = self._snap_circuits(
+            {"pop_a": "biophysical"},
+            {"pop_a": "biophysical", "new_virt": "virtual"},
         )
-        with patch(
-            "obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file"
-        ) as mock_cfg:
-
-            def side_effect(path):
-                m = MagicMock()
-                m.expanded_json = Path(path).read_text(encoding="utf-8")
-                return m
-
-            mock_cfg.side_effect = side_effect
-
-            errors = _check_new_populations_not_biophysical(child, parent)
+        errors = _check_new_populations_not_biophysical(child_c, parent_c)
         assert errors == []
 
-    def test_new_biophysical_rejected(self, tmp_path):
-        parent = self._make_config(tmp_path, "parent.json", {"pop_a": {"type": "biophysical"}})
-        child = self._make_config(
-            tmp_path,
-            "child.json",
-            {"pop_a": {"type": "biophysical"}, "new_bio": {"type": "biophysical"}},
+    def test_new_biophysical_rejected(self):
+        parent_c, child_c = self._snap_circuits(
+            {"pop_a": "biophysical"},
+            {"pop_a": "biophysical", "new_bio": "biophysical"},
         )
-        with patch(
-            "obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file"
-        ) as mock_cfg:
-
-            def side_effect(path):
-                m = MagicMock()
-                m.expanded_json = Path(path).read_text(encoding="utf-8")
-                return m
-
-            mock_cfg.side_effect = side_effect
-
-            errors = _check_new_populations_not_biophysical(child, parent)
+        errors = _check_new_populations_not_biophysical(child_c, parent_c)
         assert len(errors) == 1
         assert "new_bio" in errors[0]
 
-    def test_new_point_neuron_allowed(self, tmp_path):
-        parent = self._make_config(tmp_path, "parent.json", {"pop_a": {}})
-        child = self._make_config(
-            tmp_path,
-            "child.json",
-            {"pop_a": {}, "new_pn": {"type": "point_neuron"}},
+    def test_new_point_neuron_allowed_for_neuron(self):
+        parent_c, child_c = self._snap_circuits(
+            {"pop_a": "biophysical"},
+            {"pop_a": "biophysical", "new_pn": "point_neuron"},
         )
-        with patch(
-            "obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file"
-        ) as mock_cfg:
-
-            def side_effect(path):
-                m = MagicMock()
-                m.expanded_json = Path(path).read_text(encoding="utf-8")
-                return m
-
-            mock_cfg.side_effect = side_effect
-
-            errors = _check_new_populations_not_biophysical(child, parent)
+        errors = _check_new_populations_not_biophysical(
+            child_c, parent_c, target_simulator="NEURON"
+        )
         assert errors == []
+
+    def test_brian2_point_rejected_on_neuron(self):
+        parent_c, child_c = self._snap_circuits(
+            {"pop_a": "biophysical"},
+            {"pop_a": "biophysical", "new_brian": "brian2_point"},
+        )
+        errors = _check_new_populations_not_biophysical(
+            child_c, parent_c, target_simulator="NEURON"
+        )
+        assert len(errors) == 1
+        assert "new_brian" in errors[0]
+        assert "brian2_point" in errors[0]
+        assert "NEURON" in errors[0]
+
+    def test_brian2_point_allowed_on_brian2(self):
+        parent_c, child_c = self._snap_circuits(
+            {"pop_a": "biophysical"},
+            {"pop_a": "biophysical", "new_brian": "brian2_point"},
+        )
+        errors = _check_new_populations_not_biophysical(
+            child_c, parent_c, target_simulator="Brian2"
+        )
+        assert errors == []
+
+    def test_inait_point_allowed_on_learning_engine(self):
+        parent_c, child_c = self._snap_circuits(
+            {"pop_a": "biophysical"},
+            {"pop_a": "biophysical", "new_le": "inait_point_neuron_lif"},
+        )
+        errors = _check_new_populations_not_biophysical(
+            child_c, parent_c, target_simulator="LearningEngine"
+        )
+        assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# is_circuit_customization / customization_parent_entity
+# ---------------------------------------------------------------------------
+
+
+class TestCircuitCustomizationHelpers:
+    def test_is_customization_true(self):
+        from entitysdk.types import DerivationType  # noqa: PLC0415
+
+        circuit = MagicMock()
+        deriv = MagicMock()
+        deriv.derivation_type = DerivationType.circuit_customization
+        circuit.generated_from_derivations = [deriv]
+        assert is_circuit_customization(circuit) is True
+
+    def test_is_customization_false_for_other_type(self):
+        from entitysdk.types import DerivationType  # noqa: PLC0415
+
+        circuit = MagicMock()
+        deriv = MagicMock()
+        deriv.derivation_type = DerivationType.circuit_extraction
+        circuit.generated_from_derivations = [deriv]
+        assert is_circuit_customization(circuit) is False
+
+    def test_is_customization_false_when_no_derivations(self):
+        circuit = MagicMock()
+        circuit.generated_from_derivations = None
+        assert is_circuit_customization(circuit) is False
+
+    def test_customization_parent_entity(self):
+        from entitysdk.types import DerivationType  # noqa: PLC0415
+
+        parent = MagicMock()
+        circuit = MagicMock()
+        deriv = MagicMock()
+        deriv.derivation_type = DerivationType.circuit_customization
+        deriv.used = parent
+        circuit.generated_from_derivations = [deriv]
+        assert customization_parent_entity(circuit) is parent

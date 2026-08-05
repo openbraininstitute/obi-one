@@ -37,14 +37,16 @@ def stage_customized_circuit(
         client: EntitySDK client.
         parent: The parent Circuit entity (must have assets).
         output_dir: Directory where the staged circuit will be written.
-        edge_overrides: Edge H5 files to replace in the parent.
+        edge_overrides: Edge H5 files to replace or add.
         emodel_overrides: HOC files to add/replace.
         emodel_population_map: Maps HOC filename → population name for per-population
             placement. Files not in the map go to the component-level model dir.
         mechanism_overrides: MOD files to add/replace.
-        node_overrides: Node H5 files to replace in the parent.
+        node_overrides: Node H5 files to replace or add.
         node_sets_override: Replacement SONATA nodeset JSON file.
-        circuit_config_override: Replacement circuit_config.json.
+        circuit_config_override: Replacement circuit_config.json. When provided,
+            node/edge uploads may introduce populations declared in the override
+            that are not present in the parent.
 
     Returns:
         Path to the staged circuit_config.json.
@@ -59,47 +61,88 @@ def stage_customized_circuit(
     ls_config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
     parent_config = json.loads(ls_config.expanded_json)
 
-    # 3. Apply overrides
+    # 3. Apply circuit_config override first so subsequent placement uses the new layout
+    if circuit_config_override:
+        _replace_file(circuit_config_override, circuit_config_path)
+        L.info("Replaced circuit_config.json with override")
+        ls_config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
+        active_config = json.loads(ls_config.expanded_json)
+        allow_new_populations = True
+    else:
+        active_config = parent_config
+        allow_new_populations = False
+
+    # 4. Apply file overrides against the active (parent or overridden) config
     if edge_overrides:
-        _apply_file_overrides(edge_overrides, circuit_dir, parent_config, component_type="edges")
+        _apply_file_overrides(
+            edge_overrides,
+            circuit_dir,
+            active_config,
+            component_type="edges",
+            allow_new_populations=allow_new_populations,
+        )
 
     if node_overrides:
-        _apply_file_overrides(node_overrides, circuit_dir, parent_config, component_type="nodes")
+        _apply_file_overrides(
+            node_overrides,
+            circuit_dir,
+            active_config,
+            component_type="nodes",
+            allow_new_populations=allow_new_populations,
+        )
 
     if emodel_overrides:
         _apply_emodel_overrides(
-            emodel_overrides, emodel_population_map or {}, parent_config, circuit_dir
+            emodel_overrides, emodel_population_map or {}, active_config, circuit_dir
         )
 
     if mechanism_overrides:
-        mod_dir = _resolve_mod_dir(parent_config, circuit_dir)
+        mod_dir = _resolve_mod_dir(active_config, circuit_dir)
         _copy_into(mechanism_overrides, mod_dir)
 
     if node_sets_override:
         _apply_node_sets_override(node_sets_override, circuit_dir, circuit_config_path)
 
-    if circuit_config_override:
-        _replace_file(circuit_config_override, circuit_config_path)
-        L.info("Replaced circuit_config.json with override")
-
-    # 4. Remove network files from the parent that the override config no longer references
+    # 5. Remove network files from the parent that the override config no longer references
     if circuit_config_override:
         _remove_stale_network_files(circuit_dir, circuit_config_path, parent_config)
 
     return circuit_config_path
 
 
-def _apply_file_overrides(
-    overrides: list[Path], circuit_dir: Path, config: dict, component_type: str
+def _network_file_for_population(
+    config: dict, component_type: str, pop_name: str, circuit_dir: Path
+) -> Path | None:
+    """Resolve the nodes/edges H5 path for a population from circuit config."""
+    file_key = "nodes_file" if component_type == "nodes" else "edges_file"
+    for entry in config.get("networks", {}).get(component_type, []):
+        if pop_name not in entry.get("populations", {}):
+            continue
+        h5_file = entry.get(file_key)
+        if not h5_file:
+            return None
+        path = Path(h5_file)
+        return path if path.is_absolute() else circuit_dir / path
+    return None
+
+
+def _apply_file_overrides(  # noqa: C901
+    overrides: list[Path],
+    circuit_dir: Path,
+    config: dict,
+    component_type: str,
+    *,
+    allow_new_populations: bool = False,
 ) -> None:
-    """Replace edge/node files by matching the population names stored inside each H5 upload.
+    """Replace or add edge/node files by matching population names inside each H5 upload.
 
     SONATA H5 files declare their population names under /nodes/<pop> or /edges/<pop>.
-    We read those names from the uploaded file and use them to locate the corresponding
-    file in the parent circuit, rather than relying on filename matching.
+    Existing populations replace the parent's file. When ``allow_new_populations`` is True
+    (circuit_config override present), uploads for populations declared in ``config`` but
+    absent from the parent are copied to the path referenced by that config.
 
     Raises:
-        ValueError: if an uploaded file contains a population not found in the parent circuit.
+        ValueError: if an uploaded population cannot be placed.
     """
     file_key = "nodes_file" if component_type == "nodes" else "edges_file"
 
@@ -110,6 +153,9 @@ def _apply_file_overrides(
         if not h5_file:
             continue
         h5_path = Path(h5_file) if Path(h5_file).is_absolute() else circuit_dir / h5_file
+        if not h5_path.exists():
+            # Config may already declare new populations whose files are not staged yet
+            continue
         try:
             with h5py.File(h5_path, "r") as f:
                 for pop_name in f.get(component_type, {}):
@@ -126,23 +172,43 @@ def _apply_file_overrides(
             raise ValueError(msg) from e
 
         for pop_name in upload_populations:
-            if pop_name not in pop_to_parent_file:
-                known = sorted(pop_to_parent_file.keys())
-                msg = (
-                    f"Uploaded {component_type} file '{override.name}' contains population"
-                    f" '{pop_name}' which is not present in the parent circuit"
-                    f" (known populations: {known})"
+            if pop_name in pop_to_parent_file:
+                target = pop_to_parent_file[pop_name]
+                _replace_file(override, target)
+                L.info(
+                    "Replaced %s file for population '%s' (%s -> %s)",
+                    component_type,
+                    pop_name,
+                    override.name,
+                    target.name,
                 )
-                raise ValueError(msg)
-            target = pop_to_parent_file[pop_name]
-            _replace_file(override, target)
-            L.info(
-                "Replaced %s file for population '%s' (%s -> %s)",
-                component_type,
-                pop_name,
-                override.name,
-                target.name,
+                continue
+
+            if allow_new_populations:
+                target = _network_file_for_population(config, component_type, pop_name, circuit_dir)
+                if target is not None:
+                    _replace_file(override, target)
+                    L.info(
+                        "Added new %s file for population '%s' (%s -> %s)",
+                        component_type,
+                        pop_name,
+                        override.name,
+                        target.name,
+                    )
+                    continue
+
+            known = sorted(pop_to_parent_file.keys())
+            msg = (
+                f"Uploaded {component_type} file '{override.name}' contains population"
+                f" '{pop_name}' which is not present in the parent circuit"
+                f" (known populations: {known})"
             )
+            if allow_new_populations:
+                msg += (
+                    " and is not declared in the overridden circuit_config "
+                    f"(expected a '{file_key}' entry for this population)"
+                )
+            raise ValueError(msg)
 
 
 def _apply_emodel_overrides(

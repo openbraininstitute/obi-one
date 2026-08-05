@@ -20,7 +20,7 @@ from uuid import UUID
 # Use pre-installed packages from the obi-one Docker image's venv.
 # The wrapper creates a bare venv, but we need NEURON, bluecellulab, etc.
 _IMAGE_SITE_PACKAGES = "/code/.venv/lib/python3.12/site-packages"
-if os.path.isdir(_IMAGE_SITE_PACKAGES):
+if Path(_IMAGE_SITE_PACKAGES).is_dir():
     sys.path.append(_IMAGE_SITE_PACKAGES)
 
 # Add repo root to sys.path for obi_one imports (not pip-installed, loaded from source).
@@ -29,10 +29,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
+from entitysdk.types import EntityLifecycleStatus
 from obi_auth import get_token
 
 from obi_one.scientific.tasks.circuit_validation.task import (
     _update_lifecycle_status,
+    is_circuit_customization,
     run_circuit_validation,
 )
 
@@ -51,6 +53,12 @@ def main() -> int:
         parser.add_argument("--circuit_id", required=True, help="Customized circuit entity ID")
         parser.add_argument("--virtual_lab_id", required=True, help="Virtual lab ID")
         parser.add_argument("--project_id", required=True, help="Project ID")
+        parser.add_argument(
+            "--force",
+            type=lambda value: str(value).lower() == "true",
+            default=False,
+            help="Validate even if the circuit is not in draft status",
+        )
         args = parser.parse_args()
 
         circuit_id = UUID(args.circuit_id)
@@ -81,10 +89,23 @@ def main() -> int:
         )
 
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
+        if (
+            not args.force
+            and circuit.lifecycle_status is not None
+            and circuit.lifecycle_status != EntityLifecycleStatus.draft
+        ):
+            L.info(
+                "Skipping validation for circuit %s: lifecycle_status=%s "
+                "(expected draft; pass --force true to overwrite)",
+                circuit_id,
+                circuit.lifecycle_status,
+            )
+            return 0
+
         result = run_circuit_validation(
             db_client=db_client,
             circuit_id=circuit_id,
-            is_customization=circuit.root_circuit_id is not None,
+            is_customization=is_circuit_customization(circuit),
         )
         L.info("Validation result: valid=%s, errors=%d", result["valid"], len(result["errors"]))
 

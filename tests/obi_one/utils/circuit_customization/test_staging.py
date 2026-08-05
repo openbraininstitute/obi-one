@@ -353,6 +353,59 @@ class TestApplyFileOverrides:
         with pytest.raises(ValueError, match="unknown_pop"):
             _apply_file_overrides([override], circuit_dir, config, component_type="edges")
 
+    def test_adds_new_population_when_allowed(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+
+        override = tmp_path / "virtual_nodes.h5"
+        with h5py.File(override, "w") as f:
+            f.create_group("nodes/new_virt")
+            f["nodes/new_virt"].create_dataset("node_type_id", data=np.zeros(2, dtype=np.int32))
+
+        config = {
+            "networks": {
+                "nodes": [
+                    {
+                        "nodes_file": "virtual_nodes.h5",
+                        "populations": {"new_virt": {"type": "virtual"}},
+                    }
+                ]
+            },
+        }
+
+        _apply_file_overrides(
+            [override],
+            circuit_dir,
+            config,
+            component_type="nodes",
+            allow_new_populations=True,
+        )
+
+        target = circuit_dir / "virtual_nodes.h5"
+        assert target.exists()
+        with h5py.File(target, "r") as f:
+            assert "new_virt" in f["nodes"]
+            assert f["nodes/new_virt/node_type_id"].shape[0] == 2
+
+    def test_new_population_without_config_entry_raises(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+
+        override = tmp_path / "virtual_nodes.h5"
+        with h5py.File(override, "w") as f:
+            f.create_group("nodes/new_virt")
+
+        config = {"networks": {"nodes": []}}
+
+        with pytest.raises(ValueError, match="new_virt"):
+            _apply_file_overrides(
+                [override],
+                circuit_dir,
+                config,
+                component_type="nodes",
+                allow_new_populations=True,
+            )
+
     def test_nodes_override(self, tmp_path):
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()

@@ -121,14 +121,20 @@ class TestValidateNodeSetsExtra:
         ns.write_text(json.dumps({"pop_set": {"population": ["pop_a", "pop_b"]}}))
         _validate_node_sets(ns)  # should not raise
 
-    def test_node_id_as_int(self, tmp_path):
+    def test_node_id_as_int_rejected(self, tmp_path):
         ns = tmp_path / "node_sets.json"
         ns.write_text(json.dumps({"single": {"node_id": 42}}))
-        _validate_node_sets(ns)  # should not raise
+        with pytest.raises(NodeSetsValidationError, match="node_id"):
+            _validate_node_sets(ns)
 
     def test_node_id_as_list(self, tmp_path):
         ns = tmp_path / "node_sets.json"
         ns.write_text(json.dumps({"multi": {"node_id": [1, 2, 3]}}))
+        _validate_node_sets(ns)  # should not raise
+
+    def test_bool_attribute_filter_allowed(self, tmp_path):
+        ns = tmp_path / "node_sets.json"
+        ns.write_text(json.dumps({"exc": {"synapse_class": True}}))
         _validate_node_sets(ns)  # should not raise
 
     def test_operator_values_allowed(self, tmp_path):
@@ -156,8 +162,14 @@ class TestValidateNodeSetsExtra:
 
     def test_compound_expression(self, tmp_path):
         ns = tmp_path / "node_sets.json"
-        ns.write_text(json.dumps({"compound": [{"mtype": "L2_PC"}, "other_set"]}))
+        ns.write_text(json.dumps({"compound": ["other_set", "layer2"]}))
         _validate_node_sets(ns)  # should not raise
+
+    def test_compound_dict_item_rejected(self, tmp_path):
+        ns = tmp_path / "node_sets.json"
+        ns.write_text(json.dumps({"compound": [{"mtype": "L2_PC"}, "other_set"]}))
+        with pytest.raises(NodeSetsValidationError, match="compound"):
+            _validate_node_sets(ns)
 
     def test_invalid_compound_item(self, tmp_path):
         ns = tmp_path / "node_sets.json"

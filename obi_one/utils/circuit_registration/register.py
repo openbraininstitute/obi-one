@@ -87,7 +87,7 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
     return circuit_path, circuit_path_compressed
 
 
-def register_circuit(  # noqa: PLR0913, PLR0914, C901
+def register_circuit(  # noqa: PLR0913, PLR0914, C901, PLR0912
     client: Client,
     circuit_path: str | Path,
     *,
@@ -111,6 +111,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
     skip_validation: bool = False,
+    include_visualization: bool = True,
+    lifecycle_status: types.EntityLifecycleStatus | str | None = None,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
@@ -124,6 +126,11 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
     Scale, neuron/synapse/connection counts, and circuit properties (morphologies,
     point neurons, electrical models, spines) are computed automatically from
     the circuit files. The SONATA circuit folder is registered as an asset.
+
+    For the HTTP draft → async-validate → assets flow, call with
+    ``lifecycle_status="draft"`` and ``skip_validation=True``, then trigger
+    the validation launch job. Sync registration (tasks/notebooks) leaves
+    those defaults so validation and assets run in-process.
 
     Args:
         client: The entitycore SDK client.
@@ -143,7 +150,8 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         license: Resolved license entity (optional).
         atlas: Brain atlas entity associated with the circuit (optional).
         root: Root circuit entity or root circuit ID (UUID) in the derivation
-            hierarchy (optional).
+            hierarchy (optional). When omitted and ``parent`` is set, defaults to
+            ``parent.root_circuit_id or parent.id``.
         parent: Parent circuit entity or ID (UUID) for derivation linking (optional).
         derivation_type: Type of derivation (required if parent is provided).
         contributions: Resolved contributions dict (from get_contributions, optional).
@@ -151,7 +159,13 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         authorized_public: Whether to make the circuit publicly accessible.
         skip_additional_assets: If True, skip generation/registration of additional assets
             (compressed circuit, matrices, plots, figures).
-        skip_validation: If True, skip SONATA circuit validation.
+        skip_validation: If True, skip SONATA circuit validation (e.g. when validation
+            runs asynchronously after registration).
+        include_visualization: When generating additional assets, also produce plots
+            and overview / sim-designer images. Set False for post-validation jobs that
+            only need compressed + connectivity matrices.
+        lifecycle_status: Optional lifecycle status (e.g. ``"draft"`` for async
+            validation). When omitted, entitycore's default applies.
         overview_image_path: Path to a pre-existing overview image file (.png or .webp).
             If provided, generation is skipped and this file is registered directly (optional).
         sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
@@ -215,30 +229,39 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
         f"has_electrical_cell_models={has_electrical_cell_models}, has_spines={has_spines}"
     )
 
+    # Resolve parent and derive root when not explicitly provided
+    if parent is not None and isinstance(parent, UUID):
+        parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
+    if root is None and parent is not None:
+        root = parent.root_circuit_id or parent.id
+
     # Build circuit model
-    circuit_model = models.Circuit(
-        name=name,
-        description=description,
-        subject=subject,
-        brain_region=brain_region,
-        license=license,
-        number_neurons=number_neurons,
-        number_synapses=number_synapses,
-        number_connections=number_connections,
-        has_morphologies=has_morphologies,
-        has_point_neurons=has_point_neurons,
-        has_electrical_cell_models=has_electrical_cell_models,
-        has_spines=has_spines,
-        scale=scale,
-        build_category=build_category,
-        target_simulator=target_simulator,
-        root_circuit_id=root.id if isinstance(root, models.Circuit) else root,
-        atlas_id=atlas.id if atlas is not None else None,
-        contact_email=contact_email,
-        published_in=published_in,
-        experiment_date=experiment_date,
-        authorized_public=authorized_public,
-    )
+    circuit_kwargs: dict = {
+        "name": name,
+        "description": description,
+        "subject": subject,
+        "brain_region": brain_region,
+        "license": license,
+        "number_neurons": number_neurons,
+        "number_synapses": number_synapses,
+        "number_connections": number_connections,
+        "has_morphologies": has_morphologies,
+        "has_point_neurons": has_point_neurons,
+        "has_electrical_cell_models": has_electrical_cell_models,
+        "has_spines": has_spines,
+        "scale": scale,
+        "build_category": build_category,
+        "target_simulator": target_simulator,
+        "root_circuit_id": root.id if isinstance(root, models.Circuit) else root,
+        "atlas_id": atlas.id if atlas is not None else None,
+        "contact_email": contact_email,
+        "published_in": published_in,
+        "experiment_date": experiment_date,
+        "authorized_public": authorized_public,
+    }
+    if lifecycle_status is not None:
+        circuit_kwargs["lifecycle_status"] = lifecycle_status
+    circuit_model = models.Circuit(**circuit_kwargs)
 
     # Register circuit entity
     if dry_run:
@@ -250,8 +273,6 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
 
     # Derivation link
     if parent is not None:
-        if isinstance(parent, UUID):
-            parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
         register_derivation(
             client=client,
             from_entity=parent,
@@ -298,6 +319,7 @@ def register_circuit(  # noqa: PLR0913, PLR0914, C901
             sim_designer_image_path=sim_designer_image_path,
             client=client,
             circuit_entity=registered_circuit,
+            include_visualization=include_visualization,
         )
 
     return registered_circuit

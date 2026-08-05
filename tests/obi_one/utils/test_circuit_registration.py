@@ -35,6 +35,7 @@ from obi_one.utils.circuit_registration.assets import (
     _check_required_contents,
 )
 from obi_one.utils.circuit_registration.generate import (
+    generate_additional_circuit_assets,
     generate_compressed_circuit_asset,
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
@@ -1016,6 +1017,114 @@ def test_register_circuit_registers_entity():
     client.register_entity.assert_called_once()
 
 
+def test_register_circuit_sets_lifecycle_status_draft():
+    """Draft registration passes lifecycle_status through to the Circuit model."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+        patch("obi_one.utils.circuit_registration.register.run_validation") as mock_validate,
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            lifecycle_status="draft",
+            skip_additional_assets=True,
+        )
+
+    mock_validate.assert_not_called()
+    circuit_model = client.register_entity.call_args[0][0]
+    assert circuit_model.lifecycle_status == "draft"
+
+
+def test_register_circuit_derives_root_from_parent():
+    """When root is omitted, use parent.root_circuit_id or parent.id."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    parent = MagicMock()
+    parent.id = "parent-id"
+    parent.root_circuit_id = "root-id"
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch("obi_one.utils.circuit_registration.register.register_derivation") as mock_deriv,
+        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+    circuit_model = client.register_entity.call_args[0][0]
+    assert circuit_model.root_circuit_id == "root-id"
+    mock_deriv.assert_called_once()
+
+
+def test_register_circuit_passes_include_visualization():
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.utils.circuit_registration.register.register_asset"),
+        patch(
+            "obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch("obi_one.utils.circuit_registration.register.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            include_visualization=False,
+            skip_validation=True,
+        )
+
+    assert mock_gen.call_args.kwargs["include_visualization"] is False
+
+
 def test_register_circuit_with_derivation():
     """Test that derivation link is created when parent is provided."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
@@ -1488,3 +1597,155 @@ def test_register_circuit_from_metadata_missing_target_simulator():
             circuit_metadata=metadata,
             circuit_path="/some/path",
         )
+
+
+# --- generate_additional_circuit_assets: compressed skip / force ---
+
+
+def test_generate_additional_skips_compressed_when_already_present(tmp_path):
+    """Skip compression when compressed_sonata_circuit exists and force is False."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    asset = MagicMock()
+    asset.label = "compressed_sonata_circuit"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [asset]
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.utils.circuit_registration.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=False,
+        )
+
+    mock_compress.assert_not_called()
+
+
+def test_generate_additional_force_regenerates_compressed(tmp_path):
+    """With force=True, regenerate compressed even if the asset already exists."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    asset = MagicMock()
+    asset.label = "compressed_sonata_circuit"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [asset]
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.utils.circuit_registration.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=True,
+        )
+
+    mock_compress.assert_called_once()
+
+
+def test_generate_additional_compresses_when_missing(tmp_path):
+    """Compress when the entity has no compressed_sonata_circuit asset."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.utils.circuit_registration.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=False,
+        )
+
+    mock_compress.assert_called_once()
+
+
+def test_generate_additional_async_scope_skips_visualization(tmp_path):
+    """Async job scope (include_visualization=False) skips plots and overview images."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch(
+            "obi_one.utils.circuit_registration.generate.generate_compressed_circuit_asset"
+        ) as mock_compress,
+        patch(
+            "obi_one.utils.circuit_registration.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ) as mock_matrix,
+        patch(
+            "obi_one.utils.circuit_registration.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+        patch(
+            "obi_one.utils.circuit_registration.generate.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.utils.circuit_registration.generate.generate_sim_designer_image_asset"
+        ) as mock_sim,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_visualization=False,
+        )
+
+    mock_compress.assert_called_once()
+    mock_matrix.assert_called_once()
+    mock_plots.assert_not_called()
+    mock_overview.assert_not_called()
+    mock_sim.assert_not_called()
+
+
+def test_generate_additional_skips_matrices_when_already_present(tmp_path):
+    """Skip matrices when circuit_connectivity_matrices exists and force is False."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    asset = MagicMock()
+    asset.label = "circuit_connectivity_matrices"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [asset]
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.utils.circuit_registration.generate.generate_connectivity_matrix_asset"
+    ) as mock_matrix:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=False,
+            include_visualization=False,
+        )
+
+    mock_matrix.assert_not_called()

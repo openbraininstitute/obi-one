@@ -393,11 +393,12 @@ def test_add_circuit_folder_asset_success(tmp_path):
     result = test_module.add_circuit_folder_asset(
         client=client,
         circuit_path=circuit_folder / "circuit_config.json",
-        registered_circuit=Mock(id=uuid4()),
+        registered_circuit=Mock(id=uuid4(), assets=[]),
     )
 
     assert result is directory_asset
     client.upload_directory.assert_called_once()
+    client.delete_asset.assert_not_called()
 
 
 def test_add_compressed_circuit_asset_missing_file(tmp_path):
@@ -420,11 +421,35 @@ def test_add_compressed_circuit_asset_success(tmp_path):
     result = test_module.add_compressed_circuit_asset(
         client=client,
         compressed_file=compressed_file,
-        registered_circuit=Mock(id=uuid4()),
+        registered_circuit=Mock(id=uuid4(), assets=[]),
     )
 
     assert result is compressed_asset
     client.upload_file.assert_called_once()
+    client.delete_asset.assert_not_called()
+    client.update_asset_file.assert_not_called()
+
+
+def test_add_compressed_circuit_asset_replaces_existing(tmp_path):
+    """Existing compressed asset is deleted then re-uploaded (multipart path)."""
+    compressed_file = tmp_path / "circuit.tar.gz"
+    compressed_file.write_bytes(b"abc")
+    client = Mock()
+    existing = SimpleNamespace(id=uuid4(), label="compressed_sonata_circuit")
+    new_asset = SimpleNamespace(id=uuid4())
+    client.upload_file.return_value = new_asset
+    circuit = Mock(id=uuid4(), assets=[existing])
+
+    result = test_module.add_compressed_circuit_asset(
+        client=client,
+        compressed_file=compressed_file,
+        registered_circuit=circuit,
+    )
+
+    assert result is new_asset
+    client.delete_asset.assert_called_once()
+    client.upload_file.assert_called_once()
+    client.update_asset_file.assert_not_called()
 
 
 def test_add_connectivity_matrix_asset_missing_dir(tmp_path):
@@ -433,7 +458,7 @@ def test_add_connectivity_matrix_asset_missing_dir(tmp_path):
         test_module.add_connectivity_matrix_asset(
             client=client,
             matrix_dir=tmp_path / "missing",
-            registered_circuit=Mock(id=uuid4()),
+            registered_circuit=Mock(id=uuid4(), assets=[]),
         )
 
 
@@ -448,10 +473,32 @@ def test_add_connectivity_matrix_asset_success(tmp_path):
     result = test_module.add_connectivity_matrix_asset(
         client=client,
         matrix_dir=matrix_dir,
-        registered_circuit=Mock(id=uuid4()),
+        registered_circuit=Mock(id=uuid4(), assets=[]),
     )
 
     assert result is matrix_asset
+    client.upload_directory.assert_called_once()
+    client.delete_asset.assert_not_called()
+
+
+def test_add_connectivity_matrix_asset_replaces_existing(tmp_path):
+    matrix_dir = tmp_path / "matrices"
+    matrix_dir.mkdir()
+    (matrix_dir / "m1.npy").write_text("x")
+    client = Mock()
+    existing = SimpleNamespace(id=uuid4(), label="circuit_connectivity_matrices")
+    new_asset = SimpleNamespace(id=uuid4())
+    client.upload_directory.return_value = new_asset
+    circuit = Mock(id=uuid4(), assets=[existing])
+
+    result = test_module.add_connectivity_matrix_asset(
+        client=client,
+        matrix_dir=matrix_dir,
+        registered_circuit=circuit,
+    )
+
+    assert result is new_asset
+    client.delete_asset.assert_called_once()
     client.upload_directory.assert_called_once()
 
 
@@ -462,7 +509,7 @@ def test_add_image_assets_missing_dir(tmp_path):
             client=client,
             plot_dir=tmp_path / "missing",
             plot_files=[],
-            registered_circuit=Mock(id=uuid4()),
+            registered_circuit=Mock(id=uuid4(), assets=[]),
         )
 
 
@@ -475,7 +522,7 @@ def test_add_image_assets_missing_file(tmp_path):
             client=client,
             plot_dir=plot_dir,
             plot_files=["node_stats.png"],
-            registered_circuit=Mock(id=uuid4()),
+            registered_circuit=Mock(id=uuid4(), assets=[]),
         )
 
 
@@ -489,7 +536,7 @@ def test_add_image_assets_skip_unknown_plot(tmp_path):
         client=client,
         plot_dir=plot_dir,
         plot_files=["unknown.png"],
-        registered_circuit=Mock(id=uuid4()),
+        registered_circuit=Mock(id=uuid4(), assets=[]),
     )
 
     assert assets == []
@@ -507,7 +554,7 @@ def test_add_image_assets_format_mismatch(tmp_path):
             client=client,
             plot_dir=plot_dir,
             plot_files=["simulation_designer_image.jpg"],
-            registered_circuit=Mock(id=uuid4()),
+            registered_circuit=Mock(id=uuid4(), assets=[]),
         )
 
 
@@ -532,11 +579,37 @@ def test_add_image_assets_success_webp_and_png(tmp_path):
             client=client,
             plot_dir=plot_dir,
             plot_files=["node_stats.png", "simulation_designer_image.png"],
-            registered_circuit=Mock(id=uuid4()),
+            registered_circuit=Mock(id=uuid4(), assets=[]),
         )
 
     assert assets == [uploaded_a, uploaded_b]
     assert client.upload_file.call_count == 2
+    client.update_asset_file.assert_not_called()
+
+
+def test_add_image_assets_replaces_existing_via_update_asset_file(tmp_path):
+    """Single existing image asset is replaced with update_asset_file."""
+    plot_dir = tmp_path / "plots"
+    plot_dir.mkdir()
+    sim_png = plot_dir / "simulation_designer_image.png"
+    sim_png.write_bytes(b"y")
+
+    existing = SimpleNamespace(id=uuid4(), label="simulation_designer_image")
+    updated = SimpleNamespace(id=uuid4())
+    client = Mock()
+    client.update_asset_file.return_value = updated
+
+    assets = test_module.add_image_assets(
+        client=client,
+        plot_dir=plot_dir,
+        plot_files=["simulation_designer_image.png"],
+        registered_circuit=Mock(id=uuid4(), assets=[existing]),
+    )
+
+    assert assets == [updated]
+    client.update_asset_file.assert_called_once()
+    client.upload_file.assert_not_called()
+    client.delete_asset.assert_not_called()
 
 
 def test_select_json_asset_content(client, httpx_mock):

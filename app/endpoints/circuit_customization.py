@@ -10,17 +10,20 @@ from uuid import UUID
 import entitysdk.client
 import entitysdk.exception
 import h5py
-import httpx
 import numpy as np
 from entitysdk import models
-from entitysdk.types import AssetLabel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
+from app.endpoints.circuit_helpers import (
+    compute_circuit_metadata,
+    generate_and_register_visualization_assets,
+    trigger_validation_task,
+    upload_sonata_circuit,
+)
 from obi_one.scientific.validations.emodels import BUILTIN_NEURON_MECHANISMS
 from obi_one.utils.circuit_customization.staging import stage_customized_circuit
 
@@ -175,14 +178,12 @@ def _validate_nodeset_dict(path: Path, key: str, expr: dict) -> None:
                 msg = f"'{path.name}' nodeset '{key}': 'population' value must be a string or list"
                 raise NodeSetsValidationError(msg)
         elif k == "node_id":
-            if not isinstance(v, list | int):
-                msg = (
-                    f"'{path.name}' nodeset '{key}': 'node_id' value must be an int or list of ints"
-                )
+            if not isinstance(v, list) or not all(isinstance(i, int) for i in v):
+                msg = f"'{path.name}' nodeset '{key}': 'node_id' value must be a list of ints"
                 raise NodeSetsValidationError(msg)
         elif k in VALID_OPERATORS:
             pass  # operator values are unconstrained at this layer
-        elif not isinstance(v, str | int | float | list):
+        elif not isinstance(v, str | int | float | bool | list):
             msg = (
                 f"'{path.name}' nodeset '{key}': "
                 f"attribute filter value for '{k}' must be a scalar or list"
@@ -191,15 +192,14 @@ def _validate_nodeset_dict(path: Path, key: str, expr: dict) -> None:
 
 
 def _validate_nodeset_list(path: Path, key: str, expr: list) -> None:
-    """Validate a list-based compound nodeset expression."""
+    """Validate a list-based compound nodeset expression (names of other node sets)."""
     for item in expr:
-        if not isinstance(item, str | dict):
+        if not isinstance(item, str):
             msg = (
-                f"'{path.name}' nodeset '{key}': compound expression items must be strings or dicts"
+                f"'{path.name}' nodeset '{key}': "
+                "compound expression items must be strings (node set names)"
             )
             raise NodeSetsValidationError(msg)
-        if isinstance(item, dict):
-            _validate_nodeset_expression(path, key, item)
 
 
 def _validate_node_sets(path: Path) -> None:
@@ -348,25 +348,29 @@ def _validate_new_mod_not_synapse(
 def _get_parent_mechanism_names(
     db_client: entitysdk.client.Client, parent: models.Circuit
 ) -> set[str]:
-    """Get the set of MOD file stems from the parent circuit's mechanisms_dir."""
-    import libsonata  # noqa: PLC0415
-
+    """Get MOD file stems from each population's resolved mechanisms_dir via SNAP."""
     try:
-        # Stage parent config to get mechanism dir path (EFS-backed, fast)
+        from bluepysnap import Circuit as SnapCircuit  # noqa: PLC0415
         from entitysdk.staging.circuit import stage_circuit  # noqa: PLC0415
 
         with tempfile.TemporaryDirectory() as ptmp:
             config_path = stage_circuit(db_client, model=parent, output_dir=Path(ptmp))
-            config = libsonata.CircuitConfig.from_file(str(config_path))
-            cfg = json.loads(config.expanded_json)
-            mech_dir = cfg.get("components", {}).get("mechanisms_dir", "")
-            if mech_dir and Path(mech_dir).is_dir():
-                return {p.stem for p in Path(mech_dir).glob("*.mod")}
+            circuit = SnapCircuit(str(config_path))
+            names: set[str] = set()
+            for pop_name in circuit.nodes.population_names:
+                mech_dir_str = circuit.nodes[pop_name].config.get("mechanisms_dir")
+                if not mech_dir_str:
+                    continue
+                mech_dir = Path(mech_dir_str)
+                if mech_dir.is_dir():
+                    names |= {p.stem for p in mech_dir.glob("*.mod")}
+            if names:
+                return names
             # Fallback: scan staged directory for MOD files
             mods = list(Path(ptmp).rglob("*.mod"))
             if mods:
                 return {p.stem for p in mods}
-    except (OSError, KeyError, ValueError, json.JSONDecodeError) as e:
+    except (OSError, KeyError, ValueError, TypeError) as e:
         L.warning("Could not resolve parent mechanism names: %s", e)
     return set()
 
@@ -447,60 +451,7 @@ def _validate_file_groups(
     return edge_paths, hoc_paths, mod_paths, node_paths, errors
 
 
-def _trigger_validation_task(
-    *,
-    ls_client: httpx.Client,
-    circuit_id: UUID,
-    project_id: UUID,
-    virtual_lab_id: UUID,
-) -> None:
-    """Submit a circuit validation job to the launch-system."""
-    launch_path = "launch_scripts/launch_circuit_validation"
-    asset_gen_callback = {
-        "action_type": "http_request_with_token",
-        "event_type": "job_on_success",
-        "config": {
-            "url": (
-                f"{settings.API_URL}/api/obi-one/declared/circuit"
-                f"/{circuit_id}/generate-assets?force=true"
-            ),
-            "method": "POST",
-        },
-    }
-    job_data = {
-        "code": {
-            "type": "python_repository",
-            "location": settings.OBI_ONE_REPO,
-            "ref": f"commit:{settings.COMMIT_SHA}" if settings.COMMIT_SHA else "HEAD",
-            "path": f"{launch_path}/main.py",
-            "dependencies": f"{launch_path}/dependencies/default.txt",
-            "staged_directories": ["obi_one/"],
-        },
-        "resources": {
-            "type": "machine",
-            "image_type": "obi_one",
-            "cores": 1,
-            "memory": 8,
-            "timelimit": "00:30",
-            "compute_cell": "local",
-        },
-        "inputs": [
-            f"--circuit_id {circuit_id}",
-            f"--virtual_lab_id {virtual_lab_id}",
-            f"--project_id {project_id}",
-        ],
-        "project_id": str(project_id),
-        "callbacks": [asset_gen_callback],
-    }
-
-    response = ls_client.post(url="/job", json=job_data)
-    if response.is_success:
-        L.info("Validation task submitted for circuit %s", circuit_id)
-    else:
-        L.warning("Failed to submit validation task for circuit %s: %s", circuit_id, response.text)
-
-
-def _register_and_stage(  # noqa: PLR0914
+def _register_and_stage(
     *,
     db_client: entitysdk.client.Client,
     parent: models.Circuit,
@@ -541,17 +492,17 @@ def _register_and_stage(  # noqa: PLR0914
         raise HTTPException(status_code=500, detail="Staged circuit is missing circuit_config.json")
 
     try:
-        from obi_one.scientific.library.circuit import Circuit as OBICircuit  # noqa: PLC0415
-        from obi_one.utils.circuit import (  # noqa: PLC0415
-            get_circuit_properties,
-            get_circuit_size,
-        )
-
-        c = OBICircuit(name=name, path=str(merged_config))
-        scale, number_neurons, number_synapses, number_connections = get_circuit_size(c)
-        has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
-            get_circuit_properties(c)
-        )
+        (
+            c,
+            scale,
+            number_neurons,
+            number_synapses,
+            number_connections,
+            has_morphologies,
+            has_point_neurons,
+            has_electrical_cell_models,
+            has_spines,
+        ) = compute_circuit_metadata(name, merged_config)
     except (OSError, ValueError, RuntimeError) as e:
         raise HTTPException(
             status_code=422, detail=f"Failed to compute circuit metadata: {e}"
@@ -573,7 +524,7 @@ def _register_and_stage(  # noqa: PLR0914
         scale=scale,
         build_category=parent.build_category,
         target_simulator=parent.target_simulator,
-        root_circuit_id=parent.id,
+        root_circuit_id=parent.root_circuit_id or parent.id,
         lifecycle_status="draft",  # ty:ignore[invalid-argument-type]
     )
 
@@ -582,56 +533,25 @@ def _register_and_stage(  # noqa: PLR0914
     except entitysdk.exception.EntitySDKError as e:
         raise HTTPException(status_code=500, detail=f"Failed to register circuit: {e}") from e
 
-    merged_files = {p.relative_to(staged_dir): p for p in staged_dir.rglob("*") if p.is_file()}
-    db_client.upload_directory(
-        entity_id=registered.id,  # ty:ignore[invalid-argument-type]
-        entity_type=models.Circuit,
-        name="sonata_circuit",
-        paths=merged_files,  # ty:ignore[invalid-argument-type]
-        label=AssetLabel.sonata_circuit,
+    # Create derivation link between the customized circuit and its parent
+    from entitysdk.types import DerivationType  # noqa: PLC0415
+
+    derivation_model = models.Derivation(
+        used=parent,
+        generated=registered,
+        derivation_type=DerivationType.circuit_customization,
     )
+    db_client.register_entity(derivation_model)
 
-    # Generate and register stats + visualization assets
-    from obi_one.utils.circuit_registration.generate import (  # noqa: PLC0415
-        generate_connectivity_matrix_asset,
-        generate_connectivity_plot_assets,
-        generate_overview_image_asset,
-        generate_sim_designer_image_asset,
+    upload_sonata_circuit(db_client, registered, staged_dir)
+
+    generate_and_register_visualization_assets(
+        circuit=c,
+        config_path=merged_config,
+        output_root=staged_dir,
+        db_client=db_client,
+        registered=registered,
     )
-
-    edge_pop = c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
-    if edge_pop is not None:
-        matrix_dir = staged_dir / "__CONN_MATRIX__"
-        plot_dir = staged_dir / "__BASIC_PLOTS__"
-        viz_dir = staged_dir / "__CIRCUIT_VIZ__"
-
-        _, matrix_config_path, edge_pop = generate_connectivity_matrix_asset(
-            circuit_path=merged_config,
-            output_dir=matrix_dir,
-            edge_population=edge_pop,
-        )
-
-        generate_connectivity_plot_assets(
-            matrix_config=matrix_config_path,
-            edge_population=edge_pop,
-            output_dir=plot_dir,
-            client=db_client,
-            circuit_entity=registered,
-        )
-
-        generate_overview_image_asset(
-            plot_dir=plot_dir,
-            output_dir=viz_dir,
-            client=db_client,
-            circuit_entity=registered,
-        )
-
-        generate_sim_designer_image_asset(
-            plot_dir=plot_dir,
-            output_dir=viz_dir,
-            client=db_client,
-            circuit_entity=registered,
-        )
 
     return registered
 
@@ -714,18 +634,6 @@ def customize_circuit_endpoint(
     if not has_overrides:
         raise HTTPException(status_code=422, detail="At least one override file must be provided.")
 
-    if circuit_config_file and (edges_files or node_files):
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "circuit_config_file cannot be combined with edges_files or node_files. "
-                "Node/edge file placement is guided by the parent circuit's config "
-                "structure; supplying a replacement config alongside those files produces "
-                "inconsistent staging. Provide the config override alone, or provide file "
-                "overrides without replacing the config."
-            ),
-        )
-
     pop_map = _parse_population_manifest(emodel_population_manifest)
 
     # 1. Fetch parent circuit
@@ -735,6 +643,18 @@ def customize_circuit_endpoint(
         raise HTTPException(
             status_code=404, detail=f"Parent circuit {parent_circuit_id} not found: {e}"
         ) from e
+
+    from entitysdk.types import EntityLifecycleStatus  # noqa: PLC0415
+
+    if parent.lifecycle_status != EntityLifecycleStatus.active:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Parent circuit must have lifecycle_status 'active' "
+                f"(got '{parent.lifecycle_status}'). "
+                "Only validated circuits can be customized."
+            ),
+        )
 
     # 2. Save uploads and run Layer 1 validations
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -778,7 +698,7 @@ def customize_circuit_endpoint(
         )
 
     # 5. Trigger async validation task via launch-system
-    _trigger_validation_task(
+    trigger_validation_task(
         ls_client=ls_client,
         circuit_id=registered.id,  # ty:ignore[invalid-argument-type]
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]

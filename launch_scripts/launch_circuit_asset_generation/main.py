@@ -1,7 +1,8 @@
 """Launch script for circuit asset generation task.
 
-Runs on ECS. Stages the circuit and generates additional assets
-(compressed circuit, connectivity matrices, stats, images).
+Runs on ECS. Stages the circuit and generates compressed circuit + connectivity
+matrices only. Visualization assets (plots, overview, sim-designer images) are
+produced synchronously at register/customize time and are not regenerated here.
 Best-effort: failures are logged but do not affect circuit status.
 
 Environment Variables Required:
@@ -39,6 +40,12 @@ def main() -> int:
         parser.add_argument("--circuit_id", required=True, help="Circuit entity ID")
         parser.add_argument("--virtual_lab_id", required=True, help="Virtual lab ID")
         parser.add_argument("--project_id", required=True, help="Project ID")
+        parser.add_argument(
+            "--force",
+            type=lambda value: str(value).lower() == "true",
+            default=False,
+            help="Regenerate compressed archive even if it already exists",
+        )
         args = parser.parse_args()
 
         circuit_id = UUID(args.circuit_id)
@@ -81,6 +88,8 @@ def main() -> int:
                 edge_population=edge_pop,
                 client=db_client,
                 circuit_entity=circuit,
+                force=args.force,
+                include_visualization=False,
             )
 
         L.info("Asset generation complete for circuit %s", circuit_id)

@@ -6,6 +6,8 @@ from pathlib import Path
 
 from entitysdk import Client, models
 
+from obi_one.utils.db_sdk import _upload_or_replace_directory, _upload_or_replace_file
+
 L = logging.getLogger(__name__)
 
 
@@ -177,18 +179,18 @@ def register_asset(
         if num_ignored > 0:
             L.warning(f"{num_ignored} '.DS_Store' file(s) found in '{file_path}' - ignoring")
         files_in_dir = {k: v for k, v in files_in_dir.items() if ".ds_store" not in k.lower()}
-        asset = client.upload_directory(
-            label=asset_label,  # ty:ignore[invalid-argument-type]
+        asset = _upload_or_replace_directory(
+            client,
+            registered_circuit,
+            asset_label=asset_label,
             name=asset_label,
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
-            entity_type=models.Circuit,
-            paths=files_in_dir,  # ty:ignore[invalid-argument-type]
+            paths=files_in_dir,
         )
     else:
-        asset = client.upload_file(
-            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
-            entity_type=models.Circuit,
+        asset = _upload_or_replace_file(
+            client,
+            registered_circuit,
+            asset_label=asset_label,
             file_path=file_path,
             file_content_type=content_type,
         )

@@ -1,4 +1,4 @@
-"""Unit tests for circuit_customization — _trigger_validation_task and _run_validations."""
+"""Unit tests for circuit_customization — trigger_validation_task and _run_validations."""
 
 import json
 from io import BytesIO
@@ -12,9 +12,9 @@ from fastapi import UploadFile
 from app.endpoints.circuit_customization import (
     _run_validations,
     _save_uploads,
-    _trigger_validation_task,
     _validate_file_groups,
 )
+from app.endpoints.circuit_helpers import trigger_validation_task
 
 # ---------------------------------------------------------------------------
 # _save_uploads
@@ -183,11 +183,11 @@ class TestRunValidations:
 
 
 class TestTriggerValidationTask:
-    @patch("app.endpoints.circuit_customization.settings")
+    @patch("app.endpoints.circuit_helpers.settings")
     def test_success(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
-        mock_settings.COMMIT_SHA = "abc123"
+        mock_settings.APP_VERSION = "1.2.3-dev"
 
         ls_client = MagicMock()
         response = MagicMock()
@@ -198,7 +198,7 @@ class TestTriggerValidationTask:
         project_id = uuid4()
         virtual_lab_id = uuid4()
 
-        _trigger_validation_task(
+        trigger_validation_task(
             ls_client=ls_client,
             circuit_id=circuit_id,
             project_id=project_id,
@@ -209,14 +209,39 @@ class TestTriggerValidationTask:
         call_kwargs = ls_client.post.call_args[1]
         assert call_kwargs["url"] == "/job"
         job_data = call_kwargs["json"]
+        assert job_data["code"]["ref"] == "tag:1.2.3"
+        assert "staged_directories" not in job_data["code"]
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
+        assert "--force false" in job_data["inputs"]
         assert str(project_id) == job_data["project_id"]
 
-    @patch("app.endpoints.circuit_customization.settings")
+    @patch("app.endpoints.circuit_helpers.settings")
+    def test_forwards_force_true(self, mock_settings):
+        mock_settings.API_URL = "http://localhost:8100"
+        mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
+        mock_settings.APP_VERSION = "1.2.3"
+
+        ls_client = MagicMock()
+        response = MagicMock()
+        response.is_success = True
+        ls_client.post.return_value = response
+
+        trigger_validation_task(
+            ls_client=ls_client,
+            circuit_id=uuid4(),
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+            force=True,
+        )
+
+        job_data = ls_client.post.call_args[1]["json"]
+        assert "--force true" in job_data["inputs"]
+
+    @patch("app.endpoints.circuit_helpers.settings")
     def test_failure_logs_warning(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
-        mock_settings.COMMIT_SHA = ""
+        mock_settings.APP_VERSION = None
 
         ls_client = MagicMock()
         response = MagicMock()
@@ -225,10 +250,12 @@ class TestTriggerValidationTask:
         ls_client.post.return_value = response
 
         # Should not raise, just log a warning
-        _trigger_validation_task(
+        trigger_validation_task(
             ls_client=ls_client,
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
         )
         ls_client.post.assert_called_once()
+        assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"
+        assert "--force false" in ls_client.post.call_args[1]["json"]["inputs"]

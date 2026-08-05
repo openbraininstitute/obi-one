@@ -293,6 +293,110 @@ def get_execution_activity(
     )
 
 
+def _asset_label_value(label: object) -> str:
+    """Normalize an asset label (enum or str) to its string value."""
+    return str(getattr(label, "value", label))
+
+
+def _assets_with_label(entity: models.Circuit, asset_label: str) -> list[Asset]:
+    """Return all assets on the entity that match ``asset_label``."""
+    return [
+        asset
+        for asset in (entity.assets or [])
+        if _asset_label_value(asset.label) == asset_label
+    ]
+
+
+def _delete_assets_with_label(
+    client: Client, registered_circuit: models.Circuit, asset_label: str
+) -> None:
+    """Delete all assets with ``asset_label`` on the circuit (in-memory + remote)."""
+    for asset in _assets_with_label(registered_circuit, asset_label):
+        client.delete_asset(
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_type=models.Circuit,
+            asset_id=asset.id,  # ty:ignore[invalid-argument-type]
+        )
+        L.info("Deleted existing '%s' asset %s", asset_label, asset.id)
+        if registered_circuit.assets is not None:
+            registered_circuit.assets = [
+                a for a in registered_circuit.assets if a.id != asset.id
+            ]
+
+
+def _upload_or_replace_file(
+    client: Client,
+    registered_circuit: models.Circuit,
+    *,
+    asset_label: str,
+    file_path: Path,
+    file_content_type: str,
+    transfer_config: MultipartUploadTransferConfig | None = None,
+) -> Asset:
+    """Upload a file asset, replacing any existing asset with the same label.
+
+    Uses ``update_asset_file`` (delete + re-upload) when a single existing asset
+    is found and no custom transfer config is required. Otherwise deletes any
+    matching assets and uploads fresh.
+    """
+    existing = _assets_with_label(registered_circuit, asset_label)
+
+    if transfer_config is None and len(existing) == 1:
+        asset = client.update_asset_file(
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_type=models.Circuit,
+            asset_id=existing[0].id,  # ty:ignore[invalid-argument-type]
+            file_path=file_path,
+            file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
+        )
+        L.info("'%s' asset replaced under asset ID %s", asset_label, asset.id)
+        return asset
+
+    # Prefer update_asset_file above; when transfer_config is set (e.g. multipart
+    # compressed uploads) we delete + upload_file ourselves because
+    # update_asset_file does not accept transfer_config.
+    if existing:
+        _delete_assets_with_label(client, registered_circuit, asset_label)
+
+    asset = client.upload_file(
+        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_type=models.Circuit,
+        file_path=file_path,
+        file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
+        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+        transfer_config=transfer_config,
+    )
+    L.info("'%s' asset uploaded under asset ID %s", asset_label, asset.id)
+    return asset
+
+
+def _upload_or_replace_directory(
+    client: Client,
+    registered_circuit: models.Circuit,
+    *,
+    asset_label: str,
+    name: str,
+    paths: dict,
+) -> Asset:
+    """Upload a directory asset, replacing any existing asset with the same label.
+
+    entitysdk has no ``update_asset_directory``; this mirrors ``update_asset_file``
+    by deleting matching assets first, then uploading.
+    """
+    if _assets_with_label(registered_circuit, asset_label):
+        _delete_assets_with_label(client, registered_circuit, asset_label)
+
+    asset = client.upload_directory(
+        label=asset_label,  # ty:ignore[invalid-argument-type]
+        name=name,
+        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_type=models.Circuit,
+        paths=paths,  # ty:ignore[invalid-argument-type]
+    )
+    L.info("'%s' asset uploaded under asset ID %s", asset_label, asset.id)
+    return asset
+
+
 def add_circuit_folder_asset(
     client: Client, circuit_path: Path, registered_circuit: models.Circuit
 ) -> models.Asset:
@@ -317,46 +421,45 @@ def add_circuit_folder_asset(
         msg = "Node sets file not found in circuit folder!"
         raise FileNotFoundError(msg)
 
-    # Upload asset
-    directory_asset = client.upload_directory(
-        label=asset_label,  # ty:ignore[invalid-argument-type]
+    return _upload_or_replace_directory(
+        client,
+        registered_circuit,
+        asset_label=asset_label,
         name=asset_label,
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
-        entity_type=models.Circuit,
-        paths=circuit_files,  # ty:ignore[invalid-argument-type]
+        paths=circuit_files,
     )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {directory_asset.id}")
-    return directory_asset
 
 
 def add_compressed_circuit_asset(
     client: Client, compressed_file: Path, registered_circuit: models.Circuit
 ) -> models.Asset:
-    """Upload a compressed circuit file asset to a registered circuit entity."""
+    """Upload a compressed circuit file asset to a registered circuit entity.
+
+    Replaces any existing ``compressed_sonata_circuit`` asset (update semantics).
+    """
     asset_label = "compressed_sonata_circuit"
 
     if not compressed_file.exists():
         msg = f"Compressed circuit file '{compressed_file}' does not exist!"
         raise FileNotFoundError(msg)
 
-    # Upload compressed file asset
-    transfer_config = MultipartUploadTransferConfig()
-    compressed_asset = client.upload_file(
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
-        entity_type=models.Circuit,
+    return _upload_or_replace_file(
+        client,
+        registered_circuit,
+        asset_label=asset_label,
         file_path=compressed_file,
-        file_content_type="application/gzip",  # ty:ignore[invalid-argument-type]
-        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
-        transfer_config=transfer_config,
+        file_content_type="application/gzip",
+        transfer_config=MultipartUploadTransferConfig(),
     )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
-    return compressed_asset
 
 
 def add_connectivity_matrix_asset(
     client: Client, matrix_dir: Path, registered_circuit: models.Circuit
 ) -> models.Asset:
-    """Upload connectivity matrix directory asset to a registered circuit entity."""
+    """Upload connectivity matrix directory asset to a registered circuit entity.
+
+    Replaces any existing ``circuit_connectivity_matrices`` asset (update semantics).
+    """
     asset_label = "circuit_connectivity_matrices"
 
     if not matrix_dir.is_dir():
@@ -369,16 +472,13 @@ def add_connectivity_matrix_asset(
     }
     L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
 
-    # Upload directory asset
-    matrix_asset = client.upload_directory(
-        label=asset_label,  # ty:ignore[invalid-argument-type]
+    return _upload_or_replace_directory(
+        client,
+        registered_circuit,
+        asset_label=asset_label,
         name=asset_label,
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
-        entity_type=models.Circuit,
-        paths=matrix_files,  # ty:ignore[invalid-argument-type]
+        paths=matrix_files,
     )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
-    return matrix_asset
 
 
 def add_image_assets(
@@ -388,6 +488,8 @@ def add_image_assets(
     registered_circuit: models.Circuit,
 ) -> list[models.Asset]:
     """Upload connectivity plot assets to a registered circuit entity.
+
+    Replaces any existing asset with the same label (update semantics).
 
     Note: Image files will be converted to .webp, if needed.
     """
@@ -421,14 +523,13 @@ def add_image_assets(
         if "." + fmt != file_path.suffix:
             msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
             raise ValueError(msg)
-        plot_asset = client.upload_file(
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
-            entity_type=models.Circuit,
+        plot_asset = _upload_or_replace_file(
+            client,
+            registered_circuit,
+            asset_label=asset_label,
             file_path=file_path,
-            file_content_type=f"image/{fmt}",  # ty:ignore[invalid-argument-type]
-            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+            file_content_type=f"image/{fmt}",
         )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
         plot_assets.append(plot_asset)
     return plot_assets
 

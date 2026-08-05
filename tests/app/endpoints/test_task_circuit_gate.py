@@ -10,58 +10,58 @@ from app.endpoints.task import _check_circuit_is_active
 from app.errors import ApiError
 
 
+def _circuit(*, lifecycle_status: str | None, root_circuit_id=None) -> MagicMock:
+    circuit = MagicMock()
+    circuit.root_circuit_id = root_circuit_id
+    circuit.lifecycle_status = lifecycle_status
+    return circuit
+
+
+def _db_with_circuit(circuit: MagicMock) -> MagicMock:
+    db_client = MagicMock()
+    sim = MagicMock()
+    sim.entity_id = uuid4()
+    db_client.get_entity.side_effect = [sim, circuit]
+    return db_client
+
+
 class TestCheckCircuitIsActive:
     def test_active_circuit_passes(self):
-        """Active customized circuit should not raise."""
-        db_client = MagicMock()
-        sim = MagicMock()
-        sim.entity_id = uuid4()
-        circuit = MagicMock()
-        circuit.root_circuit_id = uuid4()  # customized circuit
-        circuit.lifecycle_status = "active"
+        """Active circuit should not raise, customized or not."""
+        circuit = _circuit(lifecycle_status="active", root_circuit_id=uuid4())
+        _check_circuit_is_active(_db_with_circuit(circuit), uuid4())
 
-        db_client.get_entity.side_effect = [sim, circuit]
-        _check_circuit_is_active(db_client, uuid4())  # should not raise
+    def test_active_registered_circuit_passes(self):
+        """Active registered circuit (no root) should not raise."""
+        circuit = _circuit(lifecycle_status="active", root_circuit_id=None)
+        _check_circuit_is_active(_db_with_circuit(circuit), uuid4())
 
     def test_draft_circuit_raises(self):
-        """Draft customized circuit should be rejected."""
-        db_client = MagicMock()
-        sim = MagicMock()
-        sim.entity_id = uuid4()
-        circuit = MagicMock()
-        circuit.root_circuit_id = uuid4()  # customized circuit
-        circuit.lifecycle_status = "draft"
-
-        db_client.get_entity.side_effect = [sim, circuit]
+        """Draft circuit should be rejected."""
+        circuit = _circuit(lifecycle_status="draft", root_circuit_id=uuid4())
         with pytest.raises(ApiError, match="not ready for simulation"):
-            _check_circuit_is_active(db_client, uuid4())
+            _check_circuit_is_active(_db_with_circuit(circuit), uuid4())
+
+    def test_draft_registered_circuit_raises(self):
+        """Draft registered circuit (no root) should also be rejected."""
+        circuit = _circuit(lifecycle_status="draft", root_circuit_id=None)
+        with pytest.raises(ApiError, match="not ready for simulation"):
+            _check_circuit_is_active(_db_with_circuit(circuit), uuid4())
 
     def test_disqualified_circuit_raises(self):
         """Disqualified circuit should be rejected."""
-        db_client = MagicMock()
-        sim = MagicMock()
-        sim.entity_id = uuid4()
-        circuit = MagicMock()
-        circuit.root_circuit_id = uuid4()
-        circuit.lifecycle_status = "disqualified"
-
-        db_client.get_entity.side_effect = [sim, circuit]
+        circuit = _circuit(lifecycle_status="disqualified", root_circuit_id=uuid4())
         with pytest.raises(ApiError, match="not ready for simulation"):
-            _check_circuit_is_active(db_client, uuid4())
+            _check_circuit_is_active(_db_with_circuit(circuit), uuid4())
 
-    def test_non_customized_circuit_passes(self):
-        """Circuit without root_circuit_id (not customized) should pass."""
-        db_client = MagicMock()
-        sim = MagicMock()
-        sim.entity_id = uuid4()
-        circuit = MagicMock()
-        circuit.root_circuit_id = None  # not a customized circuit
-
-        db_client.get_entity.side_effect = [sim, circuit]
-        _check_circuit_is_active(db_client, uuid4())  # should not raise
+    def test_missing_lifecycle_status_raises(self):
+        """Circuit with no lifecycle_status should be rejected."""
+        circuit = _circuit(lifecycle_status=None, root_circuit_id=None)
+        with pytest.raises(ApiError, match="not ready for simulation"):
+            _check_circuit_is_active(_db_with_circuit(circuit), uuid4())
 
     def test_entity_not_found_passes(self):
         """If simulation or circuit can't be fetched, gate is skipped."""
         db_client = MagicMock()
         db_client.get_entity.side_effect = EntitySDKError("not found")
-        _check_circuit_is_active(db_client, uuid4())  # should not raise
+        _check_circuit_is_active(db_client, uuid4())

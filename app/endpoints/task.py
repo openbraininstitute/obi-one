@@ -30,14 +30,11 @@ from app.types import TaskType
 
 
 def _check_circuit_is_active(db_client: entitysdk.client.Client, config_id: UUID) -> None:
-    """Block simulation launch if the circuit is a customized circuit not yet validated."""
+    """Block simulation launch if the circuit is not yet validated."""
     try:
         simulation = db_client.get_entity(entity_id=config_id, entity_type=models.Simulation)
         circuit = db_client.get_entity(entity_id=simulation.entity_id, entity_type=models.Circuit)
     except entitysdk.exception.EntitySDKError:
-        return
-
-    if circuit.root_circuit_id is None:
         return
 
     lifecycle_status = getattr(circuit, "lifecycle_status", None)
