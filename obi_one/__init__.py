@@ -135,6 +135,7 @@ __all__ = [
     "MEModelStimulusUnion",
     "MEModelSynapticModelPlacementScanConfig",
     "MEModelSynapticModelPlacementSingleConfig",
+    "MEModelSynapticModelPlacementTask",
     "MEModelWithSynapsesCircuitFromID",
     "MEModelWithSynapsesCircuitSimulationScanConfig",
     "MEModelWithSynapsesCircuitSimulationSingleConfig",
@@ -473,6 +474,7 @@ from obi_one.scientific.tasks.build_synaptome import (
     BuildSynaptomeResult,
     MEModelSynapticModelPlacementScanConfig,
     MEModelSynapticModelPlacementSingleConfig,
+    MEModelSynapticModelPlacementTask,
     build_synaptome,
 )
 from obi_one.scientific.tasks.circuit_extraction import (

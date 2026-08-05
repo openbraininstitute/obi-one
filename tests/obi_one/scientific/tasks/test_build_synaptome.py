@@ -9,6 +9,12 @@ import morphio
 import numpy as np
 import pandas as pd
 import pytest
+from entitysdk.types import (
+    CircuitBuildCategory,
+    TargetSimulator,
+    TaskActivityType,
+    TaskConfigType,
+)
 
 from obi_one.core.info import Info
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
@@ -25,6 +31,7 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.build_synaptome import (
     BuildSynaptomeError,
+    BuildSynaptomeResult,
     _generate_locations,
     _sample_physiology,
     _target_population,
@@ -35,6 +42,7 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
 from obi_one.scientific.tasks.build_synaptome import (
     MEModelSynapticModelPlacementScanConfig,
     MEModelSynapticModelPlacementSingleConfig,
+    MEModelSynapticModelPlacementTask,
     SynapticModelPlacer,
     build_synaptome,
 )
@@ -197,6 +205,90 @@ def _edge_frame(result, edge_name: str):
     circuit = bluepysnap.Circuit(result.circuit_config_path)
     edge = circuit.edges[edge_name]
     return edge.get(edge.ids(), properties=sorted(edge.property_names))
+
+
+def test_build_synaptome_config_provenance(monkeypatch):
+    me_model = Mock()
+    monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
+    config = _config()
+
+    assert config.campaign_task_config_type is TaskConfigType.circuit_single_build__campaign
+    assert (
+        config.campaign_generation_task_activity_type
+        is TaskActivityType.circuit_single_build__config_generation
+    )
+    assert config.single_task_config_type is TaskConfigType.circuit_single_build__config
+    assert config.input_entities(db_client=Mock()) == [me_model]
+
+
+def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, monkeypatch):
+    config = _config()
+    config.coordinate_output_root = tmp_path
+    subject = Mock()
+    brain_region = Mock()
+    license_entity = Mock()
+    morphology = SimpleNamespace(
+        subject=subject,
+        experiment_date="2026-08-05",
+        license=None,
+    )
+    me_model = SimpleNamespace(
+        id="me-model-id",
+        morphology=morphology,
+        brain_region=brain_region,
+        license=license_entity,
+    )
+    monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
+
+    result = BuildSynaptomeResult(
+        circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
+        output_directory=tmp_path / "SONATA",
+        generated_files=(),
+    )
+    build = Mock(return_value=result)
+    register = Mock(return_value=SimpleNamespace(id="circuit-id"))
+    execution_activity = SimpleNamespace(id="activity-id")
+    get_activity = Mock(return_value=execution_activity)
+    update_activity = Mock()
+    monkeypatch.setattr(
+        "obi_one.scientific.tasks.build_synaptome.build_synaptome_artifact",
+        build,
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_circuit",
+        register,
+    )
+    monkeypatch.setattr(MEModelSynapticModelPlacementTask, "_get_execution_activity", get_activity)
+    monkeypatch.setattr(
+        MEModelSynapticModelPlacementTask, "_update_execution_activity", update_activity
+    )
+
+    db_client = Mock()
+    circuit_id = MEModelSynapticModelPlacementTask(config=config).execute(
+        db_client=db_client,
+        execution_activity_id="activity-id",
+    )
+
+    assert circuit_id == "circuit-id"
+    build.assert_called_once_with(config, tmp_path / "SONATA", db_client=db_client)
+    register.assert_called_once_with(
+        client=db_client,
+        circuit_path=result.circuit_config_path,
+        name="test",
+        description="test synaptome",
+        build_category=CircuitBuildCategory.computational_model,
+        brain_region=brain_region,
+        subject=subject,
+        target_simulator=TargetSimulator.NEURON,
+        experiment_date="2026-08-05",
+        license=license_entity,
+        skip_validation=True,
+    )
+    update_activity.assert_called_once_with(
+        db_client=db_client,
+        execution_activity=execution_activity,
+        generated=["circuit-id"],
+    )
 
 
 def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):
