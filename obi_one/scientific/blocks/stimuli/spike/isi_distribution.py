@@ -11,7 +11,6 @@ from obi_one.core.units import Units
 
 if TYPE_CHECKING:
     from obi_one.scientific.blocks.distributions.base import Distribution
-from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -86,10 +85,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
         return spikes
 
     def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
-        if self.distribution is None:
-            distribution = ExponentialDistribution(scale=50.0)
-        else:
-            distribution = self.distribution.block
+        distribution = self.distribution.block  # ty:ignore[unresolved-attribute]
 
         timestamps = self._offset_timestamps()
         random_seed = getattr(distribution, "random_seed", None)

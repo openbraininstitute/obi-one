@@ -43,7 +43,6 @@ from obi_one.scientific.unions_and_references.stimuli import CircuitStimulusUnio
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
     POINT_POPULATION,
@@ -425,15 +424,12 @@ class TestNoDanglingNodeSetReferences:
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_brian2_stimulus_leaves_nothing_dangling(self, brian2_config, tmp_path):
-        """Brian2 resolves two different defaults, and both node sets have to be written."""
+        """Brian2 resolves both roles to one default, and that node set has to be written."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.referenced_node_sets() == {
-            DEFAULT_POINT_NODE_SET,
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET,
-        }
+        assert result.referenced_node_sets() == {DEFAULT_POINT_NODE_SET}
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_learning_engine_stimulus_leaves_nothing_dangling(
@@ -667,14 +663,14 @@ class TestUnsetTimestampsAndDistributions:
     def test_a_distribution_driven_stimulus_generates_without_a_distribution(
         self, name, circuit, tmp_path
     ):
-        """These stimuli fall back to their own distribution rather than failing."""
+        """The task fills these like any other role, rather than the block falling back."""
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Stim": _block(name)}
         )
 
         result = generate(config, tmp_path)
 
-        assert config.stimuli["Stim"].distribution is None
+        assert config.stimuli["Stim"].distribution is not None
         assert result.inputs["Stim"]["spike_file"] == "Stim_spikes.h5"
         assert (result.directory / "Stim_spikes.h5").exists()
 

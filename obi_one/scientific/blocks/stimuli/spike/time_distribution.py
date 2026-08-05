@@ -8,7 +8,6 @@ from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.distributions.uniform import FloatUniformDistribution
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
@@ -54,7 +53,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
         title="Spike Time Distribution",
         description=(
             "Distribution used to sample spike times directly in milliseconds. "
-            "Default: FloatUniformDistribution(low=0.0, high=duration)."
+            "Default: NormalDistribution(mean=5.0, standard_deviation=1.0)."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -99,10 +98,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
         return sorted(float(t) for t in samples if 0.0 <= t < duration)
 
     def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
-        if self.distribution is None:
-            distribution = FloatUniformDistribution(low=0.0, high=self.duration)
-        else:
-            distribution = self.distribution.block
+        distribution = self.distribution.block  # ty:ignore[unresolved-attribute]
 
         timestamps = self._offset_timestamps()
         random_seed = getattr(distribution, "random_seed", None)

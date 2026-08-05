@@ -11,7 +11,6 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.fill_none_references import fill_none_references_in_config
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
@@ -110,8 +109,6 @@ class GenerateSimulationTask(Task):
                     sonata_simulation_config_directory=self.config.coordinate_output_root,
                     simulation_length=self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type]
                 )
-            elif isinstance(stimulus, Brian2DirectPoissonStimulus):
-                entry = stimulus.config(circuit=self._circuit)  # ty:ignore[invalid-argument-type]
             else:
                 entry = stimulus.config()
             self._sonata_config["inputs"].update(entry)
@@ -194,7 +191,7 @@ class GenerateSimulationTask(Task):
         """
         used = fill_none_references_in_config(
             self.config,
-            self.config.default_block_references(self._circuit),  # ty:ignore[invalid-argument-type]
+            self.config.default_block_references(),
         )
         self._register_default_neuron_sets(used)
 

@@ -69,7 +69,6 @@ POINT_POPULATION = "drosophila"
 DEFAULT_BIOPHYSICAL_NODE_SET = "Default: All Biophysical Neurons"
 DEFAULT_VIRTUAL_NODE_SET = "Default: All Virtual Neurons"
 DEFAULT_POINT_NODE_SET = "Default: All Point Neurons"
-DEFAULT_BRIAN2_STIMULUS_NODE_SET = "Default: Sugar gustatory receptor neurons"
 
 
 def union_member_names(union: Any) -> set[str]:
@@ -102,14 +101,6 @@ def reference_field_names(block_class: type) -> list[str]:
     ]
 
 
-# Both spike distribution roles are resolved by the block, not the task: their defaults depend on
-# the stimulus's own parameters, so no simulation-wide reference can express them.
-BLOCK_SUPPLIED_REFERENCE_TAGS = {
-    ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION,
-    ReferenceTag.SPIKE_TIME_DISTRIBUTION,
-}
-
-
 def tagged_reference_fields(block: Any) -> list[tuple[str, ReferenceTag]]:
     """The block's reference fields that declare what they mean when left unset."""
     return [
@@ -123,8 +114,8 @@ def tagged_reference_fields(block: Any) -> list[tuple[str, ReferenceTag]]:
 def unfilled_reference_fields(config: Any) -> list[str]:
     """Tagged references still unset anywhere in the config, as ``Block.field`` names.
 
-    Empty is the invariant ``_fill_none_references`` exists to provide. Roles the task deliberately
-    leaves to the block are excluded, since those are meant to still be ``None`` afterwards.
+    Empty is the invariant ``_fill_none_references`` exists to provide: every role the config
+    names has a default, so nothing tagged is left ``None`` afterwards.
     """
     unfilled = []
     for value in vars(config).values():
@@ -138,9 +129,7 @@ def unfilled_reference_fields(config: Any) -> list[str]:
         for block in blocks:
             if not isinstance(block, Block):
                 continue
-            for name, tag in tagged_reference_fields(block):
-                if tag in BLOCK_SUPPLIED_REFERENCE_TAGS:
-                    continue
+            for name, _tag in tagged_reference_fields(block):
                 field_value = getattr(block, name, None)
                 if field_value is None or (
                     isinstance(field_value, tuple)

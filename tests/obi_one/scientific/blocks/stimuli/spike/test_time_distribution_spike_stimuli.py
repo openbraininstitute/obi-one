@@ -265,28 +265,6 @@ class TestSpikeTimeDistributionSpikeStimulus:
         second_rep = sorted(t - 50.0 for t in timestamps_out if 50.0 <= t < 75.0)
         assert not np.allclose(first_rep, second_rep)
 
-    def test_default_distribution_is_uniform_over_duration(self, monkeypatch):
-        stimulus = _make_time_distribution_stimulus(duration=25.0, mean_firing_rate=3.0)
-
-        stimulus.distribution = None
-
-        mock_sample = MagicMock(return_value=[1.0, 2.0])
-        monkeypatch.setattr(
-            SpikeTimeDistributionSpikeStimulus,
-            "_sample_spike_times_from_distribution",
-            mock_sample,
-        )
-
-        _patch_resolved_timestamps(monkeypatch, [0.0])
-        _patch_number_of_spikes(monkeypatch, 2)
-
-        stimulus.generate_spikes_by_gid([0])
-
-        distribution = mock_sample.call_args.args[0]
-        assert isinstance(distribution, obi.FloatUniformDistribution)
-        assert distribution.low == 0.0  # ruff: ignore[float-equality-comparison]
-        assert distribution.high == 25.0  # ruff: ignore[float-equality-comparison]
-
 
 class TestSpikeTimeStimulusIndexingConvention:
     def test_node_ids_follow_current_indexing_convention(self, tmp_path, monkeypatch):

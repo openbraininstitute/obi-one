@@ -16,7 +16,7 @@ Every reference offers a default option, labelled with the block the backend res
 1. the configuration's `reference_tag_defaults`, keyed by this field's `reference_tag`;
 2. the configuration's `default_block_reference_labels`, keyed by reference type — the first entry in `reference_types` that has one.
 
-The role wins because a reference *type* can be shared by fields that mean different things, and only the role tells them apart. In a Brian2 simulation an untargeted stimulus drives the `sugar` node set while the simulation itself runs every point neuron; both fields are `PointNeuronSetReference`, so keyed by type the configuration can only carry one of those answers.
+The role wins because a reference *type* can be shared by fields that mean different things, and only the role tells them apart. An unset inter-spike interval distribution defaults to an exponential while an unset spike time distribution defaults to a normal; both fields are `AllDistributionsReference`, so keyed by type the configuration can only carry one of those answers.
 
 Either source is sufficient on its own. A configuration that names all of its defaults by role need not publish `default_block_reference_labels` at all.
 

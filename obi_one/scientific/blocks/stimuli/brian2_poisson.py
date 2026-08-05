@@ -20,7 +20,6 @@ from pydantic import Field, NonNegativeFloat
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
@@ -28,7 +27,6 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
-    resolve_neuron_set_ref_to_neuron_set,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
@@ -96,7 +94,7 @@ class Brian2DirectPoissonStimulus(Block):
         },
     )
 
-    def config(self, circuit: Circuit) -> dict:
+    def config(self) -> dict:
         """Return the SONATA inputs entry for this block.
 
         The biophysical check that :class:`ContinuousStimulusWithoutTimestamps`
@@ -104,21 +102,6 @@ class Brian2DirectPoissonStimulus(Block):
         ``v`` (or any target variable) and is valid for point-neuron and
         biophysical populations alike.
         """
-        # An untargeted stimulus has already been pointed at the `sugar` node set by
-        # _fill_none_references (see Brian2SimulationScanConfig.default_stimulus_neuron_set_
-        # reference), which is small enough to stay under the limit; an explicit choice is
-        # checked here.
-        neuron_set = resolve_neuron_set_ref_to_neuron_set(self.neuron_set)
-        max_n_neurons = 100
-        neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)
-        total_neurons = sum(len(ids) for ids in neuron_ids.values())
-        if total_neurons > max_n_neurons:
-            msg = (
-                f"Number of neurons used with the {self.title} exceeds the maximum "
-                f"allowed: {max_n_neurons}."
-            )
-            raise ValueError(msg)
-
         return self._generate_config()
 
     def _generate_config(self) -> dict:

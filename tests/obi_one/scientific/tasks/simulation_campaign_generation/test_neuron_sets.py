@@ -648,17 +648,15 @@ class TestDefaultReferenceTypes:
     family that changes its default neuron set gets the matching reference type for free.
     """
 
-    def test_circuit_default_is_biophysical(self, circuit_config, circuit):
-        reference = circuit_config().default_block_references(circuit)[
-            ReferenceTag.SIMULATION_TARGET
-        ]
+    def test_circuit_default_is_biophysical(self, circuit_config):
+        reference = circuit_config().default_block_references()[ReferenceTag.SIMULATION_TARGET]
 
         assert isinstance(reference, BiophysicalNeuronSetReference)
         assert reference.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
         assert isinstance(reference.block, AllBiophysicalNeurons)
 
-    def test_circuit_virtual_and_point_operand_defaults(self, circuit_config, circuit):
-        defaults = circuit_config().default_block_references(circuit)
+    def test_circuit_virtual_and_point_operand_defaults(self, circuit_config):
+        defaults = circuit_config().default_block_references()
         virtual = defaults[ReferenceTag.VIRTUAL_NEURON_SET_OPERAND]
         point = defaults[ReferenceTag.POINT_NEURON_SET_OPERAND]
 
@@ -667,17 +665,15 @@ class TestDefaultReferenceTypes:
         assert isinstance(virtual.block, AllVirtualNeurons)
         assert isinstance(point.block, AllPointNeurons)
 
-    def test_brian2_default_is_point(self, brian2_config, point_circuit):
-        reference = brian2_config().default_block_references(point_circuit)[
-            ReferenceTag.SIMULATION_TARGET
-        ]
+    def test_brian2_default_is_point(self, brian2_config):
+        reference = brian2_config().default_block_references()[ReferenceTag.SIMULATION_TARGET]
 
         assert isinstance(reference, PointNeuronSetReference)
         assert reference.block_name == DEFAULT_POINT_NODE_SET
         assert isinstance(reference.block, AllPointNeurons)
 
-    def test_learning_engine_default_is_point(self, learning_engine_config, point_circuit):
-        reference = learning_engine_config().default_block_references(point_circuit)[
+    def test_learning_engine_default_is_point(self, learning_engine_config):
+        reference = learning_engine_config().default_block_references()[
             ReferenceTag.SIMULATION_TARGET
         ]
 

@@ -35,8 +35,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
-    BLOCK_SUPPLIED_REFERENCE_TAGS,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
+    DEFAULT_POINT_NODE_SET,
     build_config,
     generate,
     reference_types_in,
@@ -126,44 +125,63 @@ class TestEveryReferenceFieldDeclaresItsRole:
 
 
 class TestEveryTagIsHandled:
-    """A tag with no default silently leaves its field unset, so the split is pinned explicitly."""
+    """A tag with no default silently leaves its field unset, so the coverage is pinned here."""
 
-    def test_the_config_supplies_a_default_for_every_tag_it_does_not_delegate(
-        self, circuit_config, circuit
-    ):
-        supplied = set(circuit_config().default_block_references(circuit))
+    def test_the_config_supplies_a_default_for_every_tag(self, circuit_config):
+        supplied = set(circuit_config().default_block_references())
 
-        assert supplied == set(ReferenceTag) - BLOCK_SUPPLIED_REFERENCE_TAGS
+        assert supplied == set(ReferenceTag)
 
-    def test_the_delegated_tags_are_the_two_spike_distributions(self):
-        """Their defaults depend on the stimulus's own parameters, so no task can supply them."""
-        assert {
-            ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION,
-            ReferenceTag.SPIKE_TIME_DISTRIBUTION,
-        } == BLOCK_SUPPLIED_REFERENCE_TAGS
-
-    def test_every_default_is_a_resolved_block_reference(self, circuit_config, circuit):
-        for tag, default in circuit_config().default_block_references(circuit).items():
+    def test_every_default_is_a_resolved_block_reference(self, circuit_config):
+        for tag, default in circuit_config().default_block_references().items():
             assert isinstance(default, BlockReference), tag
             assert default.has_block(), tag
 
-    @pytest.mark.parametrize("tag", sorted(BLOCK_SUPPLIED_REFERENCE_TAGS))
-    def test_a_delegated_tag_leaves_its_field_alone(self, tag, circuit, tmp_path):
-        stimulus_names = {
-            ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION: (
-                "InterSpikeIntervalDistributionSpikeStimulus"
+    @pytest.mark.parametrize(
+        ("tag", "stimulus_name"),
+        [
+            (
+                ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION,
+                "InterSpikeIntervalDistributionSpikeStimulus",
             ),
-            ReferenceTag.SPIKE_TIME_DISTRIBUTION: "SpikeTimeDistributionSpikeStimulus",
-        }
+            (ReferenceTag.SPIKE_TIME_DISTRIBUTION, "SpikeTimeDistributionSpikeStimulus"),
+        ],
+    )
+    def test_a_spike_distribution_is_filled_like_any_other_role(
+        self, tag, stimulus_name, circuit_config, circuit, tmp_path
+    ):
+        """Both distribution defaults are simulation-wide, so the task supplies them too."""
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Stim": getattr(obi, stimulus_names[tag])()},
+            blocks={"Stim": getattr(obi, stimulus_name)()},
         )
 
         generate(config, tmp_path)
 
-        assert config.stimuli["Stim"].distribution is None
+        expected = circuit_config().default_block_references()[tag]
+        assert config.stimuli["Stim"].distribution.block_name == expected.block_name
+
+    def test_the_inter_spike_interval_default_is_an_exponential(self, circuit_config):
+        """Roughly 20 Hz, and duration-independent so one reference serves every stimulus."""
+        block = (
+            circuit_config()
+            .default_block_references()[ReferenceTag.INTER_SPIKE_INTERVAL_DISTRIBUTION]
+            .block
+        )
+
+        assert isinstance(block, obi.ExponentialDistribution)
+        assert block.scale == pytest.approx(50.0)
+
+    def test_the_spike_time_default_is_a_normal(self, circuit_config):
+        """Duration-independent too, which is what lets the task rather than the block supply it."""
+        block = (
+            circuit_config().default_block_references()[ReferenceTag.SPIKE_TIME_DISTRIBUTION].block
+        )
+
+        assert isinstance(block, obi.NormalDistribution)
+        assert block.mean == pytest.approx(5.0)
+        assert block.standard_deviation == pytest.approx(1.0)
 
 
 class TestTheInvariantHoldsForEveryConfigFamily:
@@ -211,18 +229,18 @@ class TestTheInvariantHoldsForEveryConfigFamily:
         assert unfilled_reference_fields(config) == []
 
 
-class TestTheStimulusTargetTagVariesByConfigFamily:
-    """The one role whose meaning genuinely differs between simulators."""
+class TestTheStimulusTargetTagResolvesToTheSimulationTarget:
+    """An untargeted stimulus drives whatever the simulation runs, in every family."""
 
-    def test_brian2_points_an_untargeted_stimulus_at_the_sugar_node_set(
+    def test_brian2_points_an_untargeted_stimulus_at_all_point_neurons(
         self, brian2_config, tmp_path
     ):
         config = brian2_config(blocks={"Poisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert config.stimuli["Poisson"].neuron_set.block_name == (DEFAULT_BRIAN2_STIMULUS_NODE_SET)
-        assert result.inputs["Poisson"]["node_set"] == DEFAULT_BRIAN2_STIMULUS_NODE_SET
+        assert config.stimuli["Poisson"].neuron_set.block_name == DEFAULT_POINT_NODE_SET
+        assert result.inputs["Poisson"]["node_set"] == DEFAULT_POINT_NODE_SET
 
     def test_a_neuron_simulation_points_it_at_the_simulation_default(
         self, circuit_config, tmp_path
@@ -240,39 +258,28 @@ class TestTheStimulusTargetTagVariesByConfigFamily:
         [
             CircuitSimulationSingleConfig,
             MEModelSimulationSingleConfig,
+            Brian2CircuitSimulationSingleConfig,
             LearningEngineCircuitSimulationSingleConfig,
         ],
     )
-    def test_other_families_inherit_the_base_mapping(self, config_class):
-        """They vary only through default_neuron_set_type, not by rewriting the mapping."""
+    def test_no_family_overrides_the_mapping(self, config_class):
+        """They vary only through default_neuron_set_type, not by rewriting the mapping.
+
+        Compared through ``__func__`` because binding a classmethod makes a fresh object each
+        time, so the methods themselves are never identical even when nothing overrides them.
+        """
         assert (
-            config_class.default_block_references
-            is BaseSimulationScanConfig.default_block_references
+            config_class.default_block_references.__func__
+            is BaseSimulationScanConfig.default_block_references.__func__
         )
 
-    def test_brian2_is_the_one_family_that_overrides_the_mapping(self):
-        assert (
-            Brian2CircuitSimulationSingleConfig.default_block_references
-            is not BaseSimulationScanConfig.default_block_references
-        )
-
-    def test_the_two_roles_coincide_when_a_family_does_not_override(self, circuit_config, circuit):
-        """Everywhere but Brian2, an untargeted stimulus drives whatever the simulation runs."""
-        defaults = circuit_config().default_block_references(circuit)
+    @pytest.mark.parametrize("config_fixture", ["circuit_config", "brian2_config"])
+    def test_the_two_roles_coincide(self, config_fixture, request):
+        defaults = request.getfixturevalue(config_fixture)().default_block_references()
 
         assert (
             defaults[ReferenceTag.STIMULUS_TARGET].block_name
             == defaults[ReferenceTag.SIMULATION_TARGET].block_name
-        )
-
-    def test_brian2_keeps_the_two_roles_apart(self, brian2_config, point_circuit):
-        defaults = brian2_config().default_block_references(point_circuit)
-
-        assert defaults[ReferenceTag.STIMULUS_TARGET].block_name == (
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET
-        )
-        assert defaults[ReferenceTag.SIMULATION_TARGET].block_name != (
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET
         )
 
 
@@ -284,17 +291,25 @@ SIMULATION_CONFIG_CLASSES = (
 )
 
 
+def default_names(config_class):
+    """The placeholder for each role, read off the references that define them."""
+    return {
+        tag: reference.block_name
+        for tag, reference in config_class.default_block_references().items()
+    }
+
+
 class TestTheDefaultNamesReachTheSchema:
     """What the UI shows as a placeholder has to be what generation will actually do."""
 
     @pytest.mark.parametrize("config_class", SIMULATION_CONFIG_CLASSES)
     def test_every_role_has_a_name(self, config_class):
-        assert set(config_class.default_block_reference_names()) == set(ReferenceTag)
+        assert set(default_names(config_class)) == set(ReferenceTag)
 
     @pytest.mark.parametrize("config_class", SIMULATION_CONFIG_CLASSES)
     def test_every_name_is_a_string(self, config_class):
         """A stray trailing comma turns one of these into a tuple, which the UI cannot show."""
-        for tag, name in config_class.default_block_reference_names().items():
+        for tag, name in default_names(config_class).items():
             assert isinstance(name, str), (tag, name)
             assert name
 
@@ -302,41 +317,13 @@ class TestTheDefaultNamesReachTheSchema:
     def test_the_names_are_published_in_the_json_schema(self, config_class):
         published = config_class.model_json_schema()[SchemaKey.REFERENCE_TAG_DEFAULTS]
 
-        assert published == config_class.default_block_reference_names()
+        assert published == default_names(config_class)
 
-    def test_the_names_agree_with_the_references_they_describe(self, circuit_config, circuit):
+    @pytest.mark.parametrize("config_class", SIMULATION_CONFIG_CLASSES)
+    def test_the_reference_and_the_block_it_holds_agree(self, config_class):
         """The anti-drift check: a shown placeholder naming a different block would be a lie."""
-        config = circuit_config()
-        names = config.default_block_reference_names()
-
-        for tag, reference in config.default_block_references(circuit).items():
-            assert reference.block_name == names[tag], tag
-            assert reference.block.block_name == names[tag], tag
-
-    def test_the_names_agree_for_brian2_too(self, brian2_config, point_circuit):
-        """Brian2 is the family that overrides both, so it is where they could diverge."""
-        config = brian2_config()
-        names = config.default_block_reference_names()
-
-        for tag, reference in config.default_block_references(point_circuit).items():
-            assert reference.block_name == names[tag], tag
-
-    def test_the_roles_the_task_does_not_fill_are_still_named(self, circuit_config, circuit):
-        """The UI shows a placeholder for them even though a block, not the task, supplies it."""
-        config = circuit_config()
-        names = config.default_block_reference_names()
-        filled = set(config.default_block_references(circuit))
-
-        for tag in BLOCK_SUPPLIED_REFERENCE_TAGS:
-            assert tag not in filled
-            assert names[tag]
-
-    def test_brian2_names_the_stimulus_and_simulation_roles_differently(self):
-        """The distinction a type-keyed label cannot make: both are point neuron references."""
-        names = Brian2CircuitSimulationSingleConfig.default_block_reference_names()
-
-        assert names[ReferenceTag.STIMULUS_TARGET] == DEFAULT_BRIAN2_STIMULUS_NODE_SET
-        assert names[ReferenceTag.SIMULATION_TARGET] != names[ReferenceTag.STIMULUS_TARGET]
+        for tag, reference in config_class.default_block_references().items():
+            assert reference.block.block_name == reference.block_name, tag
 
 
 class TestTheConfigOwnsItsSimulationTarget:
