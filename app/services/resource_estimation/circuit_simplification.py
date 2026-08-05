@@ -57,9 +57,7 @@ DEFAULT_MAX_FILTER_LOCATIONS = 100
 FILTER_ALGORITHMS = {"single_compartment"}
 
 
-def _get_required_cpu_memory_combo(
-    min_cores: int, mem_gb_required: float
-) -> tuple[int, int]:
+def _get_required_cpu_memory_combo(min_cores: int, mem_gb_required: float) -> tuple[int, int]:
     """Returns a CPU/memory preset that satisfies both core and memory requirements.
 
     The launch-system presets bundle CPU counts with memory tiers. This function
@@ -137,7 +135,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=task_registry.get_task_type_config_asset_label(task_definition.task_type),
+        asset_label=task_registry.get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
     ).id
     if config_asset_id is None:
         msg = "Config asset must have an id"
@@ -153,7 +151,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     single_config = deserialize_obi_object_from_json_data(json_dict)
 
     # Get parent circuit metrics
-    circuit_id = config.inputs[0].id
+    circuit_id = config.inputs[0].id  # ty:ignore[not-subscriptable]
     level_of_detail_nodes_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     level_of_detail_edges_dict = {"_ALL_": CircuitStatsLevelOfDetail.basic}
     circuit_metrics = get_circuit_metrics(
@@ -165,18 +163,13 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
 
     # Count biophysical nodes (the population being simplified)
     nbio = int(
-        np.sum(
-            [
-                npop.number_of_nodes
-                for npop in circuit_metrics.biophysical_node_populations
-            ]
-        )
+        np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
     )
 
     # Determine algorithm type from config.
     # Algorithm names may be compound (e.g. "adex_nest") — strip the
     # simulator suffix to get the base algorithm for work estimation.
-    algorithms = getattr(single_config.simplification, "algorithms", ["single_compartment"])
+    algorithms = getattr(single_config.simplification, "algorithms", ["single_compartment"])  # ty:ignore[unresolved-attribute]
     base_algorithms = [a.split("_nest")[0].split("_brian2")[0] for a in algorithms]
     has_filter_algo = any(a in FILTER_ALGORITHMS for a in base_algorithms)
 
