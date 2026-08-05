@@ -1,14 +1,13 @@
 import re
 import tempfile
-from http import HTTPStatus
 from typing import Annotated
 
 import entitysdk.client
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
-from app.errors import ApiError, ApiErrorCode
+from app.errors import internal_error, invalid_config_error
 from app.logger import L
 from obi_one import run_tasks_for_generated_scan
 from obi_one.core.exception import ConfigValidationError
@@ -91,7 +90,7 @@ def create_endpoint_for_scan_config(
 
         if model is SchemaExampleScanConfig:
             error_msg = "SchemaExampleScanConfig endpoint is non-functional."
-            raise HTTPException(status_code=500, detail=error_msg)
+            raise internal_error(error_msg)
 
         campaign = None
         with tempfile.TemporaryDirectory() as tdir:
@@ -113,25 +112,19 @@ def create_endpoint_for_scan_config(
                 # neuron set and has to be migrated. That is the caller's problem, not a server
                 # fault, so it must not become a 500 (which would also page Sentry).
                 #
-                # `details` repeats the message in the same shape `validation_exception_handler`
-                # produces for pydantic errors, because that is the only place the frontend looks
-                # for a reason on a non-500 (`errorRes?.details?.[0].msg`). Without it the UI
-                # falls back to a bare "An error occurred generating the simulation campaign".
+                # `invalid_config_error` repeats the message under `details`, which is the only
+                # place the frontend looks for a reason on a non-500. Without it the UI falls
+                # back to a bare "An error occurred generating the simulation campaign".
                 L.info("Rejected unrunnable config: %s", e)
 
-                raise ApiError(
-                    message=str(e),
-                    error_code=ApiErrorCode.INVALID_REQUEST,
-                    http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    details=[{"type": "value_error", "loc": ["body"], "msg": str(e)}],
-                ) from e
+                raise invalid_config_error(str(e)) from e
 
             except Exception as e:
                 error_msg = _error_detail(e)
 
                 L.error(error_msg)
 
-                raise HTTPException(status_code=500, detail=error_msg) from e
+                raise internal_error(error_msg) from e
 
             else:
                 L.info("Grid scan generated successfully")
