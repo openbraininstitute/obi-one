@@ -39,7 +39,6 @@ MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discrimin
 class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 

@@ -10,7 +10,6 @@ import bluepysnap as snap
 import bluepysnap.circuit_validation
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, PrivateAttr
 
 from obi_one.config import settings
@@ -68,7 +67,6 @@ class BlockGroup(StrEnum):
 class CircuitExtractionScanConfig(InfoScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
     name: ClassVar[str] = "Circuit Extraction"
     description: ClassVar[str] = (
         "Extracts a sub-circuit from a SONATA circuit as defined by a neuron set. The output"
@@ -118,13 +116,6 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             PointNeuronSetReference.__name__: default_point_node_set_name,
         },
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.circuit_extraction__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_extraction__config_generation
-    )
 
     def input_entities(self, db_client: Client) -> list[models.Entity]:
         input_entities = []
@@ -283,11 +274,6 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
     The output circuit will contain all morphologies, hoc files, and mod files
     that are required to simulate the extracted circuit.
     """
-
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.circuit_extraction__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_extraction__execution
-    )
 
 
 class CircuitExtractionTask(Task):

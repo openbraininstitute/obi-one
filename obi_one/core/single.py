@@ -3,16 +3,17 @@ import logging
 from collections import OrderedDict
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import TaskActivityType
+from entitysdk.types import TaskConfigType
 from pydantic import Field, field_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
+from obi_one.core.registry import task_registry
 from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
 
@@ -81,7 +82,6 @@ class SingleConfigMixin:
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
     single_coordinate_scan_params: SingleCoordinateScanParams = None  # ty:ignore[invalid-assignment]
 
-    _single_task_config_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
     _single_entity: Entity = None  # ty:ignore[invalid-assignment]
 
     @property
@@ -93,8 +93,9 @@ class SingleConfigMixin:
         self._single_entity = entity
 
     @property
-    def single_task_config_type(self) -> TaskActivityType:
-        return self._single_task_config_type
+    def single_task_config_type(self) -> TaskConfigType | None:
+        registration = task_registry.get_registration_for_single_config(type(self))
+        return registration.single_task_config_type if registration is not None else None
 
     def create_single_entity_with_config(
         self,

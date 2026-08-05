@@ -1,9 +1,14 @@
+import pytest
+
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig, get_all_annotations
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
+    FolderCompressionSingleConfig,
 )
+from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
 
 
 class TestGetAllAnnotations:
@@ -45,16 +50,25 @@ class TestScanConfigClassVars:
     def test_default_description(self):
         assert "Add a description" in ScanConfig.description
 
-    def test_default_single_coord_class_name(self):
-        assert not ScanConfig.single_coord_class_name
-
     def test_folder_compression_name(self):
         assert FolderCompressionScanConfig.name == "Folder Compression"
 
-    def test_folder_compression_single_coord(self):
-        assert (
-            FolderCompressionScanConfig.single_coord_class_name == "FolderCompressionSingleConfig"
+
+class TestSingleConfigClass:
+    """The SingleConfig a ScanConfig expands into is resolved from TASK_MAP."""
+
+    def test_resolved_from_task_map(self):
+        config = FolderCompressionScanConfig(
+            initialize=FolderCompressionScanConfig.Initialize(
+                folder_path=NamedPath(name="t", path="/t"),
+            )
         )
+        assert config.single_config_class is FolderCompressionSingleConfig
+
+    def test_unregistered_scan_config_raises(self):
+        """SchemaExampleScanConfig is deliberately absent from TASK_MAP."""
+        with pytest.raises(OBIONEError, match="no entry in TASK_MAP"):
+            _ = SchemaExampleScanConfig.model_construct().single_config_class
 
 
 class TestScanConfigCreation:

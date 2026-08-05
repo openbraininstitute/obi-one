@@ -12,10 +12,6 @@ from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
-from obi_one.scientific.tasks.contribute import (
-    ContributeMorphologyScanConfig,
-    ContributeSubjectScanConfig,
-)
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
@@ -129,8 +125,6 @@ def activate_scan_config_endpoints() -> None:
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
         (MorphologyMetricsScanConfig, "run", "", True),
-        (ContributeMorphologyScanConfig, "generate", "", True),
-        (ContributeSubjectScanConfig, "generate", "", True),
         (IonChannelModelSimulationScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
         (CircuitExtractionScanConfig, "generate", "", False),

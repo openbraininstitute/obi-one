@@ -4,7 +4,6 @@ from enum import StrEnum
 from typing import ClassVar
 
 from entitysdk import Client
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -52,7 +51,6 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
     stage. No model assets are needed at this point.
     """
 
-    single_coord_class_name: ClassVar[str] = "EModelEFeatureExtractionSingleConfig"
     name: ClassVar[str] = "EModel EFeature Extraction"
     description: ClassVar[str] = (
         "Extract experimental e-features from ephys traces via BluePyEModel."
@@ -74,13 +72,6 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             ),
         },
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.efeature_extraction__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.efeature_extraction__config_generation
-    )
 
     def input_entities(self, db_client: Client) -> list:
         return [r.entity(db_client=db_client) for r in self.initialize.electrical_cell_recording]
@@ -126,5 +117,3 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
 
 class EModelEFeatureExtractionSingleConfig(EModelEFeatureExtractionScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`EModelEFeatureExtractionScanConfig`."""
-
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.efeature_extraction__config

@@ -42,7 +42,6 @@ L = logging.getLogger(__name__)
 class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     """Form for simulating ion channel model(s)."""
 
-    single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
     description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"
 
