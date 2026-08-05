@@ -125,21 +125,25 @@ def _location_edge_properties(
             raise BuildSynaptomeError(msg) from exc
         segment_length = float(np.linalg.norm(end - start))
         if segment_length <= 0:
+        raise BuildSynaptomeError(
+            f"Morphology location section={section_id}, segment={segment_id} has zero length."
+        )
+
+        if not 0.0 <= physical_offset <= segment_length:
             raise BuildSynaptomeError(
-                f"Morphology location section={section_id}, segment={segment_id} has zero length."
+                f"Morphology location section={section_id}, segment={segment_id} "
+                f"has invalid physical offset {physical_offset}."
             )
-        segment_offset = physical_offset / segment_length
-        if not 0.0 <= segment_offset <= 1.0:
-            raise BuildSynaptomeError(
-                f"Morphology location section={section_id}, segment={segment_id} has invalid "
-                f"normalized offset {segment_offset}."
-            )
-        center = start + segment_offset * (end - start)
+
+        normalized_segment_offset = physical_offset / segment_length
+
+        center = start + normalized_segment_offset * (end - start)
+
         rows.append(
             {
                 "afferent_section_id": section_id,
                 "afferent_segment_id": segment_id,
-                "afferent_segment_offset": segment_offset,
+                "afferent_segment_offset": physical_offset,
                 "afferent_section_pos": float(location[_SEC_LOC]),
                 "afferent_section_type": int(location[_SEC_TYP]),
                 "afferent_center_x": center[0],
