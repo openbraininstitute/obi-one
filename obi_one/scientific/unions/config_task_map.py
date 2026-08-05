@@ -5,6 +5,10 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
 )
+from obi_one.scientific.tasks.build_synaptome import (
+    BuildSynaptomeSingleConfig,
+    BuildSynaptomeTask,
+)
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionSingleConfig,
     CircuitExtractionTask,
@@ -93,6 +97,11 @@ TASK_MAP: dict[TaskType, tuple[type, type, AssetLabel | None]] = {
     TaskType.circuit_extraction: (
         CircuitExtractionTask,
         CircuitExtractionSingleConfig,
+        AssetLabel.task_config,
+    ),
+    TaskType.circuit_single_build: (
+        BuildSynaptomeTask,
+        BuildSynaptomeSingleConfig,
         AssetLabel.task_config,
     ),
     TaskType.circuit_simulation: (
