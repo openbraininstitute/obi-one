@@ -10,7 +10,6 @@ from obi_one.scientific.tasks.circuit_simplification import (
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
 )
-from obi_one.scientific.tasks.contribute import ContributeMorphologyScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
@@ -58,7 +57,6 @@ ScanConfigsUnion = Annotated[
     | EModelEFeatureExtractionScanConfig
     | BasicConnectivityPlotsScanConfig
     | ConnectivityMatrixExtractionScanConfig
-    | ContributeMorphologyScanConfig
     | FolderCompressionScanConfig
     | MEModelSimulationScanConfig
     | MorphologyContainerizationScanConfig

@@ -24,7 +24,6 @@ class FolderCompressionScanConfig(ScanConfig):
     The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)
     """
 
-    single_coord_class_name: ClassVar[str] = "FolderCompressionSingleConfig"
     name: ClassVar[str] = "Folder Compression"
     description: ClassVar[str] = "Compresses a folder using the specified compression format."
 

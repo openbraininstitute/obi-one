@@ -69,7 +69,6 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
         color legend) for small connectomes (<= 20 nodes).
     """
 
-    single_coord_class_name: ClassVar[str] = "BasicConnectivityPlotsSingleConfig"
     name: ClassVar[str] = "Basic Connectivity Plots"
     description: ClassVar[str] = (
         "Generates basic connectivity plots and stats from a ConnectivityMatrix object."

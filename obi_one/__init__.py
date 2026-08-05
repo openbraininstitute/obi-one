@@ -67,10 +67,6 @@ __all__ = [
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
     "ConstantCurrentClampSomaticStimulus",
-    "ContributeMorphologyScanConfig",
-    "ContributeMorphologySingleConfig",
-    "ContributeSubjectScanConfig",
-    "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "CreateExtracellularRecordingArrayScanConfig",
@@ -247,7 +243,7 @@ __all__ = [
     "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
-    "get_configs_task_type",
+    "get_single_configs_task_type",
     "nbS1POmInputs",
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
@@ -459,7 +455,7 @@ from obi_one.scientific.mappings_and_registry.block_reference_registry import (
     AllBlockReferenceTypes,  # ruff: ignore[unused-import]
 )
 from obi_one.scientific.mappings_and_registry.config_task_map import (
-    get_configs_task_type,
+    get_single_configs_task_type,
 )
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
@@ -480,12 +476,6 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
     ConnectivityMatrixExtractionSingleConfig,
     ConnectivityMatrixExtractionTask,
-)
-from obi_one.scientific.tasks.contribute import (
-    ContributeMorphologyScanConfig,
-    ContributeMorphologySingleConfig,
-    ContributeSubjectScanConfig,
-    ContributeSubjectSingleConfig,
 )
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,

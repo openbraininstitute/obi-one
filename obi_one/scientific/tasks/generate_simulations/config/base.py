@@ -18,7 +18,11 @@ from obi_one.core.serialization_constants import (
 )
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllBiophysicalNeurons,
+    AllPointNeurons,
+    AllVirtualNeurons,
+)
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -36,6 +40,8 @@ from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 
 SONATA_VERSION = 2.4
@@ -63,7 +69,6 @@ class BlockGroup(StrEnum):
 class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
-    single_coord_class_name: ClassVar[str]
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
@@ -73,6 +78,15 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     _timestep: ClassVar[None] = None
     default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
     default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
+
+    # A neuron set reference left unset is filled in with the default for its own population
+    # type, which may differ from the simulation-wide default. Every simulation config needs all
+    # three, whatever its own default is: a point-only config can still hold a virtual set, and a
+    # biophysical one can hold both.
+    default_virtual_node_set_name: ClassVar[str] = "Default: All Virtual Neurons"
+    default_point_node_set_name: ClassVar[str] = "Default: All Point Neurons"
+    default_virtual_neuron_set_type: ClassVar[type[AllVirtualNeurons]] = AllVirtualNeurons
+    default_point_neuron_set_type: ClassVar[type[AllPointNeurons]] = AllPointNeurons
 
     @property
     def default_neuron_set_reference(
@@ -87,6 +101,30 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         default_neuron_set_block_reference.block.set_block_name(self.default_node_set_name)
 
         return default_neuron_set_block_reference
+
+    @property
+    def default_virtual_neuron_set_reference(
+        self,
+    ) -> VirtualNeuronSetReference:
+        """The default virtual neuron set reference for the simulation."""
+        ref = VirtualNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_virtual_node_set_name
+        )
+        ref.block = self.default_virtual_neuron_set_type()
+        ref.block.set_block_name(self.default_virtual_node_set_name)
+        return ref
+
+    @property
+    def default_point_neuron_set_reference(
+        self,
+    ) -> PointNeuronSetReference:
+        """The default point neuron set reference for the simulation."""
+        ref = PointNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
+        )
+        ref.block = self.default_point_neuron_set_type()
+        ref.block.set_block_name(self.default_point_node_set_name)
+        return ref
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {

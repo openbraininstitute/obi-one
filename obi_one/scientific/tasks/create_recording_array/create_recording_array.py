@@ -9,7 +9,7 @@ from typing import ClassVar, Literal
 import numpy as np
 from entitysdk import Client
 from entitysdk.models import Entity, SimulatableExtracellularRecordingArray
-from entitysdk.types import AssetLabel, ContentType, ElectrodeType, TaskActivityType, TaskConfigType
+from entitysdk.types import AssetLabel, ContentType, ElectrodeType
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
@@ -40,7 +40,6 @@ class BlockGroup(StrEnum):
 class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
     """Description."""
 
-    single_coord_class_name: ClassVar[str] = "CreateExtracellularRecordingArraySingleConfig"
     name: ClassVar[str] = "Create Extracellular Recording Array"
     description: ClassVar[str] = "Description."
 
@@ -48,13 +47,6 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
         "ui_enabled": True,
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.extracellular_recording_weights_calculation__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.extracellular_recording_weights_calculation__config_generation
-    )
 
     @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
@@ -131,13 +123,6 @@ class CreateExtracellularRecordingArraySingleConfig(
     CreateExtracellularRecordingArrayScanConfig, SingleConfigMixin
 ):
     """Description."""
-
-    _single_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.extracellular_recording_weights_calculation__config
-    )
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.extracellular_recording_weights_calculation__execution
-    )
 
 
 class CreateExtracellularRecordingArrayTask(Task):
