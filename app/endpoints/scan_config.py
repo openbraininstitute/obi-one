@@ -1,5 +1,6 @@
 import re
 import tempfile
+from http import HTTPStatus
 from typing import Annotated
 
 import entitysdk.client
@@ -7,8 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
+from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from obi_one import run_tasks_for_generated_scan
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
@@ -48,6 +51,15 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
 )
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
+
+
+def _error_detail(exc: Exception) -> str:
+    """The most informative message an exception carries, for the client-facing detail."""
+    if len(exc.args) == 1:
+        return str(exc.args[0])
+    if len(exc.args) > 1:
+        return str(exc.args)
+    return str(exc)
 
 
 def create_endpoint_for_scan_config(
@@ -96,13 +108,26 @@ def create_endpoint_for_scan_config(
                 if execute_single_config_task:
                     run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
-            except Exception as e:
-                error_msg = str(e)
+            except ConfigValidationError as e:
+                # The config is well-formed but not runnable -- e.g. it still uses a deprecated
+                # neuron set and has to be migrated. That is the caller's problem, not a server
+                # fault, so it must not become a 500 (which would also page Sentry).
+                #
+                # `details` repeats the message in the same shape `validation_exception_handler`
+                # produces for pydantic errors, because that is the only place the frontend looks
+                # for a reason on a non-500 (`errorRes?.details?.[0].msg`). Without it the UI
+                # falls back to a bare "An error occurred generating the simulation campaign".
+                L.info("Rejected unrunnable config: %s", e)
 
-                if len(e.args) == 1:
-                    error_msg = str(e.args[0])
-                elif len(e.args) > 1:
-                    error_msg = str(e.args)
+                raise ApiError(
+                    message=str(e),
+                    error_code=ApiErrorCode.INVALID_REQUEST,
+                    http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    details=[{"type": "value_error", "loc": ["body"], "msg": str(e)}],
+                ) from e
+
+            except Exception as e:
+                error_msg = _error_detail(e)
 
                 L.error(error_msg)
 

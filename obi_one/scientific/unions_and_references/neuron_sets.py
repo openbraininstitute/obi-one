@@ -175,7 +175,7 @@ class NeuronSetReference(BlockReference):
 
     @property
     def block(self) -> NeuronSet:
-        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
+        raise ValueError(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
     @block.setter
     def block(self, value: NeuronSet) -> None:  # ruff: ignore[unused-method-argument, no-self-use]
@@ -183,7 +183,12 @@ class NeuronSetReference(BlockReference):
         # `fill_block_references_and_names` assigns resolved blocks to references). Raising here
         # ensures that loading any config containing a deprecated NeuronSetReference fails with a
         # clear migration message instead of a confusing "has no setter" AttributeError.
-        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
+        #
+        # It must be a ValueError: pydantic only folds ValueError/AssertionError raised inside a
+        # validator into a ValidationError, and the scan config is a FastAPI request body, so it is
+        # validated before the endpoint runs. Any other exception type escapes body validation
+        # unhandled and the caller gets an opaque 500 instead of a 422 carrying this message.
+        raise ValueError(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
 
 ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION = (

@@ -11,6 +11,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 import obi_one as obi
+from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.neuron_sets.deprecated import PredefinedNeuronSet
 from obi_one.scientific.unions_and_references.neuron_sets import (
     AtomicBiophysicalNeuronSetUnion,
@@ -105,8 +106,27 @@ def test_legacy_predefined_neuron_set_is_in_the_schema():
 
 
 def test_legacy_predefined_neuron_set_cannot_be_resolved(circuit):
-    """Being deprecated, it refuses to resolve: the config must be migrated before it runs."""
+    """Being deprecated, it refuses to resolve: the config must be migrated before it runs.
+
+    It must raise ``ConfigValidationError`` rather than ``NotImplementedError``: the generate
+    endpoints map the former to a 422 carrying the migration message, while the latter is what
+    obi_one raises for genuinely unimplemented abstract methods and can only be a 500.
+    """
     nset = PredefinedNeuronSet.model_validate(LEGACY_PREDEFINED_NEURON_SET)
 
-    with pytest.raises(NotImplementedError, match="deprecated"):
+    with pytest.raises(ConfigValidationError, match="deprecated"):
+        nset.get_neuron_ids(circuit)
+
+
+@pytest.mark.parametrize("block", DEPRECATED_NEURON_SETS, ids=operator.itemgetter("type"))
+def test_every_deprecated_neuron_set_raises_config_validation_error(block, circuit):
+    """Every deprecated block refuses to resolve, not just PredefinedNeuronSet.
+
+    ``ConfigValidationError`` is not a ``NotImplementedError``, so a block that kept the old type
+    would fall through the endpoint's typed handler into the blanket ``except Exception`` and give
+    the caller an opaque 500 again.
+    """
+    nset = TypeAdapter(AtomicBiophysicalNeuronSetUnion).validate_python(block)
+
+    with pytest.raises(ConfigValidationError, match="deprecated"):
         nset.get_neuron_ids(circuit)
