@@ -95,4 +95,10 @@ def write_virtual_nodes(fn_out: os.PathLike, population_name: str, count: int) -
         population.create_dataset("node_type_id", data=-np.ones(count, dtype=np.int64))
         population.create_dataset("node_group_id", data=np.zeros(count, dtype=np.int64))
         population.create_dataset("node_group_index", data=np.arange(count, dtype=np.uint64))
-        population.create_group("0")
+        group = population.create_group("0")
+        string_dtype = h5py.string_dtype(encoding="utf-8")
+        group.create_dataset(
+            "model_type",
+            data=["virtual"] * count,
+            dtype=string_dtype,
+        )
