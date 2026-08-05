@@ -39,6 +39,10 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
+from obi_one.scientific.unions_and_references.recordings import (
+    CircuitRecordingUnion,
+    RecordingReference,
+)
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,
     StimulusReference,
@@ -135,6 +139,18 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             SchemaKey.SINGULAR_NAME: "Stimulus",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    recordings: dict[str, CircuitRecordingUnion] = Field(
+        default_factory=dict,
+        description="Recordings for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [RecordingReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Recording",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
