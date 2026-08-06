@@ -40,6 +40,8 @@ L = logging.getLogger(__name__)
 
 _ALLOWED_NEW_POPULATION_TYPES = frozenset(TYPES_OF_VIRTUAL_NODES) | frozenset(TYPES_OF_POINT_NODES)
 
+_MOD_DECLARATION_PARTS = 2
+
 # Point-neuron population types must be compatible with the circuit target simulator.
 _POINT_TYPE_ALLOWED_SIMULATORS: dict[str, frozenset[str]] = {
     "brian2_point": frozenset({"Brian2"}),
@@ -127,7 +129,12 @@ def run_circuit_validation(  # ruff: ignore[too-many-locals, too-many-statements
         warning_messages.extend(id_map_warnings)
 
         # HOC template instantiation with bluecellulab
-        hoc_errors = _validate_hoc_loading(snap_circuit, staged_dir, load_mods=has_mods)
+        hoc_errors = _validate_hoc_loading(
+            snap_circuit,
+            staged_dir,
+            load_mods=has_mods,
+            mod_dir=mod_dir if has_mods else None,
+        )
         fatal_errors.extend(hoc_errors)
 
         # bluepysnap structural validation
@@ -393,19 +400,45 @@ def _find_stale_populations(mapping: dict, pop_sizes: dict[str, int]) -> list[st
 # ---------------------------------------------------------------------------
 
 
+def _mechanism_suffixes_from_mod_dir(mod_dir: Path) -> set[str]:
+    """Collect mechanism names declared via SUFFIX / POINT_PROCESS in ``*.mod`` files."""
+    suffixes: set[str] = set()
+    for mod_file in sorted(mod_dir.glob("*.mod")):
+        try:
+            content = mod_file.read_text(encoding="utf-8", errors="replace")
+        except OSError as e:
+            L.warning("Could not read MOD file %s: %s", mod_file, e)
+            continue
+        for raw_line in content.splitlines():
+            parts = raw_line.strip().split()
+            if len(parts) >= _MOD_DECLARATION_PARTS and parts[0] in {"SUFFIX", "POINT_PROCESS"}:
+                suffixes.add(parts[1])
+    return suffixes
+
+
 def _validate_hoc_loading(
-    circuit: SnapCircuitType, working_dir: Path, *, load_mods: bool
+    circuit: SnapCircuitType,
+    working_dir: Path,
+    *,
+    load_mods: bool,
+    mod_dir: Path | None = None,
 ) -> list[str]:
     """Validate HOC templates used by biophysical neurons with bluecellulab.
 
     For each unique ``model_template`` on biophysical populations:
     - require the HOC file to exist
     - resolve a morphology for a neuron that uses that template
+    - if ``mod_dir`` is set, statically check ``insert`` mechanisms against MOD suffixes
+      (avoids NEURON abort/segfault on missing mechanisms)
     - instantiate the template with bluecellulab
     """
     used = _collect_used_emodel_load_targets(circuit)
     if not used:
         return []
+
+    expected_suffixes: set[str] | None = None
+    if mod_dir is not None:
+        expected_suffixes = _mechanism_suffixes_from_mod_dir(mod_dir)
 
     if load_mods:
         _load_compiled_mechanisms(working_dir)
@@ -426,11 +459,27 @@ def _validate_hoc_loading(
                 f"(needed to load-test HOC '{target['hoc_path'].name}')"
             )
             continue
-        try:
-            from obi_one.scientific.validations.emodels import (  # ruff: ignore[import-outside-top-level]
-                bluecellulab_initializable,
-            )
 
+        from obi_one.scientific.validations.emodels import (  # ruff: ignore[import-outside-top-level]
+            bluecellulab_initializable,
+            check_mechanisms,
+        )
+
+        if expected_suffixes is not None:
+            try:
+                check_mechanisms(target["hoc_path"], expected_suffixes)
+            except ValueError as e:
+                errors.append(
+                    f"HOC template '{target['hoc_path'].name}' mechanism check failed: {e}"
+                )
+                L.warning(
+                    "Mechanism check failed for HOC template %s: %s",
+                    target["hoc_path"].name,
+                    e,
+                )
+                continue
+
+        try:
             bluecellulab_initializable(target["hoc_path"], target["morph_path"])
         except Exception as e:  # ruff: ignore[blind-except]
             errors.append(f"HOC template '{target['hoc_path'].name}' failed to instantiate: {e}")

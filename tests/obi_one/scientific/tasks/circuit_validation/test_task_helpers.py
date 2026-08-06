@@ -16,6 +16,7 @@ from obi_one.scientific.tasks.circuit_validation.task import (
     _find_morphology_for_template,
     _get_population_sizes,
     _load_compiled_mechanisms,
+    _mechanism_suffixes_from_mod_dir,
     _update_h5_dataset,
     _validate_emodel_paths,
     _validate_hoc_loading,
@@ -797,6 +798,43 @@ class TestValidateHocLoading:
         assert len(result) == 1
         assert "Missing.hoc" in result[0]
         assert "not found" in result[0]
+
+    @patch("obi_one.scientific.validations.emodels.bluecellulab_initializable")
+    def test_missing_used_mechanism_fails_before_instantiate(self, mock_init, tmp_path):
+        hoc_dir = tmp_path / "hoc"
+        hoc_dir.mkdir()
+        hoc_file = hoc_dir / "Cell.hoc"
+        hoc_file.write_text(
+            "begintemplate Cell\n"
+            "proc init() {\n"
+            "    insert pas\n"
+            "    insert CaDynamics_DC0\n"
+            "}\n"
+            "endtemplate Cell\n"
+        )
+        morph_path = tmp_path / "morph.swc"
+        morph_path.write_text("fake morph")
+        mod_dir = tmp_path / "mod"
+        mod_dir.mkdir()
+        (mod_dir / "Ih.mod").write_text("NEURON {\n    SUFFIX Ih\n}\n")
+        mock_circuit = self._make_circuit_with_used_template(
+            hoc_file=hoc_file, morph_file=morph_path, template_ref="hoc:Cell"
+        )
+
+        result = _validate_hoc_loading(mock_circuit, tmp_path, load_mods=False, mod_dir=mod_dir)
+
+        assert len(result) == 1
+        assert "mechanism check failed" in result[0]
+        assert "CaDynamics_DC0" in result[0]
+        mock_init.assert_not_called()
+
+    def test_mechanism_suffixes_from_mod_dir(self, tmp_path):
+        mod_dir = tmp_path / "mod"
+        mod_dir.mkdir()
+        (mod_dir / "a.mod").write_text("NEURON {\n\tSUFFIX Ca_HVA2\n}\n")
+        (mod_dir / "b.mod").write_text("NEURON {\n POINT_PROCESS DetAMPANMDA\n}\n")
+
+        assert _mechanism_suffixes_from_mod_dir(mod_dir) == {"Ca_HVA2", "DetAMPANMDA"}
 
 
 class TestFindMorphologyForTemplate:
