@@ -442,7 +442,7 @@ class Inputs:
             if injection.config.node_set in seen_node_set:
                 objs[
                     f"stim{seen_node_set[injection.config.node_set]}"
-                ].values += injection.get_currents(
+                ].values += injection.get_currents(  # ruff: ignore[pandas-use-of-dot-values]
                     self.simulation.dt, self.simulation.run.tstop
                 ).values
                 continue
