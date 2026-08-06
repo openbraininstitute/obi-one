@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
-from entitysdk import Client, models
+from entitysdk import Client, MultipartUploadTransferConfig, models
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
@@ -425,6 +425,106 @@ def get_execution_activity(
         entity_id=execution_activity_id,
         entity_type=TaskActivity,
     )
+
+
+def _asset_label_value(label: object) -> str:
+    """Normalize an asset label (enum or str) to its string value."""
+    return str(getattr(label, "value", label))
+
+
+def _assets_with_label(entity: models.Circuit, asset_label: str) -> list[Asset]:
+    """Return all assets on the entity that match ``asset_label``."""
+    return [
+        asset for asset in (entity.assets or []) if _asset_label_value(asset.label) == asset_label
+    ]
+
+
+def _delete_assets_with_label(
+    client: Client, registered_circuit: models.Circuit, asset_label: str
+) -> None:
+    """Delete all assets with ``asset_label`` on the circuit (in-memory + remote)."""
+    for asset in _assets_with_label(registered_circuit, asset_label):
+        client.delete_asset(
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_type=models.Circuit,
+            asset_id=asset.id,  # ty:ignore[invalid-argument-type]
+        )
+        L.info("Deleted existing '%s' asset %s", asset_label, asset.id)
+        if registered_circuit.assets is not None:
+            registered_circuit.assets = [a for a in registered_circuit.assets if a.id != asset.id]
+
+
+def _upload_or_replace_file(
+    client: Client,
+    registered_circuit: models.Circuit,
+    *,
+    asset_label: str,
+    file_path: Path,
+    file_content_type: str,
+    transfer_config: MultipartUploadTransferConfig | None = None,
+) -> Asset:
+    """Upload a file asset, replacing any existing asset with the same label.
+
+    Uses ``update_asset_file`` (delete + re-upload) when a single existing asset
+    is found and no custom transfer config is required. Otherwise deletes any
+    matching assets and uploads fresh.
+    """
+    existing = _assets_with_label(registered_circuit, asset_label)
+
+    if transfer_config is None and len(existing) == 1:
+        asset = client.update_asset_file(
+            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_type=models.Circuit,
+            asset_id=existing[0].id,  # ty:ignore[invalid-argument-type]
+            file_path=file_path,
+            file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
+        )
+        L.info("'%s' asset replaced under asset ID %s", asset_label, asset.id)
+        return asset
+
+    # Prefer update_asset_file above; when transfer_config is set (e.g. multipart
+    # compressed uploads) we delete + upload_file ourselves because
+    # update_asset_file does not accept transfer_config.
+    if existing:
+        _delete_assets_with_label(client, registered_circuit, asset_label)
+
+    asset = client.upload_file(
+        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_type=models.Circuit,
+        file_path=file_path,
+        file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
+        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+        transfer_config=transfer_config,
+    )
+    L.info("'%s' asset uploaded under asset ID %s", asset_label, asset.id)
+    return asset
+
+
+def _upload_or_replace_directory(
+    client: Client,
+    registered_circuit: models.Circuit,
+    *,
+    asset_label: str,
+    name: str,
+    paths: dict,
+) -> Asset:
+    """Upload a directory asset, replacing any existing asset with the same label.
+
+    entitysdk has no ``update_asset_directory``; this mirrors ``update_asset_file``
+    by deleting matching assets first, then uploading.
+    """
+    if _assets_with_label(registered_circuit, asset_label):
+        _delete_assets_with_label(client, registered_circuit, asset_label)
+
+    asset = client.upload_directory(
+        label=asset_label,  # ty:ignore[invalid-argument-type]
+        name=name,
+        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_type=models.Circuit,
+        paths=paths,  # ty:ignore[invalid-argument-type]
+    )
+    L.info("'%s' asset uploaded under asset ID %s", asset_label, asset.id)
+    return asset
 
 
 def resolve_circuit(
