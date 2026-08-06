@@ -72,6 +72,7 @@ class TestTriggerValidationTask:
         assert call_kwargs["url"] == "/job"
         job_data = call_kwargs["json"]
         assert job_data["code"]["ref"] == "tag:1.2.3"
+        assert job_data["resources"]["image_type"] == "python_3_12_openmpi5_neuron9_neurodamus"
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
         assert "--force false" in job_data["inputs"]
         assert str(project_id) == job_data["project_id"]

@@ -156,7 +156,7 @@ def trigger_validation_task(
         },
         "resources": {
             "type": "machine",
-            "image_type": "obi_one",
+            "image_type": "python_3_12_openmpi5_neuron9_neurodamus",
             "cores": 1,
             "memory": 8,
             "timelimit": "00:30",

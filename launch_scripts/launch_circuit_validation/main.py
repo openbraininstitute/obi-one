@@ -1,7 +1,9 @@
+# ruff: file-ignore[implicit-namespace-package]
 """Launch script for circuit validation task.
 
-Runs on ECS. Stages the merged circuit, compiles MOD files, runs snap validation,
-and updates the circuit entity's readiness_status accordingly.
+Runs on the launch-system with image ``python_3_12_openmpi5_neuron9_neurodamus``.
+Stages the circuit, compiles MOD files, runs snap validation, and updates the
+circuit entity's lifecycle status accordingly.
 
 Environment Variables Required:
     PERSISTENT_TOKEN_ID: Persistent authentication token.
@@ -14,18 +16,7 @@ import logging
 import os
 import sys
 from functools import partial
-from pathlib import Path
 from uuid import UUID
-
-# Use pre-installed packages from the obi-one Docker image's venv.
-# The wrapper creates a bare venv, but we need NEURON, bluecellulab, etc.
-_IMAGE_SITE_PACKAGES = "/code/.venv/lib/python3.12/site-packages"
-if Path(_IMAGE_SITE_PACKAGES).is_dir():
-    sys.path.append(_IMAGE_SITE_PACKAGES)
-
-# Add repo root to sys.path for obi_one imports (not pip-installed, loaded from source).
-# This takes priority over image packages so we run the latest code from the branch.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
@@ -33,7 +24,7 @@ from entitysdk.types import EntityLifecycleStatus
 from obi_auth import get_token
 
 from obi_one.scientific.tasks.circuit_validation.task import (
-    _update_lifecycle_status,
+    _update_lifecycle_status,  # ruff: ignore[import-private-name]
     is_circuit_customization,
     run_circuit_validation,
 )
@@ -48,7 +39,7 @@ def main() -> int:
     db_client = None
     circuit_id = None
 
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         parser = argparse.ArgumentParser(description="Validate a customized circuit.")
         parser.add_argument("--circuit_id", required=True, help="Customized circuit entity ID")
         parser.add_argument("--virtual_lab_id", required=True, help="Virtual lab ID")
@@ -109,7 +100,7 @@ def main() -> int:
         )
         L.info("Validation result: valid=%s, errors=%d", result["valid"], len(result["errors"]))
 
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         L.exception("Circuit validation failed with unexpected error: %s", e)
         if db_client is not None and circuit_id is not None:
             _update_lifecycle_status(db_client, circuit_id, "disqualified")
