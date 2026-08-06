@@ -35,7 +35,7 @@ def main() -> int:
         DEPLOYMENT: Deployment environment.
         LOCAL_STORE_PREFIX: Local asset store for file mounting.
     """
-    # persistent_token_id = os.getenv("PERSISTENT_TOKEN_ID")
+    persistent_token_id = os.getenv("PERSISTENT_TOKEN_ID")
     deployment = os.getenv("DEPLOYMENT")
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
     db_client = None
@@ -87,16 +87,11 @@ def main() -> int:
 
         # Get DB client (incl. file mounting)
         token_manager = TokenFromFunction(
-            # partial(
-            #     get_token,
-            #     environment=deployment,
-            #     auth_mode="persistent_token",
-            #     persistent_token_id=persistent_token_id,
-            # ),
             partial(
                 get_token,
                 environment=deployment,
-                token_provider="auth_manager",
+                auth_mode="persistent_token",
+                persistent_token_id=persistent_token_id,
             ),
         )
         project_context = ProjectContext(
