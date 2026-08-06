@@ -136,21 +136,19 @@ Full circuit validation after merge:
 | `obi_one/scientific/validations/emodels.py` | Shared HOC/MOD validation functions |
 | `obi_one/utils/circuit_customization/staging.py` | Merge parent + overrides into staged directory |
 | `launch_scripts/launch_circuit_validation/main.py` | Entry point for the validation Docker job |
-| `launch_scripts/launch_circuit_validation/dependencies/default.txt` | Empty (deps pre-installed in image) |
+| `launch_scripts/launch_circuit_validation/dependencies/default.txt` | ``obi-one`` (pip-installed on neurodamus image) |
 | `tests/integration/test_circuit_customization.py` | Integration tests |
 
 ## Executor Configuration
 
 ### Production (ECS)
-- Image: `obi-one` from ECR (pre-built with all deps)
-- Job spec: `image_type: obi_one`, `ref: tag:<APP_VERSION>`
+- Image: launch-system ``python_3_12_openmpi5_neuron9_neurodamus``; deps from ``dependencies/default.txt`` (``obi-one``)
+- Job spec: `image_type: python_3_12_openmpi5_neuron9_neurodamus`, `ref: tag:<APP_VERSION>`
 - Auth: `PERSISTENT_TOKEN_ID` via auth-manager
 
 ### Local Testing
-- Image: `obi-one:local` (native arm64, built locally with `pylmesh`/`pyflagser` excluded)
-- Executor bypasses the wrapper: bind-mounts local repo at `/repo`, runs script directly
-- Auth: reads `ENTITYCORE_ACCESS_TOKEN` from `/repo/.token`
-- EntitySDK patched with `disqualified` enum value via `sed` in Dockerfile
+- Same neurodamus image type when submitting through launch-system; for fully local runs, use a venv with ``obi-one`` installed
+- Auth: reads `ENTITYCORE_ACCESS_TOKEN` when set (see launch script)
 
 ## Integration Tests
 
