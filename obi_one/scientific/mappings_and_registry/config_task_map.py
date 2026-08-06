@@ -11,6 +11,11 @@ from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionSingleConfig,
     CircuitExtractionTask,
 )
+from obi_one.scientific.tasks.circuit_simplification import (
+    CircuitSimplificationScanConfig,
+    CircuitSimplificationSingleConfig,
+    CircuitSimplificationTask,
+)
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
     ConnectivityMatrixExtractionSingleConfig,
@@ -316,6 +321,18 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         single_config_cls=MorphologyMetricsSingleConfig,
         scan_config_cls=MorphologyMetricsScanConfig,
         asset_label=None,
+    ),
+    TaskType.circuit_simplification: TaskRegistration(
+        task_cls=CircuitSimplificationTask,
+        single_config_cls=CircuitSimplificationSingleConfig,
+        scan_config_cls=CircuitSimplificationScanConfig,
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.circuit_simplification__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.circuit_simplification__config_generation
+        ),
+        single_task_config_type=TaskConfigType.circuit_simplification__config,
+        single_task_activity_type=TaskActivityType.circuit_simplification__execution,
     ),
     TaskType.circuit_simulation_neurodamus_machine: TaskRegistration(
         task_cls=CircuitSimulationExecutionTask,

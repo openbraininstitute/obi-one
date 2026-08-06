@@ -4,6 +4,9 @@ from pydantic import Discriminator
 
 from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
+from obi_one.scientific.tasks.circuit_simplification import (
+    CircuitSimplificationScanConfig,
+)
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
 )
@@ -67,6 +70,7 @@ ScanConfigsUnion = Annotated[
     | Brian2CircuitSimulationScanConfig
     | CreateExtracellularRecordingArrayScanConfig
     | IonChannelModelSimulationScanConfig
-    | LearningEngineCircuitSimulationScanConfig,
+    | LearningEngineCircuitSimulationScanConfig
+    | CircuitSimplificationScanConfig,
     Discriminator("type"),
 ]
