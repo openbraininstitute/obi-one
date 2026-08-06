@@ -243,7 +243,7 @@ class TestCheckNewPopulationsNotBiophysical:
 
 class TestCircuitCustomizationHelpers:
     def test_is_customization_true(self):
-        from entitysdk.types import DerivationType  # noqa: PLC0415
+        from entitysdk.types import DerivationType  # ruff: ignore[import-outside-top-level]
 
         circuit = MagicMock()
         deriv = MagicMock()
@@ -252,7 +252,7 @@ class TestCircuitCustomizationHelpers:
         assert is_circuit_customization(circuit) is True
 
     def test_is_customization_false_for_other_type(self):
-        from entitysdk.types import DerivationType  # noqa: PLC0415
+        from entitysdk.types import DerivationType  # ruff: ignore[import-outside-top-level]
 
         circuit = MagicMock()
         deriv = MagicMock()
@@ -266,7 +266,7 @@ class TestCircuitCustomizationHelpers:
         assert is_circuit_customization(circuit) is False
 
     def test_customization_parent_entity(self):
-        from entitysdk.types import DerivationType  # noqa: PLC0415
+        from entitysdk.types import DerivationType  # ruff: ignore[import-outside-top-level]
 
         parent = MagicMock()
         circuit = MagicMock()

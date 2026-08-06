@@ -17,8 +17,8 @@ from starlette.responses import Response
 from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
-    circuit_registration,
     circuit_properties,
+    circuit_registration,
     circuit_visualization,
     config_validation,
     contributor,
