@@ -306,7 +306,7 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     if not include_visualization:
         return
 
-    if matrix_config is not None:
+    if matrix_config is not None and edge_population is not None:
         try:
             generate_connectivity_plot_assets(
                 matrix_config=matrix_config,

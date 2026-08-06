@@ -11,6 +11,7 @@ from uuid import UUID
 
 import entitysdk.client
 from entitysdk import models
+from entitysdk.models.core import Identifiable
 from entitysdk.types import CircuitScale, DerivationType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
@@ -78,11 +79,11 @@ def _save_optional_upload(upload: UploadFile | None, dest_dir: Path) -> Path | N
     return path
 
 
-def _get_optional_entity(
+def _get_optional_entity[T: Identifiable](
     db_client: entitysdk.client.Client,
     entity_id: UUID | None,
-    entity_type: type,
-) -> Any | None:
+    entity_type: type[T],
+) -> T | None:
     """Fetch an entity by ID when provided, else return None."""
     if entity_id is None:
         return None
@@ -286,7 +287,7 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
 
     trigger_validation_task(
         ls_client=ls_client,
-        circuit_id=registered.id,  # ty:ignore[invalid-argument-type]
+        circuit_id=registered.id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
     )

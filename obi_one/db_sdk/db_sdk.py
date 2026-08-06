@@ -445,9 +445,9 @@ def _delete_assets_with_label(
     """Delete all assets with ``asset_label`` on the circuit (in-memory + remote)."""
     for asset in _assets_with_label(registered_circuit, asset_label):
         client.delete_asset(
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_id=registered_circuit.id,
             entity_type=models.Circuit,
-            asset_id=asset.id,  # ty:ignore[invalid-argument-type]
+            asset_id=asset.id,
         )
         L.info("Deleted existing '%s' asset %s", asset_label, asset.id)
         if registered_circuit.assets is not None:
@@ -473,9 +473,9 @@ def _upload_or_replace_file(
 
     if transfer_config is None and len(existing) == 1:
         asset = client.update_asset_file(
-            entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+            entity_id=registered_circuit.id,
             entity_type=models.Circuit,
-            asset_id=existing[0].id,  # ty:ignore[invalid-argument-type]
+            asset_id=existing[0].id,
             file_path=file_path,
             file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
         )
@@ -489,7 +489,7 @@ def _upload_or_replace_file(
         _delete_assets_with_label(client, registered_circuit, asset_label)
 
     asset = client.upload_file(
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_id=registered_circuit.id,
         entity_type=models.Circuit,
         file_path=file_path,
         file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
@@ -519,9 +519,9 @@ def _upload_or_replace_directory(
     asset = client.upload_directory(
         label=asset_label,  # ty:ignore[invalid-argument-type]
         name=name,
-        entity_id=registered_circuit.id,  # ty:ignore[invalid-argument-type]
+        entity_id=registered_circuit.id,
         entity_type=models.Circuit,
-        paths=paths,  # ty:ignore[invalid-argument-type]
+        paths=paths,
     )
     L.info("'%s' asset uploaded under asset ID %s", asset_label, asset.id)
     return asset

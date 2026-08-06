@@ -59,7 +59,7 @@ def upload_sonata_circuit(
     """Upload all files in circuit_dir as the sonata_circuit directory asset."""
     paths = {p.relative_to(circuit_dir): p for p in circuit_dir.rglob("*") if p.is_file()}
     db_client.upload_directory(
-        entity_id=registered.id,  # ty:ignore[invalid-argument-type]
+        entity_id=registered.id,
         entity_type=models.Circuit,
         name="sonata_circuit",
         paths=paths,  # ty:ignore[invalid-argument-type]
