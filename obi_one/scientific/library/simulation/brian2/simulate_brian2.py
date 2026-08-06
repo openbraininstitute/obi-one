@@ -24,6 +24,7 @@ import click
 import h5py
 import libsonata
 import numpy as np
+import pandas as pd
 from entitysdk import Client, ProjectContext, models
 from entitysdk.models.activity import Activity
 from entitysdk.staging import stage_simulation
@@ -300,12 +301,22 @@ def _build_synapses(
     src = edge_pop.source_nodes(selection).flatten()
     tgt = edge_pop.target_nodes(selection).flatten()
 
+    # Note: brian2 allows multiple synapses between two neurons, but all blocks
+    # need to have the same connection count (ie: `syn.connect(..., n=2)`
+    # for 2 connections; thus, one would have to group the src, tgt connections by
+    # count, and then parameterize them that way.
+    # For now, we only support single connections.
+    assert not pd.DataFrame({"src": src, "tgt": tgt}).duplicated().any(), (
+        "Multiple synapses per connection, not currently supported"
+    )
+
     syn = brian2.Synapses(
         source,
         target,
         model=synapse_template.params.model,
         on_pre=synapse_template.params.on_pre,
     )
+
     syn.connect(i=np.array(src, np.int64), j=np.array(tgt, np.int64))
     syn.pre.delay = (
         0.0 * brian2.units.ms
@@ -313,12 +324,6 @@ def _build_synapses(
         else synapse_template.params.delay.get()
     )
 
-    # Note: brian2 doesn't allow multiple synapses between two neurons;
-    # this matters if they are supposed to have different parameters.
-    # Currently we only support single connections.
-    assert selection.flat_size == len(syn), (
-        "Mismatch between synapse count, multiple synapses per connection?"
-    )
     for name, unit in synapse_template.dynamics.items():
         values = edge_pop.get_attribute(name, selection) * unit
         setattr(syn, name, values)
