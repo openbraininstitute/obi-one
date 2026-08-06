@@ -25,7 +25,9 @@ from obi_one.db_sdk.registration.circuit import (
     get_contributions,
     get_exp_date,
     get_publications,
+    is_validation_allowed,
     register_circuit,
+    validation_blocked_detail,
 )
 
 L = logging.getLogger(__name__)
@@ -317,13 +319,10 @@ def validate_circuit_endpoint(
     """
     circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
     status = getattr(circuit, "lifecycle_status", None)
-    if not force and status is not None and str(status) != "draft":
+    if not is_validation_allowed(lifecycle_status=status, force=force):
         raise HTTPException(
             status_code=409,
-            detail=(
-                f"Circuit lifecycle_status is '{status}'. "
-                "Validation requires draft status, or pass force=true to overwrite."
-            ),
+            detail=validation_blocked_detail(status),
         )
 
     trigger_validation_task(

@@ -20,9 +20,9 @@ from uuid import UUID
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
-from entitysdk.types import EntityLifecycleStatus
 from obi_auth import get_token
 
+from obi_one.db_sdk.registration.circuit.lifecycle import is_validation_allowed
 from obi_one.scientific.tasks.circuit_validation.task import (
     _update_lifecycle_status,  # ruff: ignore[import-private-name]
     is_circuit_customization,
@@ -80,11 +80,7 @@ def main() -> int:
         )
 
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
-        if (
-            not args.force
-            and circuit.lifecycle_status is not None
-            and circuit.lifecycle_status != EntityLifecycleStatus.draft
-        ):
+        if not is_validation_allowed(lifecycle_status=circuit.lifecycle_status, force=args.force):
             L.info(
                 "Skipping validation for circuit %s: lifecycle_status=%s "
                 "(expected draft; pass --force true to overwrite)",
