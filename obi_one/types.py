@@ -16,6 +16,7 @@ class TaskType(StrEnum):
 
     # Task types supported for job submission (via the launch-system)
     circuit_extraction = auto()
+    circuit_single_build = auto()
     circuit_simulation = auto()
     circuit_simulation_inait_machine = auto()
     circuit_simulation_neuron = auto()

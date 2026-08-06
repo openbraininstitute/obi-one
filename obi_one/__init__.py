@@ -45,6 +45,7 @@ __all__ = [
     "BuildSynaptomeResult",
     "BuildSynaptomeScanConfig",
     "BuildSynaptomeSingleConfig",
+    "BuildSynaptomeTask",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -455,6 +456,7 @@ from obi_one.scientific.tasks.build_synaptome import (
     BuildSynaptomeResult,
     BuildSynaptomeScanConfig,
     BuildSynaptomeSingleConfig,
+    BuildSynaptomeTask,
     build_synaptome,
 )
 from obi_one.scientific.tasks.circuit_extraction import (

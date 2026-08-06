@@ -10,6 +10,7 @@ from obi_one.types import TaskType
     ("task_type", "task_class"),
     [
         (TaskType.circuit_extraction, test_module.CircuitExtractionTask),
+        (TaskType.circuit_single_build, test_module.BuildSynaptomeTask),
         (
             TaskType.ion_channel_model_simulation_execution,
             test_module.IonChannelModelSimulationExecutionTask,
@@ -26,6 +27,7 @@ def test_get_task_type(task_type, task_class):
     ("task_type", "single_config_class"),
     [
         (TaskType.circuit_extraction, test_module.CircuitExtractionSingleConfig),
+        (TaskType.circuit_single_build, test_module.BuildSynaptomeSingleConfig),
         (
             TaskType.ion_channel_model_simulation_execution,
             test_module.IonChannelModelSimulationExecutionSingleConfig,
@@ -42,6 +44,7 @@ def test_get_task_type_single_config(task_type, single_config_class):
     ("task_type", "asset_label"),
     [
         (TaskType.circuit_extraction, test_module.AssetLabel.task_config),
+        (TaskType.circuit_single_build, test_module.AssetLabel.task_config),
         (TaskType.morphology_skeletonization, test_module.AssetLabel.task_config),
         (TaskType.circuit_simulation, None),
         (TaskType.ion_channel_model_simulation_execution, None),
@@ -57,6 +60,7 @@ def test_get_task_type_config_asset_label(task_type, asset_label):
     [
         (test_module.CircuitSimulationSingleConfig, test_module.GenerateSimulationTask),
         (test_module.CircuitExtractionSingleConfig, test_module.CircuitExtractionTask),
+        (test_module.BuildSynaptomeSingleConfig, test_module.BuildSynaptomeTask),
         (
             test_module.IonChannelModelSimulationSingleConfig,
             test_module.GenerateSimulationTask,
