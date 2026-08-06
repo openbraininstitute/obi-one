@@ -16,6 +16,7 @@ from obi_one.db_sdk.registration.circuit.generate import (
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
 )
+from obi_one.db_sdk.registration.circuit.validation_job import submit_circuit_validation_job
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
 from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
 
@@ -135,48 +136,16 @@ def trigger_validation_task(
         virtual_lab_id: Virtual lab ID for the job.
         force: When True, validate even if the circuit is not in ``draft`` status.
     """
-    launch_path = "launch_scripts/launch_circuit_validation"
-    asset_gen_callback = {
-        "action_type": "http_request_with_token",
-        "event_type": "job_on_success",
-        "config": {
-            "url": (
-                f"{settings.API_URL}/api/obi-one/declared/circuit/{circuit_id}/generate-assets"
-            ),
-            "method": "POST",
-        },
-    }
-    job_data = {
-        "code": {
-            "type": "python_repository",
-            "location": settings.OBI_ONE_REPO,
-            "ref": f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}",
-            "path": f"{launch_path}/main.py",
-            "dependencies": f"{launch_path}/dependencies/default.txt",
-        },
-        "resources": {
-            "type": "machine",
-            "image_type": "python_3_12_openmpi5_neuron9_neurodamus",
-            "cores": 1,
-            "memory": 8,
-            "timelimit": "00:30",
-            "compute_cell": "local",
-        },
-        "inputs": [
-            f"--circuit_id {circuit_id}",
-            f"--virtual_lab_id {virtual_lab_id}",
-            f"--project_id {project_id}",
-            f"--force {str(force).lower()}",
-        ],
-        "project_id": str(project_id),
-        "callbacks": [asset_gen_callback],
-    }
-
-    response = ls_client.post(url="/job", json=job_data)
-    if response.is_success:
-        L.info("Validation task submitted for circuit %s", circuit_id)
-    else:
-        L.warning("Failed to submit validation task for circuit %s: %s", circuit_id, response.text)
+    submit_circuit_validation_job(
+        ls_client=ls_client,
+        circuit_id=circuit_id,
+        project_id=project_id,
+        virtual_lab_id=virtual_lab_id,
+        api_url=settings.API_URL,
+        obi_one_repo=settings.OBI_ONE_REPO,
+        app_version=settings.APP_VERSION,
+        force=force,
+    )
 
 
 def trigger_asset_generation_task(

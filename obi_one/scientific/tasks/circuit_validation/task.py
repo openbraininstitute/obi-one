@@ -235,8 +235,8 @@ def _validate_morphology_paths(circuit: SnapCircuitType) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _validate_emodel_paths(circuit: SnapCircuitType) -> list[str]:
-    """Check that all HOC template files referenced by biophysical populations exist.
+def _validate_emodel_paths(circuit: SnapCircuitType) -> list[str]:  # ruff: ignore[complex-structure]
+    """Check that every biophysical neuron references an existing HOC template file.
 
     Uses bluepysnap so population-level and component-level
     ``biophysical_neuron_models_dir`` are resolved the same way as SNAP.
@@ -248,8 +248,39 @@ def _validate_emodel_paths(circuit: SnapCircuitType) -> list[str]:
         if getattr(pop, "type", None) not in TYPES_OF_BIOPHYS_NODES:
             continue
 
+        if "model_template" not in pop.property_names:
+            errors.append(
+                f"Population '{pop_name}': biophysical population is missing "
+                "model_template property"
+            )
+            continue
+
+        try:
+            series = pop.get(properties="model_template")
+            all_values = series.tolist()
+            templates = [t for t in series.unique().tolist() if t]
+            empty_count = sum(1 for t in all_values if not t)
+        except Exception as e:  # ruff: ignore[blind-except]
+            errors.append(f"Population '{pop_name}': could not read model_template: {e}")
+            continue
+
+        if empty_count:
+            errors.append(
+                f"Population '{pop_name}': {empty_count} biophysical neuron(s) "
+                "have an empty model_template"
+            )
+
+        if not templates:
+            errors.append(
+                f"Population '{pop_name}': no model_template values found on biophysical neurons"
+            )
+            continue
+
         hoc_dir_str = pop.config.get("biophysical_neuron_models_dir")
         if not hoc_dir_str:
+            errors.append(
+                f"Population '{pop_name}': biophysical_neuron_models_dir is not configured"
+            )
             continue
         hoc_dir = Path(hoc_dir_str)
 
@@ -259,24 +290,20 @@ def _validate_emodel_paths(circuit: SnapCircuitType) -> list[str]:
             )
             continue
 
-        if "model_template" not in pop.property_names:
-            continue
-
-        try:
-            templates = {t for t in pop.get(properties="model_template").unique().tolist() if t}
-        except Exception as e:  # ruff: ignore[blind-except]
-            errors.append(f"Population '{pop_name}': could not read model_template: {e}")
-            continue
-
         for template_ref in templates:
             if ":" not in str(template_ref):
+                errors.append(
+                    f"Population '{pop_name}': model_template '{template_ref}' "
+                    "is not in expected 'kind:name' form (e.g. 'hoc:CellA')"
+                )
                 continue
             kind, name = str(template_ref).split(":", 1)
             hoc_file = hoc_dir / f"{name}.{kind}"
             if not hoc_file.exists():
                 errors.append(
                     f"Population '{pop_name}': HOC template '{hoc_file.name}'"
-                    f" not found in {hoc_dir}"
+                    f" not found in {hoc_dir} (referenced by model_template "
+                    f"'{template_ref}')"
                 )
 
     return errors
@@ -369,31 +396,98 @@ def _find_stale_populations(mapping: dict, pop_sizes: dict[str, int]) -> list[st
 def _validate_hoc_loading(
     circuit: SnapCircuitType, working_dir: Path, *, load_mods: bool
 ) -> list[str]:
-    """Validate HOC templates by instantiating them with bluecellulab."""
-    all_hoc_files = _collect_hoc_files(circuit)
-    if not all_hoc_files:
+    """Validate HOC templates used by biophysical neurons with bluecellulab.
+
+    For each unique ``model_template`` on biophysical populations:
+    - require the HOC file to exist
+    - resolve a morphology for a neuron that uses that template
+    - instantiate the template with bluecellulab
+    """
+    used = _collect_used_emodel_load_targets(circuit)
+    if not used:
         return []
 
     if load_mods:
         _load_compiled_mechanisms(working_dir)
 
     errors: list[str] = []
-    for hoc_path in all_hoc_files:
-        morph_path = _find_morphology_for_template(hoc_path.stem, circuit)
-        if morph_path is None:
-            L.info("Skipping HOC '%s': no matching morphology found", hoc_path.name)
+    for target in used:
+        if not target["hoc_path"].exists():
+            errors.append(
+                f"Population '{target['pop_name']}': HOC template "
+                f"'{target['hoc_path'].name}' not found for model_template "
+                f"'{target['template_ref']}'"
+            )
+            continue
+        if target["morph_path"] is None:
+            errors.append(
+                f"Population '{target['pop_name']}': could not resolve morphology "
+                f"for model_template '{target['template_ref']}' "
+                f"(needed to load-test HOC '{target['hoc_path'].name}')"
+            )
             continue
         try:
             from obi_one.scientific.validations.emodels import (  # ruff: ignore[import-outside-top-level]
                 bluecellulab_initializable,
             )
 
-            bluecellulab_initializable(hoc_path, morph_path)
+            bluecellulab_initializable(target["hoc_path"], target["morph_path"])
         except Exception as e:  # ruff: ignore[blind-except]
-            errors.append(f"HOC template '{hoc_path.name}' failed to instantiate: {e}")
-            L.warning("Failed to instantiate HOC template %s: %s", hoc_path.name, e)
+            errors.append(f"HOC template '{target['hoc_path'].name}' failed to instantiate: {e}")
+            L.warning("Failed to instantiate HOC template %s: %s", target["hoc_path"].name, e)
 
     return errors
+
+
+def _collect_used_emodel_load_targets(circuit: SnapCircuitType) -> list[dict]:
+    """Collect unique used HOC templates with a morphology path for load-testing."""
+    targets: list[dict] = []
+    seen_templates: set[tuple[str, str]] = set()
+
+    for pop_name in circuit.nodes.population_names:
+        pop = circuit.nodes[pop_name]
+        if getattr(pop, "type", None) not in TYPES_OF_BIOPHYS_NODES:
+            continue
+        if "model_template" not in pop.property_names:
+            continue
+
+        hoc_dir_str = pop.config.get("biophysical_neuron_models_dir")
+        if not hoc_dir_str:
+            continue
+        hoc_dir = Path(hoc_dir_str)
+
+        try:
+            props = ["model_template"]
+            if "morphology" in pop.property_names:
+                props.append("morphology")
+            df = pop.get(properties=props)
+        except Exception as e:  # ruff: ignore[blind-except]
+            L.warning("Could not read templates for population '%s': %s", pop_name, e)
+            continue
+
+        for node_id, row in df.iterrows():
+            template_ref = row["model_template"]
+            if not template_ref or ":" not in str(template_ref):
+                continue
+            key = (pop_name, str(template_ref))
+            if key in seen_templates:
+                continue
+            seen_templates.add(key)
+
+            kind, name = str(template_ref).split(":", 1)
+            hoc_path = hoc_dir / f"{name}.{kind}"
+            morph_path = _resolve_morphology_path(pop, node_id)
+            targets.append(
+                {
+                    "pop_name": pop_name,
+                    "template_ref": str(template_ref),
+                    "hoc_path": hoc_path,
+                    "morph_path": morph_path,
+                    "node_id": node_id,
+                }
+            )
+
+    return targets
 
 
 def _collect_hoc_files(circuit: SnapCircuitType) -> list[Path]:
@@ -414,37 +508,61 @@ def _collect_hoc_files(circuit: SnapCircuitType) -> list[Path]:
 
 
 def _load_compiled_mechanisms(working_dir: Path) -> None:
-    """Load compiled mechanisms from the working directory if available."""
+    """Load compiled mechanisms from the working directory if available.
+
+    ``nrnivmodl`` writes architecture-specific shared libraries under
+    ``x86_64/`` or ``arm64/`` (``libnrnmech.so`` on Linux, ``libnrnmech.dylib``
+    on macOS). Prefer NEURON's ``load_mechanisms``, which resolves those paths.
+    """
     x86_dir = working_dir / "x86_64"
     arm64_dir = working_dir / "arm64"
-    mech_dir = x86_dir if x86_dir.exists() else arm64_dir if arm64_dir.exists() else None
-    if mech_dir:
-        from neuron import h  # ruff: ignore[import-outside-top-level]
+    if not x86_dir.exists() and not arm64_dir.exists():
+        return
 
-        h.nrn_load_dll(str(mech_dir / "special.so"))
+    import neuron  # ruff: ignore[import-outside-top-level]
+
+    neuron.load_mechanisms(str(working_dir))
 
 
-def _find_morphology_for_template(
-    template_name: str, circuit: SnapCircuitType
-) -> Path | None:
+def _resolve_morphology_path(pop: NodePopulation, node_id: int | str) -> Path | None:
+    """Resolve an on-disk morphology path for a node via bluepysnap MorphHelper."""
+    try:
+        morph_path = Path(pop.morph.get_filepath(node_id))
+        if morph_path.exists():
+            return morph_path
+    except Exception as e:  # ruff: ignore[blind-except]
+        L.debug("get_filepath(%s) failed: %s", node_id, e)
+
+    for ext in ("swc", "asc", "h5"):
+        try:
+            morph_path = Path(pop.morph.get_filepath(node_id, extension=ext))
+            if morph_path.exists():
+                return morph_path
+        except Exception as e:  # ruff: ignore[blind-except]
+            L.debug("get_filepath(%s, %s) failed: %s", node_id, ext, e)
+            continue
+    return None
+
+
+def _find_morphology_for_template(template_name: str, circuit: SnapCircuitType) -> Path | None:
     """Find a morphology that uses the given HOC template via the nodes file."""
     try:  # ruff: ignore[too-many-statements-in-try-clause]
         for pop_name in circuit.nodes.population_names:
             pop = circuit.nodes[pop_name]
+            if getattr(pop, "type", None) not in TYPES_OF_BIOPHYS_NODES:
+                continue
             if "model_template" not in pop.property_names:
+                continue
+            if "morphology" not in pop.property_names:
                 continue
             df = pop.get(properties=["model_template", "morphology"])
             match = df[df["model_template"].str.contains(template_name, na=False)]
             if match.empty:
                 continue
             node_id = match.index[0]
-            for ext in ("swc", "asc", "h5"):
-                try:
-                    morph_path = pop.morph.get_morphology_path(node_id, extension=ext)
-                    if Path(morph_path).exists():
-                        return Path(morph_path)
-                except Exception:  # ruff: ignore[blind-except, try-except-continue]
-                    continue
+            morph_path = _resolve_morphology_path(pop, node_id)
+            if morph_path is not None:
+                return morph_path
     except Exception as e:  # ruff: ignore[blind-except]
         L.warning("Could not find morphology for template '%s': %s", template_name, e)
     return None
@@ -472,12 +590,19 @@ def _find_mod_dir(circuit: SnapCircuitType) -> Path | None:
     """Find a mechanisms directory via SNAP's resolved per-population ``mechanisms_dir``.
 
     SNAP resolves both global ``components.mechanisms_dir`` and population-level
-    overrides into ``population.config``.
+    overrides into ``population.config``. Some circuits point ``mechanisms_dir`` at
+    the circuit root while ``.mod`` files live in a ``mod/`` subdirectory.
     """
     for pop_name in circuit.nodes.population_names:
         mech = circuit.nodes[pop_name].config.get("mechanisms_dir")
-        if mech:
-            return Path(mech)
+        if not mech:
+            continue
+        mech_path = Path(mech)
+        if mech_path.exists() and any(mech_path.glob("*.mod")):
+            return mech_path
+        nested = mech_path / "mod"
+        if nested.exists() and any(nested.glob("*.mod")):
+            return nested
     return None
 
 

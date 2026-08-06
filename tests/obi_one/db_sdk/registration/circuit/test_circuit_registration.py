@@ -5,6 +5,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -1384,7 +1385,9 @@ def test_generate_compressed_circuit_asset_with_gz_file(tmp_path):
     client = MagicMock()
     circuit_entity = MagicMock()
 
-    with patch("obi_one.db_sdk.registration.circuit.generate.add_compressed_circuit_asset") as mock_add:
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.add_compressed_circuit_asset"
+    ) as mock_add:
         generate_compressed_circuit_asset(
             circuit_path=gz_file,
             client=client,
@@ -1639,6 +1642,129 @@ def test_register_circuit_from_metadata_forwards_include_visualization():
         )
 
     assert mock_register.call_args.kwargs["include_visualization"] is False
+
+
+def test_register_circuit_neurodamus_validation_runs_in_process():
+    """neurodamus_validation registers as draft, skips SONATA, runs in-process checks."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = uuid4()
+    refreshed = MagicMock()
+    refreshed.id = registered.id
+    refreshed.lifecycle_status = "active"
+    client.register_entity.return_value = registered
+    client.get_entity.return_value = refreshed
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validate,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.run_circuit_validation"
+        ) as mock_neurodamus,
+    ):
+        mock_neurodamus.return_value = {"valid": True, "errors": [], "warnings": []}
+        result = register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_additional_assets=True,
+            neurodamus_validation=True,
+        )
+
+    mock_validate.assert_not_called()
+    circuit_model = client.register_entity.call_args[0][0]
+    assert circuit_model.lifecycle_status == "draft"
+    mock_neurodamus.assert_called_once_with(
+        db_client=client,
+        circuit_id=registered.id,
+        is_customization=False,
+    )
+    assert result is refreshed
+
+
+def test_register_circuit_neurodamus_validation_raises_on_failure():
+    """Failed in-process neurodamus validation raises ValueError."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = uuid4()
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.run_circuit_validation"
+        ) as mock_neurodamus,
+    ):
+        mock_neurodamus.return_value = {
+            "valid": False,
+            "errors": ["MOD compile failed"],
+            "warnings": [],
+        }
+        with pytest.raises(ValueError, match="Neurodamus validation failed"):
+            register_circuit(
+                client=client,
+                circuit_path=str(circuit_path),
+                name="test_circuit",
+                description="A test circuit",
+                build_category="computational_model",
+                brain_region=brain_region,
+                subject=subject,
+                target_simulator="NEURON",
+                skip_additional_assets=True,
+                neurodamus_validation=True,
+            )
+
+
+def test_register_circuit_from_metadata_forwards_neurodamus_validation():
+    """neurodamus_validation is forwarded to register_circuit."""
+    client = MagicMock()
+    metadata = {
+        "name": "test",
+        "description": "test",
+        "build_category": "computational_model",
+        "species": "Mus musculus",
+        "subject": "mouse-subject",
+        "brain_region": "SSp",
+        "brain_region_hierarchy": "test-hierarchy",
+        "target_simulator": "NEURON",
+    }
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.register.check_if_circuit_exists"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_subject"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region_hierarchy"),
+        patch("obi_one.db_sdk.registration.circuit.register.check_hierarchy_species"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_license"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_root_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_parent_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_exp_date"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_circuit") as mock_register,
+    ):
+        register_circuit_from_metadata(
+            client=client,
+            circuit_metadata=metadata,
+            circuit_path="/some/path",
+            neurodamus_validation=True,
+        )
+
+    assert mock_register.call_args.kwargs["neurodamus_validation"] is True
 
 
 # --- generate_additional_circuit_assets: compressed skip / force ---

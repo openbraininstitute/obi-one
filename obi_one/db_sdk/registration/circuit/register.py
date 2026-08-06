@@ -29,6 +29,7 @@ from obi_one.db_sdk.registration.circuit.resolve import (
     get_subject,
 )
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.scientific.tasks.circuit_validation.task import run_circuit_validation
 from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
 from obi_one.utils.io import extract_tar_gz
 
@@ -87,7 +88,7 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
     return circuit_path, circuit_path_compressed
 
 
-def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, complex-structure, too-many-branches]
+def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, complex-structure, too-many-branches, too-many-statements]
     client: Client,
     circuit_path: str | Path,
     *,
@@ -116,6 +117,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
+    neurodamus_validation: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
 
@@ -131,6 +133,12 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     ``lifecycle_status="draft"`` and ``skip_validation=True``, then trigger
     the validation launch job. Sync registration (tasks/notebooks) leaves
     those defaults so validation and assets run in-process.
+
+    Set ``neurodamus_validation=True`` to run the fuller MOD compile / HOC /
+    snap validation in-process after registration (same checks as the
+    neurodamus launch job, without the launch-system). The circuit is
+    registered as ``draft`` first and transitions to ``active`` or
+    ``disqualified`` based on the result.
 
     Args:
         client: The entitycore SDK client.
@@ -171,15 +179,21 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
             If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform a dry run without registering anything.
+        neurodamus_validation: If True, register as ``draft``, skip the light
+            bluepysnap SONATA check, then run MOD compile / HOC / snap validation
+            in-process and set lifecycle to ``active`` or ``disqualified``.
 
     Returns:
         The registered circuit entity, or None if dry_run is True.
     """
+    if neurodamus_validation:
+        skip_validation = True
+        lifecycle_status = "draft"
+
     # Validate that a license is provided for public circuits
     if authorized_public and license is None:
         msg = "A license is required when registering a public circuit (authorized_public=True)."
         raise ValueError(msg)
-
     # Validate species consistency
     if (
         brain_region.species is not None
@@ -322,6 +336,20 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             include_visualization=include_visualization,
         )
 
+    if neurodamus_validation and not dry_run and registered_circuit is not None:
+        result = run_circuit_validation(
+            db_client=client,
+            circuit_id=registered_circuit.id,
+            is_customization=False,
+        )
+        if not result["valid"]:
+            errors = "; ".join(result["errors"]) or "unknown validation error"
+            msg = f"Neurodamus validation failed for circuit '{name}': {errors}"
+            raise ValueError(msg)
+        registered_circuit = client.get_entity(
+            entity_id=registered_circuit.id, entity_type=models.Circuit
+        )
+
     return registered_circuit
 
 
@@ -337,6 +365,7 @@ def register_circuit_from_metadata(
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
+    neurodamus_validation: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
 
@@ -365,6 +394,8 @@ def register_circuit_from_metadata(
         sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
             If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform validation and dry run without registering.
+        neurodamus_validation: If True, run MOD compile / HOC / snap validation
+            in-process after registration (no launch-system job).
 
     Returns:
         The registered circuit entity, or None if dry_run is True.
@@ -415,4 +446,5 @@ def register_circuit_from_metadata(
         overview_image_path=overview_image_path,
         sim_designer_image_path=sim_designer_image_path,
         dry_run=dry_run,
+        neurodamus_validation=neurodamus_validation,
     )

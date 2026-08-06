@@ -37,6 +37,7 @@ from obi_one.db_sdk.registration.circuit.resolve import (
     get_root_circuit,
     get_subject,
 )
+from obi_one.db_sdk.registration.circuit.validation_job import submit_circuit_validation_job
 
 __all__ = [
     "CIRCUIT_ASSET_MAPPING",
@@ -66,4 +67,5 @@ __all__ = [
     "register_contributions",
     "register_derivation",
     "register_publication_links",
+    "submit_circuit_validation_job",
 ]
