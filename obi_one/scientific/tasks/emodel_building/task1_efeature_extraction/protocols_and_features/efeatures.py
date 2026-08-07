@@ -9,6 +9,8 @@ import abc
 from typing import Annotated, Any, ClassVar
 
 from pydantic import Discriminator, Field, PositiveFloat
+from pydantic.json_schema import GetJsonSchemaHandler, JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.schema import SchemaKey, UIElement
@@ -89,6 +91,9 @@ class EFeature(OBIBaseModel):
     efel_name: ClassVar[str] = ""
     """The eFEL feature key, fixed by each concrete feature class."""
 
+    feature_category: ClassVar[str] = ""
+    """Category group for UI rendering (spike_event, spike_shape, subthreshold)."""
+
     # ------------------------------------------------------------------
     # Always-present eFEL settings with eFEL defaults pre-filled
     # ------------------------------------------------------------------
@@ -110,6 +115,16 @@ class EFeature(OBIBaseModel):
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
+
+    @classmethod
+    def __get_pydantic_json_schema__(  # ruff: ignore[bad-dunder-method-name]
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        """Inject ``efel_feature_category`` into the JSON schema for UI grouping."""
+        schema = handler(core_schema)
+        if cls.feature_category:
+            schema.setdefault("extra", {})[SchemaKey.EFEL_FEATURE_CATEGORY] = cls.feature_category
+        return schema
 
     def efel_settings_overrides(self) -> dict:
         """Return this feature's own eFEL setting overrides (only what it sets).
@@ -139,6 +154,8 @@ class EFeature(OBIBaseModel):
 class SpikeEventFeature(EFeature, abc.ABC):
     """eFEL spike-event features; carries the per-feature stimulus window."""
 
+    feature_category: ClassVar[str] = "spike_event"
+
     stim_start: float = stim_start_field()
     stim_end: float = stim_end_field()
 
@@ -146,12 +163,16 @@ class SpikeEventFeature(EFeature, abc.ABC):
 class SpikeShapeFeature(EFeature, abc.ABC):
     """eFEL spike-shape features; carries the per-feature stimulus window."""
 
+    feature_category: ClassVar[str] = "spike_shape"
+
     stim_start: float = stim_start_field()
     stim_end: float = stim_end_field()
 
 
 class SubthresholdFeature(EFeature, abc.ABC):
     """eFEL subthreshold features; carries the per-feature stimulus window."""
+
+    feature_category: ClassVar[str] = "subthreshold"
 
     stim_start: float = stim_start_field()
     stim_end: float = stim_end_field()
@@ -1205,3 +1226,155 @@ SUBTHRESHOLD_FEATURES: tuple[type[EFeature], ...] = (
 
 _SUBTHRESHOLD = VoltageBaseFeature | OhmicInputResistanceVbSsseFeature
 SubthresholdFeatureUnion = Annotated[_SUBTHRESHOLD, Discriminator("type")]
+
+# -- Universal union (all concrete efeatures across all categories) --------
+
+_ALL_FEATURES = (
+    ISICVFeature
+    | ISILogSlopeFeature
+    | SpikecountFeature
+    | AdaptationIndexFeature
+    | DepolBlockBoolFeature
+    | DoubletISIFeature
+    | InvFirstISIFeature
+    | InvLastISIFeature
+    | InvSecondISIFeature
+    | InvThirdISIFeature
+    | InvTimeToFirstSpikeFeature
+    | IrregularityIndexFeature
+    | MeanFrequencyFeature
+    | NumberInitialSpikesFeature
+    | StrictBurstMeanFreqFeature
+    | StrictBurstNumberFeature
+    | TimeToFirstSpikeFeature
+    | TimeToLastSpikeFeature
+    | TimeToSecondSpikeFeature
+    | InvFourthISIFeature
+    | InvFifthISIFeature
+    | ISISemilogSlopeFeature
+    | ISILogSlopeSkipFeature
+    | AdaptationIndex2Feature
+    | BurstNumberFeature
+    | SingleBurstRatioFeature
+    | SpikeCountStimintFeature
+    | SpikesPerBurstFeature
+    | BurstMeanFreqFeature
+    | InterburstVoltageFeature
+    | InterburstMinValuesFeature
+    | PeakTimeFeature
+    | ISIValuesFeature
+    | AllISIValuesFeature
+    | InvISIValuesFeature
+    | InterburstDurationFeature
+    | TimeToInterburstMinFeature
+    | TimeToPostburstSlowAhpFeature
+    | PostburstMinValuesFeature
+    | PostburstSlowAhpValuesFeature
+    | PostburstFastAhpValuesFeature
+    | PostburstAdpPeakValuesFeature
+    | TimeToPostburstFastAhpFeature
+    | TimeToPostburstAdpPeakFeature
+    | SpikesPerBurstDiffFeature
+    | SpikesInBurst1Burst2DiffFeature
+    | SpikesInBurst1BurstlastDiffFeature
+    | Interburst15PercentValuesFeature
+    | Interburst20PercentValuesFeature
+    | Interburst25PercentValuesFeature
+    | Interburst30PercentValuesFeature
+    | Interburst40PercentValuesFeature
+    | Interburst60PercentValuesFeature
+    | Interburst15PercentVoltageFeature
+    | AHPDepthFeature
+    | AHPTimeFromPeakFeature
+    | AP1AmpFeature
+    | APAmplitudeFeature
+    | APBeginVoltageFeature
+    | APBeginWidthFeature
+    | APDurationHalfWidthFeature
+    | AP2AmpFeature
+    | APlastAmpFeature
+    | MeanAPAmplitudeFeature
+    | APAmplitudeChangeFeature
+    | APDurationHalfWidthChangeFeature
+    | AP1PeakFeature
+    | AP2PeakFeature
+    | AP2AP1DiffFeature
+    | AP2AP1PeakDiffFeature
+    | AmpDropFirstSecondFeature
+    | AmpDropFirstLastFeature
+    | AmpDropSecondLastFeature
+    | MaxAmpDifferenceFeature
+    | AHPDepthFromPeakFeature
+    | AHP1DepthFromPeakFeature
+    | AHP2DepthFromPeakFeature
+    | AHPDepthAbsFeature
+    | AHPDepthDiffFeature
+    | AHPDepthAbsSlowFeature
+    | AHPDepthSlowFeature
+    | AHPSlowTimeFeature
+    | FastAHPFeature
+    | FastAHPChangeFeature
+    | APRiseTimeFeature
+    | APFallTimeFeature
+    | APRiseRateFeature
+    | APFallRateFeature
+    | APRiseRateChangeFeature
+    | APFallRateChangeFeature
+    | APPeakUpstrokeFeature
+    | APPeakDownstrokeFeature
+    | APPhaseslopeFeature
+    | APWidthFeature
+    | APDurationFeature
+    | APDurationChangeFeature
+    | SpikeHalfWidthFeature
+    | AP1WidthFeature
+    | AP2WidthFeature
+    | APlastWidthFeature
+    | MinVoltageBetweenSpikesFeature
+    | DepolarizedBaseFeature
+    | PeakVoltageFeature
+    | APAmplitudeFromVoltagebaseFeature
+    | APHeightFeature
+    | MinAHPValuesFeature
+    | APBeginTimeFeature
+    | SpikeWidth2Feature
+    | APWidthBetweenThresholdFeature
+    | AP2AP1BeginWidthDiffFeature
+    | ADPPeakValuesFeature
+    | ADPPeakAmplitudeFeature
+    | PhaseslopeMaxFeature
+    | InitburstSahpFeature
+    | InitburstSahpSsseFeature
+    | InitburstSahpVbFeature
+    | MinBetweenPeaksValuesFeature
+    | APAmplitudeDiffFeature
+    | AP1BeginWidthFeature
+    | AP2BeginWidthFeature
+    | DecayTimeConstantAfterStimFeature
+    | OhmicInputResistanceVbSsseFeature
+    | SagAmplitudeFeature
+    | SagRatio1Feature
+    | SagRatio2Feature
+    | VoltageAfterStimFeature
+    | VoltageBaseFeature
+    | SteadyStateVoltageStimendFeature
+    | SteadyStateHyperFeature
+    | SteadyStateVoltageFeature
+    | TimeConstantFeature
+    | SagTimeConstantFeature
+    | MinimumVoltageFeature
+    | MaximumVoltageFeature
+    | MaximumVoltageFromVoltagebaseFeature
+    | VoltageDeflectionVbSsseFeature
+    | VoltageDeflectionFeature
+    | VoltageDeflectionBeginFeature
+    | OhmicInputResistanceFeature
+    | SteadyStateCurrentStimendFeature
+    | CurrentBaseFeature
+    | MultipleDecayTimeConstantAfterStimFeature
+    | ImpedanceFeature
+    | ActivationTimeConstantFeature
+    | DeactivationTimeConstantFeature
+    | InactivationTimeConstantFeature
+)
+EFeatureUnion = Annotated[_ALL_FEATURES, Discriminator("type")]

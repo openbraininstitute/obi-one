@@ -337,81 +337,77 @@ class IDRestProtocol(StepShapeProtocol):
     """IDrest — long depolarising step used for the firing-pattern features."""
 
     protocol_name: ClassVar[str] = "IDrest"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class IDThreshProtocol(StepShapeProtocol):
     """IDthresh — near-rheobase step, normally the rheobase-search protocol."""
 
     protocol_name: ClassVar[str] = "IDthresh"
-    features: tuple[efeatures.IDThreshFeatureUnion, ...] = _features_field(
-        efeatures.IDTHRESH_FEATURES
-    )
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDTHRESH_FEATURES)
 
 
 class IVProtocol(StepShapeProtocol):
     """IV — subthreshold step used for input resistance and sag."""
 
     protocol_name: ClassVar[str] = "IV"
-    features: tuple[efeatures.IVFeatureUnion, ...] = _features_field(efeatures.IV_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IV_FEATURES)
 
 
 class APWaveformProtocol(StepShapeProtocol):
     """APWaveform — short suprathreshold step used for spike-shape features."""
 
     protocol_name: ClassVar[str] = "APWaveform"
-    features: tuple[efeatures.APWaveformFeatureUnion, ...] = _features_field(
-        efeatures.APWAVEFORM_FEATURES
-    )
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.APWAVEFORM_FEATURES)
 
 
 class FirePatternProtocol(StepShapeProtocol):
     """FirePattern — long depolarising step for sustained firing."""
 
     protocol_name: ClassVar[str] = "FirePattern"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class SpontaneousProtocol(StepShapeProtocol):
     """Spontaneous — no injected current; spiking features on the resting trace."""
 
     protocol_name: ClassVar[str] = "Spontaneous"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class SpontAPsProtocol(StepShapeProtocol):
     """SpontAPs — spontaneous action potentials."""
 
     protocol_name: ClassVar[str] = "SpontAPs"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class DeltaProtocol(StepShapeProtocol):
     """Delta — short step used as a generic depolarising probe."""
 
     protocol_name: ClassVar[str] = "Delta"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class StartHoldProtocol(StepShapeProtocol):
     """StartHold — holding-current step at the start of a recording."""
 
     protocol_name: ClassVar[str] = "StartHold"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class StartNoHoldProtocol(StepShapeProtocol):
     """StartNoHold — start-of-recording step without holding current."""
 
     protocol_name: ClassVar[str] = "StartNoHold"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class GenericStepProtocol(StepShapeProtocol):
     """Step — generic rectangular step for recordings with no more specific name."""
 
     protocol_name: ClassVar[str] = "Step"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 # ---------------------------------------------------------------------------
@@ -423,35 +419,35 @@ class SAHPProtocol(SAHPShapeProtocol):
     """sAHP — two-step protocol probing the slow afterhyperpolarisation."""
 
     protocol_name: ClassVar[str] = "sAHP"
-    features: tuple[efeatures.SAHPFeatureUnion, ...] = _features_field(efeatures.SAHP_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.SAHP_FEATURES)
 
 
 class IDHyperpolProtocol(SAHPShapeProtocol):
     """IDhyperpol — hyperpolarising variant of the sAHP shape."""
 
     protocol_name: ClassVar[str] = "IDhyperpol"
-    features: tuple[efeatures.SAHPFeatureUnion, ...] = _features_field(efeatures.SAHP_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.SAHP_FEATURES)
 
 
 class IRHyperpolProtocol(SAHPShapeProtocol):
     """IRhyperpol — input-resistance hyperpolarising protocol."""
 
     protocol_name: ClassVar[str] = "IRhyperpol"
-    features: tuple[efeatures.SAHPFeatureUnion, ...] = _features_field(efeatures.SAHP_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.SAHP_FEATURES)
 
 
 class IDDepolProtocol(SAHPShapeProtocol):
     """IDdepol — depolarising variant of the sAHP shape; elicits spiking."""
 
     protocol_name: ClassVar[str] = "IDdepol"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class IRDepolProtocol(SAHPShapeProtocol):
     """IRdepol — input-resistance depolarising protocol; elicits spiking."""
 
     protocol_name: ClassVar[str] = "IRdepol"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 # ---------------------------------------------------------------------------
@@ -463,18 +459,14 @@ class RampProtocol(RampShapeProtocol):
     """Ramp — linearly rising current used to find the AP threshold."""
 
     protocol_name: ClassVar[str] = "Ramp"
-    features: tuple[efeatures.APWaveformFeatureUnion, ...] = _features_field(
-        efeatures.APWAVEFORM_FEATURES
-    )
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.APWAVEFORM_FEATURES)
 
 
 class APThresholdProtocol(RampShapeProtocol):
     """APThreshold — ramp to the first spike."""
 
     protocol_name: ClassVar[str] = "APThreshold"
-    features: tuple[efeatures.APWaveformFeatureUnion, ...] = _features_field(
-        efeatures.APWAVEFORM_FEATURES
-    )
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.APWAVEFORM_FEATURES)
 
 
 # ---------------------------------------------------------------------------
@@ -486,62 +478,56 @@ class HyperDePolProtocol(HyperDePolShapeProtocol):
     """HyperDePol — hyperpolarising step followed by a depolarising one."""
 
     protocol_name: ClassVar[str] = "HyperDePol"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class DeHyperPolProtocol(DeHyperPolShapeProtocol):
     """DeHyperPol — depolarising step followed by a hyperpolarising one."""
 
     protocol_name: ClassVar[str] = "DeHyperPol"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class NegCheopsProtocol(NegCheopsShapeProtocol):
     """negCheops — negative triangular ramp series."""
 
     protocol_name: ClassVar[str] = "negCheops"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class PosCheopsProtocol(PosCheopsShapeProtocol):
     """posCheops — positive triangular ramp series."""
 
     protocol_name: ClassVar[str] = "posCheops"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class SpikeRecProtocol(SpikeRecShapeProtocol):
     """SpikeRec — train of short suprathreshold pulses."""
 
     protocol_name: ClassVar[str] = "SpikeRec"
-    features: tuple[efeatures.SpikeRecFeatureUnion, ...] = _features_field(
-        efeatures.SPIKEREC_FEATURES
-    )
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.SPIKEREC_FEATURES)
 
 
 class SineSpecProtocol(SineSpecShapeProtocol):
     """sineSpec — chirp stimulus used to probe subthreshold resonance."""
 
     protocol_name: ClassVar[str] = "sineSpec"
-    features: tuple[efeatures.IDThreshFeatureUnion, ...] = _features_field(
-        efeatures.IDTHRESH_FEATURES
-    )
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDTHRESH_FEATURES)
 
 
 class PinkNoiseProtocol(PinkNoiseShapeProtocol):
     """pinkNoise — suprathreshold pink-noise current injection."""
 
     protocol_name: ClassVar[str] = "pinkNoise"
-    features: tuple[efeatures.IDRestFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.IDREST_FEATURES)
 
 
 class CapCheckProtocol(CapCheckShapeProtocol):
     """capCheck — short pulse used to check the capacitance compensation."""
 
     protocol_name: ClassVar[str] = "capCheck"
-    features: tuple[efeatures.SubthresholdFeatureUnion, ...] = _features_field(
-        efeatures.SUBTHRESHOLD_FEATURES
-    )
+    features: tuple[efeatures.EFeatureUnion, ...] = _features_field(efeatures.SUBTHRESHOLD_FEATURES)
 
 
 ProtocolUnion = Annotated[
