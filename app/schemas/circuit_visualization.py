@@ -38,8 +38,16 @@ class MorphoViewerTreeItemType(IntEnum):
     Unknown = 8
 
 
+_SONATA_SECTION_ID_DESCRIPTION = (
+    "SONATA global section ID: 0 for the soma, then nrn_order neurites — the id "
+    "``MorphologyLocationPoint.section_id`` expects. It is the morphio section id plus one; "
+    "``id`` above stays the raw morphio id, meaningful only for linking within this response."
+)
+
+
 class Section(BaseModel):
     id: str
+    sonata_section_id: Annotated[int, Field(description=_SONATA_SECTION_ID_DESCRIPTION)]
     parent_id: str | None
     type: MorphoViewerTreeItemType
     points: list[tuple[float, float, float]]
@@ -48,6 +56,7 @@ class Section(BaseModel):
 
 class SectionDict(TypedDict):
     id: str
+    sonata_section_id: int
     parent_id: str | None
     type: MorphoViewerTreeItemType
     points: list[tuple[float, float, float]]

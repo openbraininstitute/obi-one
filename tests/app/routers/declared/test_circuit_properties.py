@@ -70,3 +70,30 @@ def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch
     )
 
     assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is False
+
+
+@pytest.mark.parametrize(
+    ("scale", "expected"),
+    [
+        (entitysdk.types.CircuitScale.single, True),
+        (entitysdk.types.CircuitScale.pair, False),
+        (entitysdk.types.CircuitScale.small, False),
+        (entitysdk.types.CircuitScale.microcircuit, False),
+    ],
+)
+def test_explicit_morphology_locations_are_single_neuron_only(scale, expected, monkeypatch):
+    """Narrower than the general morphology-locations gate, and deliberately so.
+
+    An explicit location names a section id with no cell attached, so on a circuit holding
+    several neurons the same id is applied to every morphology — where it refers to a
+    different branch on each.
+    """
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+    monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(scale),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS] is expected

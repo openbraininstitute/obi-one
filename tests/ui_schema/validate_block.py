@@ -706,6 +706,49 @@ def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) ->
     # `features` union in the schema, so there is no catalogue extra to check.
 
 
+def validate_morphology_location_selection(schema: dict, param: str, ref: str) -> None:
+    assert schema.get("type") == "array", (
+        f"Validation error at {ref}: morphology_location_selection param {param} should be of "
+        "type 'array'"
+    )
+
+    resolved_ref = resolve_ref(openapi_schema, schema.get("items").get("$ref"))
+    properties = resolved_ref.get("properties", {})
+
+    # The widget edits one row per location, so the referenced object must carry exactly the
+    # pair the row is made of — anything else and the row would silently drop a field.
+    assert set(properties) == {"section_id", "offset"}, (
+        f"Validation error at {ref}: morphology_location_selection param {param} should "
+        f"reference a schema with exactly 'section_id' and 'offset'. Got: {sorted(properties)}"
+    )
+
+    location = f"{param} at {ref}"
+
+    section_id = properties["section_id"]
+    assert section_id.get("type") == "integer", (
+        f"Validation error at {location}: morphology_location_selection 'section_id' should be "
+        "of type 'integer'"
+    )
+    assert section_id.get("minimum") == 0, (
+        f"Validation error at {location}: morphology_location_selection 'section_id' should "
+        "have minimum 0 (SONATA reserves 0 for the soma)"
+    )
+
+    offset = properties["offset"]
+    assert offset.get("type") == "number", (
+        f"Validation error at {location}: morphology_location_selection 'offset' should be of "
+        "type 'number'"
+    )
+    assert math.isclose(offset.get("minimum"), 0.0), (
+        f"Validation error at {location}: morphology_location_selection 'offset' should have "
+        "minimum 0.0"
+    )
+    assert math.isclose(offset.get("maximum"), 1.0), (
+        f"Validation error at {location}: morphology_location_selection 'offset' should have "
+        "maximum 1.0"
+    )
+
+
 def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     assert schema.get("type") == "array", (
         f"Validation error at {ref}: voltage_duration param {param} should be of type 'array'"
@@ -749,7 +792,7 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
-def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, complex-structure]
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, too-many-statements, complex-structure]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
@@ -783,6 +826,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
+        case UIElement.MORPHOLOGY_LOCATION_SELECTION:
+            validate_morphology_location_selection(schema, param, ref)
         case UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION:
             validate_morphology_section_type_selection(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:

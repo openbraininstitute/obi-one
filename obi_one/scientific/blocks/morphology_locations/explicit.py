@@ -1,11 +1,19 @@
-from typing import Annotated, override
+from typing import Annotated, ClassVar, override
 
 import morphio
 import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 
-from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.morphology_locations.base import (
+    MorphologyLocationsBlock,
+    SectionTypes,
+)
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.library.morphology_locations import (
     _PRE_IDX,
     _SEC_ID,
@@ -28,6 +36,8 @@ _LOCATION_COLUMNS = pandas.Index(
         _SEC_LOC,
     ]
 )
+
+_SOMA_SECTION_ID = 0
 
 _SectionID = Annotated[
     int,
@@ -72,7 +82,7 @@ def _point_on_section(
     section_id: int,
     offset: float,
 ) -> dict[str, int | float]:
-    if section_id == 0:
+    if section_id == _SOMA_SECTION_ID:
         return {
             _SEG_ID: 0,
             _SEC_ID: 0,
@@ -130,16 +140,59 @@ def _point_on_section(
 class ExplicitMorphologyLocations(MorphologyLocationsBlock):
     """A deterministic collection of SONATA locations on an nrn_order morphology."""
 
+    title: ClassVar[str] = "Explicit Morphology Locations"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS,
+            SchemaKey.FALSE_MESSAGE: (
+                "Explicit morphology locations are only available for single-neuron targets."
+            ),
+        },
+    }
+
     locations: tuple[MorphologyLocationPoint, ...] = Field(
+        default=(MorphologyLocationPoint(section_id=_SOMA_SECTION_ID, offset=0.0),),
         min_length=1,
         title="Explicit locations",
-        description="Non-empty collection of section IDs and normalized offsets.",
+        description=(
+            "The exact points on the neuron to target. Click anywhere on the neuron in the 3D "
+            "view to add one, or type it in by hand. Each row is a single point: which branch "
+            "of the neuron it sits on, and how far along that branch it is — 0 is the start of "
+            "the branch, 1 is the end, 0.5 is halfway. Branch 0 is always the soma. At least "
+            "one point is required."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_LOCATION_SELECTION,
+        },
+    )
+
+    # Re-declared only to hide the parent's sampling knobs: locations are given outright, so
+    # `_make_points` never reads them.
+    random_seed: NonNegativeInt = Field(
+        default=0,
+        title="Random Seed",
+        description="Unused: explicit locations involve no random sampling.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    number_of_locations: PositiveInt = Field(
+        default=1,
+        title="Number of Locations",
+        description="Unused: the number of locations is the length of `locations`.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    section_types: SectionTypes = Field(
+        default=None,
+        title="Section Types",
+        description="Unused: each location names its own section.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         path_distance_calculator = (
             MorphologyPathDistanceCalculator(morphology)
-            if any(location.section_id != 0 for location in self.locations)
+            if any(location.section_id != _SOMA_SECTION_ID for location in self.locations)
             else None
         )
         points = [

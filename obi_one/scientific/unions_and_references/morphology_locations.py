@@ -7,6 +7,7 @@ from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
 )
+from obi_one.scientific.blocks.morphology_locations.explicit import ExplicitMorphologyLocations
 from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
 )
@@ -17,6 +18,7 @@ from obi_one.scientific.blocks.morphology_locations.random import (
 MorphologyLocationUnion = Annotated[
     ClusteredMorphologyLocations
     | ClusteredPathDistanceMorphologyLocations
+    | ExplicitMorphologyLocations
     | PathDistanceMorphologyLocations
     | RandomMorphologyLocations,
     Discriminator("type"),

@@ -41,6 +41,12 @@ MORPHOLOGY_LOCATIONS = {
     "ClusteredPathDistanceMorphologyLocations": obi.ClusteredPathDistanceMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2
     ),
+    "ExplicitMorphologyLocations": obi.ExplicitMorphologyLocations(
+        locations=(
+            obi.MorphologyLocationPoint(section_id=0, offset=0.0),
+            obi.MorphologyLocationPoint(section_id=1, offset=0.5),
+        )
+    ),
 }
 
 

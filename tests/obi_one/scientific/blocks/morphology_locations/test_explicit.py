@@ -2,14 +2,19 @@ import morphio
 import numpy as np
 import pandas as pd
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from obi_one.scientific.blocks.morphology_locations.explicit import (
     ExplicitMorphologyLocations,
     MorphologyLocationPoint,
 )
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.library.morphology_locations import MorphologyPathDistanceCalculator
+from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
 
 from tests.utils import DATA_DIR
 
@@ -209,12 +214,46 @@ def test_missing_section_id_raises_clear_error(morphology):
         locations.points_on(morphology)
 
 
-def test_explicit_morphology_locations_round_trip():
+def test_morphology_location_union_round_trip():
     original = ExplicitMorphologyLocations(
         locations=(MorphologyLocationPoint(section_id=1, offset=0.5),)
     )
 
-    restored = ExplicitMorphologyLocations.model_validate(original.model_dump())
+    restored = TypeAdapter(MorphologyLocationUnion).validate_python(original.model_dump())
 
     assert isinstance(restored, ExplicitMorphologyLocations)
     assert restored == original
+
+
+def test_locations_default_to_the_soma():
+    """`min_length=1` makes an empty list invalid, so a freshly added block needs a default.
+
+    Section 0 is the soma on every morphology, and `_point_on_section` resolves it without a
+    path-distance calculator, so the default block materializes on any morphology.
+    """
+    locations = ExplicitMorphologyLocations()
+
+    assert locations.locations == (MorphologyLocationPoint(section_id=0, offset=0.0),)
+
+
+def test_only_offered_for_single_neuron_targets():
+    """A stored location has no cell id, so it is only unambiguous on a single-neuron target."""
+    usability = ExplicitMorphologyLocations.model_json_schema()["block_usability_dictionary"]
+
+    assert usability["property"] == CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS
+    assert usability["property_group"] == MappedPropertiesGroup.CIRCUIT
+
+    # The siblings sample rather than name locations, so they stay on the broader gate.
+    sibling = RandomMorphologyLocations.model_json_schema()["block_usability_dictionary"]
+    assert sibling["property"] == CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS
+
+
+def test_sampling_parameters_are_hidden_from_the_ui():
+    """The inherited sampling knobs do not apply to explicitly listed locations."""
+    schema = ExplicitMorphologyLocations.model_json_schema()
+
+    for param in ("random_seed", "number_of_locations", "section_types"):
+        assert schema["properties"][param].get("ui_hidden") is True, param
+        assert param not in schema.get("required", []), param
+
+    assert schema["properties"]["locations"].get("ui_element") == "morphology_location_selection"

@@ -242,11 +242,16 @@ def download_circuit_config(
 
 
 def load_morphology(path: Path, morph_name: str | None) -> morphio.Morphology:
+    """Load a circuit morphology in NEURON-compatible section order.
+
+    ``nrn_order`` is required, not cosmetic: a section's id is its position in the
+    section list, so a different ordering yields different ids for the same branch.
+    """
     try:
-        return morphio.Morphology(path)
+        return morphio.Morphology(path, options=morphio.Option.nrn_order)
     except morphio.MorphioError:
         collection = morphio.Collection(path.as_posix())
-        return collection.load(morph_name)
+        return collection.load(morph_name, morphio.Option.nrn_order)
 
 
 def get_morphology(
@@ -293,6 +298,19 @@ def _map_section_type(sec_type: morphio.SectionType) -> MorphoViewerTreeItemType
     return mapping.get(sec_type, MorphoViewerTreeItemType.Unknown)
 
 
+SOMA_SONATA_SECTION_ID = 0
+
+
+def sonata_section_id(morphio_section_id: int) -> int:
+    """Convert a morphio section id into a SONATA global section id.
+
+    SONATA reserves 0 for the soma and numbers neurites from 1, while morphio keeps
+    the soma aside and numbers neurites from 0. The morphology-location blocks undo
+    this with ``morphology.section(section_id - 1)``.
+    """
+    return morphio_section_id + 1
+
+
 def get_morphology_data(morphology: morphio.Morphology) -> list[SectionDict]:
     sections: list[SectionDict] = []
 
@@ -303,6 +321,7 @@ def get_morphology_data(morphology: morphio.Morphology) -> list[SectionDict]:
         sections.append(
             {
                 "id": "soma",
+                "sonata_section_id": SOMA_SONATA_SECTION_ID,
                 "parent_id": None,
                 "type": MorphoViewerTreeItemType.Soma,
                 "points": soma.points.tolist(),
@@ -319,6 +338,7 @@ def get_morphology_data(morphology: morphio.Morphology) -> list[SectionDict]:
         sections.append(
             {
                 "id": str(section.id),
+                "sonata_section_id": sonata_section_id(section.id),
                 "parent_id": parent_id,
                 "type": _map_section_type(section.type),
                 "points": section.points.tolist(),
