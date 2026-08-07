@@ -7,7 +7,7 @@
   "property_group": "NeuronalManipulation",
   "property": "MechanismVariablesByIonChannel",
   "neuron_set_field": {
-    "description": "The neuron_set field value is passed to the /neuronal-manipulation-properties endpoint to determine available variables.",
+    "description": "The neuron_set field value is passed to the /circuit-neuronal-manipulation-properties-by-neuron-set endpoint to determine available variables.",
     "ui_element": "reference",
     "reference_type": "NeuronSetReference"
   },

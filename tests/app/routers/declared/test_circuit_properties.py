@@ -42,7 +42,6 @@ def _db_client(scale: entitysdk.types.CircuitScale):
 )
 def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
-    monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",
@@ -62,7 +61,6 @@ def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatc
 )
 def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
-    monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",

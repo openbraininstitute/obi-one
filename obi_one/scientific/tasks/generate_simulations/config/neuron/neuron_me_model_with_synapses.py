@@ -47,6 +47,9 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
             MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/circuit-neuronal-manipulation-properties-by-neuron-set"
+            ),
         },
     }
 

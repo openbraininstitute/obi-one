@@ -10,7 +10,7 @@ visible, allowing the user to select which neurons the manipulation targets.
 
 The available ion channel variables are the **intersection** of mechanism variables
 across all emodels in the selected neuron set, fetched from the
-`/neuronal-manipulation-properties` endpoint.
+`/circuit-neuronal-manipulation-properties-by-neuron-set` endpoint.
 
 Reference schema:
 [circuit_neuronal_manipulation_by_neuron](reference_schemas/circuit_neuronal_manipulation_by_neuron.json)
@@ -63,7 +63,7 @@ class CircuitByNeuronMechanismVariableNeuronalManipulation(
 | Aspect | MEModel | Circuit |
 |--------|---------|---------|
 | Neuron Set field | Hidden (`UI_HIDDEN: True`) | Visible (`UIElement.REFERENCE`) |
-| Variable source endpoint | `/mapped-circuit-properties/{id}` | `/neuronal-manipulation-properties` |
+| Variable source endpoint | `/memodel-neuronal-manipulation-properties` | `/circuit-neuronal-manipulation-properties-by-neuron-set` |
 | Variables shown | All from the single emodel | Intersection across all emodels in neuron set |
 | When data loads | On page load | After neuron set selection |
 
