@@ -17,7 +17,6 @@ from obi_one.scientific.tasks.circuit_validation.task import (
     _get_population_sizes,
     _load_compiled_mechanisms,
     _mechanism_suffixes_from_mod_dir,
-    _update_h5_dataset,
     _validate_emodel_paths,
     _validate_hoc_loading,
     _validate_id_mapping_files,
@@ -410,44 +409,6 @@ class TestValidateIdMappingFiles:
 
 
 # ---------------------------------------------------------------------------
-# _update_h5_dataset
-# ---------------------------------------------------------------------------
-
-
-class TestUpdateH5Dataset:
-    def test_creates_new_dataset(self, tmp_path):
-        h5_file = tmp_path / "test.h5"
-        with h5py.File(h5_file, "w") as f:
-            grp = f.create_group("dyn")
-            _update_h5_dataset(grp, "holding_current", {0: 1.5, 3: 2.5}, 5, np)
-
-        with h5py.File(h5_file, "r") as f:
-            ds = f["dyn/holding_current"]
-            assert ds[0] == pytest.approx(1.5)
-            assert ds[1] == pytest.approx(0.0)
-            assert ds[3] == pytest.approx(2.5)
-            assert ds.shape[0] == 5
-
-    def test_updates_existing_dataset(self, tmp_path):
-        h5_file = tmp_path / "test.h5"
-        with h5py.File(h5_file, "w") as f:
-            grp = f.create_group("dyn")
-            grp.create_dataset(
-                "holding_current", data=np.array([10, 20, 30, 40, 50], dtype=np.float32)
-            )
-
-        with h5py.File(h5_file, "r+") as f:
-            grp = f["dyn"]
-            _update_h5_dataset(grp, "holding_current", {1: 99.0, 4: 88.0}, 5, np)
-
-        with h5py.File(h5_file, "r") as f:
-            ds = f["dyn/holding_current"]
-            assert ds[0] == pytest.approx(10.0)
-            assert ds[1] == pytest.approx(99.0)
-            assert ds[4] == pytest.approx(88.0)
-
-
-# ---------------------------------------------------------------------------
 # run_circuit_validation — integration with mocks
 # ---------------------------------------------------------------------------
 
@@ -565,7 +526,6 @@ class TestRunCircuitValidation:
         result = run_circuit_validation(
             db_client=db_client,
             circuit_id=circuit_id,
-            is_customization=False,
         )
 
         assert result["valid"] is True
@@ -630,7 +590,6 @@ class TestRunCircuitValidation:
         result = run_circuit_validation(
             db_client=db_client,
             circuit_id=circuit_id,
-            is_customization=False,
         )
 
         assert result["valid"] is False
@@ -697,7 +656,6 @@ class TestRunCircuitValidation:
         result = run_circuit_validation(
             db_client=db_client,
             circuit_id=circuit_id,
-            is_customization=False,
         )
 
         assert result["valid"] is False
@@ -857,272 +815,3 @@ class TestFindMorphologyForTemplate:
         result = _find_morphology_for_template("CellA", mock_circuit)
         assert result == morph_file
         mock_pop.morph.get_filepath.assert_called()
-
-
-# ---------------------------------------------------------------------------
-# _check_content_subset_of_parent
-# ---------------------------------------------------------------------------
-
-
-class TestCheckContentSubsetOfParent:
-    def test_child_is_subset(self):
-        from obi_one.scientific.tasks.circuit_validation.task import (  # ruff: ignore[import-outside-top-level]
-            _check_content_subset_of_parent,
-        )
-
-        parent = MagicMock()
-        child = MagicMock()
-
-        # Parent has morphs {A, B, C} and templates {hoc:X, hoc:Y}
-        parent_pop = MagicMock()
-        parent_pop.property_names = ["morphology", "model_template"]
-        parent_pop.get.side_effect = lambda properties: (
-            MagicMock(to_list=lambda: ["A", "B", "C"])
-            if properties == "morphology"
-            else MagicMock(to_list=lambda: ["hoc:X", "hoc:Y"])
-        )
-        parent.nodes.population_names = ["pop_a"]
-        parent.nodes.__getitem__ = lambda _self, _k: parent_pop
-
-        # Child has morphs {A, B} and templates {hoc:X}
-        child_pop = MagicMock()
-        child_pop.property_names = ["morphology", "model_template"]
-        child_pop.get.side_effect = lambda properties: (
-            MagicMock(to_list=lambda: ["A", "B"])
-            if properties == "morphology"
-            else MagicMock(to_list=lambda: ["hoc:X"])
-        )
-        child.nodes.population_names = ["pop_a"]
-        child.nodes.__getitem__ = lambda _self, _k: child_pop
-
-        errors = _check_content_subset_of_parent(child, parent)
-        assert errors == []
-
-    def test_child_has_extra_morphologies(self):
-        from obi_one.scientific.tasks.circuit_validation.task import (  # ruff: ignore[import-outside-top-level]
-            _check_content_subset_of_parent,
-        )
-
-        parent = MagicMock()
-        child = MagicMock()
-
-        parent_pop = MagicMock()
-        parent_pop.property_names = ["morphology", "model_template"]
-        parent_pop.get.side_effect = lambda properties: (
-            MagicMock(to_list=lambda: ["A"])
-            if properties == "morphology"
-            else MagicMock(to_list=lambda: ["hoc:X"])
-        )
-        parent.nodes.population_names = ["pop_a"]
-        parent.nodes.__getitem__ = lambda _self, _k: parent_pop
-
-        child_pop = MagicMock()
-        child_pop.property_names = ["morphology", "model_template"]
-        child_pop.get.side_effect = lambda properties: (
-            MagicMock(to_list=lambda: ["A", "B", "NEW_MORPH"])
-            if properties == "morphology"
-            else MagicMock(to_list=lambda: ["hoc:X"])
-        )
-        child.nodes.population_names = ["pop_a"]
-        child.nodes.__getitem__ = lambda _self, _k: child_pop
-
-        errors = _check_content_subset_of_parent(child, parent)
-        assert len(errors) == 1
-        assert "morphology" in errors[0]
-
-
-# ---------------------------------------------------------------------------
-# run_circuit_validation — subset checks branch
-# ---------------------------------------------------------------------------
-
-
-class TestRunCircuitValidationSubsetChecks:
-    @patch("obi_one.scientific.tasks.circuit_validation.task.stage_circuit")
-    @patch("obi_one.scientific.tasks.circuit_validation.task._update_lifecycle_status")
-    @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
-    @patch("obi_one.scientific.tasks.circuit_validation.task.circuit_validation")
-    @patch("obi_one.scientific.tasks.circuit_validation.task._check_content_subset_of_parent")
-    @patch(
-        "obi_one.scientific.tasks.circuit_validation.task._check_new_populations_not_biophysical"
-    )
-    @patch("obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file")
-    @patch("bluepysnap.Circuit")
-    def test_subset_checks_invoked_for_customization(
-        self,
-        mock_snap_circuit,
-        mock_libsonata_cfg,
-        mock_new_pops,
-        mock_content_subset,
-        mock_snap_validate,
-        mock_hoc_loading,
-        mock_update_status,  # ruff: ignore[unused-method-argument]
-        mock_stage,
-        tmp_path,
-    ):
-        from uuid import uuid4  # ruff: ignore[import-outside-top-level]
-
-        from obi_one.scientific.tasks.circuit_validation.task import (  # ruff: ignore[import-outside-top-level]
-            run_circuit_validation,
-        )
-
-        config_path = tmp_path / "circuit_config.json"
-        morph_dir = tmp_path / "morphologies"
-        morph_dir.mkdir()
-        hoc_dir = tmp_path / "hoc"
-        hoc_dir.mkdir()
-        (hoc_dir / "Cell.hoc").write_text("x")
-        nodes_file = tmp_path / "nodes.h5"
-        with h5py.File(nodes_file, "w") as f:
-            grp = f.create_group("nodes/pop_a/0")
-            grp.create_dataset("model_template", data=[b"hoc:Cell"])
-            f["nodes/pop_a"].create_dataset("node_type_id", data=np.zeros(1, dtype=np.int32))
-        cfg = {
-            "components": {
-                "morphologies_dir": str(morph_dir),
-                "biophysical_neuron_models_dir": str(hoc_dir),
-            },
-            "networks": {
-                "nodes": [
-                    {
-                        "nodes_file": str(nodes_file),
-                        "populations": {"pop_a": {"type": "biophysical"}},
-                    }
-                ]
-            },
-        }
-        config_path.write_text(json.dumps(cfg))
-
-        # mock stage to return our config for both child and parent
-        mock_stage.return_value = config_path
-        snap = MagicMock()
-        snap.nodes.population_names = []
-        mock_snap_circuit.return_value = snap
-
-        mock_cfg_obj = MagicMock()
-        mock_cfg_obj.expanded_json = config_path.read_text()
-        mock_libsonata_cfg.return_value = mock_cfg_obj
-
-        mock_snap_validate.validate.return_value = []
-        mock_hoc_loading.return_value = []
-        mock_new_pops.return_value = []
-        mock_content_subset.return_value = []
-
-        db_client = MagicMock()
-        circuit = MagicMock()
-        parent = MagicMock()
-        parent.id = uuid4()
-        # Set up derivation link so the validation finds the parent
-        from entitysdk.types import DerivationType  # ruff: ignore[import-outside-top-level]
-
-        deriv = MagicMock()
-        deriv.used = parent
-        deriv.derivation_type = DerivationType.circuit_customization
-        circuit.generated_from_derivations = [deriv]
-        db_client.get_entity.side_effect = [circuit, parent]
-
-        circuit_id = uuid4()
-
-        result = run_circuit_validation(
-            db_client=db_client,
-            circuit_id=circuit_id,
-            is_customization=True,
-        )
-
-        assert result["valid"] is True
-        mock_new_pops.assert_called_once()
-        mock_content_subset.assert_called_once()
-
-    @patch("obi_one.scientific.tasks.circuit_validation.task.stage_circuit")
-    @patch("obi_one.scientific.tasks.circuit_validation.task._update_lifecycle_status")
-    @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
-    @patch("obi_one.scientific.tasks.circuit_validation.task.circuit_validation")
-    @patch("obi_one.scientific.tasks.circuit_validation.task._check_content_subset_of_parent")
-    @patch(
-        "obi_one.scientific.tasks.circuit_validation.task._check_new_populations_not_biophysical"
-    )
-    @patch("obi_one.scientific.tasks.circuit_validation.task._recompute_dynamic_params")
-    @patch("obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file")
-    @patch("bluepysnap.Circuit")
-    def test_recompute_dynamic_params_called(
-        self,
-        mock_snap_circuit,
-        mock_libsonata_cfg,
-        mock_recompute,
-        mock_new_pops,
-        mock_content_subset,
-        mock_snap_validate,
-        mock_hoc_loading,
-        mock_update_status,  # ruff: ignore[unused-method-argument]
-        mock_stage,
-        tmp_path,
-    ):
-        from uuid import uuid4  # ruff: ignore[import-outside-top-level]
-
-        from entitysdk.types import DerivationType  # ruff: ignore[import-outside-top-level]
-
-        from obi_one.scientific.tasks.circuit_validation.task import (  # ruff: ignore[import-outside-top-level]
-            run_circuit_validation,
-        )
-
-        config_path = tmp_path / "circuit_config.json"
-        morph_dir = tmp_path / "morphologies"
-        morph_dir.mkdir()
-        hoc_dir = tmp_path / "hoc"
-        hoc_dir.mkdir()
-        (hoc_dir / "Cell.hoc").write_text("x")
-        nodes_file = tmp_path / "nodes.h5"
-        with h5py.File(nodes_file, "w") as f:
-            grp = f.create_group("nodes/pop_a/0")
-            grp.create_dataset("model_template", data=[b"hoc:Cell"])
-            f["nodes/pop_a"].create_dataset("node_type_id", data=np.zeros(1, dtype=np.int32))
-        cfg = {
-            "components": {
-                "morphologies_dir": str(morph_dir),
-                "biophysical_neuron_models_dir": str(hoc_dir),
-            },
-            "networks": {
-                "nodes": [
-                    {
-                        "nodes_file": str(nodes_file),
-                        "populations": {"pop_a": {"type": "biophysical"}},
-                    }
-                ]
-            },
-        }
-        config_path.write_text(json.dumps(cfg))
-
-        mock_stage.return_value = config_path
-        snap = MagicMock()
-        snap.nodes.population_names = []
-        mock_snap_circuit.return_value = snap
-
-        mock_cfg_obj = MagicMock()
-        mock_cfg_obj.expanded_json = config_path.read_text()
-        mock_libsonata_cfg.return_value = mock_cfg_obj
-
-        mock_snap_validate.validate.return_value = []
-        mock_hoc_loading.return_value = []
-        mock_new_pops.return_value = []
-        mock_content_subset.return_value = []
-
-        db_client = MagicMock()
-        circuit = MagicMock()
-        circuit.root_circuit_id = uuid4()
-        parent = MagicMock()
-        parent.id = uuid4()
-        deriv = MagicMock()
-        deriv.used = parent
-        deriv.derivation_type = DerivationType.circuit_customization
-        circuit.generated_from_derivations = [deriv]
-        db_client.get_entity.side_effect = [circuit, parent]
-
-        circuit_id = uuid4()
-
-        result = run_circuit_validation(
-            db_client=db_client,
-            circuit_id=circuit_id,
-            is_customization=True,
-        )
-
-        assert result["valid"] is True
-        mock_recompute.assert_called_once_with(snap, config_path)

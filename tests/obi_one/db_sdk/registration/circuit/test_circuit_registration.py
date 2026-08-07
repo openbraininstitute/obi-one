@@ -1687,7 +1687,6 @@ def test_register_circuit_neurodamus_validation_runs_in_process():
     mock_neurodamus.assert_called_once_with(
         db_client=client,
         circuit_id=registered.id,
-        is_customization=False,
     )
     assert result is refreshed
 

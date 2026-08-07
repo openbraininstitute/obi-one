@@ -340,7 +340,6 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         result = run_circuit_validation(
             db_client=client,
             circuit_id=registered_circuit.id,
-            is_customization=False,
         )
         if not result["valid"]:
             errors = "; ".join(result["errors"]) or "unknown validation error"
