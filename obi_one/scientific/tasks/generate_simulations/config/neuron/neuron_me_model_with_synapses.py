@@ -32,7 +32,6 @@ MEModelWithSynapsesCircuitDiscriminator = Annotated[
 class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
     """MEModelWithSynapsesCircuitSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "MEModelWithSynapsesCircuitSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
     json_schema_extra_additions: ClassVar[dict] = {

@@ -43,7 +43,6 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     name: ClassVar[str] = "Add a name class' name variable"
     description: ClassVar[str] = """Add a description to the class' description variable"""
-    single_coord_class_name: ClassVar[str] = ""
 
     _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 
@@ -267,17 +266,28 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
         return self
 
+    @property
+    def single_config_class(self) -> type[OBIBaseModel]:
+        """The SingleConfig class this ScanConfig expands into, from TASK_MAP."""
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        if registration is None:
+            msg = (
+                f"'{type(self).__name__}' has no entry in TASK_MAP, so the SingleConfig "
+                "class it expands into cannot be resolved."
+            )
+            raise OBIONEError(msg)
+        return registration.single_config_cls
+
     def cast_to_single_coord(self) -> OBIBaseModel:
         """Cast the form to a single coordinate object."""
-        module = __import__(self.__module__)
-        class_to_cast_to = getattr(module, self.single_coord_class_name)
+        class_to_cast_to = self.single_config_class
         single_coord = class_to_cast_to.model_construct(**self.__dict__)
-        single_coord.type = self.single_coord_class_name
+        single_coord.type = class_to_cast_to.__name__
         return single_coord
 
     @property
     def single_coord_scan_default_subpath(self) -> str:
-        return self.single_coord_class_name + "/"
+        return self.single_config_class.__name__ + "/"
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]

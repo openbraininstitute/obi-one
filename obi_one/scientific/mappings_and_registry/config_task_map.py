@@ -2,6 +2,7 @@ from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 from obi_one.core.registry import TaskRegistration, task_registry
 from obi_one.scientific.tasks.basic_connectivity_plots import (
+    BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
 )
@@ -11,6 +12,7 @@ from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionTask,
 )
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
+    ConnectivityMatrixExtractionScanConfig,
     ConnectivityMatrixExtractionSingleConfig,
     ConnectivityMatrixExtractionTask,
 )
@@ -32,35 +34,44 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task imp
     EModelEFeatureExtractionTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
+    ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
     ElectrophysiologyMetricsTask,
 )
 from obi_one.scientific.tasks.folder_compression import (
+    FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
     FolderCompressionTask,
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
     Brian2CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
+    LearningEngineCircuitSimulationScanConfig,
     LearningEngineCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
     CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
+    IonChannelModelSimulationScanConfig,
     IonChannelModelSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
+    MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
+    IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
 )
@@ -69,18 +80,22 @@ from obi_one.scientific.tasks.mesh_lod_generation.config import (
 )
 from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationTask
 from obi_one.scientific.tasks.morphology_containerization import (
+    MorphologyContainerizationScanConfig,
     MorphologyContainerizationSingleConfig,
     MorphologyContainerizationTask,
 )
 from obi_one.scientific.tasks.morphology_decontainerization import (
+    MorphologyDecontainerizationScanConfig,
     MorphologyDecontainerizationSingleConfig,
     MorphologyDecontainerizationTask,
 )
 from obi_one.scientific.tasks.morphology_locations import (
+    MorphologyLocationsScanConfig,
     MorphologyLocationsSingleConfig,
     MorphologyLocationsTask,
 )
 from obi_one.scientific.tasks.morphology_metrics import (
+    MorphologyMetricsScanConfig,
     MorphologyMetricsSingleConfig,
     MorphologyMetricsTask,
 )
@@ -126,6 +141,7 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
     TaskType.circuit_simulation: TaskRegistration(
         task_cls=GenerateSimulationTask,
         single_config_cls=CircuitSimulationSingleConfig,
+        scan_config_cls=CircuitSimulationScanConfig,
         asset_label=None,
     ),
     TaskType.circuit_synaptic_physiology_assignment: TaskRegistration(
@@ -220,71 +236,85 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
     TaskType.basic_connectivity_plots: TaskRegistration(
         task_cls=BasicConnectivityPlotsTask,
         single_config_cls=BasicConnectivityPlotsSingleConfig,
+        scan_config_cls=BasicConnectivityPlotsScanConfig,
         asset_label=None,
     ),
     TaskType.brian2_circuit_simulation: TaskRegistration(
         task_cls=GenerateSimulationTask,
         single_config_cls=Brian2CircuitSimulationSingleConfig,
+        scan_config_cls=Brian2CircuitSimulationScanConfig,
         asset_label=None,
     ),
     TaskType.connectivity_matrix_extraction: TaskRegistration(
         task_cls=ConnectivityMatrixExtractionTask,
         single_config_cls=ConnectivityMatrixExtractionSingleConfig,
+        scan_config_cls=ConnectivityMatrixExtractionScanConfig,
         asset_label=None,
     ),
     TaskType.electrophysiology_metrics: TaskRegistration(
         task_cls=ElectrophysiologyMetricsTask,
         single_config_cls=ElectrophysiologyMetricsSingleConfig,
+        scan_config_cls=ElectrophysiologyMetricsScanConfig,
         asset_label=None,
     ),
     TaskType.folder_compression: TaskRegistration(
         task_cls=FolderCompressionTask,
         single_config_cls=FolderCompressionSingleConfig,
+        scan_config_cls=FolderCompressionScanConfig,
         asset_label=None,
     ),
     TaskType.ion_channel_fitting: TaskRegistration(
         task_cls=IonChannelFittingTask,
         single_config_cls=IonChannelFittingSingleConfig,
+        scan_config_cls=IonChannelFittingScanConfig,
         asset_label=None,
     ),
     TaskType.ion_channel_model_simulation: TaskRegistration(
         task_cls=GenerateSimulationTask,
         single_config_cls=IonChannelModelSimulationSingleConfig,
+        scan_config_cls=IonChannelModelSimulationScanConfig,
         asset_label=None,
     ),
     TaskType.me_model_simulation: TaskRegistration(
         task_cls=GenerateSimulationTask,
         single_config_cls=MEModelSimulationSingleConfig,
+        scan_config_cls=MEModelSimulationScanConfig,
         asset_label=None,
     ),
     TaskType.learning_engine_circuit_simulation: TaskRegistration(
         task_cls=GenerateSimulationTask,
         single_config_cls=LearningEngineCircuitSimulationSingleConfig,
+        scan_config_cls=LearningEngineCircuitSimulationScanConfig,
         asset_label=None,
     ),
     TaskType.me_model_with_synapses_circuit_simulation: TaskRegistration(
         task_cls=GenerateSimulationTask,
         single_config_cls=MEModelWithSynapsesCircuitSimulationSingleConfig,
+        scan_config_cls=MEModelWithSynapsesCircuitSimulationScanConfig,
         asset_label=None,
     ),
     TaskType.morphology_containerization: TaskRegistration(
         task_cls=MorphologyContainerizationTask,
         single_config_cls=MorphologyContainerizationSingleConfig,
+        scan_config_cls=MorphologyContainerizationScanConfig,
         asset_label=None,
     ),
     TaskType.morphology_decontainerization: TaskRegistration(
         task_cls=MorphologyDecontainerizationTask,
         single_config_cls=MorphologyDecontainerizationSingleConfig,
+        scan_config_cls=MorphologyDecontainerizationScanConfig,
         asset_label=None,
     ),
     TaskType.morphology_locations: TaskRegistration(
         task_cls=MorphologyLocationsTask,
         single_config_cls=MorphologyLocationsSingleConfig,
+        scan_config_cls=MorphologyLocationsScanConfig,
         asset_label=None,
     ),
     TaskType.morphology_metrics: TaskRegistration(
         task_cls=MorphologyMetricsTask,
         single_config_cls=MorphologyMetricsSingleConfig,
+        scan_config_cls=MorphologyMetricsScanConfig,
         asset_label=None,
     ),
     TaskType.circuit_simulation_neurodamus_machine: TaskRegistration(
