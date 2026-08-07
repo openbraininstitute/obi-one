@@ -1226,3 +1226,15 @@ SUBTHRESHOLD_FEATURES: tuple[type[EFeature], ...] = (
 
 _SUBTHRESHOLD = VoltageBaseFeature | OhmicInputResistanceVbSsseFeature
 SubthresholdFeatureUnion = Annotated[_SUBTHRESHOLD, Discriminator("type")]
+
+# -- Universal union (all concrete efeatures across all categories) --------
+
+_ALL_FEATURE_CLASSES: tuple[type[EFeature], ...] = (
+    *SpikeEventFeature.__subclasses__(),
+    *SpikeShapeFeature.__subclasses__(),
+    *SubthresholdFeature.__subclasses__(),
+)
+_ALL_FEATURES = _ALL_FEATURE_CLASSES[0]
+for _cls in _ALL_FEATURE_CLASSES[1:]:
+    _ALL_FEATURES |= _cls
+EFeatureUnion = Annotated[_ALL_FEATURES, Discriminator("type")]
