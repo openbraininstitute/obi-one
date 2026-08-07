@@ -42,7 +42,7 @@ pytestmark = pytest.mark.integration
 @pytest.fixture(scope="module")
 def api_url():
     """Base URL of the obi-one API."""
-    import os  # noqa: PLC0415
+    import os  # ruff: ignore[import-outside-top-level]
 
     return os.environ.get("API_URL", "http://127.0.0.1:8100")
 
@@ -50,7 +50,7 @@ def api_url():
 @pytest.fixture(scope="module")
 def auth_headers():
     """Auth headers for API calls. Token read from file or env var."""
-    import os  # noqa: PLC0415
+    import os  # ruff: ignore[import-outside-top-level]
 
     token_file = Path(__file__).parents[2] / ".token"
     if token_file.exists():
@@ -76,7 +76,7 @@ def client(api_url, auth_headers):
 
 @pytest.fixture(scope="module")
 def entitycore_url():
-    import os  # noqa: PLC0415
+    import os  # ruff: ignore[import-outside-top-level]
 
     return os.environ.get(
         "ENTITYCORE_URL", "https://staging.cell-a.openbraininstitute.org/api/entitycore"
@@ -199,7 +199,7 @@ class TestAlzheimerCustomization:
         out.write_text(modified)
         return out
 
-    def _make_modified_edges(self, tmp_path: Path) -> Path:  # noqa: PLR0914, PLR0915
+    def _make_modified_edges(self, tmp_path: Path) -> Path:  # ruff: ignore[too-many-locals, too-many-statements]
         """Modify S1 edges — reduce conductance_scale_factor + add 5 synapses."""
         with tarfile.open(TINY_CIRCUIT_ARCHIVE) as t:
             f = t.extractfile("circuit/S1nonbarrel_neurons__S1nonbarrel_neurons__chemical/edges.h5")
@@ -282,7 +282,7 @@ class TestAlzheimerCustomization:
                 prop_grp.create_dataset(name, data=data)
 
         # Use libsonata to build correct bidirectional indices
-        import libsonata  # noqa: PLC0415
+        import libsonata  # ruff: ignore[import-outside-top-level]
 
         libsonata.EdgePopulation.write_indices(
             str(edges_path),
@@ -456,7 +456,7 @@ class TestDerivationLink:
 
 
 class TestSimulationGate:
-    def test_draft_circuit_rejected(self, client, registered_circuit):  # noqa: ARG002
+    def test_draft_circuit_rejected(self, client, registered_circuit):  # ruff: ignore[unused-method-argument]
         """Attempting to simulate a draft circuit should be rejected."""
         # Register a new circuit but don't wait for validation
         with TINY_CIRCUIT_ARCHIVE.open("rb") as f:
