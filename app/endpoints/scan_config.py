@@ -11,6 +11,7 @@ from app.logger import L
 from obi_one import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
@@ -78,7 +79,7 @@ def create_endpoint_for_scan_config(
         L.info(db_client)
 
         if model is SchemaExampleScanConfig:
-            error_msg = "SchemaExampleScanConfig endpoint is non-functional."
+            error_msg = f"{model.__name__} endpoint is non-functional."
             raise HTTPException(status_code=500, detail=error_msg)
 
         campaign = None
@@ -135,6 +136,7 @@ def activate_scan_config_endpoints() -> None:
         (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),
+        (MEModelSynapticModelPlacementScanConfig, "generate", "", False),
     ]:
         create_endpoint_for_scan_config(
             form,

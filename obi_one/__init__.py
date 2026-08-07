@@ -131,6 +131,8 @@ __all__ = [
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
     "MEModelStimulusUnion",
+    "MEModelSynapticModelPlacementScanConfig",
+    "MEModelSynapticModelPlacementSingleConfig",
     "MEModelWithSynapsesCircuitFromID",
     "MEModelWithSynapsesCircuitSimulationScanConfig",
     "MEModelWithSynapsesCircuitSimulationSingleConfig",
@@ -458,6 +460,10 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
+)
+from obi_one.scientific.tasks.build_synaptome import (
+    MEModelSynapticModelPlacementScanConfig,
+    MEModelSynapticModelPlacementSingleConfig,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,

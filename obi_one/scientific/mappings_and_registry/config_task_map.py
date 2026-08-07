@@ -6,6 +6,10 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
 )
+from obi_one.scientific.tasks.build_synaptome import (
+    MEModelSynapticModelPlacementScanConfig,
+    MEModelSynapticModelPlacementSingleConfig,
+)
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,
     CircuitExtractionSingleConfig,
@@ -320,6 +324,12 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
     TaskType.circuit_simulation_neurodamus_machine: TaskRegistration(
         task_cls=CircuitSimulationExecutionTask,
         single_config_cls=CircuitSimulationExecutionSingleConfig,
+        asset_label=None,
+    ),
+    TaskType.me_model_synapse_placement: TaskRegistration(
+        task_cls=GenerateSimulationTask,  # placeholder until BuildSynaptomeTask is added
+        single_config_cls=MEModelSynapticModelPlacementSingleConfig,
+        scan_config_cls=MEModelSynapticModelPlacementScanConfig,
         asset_label=None,
     ),
 }

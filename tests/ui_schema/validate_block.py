@@ -341,6 +341,16 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     schema_union = schema.get("anyOf", [])
 
+    # Handle non-union (required, non-Optional) references that are a direct $ref
+    if not schema_union:
+        if schema.get("$ref") is not None:
+            return
+        msg = (
+            f"Validation error at {ref}: 'reference' param {param} should "
+            "be a union with a 'BlockReference' as first element, or a direct $ref"
+        )
+        raise ValidationError(msg) from None
+
     if (refref := schema_union[0].get("$ref")) is None:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
@@ -749,8 +759,24 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
-def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, complex-structure]
+def validate_block_union(schema: dict, param: str, ref: str) -> None:
+    if schema.get("oneOf") is None:
+        msg = f"Validation error at {ref}: block_union param {param} must have 'oneOf'"
+        raise ValueError(msg)
+    for block_schema in schema.get("oneOf"):
+        block_ref = block_schema.get("$ref")
+        if block_ref:
+            resolved_block_schema = {
+                **block_schema,
+                **resolve_ref(openapi_schema, block_ref),
+            }
+        validate_block(resolved_block_schema, block_ref)
+
+
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, complex-structure, too-many-statements]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
+        case UIElement.BLOCK_UNION:
+            validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:
