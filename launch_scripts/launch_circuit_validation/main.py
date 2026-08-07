@@ -25,6 +25,7 @@ from obi_auth import get_token
 from obi_one.db_sdk.registration.circuit.lifecycle import is_validation_allowed
 from obi_one.scientific.tasks.circuit_validation.task import (
     _update_lifecycle_status,  # ruff: ignore[import-private-name]
+    is_circuit_customization,
     run_circuit_validation,
 )
 
@@ -39,8 +40,8 @@ def main() -> int:
     circuit_id = None
 
     try:  # ruff: ignore[too-many-statements-in-try-clause]
-        parser = argparse.ArgumentParser(description="Validate a circuit.")
-        parser.add_argument("--circuit_id", required=True, help="Circuit entity ID")
+        parser = argparse.ArgumentParser(description="Validate a customized circuit.")
+        parser.add_argument("--circuit_id", required=True, help="Customized circuit entity ID")
         parser.add_argument("--virtual_lab_id", required=True, help="Virtual lab ID")
         parser.add_argument("--project_id", required=True, help="Project ID")
         parser.add_argument(
@@ -91,6 +92,7 @@ def main() -> int:
         result = run_circuit_validation(
             db_client=db_client,
             circuit_id=circuit_id,
+            is_customization=is_circuit_customization(circuit),
         )
         L.info("Validation result: valid=%s, errors=%d", result["valid"], len(result["errors"]))
 
