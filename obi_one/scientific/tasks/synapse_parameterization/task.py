@@ -8,6 +8,7 @@ from entitysdk import Client, models, types
 from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
@@ -17,10 +18,9 @@ from obi_one.scientific.tasks.synapse_parameterization.utils import (
     get_default_for,
     write_back_to_edge_file,
 )
-from obi_one.scientific.unions.unions_synaptic_model_assigner import (
+from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerUnion,
 )
-from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class SynapseParameterizationTask(Task):
         (subject, species, brain region, hierarchy, parent) resolve cleanly.
         """
         # Deferred import: pulls in heavy circuit/asset tooling only when registering.
-        from obi_one.utils.circuit_registration.register import (  # noqa: PLC0415
+        from obi_one.db_sdk.registration.circuit.register import (  # ruff: ignore[import-outside-top-level]
             register_circuit_from_metadata,
         )
 
@@ -105,7 +105,13 @@ class SynapseParameterizationTask(Task):
             per_edge_population.setdefault(assigner.edge_population_name, []).append(assigner)
         return per_edge_population
 
-    def execute(self, *, db_client: Client | None = None, entity_cache: bool = False) -> None:
+    def execute(
+        self,
+        *,
+        db_client: Client | None = None,
+        entity_cache: bool = False,
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+    ) -> None:
         if db_client is None:
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)

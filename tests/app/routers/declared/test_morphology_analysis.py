@@ -76,6 +76,38 @@ def test_scalar_nan_metric_is_skipped(monkeypatch, caplog):
     json.dumps(result, allow_nan=False)
 
 
+@pytest.mark.parametrize("label", sorted(uf.CACHED_PATH_LENGTH_METRICS))
+def test_cached_path_length_measurement_matches_neurom(label):
+    neuron = uf.nm.load_morphology(DATA_DIR / "ch150801A1.swc")
+
+    expected = uf.nm.get(label, neuron, neurite_type=uf.nm.BASAL_DENDRITE)
+    actual = uf._cached_path_length_measurement(label, neuron, uf.nm.BASAL_DENDRITE, {})
+
+    assert len(actual) == len(expected)
+    assert actual == pytest.approx(expected, rel=1e-6, abs=1e-8)
+
+
+def test_process_measurement_uses_path_length_cache(monkeypatch):
+    neuron = uf.nm.load_morphology(DATA_DIR / "ch150801A1.swc")
+
+    def _unexpected_neurom_call(*_args, **_kwargs):
+        msg = "cached path-length metric should not call nm.get"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(uf.nm, "get", _unexpected_neurom_call)
+
+    result = uf._process_measurement(
+        "section_path_distances",
+        "um",
+        neuron,
+        neurite_type=uf.nm.BASAL_DENDRITE,
+        path_length_cache={},
+    )
+
+    assert result[0] == "section_path_distances"
+    assert result[1] is not None
+
+
 def test_invalid_raw_measurement_is_filtered():
     measurement_kinds = [
         {

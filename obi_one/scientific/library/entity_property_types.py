@@ -9,7 +9,8 @@ class EntityType(StrEnum):
 class MappedPropertiesGroup(StrEnum):
     CIRCUIT = "Circuit"
     ION_CHANNEL_MODEL = "IonChannelModel"
-    MORPHOLOGY_SOURCE = "MorphologySource"
+    MORPHOLOGY = "Morphology"
+    ELECTRICAL_CELL_RECORDINGS = "ElectricalCellRecordings"
 
 
 class CircuitMappedProperties(StrEnum):
@@ -23,13 +24,20 @@ class CircuitMappedProperties(StrEnum):
     NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION = "NodePropertyUniqueValuesByPopulation"
 
 
-class MorphologySourceMappedProperties(StrEnum):
+class MorphologyMappedProperties(StrEnum):
     SECTION_TYPES = "SectionTypes"
+
+
+class ElectricalCellRecordingMappedProperties(StrEnum):
+    PROTOCOLS = "Protocols"
+    PROTOCOLS_BY_RECORDING = "ProtocolsByRecording"
+    AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
 
 
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
+    SHOW_MORPHOLOGY_LOCATIONS = "ShowMorphologyLocations"
     SHOW_BIOPHYSICAL_NEURON_SETS = "ShowBiophysicalNeuronSets"
     SHOW_POINT_NEURON_SETS = "ShowPointNeuronSets"
     SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"

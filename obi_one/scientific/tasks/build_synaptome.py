@@ -10,12 +10,12 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.unions.unions_distributions import (
+from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-from obi_one.scientific.unions.unions_synaptic_models import (
+from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )

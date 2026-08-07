@@ -135,7 +135,7 @@ def mapped_circuit_properties_endpoint(
 
     # Try fetching circuit metrics (nodesets). This succeeds for Circuit entities
     # but fails for MEModel entities which are not stored as Circuit in the DB.
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         circuit_metrics = get_circuit_metrics(
             circuit_id=circuit_id,
             db_client=db_client,
@@ -209,6 +209,14 @@ def mapped_circuit_properties_endpoint(
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
                 == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
+                and circuit.scale
+                in {
+                    entitysdk.types.CircuitScale.single,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.pair,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.small,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                },
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: any(
                     INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names  # ty:ignore[unresolved-attribute, unsupported-operator]
                     for population in circuit_metrics.biophysical_node_populations
@@ -242,6 +250,7 @@ def mapped_circuit_properties_endpoint(
             # If we can't get the circuit entity, set default usability
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+                CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
                 CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
                 CircuitUsability.SHOW_POINT_NEURON_SETS: False,
@@ -254,6 +263,7 @@ def mapped_circuit_properties_endpoint(
         # For MEModel entities, set default usability
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+            CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
             CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
             CircuitUsability.SHOW_POINT_NEURON_SETS: False,

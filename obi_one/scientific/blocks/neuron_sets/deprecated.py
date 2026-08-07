@@ -7,8 +7,10 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.predefined import NodeSetType
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
     CircuitUsability,
     MappedPropertiesGroup,
 )
@@ -33,7 +35,7 @@ class DeprecatedNeuronSet(NeuronSet, abc.ABC):
 
     @property
     def deprecation_error_message(self) -> str:
-        """Returns a deprecation error message indicating that this neuron set is deprecated."""
+        """Deprecation error message indicating that this neuron set is deprecated."""
         return (
             f"{self.__class__.__name__} is deprecated and should not be used. "
             "Please use an alternative neuron set instead."
@@ -114,7 +116,7 @@ class InhibitoryNeurons(DeprecatedSampleNeuronSet):
     )
 
 
-class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # noqa: N801
+class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-name]
     """Virtual neurons projecting from the VPM thalamic nucleus.
 
     Specifically, virtual neurons projecting from the VPM thalamic nucleus to biophysical
@@ -126,7 +128,7 @@ class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # noqa: N801
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
 
-class nbS1POmInputs(DeprecatedSampleNeuronSet):  # noqa: N801
+class nbS1POmInputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-name]
     """Virtual neurons projecting from the POm thalamic nucleus.
 
     Specifically, virtual neurons projecting from the POm thalamic nucleus to biophysical
@@ -138,7 +140,7 @@ class nbS1POmInputs(DeprecatedSampleNeuronSet):  # noqa: N801
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
 
-class rCA1CA3Inputs(DeprecatedSampleNeuronSet):  # noqa: N801
+class rCA1CA3Inputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-name]
     """Virtual neurons projecting from CA3 to CA1.
 
     Specifically, virtual neurons projecting from the CA3 region to biophysical CA1 neurons
@@ -168,5 +170,37 @@ class IDNeuronSet(DeprecatedSampleNeuronSet):
         description="List of neuron IDs to include in the neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_IDS,
+        },
+    )
+
+
+class PredefinedNeuronSet(DeprecatedSampleNeuronSet):
+    """A neuron set that uses an existing node set defined in the circuit's node sets file.
+
+    Superseded by the population-typed predefined neuron sets
+    (``BiophysicalPopulationPredefinedNeuronSet``, ``VirtualPopulationPredefinedNeuronSet``,
+    ``PointPopulationPredefinedNeuronSet``) and, for node sets spanning several populations,
+    by ``MultiPopulationPredefinedNeuronSet``.
+
+    Kept so that configs written before the population-typed taxonomy still deserialize -- it
+    is by far the most common neuron set in them -- and so that they remain openable and
+    editable. Like every ``DeprecatedNeuronSet`` it raises when resolved against a circuit, so
+    such a config still has to be migrated before it can be run.
+
+    It only names a node set, which may resolve in a population of any type, so it belongs to
+    the biophysical, point and virtual unions alike -- legacy configs use it in all three.
+    """
+
+    title: ClassVar[str] = "Predefined Neuron Set (Deprecated)"
+
+    _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
+
+    node_set: NodeSetType = Field(
+        title="Node Set",
+        description="Name of the node set to use.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.NODE_SET,
         },
     )

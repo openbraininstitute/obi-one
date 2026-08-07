@@ -8,7 +8,7 @@ The key is the class name (matching the 'type' field in JSON), and the
 value is the module where that class is defined.
 """
 
-# ruff: noqa: E501 — long lines are unavoidable in a path mapping dict
+# ruff: file-ignore[line-too-long] — long lines are unavoidable in a path mapping dict
 
 from importlib import import_module
 
@@ -33,10 +33,6 @@ TYPE_MAP: dict[str, str] = {
     "CircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
     "ConnectivityMatrixExtractionScanConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
     "ConnectivityMatrixExtractionSingleConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
-    "ContributeMorphologyScanConfig": "obi_one.scientific.tasks.contribute",
-    "ContributeMorphologySingleConfig": "obi_one.scientific.tasks.contribute",
-    "ContributeSubjectScanConfig": "obi_one.scientific.tasks.contribute",
-    "ContributeSubjectSingleConfig": "obi_one.scientific.tasks.contribute",
     "CreateExtracellularRecordingArrayScanConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",
     "CreateExtracellularRecordingArraySingleConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",
     "ElectrophysiologyMetricsScanConfig": "obi_one.scientific.tasks.ephys_extraction",
@@ -66,10 +62,15 @@ TYPE_MAP: dict[str, str] = {
     "MorphologyMetricsSingleConfig": "obi_one.scientific.tasks.morphology_metrics",
     "SkeletonizationScanConfig": "obi_one.scientific.tasks.skeletonization",
     "SkeletonizationSingleConfig": "obi_one.scientific.tasks.skeletonization",
+    "SynapseParameterizationScanConfig": "obi_one.scientific.tasks.synapse_parameterization.config",
+    "SynapseParameterizationSingleConfig": "obi_one.scientific.tasks.synapse_parameterization.config",
+    # EModel optimization workflows
+    "EModelEFeatureExtractionScanConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
+    "EModelEFeatureExtractionSingleConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
     # __init__.py aliases (class is re-exported under this name)
     "CoupledScan": "obi_one",
     "GridScan": "obi_one",
-    "SimulationsForm": "obi_one.scientific.unions.aliases",
+    "SimulationsForm": "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases",
 }
 
 

@@ -6,7 +6,7 @@ import pytest
 import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
-    PredefinedNeuronSet,
+    MultiPopulationPredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,
 )
 
@@ -24,12 +24,12 @@ def circuit():
     )
 
 
-# --- PredefinedNeuronSet (multi-population) ---
+# --- MultiPopulationPredefinedNeuronSet (multi-population) ---
 
 
 def test_predefined_neuron_set_symbolic(circuit):
-    """Test PredefinedNeuronSet returns symbolic expression without force_resolve."""
-    nset = PredefinedNeuronSet(node_set="Layer6")
+    """Test MultiPopulationPredefinedNeuronSet gives a symbolic expression w/o force_resolve."""
+    nset = MultiPopulationPredefinedNeuronSet(node_set="Layer6")
     nset.set_block_name("predef_layer6")
 
     nset_def, combined = nset.get_node_set_definition(circuit)
@@ -38,8 +38,8 @@ def test_predefined_neuron_set_symbolic(circuit):
 
 
 def test_predefined_neuron_set_resolve_ids(circuit):
-    """Test PredefinedNeuronSet with force_resolve_ids."""
-    nset = PredefinedNeuronSet(node_set="Layer6")
+    """Test MultiPopulationPredefinedNeuronSet with force_resolve_ids."""
+    nset = MultiPopulationPredefinedNeuronSet(node_set="Layer6")
     nset.set_block_name("predef_layer6_resolved")
 
     nset_def, _ = nset.get_node_set_definition(circuit, force_resolve_ids=True)
@@ -50,8 +50,8 @@ def test_predefined_neuron_set_resolve_ids(circuit):
 
 
 def test_predefined_neuron_set_get_neuron_ids(circuit):
-    """Test PredefinedNeuronSet returns correct IDs."""
-    nset = PredefinedNeuronSet(node_set="Layer6")
+    """Test MultiPopulationPredefinedNeuronSet returns correct IDs."""
+    nset = MultiPopulationPredefinedNeuronSet(node_set="Layer6")
     nset.set_block_name("predef_ids")
 
     ids = nset.get_neuron_ids(circuit)
@@ -60,8 +60,8 @@ def test_predefined_neuron_set_get_neuron_ids(circuit):
 
 
 def test_predefined_neuron_set_get_populations(circuit):
-    """Test PredefinedNeuronSet returns populations the node set resolves in."""
-    nset = PredefinedNeuronSet(node_set="Layer6")
+    """Test MultiPopulationPredefinedNeuronSet returns populations the node set resolves in."""
+    nset = MultiPopulationPredefinedNeuronSet(node_set="Layer6")
     nset.set_block_name("predef_pops")
 
     pops = nset.get_populations(circuit)
@@ -70,7 +70,7 @@ def test_predefined_neuron_set_get_populations(circuit):
 
 def test_predefined_neuron_set_invalid_node_set(circuit):
     """Test that a non-existent node set raises."""
-    nset = PredefinedNeuronSet(node_set="NONEXISTENT")
+    nset = MultiPopulationPredefinedNeuronSet(node_set="NONEXISTENT")
     nset.set_block_name("predef_invalid")
 
     with pytest.raises(ValueError, match="not found in circuit"):

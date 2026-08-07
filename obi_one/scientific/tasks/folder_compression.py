@@ -24,7 +24,6 @@ class FolderCompressionScanConfig(ScanConfig):
     The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)
     """
 
-    single_coord_class_name: ClassVar[str] = "FolderCompressionSingleConfig"
     name: ClassVar[str] = "Folder Compression"
     description: ClassVar[str] = "Compresses a folder using the specified compression format."
 
@@ -49,9 +48,9 @@ class FolderCompressionTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         # Initial checks
         if not Path(self.config.initialize.folder_path.path).is_dir():  # ty:ignore[unresolved-attribute]

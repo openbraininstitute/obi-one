@@ -6,9 +6,10 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar, Literal
 
+import numpy as np
 from entitysdk import Client
 from entitysdk.models import Entity, SimulatableExtracellularRecordingArray
-from entitysdk.types import AssetLabel, ContentType, ElectrodeType, TaskActivityType, TaskConfigType
+from entitysdk.types import AssetLabel, ContentType, ElectrodeType
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.block import Block
@@ -16,15 +17,15 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_extracellular_locations import (
+from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
-from obi_one.utils import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -39,7 +40,6 @@ class BlockGroup(StrEnum):
 class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
     """Description."""
 
-    single_coord_class_name: ClassVar[str] = "CreateExtracellularRecordingArraySingleConfig"
     name: ClassVar[str] = "Create Extracellular Recording Array"
     description: ClassVar[str] = "Description."
 
@@ -47,13 +47,6 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
         "ui_enabled": True,
         "group_order": [BlockGroup.SETUP, BlockGroup.ELECTRODE_POSITIONS],
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.extracellular_recording_weights_calculation__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.extracellular_recording_weights_calculation__config_generation
-    )
 
     @typing.override
     def input_entities(self, db_client: Client) -> list[Entity]:
@@ -131,13 +124,6 @@ class CreateExtracellularRecordingArraySingleConfig(
 ):
     """Description."""
 
-    _single_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.extracellular_recording_weights_calculation__config
-    )
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.extracellular_recording_weights_calculation__execution
-    )
-
 
 class CreateExtracellularRecordingArrayTask(Task):
     """Task to create an extracellular recording array."""
@@ -183,9 +169,9 @@ class CreateExtracellularRecordingArrayTask(Task):
         )
 
         # Plot the configured electrode array relative to the circuit's somas and save the image.
-        import matplotlib.pyplot as plt  # noqa: PLC0415
+        import matplotlib.pyplot as plt  # ruff: ignore[import-outside-top-level]
 
-        from obi_one.scientific.library.extracellular_locations import (  # noqa: PLC0415
+        from obi_one.scientific.library.extracellular_locations import (  # ruff: ignore[import-outside-top-level]
             extracellular_locations_block_dictionary_summary,
             plot_extracellular_arrays,
         )
@@ -201,9 +187,10 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         # Use BlueRecording to generate a weights file for the circuit and test locations
         # Using the value of self.config.initialize.calculation_method
-        import numpy as np  # noqa: PLC0415
-        from bluerecording import compute_weights  # noqa: PLC0415 # ty:ignore[unresolved-import]
-        from bluerecording.weights import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
+        from bluerecording import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
+            compute_weights,
+        )
+        from bluerecording.weights import (  # ruff: ignore[import-outside-top-level] # ty:ignore[unresolved-import]
             Electrode,
             ElectrodeType as BlueRecordingElectrodeType,
             save_weights,
@@ -250,13 +237,13 @@ class CreateExtracellularRecordingArrayTask(Task):
             description="Temp description.",
             electrode_type=ElectrodeType.custom,
             authorized_public=False,
-            circuit_id=self._circuit_entity.id,  # ty:ignore[invalid-argument-type, unresolved-attribute]
+            circuit_id=self._circuit_entity.id,  # ty:ignore[unresolved-attribute]
         )
         entity = db_client.register_entity(entity)
 
         # Upload the electrode-array plot as the entity's electrode_array_image asset.
         db_client.upload_file(
-            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=image_path,
             file_content_type=ContentType.image_png,
@@ -272,7 +259,7 @@ class CreateExtracellularRecordingArrayTask(Task):
                 indent=2,
             )
         db_client.upload_file(
-            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=locations_path,
             file_content_type=ContentType.application_json,
@@ -281,7 +268,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         L.info("Uploaded electrode locations to recording array %s.", entity.id)
 
         _ = db_client.upload_file(
-            entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
             file_path=weights_output_path,
             file_content_type=ContentType.application_x_hdf5,

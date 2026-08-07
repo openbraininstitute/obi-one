@@ -4,7 +4,7 @@ import entitysdk
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
-from obi_one.scientific.unions.unions_ion_channel_model import (
+from obi_one.scientific.unions_and_references.ion_channel_model import (
     IonChannelModelUnion,
 )
 
@@ -32,7 +32,7 @@ class CircuitFromIonChannelModels:
             ion_channel_model_data_dict = {}
             for key, ic_data in self.ion_channel_data.items():
                 # ic_data: IonChannelModel Block
-                # ic_data.ion_channel_model: IonChannelModelFromID  # noqa: ERA001
+                # ic_data.ion_channel_model: IonChannelModelFromID  # ruff: ignore[commented-out-code]
                 conductance = {}
                 if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(
                     db_client=db_client

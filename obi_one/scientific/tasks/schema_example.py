@@ -14,7 +14,7 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONSimulationNeuronSetUnion,
 )
@@ -44,7 +44,6 @@ class EntityDependentBlockExample(Block):
 class SchemaExampleScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "Schema Example"
     description: ClassVar[str] = "Useful for testing and generating example schema."
 

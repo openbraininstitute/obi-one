@@ -42,10 +42,12 @@ def callbacks():
     [
         TaskType.circuit_extraction,
         TaskType.circuit_simulation_inait_machine,
-        TaskType.circuit_simulation_neuron,
+        TaskType.circuit_simulation_neurodamus_machine,
         TaskType.circuit_simulation_neurodamus_cluster,
         TaskType.morphology_skeletonization,
         TaskType.ion_channel_model_simulation_execution,
+        TaskType.single_neuron_simulation_execution,
+        TaskType.single_neuron_synaptome_simulation_execution,
         TaskType.em_synapse_mapping,
     ],
 )
@@ -367,9 +369,15 @@ def test_task_launch_success__circuit_simulation(
     ).json()
 
     expected_task_type = {
-        (TargetSimulator.NEURON, CircuitScale.single): TaskType.circuit_simulation_neuron,
-        (TargetSimulator.NEURON, CircuitScale.pair): TaskType.circuit_simulation_neuron,
-        (TargetSimulator.NEURON, CircuitScale.small): TaskType.circuit_simulation_neuron,
+        (
+            TargetSimulator.NEURON,
+            CircuitScale.single,
+        ): TaskType.circuit_simulation_neurodamus_machine,
+        (TargetSimulator.NEURON, CircuitScale.pair): TaskType.circuit_simulation_neurodamus_machine,
+        (
+            TargetSimulator.NEURON,
+            CircuitScale.small,
+        ): TaskType.circuit_simulation_neurodamus_machine,
         (
             TargetSimulator.NEURON,
             CircuitScale.microcircuit,
@@ -386,9 +394,18 @@ def test_task_launch_success__circuit_simulation(
             TargetSimulator.NEURON,
             CircuitScale.whole_brain,
         ): TaskType.circuit_simulation_neurodamus_cluster,
-        (TargetSimulator.CORENEURON, CircuitScale.single): TaskType.circuit_simulation_neuron,
-        (TargetSimulator.CORENEURON, CircuitScale.pair): TaskType.circuit_simulation_neuron,
-        (TargetSimulator.CORENEURON, CircuitScale.small): TaskType.circuit_simulation_neuron,
+        (
+            TargetSimulator.CORENEURON,
+            CircuitScale.single,
+        ): TaskType.circuit_simulation_neurodamus_machine,
+        (
+            TargetSimulator.CORENEURON,
+            CircuitScale.pair,
+        ): TaskType.circuit_simulation_neurodamus_machine,
+        (
+            TargetSimulator.CORENEURON,
+            CircuitScale.small,
+        ): TaskType.circuit_simulation_neurodamus_machine,
         (
             TargetSimulator.CORENEURON,
             CircuitScale.microcircuit,
@@ -600,7 +617,7 @@ def test_task_launch_success__circuit_simulation(
                 "resources": task_def.resources.model_dump(mode="json")
                 | {"compute_cell": "cell_a"},
                 "inputs": [
-                    "--task-type circuit_simulation_neuron",
+                    f"--task-type {response_task_type}",
                     "--config_entity_type Simulation",
                     f"--config_entity_id {simulation_id}",
                     "--entity_cache True",
@@ -620,10 +637,12 @@ def test_task_launch_success__circuit_simulation(
     [
         TaskType.circuit_extraction,
         TaskType.circuit_simulation_inait_machine,
-        TaskType.circuit_simulation_neuron,
+        TaskType.circuit_simulation_neurodamus_machine,
         TaskType.circuit_simulation_neurodamus_cluster,
         TaskType.morphology_skeletonization,
         TaskType.ion_channel_model_simulation_execution,
+        TaskType.single_neuron_simulation_execution,
+        TaskType.single_neuron_synaptome_simulation_execution,
         TaskType.em_synapse_mapping,
     ],
 )
@@ -659,7 +678,7 @@ def test_task_estimate(client, task_type):
 
     assert data["task_type"] == task_type
     assert data["config_id"] == str(config_id)
-    assert data["cost"] == 123.4  # noqa: RUF069
+    assert data["cost"] == 123.4  # ruff: ignore[float-equality-comparison]
     assert data["parameters"]["service_subtype"] == ServiceSubtype.SMALL_SIM
     assert data["parameters"]["count"] == 10
 

@@ -8,8 +8,8 @@ import obi_one as obi
 from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
-from obi_one.scientific.unions.unions_neuron_sets import VirtualNeuronSetReference
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.neuron_sets import VirtualNeuronSetReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 
 def _set_block_name(block: object, name: str) -> None:
@@ -284,8 +284,8 @@ class TestSpikeTimeDistributionSpikeStimulus:
 
         distribution = mock_sample.call_args.args[0]
         assert isinstance(distribution, obi.FloatUniformDistribution)
-        assert distribution.low == 0.0  # noqa: RUF069
-        assert distribution.high == 25.0  # noqa: RUF069
+        assert distribution.low == 0.0  # ruff: ignore[float-equality-comparison]
+        assert distribution.high == 25.0  # ruff: ignore[float-equality-comparison]
 
 
 class TestSpikeTimeStimulusIndexingConvention:

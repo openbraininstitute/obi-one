@@ -12,7 +12,7 @@ from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribu
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.distributions.normal import NormalDistribution
 from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
-from obi_one.scientific.unions.unions_distributions import (
+from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
 )
 

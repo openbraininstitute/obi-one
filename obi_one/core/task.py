@@ -5,7 +5,7 @@ from entitysdk import Client
 from entitysdk.models import TaskActivity
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class Task(OBIBaseModel, abc.ABC):
         if db_client and execution_activity and generated:
             upd_entity = db_sdk.update_execution_activity_with_generated(
                 client=db_client,
-                execution_activity_id=execution_activity.id,  # ty:ignore[invalid-argument-type]
+                execution_activity_id=execution_activity.id,
                 generated_ids=generated,
             )
 

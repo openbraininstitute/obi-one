@@ -7,8 +7,8 @@ import obi_one as obi
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
 )
-from obi_one.scientific.unions.unions_neuron_sets import VirtualNeuronSetReference
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.neuron_sets import VirtualNeuronSetReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 
 def _set_block_name(block: object, name: str) -> None:
@@ -268,7 +268,7 @@ class TestInterSpikeIntervalDistributionSpikeStimulus:
 
         distribution = mock_generate.call_args.args[0]
         assert isinstance(distribution, obi.ExponentialDistribution)
-        assert distribution.scale == 50.0  # noqa: RUF069
+        assert distribution.scale == 50.0  # ruff: ignore[float-equality-comparison]
 
 
 class TestSpikeStimulusIndexingConvention:

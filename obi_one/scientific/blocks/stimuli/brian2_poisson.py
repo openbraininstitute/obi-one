@@ -25,15 +25,14 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
-    MIN_NON_NEGATIVE_FLOAT_VALUE,
 )
-from obi_one.scientific.unions.unions_combined_neuron_sets import (
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_neuron_set,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 
 class Brian2DirectPoissonStimulus(Block):
@@ -56,8 +55,8 @@ class Brian2DirectPoissonStimulus(Block):
     )
 
     frequency: (
-        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(le=150.0)]
+        | list[Annotated[NonNegativeFloat, Field(le=150.0)]]
     ) = Field(
         default=150.0,
         title="Frequency",
@@ -115,29 +114,27 @@ class Brian2DirectPoissonStimulus(Block):
         self._default_node_set = default_node_set
         _ = default_timestamps or SingleTimestamp(start_time=0.0)
 
-        if self.neuron_set.block_name != "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
-            neuron_set = resolve_neuron_set_ref_to_neuron_set(
-                self.neuron_set,
-                self._default_node_set,  # ty:ignore[invalid-argument-type]
+        # An untargeted stimulus has already been pointed at the `sugar` node set by the
+        # generation task (see Brian2SimulationScanConfig.default_stimulus_neuron_set_reference),
+        # which is small enough to stay under the limit; an explicit choice is checked here.
+        neuron_set = resolve_neuron_set_ref_to_neuron_set(
+            self.neuron_set,
+            self._default_node_set,  # ty:ignore[invalid-argument-type]
+        )
+        max_n_neurons = 100
+        neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
+        total_neurons = sum(len(ids) for ids in neuron_ids.values())
+        if total_neurons > max_n_neurons:
+            msg = (
+                f"Number of neurons used with the {self.title} exceeds the maximum "
+                f"allowed: {max_n_neurons}."
             )
-            max_n_neurons = 100
-            neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
-            total_neurons = sum(len(ids) for ids in neuron_ids.values())
-            if total_neurons > max_n_neurons:
-                msg = (
-                    f"Number of neurons used with the {self.title} exceeds the maximum "
-                    f"allowed: {max_n_neurons}."
-                )
-                raise ValueError(msg)
+            raise ValueError(msg)
 
         return self._generate_config()
 
     def _generate_config(self) -> dict:
-
-        if self.neuron_set.block_name == "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
-            node_set = "sugar"
-        else:
-            node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
+        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
 
         return {
             self.block_name: {

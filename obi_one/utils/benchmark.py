@@ -14,6 +14,17 @@ import psutil
 L = logging.getLogger(__name__)
 
 
+@contextmanager
+def log_timing(stage: str) -> Generator[None, None, None]:
+    """Log wall-clock duration for a named stage."""
+    start = time.perf_counter()
+    L.info("Starting %s...", stage)
+    try:
+        yield
+    finally:
+        L.info("Finished %s in %.2fs", stage, time.perf_counter() - start)
+
+
 class BenchmarkTracker:
     """Tracks benchmarks across multiple sections and outputs summary to stdout."""
 
@@ -176,7 +187,10 @@ class BenchmarkTracker:
 
         # Save to file if path provided
         if output_path is not None:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with output_path.open("w", encoding="utf-8") as f:
-                json.dump(summary_data, f, indent=2)
-            L.info(f"Benchmark results saved to {output_path}")
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with output_path.open("w", encoding="utf-8") as f:
+                    json.dump(summary_data, f, indent=2)
+                L.info(f"Benchmark results saved to {output_path}")
+            except OSError as e:
+                L.warning(f"Failed to save benchmark results to {output_path}: {e}")
