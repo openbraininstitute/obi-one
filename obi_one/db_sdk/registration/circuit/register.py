@@ -184,7 +184,8 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             in-process and set lifecycle to ``active`` or ``disqualified``.
 
     Returns:
-        The registered circuit entity, or None if dry_run is True.
+        The registered circuit entity, or the unregistered ``Circuit`` model
+        (with computed size/properties) when ``dry_run`` is True.
     """
     if neurodamus_validation:
         skip_validation = True
@@ -349,6 +350,8 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             entity_id=registered_circuit.id, entity_type=models.Circuit
         )
 
+    if dry_run:
+        return circuit_model
     return registered_circuit
 
 
@@ -397,7 +400,8 @@ def register_circuit_from_metadata(
             in-process after registration (no launch-system job).
 
     Returns:
-        The registered circuit entity, or None if dry_run is True.
+        The registered circuit entity, or the unregistered ``Circuit`` model
+        when ``dry_run`` is True.
     """
     # Validate and resolve all dependencies
     check_if_circuit_exists(client, circuit_metadata)

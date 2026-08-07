@@ -418,6 +418,7 @@ class TestRegisterCircuitEndpoint:
         assert call_kwargs["lifecycle_status"] == "draft"
         assert call_kwargs["skip_validation"] is True
         assert call_kwargs["include_visualization"] is True
+        assert call_kwargs["dry_run"] is False
         assert call_kwargs["name"] == "test-circuit"
         assert call_kwargs["published_in"] is None
         assert call_kwargs["experiment_date"] is None
@@ -429,6 +430,49 @@ class TestRegisterCircuitEndpoint:
         assert result["status"] == "draft"
         assert result["number_neurons"] == 1000
         mock_trigger_validation.assert_called_once()
+
+    @patch("app.endpoints.circuit_registration.trigger_validation_task")
+    @patch("app.endpoints.circuit_registration.register_circuit")
+    def test_dry_run_skips_registration_and_validation(
+        self,
+        mock_register_circuit,
+        mock_trigger_validation,
+    ):
+        """dry_run computes metadata without registering or launching validation."""
+        mock_preview = MagicMock()
+        mock_preview.id = None
+        mock_preview.number_neurons = 42
+        mock_preview.number_synapses = 100
+        mock_preview.number_connections = 7
+        mock_preview.scale = "pair"
+        mock_register_circuit.return_value = mock_preview
+
+        mock_db_client, _, _ = self._mock_db_client()
+
+        result = register_circuit_endpoint(
+            ls_client=MagicMock(),
+            db_client=mock_db_client,
+            name="dry-run-circuit",
+            description="A dry run",
+            brain_region_id=uuid4(),
+            subject_id=uuid4(),
+            build_category="synaptic",
+            target_simulator="NEURON",
+            circuit_archive=self._mock_upload(),
+            dry_run=True,
+        )
+
+        call_kwargs = mock_register_circuit.call_args.kwargs
+        assert call_kwargs["dry_run"] is True
+        assert call_kwargs["skip_additional_assets"] is True
+        assert call_kwargs["include_visualization"] is False
+        mock_trigger_validation.assert_not_called()
+        assert result["status"] == "dry_run"
+        assert result["circuit_id"] is None
+        assert result["number_neurons"] == 42
+        assert result["number_synapses"] == 100
+        assert result["number_connections"] == 7
+        assert result["scale"] == "pair"
 
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
     @patch("app.endpoints.circuit_registration.register_circuit")

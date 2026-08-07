@@ -949,6 +949,8 @@ def test_register_asset_all_labels(tmp_path, asset_label, is_dir, setup_fn):
 class _FakeCircuit:
     """Fake Circuit class that accepts any kwargs and supports isinstance."""
 
+    id = None
+
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -987,7 +989,9 @@ def test_register_circuit_dry_run():
             dry_run=True,
         )
 
-    assert result is None
+    assert result is not None
+    assert result.name == "test_circuit"
+    assert result.id is None
     client.register_entity.assert_not_called()
 
 
@@ -1373,7 +1377,9 @@ def test_register_circuit_from_compressed_gz_dry_run(tmp_path):
             dry_run=True,
         )
 
-    assert result is None
+    assert result is not None
+    assert result.name == "test_circuit"
+    assert result.id is None
     client.register_entity.assert_not_called()
 
 
