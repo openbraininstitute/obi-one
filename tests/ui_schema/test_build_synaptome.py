@@ -1,15 +1,15 @@
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.tasks.build_synaptome import (
-    BuildSynaptomeScanConfig,
-    BuildSynaptomeSingleConfig,
+    MEModelSynapticModelPlacementScanConfig,
+    MEModelSynapticModelPlacementSingleConfig,
 )
 
 
 def test_memodel_is_supplied_through_initialize_block():
-    config = BuildSynaptomeScanConfig(
+    config = MEModelSynapticModelPlacementScanConfig(
         info=Info(campaign_name="test", campaign_description="test"),
-        initialize=BuildSynaptomeScanConfig.Initialize(
+        initialize=MEModelSynapticModelPlacementScanConfig.Initialize(
             me_model=MEModelFromID(id_str="me-model-id")
         ),
     )
@@ -18,12 +18,12 @@ def test_memodel_is_supplied_through_initialize_block():
     assert not hasattr(config, "me_model")
 
     single_config = config.cast_to_single_coord()
-    assert isinstance(single_config, BuildSynaptomeSingleConfig)
+    assert isinstance(single_config, MEModelSynapticModelPlacementSingleConfig)
     assert single_config.initialize.me_model.id_str == "me-model-id"
 
 
 def test_schema_uses_initialize_instead_of_memodel_selection():
-    schema = BuildSynaptomeScanConfig.model_json_schema()
+    schema = MEModelSynapticModelPlacementScanConfig.model_json_schema()
 
     assert "initialize" in schema["properties"]
     assert "me_model" not in schema["properties"]

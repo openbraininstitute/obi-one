@@ -42,8 +42,8 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
-    "BuildSynaptomeScanConfig",
-    "BuildSynaptomeSingleConfig",
+    "MEModelSynapticModelPlacementScanConfig",
+    "MEModelSynapticModelPlacementSingleConfig",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -450,8 +450,8 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsTask,
 )
 from obi_one.scientific.tasks.build_synaptome import (
-    BuildSynaptomeScanConfig,
-    BuildSynaptomeSingleConfig,
+    MEModelSynapticModelPlacementScanConfig,
+    MEModelSynapticModelPlacementSingleConfig,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,

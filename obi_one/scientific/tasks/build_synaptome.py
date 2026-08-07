@@ -22,7 +22,7 @@ from obi_one.scientific.unions.unions_synaptic_models import (
 
 
 class BlockGroup(StrEnum):
-    """Block groups for the Build Synaptome form."""
+    """Block groups for the ME-model Synapse Placement form."""
 
     INFO = "Info"
     ME_MODEL = "ME-model"
@@ -30,17 +30,9 @@ class BlockGroup(StrEnum):
     SYNAPSE_GROUPS = "Synapse groups"
 
 
-class SynapseGroup(Block):
-    """Incoming synapse group for a single-cell synaptome build."""
+class SynapticModelPlacer(Block):
+    """Places synapses with a given synaptic model on a single-cell morphology."""
 
-    group_name: str = Field(
-        default="Synapse group",
-        title="Group name",
-        description="Short user-facing name for this incoming synapse group.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-        },
-    )
     synaptic_model: SynapticModelReference = Field(
         title="Synaptic model",
         description="Synaptic physiology model assigned to this incoming synapse group.",
@@ -62,12 +54,12 @@ class SynapseGroup(Block):
     )
 
 
-class BuildSynaptomeScanConfig(ScanConfig):
-    """Form for configuring a single-cell synaptome build."""
+class MEModelSynapticModelPlacementScanConfig(ScanConfig):
+    """Form for placing synaptic models on a single ME-model."""
 
-    single_coord_class_name: ClassVar[str] = "BuildSynaptomeSingleConfig"
-    name: ClassVar[str] = "Build Synaptome"
-    description: ClassVar[str] = "Configure a single-cell synaptome build."
+    single_coord_class_name: ClassVar[str] = "MEModelSynapticModelPlacementSingleConfig"
+    name: ClassVar[str] = "ME-model Synapse Placement"
+    description: ClassVar[str] = "Place synaptic models on a single ME-model."
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -84,7 +76,7 @@ class BuildSynaptomeScanConfig(ScanConfig):
     }
 
     class Initialize(Block):
-        """Inputs supplied when initializing a synaptome build."""
+        """Inputs supplied when initializing synapse placement."""
 
         me_model: MEModelFromID = Field(
             title="ME-model",
@@ -97,7 +89,7 @@ class BuildSynaptomeScanConfig(ScanConfig):
 
     info: Info = Field(
         title="Info",
-        description="Information about the synaptome build.",
+        description="Information about the synapse placement.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.INFO,
@@ -106,7 +98,7 @@ class BuildSynaptomeScanConfig(ScanConfig):
     )
     initialize: Initialize = Field(
         title="Initialization",
-        description="Inputs supplied when initializing the synaptome build.",
+        description="Inputs supplied when initializing synapse placement.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.ME_MODEL,
@@ -137,18 +129,18 @@ class BuildSynaptomeScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    synapse_groups: dict[str, SynapseGroup] = Field(
+    synapse_groups: dict[str, SynapticModelPlacer] = Field(
         default_factory=dict,
         title="Synapse groups",
         description="Incoming synapse groups to attach to the ME-model.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.SINGULAR_NAME: "Synapse Group",
+            SchemaKey.SINGULAR_NAME: "Synaptic Model Placer",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_GROUPS,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
 
 
-class BuildSynaptomeSingleConfig(BuildSynaptomeScanConfig, SingleConfigMixin):
-    """Single-coordinate Build Synaptome config."""
+class MEModelSynapticModelPlacementSingleConfig(MEModelSynapticModelPlacementScanConfig, SingleConfigMixin):
+    """Single-coordinate ME-model synapse placement config."""

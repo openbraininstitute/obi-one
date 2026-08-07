@@ -3,7 +3,7 @@ from typing import Annotated
 from pydantic import Discriminator
 
 from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
-from obi_one.scientific.tasks.build_synaptome import BuildSynaptomeScanConfig
+from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionScanConfig,
@@ -67,6 +67,6 @@ ScanConfigsUnion = Annotated[
     | CreateExtracellularRecordingArrayScanConfig
     | IonChannelModelSimulationScanConfig
     | LearningEngineCircuitSimulationScanConfig
-    | BuildSynaptomeScanConfig,
+    | MEModelSynapticModelPlacementScanConfig,
     Discriminator("type"),
 ]
