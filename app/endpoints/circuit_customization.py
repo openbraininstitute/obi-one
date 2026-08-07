@@ -706,7 +706,7 @@ def customize_circuit_endpoint(
     # 5. Trigger async validation task via launch-system
     trigger_validation_task(
         ls_client=ls_client,
-        circuit_id=registered.id,  # ty:ignore[invalid-argument-type]
+        circuit_id=registered.id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
     )
@@ -719,7 +719,7 @@ def customize_circuit_endpoint(
     )
 
     return CircuitCustomizationResponse(
-        circuit_id=registered.id,  # ty:ignore[invalid-argument-type]
+        circuit_id=registered.id,
         status="draft",
         message=f"Circuit created from parent {parent_circuit_id}. Validation pending.",
     )

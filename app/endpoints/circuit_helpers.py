@@ -7,7 +7,7 @@ from uuid import UUID
 import entitysdk.client
 import httpx
 from entitysdk import models
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, CircuitScale
 
 from app.config import settings
 from obi_one.db_sdk.registration.circuit.generate import (
@@ -28,7 +28,7 @@ L = logging.getLogger(__name__)
 
 def compute_circuit_metadata(
     name: str, config_path: Path
-) -> tuple["OBICircuit", str, int, int, int | None, bool, bool, bool, bool]:
+) -> tuple["OBICircuit", CircuitScale, int, int, int | None, bool, bool, bool, bool]:
     """Load a circuit from config and compute its metadata.
 
     Returns:
