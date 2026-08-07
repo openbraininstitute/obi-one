@@ -142,5 +142,7 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
     )
 
 
-class MEModelSynapticModelPlacementSingleConfig(MEModelSynapticModelPlacementScanConfig, SingleConfigMixin):
+class MEModelSynapticModelPlacementSingleConfig(
+    MEModelSynapticModelPlacementScanConfig, SingleConfigMixin
+):
     """Single-coordinate ME-model synapse placement config."""
