@@ -97,3 +97,27 @@ def test_explicit_morphology_locations_are_single_neuron_only(scale, expected, m
     )
 
     assert response["usability"][CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS] is expected
+
+
+def test_explicit_morphology_locations_are_enabled_for_memodels(monkeypatch):
+    """An MEModel is one neuron, so a section id names exactly one branch.
+
+    MEModels are not stored as Circuit, so they fall through to the branch keyed on mechanism
+    variables rather than node sets.
+    """
+
+    def _no_circuit_metrics(**_):
+        msg = "not a circuit"
+        raise entitysdk.exception.EntitySDKError(msg)
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", _no_circuit_metrics)
+    monkeypatch.setattr(
+        circuit_properties, "try_get_mechanism_variables", lambda **_: {"NaTg": ["gNaTgbar"]}
+    )
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="memodel-id",
+        db_client=SimpleNamespace(get_entity=lambda **_: None),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS] is True

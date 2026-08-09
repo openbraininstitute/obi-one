@@ -269,10 +269,7 @@ def mapped_circuit_properties_endpoint(
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
             CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: True,
-            # Unambiguous for one neuron, but this viewer cannot pick: the small-scale
-            # simulator reports NEURON section names, not SONATA ids, so a typed id cannot be
-            # discovered or checked. Re-enable once that path serves SONATA ids.
-            CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: False,
+            CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
             CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
             CircuitUsability.SHOW_POINT_NEURON_SETS: False,
