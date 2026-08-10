@@ -414,6 +414,49 @@ def test_efeature_union_schema_exposes_categories_and_doc_anchors():
     )
 
 
+def test_efeature_base_schema_omits_empty_category_and_anchor():
+    """The base EFeature has empty category/anchor; the False branches must be covered."""
+    schema = TypeAdapter(efeatures.EFeature).json_schema()
+    extra = schema.get("extra", {})
+    assert SchemaKey.EFEL_FEATURE_CATEGORY not in extra
+    assert SchemaKey.EFEL_DOC_ANCHOR not in extra
+
+
+def test_efel_settings_overrides_all_branches():
+    """Cover every branch of EFeature.efel_settings_overrides()."""
+
+    # 1. Defaults only — all conditionals False (no threshold, no resampling,
+    #    stim_start/stim_end are 0.0 so skipped).
+    feature = efeatures.ISICVFeature()
+    assert feature.efel_settings_overrides() == {}
+
+    # 2. spike_detection_threshold set — Threshold branch True.
+    feature = efeatures.ISICVFeature(spike_detection_threshold=-20.0)
+    assert feature.efel_settings_overrides() == {"Threshold": -20.0}
+
+    # 3. trace_resampling_timestep set — interp_step branch True.
+    feature = efeatures.ISICVFeature(trace_resampling_timestep=0.1)
+    assert feature.efel_settings_overrides() == {"interp_step": 0.1}
+
+    # 4. stim_start and stim_end non-zero — stim branch True.
+    feature = efeatures.ISICVFeature(stim_start=100.0, stim_end=900.0)
+    assert feature.efel_settings_overrides() == {"stim_start": 100.0, "stim_end": 900.0}
+
+    # 5. Everything set — all branches True simultaneously.
+    feature = efeatures.ISICVFeature(
+        spike_detection_threshold=-20.0,
+        trace_resampling_timestep=0.1,
+        stim_start=100.0,
+        stim_end=900.0,
+    )
+    assert feature.efel_settings_overrides() == {
+        "Threshold": -20.0,
+        "interp_step": 0.1,
+        "stim_start": 100.0,
+        "stim_end": 900.0,
+    }
+
+
 def test_all_protocols_use_the_universal_efeature_union():
     union_size = len(TypeAdapter(efeatures.EFeatureUnion).json_schema()["oneOf"])
 
