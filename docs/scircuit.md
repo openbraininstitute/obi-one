@@ -181,7 +181,39 @@ Recordings capture network activity:
 
 - **SomaVoltageRecording**: Voltage traces from soma
 - **TimeWindowSomaVoltageRecording**: Voltage within specific time windows
+- **ExtracellularElectrodeArrayRecordingBlock**: Extracellular signal (LFP) per electrode
 - **Spike detection**: Automatic spike detection and recording
+
+#### ExtracellularElectrodeArrayRecordingBlock
+
+Records the extracellular signal seen by each electrode of a recording array. Only available for
+circuit simulations, since the signal is computed from a weight matrix covering the whole circuit.
+
+- **Extracellular Recording Array**: ID of a `SimulatableExtracellularRecordingArray` entity, built
+  for the circuit being simulated by `CreateExtracellularRecordingArrayTask`
+- **Neuron Set**: Neurons contributing to the signal
+- **Timestep**: Interval between recorded samples in ms
+
+At generation time the array's `electrode_array_weight_matrix` asset is downloaded next to the
+generated `simulation_config.json` as `<recording name>_electrodes.h5`, and the block emits a SONATA
+report of type `lfp` referencing it through `electrodes_file`:
+
+```json
+"reports": {
+  "LFPRecording": {
+    "cells": "AllBiophysical",
+    "type": "lfp",
+    "sections": "all",
+    "dt": 0.1,
+    "start_time": 0.0,
+    "end_time": 100.0,
+    "electrodes_file": "LFPRecording_electrodes.h5"
+  }
+}
+```
+
+LFP reports always record the membrane current (`i_membrane`), so unlike compartment reports they
+take no `variable_name`.
 
 ## Running Simulations
 
