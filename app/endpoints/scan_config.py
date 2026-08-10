@@ -53,7 +53,7 @@ router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depend
 
 
 def _error_detail(exc: Exception) -> str:
-    """The most informative message an exception carries, for the client-facing detail."""
+    """The most informative message the exception carries."""
     if len(exc.args) == 1:
         return str(exc.args[0])
     if len(exc.args) > 1:
@@ -108,13 +108,6 @@ def create_endpoint_for_scan_config(
                     run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
             except ConfigValidationError as e:
-                # The config is well-formed but not runnable -- e.g. it still uses a deprecated
-                # neuron set and has to be migrated. That is the caller's problem, not a server
-                # fault, so it must not become a 500 (which would also page Sentry).
-                #
-                # `invalid_config_error` repeats the message under `details`, which is the only
-                # place the frontend looks for a reason on a non-500. Without it the UI falls
-                # back to a bare "An error occurred generating the simulation campaign".
                 L.info("Rejected unrunnable config: %s", e)
 
                 raise invalid_config_error(str(e)) from e

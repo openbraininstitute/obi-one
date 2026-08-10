@@ -227,9 +227,8 @@ builtins-ignorelist = ["license"]
 "obi_one/scientific/blocks/neuron_sets/old/pair.py" = [
     "private-member-access"
 ]
-# Every method in this module is a deliberate refuse-to-resolve override that keeps its base
-# class signature but uses no argument. Ruff exempts stubs that raise NotImplementedError; these
-# raise ConfigValidationError instead, so the service can map them to a 422 rather than a 500.
+# Overrides that keep their base class signature but only raise; ruff's exemption for this
+# covers NotImplementedError stubs, not ConfigValidationError ones.
 "obi_one/scientific/blocks/neuron_sets/deprecated.py" = [
     "unused-method-argument"
 ]

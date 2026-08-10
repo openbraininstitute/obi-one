@@ -26,10 +26,6 @@ def grid_scan_parameters_count_endpoint(
 ) -> int:
     L.info("grid_scan_parameters_endpoint")
 
-    # Counting is wrapped so that a failure here answers with the same error body as every other
-    # path. Left bare it escaped as Starlette's plain-text "Internal Server Error", which is not
-    # even JSON -- callers that parse the body before inspecting it fail on the parse instead of
-    # reporting the error.
     try:
         grid_scan = GridScanGenerationTask(
             form=scan_config,
@@ -41,7 +37,6 @@ def grid_scan_parameters_count_endpoint(
             [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
         )
     except ConfigValidationError as e:
-        # Same as the generate endpoints: the config parsed but cannot be used.
         L.info("Rejected unrunnable config: %s", e)
         raise invalid_config_error(str(e)) from e
     except Exception as e:

@@ -125,10 +125,6 @@ def test_deserialization_of_deprecated_neuron_set_reference_raises(filename):
 
     The error must clearly direct the user to the replacement reference types rather than surfacing
     an obscure error (e.g. a missing-setter ``AttributeError``).
-
-    It must be a ``ValueError`` specifically, so that pydantic folds it into a ``ValidationError``
-    (itself a ``ValueError``) rather than letting it escape validation -- see
-    ``test_deprecated_neuron_set_reference_is_wrapped_by_pydantic``.
     """
     deprecated_json_path = MODEL_DUMPS_DIR / filename
 
@@ -142,15 +138,7 @@ def test_deserialization_of_deprecated_neuron_set_reference_raises(filename):
 
 @pytest.mark.parametrize("filename", DEPRECATED_SERIALIZATION_FILES)
 def test_deprecated_neuron_set_reference_is_wrapped_by_pydantic(filename):
-    """The deprecation must surface as a pydantic ValidationError, not a bare exception.
-
-    Scan configs are FastAPI request bodies, so they are validated during dependency solving,
-    before any endpoint code runs -- the endpoints' own ``try``/``except`` never sees this. Only
-    ``ValueError``/``AssertionError`` are folded into a ``ValidationError`` by pydantic, which
-    FastAPI then turns into a 422 carrying the migration message. Any other exception type escapes
-    unhandled and the caller gets an opaque 500 (as happened on
-    ``/declared/scan_config/grid-scan-coordinate-count``).
-    """
+    """The deprecation must surface as a pydantic ValidationError, not a bare exception."""
     data = json.loads((MODEL_DUMPS_DIR / filename).read_bytes())
 
     with pytest.raises(ValidationError, match="NeuronSetReference is deprecated"):

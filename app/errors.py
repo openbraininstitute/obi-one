@@ -67,21 +67,12 @@ class ApiError(Exception):
 
 
 def _as_details(message: str) -> list[dict[str, Any]]:
-    """The message in the shape ``validation_exception_handler`` uses for pydantic errors.
-
-    Clients read the reason out of ``details[0].msg`` -- that is where request validation puts
-    it -- so an error raised by hand has to repeat it there, not only in ``message``, or the
-    reason is invisible to them.
-    """
+    """Put the message in the same details shape as a pydantic validation error."""
     return [{"type": "value_error", "loc": ["body"], "msg": message}]
 
 
 def invalid_config_error(message: str) -> ApiError:
-    """A request body that parsed but cannot be used, e.g. a config that cannot be run.
-
-    The caller has to change something, so it is a 422 rather than a 500, and it must not be
-    reported as a server fault.
-    """
+    """A request body that parsed but cannot be used."""
     return ApiError(
         message=message,
         error_code=ApiErrorCode.INVALID_REQUEST,
@@ -91,7 +82,7 @@ def invalid_config_error(message: str) -> ApiError:
 
 
 def internal_error(message: str) -> ApiError:
-    """A genuine server-side failure, carrying the reason in the same shape as every other error."""
+    """A server-side failure."""
     return ApiError(
         message=message,
         error_code=ApiErrorCode.INTERNAL_ERROR,

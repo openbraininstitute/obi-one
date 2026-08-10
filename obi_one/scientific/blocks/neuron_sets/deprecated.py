@@ -42,11 +42,6 @@ class DeprecatedNeuronSet(NeuronSet, abc.ABC):
             "Please use an alternative neuron set instead."
         )
 
-    # These raise ConfigValidationError rather than NotImplementedError so the service can tell
-    # "this config is not runnable, the user must migrate it" apart from "this abstract method was
-    # never implemented", which is a genuine bug. NotImplementedError is used throughout obi_one
-    # for the latter, so the generate endpoints could only map it to a 500; ConfigValidationError
-    # they map to a 422 carrying the message below.
     def _resolve_ids(self, circuit: Circuit) -> list[int]:
         raise ConfigValidationError(self.deprecation_error_message)
 
