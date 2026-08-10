@@ -14,6 +14,7 @@ from tests.utils import AUTH_HEADER_USER_1, PROJECT_HEADERS
 
 CIRCUIT_ENDPOINT = "/declared/circuit-neuronal-manipulation-properties-by-neuron-set"
 MEMODEL_ENDPOINT = "/declared/memodel-neuronal-manipulation-properties"
+NODE_IDS_ENDPOINT = "/declared/circuit"
 
 
 @pytest.fixture
@@ -174,7 +175,7 @@ class TestMemodelNeuronalManipulationPropertiesEndpoint:
 
 
 class TestNodeIdsEndpoint:
-    """Tests for POST /declared/circuit/{circuit_id}/node-ids."""
+    """Tests for POST /declared/circuit/{circuit_id}/neuron-set-node-ids."""
 
     def test_success(self, client):
         """Successfully resolves neuron set to node IDs."""
@@ -182,7 +183,7 @@ class TestNodeIdsEndpoint:
             mock_node_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2, 3]}
 
             response = client.post(
-                f"/declared/circuit/{uuid4()}/node-ids",
+                f"{NODE_IDS_ENDPOINT}/{uuid4()}/neuron-set-node-ids",
                 json={"neuron_set": {"type": "AllBiophysicalNeurons"}},
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
@@ -198,7 +199,7 @@ class TestNodeIdsEndpoint:
             side_effect=ValueError("no sonata asset"),
         ):
             response = client.post(
-                f"/declared/circuit/{uuid4()}/node-ids",
+                f"{NODE_IDS_ENDPOINT}/{uuid4()}/neuron-set-node-ids",
                 json={"neuron_set": {"type": "AllBiophysicalNeurons"}},
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )
@@ -212,7 +213,7 @@ class TestNodeIdsEndpoint:
             side_effect=entitysdk.exception.EntitySDKError("not found"),
         ):
             response = client.post(
-                f"/declared/circuit/{uuid4()}/node-ids",
+                f"{NODE_IDS_ENDPOINT}/{uuid4()}/neuron-set-node-ids",
                 json={"neuron_set": {"type": "AllBiophysicalNeurons"}},
                 headers={**AUTH_HEADER_USER_1, **PROJECT_HEADERS},
             )

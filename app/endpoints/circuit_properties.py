@@ -315,7 +315,7 @@ def mapped_circuit_properties_endpoint(
 
 
 @router.post(
-    "/circuit/{circuit_id}/node-ids",
+    "/circuit/{circuit_id}/neuron-set-node-ids",
     summary="Resolve neuron set to node IDs",
     description="Returns the node IDs for a given neuron set selection in a circuit.",
 )
@@ -412,7 +412,9 @@ def memodel_neuronal_manipulation_properties_endpoint(
     except (ValueError, KeyError, AttributeError) as err:
         # ValueError covers JSONDecodeError and pydantic ValidationError subclasses.
         L.warning(
-            "Failed to parse mechanism variables for MEModel %s", request.entity_id, exc_info=True
+            "Failed to parse mechanism variables for MEModel %s",
+            request.entity_id,
+            exc_info=True,
         )
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
