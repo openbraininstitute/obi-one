@@ -1,9 +1,9 @@
-"""A Brian2 simulation defaults the simulation to all point neurons and a stimulus to `sugar`.
+"""A Brian2 simulation resolves every untargeted block to one default neuron set.
 
-An untargeted Brian2 Poisson stimulus drives the `sugar` gustatory receptor neurons, while the
-simulation itself runs every point neuron. The two are separate defaults; regressions here
-(e.g. the stimulus inheriting the simulation-wide default and tripping its 100-neuron limit, or
-the simulation target being mislabelled "Sugar…") are what this guards against.
+The simulation itself, recordings, stimuli and manipulations all fall back to
+``Default: All Point Neurons``, which the generation task injects into ``neuron_sets``. The Direct
+Poisson stimulus used to be an exception that drove the smaller ``sugar`` set instead; this guards
+against that split coming back, and against the one default being written more than once.
 """
 
 import json
@@ -18,17 +18,19 @@ CIRCUIT_CONFIG = (
     Path(__file__).parents[2] / "library" / "simulation" / "data" / "circuit_config.json"
 )
 
-SIM_DEFAULT = "Default: All Point Neurons"
-STIMULUS_DEFAULT = "Default: Sugar gustatory receptor neurons"
+DEFAULT = "Default: All Point Neurons"
 
 
 def _generate(tmp_path: Path) -> tuple[dict, dict]:
-    """Generate a Brian2 campaign with one untargeted stimulus; return (sim config, node sets)."""
+    """Generate a Brian2 campaign of untargeted blocks; return (sim config, node sets)."""
     sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
     sim_conf.set(obi.Info(campaign_name="T", campaign_description="T"), name="info")
 
-    # No neuron_set and no initialize.node_set: both fall back to their defaults.
+    # Nothing names a neuron set, and neither does initialize.node_set: all fall back.
     sim_conf.add(Brian2DirectPoissonStimulus(), name="DirectPoisson")
+    sim_conf.add(obi.ConstantCurrentClampSomaticStimulus(), name="Clamp")
+    sim_conf.add(obi.SimulationDtSomaVoltageRecording(), name="Voltage")
+    sim_conf.add(obi.DisconnectSynapticManipulation(), name="Disconnect")
     sim_conf.set(
         obi.Brian2CircuitSimulationScanConfig.Initialize(
             circuit=obi.Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
@@ -51,17 +53,17 @@ def _generate(tmp_path: Path) -> tuple[dict, dict]:
     return sim_config, node_sets
 
 
-def test_untargeted_brian2_stimulus_defaults_to_sugar_and_simulation_to_all_point(tmp_path):
+def test_every_untargeted_block_resolves_to_the_one_default(tmp_path):
     sim_config, node_sets = _generate(tmp_path)
 
-    # The simulation targets all point neurons, named for what it is -- not "Sugar…".
-    assert sim_config["node_set"] == SIM_DEFAULT
-    assert node_sets[SIM_DEFAULT]["node_id"] == [0, 1, 2]
+    # The simulation, both stimuli, the recording and the manipulation all name the same set.
+    assert sim_config["node_set"] == DEFAULT
+    assert sim_config["inputs"]["DirectPoisson"]["node_set"] == DEFAULT
+    assert sim_config["inputs"]["Clamp_0"]["node_set"] == DEFAULT
+    assert sim_config["reports"]["Voltage"]["cells"] == DEFAULT
+    (override,) = sim_config["connection_overrides"]
+    assert override["source"] == override["target"] == DEFAULT
 
-    # The untargeted stimulus targets the sugar node set -- a strict subset, not the whole
-    # circuit -- so it stays under the block's 100-neuron limit rather than raising.
-    assert sim_config["inputs"]["DirectPoisson"]["node_set"] == STIMULUS_DEFAULT
-    assert node_sets[STIMULUS_DEFAULT]["node_id"] == [0, 1]
-
-    # The two defaults are genuinely different sets.
-    assert node_sets[SIM_DEFAULT]["node_id"] != node_sets[STIMULUS_DEFAULT]["node_id"]
+    # And it is the whole point population, injected exactly once.
+    assert node_sets[DEFAULT]["node_id"] == [0, 1, 2]
+    assert sum(name.startswith("Default:") for name in node_sets) == 1

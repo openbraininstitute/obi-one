@@ -68,10 +68,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            # Recordings, current injections and synaptic manipulations all fall back to the
-            # simulation-wide default. The one exception is an untargeted Direct Poisson
-            # stimulus, which drives the smaller `sugar` set instead so that it stays under the
-            # block's neuron limit (see Brian2SimulationScanConfig).
+            # Every untargeted block falls back to this one default, so the label is unambiguous.
             PointNeuronSetReference.__name__: Brian2SimulationScanConfig.default_node_set_name,
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,

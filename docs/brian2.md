@@ -102,13 +102,19 @@ injections and the synaptic manipulations.
 
 ## Defaults
 
-An untargeted block falls back to the simulation-wide default neuron set,
-`"Default: All Point Neurons"`, which covers every point neuron in the circuit.
+Every untargeted block — the simulation itself, recordings, stimuli and synaptic manipulations —
+falls back to the same default neuron set, `"Default: All Point Neurons"`, which covers every
+point neuron in the circuit. The generation task injects it into `neuron_sets` the first time
+something needs it.
 
-The one exception is `Brian2DirectPoissonStimulus`: an untargeted Direct Poisson input instead
-drives `"Default: Sugar gustatory receptor neurons"`, the `sugar` node set stimulated by the Shiu
-et al. (2024) FlyWire model. That set is small enough to stay under the block's neuron limit,
-which the whole circuit would exceed.
+`Brian2DirectPoissonStimulus` is the one block that cannot usually live with that default: Brian2
+instantiates one `PoissonInput` per target neuron, so the block refuses a target above
+`MAX_NEURONS` (100). On any real circuit an untargeted Direct Poisson input will exceed that and
+has to name a smaller neuron set of its own — on the FlyWire model, the 20-neuron `sugar` set is
+the natural choice.
+
+A Brian2 configuration also refuses, before generating anything, a circuit that does not have
+exactly one point node population, since the runner cannot build a network from it.
 
 ## Worked example
 

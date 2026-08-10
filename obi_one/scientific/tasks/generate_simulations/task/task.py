@@ -221,13 +221,7 @@ class GenerateSimulationTask(Task):
                 if accepts_optional_neuron_set_reference(attr_type):
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
-                        # A Brian2 Poisson stimulus with no target drives the `sugar` node set,
-                        # not the simulation-wide default (every point neuron); see
-                        # Brian2SimulationScanConfig.
-                        if isinstance(block, Brian2DirectPoissonStimulus):
-                            setattr(block, attr_name, self._default_stimulus_neuron_set_ref())
-                        else:
-                            setattr(block, attr_name, self._default_neuron_set_ref())
+                        setattr(block, attr_name, self._default_neuron_set_ref())
 
     def _ensure_morphology_locations_have_neuron_set_reference(self) -> None:
         """Ensure morphology locations have a neuron-set target.
@@ -370,17 +364,6 @@ class GenerateSimulationTask(Task):
             )
 
         return default_neuron_set_ref
-
-    def _default_stimulus_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
-        """Returns the reference for the default stimulus neuron set (Brian2: the `sugar` set).
-
-        The circuit is already resolved: ``execute`` calls ``_resolve_circuit`` before it fills
-        in the missing neuron set references.
-        """
-        ref = self.config.default_stimulus_neuron_set_reference(self._circuit)  # ty:ignore[unresolved-attribute,invalid-argument-type]
-        if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
-            self.config.neuron_sets[ref.block_name] = ref.block  # ty:ignore[unresolved-attribute,invalid-assignment]
-        return ref
 
     """
     NEW NEURON SETS REFACTOR: SOME OF THIS CAN PROBABLY BE REMOVED NOW THE
@@ -603,6 +586,7 @@ class GenerateSimulationTask(Task):
         self._entity_cache = entity_cache
         self._sonata_config = self.config.base_sonata_config()
         self._resolve_circuit(db_client)
+        self.config.validate_circuit(self._circuit)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._materialize_location_targets()

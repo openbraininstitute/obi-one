@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 import entitysdk
 from libsonata import SimulatorType
@@ -43,6 +43,9 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
+
+if TYPE_CHECKING:
+    from obi_one.scientific.library.circuit import Circuit
 
 SONATA_VERSION = 2.4
 
@@ -179,6 +182,13 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
     initialize: Initialize
+
+    def validate_circuit(self, circuit: "Circuit | None") -> None:
+        """Check the resolved circuit can be simulated by this configuration's simulator.
+
+        Called by the generation task once the circuit is staged. The default accepts anything;
+        simulators with structural requirements override it to fail early with a clear message.
+        """
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""

@@ -285,20 +285,14 @@ class TestUntargetedBlocks:
         sonata_config = self._generate_untargeted(tmp_path)
         simulation_default = "Default: All Point Neurons"
 
-        # This is what makes the config's PointNeuronSetReference label the simulation default:
-        # every reused block falls back to it...
+        # There is one default, and every reused block falls back to it -- which is what makes
+        # the config's PointNeuronSetReference label unambiguous.
         assert sonata_config["node_set"] == simulation_default
+        assert sonata_config["inputs"]["Poisson"]["node_set"] == simulation_default
         assert sonata_config["inputs"]["Constant_0"]["node_set"] == simulation_default
         assert sonata_config["reports"]["Voltage"]["cells"] == simulation_default
         (override,) = sonata_config["connection_overrides"]
         assert override["source"] == override["target"] == simulation_default
-
-        # ...except the Direct Poisson stimulus, which drives the smaller `sugar` set so that it
-        # stays under the block's neuron limit.
-        assert (
-            sonata_config["inputs"]["Poisson"]["node_set"]
-            == "Default: Sugar gustatory receptor neurons"
-        )
 
 
 class TestRunsInBrian2:
