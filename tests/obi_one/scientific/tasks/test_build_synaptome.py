@@ -32,13 +32,13 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     write_virtual_nodes,
 )
 from obi_one.scientific.tasks.build_synaptome import (
-    BuildSynaptomeScanConfig,
-    BuildSynaptomeSingleConfig,
-    SynapseGroup,
+    MEModelSynapticModelPlacementScanConfig,
+    MEModelSynapticModelPlacementSingleConfig,
+    SynapticModelPlacer,
     build_synaptome,
 )
-from obi_one.scientific.unions.unions_distributions import AllDistributionsReference
-from obi_one.scientific.unions.unions_synaptic_models import SynapticModelReference
+from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
+from obi_one.scientific.unions_and_references.synaptic_models import SynapticModelReference
 
 _SWC_MORPHOLOGY = (
     "1 1 0 0 0 5 -1\n"
@@ -100,13 +100,13 @@ def stage_memodel(monkeypatch):
         include_morphology: bool = True,
         failure: Exception | None = None,
     ):
-        def load_morphology(_self, db_client):  # noqa: ARG001
+        def load_morphology(_self, db_client):  # ruff: ignore[unused-function-argument]
             if not include_morphology:
                 msg = "missing morphology asset"
                 raise ValueError(msg)
             return morphio.Morphology(_SWC_MORPHOLOGY, "swc")
 
-        def stage(_self, *, db_client, dest_dir, entity_cache=False):  # noqa: ARG001
+        def stage(_self, *, db_client, dest_dir, entity_cache=False):  # ruff: ignore[unused-function-argument]
             if failure is not None:
                 raise failure
             config_path = _write_staged_memodel(
@@ -127,9 +127,9 @@ def _reference(name: str) -> SynapticModelReference:
 
 def _config(
     *,
-    groups: dict[str, SynapseGroup] | None = None,
+    groups: dict[str, SynapticModelPlacer] | None = None,
     distributed: bool = False,
-) -> BuildSynaptomeSingleConfig:
+) -> MEModelSynapticModelPlacementSingleConfig:
     distributions = {
         "exc_conductance": FloatConstantDistribution(value=0.4),
         "exc_delay": (
@@ -161,16 +161,16 @@ def _config(
     }
     if groups is None:
         groups = {
-            "basal": SynapseGroup(
+            "basal": SynapticModelPlacer(
                 synaptic_model=_reference("exc"),
                 placement_strategy=RandomMorphologyLocations(
                     number_of_locations=4, section_types=(3,), random_seed=11
                 ),
             )
         }
-    return BuildSynaptomeSingleConfig(
+    return MEModelSynapticModelPlacementSingleConfig(
         info=Info(campaign_name="test", campaign_description="test synaptome"),
-        initialize=BuildSynaptomeScanConfig.Initialize(
+        initialize=MEModelSynapticModelPlacementScanConfig.Initialize(
             me_model=MEModelFromID(id_str="test-me-model")
         ),
         distributions=distributions,
@@ -212,13 +212,13 @@ def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):
 def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stage_memodel):
     stage_memodel()
     groups = {
-        "basal": SynapseGroup(
+        "basal": SynapticModelPlacer(
             synaptic_model=_reference("exc"),
             placement_strategy=RandomMorphologyLocations(
                 number_of_locations=3, section_types=(3,), random_seed=1
             ),
         ),
-        "apical": SynapseGroup(
+        "apical": SynapticModelPlacer(
             synaptic_model=_reference("inh"),
             placement_strategy=PathDistanceMorphologyLocations(
                 number_of_locations=2,
@@ -259,7 +259,7 @@ def test_different_placement_seed_changes_locations(tmp_path, stage_memodel):
     stage_memodel()
     first = build_synaptome(_config(), tmp_path / "first", db_client=object())
     groups = {
-        "basal": SynapseGroup(
+        "basal": SynapticModelPlacer(
             synaptic_model=_reference("exc"),
             placement_strategy=RandomMorphologyLocations(
                 number_of_locations=4, section_types=(3,), random_seed=12
@@ -277,26 +277,33 @@ def test_different_placement_seed_changes_locations(tmp_path, stage_memodel):
 
 def test_placement_does_not_mutate_global_numpy_rng(tmp_path, stage_memodel):
     stage_memodel()
-    np.random.seed(123)  # noqa: NPY002 - verifies isolation from the legacy placer RNG
-    expected = np.random.random(3)  # noqa: NPY002
-    np.random.seed(123)  # noqa: NPY002
+    np.random.seed(123)  # ruff: ignore[numpy-legacy-random] - verifies isolation from the legacy placer RNG
+    expected = np.random.random(3)  # ruff: ignore[numpy-legacy-random]
+    np.random.seed(123)  # ruff: ignore[numpy-legacy-random]
     build_synaptome(_config(), tmp_path / "artifact", db_client=object())
 
-    np.testing.assert_array_equal(np.random.random(3), expected)  # noqa: NPY002
+    np.testing.assert_array_equal(np.random.random(3), expected)  # ruff: ignore[numpy-legacy-random]
 
 
-def test_impossible_section_constraint_identifies_group(tmp_path, stage_memodel):
+def test_impossible_section_constraint_identifies_group(tmp_path, stage_memodel, monkeypatch):
+    # Use a morphology with only basal dendrites (type 3), then request apical (type 4)
+    basal_only_swc = "1 1 0 0 0 5 -1\n2 3 0 10 0 1 1\n3 3 0 30 0 1 2\n"
     stage_memodel()
+    monkeypatch.setattr(
+        MEModelFromID,
+        "morphio_morphology",
+        lambda _self, _db_client: morphio.Morphology(basal_only_swc, "swc"),
+    )
     groups = {
-        "axon-only": SynapseGroup(
+        "apical-only": SynapticModelPlacer(
             synaptic_model=_reference("exc"),
             placement_strategy=RandomMorphologyLocations(
-                number_of_locations=2, section_types=(2,), random_seed=1
+                number_of_locations=2, section_types=(4,), random_seed=1
             ),
         )
     }
 
-    with pytest.raises(BuildSynaptomeError, match=r"axon-only.*could not generate locations"):
+    with pytest.raises(BuildSynaptomeError, match=r"apical-only.*could not generate locations"):
         build_synaptome(_config(groups=groups), tmp_path / "artifact", db_client=object())
 
 
