@@ -1,12 +1,17 @@
 import copy
 import logging
 from collections import defaultdict
-from typing import Any
+from typing import Any, get_args
 
 import pytest
 from jsonschema import ValidationError
+from pydantic import TypeAdapter
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # ruff: ignore[line-too-long]
+    efeatures,
+    protocols,
+)
 
 from .validate_block import (
     openapi_schema,
@@ -382,3 +387,36 @@ def test_select_efeatures_by_protocol_rejects_missing_object_reference():
     schema.pop("allOf", None)
     with pytest.raises(AssertionError, match="should reference the object"):
         validate_select_efeatures_by_protocol(schema, SELECT_EFEATURES_FIELD, "ref")
+
+
+def test_efeature_union_schema_exposes_categories_and_doc_anchors():
+    assert efeatures.ISICVFeature.efel_doc_anchor == "isi-cv"
+    assert (
+        efeatures.InvSecondISIFeature.efel_doc_anchor
+        == "inv-first-isi-inv-second-isi-inv-third-isi-inv-fourth-isi-inv-fifth-isi-inv-last-isi"
+    )
+
+    schema = TypeAdapter(efeatures.EFeatureUnion).json_schema()
+    definitions = schema["$defs"]
+
+    assert len(definitions) == 146
+    assert len(schema["oneOf"]) == len(definitions)
+    assert {
+        definition["extra"][SchemaKey.EFEL_FEATURE_CATEGORY] for definition in definitions.values()
+    } == {"spike_event", "spike_shape", "subthreshold"}
+    assert all(
+        SchemaKey.EFEL_DOC_ANCHOR in definition["extra"] for definition in definitions.values()
+    )
+    assert definitions["ISICVFeature"]["extra"][SchemaKey.EFEL_DOC_ANCHOR] == "isi-cv"
+    assert (
+        definitions["InvSecondISIFeature"]["extra"][SchemaKey.EFEL_DOC_ANCHOR]
+        == "inv-first-isi-inv-second-isi-inv-third-isi-inv-fourth-isi-inv-fifth-isi-inv-last-isi"
+    )
+
+
+def test_all_protocols_use_the_universal_efeature_union():
+    union_size = len(TypeAdapter(efeatures.EFeatureUnion).json_schema()["oneOf"])
+
+    for protocol_class in get_args(get_args(protocols.ProtocolUnion)[0]):
+        feature_schema = protocol_class.model_json_schema()["properties"]["features"]["items"]
+        assert len(feature_schema["oneOf"]) == union_size
