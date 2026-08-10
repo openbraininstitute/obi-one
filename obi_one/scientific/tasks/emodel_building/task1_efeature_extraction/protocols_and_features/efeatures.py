@@ -120,10 +120,14 @@ class EFeature(OBIBaseModel):
     def __get_pydantic_json_schema__(  # ruff: ignore[bad-dunder-method-name]
         cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
-        """Inject ``efel_feature_category`` into the JSON schema for UI grouping."""
+        """Inject ``efel_feature_category`` and ``efel_doc_anchor`` into the JSON schema."""
         schema = handler(core_schema)
+        extra = schema.setdefault("extra", {})
         if cls.feature_category:
-            schema.setdefault("extra", {})[SchemaKey.EFEL_FEATURE_CATEGORY] = cls.feature_category
+            extra[SchemaKey.EFEL_FEATURE_CATEGORY] = cls.feature_category
+        anchor = _EFEL_DOC_ANCHORS.get(cls.efel_name)
+        if anchor:
+            extra[SchemaKey.EFEL_DOC_ANCHOR] = anchor
         return schema
 
     def efel_settings_overrides(self) -> dict:
@@ -1378,3 +1382,180 @@ _ALL_FEATURES = (
     | InactivationTimeConstantFeature
 )
 EFeatureUnion = Annotated[_ALL_FEATURES, Discriminator("type")]
+
+# -- eFEL documentation anchors -------------------------------------------
+# Maps each efel_name to the exact anchor in the eFEL docs RST file.
+# Sphinx generates anchors by lowercasing the RST heading and replacing
+# spaces/underscores with hyphens. Some features share a single RST section.
+_INV_ISI_ANCHOR = (
+    "inv-first-isi-inv-second-isi-inv-third-isi-inv-fourth-isi-inv-fifth-isi-inv-last-isi"
+)
+_EFEL_DOC_ANCHORS: dict[str, str] = {
+    # -- Spike event features --
+    "ISI_CV": "isi-cv",
+    "ISI_log_slope": "isi-log-slope",
+    "ISI_log_slope_skip": "isi-log-slope-skip",
+    "ISI_semilog_slope": "isi-semilog-slope",
+    "ISI_values": "isi-values",
+    "all_ISI_values": "all-isi-values",
+    "inv_ISI_values": "inv-isi-values",
+    "inv_first_ISI": _INV_ISI_ANCHOR,
+    "inv_second_ISI": _INV_ISI_ANCHOR,
+    "inv_third_ISI": _INV_ISI_ANCHOR,
+    "inv_fourth_ISI": _INV_ISI_ANCHOR,
+    "inv_fifth_ISI": _INV_ISI_ANCHOR,
+    "inv_last_ISI": _INV_ISI_ANCHOR,
+    "inv_time_to_first_spike": "inv-time-to-first-spike",
+    "Spikecount": "spike-count",
+    "spike_count_stimint": "spike-count-stimint",
+    "adaptation_index": "adaptation-index",
+    "adaptation_index_2": "adaptation-index-2",
+    "depol_block_bool": "depol-block-bool",
+    "doublet_ISI": "doublet-isi",
+    "irregularity_index": "irregularity-index",
+    "mean_frequency": "mean-frequency",
+    "number_initial_spikes": "number-initial-spikes",
+    "peak_time": "peak-time",
+    "strict_burst_mean_freq": "strict-burst-mean-freq",
+    "strict_burst_number": "strict-burst-number",
+    "time_to_first_spike": "time-to-first-spike",
+    "time_to_last_spike": "time-to-last-spike",
+    "time_to_second_spike": "time-to-second-spike",
+    "burst_number": "burst-number",
+    "single_burst_ratio": "single-burst-ratio",
+    "spikes_per_burst": "spikes-per-burst",
+    "burst_mean_freq": "burst-mean-freq",
+    "strict_interburst_voltage": "strict-interburst-voltage",
+    "interburst_voltage": "interburst-voltage",
+    "interburst_min_values": "interburst-min-values",
+    "interburst_duration": "interburst-duration",
+    "time_to_interburst_min": "time-to-interburst-min",
+    "time_to_postburst_slow_ahp": "time-to-postburst-slow-ahp",
+    "postburst_min_values": "postburst-min-values",
+    "postburst_slow_ahp_values": "postburst-slow-ahp-values",
+    "postburst_fast_ahp_values": "postburst-fast-ahp-values",
+    "postburst_adp_peak_values": "postburst-adp-peak-values",
+    "time_to_postburst_fast_ahp": "time-to-postburst-fast-ahp",
+    "time_to_postburst_adp_peak": "time-to-postburst-adp-peak",
+    "spikes_per_burst_diff": "spikes-per-burst-diff",
+    "spikes_in_burst1_burst2_diff": "spikes-in-burst1-burst2-diff",
+    "spikes_in_burst1_burstlast_diff": "spikes-in-burst1-burstlast-diff",
+    "interburst_15percent_values": (
+        "interburst-15percent-values-interburst-20percent-values-interburst-25percent-values"
+        "-interburst-30percent-values-interburst-40percent-values-interburst-60percent-values"
+    ),
+    "interburst_20percent_values": (
+        "interburst-15percent-values-interburst-20percent-values-interburst-25percent-values"
+        "-interburst-30percent-values-interburst-40percent-values-interburst-60percent-values"
+    ),
+    "interburst_25percent_values": (
+        "interburst-15percent-values-interburst-20percent-values-interburst-25percent-values"
+        "-interburst-30percent-values-interburst-40percent-values-interburst-60percent-values"
+    ),
+    "interburst_30percent_values": (
+        "interburst-15percent-values-interburst-20percent-values-interburst-25percent-values"
+        "-interburst-30percent-values-interburst-40percent-values-interburst-60percent-values"
+    ),
+    "interburst_40percent_values": (
+        "interburst-15percent-values-interburst-20percent-values-interburst-25percent-values"
+        "-interburst-30percent-values-interburst-40percent-values-interburst-60percent-values"
+    ),
+    "interburst_60percent_values": (
+        "interburst-15percent-values-interburst-20percent-values-interburst-25percent-values"
+        "-interburst-30percent-values-interburst-40percent-values-interburst-60percent-values"
+    ),
+    # -- Spike shape features --
+    "peak_voltage": "peak-voltage",
+    "AP_height": "ap-height",
+    "AP_amplitude": "ap-amplitude-ap1-amp-ap2-amp-aplast-amp",
+    "AP1_amp": "ap-amplitude-ap1-amp-ap2-amp-aplast-amp",
+    "AP2_amp": "ap-amplitude-ap1-amp-ap2-amp-aplast-amp",
+    "APlast_amp": "ap-amplitude-ap1-amp-ap2-amp-aplast-amp",
+    "mean_AP_amplitude": "mean-ap-amplitude",
+    "AP_amplitude_change": "ap-amplitude-change",
+    "AP_amplitude_from_voltagebase": "ap-amplitude-from-voltagebase",
+    "AP1_peak": "ap1-peak-ap2-peak",
+    "AP2_peak": "ap1-peak-ap2-peak",
+    "AP2_AP1_diff": "ap2-ap1-diff",
+    "AP2_AP1_peak_diff": "ap2-ap1-peak-diff",
+    "amp_drop_first_second": "amp-drop-first-second",
+    "amp_drop_first_last": "amp-drop-first-last",
+    "amp_drop_second_last": "amp-drop-second-last",
+    "max_amp_difference": "max-amp-difference",
+    "AP_amplitude_diff": "ap-amplitude-diff",
+    "min_AHP_values": "min-ahp-values",
+    "AHP_depth": "ahp-depth",
+    "AHP_depth_abs": "ahp-depth-abs",
+    "AHP_depth_diff": "ahp-depth-diff",
+    "AHP_depth_from_peak": "ahp-depth-from-peak-ahp1-depth-from-peak-ahp2-depth-from-peak",
+    "AHP1_depth_from_peak": "ahp-depth-from-peak-ahp1-depth-from-peak-ahp2-depth-from-peak",
+    "AHP2_depth_from_peak": "ahp-depth-from-peak-ahp1-depth-from-peak-ahp2-depth-from-peak",
+    "AHP_time_from_peak": "ahp-time-from-peak",
+    "fast_AHP": "fast-ahp",
+    "fast_AHP_change": "fast-ahp-change",
+    "AHP_depth_abs_slow": "ahp-depth-abs-slow",
+    "AHP_depth_slow": "ahp-depth-slow",
+    "AHP_slow_time": "ahp-slow-time",
+    "ADP_peak_values": "adp-peak-values",
+    "ADP_peak_amplitude": "adp-peak-amplitude",
+    "depolarized_base": "depolarized-base",
+    "min_voltage_between_spikes": "min-voltage-between-spikes",
+    "min_between_peaks_values": "min-between-peaks-values",
+    "AP_duration_half_width": "ap-duration-half-width",
+    "AP_duration_half_width_change": "ap-duration-half-width-change",
+    "AP_width": "ap-width",
+    "AP_duration": "ap-duration",
+    "AP_duration_change": "ap-duration-change",
+    "AP_width_between_threshold": "ap-width-between-threshold",
+    "spike_half_width": "spike-half-width-ap1-width-ap2-width-aplast-width",
+    "AP1_width": "spike-half-width-ap1-width-ap2-width-aplast-width",
+    "AP2_width": "spike-half-width-ap1-width-ap2-width-aplast-width",
+    "APlast_width": "spike-half-width-ap1-width-ap2-width-aplast-width",
+    "spike_width2": "spike-width2",
+    "AP_begin_width": "ap-begin-width-ap1-begin-width-ap2-begin-width",
+    "AP1_begin_width": "ap-begin-width-ap1-begin-width-ap2-begin-width",
+    "AP2_begin_width": "ap-begin-width-ap1-begin-width-ap2-begin-width",
+    "AP2_AP1_begin_width_diff": "ap2-ap1-begin-width-diff",
+    "AP_begin_voltage": "ap-begin-voltage-ap1-begin-voltage-ap2-begin-voltage",
+    "AP_begin_time": "ap-begin-time",
+    "AP_peak_upstroke": "ap-peak-upstroke",
+    "AP_peak_downstroke": "ap-peak-downstroke",
+    "AP_rise_time": "ap-rise-time",
+    "AP_fall_time": "ap-fall-time",
+    "AP_rise_rate": "ap-rise-rate",
+    "AP_fall_rate": "ap-fall-rate",
+    "AP_rise_rate_change": "ap-rise-rate-change",
+    "AP_fall_rate_change": "ap-fall-rate-change",
+    "AP_phaseslope": "ap-phaseslope",
+    "phaseslope_max": "phaseslope-max",
+    "initburst_sahp": "initburst-sahp",
+    "initburst_sahp_ssse": "initburst-sahp-ssse",
+    "initburst_sahp_vb": "initburst-sahp-vb",
+    # -- Subthreshold features --
+    "steady_state_voltage_stimend": "steady-state-voltage-stimend",
+    "steady_state_current_stimend": "steady-state-current-stimend",
+    "steady_state_hyper": "steady-state-hyper",
+    "steady_state_voltage": "steady-state-voltage",
+    "voltage_base": "voltage-base",
+    "current_base": "current-base",
+    "time_constant": "time-constant",
+    "decay_time_constant_after_stim": "decay-time-constant-after-stim",
+    "multiple_decay_time_constant_after_stim": "multiple-decay-time-constant-after-stim",
+    "sag_time_constant": "sag-time-constant",
+    "sag_amplitude": "sag-amplitude",
+    "sag_ratio1": "sag-ratio1",
+    "sag_ratio2": "sag-ratio2",
+    "ohmic_input_resistance": "ohmic-input-resistance",
+    "ohmic_input_resistance_vb_ssse": "ohmic-input-resistance-vb-ssse",
+    "voltage_deflection_vb_ssse": "voltage-deflection-vb-ssse",
+    "voltage_deflection": "voltage-deflection",
+    "voltage_deflection_begin": "voltage-deflection-begin",
+    "voltage_after_stim": "voltage-after-stim",
+    "minimum_voltage": "minimum-voltage",
+    "maximum_voltage": "maximum-voltage",
+    "maximum_voltage_from_voltagebase": "maximum-voltage-from-voltagebase",
+    "impedance": "impedance",
+    "activation_time_constant": "activation-time-constant",
+    "deactivation_time_constant": "deactivation-time-constant",
+    "inactivation_time_constant": "inactivation-time-constant",
+}
