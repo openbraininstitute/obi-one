@@ -227,6 +227,11 @@ builtins-ignorelist = ["license"]
 "obi_one/scientific/blocks/neuron_sets/old/pair.py" = [
     "private-member-access"
 ]
+# Overrides that keep their base class signature but only raise; ruff's exemption for this
+# covers NotImplementedError stubs, not ConfigValidationError ones.
+"obi_one/scientific/blocks/neuron_sets/deprecated.py" = [
+    "unused-method-argument"
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

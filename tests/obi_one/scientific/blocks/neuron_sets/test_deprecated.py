@@ -11,6 +11,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 import obi_one as obi
+from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.neuron_sets.deprecated import PredefinedNeuronSet
 from obi_one.scientific.unions_and_references.neuron_sets import (
     AtomicBiophysicalNeuronSetUnion,
@@ -108,5 +109,14 @@ def test_legacy_predefined_neuron_set_cannot_be_resolved(circuit):
     """Being deprecated, it refuses to resolve: the config must be migrated before it runs."""
     nset = PredefinedNeuronSet.model_validate(LEGACY_PREDEFINED_NEURON_SET)
 
-    with pytest.raises(NotImplementedError, match="deprecated"):
+    with pytest.raises(ConfigValidationError, match="deprecated"):
+        nset.get_neuron_ids(circuit)
+
+
+@pytest.mark.parametrize("block", DEPRECATED_NEURON_SETS, ids=operator.itemgetter("type"))
+def test_every_deprecated_neuron_set_raises_config_validation_error(block, circuit):
+    """Every deprecated block refuses to resolve, not just PredefinedNeuronSet."""
+    nset = TypeAdapter(AtomicBiophysicalNeuronSetUnion).validate_python(block)
+
+    with pytest.raises(ConfigValidationError, match="deprecated"):
         nset.get_neuron_ids(circuit)
