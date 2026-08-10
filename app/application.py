@@ -18,6 +18,7 @@ from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
     circuit_properties,
+    circuit_registration,
     circuit_visualization,
     config_validation,
     contributor,
@@ -173,6 +174,7 @@ async def version() -> dict:
 
 app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
+app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
 app.include_router(convert_morphology_to_registered_mesh.router)
