@@ -25,9 +25,7 @@ def _write_edges(path, *, with_surface: bool) -> None:
         population = f.create_group(f"edges/{_POPULATION}")
         count = len(_SECTION_IDS)
         population.create_dataset("source_node_id", data=np.zeros(count, dtype=np.uint64))
-        population.create_dataset(
-            "target_node_id", data=np.array(_TARGET_NODES, dtype=np.uint64)
-        )
+        population.create_dataset("target_node_id", data=np.array(_TARGET_NODES, dtype=np.uint64))
         population.create_dataset("edge_type_id", data=np.full(count, -1, dtype=np.int64))
         population["source_node_id"].attrs["node_population"] = "nodes"
         population["target_node_id"].attrs["node_population"] = "nodes"
