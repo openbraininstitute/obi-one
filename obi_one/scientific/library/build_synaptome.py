@@ -1,6 +1,6 @@
 """SONATA artifact generation for Build Synaptome."""
 
-# ruff: noqa: EM101, EM102, TRY003, TRY301
+# ruff: file-ignore[raw-string-in-exception, f-string-in-exception, raise-vanilla-args, raise-within-try, too-many-statements-in-try-clause]
 
 import json
 import re
@@ -32,7 +32,7 @@ from obi_one.scientific.library.morphology_locations import (
 if TYPE_CHECKING:
     from entitysdk import Client
 
-    from obi_one.scientific.tasks.build_synaptome import BuildSynaptomeSingleConfig
+    from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementSingleConfig
 
 _SOURCE_ID = "pre_node_id"
 _TARGET_ID = "post_node_id"
@@ -54,11 +54,11 @@ class BuildSynaptomeError(ValueError):
 @contextmanager
 def _preserve_numpy_random_state() -> Iterator[None]:
     """Isolate legacy morphology placers that use NumPy's global RNG."""
-    state = np.random.get_state()  # noqa: NPY002 - called placer uses the legacy global RNG
+    state = np.random.get_state()  # ruff: ignore[numpy-legacy-random] - called placer uses the legacy global RNG
     try:
         yield
     finally:
-        np.random.set_state(state)  # noqa: NPY002 - restore legacy global RNG state
+        np.random.set_state(state)  # ruff: ignore[numpy-legacy-random] - restore legacy global RNG state
 
 
 def _safe_name(value: str) -> str:
@@ -251,8 +251,8 @@ def validate_synaptome_artifact(
         raise BuildSynaptomeError(f"Generated SONATA circuit failed validation: {exc}") from exc
 
 
-def build_synaptome_artifact(  # noqa: C901, PLR0914, PLR0915
-    config: "BuildSynaptomeSingleConfig",
+def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
+    config: "MEModelSynapticModelPlacementSingleConfig",
     output_directory: Path,
     *,
     db_client: "Client",
