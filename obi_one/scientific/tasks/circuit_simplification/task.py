@@ -11,6 +11,7 @@ entity with derivation links to the parent.
 import json
 import logging
 import tempfile
+import os
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar, Literal
@@ -21,6 +22,7 @@ from pydantic import Field, PrivateAttr
 from sonata_simplify.algorithms import ALGORITHM_DESCRIPTIONS, ALGORITHM_TITLES
 
 from obi_one.core.block import Block
+from obi_one.types import SimulationBackend
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
@@ -41,6 +43,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BiophysicalNeuronSetReference,
 )
+from obi_one.scientific.library.simulation.neuron import process
 
 L = logging.getLogger(__name__)
 
@@ -505,6 +508,12 @@ class CircuitSimplificationTask(Task):
         from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level]
 
         output_circuit_ids: list[str] = []
+
+        if "single_compartment" in algorithms:
+            process.compile_mechanisms(
+                output_dir=os.curdir,
+                mechanisms_dir="./",
+                simulation_backend=SimulationBackend.neurodamus,)
 
         for algorithm_name in algorithms:
             L.info(f"Running simplification with algorithm: {algorithm_name}")
