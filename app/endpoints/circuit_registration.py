@@ -16,6 +16,7 @@ from entitysdk.types import CircuitScale, DerivationType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.dependencies.auth import user_verified
+from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.circuit_helpers import trigger_asset_generation_task, trigger_validation_task
@@ -194,6 +195,7 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
 def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     ls_client: LaunchSystemClientDep,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    compute_cell: ComputeCellDep,
     name: Annotated[str, Form()],
     description: Annotated[str, Form()],
     brain_region_id: Annotated[UUID, Form()],
@@ -308,6 +310,7 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
             circuit_id=registered.id,
             project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
             virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+            compute_cell=compute_cell,
         )
 
     number_connections = registered.number_connections
@@ -326,6 +329,7 @@ def validate_circuit_endpoint(
     circuit_id: UUID,
     ls_client: LaunchSystemClientDep,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    compute_cell: ComputeCellDep,
     force: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
 ) -> dict:
     """Trigger (re-)validation for a circuit.
@@ -346,6 +350,7 @@ def validate_circuit_endpoint(
         circuit_id=circuit_id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+        compute_cell=compute_cell,
         force=force,
     )
 
@@ -357,6 +362,7 @@ def generate_assets_endpoint(
     circuit_id: UUID,
     ls_client: LaunchSystemClientDep,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    compute_cell: ComputeCellDep,
     force: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
 ) -> dict:
     """Trigger asset generation for an active circuit.
@@ -388,6 +394,7 @@ def generate_assets_endpoint(
         circuit_id=circuit_id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+        compute_cell=compute_cell,
         force=force,
     )
 
