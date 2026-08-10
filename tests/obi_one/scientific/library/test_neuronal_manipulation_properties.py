@@ -2,11 +2,14 @@
 
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
+from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library import circuit as circuit_module
 from obi_one.scientific.library.emodel_parameters import (
     ChannelInfo,
     ChannelSectionListMapping,
@@ -15,6 +18,10 @@ from obi_one.scientific.library.emodel_parameters import (
 from obi_one.scientific.library.memodel_circuit import (
     IonChannelVariables,
     MechanismVariableDetail,
+    MEModelCircuit,
+    MEModelWithSynapsesCircuit,
+    _build_mechanism_variables_by_ion_channel_response,
+    get_memodel_mechanism_variables,
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
     _build_emodel_groups,
@@ -1054,3 +1061,159 @@ class TestMultiPopulationRegression:
                 asset_id=asset_id,
                 neuron_set=neuron_set,
             )
+
+
+class TestMemodelMechanismVariableResponse:
+    """Tests for the strict MEModel mechanism-variable helper and response grouping."""
+
+    def test_section_properties_use_channel_sections_and_group_values(self):
+        mapping = ChannelSectionListMapping(
+            channel_to_section_lists={
+                "NaTg": ChannelInfo(
+                    section_lists=["somatic", "axonal"],
+                    entity_id="channel-id",
+                )
+            }
+        )
+        variables = [
+            MechanismVariable(
+                neuron_variable="cm",
+                channel_name="-",
+                section_list="somatic",
+                units="uF/cm2",
+                limits=[0.0, 10.0],
+                variable_type="RANGE",
+            ),
+            MechanismVariable(
+                neuron_variable="Ra",
+                channel_name="-",
+                section_list="axonal",
+                units="ohm-cm",
+                limits=[10.0, 500.0],
+                variable_type="RANGE",
+            ),
+            MechanismVariable(
+                neuron_variable="gNaTgbar_NaTg",
+                channel_name="NaTg",
+                section_list="somatic",
+                value=0.1,
+                limits=[0.0, 10.0],
+                variable_type="RANGE",
+            ),
+            MechanismVariable(
+                neuron_variable="gNaTgbar_NaTg",
+                channel_name="NaTg",
+                section_list="axonal",
+                value=0.2,
+                limits=[0.0, 10.0],
+                variable_type="RANGE",
+            ),
+        ]
+
+        result = _build_mechanism_variables_by_ion_channel_response(variables, mapping)
+
+        assert result["-"].entity_id is None
+        assert set(result["-"].section_lists) == {"somatic", "axonal"}
+        assert result["-"].variables["cm"].section_lists_original_values == {"somatic": None}
+        assert result["NaTg"].entity_id == "channel-id"
+        assert result["NaTg"].variables["gNaTgbar_NaTg"].section_lists_original_values == {
+            "somatic": 0.1,
+            "axonal": 0.2,
+        }
+
+    def test_section_properties_without_mapping_use_default_sections(self):
+        variable = MechanismVariable(
+            neuron_variable="cm",
+            channel_name="-",
+            section_list="somatic",
+            variable_type="RANGE",
+        )
+
+        result = _build_mechanism_variables_by_ion_channel_response(
+            [variable], ChannelSectionListMapping(channel_to_section_lists={})
+        )
+
+        assert set(result["-"].section_lists) == {"somatic", "apical", "basal", "axonal"}
+
+    def test_strict_helper_fetches_and_groups_mechanism_variables(self):
+        db_client = MagicMock()
+        memodel = MagicMock()
+        db_client.get_entity.return_value = memodel
+        variables = [
+            MechanismVariable(
+                neuron_variable="gNaTgbar_NaTg",
+                channel_name="NaTg",
+                section_list="somatic",
+                value=0.1,
+                limits=[0.0, 10.0],
+                variable_type="RANGE",
+            )
+        ]
+        mapping = ChannelSectionListMapping(
+            channel_to_section_lists={
+                "NaTg": ChannelInfo(section_lists=["somatic"], entity_id="channel-id")
+            }
+        )
+
+        with patch(
+            "obi_one.scientific.library.memodel_circuit.get_mechanism_variables",
+            return_value=(variables, mapping),
+        ) as mock_get:
+            result = get_memodel_mechanism_variables(db_client, "memodel-id")
+
+        db_client.get_entity.assert_called_once()
+        mock_get.assert_called_once_with(db_client, memodel)
+        assert result["NaTg"].entity_id == "channel-id"
+        assert result["NaTg"].variables["gNaTgbar_NaTg"].section_lists_original_values == {
+            "somatic": 0.1
+        }
+
+    def test_strict_helper_propagates_entity_fetch_errors(self):
+        db_client = MagicMock()
+        db_client.get_entity.side_effect = RuntimeError("fetch failed")
+
+        with pytest.raises(RuntimeError, match="fetch failed"):
+            get_memodel_mechanism_variables(db_client, "memodel-id")
+
+
+class TestMEModelCircuitValidation:
+    """Tests for single-neuron validation on MEModel circuit wrappers."""
+
+    @staticmethod
+    def _fake_snap_circuit(*, node_ids, edge_population_names=None, populations=None):
+        nodes = MagicMock()
+        nodes.ids.return_value = node_ids
+        nodes.population_names = list(populations or {})
+        nodes.__getitem__.side_effect = (populations or {}).__getitem__
+        edges = SimpleNamespace(population_names=edge_population_names or [])
+        return SimpleNamespace(nodes=nodes, edges=edges)
+
+    def test_me_model_circuit_rejects_multiple_neurons(self, monkeypatch):
+        fake_circuit = self._fake_snap_circuit(node_ids=[0, 1])
+        monkeypatch.setattr(circuit_module.snap, "Circuit", lambda _path: fake_circuit)
+        circuit = MEModelCircuit.model_construct(name="me-model", path="circuit.json")
+
+        with pytest.raises(OBIONEError, match="exactly one neuron"):
+            circuit.confirm_single_neuron_without_synapses()
+
+    def test_me_model_circuit_rejects_synapses(self, monkeypatch):
+        fake_circuit = self._fake_snap_circuit(node_ids=[0], edge_population_names=["synapses"])
+        monkeypatch.setattr(circuit_module.snap, "Circuit", lambda _path: fake_circuit)
+        circuit = MEModelCircuit.model_construct(name="me-model", path="circuit.json")
+
+        with pytest.raises(OBIONEError, match="must not contain any synapses"):
+            circuit.confirm_single_neuron_without_synapses()
+
+    def test_me_model_with_synapses_circuit_rejects_multiple_real_neurons(self, monkeypatch):
+        populations = {
+            "real": SimpleNamespace(type="biophysical", size=2),
+            "virtual": SimpleNamespace(type="virtual", size=10),
+        }
+        fake_circuit = self._fake_snap_circuit(node_ids=[0, 1], populations=populations)
+        monkeypatch.setattr(circuit_module.snap, "Circuit", lambda _path: fake_circuit)
+        circuit = MEModelWithSynapsesCircuit.model_construct(
+            name="me-model-with-synapses", path="circuit.json"
+        )
+
+        with pytest.raises(OBIONEError, match="exactly one neuron"):
+            circuit.confirm_single_neuron()
