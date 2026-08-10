@@ -2,6 +2,7 @@
 
 import json
 import sys
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -14,8 +15,7 @@ from entitysdk.models.brain_region import BrainRegion
 from entitysdk.models.cell_morphology_protocol import (
     DigitalReconstructionCellMorphologyProtocol,
 )
-from entitysdk.models.contribution import Role
-from entitysdk.models.core import Person
+from entitysdk.models.core import PlatformUser
 from entitysdk.models.em_dense_reconstruction_dataset import EMDenseReconstructionDataset
 from entitysdk.models.license import License
 from entitysdk.models.skeletonization_config import SkeletonizationConfig
@@ -37,10 +37,7 @@ from obi_one.core.serialization_constants import (
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
-from obi_one.scientific.tasks.skeletonization.constants import (
-    LICENSE_LABEL,
-    ROLE_NAME,
-)
+from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL
 from obi_one.scientific.tasks.skeletonization.process import (
     _create_process_outputs,
     _run_process_executable,
@@ -121,13 +118,13 @@ def license_entity():
 
 
 @pytest.fixture
-def role():
-    return Role(name=ROLE_NAME, role_id="data_modeling_role")
-
-
-@pytest.fixture
-def agent():
-    return Person(pref_label="Test User")
+def platform_user():
+    return PlatformUser(
+        id=uuid4(),
+        pref_label="Test User",
+        creation_date=datetime(2025, 1, 1, tzinfo=UTC),
+        update_date=datetime(2025, 1, 1, tzinfo=UTC),
+    )
 
 
 @pytest.fixture
@@ -346,23 +343,17 @@ def test_register_output_resource_creates_protocol_when_missing(
     tmp_path,
     httpx_mock,
     entitysdk_client,
-    role,
     license_entity,
-    agent,
+    platform_user,
     metadata_with_protocol,
     protocol_created,
 ):
     morphology_id = uuid4()
     protocol_id = uuid4()
     protocol_json = _serialize(protocol_created)
-    role_json = _serialize(role)
     license_json = _serialize(license_entity)
-    agent_json = _serialize(agent)
+    platform_user_json = _serialize(platform_user)
 
-    httpx_mock.add_response(
-        url=f"{API_URL}/role?name=data+modeling+role&page=1",
-        json={"data": [role_json], "pagination": PAGINATION},
-    )
     httpx_mock.add_response(
         url=f"{API_URL}/license?label=CC+BY-NC+4.0&page=1",
         json={"data": [license_json], "pagination": PAGINATION},
@@ -386,20 +377,11 @@ def test_register_output_resource_creates_protocol_when_missing(
             json=json.loads(r.content)
             | {
                 "id": str(morphology_id),
-                "created_by": agent_json,
+                "created_by": platform_user_json,
                 "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
             },
         ),
         url=f"{API_URL}/cell-morphology",
-        method="POST",
-    )
-    httpx_mock.add_callback(
-        lambda r: httpx.Response(
-            status_code=200,
-            json=json.loads(r.content)
-            | {"id": str(uuid4()), "role": role_json, "agent": agent_json},
-        ),
-        url=f"{API_URL}/contribution",
         method="POST",
     )
     httpx_mock.add_callback(
@@ -433,23 +415,17 @@ def test_register_output_resource_reuses_existing_protocol(
     tmp_path,
     httpx_mock,
     entitysdk_client,
-    role,
     license_entity,
-    agent,
+    platform_user,
     metadata_with_protocol,
     protocol_created,
 ):
     morphology_id = uuid4()
     protocol_id = uuid4()
-    role_json = _serialize(role)
     license_json = _serialize(license_entity)
-    agent_json = _serialize(agent)
+    platform_user_json = _serialize(platform_user)
     protocol_json = _serialize(protocol_created)
 
-    httpx_mock.add_response(
-        url=f"{API_URL}/role?name=data+modeling+role&page=1",
-        json={"data": [role_json], "pagination": PAGINATION},
-    )
     httpx_mock.add_response(
         url=f"{API_URL}/license?label=CC+BY-NC+4.0&page=1",
         json={"data": [license_json], "pagination": PAGINATION},
@@ -465,20 +441,11 @@ def test_register_output_resource_reuses_existing_protocol(
             json=json.loads(r.content)
             | {
                 "id": str(morphology_id),
-                "created_by": agent_json,
+                "created_by": platform_user_json,
                 "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
             },
         ),
         url=f"{API_URL}/cell-morphology",
-        method="POST",
-    )
-    httpx_mock.add_callback(
-        lambda r: httpx.Response(
-            status_code=200,
-            json=json.loads(r.content)
-            | {"id": str(uuid4()), "role": role_json, "agent": agent_json},
-        ),
-        url=f"{API_URL}/contribution",
         method="POST",
     )
     httpx_mock.add_callback(
