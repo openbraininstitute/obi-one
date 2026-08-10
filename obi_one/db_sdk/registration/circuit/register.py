@@ -29,6 +29,7 @@ from obi_one.db_sdk.registration.circuit.resolve import (
     get_subject,
 )
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.scientific.tasks.circuit_validation.task import run_circuit_validation
 from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
 from obi_one.utils.io import extract_tar_gz
 
@@ -87,7 +88,7 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
     return circuit_path, circuit_path_compressed
 
 
-def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, complex-structure]
+def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, complex-structure, too-many-branches, too-many-statements]
     client: Client,
     circuit_path: str | Path,
     *,
@@ -111,9 +112,12 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
     skip_validation: bool = False,
+    include_visualization: bool = True,
+    lifecycle_status: types.EntityLifecycleStatus | str | None = None,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
+    neurodamus_validation: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
 
@@ -124,6 +128,17 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     Scale, neuron/synapse/connection counts, and circuit properties (morphologies,
     point neurons, electrical models, spines) are computed automatically from
     the circuit files. The SONATA circuit folder is registered as an asset.
+
+    For the HTTP draft → async-validate → assets flow, call with
+    ``lifecycle_status="draft"`` and ``skip_validation=True``, then trigger
+    the validation launch job. Sync registration (tasks/notebooks) leaves
+    those defaults so validation and assets run in-process.
+
+    Set ``neurodamus_validation=True`` to run the fuller MOD compile / HOC /
+    snap validation in-process after registration (same checks as the
+    neurodamus launch job, without the launch-system). The circuit is
+    registered as ``draft`` first and transitions to ``active`` or
+    ``disqualified`` based on the result.
 
     Args:
         client: The entitycore SDK client.
@@ -143,7 +158,8 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         license: Resolved license entity (optional).
         atlas: Brain atlas entity associated with the circuit (optional).
         root: Root circuit entity or root circuit ID (UUID) in the derivation
-            hierarchy (optional).
+            hierarchy (optional). When omitted and ``parent`` is set, defaults to
+            ``parent.root_circuit_id or parent.id``.
         parent: Parent circuit entity or ID (UUID) for derivation linking (optional).
         derivation_type: Type of derivation (required if parent is provided).
         contributions: Resolved contributions dict (from get_contributions, optional).
@@ -151,21 +167,34 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         authorized_public: Whether to make the circuit publicly accessible.
         skip_additional_assets: If True, skip generation/registration of additional assets
             (compressed circuit, matrices, plots, figures).
-        skip_validation: If True, skip SONATA circuit validation.
+        skip_validation: If True, skip SONATA circuit validation (e.g. when validation
+            runs asynchronously after registration).
+        include_visualization: When generating additional assets, also produce plots
+            and overview / sim-designer images. Set False for post-validation jobs that
+            only need compressed + connectivity matrices.
+        lifecycle_status: Optional lifecycle status (e.g. ``"draft"`` for async
+            validation). When omitted, entitycore's default applies.
         overview_image_path: Path to a pre-existing overview image file (.png or .webp).
             If provided, generation is skipped and this file is registered directly (optional).
         sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
             If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform a dry run without registering anything.
+        neurodamus_validation: If True, register as ``draft``, skip the light
+            bluepysnap SONATA check, then run MOD compile / HOC / snap validation
+            in-process and set lifecycle to ``active`` or ``disqualified``.
 
     Returns:
-        The registered circuit entity, or None if dry_run is True.
+        The registered circuit entity, or the unregistered ``Circuit`` model
+        (with computed size/properties) when ``dry_run`` is True.
     """
+    if neurodamus_validation:
+        skip_validation = True
+        lifecycle_status = "draft"
+
     # Validate that a license is provided for public circuits
     if authorized_public and license is None:
         msg = "A license is required when registering a public circuit (authorized_public=True)."
         raise ValueError(msg)
-
     # Validate species consistency
     if (
         brain_region.species is not None
@@ -215,30 +244,39 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         f"has_electrical_cell_models={has_electrical_cell_models}, has_spines={has_spines}"
     )
 
+    # Resolve parent and derive root when not explicitly provided
+    if parent is not None and isinstance(parent, UUID):
+        parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
+    if root is None and parent is not None:
+        root = parent.root_circuit_id or parent.id
+
     # Build circuit model
-    circuit_model = models.Circuit(
-        name=name,
-        description=description,
-        subject=subject,
-        brain_region=brain_region,
-        license=license,
-        number_neurons=number_neurons,
-        number_synapses=number_synapses,
-        number_connections=number_connections,
-        has_morphologies=has_morphologies,
-        has_point_neurons=has_point_neurons,
-        has_electrical_cell_models=has_electrical_cell_models,
-        has_spines=has_spines,
-        scale=scale,
-        build_category=build_category,
-        target_simulator=target_simulator,
-        root_circuit_id=root.id if isinstance(root, models.Circuit) else root,
-        atlas_id=atlas.id if atlas is not None else None,
-        contact_email=contact_email,
-        published_in=published_in,
-        experiment_date=experiment_date,
-        authorized_public=authorized_public,
-    )
+    circuit_kwargs: dict = {
+        "name": name,
+        "description": description,
+        "subject": subject,
+        "brain_region": brain_region,
+        "license": license,
+        "number_neurons": number_neurons,
+        "number_synapses": number_synapses,
+        "number_connections": number_connections,
+        "has_morphologies": has_morphologies,
+        "has_point_neurons": has_point_neurons,
+        "has_electrical_cell_models": has_electrical_cell_models,
+        "has_spines": has_spines,
+        "scale": scale,
+        "build_category": build_category,
+        "target_simulator": target_simulator,
+        "root_circuit_id": root.id if isinstance(root, models.Circuit) else root,
+        "atlas_id": atlas.id if atlas is not None else None,
+        "contact_email": contact_email,
+        "published_in": published_in,
+        "experiment_date": experiment_date,
+        "authorized_public": authorized_public,
+    }
+    if lifecycle_status is not None:
+        circuit_kwargs["lifecycle_status"] = lifecycle_status
+    circuit_model = models.Circuit(**circuit_kwargs)
 
     # Register circuit entity
     if dry_run:
@@ -250,8 +288,6 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
 
     # Derivation link
     if parent is not None:
-        if isinstance(parent, UUID):
-            parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
         register_derivation(
             client=client,
             from_entity=parent,
@@ -298,8 +334,24 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             sim_designer_image_path=sim_designer_image_path,
             client=client,
             circuit_entity=registered_circuit,
+            include_visualization=include_visualization,
         )
 
+    if neurodamus_validation and not dry_run and registered_circuit is not None:
+        result = run_circuit_validation(
+            db_client=client,
+            circuit_id=registered_circuit.id,
+        )
+        if not result["valid"]:
+            errors = "; ".join(result["errors"]) or "unknown validation error"
+            msg = f"Neurodamus validation failed for circuit '{name}': {errors}"
+            raise ValueError(msg)
+        registered_circuit = client.get_entity(
+            entity_id=registered_circuit.id, entity_type=models.Circuit
+        )
+
+    if dry_run:
+        return circuit_model
     return registered_circuit
 
 
@@ -311,9 +363,11 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
+    include_visualization: bool = True,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
+    neurodamus_validation: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit from user-provided metadata (resolving all entities).
 
@@ -335,14 +389,19 @@ def register_circuit_from_metadata(
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
         authorized_public: Whether to make the circuit publicly accessible.
+        include_visualization: When generating additional assets, also produce plots
+            and overview / sim-designer images. Defaults to True.
         overview_image_path: Path to a pre-existing overview image file (.png or .webp).
             If provided, generation is skipped and this file is registered directly (optional).
         sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
             If provided, generation is skipped and this file is registered directly (optional).
         dry_run: If True, perform validation and dry run without registering.
+        neurodamus_validation: If True, run MOD compile / HOC / snap validation
+            in-process after registration (no launch-system job).
 
     Returns:
-        The registered circuit entity, or None if dry_run is True.
+        The registered circuit entity, or the unregistered ``Circuit`` model
+        when ``dry_run`` is True.
     """
     # Validate and resolve all dependencies
     check_if_circuit_exists(client, circuit_metadata)
@@ -386,7 +445,9 @@ def register_circuit_from_metadata(
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
+        include_visualization=include_visualization,
         overview_image_path=overview_image_path,
         sim_designer_image_path=sim_designer_image_path,
         dry_run=dry_run,
+        neurodamus_validation=neurodamus_validation,
     )
