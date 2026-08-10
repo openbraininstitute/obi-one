@@ -54,6 +54,7 @@ class TestSubmitCircuitJobs:
                 project_id=project_id,
                 virtual_lab_id=virtual_lab_id,
                 api_url="http://localhost:8100",
+                compute_cell="cell_a",
                 obi_one_repo="https://github.com/org/repo.git",
                 app_version="1.2.3-dev",
                 force=True,
@@ -64,6 +65,7 @@ class TestSubmitCircuitJobs:
         job = ls_client.post.call_args[1]["json"]
         assert job["code"]["ref"] == "tag:1.2.3"
         assert job["resources"]["image_type"] == "python_3_12_openmpi5_neuron9_neurodamus"
+        assert job["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job["inputs"]
         assert "--force true" in job["inputs"]
         assert job["callbacks"][0]["config"]["url"].endswith(
@@ -83,6 +85,7 @@ class TestSubmitCircuitJobs:
                 circuit_id=circuit_id,
                 project_id=project_id,
                 virtual_lab_id=virtual_lab_id,
+                compute_cell="cell_b",
                 obi_one_repo="https://github.com/org/repo.git",
                 app_version="9.9.9",
                 force=False,
@@ -93,6 +96,7 @@ class TestSubmitCircuitJobs:
         job = ls_client.post.call_args[1]["json"]
         assert job["code"]["ref"] == "tag:9.9.9"
         assert "launch_circuit_asset_generation" in job["code"]["path"]
+        assert job["resources"]["compute_cell"] == "cell_b"
         assert f"--circuit_id {circuit_id}" in job["inputs"]
         assert "--force false" in job["inputs"]
         assert job["callbacks"] == []
