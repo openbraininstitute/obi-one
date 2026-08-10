@@ -143,6 +143,13 @@ def test_spike_replay(tmp_path):
     npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
     assert spikes[1] == spikes[2]
 
+    # set *target* node_set to only include 0, this means no spikes should be delivered
+    config["inputs"]["replay"]["node_set"] = "0"
+    spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    for i in range(3):
+        assert not spikes[i].any()
+
 
 def test_poisson(tmp_path):
     config = {
@@ -203,14 +210,14 @@ def test_poisson_compartment_set_unsupported(tmp_path):
 
 def test_current_stim(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 2, "dt": 0.01, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3000000000,
                 "delay": 0.1,
                 "duration": 4,
                 "node_set": "0",
@@ -235,7 +242,7 @@ def test_current_stim_groupby(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3000000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -253,7 +260,7 @@ def test_current_stim_groupby(tmp_path):
             "linear0": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1500000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -261,7 +268,7 @@ def test_current_stim_groupby(tmp_path):
             "linear1": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1500000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -515,7 +522,7 @@ def test_connection_override_mid_simulation(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 12000,
+                "amp_start": 12000000000,
                 "delay": 0,
                 "duration": 4,
                 "node_set": "0",
