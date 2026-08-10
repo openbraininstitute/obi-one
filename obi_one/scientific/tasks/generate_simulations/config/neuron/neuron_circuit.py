@@ -5,8 +5,10 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
+    DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     CircuitFromID,
@@ -28,6 +30,9 @@ from obi_one.scientific.unions_and_references.distributions import (
 from obi_one.scientific.unions_and_references.manipulations import (
     SynapticManipulationsReference,
     SynapticManipulationsUnion,
+)
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
@@ -52,15 +57,13 @@ CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="t
 class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     """CircuitSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "CircuitSimulationSingleConfig"
-
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.DISTRIBUTIONS_BLOCK_GROUP,
-            BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
@@ -76,6 +79,11 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             ),
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
             AllDistributionsReference.__name__: DEFAULT_DISTRIBUTION_NAME,
+            MorphologyLocationsReference.__name__: DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
+        },
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),
         },
     }
 
@@ -166,7 +174,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )

@@ -117,7 +117,7 @@ AtomicAllNeuronSetUnion = Annotated[
 class BaseNeuronSetReference(BlockReference, abc.ABC):
     @property
     def block(self) -> NeuronSet:
-        """Returns the block associated with this reference."""
+        """The block associated with this reference."""
         if isinstance(super().block, NeuronSet):
             return cast("NeuronSet", super().block)
         msg = f"Expected block of type NeuronSet, but got {type(super().block)}"
@@ -175,15 +175,15 @@ class NeuronSetReference(BlockReference):
 
     @property
     def block(self) -> NeuronSet:
-        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
+        raise ValueError(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
     @block.setter
-    def block(self, value: NeuronSet) -> None:  # noqa: ARG002, PLR6301
+    def block(self, value: NeuronSet) -> None:  # ruff: ignore[unused-method-argument, no-self-use]
         # The setter is invoked while deserializing legacy configs (the model validator
         # `fill_block_references_and_names` assigns resolved blocks to references). Raising here
         # ensures that loading any config containing a deprecated NeuronSetReference fails with a
         # clear migration message instead of a confusing "has no setter" AttributeError.
-        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
+        raise ValueError(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
 
 ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION = (

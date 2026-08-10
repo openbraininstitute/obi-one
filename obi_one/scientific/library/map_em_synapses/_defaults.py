@@ -50,7 +50,7 @@ SYNAPTOME_SONATA_CONFIG = {
 
 
 def default_node_spec_for(em_dataset: EMDataSetFromID, db_client: Client) -> dict:
-    node_specs = DEFAULT_NODE_SPECS[em_dataset._entity.name].copy()  # NOQA: SLF001  # ty:ignore[invalid-argument-type, unresolved-attribute]
+    node_specs = DEFAULT_NODE_SPECS[em_dataset._entity.name].copy()  # ruff: ignore[private-member-access]  # ty:ignore[invalid-argument-type, unresolved-attribute]
 
     resolution = em_dataset.viewer_resolution(db_client)
     node_specs["__position"]["resolution"] = {

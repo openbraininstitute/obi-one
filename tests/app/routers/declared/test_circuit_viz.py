@@ -78,7 +78,7 @@ def test_circuit_nodes(
     mock_download_circuit_config.return_value = {"config": "dummy"}
     mock_get_nodes.return_value = mock_nodes
 
-    response = client.get(f"/circuit/viz/{str(circuit_id)}/nodes")  # noqa: RUF010
+    response = client.get(f"/circuit/viz/{str(circuit_id)}/nodes")  # ruff: ignore[explicit-f-string-type-conversion]
 
     assert response.status_code == 200
     assert response.json() == mock_nodes

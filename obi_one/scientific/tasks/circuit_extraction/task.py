@@ -10,7 +10,6 @@ import bluepysnap as snap
 import bluepysnap.circuit_validation
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, PrivateAttr
 
 from obi_one.config import settings
@@ -20,6 +19,8 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.neuron_sets.specific import (
@@ -45,7 +46,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
 )
-from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
+from obi_one.utils import circuit as circuit_utils
 from obi_one.utils.benchmark import BenchmarkTracker
 
 if settings.circuit_extraction.benchmarking_enabled:
@@ -66,7 +67,6 @@ class BlockGroup(StrEnum):
 class CircuitExtractionScanConfig(InfoScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
     name: ClassVar[str] = "Circuit Extraction"
     description: ClassVar[str] = (
         "Extracts a sub-circuit from a SONATA circuit as defined by a neuron set. The output"
@@ -83,7 +83,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
     def default_neuron_set_reference(
         self,
     ) -> BiophysicalNeuronSetReference:
-        """Returns the default neuron set reference for the simulation."""
+        """The default neuron set reference for the simulation."""
         default_neuron_set_block_reference = BiophysicalNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )
@@ -97,7 +97,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
     def default_point_neuron_set_reference(
         self,
     ) -> PointNeuronSetReference:
-        """Returns the default point neuron set reference for the simulation."""
+        """The default point neuron set reference for the simulation."""
         ref = PointNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
         )
@@ -116,13 +116,6 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             PointNeuronSetReference.__name__: default_point_node_set_name,
         },
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.circuit_extraction__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_extraction__config_generation
-    )
 
     def input_entities(self, db_client: Client) -> list[models.Entity]:
         input_entities = []
@@ -282,11 +275,6 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
     that are required to simulate the extracted circuit.
     """
 
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.circuit_extraction__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_extraction__execution
-    )
-
 
 class CircuitExtractionTask(Task):
     config: CircuitExtractionSingleConfig
@@ -349,7 +337,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(  # noqa: C901, PLR0914, PLR0915
+    def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]

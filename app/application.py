@@ -18,10 +18,13 @@ from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
     circuit_properties,
+    circuit_registration,
     circuit_visualization,
     config_validation,
+    contributor,
     convert_morphology_to_registered_mesh,
     count_scan_coordinates,
+    electrical_cell_recording_properties,
     ephys_metrics,
     extracellular_locations,
     ion_channel_properties,
@@ -29,9 +32,12 @@ from app.endpoints import (
     mesh_validation,
     morphology_metrics,
     morphology_metrics_calculation,
+    morphology_section_types,
     morphology_validation,
     multi_values,
+    publication,
     scan_config,
+    subject,
     task,
     validate_electrophysiology_protocol_nwb,
 )
@@ -59,7 +65,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
-        http_client.close()  # noqa: ASYNC212
+        http_client.close()  # ruff: ignore[blocking-http-call-httpx-in-async-function]
         L.info("Stopping application")
 
 
@@ -168,20 +174,26 @@ async def version() -> dict:
 
 app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
+app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
 app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
+app.include_router(electrical_cell_recording_properties.router)
 app.include_router(ephys_metrics.router)
 app.include_router(extracellular_locations.router)
 app.include_router(ion_channel_properties.router)
 app.include_router(mesh_registration.router)
 app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)
+app.include_router(morphology_section_types.router)
 app.include_router(morphology_validation.router)
 app.include_router(morphology_metrics_calculation.router)
 app.include_router(multi_values.router)
 app.include_router(validate_electrophysiology_protocol_nwb.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
+app.include_router(subject.router)
 app.include_router(task.router)
+app.include_router(publication.router)
+app.include_router(contributor.router)

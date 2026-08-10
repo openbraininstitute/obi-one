@@ -9,9 +9,9 @@ from typing import Any
 class AuthErrorReason(StrEnum):
     """Authentication and authorization errors."""
 
-    AUTH_TOKEN_MISSING = "The authorization token is missing"  # noqa: S105
-    AUTH_TOKEN_INVALID = "The authorization token is invalid"  # noqa: S105
-    AUTH_TOKEN_EXPIRED = "The authorization token is expired"  # noqa: S105
+    AUTH_TOKEN_MISSING = "The authorization token is missing"  # ruff: ignore[hardcoded-password-string]
+    AUTH_TOKEN_INVALID = "The authorization token is invalid"  # ruff: ignore[hardcoded-password-string]
+    AUTH_TOKEN_EXPIRED = "The authorization token is expired"  # ruff: ignore[hardcoded-password-string]
     NOT_AUTHENTICATED_USER = "User not authenticated"
     NOT_AUTHORIZED_USER = "User not authorized"
     NOT_AUTHORIZED_PROJECT = "User not authorized for the given virtual-lab-id or project-id"
@@ -64,3 +64,28 @@ class ApiError(Exception):
             f"http_status_code={self.http_status_code} "
             f"details={self.details!r}"
         )
+
+
+def _as_details(message: str) -> list[dict[str, Any]]:
+    """Put the message in the same details shape as a pydantic validation error."""
+    return [{"type": "value_error", "loc": ["body"], "msg": message}]
+
+
+def invalid_config_error(message: str) -> ApiError:
+    """A request body that parsed but cannot be used."""
+    return ApiError(
+        message=message,
+        error_code=ApiErrorCode.INVALID_REQUEST,
+        http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        details=_as_details(message),
+    )
+
+
+def internal_error(message: str) -> ApiError:
+    """A server-side failure."""
+    return ApiError(
+        message=message,
+        error_code=ApiErrorCode.INTERNAL_ERROR,
+        http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+        details=_as_details(message),
+    )

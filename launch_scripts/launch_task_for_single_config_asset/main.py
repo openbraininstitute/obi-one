@@ -10,7 +10,7 @@ from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
 
 from obi_one.core.run_tasks import run_task_type
-from obi_one.utils.db_sdk import update_activity_status, finalize_activity
+from obi_one.db_sdk.db_sdk import update_activity_status, finalize_activity
 
 L = logging.getLogger(__name__)
 

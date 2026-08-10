@@ -7,11 +7,10 @@
 
 import copy
 import json
+import math
 from pathlib import Path
 
 import bluepysnap
-import brian2
-import brian2.devices
 import brian2.units
 import libsonata
 import numpy as np
@@ -41,46 +40,39 @@ def test_get_close_spikes(ids, times, expected):
 
 
 def _run_simulation(
-    tmp_path, config, *, plot_voltage=False
+    tmp_path, config, *, plot_voltage: bool = False
 ) -> tuple[bluepysnap.Simulation, test_module.Brian2Network]:
+    if plot_voltage:
+        if "reports" in config:
+            reports = config["reports"]
+        else:
+            reports = config["reports"] = {}
+
+        reports["test_plot"] = {
+            "sections": "soma",
+            "type": "compartment",
+            "variable_name": "v",
+            "unit": "mV",
+            "dt": config["run"]["dt"],
+            "start_time": 0,
+            "end_time": config["run"]["tstop"],
+        }
+
     path = tmp_path / "simulation_config.json"
     with path.open("w") as fd:
         json.dump(config, fd)
 
-    simulation = bluepysnap.Simulation(path)
-    brian2.start_scope()
-    brian2.devices.reinit_and_delete()
+    net = test_module.run_sonata_brian2_trial(path)
 
-    net = test_module._build_brian2_network(simulation)
+    sim_config = bluepysnap.Simulation(path)
 
     if plot_voltage:
-        statemon = brian2.StateMonitor(net.neurons[0], "v", record=True)
-        net.inputs.append(statemon)
+        import matplotlib.pyplot as plt  # ruff: ignore[import-outside-top-level]
 
-    network = brian2.Network(
-        net.neurons,
-        net.synapses,
-        net.spike_monitor,
-        *net.inputs,
-        *([] if net.state_monitor is None else [net.state_monitor]),
-    )
-    network.run(duration=simulation.run.tstop * brian2.units.ms)
-
-    test_module._write_reports(simulation, net.spike_monitor, net.state_monitor)
-
-    if plot_voltage:
-        import matplotlib.pyplot as plt  # noqa: PLC0415
-
-        plt.figure(figsize=(9, 4))
-        plt.plot(statemon.t / brian2.units.ms, statemon.v[0] / brian2.units.mV, c="r")
-        plt.plot(statemon.t / brian2.units.ms, statemon.v[1] / brian2.units.mV, c="g")
-        plt.plot(statemon.t / brian2.units.ms, statemon.v[2] / brian2.units.mV, c="b")
-        # plot(spikemon.t/ms, spikemon.v/mV, 'ob')
-        plt.xlabel("Time (ms)")
-        plt.ylabel("v (mV)")
+        sim_config.reports["test_plot"].filter().trace(plot_type="all")
         plt.savefig("test.png")
 
-    return simulation, net
+    return sim_config, net
 
 
 def test_no_stim_or_report(tmp_path):
@@ -96,12 +88,13 @@ def test_no_stim_or_report(tmp_path):
 
 
 def test_spike_replay(tmp_path):
-    timestamps = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1)
+    timestamps = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1])
+    node_ids = np.array([0] * len(timestamps))
     path = test_module._write_spikes(
         tmp_path / "spikes.h5",
         population_name="drosophila",
         timestamps=timestamps,
-        node_ids=tuple([0] * len(timestamps)),
+        node_ids=node_ids,
     )
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
@@ -150,10 +143,17 @@ def test_spike_replay(tmp_path):
     npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
     assert spikes[1] == spikes[2]
 
+    # set *target* node_set to only include 0, this means no spikes should be delivered
+    config["inputs"]["replay"]["node_set"] = "0"
+    spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    for i in range(3):
+        assert not spikes[i].any()
+
 
 def test_poisson(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -161,28 +161,63 @@ def test_poisson(tmp_path):
                 "input_type": "spikes",
                 "module": "poisson",
                 "node_set": "0",
-                "delay": 0,
+                "delay": 0.0,
                 "duration": 1000,
-                "rate": 150,
-                "weight": 68.75,
+                "rate": 1000,
+                "weight": 1000,
             }
         },
     }
-    _, net = _run_simulation(tmp_path, config)
-    assert len(net.inputs) == 1
-    assert isinstance(net.inputs[0], brian2.PoissonInput)
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 1
+    assert spikes[0] == [0.2] * brian2.units.ms
+
+    # delay the onset of poisson stim
+    config["inputs"]["poisson"]["delay"] = 0.1
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 1
+    assert spikes[0] == [0.2 + 0.1] * brian2.units.ms
+
+    # have duration too short to spike, delay reminas 0.1
+    config["inputs"]["poisson"]["duration"] = 0.1
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert len(spikes[0]) == 0
+
+
+def test_poisson_compartment_set_unsupported(tmp_path):
+    config = {
+        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "poisson": {
+                "input_type": "spikes",
+                "module": "poisson",
+                "delay": 0.0,
+                "duration": 1000,
+                "rate": 100,
+                "weight": 50,
+                "compartment_set": "dendrite",
+            }
+        },
+    }
+    with pytest.raises(RuntimeError, match="compartment_set"):
+        _run_simulation(tmp_path, config)
 
 
 def test_current_stim(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 2, "dt": 0.01, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3000000000,
                 "delay": 0.1,
                 "duration": 4,
                 "node_set": "0",
@@ -207,7 +242,7 @@ def test_current_stim_groupby(tmp_path):
             "linear": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 3000,
+                "amp_start": 3000000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -225,7 +260,7 @@ def test_current_stim_groupby(tmp_path):
             "linear0": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1500000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -233,7 +268,7 @@ def test_current_stim_groupby(tmp_path):
             "linear1": {
                 "input_type": "current_clamp",
                 "module": "linear",
-                "amp_start": 1500,
+                "amp_start": 1500000000,
                 "node_set": "0",
                 "delay": 0,
                 "duration": 4,
@@ -398,7 +433,7 @@ def test_current_stim_report(tmp_path):
 
 
 def test_current_stim_report_failure(tmp_path):
-    config = {
+    config: dict = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -433,3 +468,107 @@ def test_current_stim_report_failure(tmp_path):
     c = copy.deepcopy(config)
     c["reports"]["soma0"]["enabled"] = False
     _run_simulation(tmp_path, c)
+
+
+def test_connection_override(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            # will cause spikes in `0`, which will make 1 & 2 spike, normally...
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 12000,
+                "delay": 0,
+                "duration": 4,
+                "node_set": "0",
+            },
+        },
+        "connection_overrides": [
+            # ...but disconnect 0 from other neurons
+            {"name": "Disconnect0", "source": "0", "target": "All", "delay": 0.0, "weight": 0.0}
+        ],
+    }
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert not spikes[1].any()
+    assert not spikes[2].any()
+
+    config["connection_overrides"] = [
+        {
+            # ... or unless the synapse delay is too large
+            "name": "ChangeSynapseDelay",
+            "source": "0",
+            "target": "All",
+            "delay": 0.0,
+            "synapse_delay_override": 2.0,
+        }
+    ]
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert not spikes[1].any()
+    assert not spikes[2].any()
+
+
+def test_connection_override_mid_simulation(tmp_path):
+    delay = 1.5
+    config = {
+        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 12000000000,
+                "delay": 0,
+                "duration": 4,
+                "node_set": "0",
+            },
+        },
+        "connection_overrides": [
+            {
+                "name": "DelayedDisconnect",
+                "source": "0",
+                "target": "All",
+                "delay": delay,
+                "weight": 0.0,
+            }
+        ],
+    }
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+
+    # Neurons 1&2 should spike BEFORE the override
+    delay *= brian2.units.ms
+    assert any(t < delay for t in spikes[1])
+    assert any(t < delay for t in spikes[2])
+
+    # But no spikes AFTER the override
+    assert not any(t > delay for t in spikes[1])
+    assert not any(t > delay for t in spikes[2])
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("spont_minis", 1.0),
+        ("synapse_configure", "James"),
+        ("modoverride", "Bond"),
+        ("neuromodulation_dtc", math.pi),
+        ("neuromodulation_strength", math.e),
+    ],
+)
+def test_connection_override_unsupported(tmp_path, field, value):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "connection_overrides": [
+            {"name": "Bad", "source": "0", "target": "All", "delay": 0.0, field: value}
+        ],
+    }
+    with pytest.raises(RuntimeError, match=f"connection_overrides::{field} is not supported"):
+        _run_simulation(tmp_path, config)

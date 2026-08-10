@@ -18,7 +18,6 @@ L = logging.getLogger(__name__)
 
 
 class MorphologyMetricsScanConfig(ScanConfig):
-    single_coord_class_name: ClassVar[str] = "MorphologyMetricsSingleConfig"
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
@@ -41,8 +40,8 @@ class MorphologyMetricsTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> MorphologyMetricsOutput:
         try:
             L.info("Running Morphology Metrics...")

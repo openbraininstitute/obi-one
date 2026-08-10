@@ -504,7 +504,7 @@ class CircuitMetricsOutput(BaseModel, Mapping):
         return self.number_of_biophys_node_populations + self.number_of_virtual_node_populations
 
 
-def get_circuit_metrics(  # noqa: PLR0914, C901
+def get_circuit_metrics(  # ruff: ignore[too-many-locals, complex-structure]
     circuit_id: str,
     db_client: Client,
     level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None = None,

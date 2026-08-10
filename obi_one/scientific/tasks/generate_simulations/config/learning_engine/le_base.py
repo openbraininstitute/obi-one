@@ -24,7 +24,7 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
 
     @property
     def default_neuron_set_reference(self) -> PointNeuronSetReference:
-        """Returns the default neuron set reference for the simulation."""
+        """The default neuron set reference for the simulation."""
         default_neuron_set_block_reference = PointNeuronSetReference(
             block_dict_name="neuron_sets", block_name=self.default_node_set_name
         )

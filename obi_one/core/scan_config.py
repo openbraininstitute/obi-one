@@ -18,10 +18,10 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
-from obi_one.core.registry import block_ref_registry
+from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -43,13 +43,10 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     name: ClassVar[str] = "Add a name class' name variable"
     description: ClassVar[str] = """Add a description to the class' description variable"""
-    single_coord_class_name: ClassVar[str] = ""
 
     _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 
     _campaign: Entity = None  # ty:ignore[invalid-assignment]
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None  # ty:ignore[invalid-assignment]
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None  # ty:ignore[invalid-assignment]
 
     @property
     def campaign(
@@ -57,26 +54,32 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     ) -> entitysdk.models.Entity | None:  # ty:ignore[possibly-missing-submodule]
         return self._campaign
 
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: PLR6301, ARG002
+    def input_entities(self, db_client: Client) -> list[Entity]:  # ruff: ignore[no-self-use, unused-method-argument]
         return []
 
     @property
-    def campaign_name(self) -> None:
+    def campaign_name(self) -> str:
         msg = "You must define a campaign_name property for your ScanConfig subclass."
         raise NotImplementedError(msg)
 
     @property
-    def campaign_description(self) -> None:
+    def campaign_description(self) -> str:
         msg = "You must define a campaign_description property for your ScanConfig subclass."
         raise NotImplementedError(msg)
 
     @property
-    def campaign_task_config_type(self) -> None:
-        return self._campaign_task_config_type  # ty:ignore[invalid-return-type]
+    def campaign_task_config_type(self) -> TaskConfigType | None:
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        return registration.campaign_task_config_type if registration is not None else None
 
     @property
-    def campaign_generation_task_activity_type(self) -> None:
-        return self._campaign_generation_task_activity_type  # ty:ignore[invalid-return-type]
+    def campaign_generation_task_activity_type(self) -> TaskActivityType | None:
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        return (
+            registration.campaign_generation_task_activity_type
+            if registration is not None
+            else None
+        )
 
     def create_campaign_entity_with_config(
         self,
@@ -96,7 +99,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             multiple_value_parameters_dictionary={
                 "scan_parameters": multiple_value_parameters_dictionary
             },
-            input_entities=self.input_entities(db_client=db_client),
+            input_entities=self.input_entities(db_client=db_client),  # ty:ignore[invalid-argument-type]
             task_config_file_path=output_root / SCAN_CONFIG_FILENAME,
         )
 
@@ -118,7 +121,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             client=db_client,
             activity_type=self.campaign_generation_task_activity_type,
             used=[self._campaign],
-            generated=generated,
+            generated=generated,  # ty:ignore[invalid-argument-type]
             activity_status=ActivityStatus.done,
             start_time=time_now,
             end_time=time_now,
@@ -134,7 +137,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def block_mapping(self) -> dict:
-        """Returns a mapping of block class names to block_dict_name and reference_type."""
+        """Mapping of block class names to block_dict_name and reference_type."""
         if self._block_mapping is None:
             # Get type annotations of the instance's class
             annotations = get_all_annotations(self.__class__)
@@ -232,7 +235,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     f"the block you are referencing, or should be an empty string to "
                     f"reference a root level block."
                 )
-                raise KeyError(msg) from None
+                # ValueError, not KeyError: only ValueError/AssertionError are folded into a
+                # ValidationError by the model validator this runs inside.
+                raise ValueError(msg) from None
 
         elif not block_reference.block_dict_name and block_reference.block_name:
             # If the block_dict_name is empty, we assume the block_name
@@ -263,17 +268,28 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
         return self
 
+    @property
+    def single_config_class(self) -> type[OBIBaseModel]:
+        """The SingleConfig class this ScanConfig expands into, from TASK_MAP."""
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        if registration is None:
+            msg = (
+                f"'{type(self).__name__}' has no entry in TASK_MAP, so the SingleConfig "
+                "class it expands into cannot be resolved."
+            )
+            raise OBIONEError(msg)
+        return registration.single_config_cls
+
     def cast_to_single_coord(self) -> OBIBaseModel:
         """Cast the form to a single coordinate object."""
-        module = __import__(self.__module__)
-        class_to_cast_to = getattr(module, self.single_coord_class_name)
+        class_to_cast_to = self.single_config_class
         single_coord = class_to_cast_to.model_construct(**self.__dict__)
-        single_coord.type = self.single_coord_class_name
+        single_coord.type = class_to_cast_to.__name__
         return single_coord
 
     @property
     def single_coord_scan_default_subpath(self) -> str:
-        return self.single_coord_class_name + "/"
+        return self.single_config_class.__name__ + "/"
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
