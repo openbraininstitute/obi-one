@@ -1,8 +1,15 @@
 """Blocks for the 02_emodel_optimization stage."""
 
-from typing import Any, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt
+from pydantic import (
+    Discriminator,
+    Field,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+    model_validator,
+)
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
@@ -10,6 +17,138 @@ from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFro
 from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
+
+
+class DistanceDependentDistribution(Block):
+    """A BluePyEModel distance-dependent parameter transformation."""
+
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    function: str | None = Field(
+        default=None,
+        title="Distance function",
+        description=(
+            "Expression using {value} and {distance}; custom expressions may also use "
+            "placeholders defined by the corresponding parameter configuration."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    soma_ref_location: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        title="Soma reference location",
+        description="Reference location of the soma along the morphology.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+
+    @model_validator(mode="after")
+    def validate_function(self) -> "DistanceDependentDistribution":
+        """Require custom functions to expose the value and distance inputs."""
+        if self.function is not None and "{value}" not in self.function:
+            msg = "Distance-dependent functions must contain the {value} placeholder."
+            raise ValueError(msg)
+        if self.function is not None and "{distance}" not in self.function:
+            msg = "Distance-dependent functions must contain the {distance} placeholder."
+            raise ValueError(msg)
+        return self
+
+    def to_emc_dict(self, name: str | None = None) -> dict[str, str | float | None]:
+        """Convert the block to the legacy EMC distribution representation."""
+        return {
+            "name": name or self.name,
+            "function": self.function,
+            "soma_ref_location": self.soma_ref_location,
+        }
+
+
+class UniformDistanceDependentDistribution(DistanceDependentDistribution):
+    """Default uniform distance distribution used by EMC files."""
+
+    name: str = Field(default="uniform", frozen=True)
+    function: None = Field(default=None, frozen=True)
+
+
+class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
+    """Standard exponential distance distribution used by SSCX and thalamus EMC files."""
+
+    name: str = Field(default="exp", frozen=True)
+    function: str = Field(
+        default="(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
+        frozen=True,
+    )
+
+
+class StepDistanceDependentDistribution(DistanceDependentDistribution):
+    """Step distance distribution used by detailed SSCX models."""
+
+    name: str = Field(default="step", frozen=True)
+    function: str = Field(
+        default="{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+        "({distance} < {step_end})))",
+        frozen=True,
+    )
+
+
+class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistribution):
+    """Exponential dendritic sodium distance distribution used by hippocampus models."""
+
+    name: str = Field(default="exp_na_dend", frozen=True)
+    function: str = Field(default="math.exp((-{distance})/50)*{value}", frozen=True)
+
+
+class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
+    """Linear h-current apical distance distribution used by hippocampus models."""
+
+    name: str = Field(default="linear_hd_apic", frozen=True)
+    function: str = Field(default="(1. + 3./100. * {distance})*{value}", frozen=True)
+
+
+class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution):
+    """Sigmoid potassium A-current apical distance distribution."""
+
+    name: str = Field(default="sigmoid_kad_apic", frozen=True)
+    function: str = Field(
+        default="(15./(1. + math.exp((300-{distance})/50)))*{value}",
+        frozen=True,
+    )
+
+
+class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution):
+    """Linear passive reversal-potential apical distance distribution."""
+
+    name: str = Field(default="linear_e_pas_apic", frozen=True)
+    function: str = Field(default="({value}-5*{distance}/150)", frozen=True)
+
+
+class CustomDistanceDependentDistribution(DistanceDependentDistribution):
+    """User-defined distance-dependent distribution for the optimization workflow."""
+
+    title: ClassVar[str] = "Custom Distance-Dependent Distribution"
+    function: str = Field(
+        min_length=1,
+        title="Custom distance function",
+        description="Python expression containing at least {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
+
+DistanceDependentDistributionUnion = Annotated[
+    UniformDistanceDependentDistribution
+    | ExponentialDistanceDependentDistribution
+    | StepDistanceDependentDistribution
+    | ExponentialNaDendDistanceDependentDistribution
+    | LinearHDApicDistanceDependentDistribution
+    | SigmoidKADApicDistanceDependentDistribution
+    | LinearEPasApicDistanceDependentDistribution
+    | CustomDistanceDependentDistribution,
+    Discriminator("type"),
+]
 
 
 class OptimizationInitialize(Block):
@@ -51,6 +190,10 @@ class OptimizationInitialize(Block):
     )
 
 
+def _default_distance_dependent_distributions() -> dict[str, UniformDistanceDependentDistribution]:
+    return {"uniform": UniformDistanceDependentDistribution()}
+
+
 class ParametersSelection(Block):
     """Parameters selection — ion channel models for dynamic builder."""
 
@@ -63,6 +206,19 @@ class ParametersSelection(Block):
             " models."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
+    )
+
+    distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion] = Field(
+        default_factory=_default_distance_dependent_distributions,
+        title="Distance-dependent distributions",
+        description=(
+            "Distance-dependent parameter transformations used only by emodel optimization. "
+            "Add a Custom Distance-Dependent Distribution to define a new expression."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.SINGULAR_NAME: "Distance-Dependent Distribution",
+        },
     )
 
 
