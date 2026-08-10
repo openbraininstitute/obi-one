@@ -174,16 +174,15 @@ class TestGeneratedConfig:
 
 
 class TestSpikeReplay:
-    """A replayed spike train drives the network through the circuit's own connectivity.
+    """A replayed spike train drives the neurons its target names.
 
-    ``_get_spike_replay`` materialises the input's ``node_set`` against the *spike file's*
-    population and uses it to mask which spikes are replayed. The generation task writes the
-    stimulus's target neuron set into that field, so on Brian2 the target reads as a filter on
-    the source spikes: a target that excludes the source silently replays nothing.
+    ``_get_spike_replay`` keeps the edges leading out of the spiking neurons and into the
+    input's ``node_set``, which the generation task fills with the stimulus's target neuron set.
+    So the target selects who *receives* the replay, and restricting it narrows delivery.
     """
 
     @staticmethod
-    def _run_replay(tmp_path: Path, *, target_excludes_source: bool) -> dict[int, int]:
+    def _run_replay(tmp_path: Path, *, target: list[int] | None) -> dict[int, int]:
         sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
         sim_conf.set(obi.Info(campaign_name="T", campaign_description="T"), name="info")
 
@@ -191,10 +190,14 @@ class TestSpikeReplay:
             population="drosophila", neuron_ids=obi.NamedTuple(name="source", elements=[0])
         )
         sim_conf.add(source, name="Neuron0")
-        others = obi.PointPopulationIDNeuronSet(
-            population="drosophila", neuron_ids=obi.NamedTuple(name="others", elements=[1, 2])
-        )
-        sim_conf.add(others, name="Neurons12")
+
+        target_ref = None
+        if target is not None:
+            targeted = obi.PointPopulationIDNeuronSet(
+                population="drosophila", neuron_ids=obi.NamedTuple(name="target", elements=target)
+            )
+            sim_conf.add(targeted, name="Targeted")
+            target_ref = targeted.ref
 
         # Twelve spikes a tenth of a millisecond apart: enough to push the postsynaptic
         # neurons over threshold before the membrane potential decays back.
@@ -203,7 +206,7 @@ class TestSpikeReplay:
         sim_conf.add(
             obi.FullySynchronousSpikeStimulus(
                 source_neuron_set=source.ref,
-                targeted_neuron_set=others.ref if target_excludes_source else None,
+                targeted_neuron_set=target_ref,
                 timestamps=ticks.ref,
             ),
             name="Replay",
@@ -229,17 +232,19 @@ class TestSpikeReplay:
         )
         return {i: len(times) for i, times in net.spike_monitor.spike_trains().items()}
 
-    def test_replay_from_one_neuron_drives_the_rest_of_the_circuit(self, tmp_path):
-        spikes = self._run_replay(tmp_path, target_excludes_source=False)
+    def test_an_untargeted_replay_reaches_everything_the_source_projects_onto(self, tmp_path):
+        spikes = self._run_replay(tmp_path, target=None)
 
-        # Neuron 0's replayed spikes propagate to the neurons it projects onto.
+        # No target means every point neuron, so both of neuron 0's postsynaptic partners fire.
         assert spikes[1] > 0
         assert spikes[2] > 0
 
-    def test_a_target_excluding_the_source_replays_nothing(self, tmp_path):
-        spikes = self._run_replay(tmp_path, target_excludes_source=True)
+    def test_a_restricted_target_narrows_delivery_to_that_neuron_set(self, tmp_path):
+        spikes = self._run_replay(tmp_path, target=[1])
 
-        assert sum(spikes.values()) == 0
+        # Only the edges into neuron 1 survive, so neuron 2 never hears the replay.
+        assert spikes[1] > 0
+        assert spikes[2] == 0
 
 
 class TestUntargetedBlocks:

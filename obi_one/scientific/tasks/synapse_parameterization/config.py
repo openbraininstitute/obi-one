@@ -49,7 +49,6 @@ class SynapseParameterizationScanConfig(ScanConfig):
         "Generates a physiological parameterization of an anatomical circuit or replaces an"
         " existing parameterization."
     )
-    single_coord_class_name: ClassVar[str] = "SynapseParameterizationSingleConfig"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -141,4 +140,4 @@ class SynapseParameterizationScanConfig(ScanConfig):
 
 
 class SynapseParameterizationSingleConfig(SynapseParameterizationScanConfig, SingleConfigMixin):
-    pass
+    """Single-coordinate synapse parameterization configuration."""

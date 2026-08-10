@@ -204,8 +204,9 @@ def test_execute_tracked_registers_and_updates_activity(
     mock_register.assert_called_once()
     call_kw = mock_register.call_args[1]
     assert call_kw["client"] == db_client
-    assert call_kw["simulation_results"] == sim_results
-    assert call_kw["simulation_metadata"].simulation_id == config.single_entity.id
+    assert call_kw["spike_report_file"] == sim_results.spike_report_file
+    assert call_kw["voltage_report_files"] == sim_results.voltage_report_files
+    assert call_kw["simulation_id"] == config.single_entity.id
     db_client.update_entity.assert_called_once_with(
         entity_id="act-456",
         entity_type=test_module.IonChannelModelSimulationExecutionTask.activity_type,

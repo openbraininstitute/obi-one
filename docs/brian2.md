@@ -44,21 +44,16 @@ what the runner can execute.
 The current injections are played into the neurons as a `TimedArray` and summed per target
 neuron set. `Brian2DirectPoissonStimulus` instead kicks the membrane potential directly, bypassing
 the circuit's synapses. The spike stimuli generate a spike file, which the runner replays through
-a `SpikeGeneratorGroup` wired with the circuit's *own* connectivity, so replayed spikes propagate
-to whatever the source neurons project onto.
+a `SpikeGeneratorGroup` wired with the circuit's *own* connectivity.
+
+A spike stimulus's source neuron set says whose spikes are generated and replayed, and its target
+says who receives them: the runner keeps the edges leading out of the spiking neurons and into the
+target, so restricting the target narrows delivery without changing the spike trains. An unset
+target covers every point neuron, delivering to everything the source projects onto.
 
 Stimuli that scale with a cell's threshold current (the relative variants), noise, Ornstein-
 Uhlenbeck, electric field and voltage clamp modules have no Brian2 counterpart and are not
 offered.
-
-!!! warning "A spike stimulus's target reads as a filter on its source"
-
-    `_get_spike_replay` materialises the input's `node_set` against the *spike file's* population
-    and uses it to mask which spikes are replayed. The generation task writes the stimulus's
-    **target** neuron set into that field, so on Brian2 the target behaves as a filter on the
-    source spikes. Leave the target unset (it then covers every point neuron and filters nothing),
-    or make sure it contains the source neuron set — a target that excludes the source replays
-    nothing at all, silently.
 
 Current amplitudes are nanoamps, as the blocks and SONATA's `current_clamp` inputs both describe
 them. How much depolarisation that buys depends on the model's membrane resistance: against the

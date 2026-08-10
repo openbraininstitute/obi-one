@@ -36,7 +36,6 @@ class MorphologyDecontainerizationScanConfig(ScanConfig):
                to the output location where all operations take place.
     """
 
-    single_coord_class_name: ClassVar[str] = "MorphologyDecontainerizationSingleConfig"
     name: ClassVar[str] = "Morphology Decontainerization"
     description: ClassVar[str] = (
         "Creates a circuit with individual morphology files instead of containerized morphologies"

@@ -23,7 +23,6 @@ from obi_one.scientific.library.ephys_extraction import (
 class ElectrophysiologyMetricsScanConfig(ScanConfig):
     """ScanConfig for extracting electrophysiological metrics from a trace."""
 
-    single_coord_class_name: ClassVar[str] = "ElectrophysiologyMetricsSingleConfig"
     name: ClassVar[str] = "Electrophysiology Metrics"
     description: ClassVar[str] = "Calculates ephys metrics for a given trace."
 
