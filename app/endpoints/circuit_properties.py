@@ -349,7 +349,7 @@ def neuron_set_node_ids(
 @router.post(
     "/circuit-neuronal-manipulation-properties-by-neuron-set",
     summary="Circuit neuronal manipulation properties by neuron set",
-    description="Returns mechanism variables for neuronal manipulation blocks "
+    description="Returns intersection of mechanism variables for neuronal manipulation blocks "
     "for a Circuit entity, resolved by neuron set. "
     "MEModel entities should use /memodel-neuronal-manipulation-properties instead.",
 )
