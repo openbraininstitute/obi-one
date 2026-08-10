@@ -228,23 +228,20 @@ class EModelOptimizationTask(Task):
             len(self.config.parameters_selection.ion_channel_models),
         )
 
-    @staticmethod
-    def _stage_params(coord_root: Path) -> Path:
-        """Stage the params file and return the full Path to it.
-
-        Builds the BluePyEModel params file from the selected ion channel models.
-        """
+    def _stage_params(self, coord_root: Path) -> Path:
+        """Stage the BluePyEModel params file with optimization distributions."""
         params_dir = coord_root / "config" / "params"
         params_dir.mkdir(parents=True, exist_ok=True)
-
-        # Dynamic builder mode: TODO - build from ion channel models
         params_path = params_dir / "params.json"
-        if not params_path.exists():
-            params_path.write_text(
-                json.dumps({"mechanisms": [], "distributions": {}, "parameters": []}, indent=4),
-                encoding="utf-8",
-            )
-            L.warning("Wrote placeholder params file. Dynamic builder not yet implemented.")
+
+        params = {"mechanisms": [], "distributions": [], "parameters": []}
+        if params_path.exists():
+            params = json.loads(params_path.read_text(encoding="utf-8"))
+        distributions = self.config.parameters_selection.distance_dependent_distributions.items()
+        params["distributions"] = [
+            distribution.to_emc_dict(name=name) for name, distribution in distributions
+        ]
+        params_path.write_text(json.dumps(params, indent=4), encoding="utf-8")
         return params_path
 
     def _stage_traces(  # noqa: PLR6301

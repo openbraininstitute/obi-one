@@ -73,8 +73,10 @@ __all__ = [
     "CreateExtracellularRecordingArrayScanConfig",
     "CreateExtracellularRecordingArraySingleConfig",
     "CreateExtracellularRecordingArrayTask",
+    "CustomDistanceDependentDistribution",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
+    "DistanceDependentDistribution",
     "EMCellMeshFromID",
     "EMSynapseMappingInputNamedTuple",
     "EMSynapseMappingScanConfig",
@@ -89,7 +91,9 @@ __all__ = [
     "EntityFromID",
     "ExcitatoryNeurons",
     "ExcitatoryTsodyksMarkramSynapticModel",
+    "ExponentialDistanceDependentDistribution",
     "ExponentialDistribution",
+    "ExponentialNaDendDistanceDependentDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
@@ -126,7 +130,9 @@ __all__ = [
     "LearningEngineCircuitSimulationScanConfig",
     "LearningEngineCircuitSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
+    "LinearEPasApicDistanceDependentDistribution",
     "LinearExtracellularLocations",
+    "LinearHDApicDistanceDependentDistribution",
     "LoadAssetMethod",
     "LogNormalDistribution",
     "MEModelCircuit",
@@ -201,6 +207,7 @@ __all__ = [
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
+    "SigmoidKADApicDistanceDependentDistribution",
     "Simulation",
     "SimulationsForm",
     "SingleConfigMixin",
@@ -212,6 +219,7 @@ __all__ = [
     "SomaVoltageRecording",
     "SpatiallyUniformElectricFieldStimulus",
     "SpikeTimeDistributionSpikeStimulus",
+    "StepDistanceDependentDistribution",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -231,6 +239,7 @@ __all__ = [
     "TimestampsReference",
     "TimestampsUnion",
     "UTAHArrayExtracellularLocations",
+    "UniformDistanceDependentDistribution",
     "VirtualCombinedNeuronSet",
     "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
@@ -448,7 +457,7 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
 from obi_one.scientific.mappings_and_registry.block_reference_registry import (
-    AllBlockReferenceTypes,  # noqa: F401
+    AllBlockReferenceTypes,  # ruff: ignore[unused-import]
 )
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_configs_task_type,
@@ -486,6 +495,17 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import (
 )
 from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingTask,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    CustomDistanceDependentDistribution,
+    DistanceDependentDistribution,
+    ExponentialDistanceDependentDistribution,
+    ExponentialNaDendDistanceDependentDistribution,
+    LinearEPasApicDistanceDependentDistribution,
+    LinearHDApicDistanceDependentDistribution,
+    SigmoidKADApicDistanceDependentDistribution,
+    StepDistanceDependentDistribution,
+    UniformDistanceDependentDistribution,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
@@ -528,7 +548,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
@@ -602,13 +622,13 @@ from obi_one.scientific.unions_and_references.synaptic_models import (
 from obi_one.scientific.unions_and_references.tasks import TasksUnion
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference, TimestampsUnion
 
-LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # noqa: RUF067
-PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # noqa: RUF067
+LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # ruff: ignore[non-empty-init-module]
+PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # ruff: ignore[non-empty-init-module]
 
 
-class GridScan(GridScanGenerationTask):  # noqa: RUF067
+class GridScan(GridScanGenerationTask):  # ruff: ignore[non-empty-init-module]
     pass
 
 
-class CoupledScan(CoupledScanGenerationTask):  # noqa: RUF067
+class CoupledScan(CoupledScanGenerationTask):  # ruff: ignore[non-empty-init-module]
     pass

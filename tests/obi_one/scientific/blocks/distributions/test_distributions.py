@@ -4,6 +4,50 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    ParametersSelection,
+)
+
+
+class TestDistanceDependentDistributions:
+    def test_default_legacy_distributions_serialize(self):
+        distribution = obi.LinearHDApicDistanceDependentDistribution()
+
+        assert distribution.to_emc_dict() == {
+            "name": "linear_hd_apic",
+            "function": "(1. + 3./100. * {distance})*{value}",
+            "soma_ref_location": 0.5,
+        }
+
+    def test_custom_distribution_is_validated_and_serialized(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="custom_profile",
+            function="({value} + {distance}) / 2",
+            soma_ref_location=0.25,
+        )
+
+        assert distribution.to_emc_dict() == {
+            "name": "custom_profile",
+            "function": "({value} + {distance}) / 2",
+            "soma_ref_location": 0.25,
+        }
+
+    def test_custom_distribution_requires_value_and_distance(self):
+        with pytest.raises(ValueError, match="\\{value\\} placeholder"):
+            obi.CustomDistanceDependentDistribution(name="custom", function="{distance}")
+
+        with pytest.raises(ValueError, match="\\{distance\\} placeholder"):
+            obi.CustomDistanceDependentDistribution(name="custom", function="{value}")
+
+    def test_optimization_parameter_selection_defaults_to_uniform(self):
+        parameters = ParametersSelection()
+
+        assert list(parameters.distance_dependent_distributions) == ["uniform"]
+        assert parameters.distance_dependent_distributions["uniform"].to_emc_dict() == {
+            "name": "uniform",
+            "function": None,
+            "soma_ref_location": 0.5,
+        }
 
 
 class TestFloatConstantDistribution:
