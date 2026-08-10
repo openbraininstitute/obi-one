@@ -24,7 +24,7 @@ class SomaVoltageRecording(Recording):
         sonata_config = {}
 
         sonata_config[self.block_name] = {
-            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
+            "cells": resolve_neuron_set_ref_to_node_set(self.neuron_set),
             "sections": "soma",
             "type": "compartment",
             "compartments": "center",

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Annotated
 
 import entitysdk
-from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
+from pydantic import Field, NonNegativeFloat, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
@@ -15,6 +15,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 
 class Recording(Block, ABC):
@@ -25,6 +26,7 @@ class Recording(Block, ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.RECORDING_TARGET,
         },
     )
 
@@ -45,16 +47,12 @@ class Recording(Block, ABC):
         },
     )
 
-    _default_node_set: str = PrivateAttr(default="All")
-
     def config(
         self,
         end_time: NonNegativeFloat | None = None,
-        default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
     ) -> dict:
-        self._default_node_set = default_node_set
-
+        """Returns the SONATA reports entry for this recording."""
         if (self.neuron_set is not None) and (
             self.neuron_set.block.get_neuron_set_population_type()
             not in {

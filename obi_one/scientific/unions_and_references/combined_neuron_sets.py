@@ -3,6 +3,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     NonVirtualCombinedNeuronSet,
@@ -188,27 +189,30 @@ Resolve functions
 """
 
 
+# References are resolved only after every unset one has been given a default, so reaching a
+# resolve function with None means a field was never declared as fillable.
+_UNFILLED_REFERENCE_MESSAGE = (
+    "Neuron set reference is still unset at resolution time. Every reference field that may be "
+    "left unset must declare a SchemaKey.REFERENCE_TAG, and the task must map that tag to a "
+    "default in GenerateSimulationTask._fill_none_references."
+)
+
+
 def resolve_neuron_set_ref_to_node_set(
-    neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None, default_node_set: str
+    neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
 ) -> str:
+    """Returns the SONATA node set name a neuron set reference points at."""
     if neuron_set_reference is None:
-        return default_node_set
+        raise OBIONEError(_UNFILLED_REFERENCE_MESSAGE)
 
     return neuron_set_reference.block.block_name
 
 
 def resolve_neuron_set_ref_to_neuron_set(
     neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
-    default_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None,
-) -> _AllNeuronSetUnion | None:
+) -> _AllNeuronSetUnion:
+    """Returns the neuron set block a neuron set reference points at."""
     if neuron_set_reference is None:
-        if default_neuron_set_reference is None:
-            msg = (
-                "NeuronSet2Reference is None and no default_neuron_set provided. "
-                "Cannot resolve to a NeuronSet."
-            )
-            raise ValueError(msg)
-
-        return default_neuron_set_reference.block  # ty:ignore[invalid-return-type]
+        raise OBIONEError(_UNFILLED_REFERENCE_MESSAGE)
 
     return neuron_set_reference.block  # ty:ignore[invalid-return-type]

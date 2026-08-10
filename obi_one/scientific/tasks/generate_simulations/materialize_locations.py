@@ -30,9 +30,8 @@ def materialize_locations_to_compartment_sets(
 
         locations_block = target_ref.block
 
-        neuron_set_ref = getattr(locations_block, "neuron_set", None)
-        if neuron_set_ref is None:
-            neuron_set_ref = single_config.default_neuron_set_reference
+        # _fill_none_references has already given an untargeted locations block its default.
+        neuron_set_ref = locations_block.neuron_set
 
         comp_set_name = target_ref.block_name
 

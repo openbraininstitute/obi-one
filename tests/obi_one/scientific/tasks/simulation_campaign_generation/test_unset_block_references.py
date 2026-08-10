@@ -1,11 +1,11 @@
 """Blocks whose every block-reference field is left unset.
 
 Reference fields are all optional and all default to ``None``, so "the user added a block and
-targeted nothing" is the most common config there is. Resolving those ``None``s is spread across
-several places -- the task fills some in on the block itself before generating, while others stay
-``None`` and are resolved to a bare node set *name* inside the block's own ``config()``. These
-tests pin what an unset reference currently produces, so that consolidating the two mechanisms
-can be checked against real output rather than by reading.
+targeted nothing" is the most common config there is. Every one of those ``None``s is resolved in
+a single place: each field declares its role with a ``SchemaKey.REFERENCE_TAG``, and the task's
+``_fill_none_references`` substitutes the reference that role maps to before anything reads it.
+These tests pin both halves of that -- the reference really is filled on the block, and the
+generated SONATA names the expected node set.
 
 The parametrised sweeps build their cases from the block unions themselves, so a newly added
 block type is covered here without anyone editing this file.
@@ -14,6 +14,7 @@ block type is covered here without anyone editing this file.
 import pytest
 
 import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
 from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
 from obi_one.scientific.blocks.neuron_sets.population import PointPopulationNeuronSet
 from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
@@ -42,7 +43,6 @@ from obi_one.scientific.unions_and_references.stimuli import CircuitStimulusUnio
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
     POINT_POPULATION,
@@ -50,6 +50,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     generate,
     reference_field_names,
     reference_types_in,
+    unfilled_reference_fields,
     union_member_names,
 )
 
@@ -423,15 +424,12 @@ class TestNoDanglingNodeSetReferences:
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_brian2_stimulus_leaves_nothing_dangling(self, brian2_config, tmp_path):
-        """Brian2 resolves two different defaults, and both node sets have to be written."""
+        """Brian2 resolves both roles to one default, and that node set has to be written."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.referenced_node_sets() == {
-            DEFAULT_POINT_NODE_SET,
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET,
-        }
+        assert result.referenced_node_sets() == {DEFAULT_POINT_NODE_SET}
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_learning_engine_stimulus_leaves_nothing_dangling(
@@ -460,14 +458,13 @@ class TestNoDanglingNodeSetReferences:
         assert list(config.neuron_sets) == [DEFAULT_BIOPHYSICAL_NODE_SET]
 
 
-class TestWhichReferencesAreFilledInPlace:
-    """Characterisation of the current split between the two resolution mechanisms.
+class TestEveryUnsetReferenceIsFilledOnItsBlock:
+    """One mechanism fills every unset reference, whatever block or config family holds it.
 
-    Stimuli, recordings, morphology locations and combined neuron sets have their unset
-    references replaced with a real reference on the block before generation. Timestamps,
-    distributions and both kinds of manipulation are left ``None`` and resolved to a node set
-    name inside the block's own ``config()``. The generated SONATA is the same either way, which
-    is exactly why the divergence is easy to miss -- these assertions make it visible.
+    ``_fill_none_references`` runs once before anything reads a reference, so a block never has to
+    decide for itself what ``None`` means. These assertions are what stops a second, divergent
+    resolution path from creeping back in: it is not enough that the generated SONATA is right,
+    the reference has to be filled on the block.
     """
 
     def test_stimulus_and_recording_targets_are_filled_on_the_block(self, circuit, tmp_path):
@@ -498,8 +495,8 @@ class TestWhichReferencesAreFilledInPlace:
         assert stimulus.source_neuron_set.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
         assert stimulus.targeted_neuron_set.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
 
-    def test_timestamps_are_left_unset_on_the_block(self, circuit, tmp_path):
-        """The default timestamps never reach the config; they are applied during generation."""
+    def test_timestamps_are_filled_on_the_block(self, circuit, tmp_path):
+        """Timestamps get the same treatment as a neuron set, despite naming a different block."""
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
@@ -508,11 +505,12 @@ class TestWhichReferencesAreFilledInPlace:
 
         result = generate(config, tmp_path)
 
-        assert config.stimuli["Clamp"].timestamps is None
+        assert config.stimuli["Clamp"].timestamps is not None
+        assert config.stimuli["Clamp"].timestamps.block.start_time == pytest.approx(0.0)
         assert result.inputs["Clamp_0"]["delay"] == pytest.approx(0.0)
 
-    def test_manipulation_targets_are_left_unset_on_the_block(self, circuit, tmp_path):
-        """Unlike stimuli, a manipulation keeps its ``None`` and is resolved by name later."""
+    def test_synaptic_manipulation_targets_are_filled_on_the_block(self, circuit, tmp_path):
+        """Manipulations used to be skipped by the fill and resolved by name during generation."""
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
@@ -522,15 +520,13 @@ class TestWhichReferencesAreFilledInPlace:
         result = generate(config, tmp_path)
 
         manipulation = config.synaptic_manipulations["Magnesium"]
-        assert manipulation.presynaptic_neuron_set is None
-        assert manipulation.postsynaptic_neuron_set is None
+        assert manipulation.presynaptic_neuron_set.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
+        assert manipulation.postsynaptic_neuron_set.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
         assert result.sonata_config["connection_overrides"][0]["source"] == (
             DEFAULT_BIOPHYSICAL_NODE_SET
         )
 
-    def test_neuronal_manipulation_target_is_left_unset_on_the_block(
-        self, me_model_config, tmp_path
-    ):
+    def test_neuronal_manipulation_target_is_filled_on_the_block(self, me_model_config, tmp_path):
         config = me_model_config(
             blocks={
                 "Manip": ByNeuronMechanismVariableNeuronalManipulation(
@@ -543,18 +539,41 @@ class TestWhichReferencesAreFilledInPlace:
 
         result = generate(config, tmp_path)
 
-        assert config.neuronal_manipulations["Manip"].neuron_set is None
+        target = config.neuronal_manipulations["Manip"].neuron_set
+        assert target.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
         assert result.conditions["modifications"][0]["node_set"] == DEFAULT_BIOPHYSICAL_NODE_SET
+
+    def test_nothing_tagged_is_left_unset_anywhere(self, circuit, tmp_path):
+        """The invariant the whole mechanism exists to provide, over one of every block kind."""
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={
+                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
+                "Spikes": obi.PoissonSpikeStimulus(),
+                "Voltage": obi.SomaVoltageRecording(),
+                "Magnesium": obi.SynapticMgManipulation(),
+                "Combined": obi.BiophysicalCombinedNeuronSet(
+                    base_neuron_set=None, combined_with=((None, SetOperation.UNION),)
+                ),
+            },
+        )
+
+        generate(config, tmp_path)
+
+        assert unfilled_reference_fields(config) == []
 
 
 class TestConfigWithoutANeuronSetsDictionary:
-    """The ME model config has no ``neuron_sets`` field, so nothing is filled in on its blocks.
+    """An ME model config has no ``neuron_sets`` field, but its blocks are filled just the same.
 
-    It reaches the same SONATA output through the blocks' own default-node-set fallback. That is
-    the second mechanism producing the first mechanism's result, on a different config family.
+    Nothing is registered, because there is no dictionary to register into and the node set is
+    written straight from the config's default type. The blocks still end up pointing at it.
     """
 
-    def test_references_stay_unset_on_the_blocks(self, me_model_config, tmp_path):
+    def test_references_are_filled_even_with_nowhere_to_register_them(
+        self, me_model_config, tmp_path
+    ):
         config = me_model_config(
             blocks={
                 "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
@@ -565,8 +584,9 @@ class TestConfigWithoutANeuronSetsDictionary:
 
         generate(config, tmp_path)
 
-        assert config.stimuli["Clamp"].neuron_set is None
-        assert config.recordings["Voltage"].neuron_set is None
+        assert config.stimuli["Clamp"].neuron_set.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
+        assert config.recordings["Voltage"].neuron_set.block_name == DEFAULT_BIOPHYSICAL_NODE_SET
+        assert unfilled_reference_fields(config) == []
 
     def test_the_output_still_names_the_default(self, me_model_config, tmp_path):
         config = me_model_config(
@@ -628,7 +648,7 @@ class TestUnsetTimestampsAndDistributions:
 
         result = generate(config, tmp_path)
 
-        assert config.synaptic_manipulations["Manip"].timestamps is None
+        assert config.synaptic_manipulations["Manip"].timestamps is not None
         overrides = result.sonata_config["connection_overrides"]
         assert len(overrides) == 1
         assert overrides[0]["delay"] == pytest.approx(0.0)
@@ -643,14 +663,14 @@ class TestUnsetTimestampsAndDistributions:
     def test_a_distribution_driven_stimulus_generates_without_a_distribution(
         self, name, circuit, tmp_path
     ):
-        """These stimuli fall back to their own distribution rather than failing."""
+        """The task fills these like any other role, rather than the block falling back."""
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Stim": _block(name)}
         )
 
         result = generate(config, tmp_path)
 
-        assert config.stimuli["Stim"].distribution is None
+        assert config.stimuli["Stim"].distribution is not None
         assert result.inputs["Stim"]["spike_file"] == "Stim_spikes.h5"
         assert (result.directory / "Stim_spikes.h5").exists()
 
@@ -713,7 +733,9 @@ class TestUntargetedNeuronalManipulations:
 
         result = generate(config, tmp_path)
 
-        assert config.neuronal_manipulations["Manip"].neuron_set is None
+        assert config.neuronal_manipulations["Manip"].neuron_set.block_name == (
+            DEFAULT_BIOPHYSICAL_NODE_SET
+        )
         modifications = result.conditions["modifications"]
         assert modifications
         for modification in modifications:

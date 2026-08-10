@@ -5,6 +5,8 @@ import pandas as pd
 import pytest
 
 import obi_one as obi
+from obi_one.core.exception import OBIONEError
+from obi_one.core.fill_none_references import fill_none_references_in_config
 from obi_one.scientific.library.compartment_sets import (
     CompartmentLocation,
     MaterializedCompartmentSet,
@@ -21,6 +23,9 @@ from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimu
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
 )
+from obi_one.scientific.unions_and_references.neuron_sets import BiophysicalNeuronSetReference
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 
 def test_compartment_set_sorts_deduplicates_and_builds_from_locations():
@@ -161,7 +166,36 @@ def test_write_compartment_sets_rejects_invalid_file_name(tmp_path, file_name):
         )
 
 
-def test_materialization_uses_default_neuron_set_for_locations_without_target():
+def _neuron_set_reference(name: str) -> BiophysicalNeuronSetReference:
+    """A resolved neuron set reference, as ``_fill_none_references`` would produce."""
+    block = obi.AllBiophysicalNeurons()
+    block.set_block_name(name)
+    reference = BiophysicalNeuronSetReference(block_dict_name="neuron_sets", block_name=name)
+    reference.block = block
+    return reference
+
+
+def _timestamps_reference() -> TimestampsReference:
+    block = obi.SingleTimestamp(start_time=0.0)
+    block.set_block_name("start")
+    reference = TimestampsReference(block_dict_name="timestamps", block_name="start")
+    reference.block = block
+    return reference
+
+
+def _fill(config: SimpleNamespace, target_node_set: str = "default-target") -> list:
+    return fill_none_references_in_config(
+        config,
+        {
+            ReferenceTag.STIMULUS_TARGET: _neuron_set_reference(target_node_set),
+            ReferenceTag.MORPHOLOGY_LOCATIONS_TARGET: _neuron_set_reference(target_node_set),
+            ReferenceTag.TIMESTAMPS: _timestamps_reference(),
+        },
+    )
+
+
+def test_materialization_uses_the_neuron_set_already_on_the_locations_block():
+    """The fallback lives in ``_fill_none_references``; materialisation just reads what it set."""
     locations = obi.RandomMorphologyLocations()
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
@@ -171,7 +205,12 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
     locations_ref.block = locations
     stimulus = obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations_ref)
     stimulus.set_block_name("stimulus")
-    default_ref = MagicMock()
+
+    config = SimpleNamespace(
+        stimuli={"stimulus": stimulus},
+        morphology_locations={"locations": locations},
+    )
+    _fill(config)
 
     with patch(
         "obi_one.scientific.tasks.generate_simulations.materialize_locations."
@@ -183,10 +222,7 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
         )
 
         materialize_locations_to_compartment_sets(
-            single_config=SimpleNamespace(
-                stimuli={"stimulus": stimulus},
-                default_neuron_set_reference=default_ref,
-            ),
+            single_config=config,
             circuit=MagicMock(),
             node_population="pop",
             population="pop",
@@ -194,53 +230,106 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
 
     build_compartment_set.assert_called_once()
     assert build_compartment_set.call_args.kwargs["name"] == "locations"
-    assert build_compartment_set.call_args.kwargs["neuron_set"] is default_ref
+    assert build_compartment_set.call_args.kwargs["neuron_set"] is locations.neuron_set
 
 
-def test_continuous_stimulus_without_target_uses_default_node_set():
+def test_continuous_stimulus_names_the_node_set_it_was_filled_with():
+    stimulus = obi.ConstantCurrentClampSomaticStimulus()
+    stimulus.set_block_name("stimulus")
+    _fill(SimpleNamespace(stimuli={"stimulus": stimulus}))
+
+    config = stimulus.config()
+
+    assert config["stimulus_0"]["node_set"] == "default-target"
+
+
+def test_continuous_stimulus_with_an_unfilled_target_is_refused():
+    """Resolution happens after the fill, so an unset reference here is a programming error."""
     stimulus = obi.ConstantCurrentClampSomaticStimulus()
     stimulus.set_block_name("stimulus")
 
-    config = stimulus.config(default_node_set="default-target")
-
-    assert config["stimulus_0"]["node_set"] == "default-target"
+    with pytest.raises(OBIONEError, match="still unset at resolution time"):
+        stimulus.config()
 
 
 def test_continuous_stimulus_uses_materialized_compartment_set_target():
     stimulus = obi.ConstantCurrentClampSomaticStimulus()
     stimulus.set_block_name("stimulus")
     stimulus.set_materialized_compartment_set_target("LocationCurrentClamp__locations")
+    _fill(SimpleNamespace(stimuli={"stimulus": stimulus}))
 
-    config = stimulus.config(default_node_set="default-target")
+    config = stimulus.config()
 
     assert config["stimulus_0"]["compartment_set"] == "LocationCurrentClamp__locations"
     assert "node_set" not in config["stimulus_0"]
 
 
-def test_task_injects_default_into_optional_unified_target():
-    default_ref = MagicMock()
-    task = GenerateSimulationTask.model_construct(config=SimpleNamespace(neuron_sets={}))
+def test_fill_gives_a_stimulus_the_default_for_its_role():
     stimulus = obi.ConstantCurrentClampSomaticStimulus()
+    target = _neuron_set_reference("chosen")
 
-    with patch.object(GenerateSimulationTask, "_default_neuron_set_ref", return_value=default_ref):
-        task._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(stimulus)
-
-    assert stimulus.neuron_set is default_ref
-
-
-def test_task_assigns_implicit_default_to_morphology_locations():
-    default_ref = MagicMock()
-    locations = obi.RandomMorphologyLocations()
-    task = GenerateSimulationTask.model_construct(
-        config=SimpleNamespace(
-            morphology_locations={"locations": locations},
-            default_neuron_set_reference=default_ref,
-        )
+    used = fill_none_references_in_config(
+        SimpleNamespace(stimuli={"stimulus": stimulus}),
+        {ReferenceTag.STIMULUS_TARGET: target},
     )
 
-    task._ensure_morphology_locations_have_neuron_set_reference()
+    assert stimulus.neuron_set is target
+    assert used == [target]
 
-    assert locations.neuron_set is default_ref
+
+def test_fill_gives_morphology_locations_the_default_for_their_role():
+    locations = obi.RandomMorphologyLocations()
+    target = _neuron_set_reference("chosen")
+
+    fill_none_references_in_config(
+        SimpleNamespace(morphology_locations={"locations": locations}),
+        {ReferenceTag.MORPHOLOGY_LOCATIONS_TARGET: target},
+    )
+
+    assert locations.neuron_set is target
+
+
+def test_fill_leaves_a_reference_that_was_set_explicitly():
+    chosen = _neuron_set_reference("chosen")
+    stimulus = obi.ConstantCurrentClampSomaticStimulus(neuron_set=chosen)
+
+    used = fill_none_references_in_config(
+        SimpleNamespace(stimuli={"stimulus": stimulus}),
+        {ReferenceTag.STIMULUS_TARGET: _neuron_set_reference("default-target")},
+    )
+
+    assert stimulus.neuron_set is chosen
+    assert used == []
+
+
+def test_fill_reports_each_default_once_however_many_blocks_needed_it():
+    target = _neuron_set_reference("chosen")
+
+    used = fill_none_references_in_config(
+        SimpleNamespace(
+            stimuli={
+                "a": obi.ConstantCurrentClampSomaticStimulus(),
+                "b": obi.ConstantCurrentClampSomaticStimulus(),
+            }
+        ),
+        {ReferenceTag.STIMULUS_TARGET: target},
+    )
+
+    assert used == [target]
+
+
+def test_fill_is_idempotent():
+    stimulus = obi.ConstantCurrentClampSomaticStimulus()
+    config = SimpleNamespace(stimuli={"stimulus": stimulus})
+    target = _neuron_set_reference("chosen")
+
+    fill_none_references_in_config(config, {ReferenceTag.STIMULUS_TARGET: target})
+    used = fill_none_references_in_config(
+        config, {ReferenceTag.STIMULUS_TARGET: _neuron_set_reference("other")}
+    )
+
+    assert stimulus.neuron_set is target
+    assert used == []
 
 
 def test_task_requires_circuit_before_materialization():

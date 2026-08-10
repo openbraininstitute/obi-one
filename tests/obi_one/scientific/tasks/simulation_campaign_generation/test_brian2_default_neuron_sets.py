@@ -1,9 +1,8 @@
-"""A Brian2 simulation defaults the simulation to all point neurons and a stimulus to `sugar`.
+"""A Brian2 simulation defaults both its simulation and its stimuli to all point neurons.
 
-An untargeted Brian2 Poisson stimulus drives the `sugar` gustatory receptor neurons, while the
-simulation itself runs every point neuron. The two are separate defaults; regressions here
-(e.g. the stimulus inheriting the simulation-wide default and tripping its 100-neuron limit, or
-the simulation target being mislabelled "Sugar…") are what this guards against.
+An untargeted Brian2 Poisson stimulus drives whatever the simulation runs, as in every other
+config family. This is the end-to-end check that the one default reaches both roles and that the
+node set it names is actually written, rather than a role picking up a name nothing defines.
 """
 
 import json
@@ -18,8 +17,7 @@ CIRCUIT_CONFIG = (
     Path(__file__).parents[2] / "library" / "simulation" / "data" / "circuit_config.json"
 )
 
-SIM_DEFAULT = "Default: All Point Neurons"
-STIMULUS_DEFAULT = "Default: Sugar gustatory receptor neurons"
+POINT_DEFAULT = "Default: All Point Neurons"
 
 
 def _generate(tmp_path: Path) -> tuple[dict, dict]:
@@ -51,17 +49,15 @@ def _generate(tmp_path: Path) -> tuple[dict, dict]:
     return sim_config, node_sets
 
 
-def test_untargeted_brian2_stimulus_defaults_to_sugar_and_simulation_to_all_point(tmp_path):
+def test_untargeted_brian2_stimulus_and_simulation_both_default_to_all_point(tmp_path):
     sim_config, node_sets = _generate(tmp_path)
 
-    # The simulation targets all point neurons, named for what it is -- not "Sugar…".
-    assert sim_config["node_set"] == SIM_DEFAULT
-    assert node_sets[SIM_DEFAULT]["node_id"] == [0, 1, 2]
+    # The simulation targets all point neurons, named for what it is.
+    assert sim_config["node_set"] == POINT_DEFAULT
+    assert node_sets[POINT_DEFAULT]["node_id"] == [0, 1, 2]
 
-    # The untargeted stimulus targets the sugar node set -- a strict subset, not the whole
-    # circuit -- so it stays under the block's 100-neuron limit rather than raising.
-    assert sim_config["inputs"]["DirectPoisson"]["node_set"] == STIMULUS_DEFAULT
-    assert node_sets[STIMULUS_DEFAULT]["node_id"] == [0, 1]
+    # The untargeted stimulus resolves to that same set rather than one of its own.
+    assert sim_config["inputs"]["DirectPoisson"]["node_set"] == POINT_DEFAULT
 
-    # The two defaults are genuinely different sets.
-    assert node_sets[SIM_DEFAULT]["node_id"] != node_sets[STIMULUS_DEFAULT]["node_id"]
+    # One default node set is injected alongside the circuit's own, not one per role.
+    assert [name for name in node_sets if name.startswith("Default: ")] == [POINT_DEFAULT]
