@@ -15,6 +15,7 @@ import logging
 import os
 import sys
 from functools import partial
+from pathlib import Path
 from uuid import UUID
 
 from entitysdk import Client, LocalAssetStore, ProjectContext
@@ -64,7 +65,9 @@ def main() -> int:
             environment=deployment,
             project_context=project_context,
             token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),  # ty:ignore[invalid-argument-type]
+            local_store=None
+            if local_store_prefix is None
+            else LocalAssetStore(prefix=Path(local_store_prefix)),
         )
 
         config = MeshLodGenerationSingleConfig(
