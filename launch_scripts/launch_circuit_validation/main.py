@@ -63,7 +63,7 @@ def main() -> int:
                 partial(
                     get_token,
                     environment=DeploymentEnvironment(deployment),
-                    auth_mode=AuthMode("persistent_token"),
+                    auth_mode=AuthMode.persistent_token,
                     persistent_token_id=persistent_token_id,
                 ),
             )

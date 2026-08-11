@@ -21,6 +21,7 @@ from entitysdk import Client, LocalAssetStore, ProjectContext
 from entitysdk.config import settings as entitysdk_settings
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
+from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 from obi_one.scientific.tasks.mesh_lod_generation.task import MeshLODGenerationTask
@@ -50,8 +51,8 @@ def main() -> int:
         token_manager = TokenFromFunction(
             partial(
                 get_token,
-                environment=deployment,  # ty:ignore[invalid-argument-type]
-                auth_mode="persistent_token",  # ty:ignore[invalid-argument-type]
+                environment=DeploymentEnvironment(deployment),
+                auth_mode=AuthMode.persistent_token,
                 persistent_token_id=persistent_token_id,
             ),
         )
