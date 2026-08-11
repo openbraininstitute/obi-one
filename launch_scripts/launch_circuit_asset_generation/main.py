@@ -24,8 +24,10 @@ from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.staging.circuit import stage_circuit
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
+from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.db_sdk.registration.circuit.generate import generate_additional_circuit_assets
+from obi_one.scientific.library.circuit import Circuit as OBICircuit
 
 L = logging.getLogger(__name__)
 
@@ -35,42 +37,42 @@ def main() -> int:
     deployment = os.getenv("DEPLOYMENT")
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
 
-    try:
-        parser = argparse.ArgumentParser(description="Generate circuit assets.")
-        parser.add_argument("--circuit_id", required=True, help="Circuit entity ID")
-        parser.add_argument("--virtual_lab_id", required=True, help="Virtual lab ID")
-        parser.add_argument("--project_id", required=True, help="Project ID")
-        parser.add_argument(
-            "--force",
-            type=lambda value: str(value).lower() == "true",
-            default=False,
-            help="Regenerate compressed archive even if it already exists",
-        )
-        args = parser.parse_args()
+    parser = argparse.ArgumentParser(description="Generate circuit assets.")
+    parser.add_argument("--circuit_id", required=True, help="Circuit entity ID")
+    parser.add_argument("--virtual_lab_id", required=True, help="Virtual lab ID")
+    parser.add_argument("--project_id", required=True, help="Project ID")
+    parser.add_argument(
+        "--force",
+        type=lambda value: str(value).lower() == "true",
+        default=False,
+        help="Regenerate compressed archive even if it already exists",
+    )
 
-        circuit_id = UUID(args.circuit_id)
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
+        args = parser.parse_args()
 
         token_manager = TokenFromFunction(
             partial(
                 get_token,
-                environment=deployment,
-                auth_mode="persistent_token",
+                environment=DeploymentEnvironment(deployment),
+                auth_mode=AuthMode.persistent_token,
                 persistent_token_id=persistent_token_id,
             ),
         )
         project_context = ProjectContext(
             project_id=args.project_id,
             virtual_lab_id=args.virtual_lab_id,
-            environment=deployment,
         )
         db_client = Client(
             environment=deployment,
             project_context=project_context,
             token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),
+            local_store=None
+            if local_store_prefix is None
+            else LocalAssetStore(prefix=Path(local_store_prefix)),
         )
 
-        circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
+        circuit = db_client.get_entity(entity_id=UUID(args.circuit_id), entity_type=models.Circuit)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             staged_dir = Path(tmp_dir) / "circuit"
@@ -78,10 +80,10 @@ def main() -> int:
             circuit_config_path = stage_circuit(db_client, model=circuit, output_dir=staged_dir)
 
             # Determine edge population for matrix extraction
-            from obi_one.scientific.library.circuit import Circuit as OBICircuit
-
-            c = OBICircuit(name=circuit.name, path=str(circuit_config_path))
-            edge_pop = c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
+            c = OBICircuit(name=str(circuit.name), path=str(circuit_config_path))
+            edge_pop = (
+                c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
+            )
 
             generate_additional_circuit_assets(
                 circuit_path=circuit_config_path,
@@ -92,9 +94,9 @@ def main() -> int:
                 include_visualization=False,
             )
 
-        L.info("Asset generation complete for circuit %s", circuit_id)
+        L.info("Asset generation complete for circuit %s", UUID(args.circuit_id))
 
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         L.exception("Asset generation failed: %s", e)
         return 1
 
