@@ -69,6 +69,7 @@ def run_task_for_single_config_asset(
     json_dict = json.loads(json_str)
     json_dict["scan_output_root"] = scan_output_root
     json_dict["coordinate_output_root"] = Path(scan_output_root) / str(json_dict["idx"])
+    Path(json_dict["coordinate_output_root"]).mkdir(parents=True, exist_ok=True)
     single_config = deserialize_obi_object_from_json_data(json_dict)
 
     entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
