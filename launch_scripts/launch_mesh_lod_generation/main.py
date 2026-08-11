@@ -58,7 +58,6 @@ def main() -> int:
         project_context = ProjectContext(
             project_id=args.project_id,
             virtual_lab_id=args.virtual_lab_id,
-            environment=deployment,  # ty:ignore[unknown-argument]
         )
         db_client = Client(
             environment=deployment,
