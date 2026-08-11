@@ -238,6 +238,9 @@ builtins-ignorelist = ["license"]
 "obi_one/scientific/blocks/neuron_sets/deprecated.py" = [
     "unused-method-argument"
 ]
+"launch_scripts/**/*.py" = [
+    "implicit-namespace-package",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
