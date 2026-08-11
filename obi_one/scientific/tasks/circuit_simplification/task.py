@@ -485,7 +485,7 @@ class CircuitSimplificationTask(Task):
             temp_dir=self._create_temp_dir(),
         )
 
-        input_circuit_path = self._circuit.path
+        input_circuit_path = str(Path(self._circuit.path).absolute())
         simplification = self.config.simplification
 
         # After GridScanGenerationTask expands the scan config, list fields
@@ -511,8 +511,8 @@ class CircuitSimplificationTask(Task):
 
         if "single_compartment" in algorithms:
             process.compile_mechanisms(
-                output_dir=os.curdir,
-                mechanisms_dir="./",
+                output_dir=Path(),
+                mechanisms_dir=Path(),
                 simulation_backend=SimulationBackend.neurodamus,)
 
         for algorithm_name in algorithms:
@@ -523,7 +523,7 @@ class CircuitSimplificationTask(Task):
             base_algorithm, exporter_name = ALGORITHM_EXPORT_MAP[algorithm_name]
 
             # Create output directory for this algorithm
-            output_dir = self.config.coordinate_output_root / algorithm_name
+            output_dir = (self.config.coordinate_output_root / algorithm_name).absolute()
             output_dir.mkdir(parents=True, exist_ok=True)
 
             # Build simulation config for the pipeline.
