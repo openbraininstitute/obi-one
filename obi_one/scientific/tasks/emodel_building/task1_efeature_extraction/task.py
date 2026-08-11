@@ -13,6 +13,9 @@ from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
 from obi_one.scientific.tasks.emodel_building import _shared
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.protocol_and_feature_selection import (  # ruff: ignore[line-too-long]
+    SelectEFeaturesByProtocol,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.settings import (
     Settings,
 )
@@ -59,21 +62,23 @@ def _build_files_metadata(
 
 
 def _build_targets(
-    protocols: tuple,
+    selection: SelectEFeaturesByProtocol,
     global_efel_settings: dict,
 ) -> tuple[list[dict], list[str]]:
     """Flatten the per-protocol selection into ``bluepyefe.extract`` target rows.
 
     For every protocol, every ``(amplitude, is_validation)`` pair in
-    ``extraction_amplitudes`` and every feature in ``features`` yields one target.
-    Each target's ``efel_settings`` apply the cascade feature > protocol > global.
+    ``extraction_amplitudes`` and every feature in ``selection.features_for(protocol)``
+    yields one target. Each target's ``efel_settings`` apply the cascade
+    feature > protocol > global.
     Amplitudes flagged ``is_validation`` are returned as ``{protocol}_{amplitude}``
     validation-protocol names for the recipe.
     """
     rows: list[dict] = []
     validation_names: list[str] = []
-    for protocol in protocols:
+    for protocol in selection.protocols:
         protocol_overrides = protocol.efel_settings_overrides()
+        features = selection.features_for(protocol)
         for amplitude, is_validation in protocol.extraction_amplitudes:
             if is_validation:
                 validation_names.append(f"{protocol.protocol_name}_{amplitude}")
@@ -90,7 +95,7 @@ def _build_targets(
                         **feature.efel_settings_overrides(),
                     },
                 }
-                for feature in protocol.features
+                for feature in features
             )
     return rows, validation_names
 
@@ -190,8 +195,8 @@ class EModelEFeatureExtractionTask(Task):
             TargetsConfiguration,
         )
 
-        protocols = self.config.efeatures_by_protocol.selection.protocols
-        ecode_timing = {p.protocol_name: p.stim_timing() for p in protocols}
+        selection = self.config.efeatures_by_protocol.selection
+        ecode_timing = {p.protocol_name: p.stim_timing() for p in selection.protocols}
 
         files = _build_files_metadata(nwb_paths_with_ljp=downloaded, ecode_timing=ecode_timing)
         if not files:
@@ -199,7 +204,7 @@ class EModelEFeatureExtractionTask(Task):
             raise FileNotFoundError(msg)
 
         targets, validation_names = _build_targets(
-            protocols, self.config.settings.global_efel_settings()
+            selection, self.config.settings.global_efel_settings()
         )
         configuration = TargetsConfiguration(files=files, targets=targets, protocols_rheobase=[])
         return configuration, validation_names

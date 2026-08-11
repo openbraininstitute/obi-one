@@ -8,6 +8,9 @@ from jsonschema import ValidationError
 from pydantic import TypeAdapter
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.protocol_and_feature_selection import (  # ruff: ignore[line-too-long]
+    SelectEFeaturesByProtocol,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features import (  # ruff: ignore[line-too-long]
     efeatures,
     protocols,
@@ -457,9 +460,44 @@ def test_efel_settings_overrides_all_branches():
     }
 
 
-def test_all_protocols_use_the_universal_efeature_union():
-    union_size = len(TypeAdapter(efeatures.EFeatureUnion).json_schema()["oneOf"])
+def test_protocols_narrow_features_and_catalogue_is_declared_once():
+    """The universal union belongs to ``extra_features_by_protocol`` and nowhere else.
+
+    Each occurrence is copied when the UI dereferences the schema, and 26 copies of a
+    146-branch union exceed what the browser can compile into one validator.
+    """
+    universal_size = len(TypeAdapter(efeatures.EFeatureUnion).json_schema()["oneOf"])
+    schema = SelectEFeaturesByProtocol.model_json_schema()
+
+    catalogue = schema["properties"]["extra_features_by_protocol"]["additionalProperties"]["items"]
+    assert len(catalogue["oneOf"]) == universal_size
 
     for protocol_class in get_args(get_args(protocols.ProtocolUnion)[0]):
         feature_schema = protocol_class.model_json_schema()["properties"]["features"]["items"]
-        assert len(feature_schema["oneOf"]) == union_size
+        assert 0 < len(feature_schema["oneOf"]) < universal_size
+
+
+def test_features_for_merges_extras_without_duplicating_defaults():
+    selection = SelectEFeaturesByProtocol()
+    protocol = selection.protocols[0]
+    already_selected = type(protocol.features[0])
+
+    extended = SelectEFeaturesByProtocol(
+        extra_features_by_protocol={
+            type(protocol).__name__: (efeatures.SagAmplitudeFeature(), already_selected()),
+        },
+    )
+    merged = extended.features_for(extended.protocols[0])
+    names = [type(feature).__name__ for feature in merged]
+
+    assert names.count(already_selected.__name__) == 1
+    assert "SagAmplitudeFeature" in names
+    assert len(merged) == len(protocol.features) + 1
+
+
+def test_features_for_ignores_extras_keyed_to_another_protocol():
+    selection = SelectEFeaturesByProtocol(
+        extra_features_by_protocol={"NotAProtocolInThisSelection": (efeatures.ISICVFeature(),)},
+    )
+    for protocol in selection.protocols:
+        assert selection.features_for(protocol) == protocol.features
