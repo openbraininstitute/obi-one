@@ -5,12 +5,12 @@ import sys
 from functools import partial
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
-from entitysdk.types import ActivityStatus
 from entitysdk.token_manager import TokenFromFunction
+from entitysdk.types import ActivityStatus
 from obi_auth import get_token
 
 from obi_one.core.run_tasks import run_task_type
-from obi_one.db_sdk.db_sdk import update_activity_status, finalize_activity
+from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
 
 L = logging.getLogger(__name__)
 
@@ -40,12 +40,14 @@ def main() -> int:
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
     db_client = None
 
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         parser = argparse.ArgumentParser(
             description="Script to launch a task for a single configuration asset."
         )
         parser.add_argument("--task-type", required=True, help="Task type")
-        parser.add_argument("--config_entity_type", required=False, help="EntitySDK entity type as string")
+        parser.add_argument(
+            "--config_entity_type", required=False, help="EntitySDK entity type as string"
+        )
         parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
         parser.add_argument(
             "--execution_activity_type",
@@ -76,7 +78,7 @@ def main() -> int:
         L.error(f"Argument parsing error: {e}")
         return 1
 
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         # TODO: Remove once legacy tasks are moved to generic configs/activities
         if args.config_entity_type:
             config_entity_type = getattr(models, args.config_entity_type)
@@ -89,19 +91,21 @@ def main() -> int:
         token_manager = TokenFromFunction(
             partial(
                 get_token,
-                environment=deployment,
-                auth_mode="persistent_token",
+                environment=deployment,  # ty:ignore[invalid-argument-type]
+                auth_mode="persistent_token",  # ty:ignore[invalid-argument-type]
                 persistent_token_id=persistent_token_id,
             ),
         )
         project_context = ProjectContext(
-            project_id=args.project_id, virtual_lab_id=args.virtual_lab_id, environment=deployment
+            project_id=args.project_id,
+            virtual_lab_id=args.virtual_lab_id,
+            environment=deployment,  # ty:ignore[unknown-argument]
         )
         db_client = Client(
             environment=deployment,
             project_context=project_context,
             token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),
+            local_store=LocalAssetStore(prefix=local_store_prefix),  # ty:ignore[invalid-argument-type]
         )
         update_activity_status(
             client=db_client,
@@ -118,11 +122,11 @@ def main() -> int:
             entity_cache=args.entity_cache,
             execution_activity_id=args.execution_activity_id,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         # Catch any error that may occur to make sure that error status is correctly set
         L.exception(f"Error launching task for single configuration asset: {e}")
         finalize_activity(
-            client=db_client,
+            client=db_client,  # ty:ignore[invalid-argument-type]
             activity_id=args.execution_activity_id,
             activity_type=execution_activity_type,
             status=ActivityStatus.error,

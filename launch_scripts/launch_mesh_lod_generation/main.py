@@ -38,7 +38,7 @@ def main() -> int:
     deployment = os.getenv("DEPLOYMENT")
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
 
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         parser = argparse.ArgumentParser(description="Generate LOD meshes for an EMCellMesh asset.")
         parser.add_argument("--entity_id", required=True, help="EMCellMesh entity ID")
         parser.add_argument("--mesh_asset_id", required=True, help="Source mesh asset ID")
@@ -50,21 +50,21 @@ def main() -> int:
         token_manager = TokenFromFunction(
             partial(
                 get_token,
-                environment=deployment,
-                auth_mode="persistent_token",
+                environment=deployment,  # ty:ignore[invalid-argument-type]
+                auth_mode="persistent_token",  # ty:ignore[invalid-argument-type]
                 persistent_token_id=persistent_token_id,
             ),
         )
         project_context = ProjectContext(
             project_id=args.project_id,
             virtual_lab_id=args.virtual_lab_id,
-            environment=deployment,
+            environment=deployment,  # ty:ignore[unknown-argument]
         )
         db_client = Client(
             environment=deployment,
             project_context=project_context,
             token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),
+            local_store=LocalAssetStore(prefix=local_store_prefix),  # ty:ignore[invalid-argument-type]
         )
 
         config = MeshLodGenerationSingleConfig(
@@ -77,7 +77,7 @@ def main() -> int:
 
         L.info("LOD generation complete for entity %s", args.entity_id)
 
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         L.exception("Mesh LOD generation failed: %s", e)
         return 1
 

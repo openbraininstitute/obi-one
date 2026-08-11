@@ -35,7 +35,7 @@ def main() -> int:
     deployment = os.getenv("DEPLOYMENT")
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
 
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         parser = argparse.ArgumentParser(description="Generate circuit assets.")
         parser.add_argument("--circuit_id", required=True, help="Circuit entity ID")
         parser.add_argument("--virtual_lab_id", required=True, help="Virtual lab ID")
@@ -53,21 +53,21 @@ def main() -> int:
         token_manager = TokenFromFunction(
             partial(
                 get_token,
-                environment=deployment,
-                auth_mode="persistent_token",
+                environment=deployment,  # ty:ignore[invalid-argument-type]
+                auth_mode="persistent_token",  # ty:ignore[invalid-argument-type]
                 persistent_token_id=persistent_token_id,
             ),
         )
         project_context = ProjectContext(
             project_id=args.project_id,
             virtual_lab_id=args.virtual_lab_id,
-            environment=deployment,
+            environment=deployment,  # ty:ignore[unknown-argument]
         )
         db_client = Client(
             environment=deployment,
             project_context=project_context,
             token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),
+            local_store=LocalAssetStore(prefix=local_store_prefix),  # ty:ignore[invalid-argument-type]
         )
 
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
@@ -78,10 +78,14 @@ def main() -> int:
             circuit_config_path = stage_circuit(db_client, model=circuit, output_dir=staged_dir)
 
             # Determine edge population for matrix extraction
-            from obi_one.scientific.library.circuit import Circuit as OBICircuit
+            from obi_one.scientific.library.circuit import (  # ruff: ignore[import-outside-top-level]
+                Circuit as OBICircuit,
+            )
 
-            c = OBICircuit(name=circuit.name, path=str(circuit_config_path))
-            edge_pop = c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
+            c = OBICircuit(name=circuit.name, path=str(circuit_config_path))  # ty:ignore[invalid-argument-type]
+            edge_pop = (
+                c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
+            )
 
             generate_additional_circuit_assets(
                 circuit_path=circuit_config_path,
@@ -94,7 +98,7 @@ def main() -> int:
 
         L.info("Asset generation complete for circuit %s", circuit_id)
 
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         L.exception("Asset generation failed: %s", e)
         return 1
 
