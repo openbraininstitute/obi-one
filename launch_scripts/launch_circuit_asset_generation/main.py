@@ -27,6 +27,7 @@ from obi_auth import get_token
 from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.db_sdk.registration.circuit.generate import generate_additional_circuit_assets
+from obi_one.scientific.library.circuit import Circuit as OBICircuit
 
 L = logging.getLogger(__name__)
 
@@ -79,10 +80,6 @@ def main() -> int:
             circuit_config_path = stage_circuit(db_client, model=circuit, output_dir=staged_dir)
 
             # Determine edge population for matrix extraction
-            from obi_one.scientific.library.circuit import (  # ruff: ignore[import-outside-top-level]
-                Circuit as OBICircuit,
-            )
-
             c = OBICircuit(name=str(circuit.name), path=str(circuit_config_path))
             edge_pop = (
                 c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
