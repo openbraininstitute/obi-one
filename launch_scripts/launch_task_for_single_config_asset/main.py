@@ -74,7 +74,6 @@ def main() -> int:
     persistent_token_id = os.getenv("PERSISTENT_TOKEN_ID")
     deployment = os.getenv("DEPLOYMENT")
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
-    db_client = None
 
     try:
         args = get_parser().parse_args()
@@ -82,36 +81,37 @@ def main() -> int:
         L.error(f"Argument parsing error: {e}")
         return 1
 
-    try:  # ruff: ignore[too-many-statements-in-try-clause]
-        # TODO: Remove once legacy tasks are moved to generic configs/activities
-        if args.config_entity_type:
-            config_entity_type = getattr(models, args.config_entity_type)
-            execution_activity_type = getattr(models, args.execution_activity_type)
-        else:
-            config_entity_type = models.TaskConfig
-            execution_activity_type = models.TaskActivity
+    if args.config_entity_type:
+        config_entity_type = getattr(models, args.config_entity_type)
+        execution_activity_type = getattr(models, args.execution_activity_type)
+    else:
+        config_entity_type = models.TaskConfig
+        execution_activity_type = models.TaskActivity
 
-        # Get DB client (incl. file mounting)
-        token_manager = TokenFromFunction(
-            partial(
-                get_token,
-                environment=DeploymentEnvironment(deployment),
-                auth_mode=AuthMode.persistent_token,
-                persistent_token_id=persistent_token_id,
-            ),
-        )
-        project_context = ProjectContext(
-            project_id=args.project_id,
-            virtual_lab_id=args.virtual_lab_id,
-        )
-        db_client = Client(
-            environment=deployment,
-            project_context=project_context,
-            token_manager=token_manager,
-            local_store=None
-            if local_store_prefix is None
-            else LocalAssetStore(prefix=Path(local_store_prefix)),
-        )
+    # Get DB client (incl. file mounting)
+    token_manager = TokenFromFunction(
+        partial(
+            get_token,
+            environment=DeploymentEnvironment(deployment),
+            auth_mode=AuthMode.persistent_token,
+            persistent_token_id=persistent_token_id,
+        ),
+    )
+    project_context = ProjectContext(
+        project_id=args.project_id,
+        virtual_lab_id=args.virtual_lab_id,
+    )
+    db_client = Client(
+        environment=deployment,
+        project_context=project_context,
+        token_manager=token_manager,
+        local_store=None
+        if local_store_prefix is None
+        else LocalAssetStore(prefix=Path(local_store_prefix)),
+    )
+
+    try:
+        # TODO: Remove once legacy tasks are moved to generic configs/activities
         update_activity_status(
             client=db_client,
             activity_id=args.execution_activity_id,
@@ -131,7 +131,7 @@ def main() -> int:
         # Catch any error that may occur to make sure that error status is correctly set
         L.exception(f"Error launching task for single configuration asset: {e}")
         finalize_activity(
-            client=db_client,  # ty:ignore[invalid-argument-type]
+            client=db_client,
             activity_id=args.execution_activity_id,
             activity_type=execution_activity_type,
             status=ActivityStatus.error,
