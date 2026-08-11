@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from functools import partial
+from pathlib import Path
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
@@ -109,7 +110,7 @@ def main() -> int:
             token_manager=token_manager,
             local_store=None
             if local_store_prefix is None
-            else LocalAssetStore(prefix=local_store_prefix),
+            else LocalAssetStore(prefix=Path(local_store_prefix)),
         )
         update_activity_status(
             client=db_client,
