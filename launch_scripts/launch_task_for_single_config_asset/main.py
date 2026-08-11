@@ -8,11 +8,46 @@ from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
 from entitysdk.types import ActivityStatus
 from obi_auth import get_token
+from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.core.run_tasks import run_task_type
 from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
 
 L = logging.getLogger(__name__)
+
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Script to launch a task for a single configuration asset."
+    )
+    parser.add_argument("--task-type", required=True, help="Task type")
+    parser.add_argument(
+        "--config_entity_type", required=False, help="EntitySDK entity type as string"
+    )
+    parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
+    parser.add_argument(
+        "--execution_activity_type",
+        required=False,
+        help="EntitySDK execution activity type as string",
+    )
+    parser.add_argument(
+        "--execution_activity_id", required=False, help="Execution activity ID as string"
+    )
+    parser.add_argument(
+        "--entity_cache",
+        required=True,
+        help="Boolean flag for campaign entity caching.\
+                Check if enabled for particular EntityFromID types.",
+    )
+    parser.add_argument(
+        "--scan_output_root",
+        required=True,
+        help="scan_output_root as string. The coordinate output root will be relative to this\
+            in a directory named using the idx of the single coordinate config.",
+    )
+    parser.add_argument("--virtual_lab_id", required=True, help="Virtual Lab ID as string")
+    parser.add_argument("--project_id", required=True, help="Project ID as string.")
+    return parser
 
 
 def main() -> int:
@@ -40,40 +75,8 @@ def main() -> int:
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
     db_client = None
 
-    try:  # ruff: ignore[too-many-statements-in-try-clause]
-        parser = argparse.ArgumentParser(
-            description="Script to launch a task for a single configuration asset."
-        )
-        parser.add_argument("--task-type", required=True, help="Task type")
-        parser.add_argument(
-            "--config_entity_type", required=False, help="EntitySDK entity type as string"
-        )
-        parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
-        parser.add_argument(
-            "--execution_activity_type",
-            required=False,
-            help="EntitySDK execution activity type as string",
-        )
-        parser.add_argument(
-            "--execution_activity_id", required=False, help="Execution activity ID as string"
-        )
-        parser.add_argument(
-            "--entity_cache",
-            required=True,
-            help="Boolean flag for campaign entity caching.\
-                    Check if enabled for particular EntityFromID types.",
-        )
-        parser.add_argument(
-            "--scan_output_root",
-            required=True,
-            help="scan_output_root as string. The coordinate output root will be relative to this\
-                in a directory named using the idx of the single coordinate config.",
-        )
-        parser.add_argument("--virtual_lab_id", required=True, help="Virtual Lab ID as string")
-        parser.add_argument("--project_id", required=True, help="Project ID as string.")
-
-        args = parser.parse_args()
-
+    try:
+        args = get_parser().parse_args()
     except ValueError as e:
         L.error(f"Argument parsing error: {e}")
         return 1
@@ -91,8 +94,8 @@ def main() -> int:
         token_manager = TokenFromFunction(
             partial(
                 get_token,
-                environment=deployment,  # ty:ignore[invalid-argument-type]
-                auth_mode="persistent_token",  # ty:ignore[invalid-argument-type]
+                environment=DeploymentEnvironment(deployment),
+                auth_mode=AuthMode("persistent_token"),
                 persistent_token_id=persistent_token_id,
             ),
         )
@@ -104,7 +107,9 @@ def main() -> int:
             environment=deployment,
             project_context=project_context,
             token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),  # ty:ignore[invalid-argument-type]
+            local_store=None
+            if local_store_prefix is None
+            else LocalAssetStore(prefix=local_store_prefix),
         )
         update_activity_status(
             client=db_client,
