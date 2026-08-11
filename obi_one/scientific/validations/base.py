@@ -1,11 +1,20 @@
-"""Entity-agnostic validation workflow base class."""
+"""Entity-agnostic validation workflow and task base classes."""
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from entitysdk import Client
+from pydantic import Field
+
 from bluecellulab.validation.base import ValidationOutcome, ValidationTest
+
+from obi_one.core.base import OBIBaseModel
+from obi_one.core.task import Task
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -85,3 +94,102 @@ class ValidationWorkflow(ABC):
             )
             outcomes.append(outcome)
         return outcomes
+
+
+class ValidationSingleConfig(OBIBaseModel):
+    """Base configuration for any validation task execution.
+
+    Attributes:
+        entity_id: The entity ID to validate.
+        output_dir: Directory for validation output (figures, artifacts).
+        skip_if_exists: Skip registration if ValidationResult already exists.
+    """
+
+    entity_id: str = Field(description="Entity ID to validate.")
+    output_dir: str = Field(
+        default="/tmp/validation_output",
+        description="Output directory for validation artifacts.",
+    )
+    skip_if_exists: bool = Field(
+        default=True,
+        description="Skip registration if a ValidationResult already exists for this entity.",
+    )
+
+
+class ValidationTask(Task):
+    """Entity-agnostic validation task.
+
+    Subclasses only need to implement get_workflow() to return the appropriate
+    ValidationWorkflow for their entity type.
+
+    This task:
+    1. Sets up the entity via the workflow
+    2. Runs all configured validations
+    3. Registers ValidationResult entities on the platform
+    4. Updates the execution activity with generated IDs
+    """
+
+    config: ValidationSingleConfig
+
+    def get_workflow(self) -> ValidationWorkflow:
+        """Return the ValidationWorkflow instance for this task.
+
+        Subclasses override this to provide entity-specific workflows.
+        """
+        msg = "Subclasses must implement get_workflow()"
+        raise NotImplementedError(msg)
+
+    def execute(
+        self,
+        *,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,
+        execution_activity_id: str | None = None,
+    ) -> list[str]:
+        """Execute the validation workflow.
+
+        Args:
+            db_client: entitysdk Client for platform interaction.
+            entity_cache: Whether to use entity caching (unused here).
+            execution_activity_id: Optional execution activity to update.
+
+        Returns:
+            List of registered ValidationResult entity IDs.
+        """
+        execution_activity = self._get_execution_activity(
+            db_client=db_client,
+            execution_activity_id=execution_activity_id,
+        )
+
+        workflow = self.get_workflow()
+
+        logger.info(f"Starting validation for entity {self.config.entity_id}")
+
+        context = workflow.setup(
+            entity_id=self.config.entity_id,
+            client=db_client,
+        )
+
+        outcomes = workflow.run(context)
+
+        registered = workflow.register(
+            outcomes=outcomes,
+            context=context,
+            client=db_client,
+            skip_if_exists=self.config.skip_if_exists,
+        )
+
+        generated_ids = [r.entity_id for r in registered if r.entity_id]
+
+        logger.info(
+            f"Validation complete. Registered {len(generated_ids)} ValidationResult(s) "
+            f"for entity {self.config.entity_id}"
+        )
+
+        self._update_execution_activity(
+            db_client=db_client,
+            execution_activity=execution_activity,
+            generated=generated_ids,
+        )
+
+        return generated_ids

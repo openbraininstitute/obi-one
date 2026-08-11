@@ -5,6 +5,11 @@ validation workflows (MEModel, Morphology, etc.), and registration of
 ValidationOutcomes as ValidationResult entities on the platform.
 """
 
-from obi_one.scientific.validations.base import ValidationWorkflow
+from obi_one.scientific.validations.base import (
+    ValidationSingleConfig,
+    ValidationTask,
+    ValidationWorkflow,
+    WorkflowContext,
+)
 
-__all__ = ["ValidationWorkflow"]
+__all__ = ["ValidationSingleConfig", "ValidationTask", "ValidationWorkflow", "WorkflowContext"]
