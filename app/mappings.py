@@ -302,6 +302,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "circuit_simplification.txt"),
+            capabilities=Capabilities(private_packages=True),
         ),
         resources=MachineResources(
             cores=1,

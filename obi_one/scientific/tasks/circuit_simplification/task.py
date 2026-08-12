@@ -10,13 +10,15 @@ entity with derivation links to the parent.
 
 import json
 import logging
+import os
 import tempfile
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar, Literal
 
+import bluepysnap as snap
 from entitysdk import Client, models, types
-from entitysdk.types import DerivationType, TaskActivityType, TaskConfigType
+from entitysdk.types import DerivationType
 from pydantic import Field, PrivateAttr
 from sonata_simplify.algorithms import ALGORITHM_DESCRIPTIONS, ALGORITHM_TITLES
 
@@ -105,7 +107,6 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     each producing a separate simplified output circuit.
     """
 
-    single_coord_class_name: ClassVar[str] = "CircuitSimplificationSingleConfig"
     name: ClassVar[str] = "Circuit Simplification"
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
@@ -137,13 +138,6 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
             "circuit": "/mapped-circuit-properties/{circuit_id}",
         },
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.circuit_simplification__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_simplification__config_generation
-    )
 
     def input_entities(self, db_client: Client) -> list[models.Entity]:
         input_entities = []
@@ -231,13 +225,6 @@ class CircuitSimplificationSingleConfig(CircuitSimplificationScanConfig, SingleC
     Enforces that all parameters are single values (no scan dimensions).
     """
 
-    _single_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.circuit_simplification__config
-    )
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_simplification__execution
-    )
-
 
 class CircuitSimplificationTask(Task):
     """Task that runs the sonata_simplify pipeline to produce simplified circuits.
@@ -252,23 +239,6 @@ class CircuitSimplificationTask(Task):
     config: CircuitSimplificationSingleConfig
     _circuit: Circuit | None = PrivateAttr(default=None)
     _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
-    _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
-
-    def __del__(self) -> None:
-        """Destructor for automatic clean-up."""
-        self._cleanup_temp_dir()
-
-    def _create_temp_dir(self) -> Path:
-        """Create a new temporary directory."""
-        self._cleanup_temp_dir()
-        self._temp_dir = tempfile.TemporaryDirectory()
-        return Path(self._temp_dir.name).resolve()
-
-    def _cleanup_temp_dir(self) -> None:
-        """Clean up temporary directory if it exists."""
-        if self._temp_dir is not None:
-            self._temp_dir.cleanup()
-            self._temp_dir = None
 
     def _register_output(
         self,
@@ -417,13 +387,7 @@ class CircuitSimplificationTask(Task):
             RuntimeError: If the circuit cannot be loaded.
         """
         try:
-            import bluepysnap  # ruff: ignore[import-outside-top-level]
-        except ImportError:
-            L.warning("bluepysnap not available — skipping loadability smoke check")
-            return
-
-        try:
-            bluepysnap.Circuit(str(circuit_config_path))
+            snap.Circuit(str(circuit_config_path))
             L.info(f"Smoke check passed: '{algorithm_name}' circuit is loadable")
         except Exception as e:
             msg = (
@@ -473,133 +437,136 @@ class CircuitSimplificationTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        # Resolve parent circuit (local path or staging from ID)
-        self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
-            self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
-            db_client=db_client,
-            entity_cache=entity_cache,
-            cache_root=self.config.scan_output_root,
-            temp_dir=self._create_temp_dir(),
-        )
-
-        input_circuit_path = self._circuit.path
-        simplification = self.config.simplification
-
-        # After GridScanGenerationTask expands the scan config, list fields
-        # with a single element are unwrapped to scalar values. Wrap algorithms
-        # back into a list so iteration works correctly either way.
-        algorithms = simplification.algorithms
-        if isinstance(algorithms, str):
-            algorithms = [algorithms]
-
-        # Resolve neuron set and write node_sets.json to the output root.
-        # The node set name and node_sets_file are passed via the sim config
-        # so the pipeline can resolve the node set via BluePySnap (merging
-        # the sim config's node sets with the circuit's, same as BCL/ND).
-        node_set_name = self._resolve_node_set(self.config.coordinate_output_root)
-
-        # Import sonata_simplify lazily (heavy dependencies)
-        from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level]
-            SimplificationPipeline,
-        )
-        from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level]
-
-        output_circuit_ids: list[str] = []
-
-        for algorithm_name in algorithms:
-            L.info(f"Running simplification with algorithm: {algorithm_name}")
-
-            # Split compound name into base algorithm and exporter
-            # e.g. "adex_nest" → ("adex", "nest:aeif_cond_alpha")
-            base_algorithm, exporter_name = ALGORITHM_EXPORT_MAP[algorithm_name]
-
-            # Create output directory for this algorithm
-            output_dir = self.config.coordinate_output_root / algorithm_name
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-            # Build simulation config for the pipeline.
-            # If a node set was resolved, include node_set (name) and
-            # node_sets_file (relative path to node_sets.json in the output root).
-            # The sim config is in coordinate_output_root/algorithm_name/, so
-            # node_sets.json in coordinate_output_root/ is at "../node_sets.json".
-            node_sets_file = "../node_sets.json" if node_set_name is not None else None
-            sim_config_path = CircuitSimplificationTask._build_simulation_config(
-                input_circuit_path,
-                output_dir,
-                node_set_name=node_set_name,
-                node_sets_file=node_sets_file,
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Resolve parent circuit (local path or staging from ID)
+            self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+                self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
+                db_client=db_client,
+                entity_cache=entity_cache,
+                cache_root=self.config.scan_output_root,
+                temp_dir=Path(temp_dir),
             )
 
-            # Initialize the pipeline with the BASE algorithm name
-            # (the pipeline's simplification_mode expects "lif", not "lif_nest")
-            pipeline = SimplificationPipeline(
-                simulation_config=str(sim_config_path),
-                simplification_mode=base_algorithm,
+            input_circuit_path = self._circuit.path
+            simplification = self.config.simplification
+
+            # After GridScanGenerationTask expands the scan config, list fields
+            # with a single element are unwrapped to scalar values. Wrap algorithms
+            # back into a list so iteration works correctly either way.
+            algorithms = simplification.algorithms
+            if isinstance(algorithms, str):
+                algorithms = [algorithms]
+
+            # Resolve neuron set and write node_sets.json to the output root.
+            # The node set name and node_sets_file are passed via the sim config
+            # so the pipeline can resolve the node set via BluePySnap (merging
+            # the sim config's node sets with the circuit's, same as BCL/ND).
+            node_set_name = self._resolve_node_set(self.config.coordinate_output_root)
+
+            # Import sonata_simplify lazily (heavy dependencies)
+            from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level]
+                SimplificationPipeline,
             )
+            from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level]
 
-            # Run the pipeline with a recipe that includes the exporter
-            recipe = Recipe.from_mode(base_algorithm, exporter=exporter_name)
-            pipeline.run_recipe(recipe)
+            output_circuit_ids: list[str] = []
 
-            # The simplified SONATA circuit is in output_dir / "output"
-            # (the sim config sets output_dir to output_dir / "output")
-            simplified_circuit_path = output_dir / "output" / "circuit_config.json"
+            for algorithm_name in algorithms:
+                L.info(f"Running simplification with algorithm: {algorithm_name}")
 
-            if not simplified_circuit_path.exists():
-                L.warning(
-                    f"Simplified circuit config not found at {simplified_circuit_path}"
-                    f" for algorithm '{algorithm_name}'"
-                )
-                continue
+                # Split compound name into base algorithm and exporter
+                # e.g. "adex_nest" → ("adex", "nest:aeif_cond_alpha")
+                base_algorithm, exporter_name = ALGORITHM_EXPORT_MAP[algorithm_name]
 
-            # Smoke check: verify the simplified circuit is loadable
-            # before registering it. A malformed output would create an
-            # unusable circuit entity (F11).
-            self._smoke_check_loadability(simplified_circuit_path, algorithm_name)
+                # Create output directory for this algorithm
+                output_dir = self.config.coordinate_output_root / algorithm_name
+                output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Register the SONATA output circuit entity
-            if db_client and self._circuit_entity:
-                new_circuit_entity = self._register_output(
-                    db_client=db_client,
-                    circuit_path=simplified_circuit_path,
-                    algorithm_name=algorithm_name,
-                )
-                if new_circuit_entity is not None:
-                    output_circuit_ids.append(str(new_circuit_entity.id))
-
-            # Register the exported circuit (if an exporter was used)
-            if exporter_name and db_client and self._circuit_entity:
-                export_suffix = exporter_name.replace(":", "_")
-                export_dir = simplified_circuit_path.parent / f"output_{export_suffix}"
-                export_circuit_path = export_dir / "circuit_config.json"
-                if export_circuit_path.exists():
-                    L.info(f"Registering exported circuit: {export_circuit_path}")
-                    export_entity = self._register_output(
-                        db_client=db_client,
-                        circuit_path=export_circuit_path,
-                        algorithm_name=algorithm_name,
-                        export_suffix=f"_{export_suffix}",
+                # Build simulation config for the pipeline.
+                # If a node set was resolved, include node_set (name) and
+                # node_sets_file derived relative to this algorithm's sim config.
+                node_sets_file = (
+                    os.path.relpath(
+                        self.config.coordinate_output_root / "node_sets.json",
+                        start=output_dir,
                     )
-                    if export_entity is not None:
-                        output_circuit_ids.append(str(export_entity.id))
-                else:
+                    if node_set_name is not None
+                    else None
+                )
+                sim_config_path = CircuitSimplificationTask._build_simulation_config(
+                    input_circuit_path,
+                    output_dir,
+                    node_set_name=node_set_name,
+                    node_sets_file=node_sets_file,
+                )
+
+                # Initialize the pipeline with the BASE algorithm name
+                # (the pipeline's simplification_mode expects "lif", not "lif_nest")
+                pipeline = SimplificationPipeline(
+                    simulation_config=str(sim_config_path),
+                    simplification_mode=base_algorithm,
+                )
+
+                # Run the pipeline with a recipe that includes the exporter
+                recipe = Recipe.from_mode(base_algorithm, exporter=exporter_name)
+                pipeline.run_recipe(recipe)
+
+                # The simplified SONATA circuit is in output_dir / "output"
+                # (the sim config sets output_dir to output_dir / "output")
+                simplified_circuit_path = output_dir / "output" / "circuit_config.json"
+
+                if not simplified_circuit_path.exists():
                     L.warning(
-                        f"Export output not found at {export_circuit_path}"
+                        f"Simplified circuit config not found at {simplified_circuit_path}"
                         f" for algorithm '{algorithm_name}'"
                     )
+                    continue
 
-            L.info(f"Simplification with '{algorithm_name}' DONE")
+                # Smoke check: verify the simplified circuit is loadable
+                # before registering it. A malformed output would create an
+                # unusable circuit entity (F11).
+                self._smoke_check_loadability(simplified_circuit_path, algorithm_name)
 
-        # Update execution activity
-        if db_client and execution_activity and output_circuit_ids:
-            CircuitSimplificationTask._update_execution_activity(
-                db_client=db_client,
-                execution_activity=execution_activity,
-                generated=output_circuit_ids,
-            )
+                # Register the SONATA output circuit entity
+                if db_client and self._circuit_entity:
+                    new_circuit_entity = self._register_output(
+                        db_client=db_client,
+                        circuit_path=simplified_circuit_path,
+                        algorithm_name=algorithm_name,
+                    )
+                    if new_circuit_entity is not None:
+                        output_circuit_ids.append(str(new_circuit_entity.id))
 
-        # Clean up
-        self._cleanup_temp_dir()
+                # Register the exported circuit (if an exporter was used)
+                if exporter_name and db_client and self._circuit_entity:
+                    export_suffix = exporter_name.replace(":", "_")
+                    export_dir = simplified_circuit_path.parent / f"output_{export_suffix}"
+                    export_circuit_path = export_dir / "circuit_config.json"
+                    if export_circuit_path.exists():
+                        L.info(f"Registering exported circuit: {export_circuit_path}")
+                        export_entity = self._register_output(
+                            db_client=db_client,
+                            circuit_path=export_circuit_path,
+                            algorithm_name=algorithm_name,
+                            export_suffix=f"_{export_suffix}",
+                        )
+                        if export_entity is not None:
+                            output_circuit_ids.append(str(export_entity.id))
+                    else:
+                        L.warning(
+                            f"Export output not found at {export_circuit_path}"
+                            f" for algorithm '{algorithm_name}'"
+                        )
+
+                L.info(f"Simplification with '{algorithm_name}' DONE")
+
+            # Update execution activity
+            if db_client and execution_activity and output_circuit_ids:
+                CircuitSimplificationTask._update_execution_activity(
+                    db_client=db_client,
+                    execution_activity=execution_activity,
+                    generated=output_circuit_ids,
+                )
 
         if output_circuit_ids:
             return output_circuit_ids[0]
