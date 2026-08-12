@@ -146,11 +146,10 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
 
 
 class ProtocolAndFeatureSelection(Block):
-    """Per-protocol picker for timing, amplitudes, and chosen efeatures.
+    """Choose the protocols, amplitudes, and eFEL features for your recordings.
 
-    The selection itself lives in :class:`SelectEFeaturesByProtocol`, exposed as
-    a single object field so the schema advertises ``type: object`` as the
-    ``select_efeatures_by_protocol`` component spec requires.
+    Select which electrical features (efeatures) to extract for each protocol. The available
+    protocols and amplitudes depend on the recordings you choose.
     """
 
     selection: SelectEFeaturesByProtocol = Field(
