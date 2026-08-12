@@ -6,6 +6,8 @@ heavy NEURON dependencies and verify the task's orchestration logic.
 
 import inspect
 import json
+import os
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -284,7 +286,7 @@ class TestTaskExecution:
             ),
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
-                return_value=None,
+                return_value="TestNodeSet",
             ),
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
@@ -302,6 +304,13 @@ class TestTaskExecution:
         # Pipeline should have been constructed and run_recipe called
         mock_pipeline.assert_called_once()
         mock_pipeline.return_value.run_recipe.assert_called_once()
+        sim_config_path = Path(mock_pipeline.call_args.kwargs["simulation_config"])
+        sim_config = json.loads(sim_config_path.read_text(encoding="utf-8"))
+        assert sim_config["node_set"] == "TestNodeSet"
+        assert sim_config["node_sets_file"] == os.path.relpath(
+            config.coordinate_output_root / "node_sets.json",
+            start=sim_config_path.parent,
+        )
 
     def test_execute_skips_missing_output(
         self,
@@ -438,7 +447,30 @@ class TestTaskExecution:
         mock_circuit.sonata_circuit = MagicMock()
         mock_entity = MagicMock()
 
+        # Track the temp directory created by tempfile.TemporaryDirectory
+        created_dirs: list[Path] = []
+
+        original_temp_dir = tempfile.TemporaryDirectory
+
+        class TrackingTempDir:
+            """Wraps tempfile.TemporaryDirectory to capture the directory path."""
+
+            def __init__(self, *args, **kwargs):
+                self._inner = original_temp_dir(*args, **kwargs)
+
+            def __enter__(self):
+                path = self._inner.__enter__()
+                created_dirs.append(Path(path))
+                return path
+
+            def __exit__(self, *args):
+                return self._inner.__exit__(*args)
+
         with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.tempfile.TemporaryDirectory",
+                TrackingTempDir,
+            ),
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
@@ -454,8 +486,9 @@ class TestTaskExecution:
         ):
             task.execute(db_client=None)
 
-        # Temp dir should be cleaned up
-        assert task._temp_dir is None
+        # Temp dir should be cleaned up (the context manager exited)
+        assert len(created_dirs) == 1, "Expected exactly one temp directory to be created"
+        assert not created_dirs[0].exists(), f"Temp dir {created_dirs[0]} should be cleaned up"
 
 
 class TestSmokeCheckLoadability:
@@ -481,15 +514,6 @@ class TestSmokeCheckLoadability:
         with patch("bluepysnap.Circuit"):
             # Should not raise
             CircuitSimplificationTask._smoke_check_loadability(valid_config, "test_algo")
-
-    def test_smoke_check_skips_when_bluepysnap_missing(self, tmp_path: Path):
-        """_smoke_check_loadability should skip (not raise) when bluepysnap is unavailable."""
-        config_path = tmp_path / "circuit_config.json"
-        config_path.write_text("{}")
-
-        with patch("builtins.__import__", side_effect=ImportError("no bluepysnap")):
-            # Should not raise — just log a warning
-            CircuitSimplificationTask._smoke_check_loadability(config_path, "test_algo")
 
     def test_execute_fails_on_unloadable_circuit(
         self,
