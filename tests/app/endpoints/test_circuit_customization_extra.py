@@ -1,6 +1,9 @@
 """Additional unit tests for circuit_customization — edge cases and uncovered paths."""
 
 import json
+import shutil
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import h5py
 import numpy as np
@@ -11,6 +14,7 @@ from app.endpoints.circuit_customization import (
     EdgeValidationError,
     NodeSetsValidationError,
     _collect_templates_from_group,
+    _get_parent_mechanism_names,
     _parse_population_manifest,
     _run_cross_validations,
     _validate_edges,
@@ -18,6 +22,10 @@ from app.endpoints.circuit_customization import (
     _validate_node_sets,
     _validate_nodes_hoc_consistency,
 )
+
+from tests.utils import CIRCUIT_DIR
+
+TINY_CIRCUIT = CIRCUIT_DIR / "N_10__top_nodes_dim6"
 
 # ---------------------------------------------------------------------------
 # _parse_population_manifest
@@ -307,3 +315,32 @@ class TestRunCrossValidations:
         )
         assert len(errors) == 1
         assert "NET_RECEIVE" in errors[0]
+
+
+# ---------------------------------------------------------------------------
+# _get_parent_mechanism_names
+# ---------------------------------------------------------------------------
+
+
+class TestGetParentMechanismNames:
+    def test_returns_mod_stems_from_tiny_circuit(self):
+        """Stage the repo tiny circuit (mocked entitysdk) and collect MOD stems via SNAP."""
+        expected = {p.stem for p in (TINY_CIRCUIT / "mod").glob("*.mod")}
+        assert expected  # sanity: fixture has mechanisms
+
+        def fake_stage_circuit(_client, *, model, output_dir: Path) -> Path:
+            del model
+            dest = output_dir / "sonata_circuit"
+            shutil.copytree(TINY_CIRCUIT, dest)
+            return dest / "circuit_config.json"
+
+        with patch(
+            "entitysdk.staging.circuit.stage_circuit",
+            side_effect=fake_stage_circuit,
+        ) as mock_stage:
+            names = _get_parent_mechanism_names(MagicMock(), MagicMock(name="parent"))
+
+        mock_stage.assert_called_once()
+        assert names == expected
+        # Spot-check a few well-known mechanisms from the N_10 fixture
+        assert {"NaTg", "Ca_HVA2", "ProbAMPANMDA_EMS", "ProbGABAAB_EMS"} <= names
