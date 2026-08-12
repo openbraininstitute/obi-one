@@ -1,6 +1,9 @@
 """Unit tests for circuit customization staging helpers."""
 
 import json
+import shutil
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import h5py
 import numpy as np
@@ -16,7 +19,15 @@ from obi_one.utils.circuit_customization.staging import (
     _replace_file,
     _resolve_hoc_dir,
     _resolve_mod_dir,
+    stage_customized_circuit,
 )
+
+from tests.utils import CIRCUIT_DIR
+
+TINY_CIRCUIT = CIRCUIT_DIR / "N_10__top_nodes_dim6"
+EDGE_POP = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical"
+NODE_POP = "S1nonbarrel_neurons"
+STAGING_MODULE = "obi_one.utils.circuit_customization.staging"
 
 # ---------------------------------------------------------------------------
 # _resolve_hoc_dir
@@ -511,3 +522,178 @@ class TestApplyEmodelOverrides:
         _apply_emodel_overrides([hoc_file], {}, config, circuit_dir)
         assert (hoc_dir / "Generic.hoc").exists()
         assert not (pop_dir / "Generic.hoc").exists()
+
+
+# ---------------------------------------------------------------------------
+# stage_customized_circuit (mock entitysdk stage_circuit)
+# ---------------------------------------------------------------------------
+
+
+def _fake_stage_circuit(_client, *, model, output_dir: Path) -> Path:
+    """Copy the tiny circuit into output_dir, simulating entitysdk staging."""
+    del model
+    dest = output_dir / "sonata_circuit"
+    shutil.copytree(TINY_CIRCUIT, dest)
+    return dest / "circuit_config.json"
+
+
+def _write_edges_h5(path: Path, pop_name: str, n: int) -> None:
+    with h5py.File(path, "w") as f:
+        pop = f.create_group(f"edges/{pop_name}")
+        pop.create_dataset("source_node_id", data=np.arange(n, dtype=np.int64))
+        pop.create_dataset("target_node_id", data=np.arange(n, dtype=np.int64))
+        pop.create_dataset("edge_type_id", data=np.zeros(n, dtype=np.int32))
+
+
+def _write_nodes_h5(path: Path, pop_name: str, n: int) -> None:
+    with h5py.File(path, "w") as f:
+        pop = f.create_group(f"nodes/{pop_name}")
+        pop.create_dataset("node_type_id", data=np.ones(n, dtype=np.int32))
+
+
+class TestStageCustomizedCircuit:
+    def test_applies_file_overrides_on_tiny_circuit(self, tmp_path):
+        """Mock parent download; assert node/edge/hoc/mod/nodeset overrides land."""
+        client = MagicMock()
+        parent = MagicMock(name="parent_circuit")
+        output_dir = tmp_path / "staged"
+
+        edge_override = tmp_path / "edges_override.h5"
+        _write_edges_h5(edge_override, EDGE_POP, n=7)
+
+        node_override = tmp_path / "nodes_override.h5"
+        _write_nodes_h5(node_override, NODE_POP, n=4)
+
+        hoc_override = tmp_path / "cADpyr_L6BPC.hoc"
+        hoc_override.write_text("begintemplate OverrideCell\nendtemplate OverrideCell\n")
+
+        mod_override = tmp_path / "Ca_HVA2.mod"
+        mod_override.write_text("NEURON {\n  SUFFIX OverrideCa\n}\n")
+
+        node_sets_override = tmp_path / "node_sets.json"
+        node_sets_override.write_text(json.dumps({"CustomSet": {"population": NODE_POP}}))
+
+        with patch(
+            f"{STAGING_MODULE}.stage_circuit", side_effect=_fake_stage_circuit
+        ) as mock_stage:
+            config_path = stage_customized_circuit(
+                client,
+                parent=parent,
+                output_dir=output_dir,
+                edge_overrides=[edge_override],
+                node_overrides=[node_override],
+                emodel_overrides=[hoc_override],
+                emodel_population_map={"cADpyr_L6BPC.hoc": NODE_POP},
+                mechanism_overrides=[mod_override],
+                node_sets_override=node_sets_override,
+            )
+
+        mock_stage.assert_called_once()
+        circuit_dir = config_path.parent
+
+        edges_path = circuit_dir / "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical" / "edges.h5"
+        with h5py.File(edges_path, "r") as f:
+            assert f[f"edges/{EDGE_POP}/source_node_id"].shape[0] == 7
+
+        nodes_path = circuit_dir / "S1nonbarrel_neurons" / "nodes.h5"
+        with h5py.File(nodes_path, "r") as f:
+            assert f[f"nodes/{NODE_POP}/node_type_id"].shape[0] == 4
+
+        assert (
+            (circuit_dir / "emodels_hoc" / "cADpyr_L6BPC.hoc")
+            .read_text()
+            .startswith("begintemplate OverrideCell")
+        )
+        assert "OverrideCa" in (circuit_dir / "mod" / "Ca_HVA2.mod").read_text()
+        assert json.loads((circuit_dir / "node_sets.json").read_text()) == {
+            "CustomSet": {"population": NODE_POP}
+        }
+
+    def test_circuit_config_override_and_stale_symlink_cleanup(self, tmp_path):
+        """Config override drops a uniquely named file; unused parent symlink is removed."""
+        client = MagicMock()
+        parent = MagicMock(name="parent_circuit")
+        output_dir = tmp_path / "staged"
+
+        def stage_synthetic(_client, *, model, output_dir: Path) -> Path:
+            del model
+            circuit_dir = output_dir / "sonata_circuit"
+            circuit_dir.mkdir(parents=True)
+
+            nodes = circuit_dir / "nodes_a.h5"
+            _write_nodes_h5(nodes, "pop_a", n=2)
+            keep_edges = circuit_dir / "keep_edges.h5"
+            _write_edges_h5(keep_edges, "pop_a__pop_a", n=3)
+            drop_edges = circuit_dir / "drop_edges.h5"
+            _write_edges_h5(drop_edges, "virt__pop_a", n=1)
+
+            # Mimic EFS staging: parent network file is a symlink
+            parent_blob = tmp_path / "parent_drop_edges.h5"
+            shutil.copy2(drop_edges, parent_blob)
+            drop_edges.unlink()
+            drop_edges.symlink_to(parent_blob)
+
+            config = {
+                "version": 2.3,
+                "manifest": {"$BASE_DIR": str(circuit_dir)},
+                "components": {},
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": "$BASE_DIR/nodes_a.h5",
+                            "populations": {"pop_a": {"type": "virtual"}},
+                        }
+                    ],
+                    "edges": [
+                        {
+                            "edges_file": "$BASE_DIR/keep_edges.h5",
+                            "populations": {"pop_a__pop_a": {"type": "chemical"}},
+                        },
+                        {
+                            "edges_file": "$BASE_DIR/drop_edges.h5",
+                            "populations": {"virt__pop_a": {"type": "chemical"}},
+                        },
+                    ],
+                },
+            }
+            config_path = circuit_dir / "circuit_config.json"
+            config_path.write_text(json.dumps(config, indent=2))
+            return config_path
+
+        override_cfg = {
+            "version": 2.3,
+            "manifest": {"$BASE_DIR": "./"},
+            "components": {},
+            "networks": {
+                "nodes": [
+                    {
+                        "nodes_file": "$BASE_DIR/nodes_a.h5",
+                        "populations": {"pop_a": {"type": "virtual"}},
+                    }
+                ],
+                "edges": [
+                    {
+                        "edges_file": "$BASE_DIR/keep_edges.h5",
+                        "populations": {"pop_a__pop_a": {"type": "chemical"}},
+                    }
+                ],
+            },
+        }
+        config_override = tmp_path / "circuit_config.json"
+        config_override.write_text(json.dumps(override_cfg, indent=2))
+
+        with patch(f"{STAGING_MODULE}.stage_circuit", side_effect=stage_synthetic):
+            config_path = stage_customized_circuit(
+                client,
+                parent=parent,
+                output_dir=output_dir,
+                circuit_config_override=config_override,
+            )
+
+        circuit_dir = config_path.parent
+        assert (circuit_dir / "keep_edges.h5").exists()
+        assert not (circuit_dir / "drop_edges.h5").exists()
+        assert (
+            json.loads(config_path.read_text())["networks"]["edges"]
+            == override_cfg["networks"]["edges"]
+        )
