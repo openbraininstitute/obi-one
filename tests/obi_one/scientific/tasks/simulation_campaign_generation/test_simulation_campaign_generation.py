@@ -344,6 +344,7 @@ def _check_generated_obi_config(tmp_path, scan):  # ruff: ignore[too-many-locals
             "SynapticMgManipulation": mg_dict,
             "ScaleAcetylcholineUSESynapticManipulation": use_dict,
         },
+        "neuronal_manipulations": {},
         "initialize": init_dict,
         "info": info_dict,
         "morphology_locations": {},
@@ -512,6 +513,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # ruff: ignore[too-many-
         }
         assert cfg.pop("info") == info_dict
         assert cfg.pop("distributions") == {}
+        assert cfg.pop("neuronal_manipulations") == {}
         assert cfg.pop("morphology_locations") == {}
         assert len(cfg) == 0  # No additional entries
 

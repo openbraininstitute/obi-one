@@ -203,6 +203,7 @@ class TestTriggerValidationTask:
             circuit_id=circuit_id,
             project_id=project_id,
             virtual_lab_id=virtual_lab_id,
+            compute_cell="cell_a",
         )
 
         ls_client.post.assert_called_once()
@@ -211,6 +212,7 @@ class TestTriggerValidationTask:
         job_data = call_kwargs["json"]
         assert job_data["code"]["ref"] == "tag:1.2.3"
         assert "staged_directories" not in job_data["code"]
+        assert job_data["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
         assert "--force false" in job_data["inputs"]
         assert str(project_id) == job_data["project_id"]
@@ -231,11 +233,13 @@ class TestTriggerValidationTask:
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
+            compute_cell="cell_b",
             force=True,
         )
 
         job_data = ls_client.post.call_args[1]["json"]
         assert "--force true" in job_data["inputs"]
+        assert job_data["resources"]["compute_cell"] == "cell_b"
 
     @patch("app.endpoints.circuit_helpers.settings")
     def test_failure_logs_warning(self, mock_settings):
@@ -255,6 +259,7 @@ class TestTriggerValidationTask:
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
+            compute_cell="cell_a",
         )
         ls_client.post.assert_called_once()
         assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"

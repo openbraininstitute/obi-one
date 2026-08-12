@@ -24,6 +24,7 @@ def submit_circuit_validation_job(
     project_id: UUID,
     virtual_lab_id: UUID,
     api_url: str,
+    compute_cell: str,
     obi_one_repo: str = DEFAULT_OBI_ONE_REPO,
     app_version: str | None = None,
     force: bool = False,
@@ -40,6 +41,7 @@ def submit_circuit_validation_job(
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
         api_url: Base URL of the obi-one API (for the generate-assets callback).
+        compute_cell: Compute cell for the launch-system job (from the vlab).
         obi_one_repo: Git repository URL for the launch script checkout.
         app_version: App version used to form ``tag:<version>``; defaults to ``0.0.0``.
         force: When True, validate even if the circuit is not in ``draft`` status.
@@ -69,7 +71,7 @@ def submit_circuit_validation_job(
             "cores": 1,
             "memory": 8,
             "timelimit": "00:30",
-            "compute_cell": "local",
+            "compute_cell": compute_cell,
         },
         "inputs": [
             f"--circuit_id {circuit_id}",
@@ -96,6 +98,7 @@ def submit_circuit_asset_generation_job(
     circuit_id: UUID,
     project_id: UUID,
     virtual_lab_id: UUID,
+    compute_cell: str,
     obi_one_repo: str = DEFAULT_OBI_ONE_REPO,
     app_version: str | None = None,
     force: bool = False,
@@ -110,6 +113,7 @@ def submit_circuit_asset_generation_job(
         circuit_id: Circuit entity ID to generate assets for.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
+        compute_cell: Compute cell for the launch-system job (from the vlab).
         obi_one_repo: Git repository URL for the launch script checkout.
         app_version: App version used to form ``tag:<version>``; defaults to ``0.0.0``.
         force: When True, regenerate compressed archive even if it already exists.
@@ -130,7 +134,7 @@ def submit_circuit_asset_generation_job(
             "cores": 1,
             "memory": 16,
             "timelimit": "01:00",
-            "compute_cell": "local",
+            "compute_cell": compute_cell,
         },
         "inputs": [
             f"--circuit_id {circuit_id}",

@@ -128,6 +128,7 @@ def trigger_validation_task(
     circuit_id: UUID,
     project_id: UUID,
     virtual_lab_id: UUID,
+    compute_cell: str,
     force: bool = False,
 ) -> None:
     """Submit a circuit validation job to the launch-system.
@@ -137,6 +138,7 @@ def trigger_validation_task(
         circuit_id: Circuit entity ID to validate.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
+        compute_cell: Compute cell for the launch-system job (from the vlab).
         force: When True, validate even if the circuit is not in ``draft`` status.
     """
     submit_circuit_validation_job(
@@ -145,6 +147,7 @@ def trigger_validation_task(
         project_id=project_id,
         virtual_lab_id=virtual_lab_id,
         api_url=settings.API_URL,
+        compute_cell=compute_cell,
         obi_one_repo=settings.OBI_ONE_REPO,
         app_version=settings.APP_VERSION,
         force=force,
@@ -157,6 +160,7 @@ def trigger_asset_generation_task(
     circuit_id: UUID,
     project_id: UUID,
     virtual_lab_id: UUID,
+    compute_cell: str,
     force: bool = False,
 ) -> None:
     """Submit an asset generation job to the launch-system.
@@ -166,6 +170,7 @@ def trigger_asset_generation_task(
         circuit_id: Circuit entity ID to generate assets for.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
+        compute_cell: Compute cell for the launch-system job (from the vlab).
         force: When True, regenerate compressed archive even if it already exists.
     """
     submit_circuit_asset_generation_job(
@@ -173,6 +178,7 @@ def trigger_asset_generation_task(
         circuit_id=circuit_id,
         project_id=project_id,
         virtual_lab_id=virtual_lab_id,
+        compute_cell=compute_cell,
         obi_one_repo=settings.OBI_ONE_REPO,
         app_version=settings.APP_VERSION,
         force=force,

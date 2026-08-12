@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.dependencies.auth import user_verified
+from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.circuit_helpers import (
@@ -594,9 +595,10 @@ def _parse_population_manifest(manifest_json: str | None) -> dict[str, str]:
         " emodel_population_manifest as a JSON object mapping filename → population name."
     ),
 )
-def customize_circuit_endpoint(
+def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     ls_client: LaunchSystemClientDep,
+    compute_cell: ComputeCellDep,
     parent_circuit_id: Annotated[UUID, Form(...)],
     name: Annotated[str, Form(...)],
     description: Annotated[str, Form()] = "",
@@ -709,6 +711,7 @@ def customize_circuit_endpoint(
         circuit_id=registered.id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+        compute_cell=compute_cell,
     )
 
     L.info(

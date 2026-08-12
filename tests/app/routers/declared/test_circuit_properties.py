@@ -31,6 +31,85 @@ def _db_client(scale: entitysdk.types.CircuitScale):
     )
 
 
+def test_circuit_metrics_endpoint_returns_metrics(monkeypatch):
+    metrics = _circuit_metrics()
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: metrics)
+
+    response = circuit_properties.circuit_metrics_endpoint(
+        circuit_id="circuit-id",
+        db_client=SimpleNamespace(),
+    )
+
+    assert response is metrics
+
+
+def test_circuit_metrics_endpoint_maps_sdk_error_to_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.circuit_metrics_endpoint(
+            circuit_id="circuit-id",
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 500
+
+
+def test_circuit_populations_endpoint_returns_biophysical_populations(monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.circuit_populations_endpoint(
+        circuit_id="circuit-id",
+        db_client=SimpleNamespace(),
+    )
+
+    assert response.populations == ["biophysical"]
+
+
+def test_circuit_populations_endpoint_maps_sdk_error_to_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.circuit_populations_endpoint(
+            circuit_id="circuit-id",
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 500
+
+
+def test_circuit_nodesets_endpoint_returns_nodesets(monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.circuit_nodesets_endpoint(
+        circuit_id="circuit-id",
+        db_client=SimpleNamespace(),
+    )
+
+    assert response.nodesets == ["All"]
+
+
+def test_circuit_nodesets_endpoint_maps_sdk_error_to_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.circuit_nodesets_endpoint(
+            circuit_id="circuit-id",
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 500
+
+
 @pytest.mark.parametrize(
     "scale",
     [
@@ -42,7 +121,6 @@ def _db_client(scale: entitysdk.types.CircuitScale):
 )
 def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
-    monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",
@@ -62,7 +140,6 @@ def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatc
 )
 def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
-    monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",
@@ -70,3 +147,62 @@ def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch
     )
 
     assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is False
+
+
+def test_memodel_without_circuit_metrics_gets_default_usability(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+    db_client = _db_client(entitysdk.types.CircuitScale.single)
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="memodel-id",
+        db_client=db_client,
+    )
+
+    assert "MechanismVariablesByIonChannel" not in response
+    assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is True
+    assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False
+
+
+def test_unknown_entity_without_circuit_metrics_returns_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+    db_client = type(
+        "DBClient",
+        (),
+        {"get_entity": staticmethod(raise_entity_sdk_error)},
+    )()
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.mapped_circuit_properties_endpoint(
+            circuit_id="unknown-id",
+            db_client=db_client,
+        )
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail["detail"] == "No properties found for entity unknown-id."
+
+
+def test_circuit_entity_lookup_failure_uses_default_usability(monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    db_client = type(
+        "DBClient",
+        (),
+        {"get_entity": staticmethod(raise_entity_sdk_error)},
+    )()
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=db_client,
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] is False
+    assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False

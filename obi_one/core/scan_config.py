@@ -235,7 +235,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     f"the block you are referencing, or should be an empty string to "
                     f"reference a root level block."
                 )
-                raise KeyError(msg) from None
+                # ValueError, not KeyError: only ValueError/AssertionError are folded into a
+                # ValidationError by the model validator this runs inside.
+                raise ValueError(msg) from None
 
         elif not block_reference.block_dict_name and block_reference.block_name:
             # If the block_dict_name is empty, we assume the block_name

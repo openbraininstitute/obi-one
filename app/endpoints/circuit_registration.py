@@ -16,6 +16,7 @@ from entitysdk.types import CircuitScale, DerivationType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.dependencies.auth import user_verified
+from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.circuit_helpers import trigger_asset_generation_task, trigger_validation_task
@@ -136,8 +137,13 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
     authorized_public: bool,
     overview_image_path: Path | None,
     sim_designer_image_path: Path | None,
+    dry_run: bool = False,
 ) -> models.Circuit:
-    """Resolve optional links and register a draft circuit entity."""
+    """Resolve optional links and register a draft circuit entity.
+
+    When ``dry_run`` is True, validates inputs and computes circuit metadata
+    without creating any entitycore records or assets.
+    """
     try:
         contribution_dict = (
             get_contributions(db_client, raw_contributions) if raw_contributions else None
@@ -167,9 +173,11 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
             authorized_public=authorized_public,
             skip_validation=True,
             lifecycle_status="draft",
-            include_visualization=True,
+            include_visualization=not dry_run,
             overview_image_path=overview_image_path,
             sim_designer_image_path=sim_designer_image_path,
+            dry_run=dry_run,
+            skip_additional_assets=dry_run,
         )
     except (OSError, tarfile.TarError) as e:
         raise HTTPException(
@@ -187,6 +195,7 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
 def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]
     ls_client: LaunchSystemClientDep,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    compute_cell: ComputeCellDep,
     name: Annotated[str, Form()],
     description: Annotated[str, Form()],
     brain_region_id: Annotated[UUID, Form()],
@@ -217,6 +226,10 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
         UploadFile | None, File(description="Pre-computed sim-designer image (.png)")
     ] = None,
     authorized_public: Annotated[bool, Form()] = False,  # ruff: ignore[boolean-default-value-positional-argument]
+    dry_run: Annotated[  # ruff: ignore[boolean-default-value-positional-argument]
+        bool,
+        Form(description="Validate and compute metadata without registering or launching jobs"),
+    ] = False,
 ) -> dict:
     """Register a new circuit entity with async validation.
 
@@ -224,6 +237,9 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
     state (skipping in-process SONATA validation), then triggers the async
     validation launch job. Large archives are unzipped on the webserver for
     metadata/assets — consider moving that off the request path if disk is tight.
+
+    Set ``dry_run=true`` to compute circuit metadata and validate inputs without
+    creating any entitycore records or triggering async validation/asset jobs.
 
     Optional parity with ``register_circuit_from_metadata``:
     duplicate-name check, hierarchy/species check, ``published_in``,
@@ -285,19 +301,22 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
             authorized_public=authorized_public,
             overview_image_path=_save_optional_upload(overview_image, tmp),
             sim_designer_image_path=_save_optional_upload(sim_designer_image, tmp),
+            dry_run=dry_run,
         )
 
-    trigger_validation_task(
-        ls_client=ls_client,
-        circuit_id=registered.id,
-        project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
-        virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
-    )
+    if not dry_run:
+        trigger_validation_task(
+            ls_client=ls_client,
+            circuit_id=registered.id,
+            project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
+            virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+            compute_cell=compute_cell,
+        )
 
     number_connections = registered.number_connections
     return {
-        "circuit_id": str(registered.id),
-        "status": "draft",
+        "circuit_id": None if dry_run else str(registered.id),
+        "status": "dry_run" if dry_run else "draft",
         "number_neurons": int(registered.number_neurons),
         "number_synapses": int(registered.number_synapses),
         "number_connections": int(number_connections) if number_connections is not None else None,
@@ -310,6 +329,7 @@ def validate_circuit_endpoint(
     circuit_id: UUID,
     ls_client: LaunchSystemClientDep,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    compute_cell: ComputeCellDep,
     force: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
 ) -> dict:
     """Trigger (re-)validation for a circuit.
@@ -330,6 +350,7 @@ def validate_circuit_endpoint(
         circuit_id=circuit_id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+        compute_cell=compute_cell,
         force=force,
     )
 
@@ -341,6 +362,7 @@ def generate_assets_endpoint(
     circuit_id: UUID,
     ls_client: LaunchSystemClientDep,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    compute_cell: ComputeCellDep,
     force: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
 ) -> dict:
     """Trigger asset generation for an active circuit.
@@ -372,6 +394,7 @@ def generate_assets_endpoint(
         circuit_id=circuit_id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
+        compute_cell=compute_cell,
         force=force,
     )
 

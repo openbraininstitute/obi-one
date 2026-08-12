@@ -65,6 +65,7 @@ class TestTriggerValidationTask:
             circuit_id=circuit_id,
             project_id=project_id,
             virtual_lab_id=virtual_lab_id,
+            compute_cell="cell_a",
         )
 
         ls_client.post.assert_called_once()
@@ -73,6 +74,7 @@ class TestTriggerValidationTask:
         job_data = call_kwargs["json"]
         assert job_data["code"]["ref"] == "tag:1.2.3"
         assert job_data["resources"]["image_type"] == "python_3_12_openmpi5_neuron9_neurodamus"
+        assert job_data["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
         assert "--force false" in job_data["inputs"]
         assert str(project_id) == job_data["project_id"]
@@ -93,11 +95,13 @@ class TestTriggerValidationTask:
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
+            compute_cell="cell_b",
             force=True,
         )
 
         job_data = ls_client.post.call_args[1]["json"]
         assert "--force true" in job_data["inputs"]
+        assert job_data["resources"]["compute_cell"] == "cell_b"
 
     @patch("app.endpoints.circuit_helpers.settings")
     def test_failure_logs_warning(self, mock_settings):
@@ -116,6 +120,7 @@ class TestTriggerValidationTask:
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
+            compute_cell="cell_a",
         )
         ls_client.post.assert_called_once()
         assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"
@@ -136,11 +141,15 @@ class TestValidateCircuitEndpoint:
         mock_circuit.lifecycle_status = "active"
 
         from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
         from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
 
         mock_db = MagicMock()
         mock_db.get_entity.return_value = mock_circuit
         app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
 
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/validate")
@@ -148,6 +157,7 @@ class TestValidateCircuitEndpoint:
             assert "force=true" in resp.json()["detail"]
         finally:
             app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
 
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
     def test_force_triggers_validation(self, mock_trigger, client):
@@ -156,6 +166,9 @@ class TestValidateCircuitEndpoint:
         mock_circuit.lifecycle_status = "active"
 
         from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
         from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
 
         mock_db = MagicMock()
@@ -163,6 +176,7 @@ class TestValidateCircuitEndpoint:
         mock_db.project_context.project_id = uuid4()
         mock_db.project_context.virtual_lab_id = uuid4()
         app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
 
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/validate?force=true")
@@ -170,8 +184,10 @@ class TestValidateCircuitEndpoint:
             assert resp.json()["status"] == "validation_triggered"
             mock_trigger.assert_called_once()
             assert mock_trigger.call_args.kwargs["force"] is True
+            assert mock_trigger.call_args.kwargs["compute_cell"] == "cell_a"
         finally:
             app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
 
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
     def test_draft_triggers_without_force(self, mock_trigger, client):
@@ -180,6 +196,9 @@ class TestValidateCircuitEndpoint:
         mock_circuit.lifecycle_status = "draft"
 
         from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
         from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
 
         mock_db = MagicMock()
@@ -187,14 +206,17 @@ class TestValidateCircuitEndpoint:
         mock_db.project_context.project_id = uuid4()
         mock_db.project_context.virtual_lab_id = uuid4()
         app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_b"
 
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/validate")
             assert resp.status_code == 200
             mock_trigger.assert_called_once()
             assert mock_trigger.call_args.kwargs["force"] is False
+            assert mock_trigger.call_args.kwargs["compute_cell"] == "cell_b"
         finally:
             app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
 
 
 class TestTriggerAssetGenerationTask:
@@ -217,12 +239,14 @@ class TestTriggerAssetGenerationTask:
             circuit_id=circuit_id,
             project_id=project_id,
             virtual_lab_id=virtual_lab_id,
+            compute_cell="cell_a",
         )
 
         ls_client.post.assert_called_once()
         call_kwargs = ls_client.post.call_args[1]
         job_data = call_kwargs["json"]
         assert "tag:1.2.3" in job_data["code"]["ref"]
+        assert job_data["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
         assert "--force false" in job_data["inputs"]
 
@@ -241,11 +265,13 @@ class TestTriggerAssetGenerationTask:
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
+            compute_cell="cell_b",
             force=True,
         )
 
         job_data = ls_client.post.call_args[1]["json"]
         assert "--force true" in job_data["inputs"]
+        assert job_data["resources"]["compute_cell"] == "cell_b"
 
     @patch("app.endpoints.circuit_helpers.settings")
     def test_none_app_version(self, mock_settings):
@@ -262,6 +288,7 @@ class TestTriggerAssetGenerationTask:
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
+            compute_cell="cell_a",
         )
 
         call_kwargs = ls_client.post.call_args[1]
@@ -284,6 +311,7 @@ class TestTriggerAssetGenerationTask:
             circuit_id=uuid4(),
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
+            compute_cell="cell_a",
         )
         ls_client.post.assert_called_once()
 
@@ -311,11 +339,15 @@ class TestGenerateAssetsEndpoint:
             mock_get_client.return_value = mock_db
 
             from app.application import app  # ruff: ignore[import-outside-top-level]
+            from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+                get_compute_cell,
+            )
             from app.dependencies.entitysdk import (  # ruff: ignore[import-outside-top-level]
                 get_client,
             )
 
             app.dependency_overrides[get_client] = lambda: mock_db
+            app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
 
             try:
                 resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
@@ -323,6 +355,7 @@ class TestGenerateAssetsEndpoint:
                 assert "lifecycle_status" in resp.json()["detail"]
             finally:
                 app.dependency_overrides.pop(get_client, None)
+                app.dependency_overrides.pop(get_compute_cell, None)
 
     def test_returns_already_exists(self, client):
         """If assets already exist and not force, returns message."""
@@ -339,11 +372,15 @@ class TestGenerateAssetsEndpoint:
         mock_circuit.assets = [asset1, asset2]
 
         from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
         from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
 
         mock_db = MagicMock()
         mock_db.get_entity.return_value = mock_circuit
         app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
 
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
@@ -351,6 +388,7 @@ class TestGenerateAssetsEndpoint:
             assert "already exist" in resp.json()["message"]
         finally:
             app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
 
 
 class TestRegisterCircuitEndpoint:
@@ -398,6 +436,7 @@ class TestRegisterCircuitEndpoint:
         result = register_circuit_endpoint(
             ls_client=MagicMock(),
             db_client=mock_db_client,
+            compute_cell="cell_a",
             name="test-circuit",
             description="A test circuit",
             brain_region_id=uuid4(),
@@ -418,6 +457,7 @@ class TestRegisterCircuitEndpoint:
         assert call_kwargs["lifecycle_status"] == "draft"
         assert call_kwargs["skip_validation"] is True
         assert call_kwargs["include_visualization"] is True
+        assert call_kwargs["dry_run"] is False
         assert call_kwargs["name"] == "test-circuit"
         assert call_kwargs["published_in"] is None
         assert call_kwargs["experiment_date"] is None
@@ -429,6 +469,51 @@ class TestRegisterCircuitEndpoint:
         assert result["status"] == "draft"
         assert result["number_neurons"] == 1000
         mock_trigger_validation.assert_called_once()
+        assert mock_trigger_validation.call_args.kwargs["compute_cell"] == "cell_a"
+
+    @patch("app.endpoints.circuit_registration.trigger_validation_task")
+    @patch("app.endpoints.circuit_registration.register_circuit")
+    def test_dry_run_skips_registration_and_validation(
+        self,
+        mock_register_circuit,
+        mock_trigger_validation,
+    ):
+        """dry_run computes metadata without registering or launching validation."""
+        mock_preview = MagicMock()
+        mock_preview.id = None
+        mock_preview.number_neurons = 42
+        mock_preview.number_synapses = 100
+        mock_preview.number_connections = 7
+        mock_preview.scale = "pair"
+        mock_register_circuit.return_value = mock_preview
+
+        mock_db_client, _, _ = self._mock_db_client()
+
+        result = register_circuit_endpoint(
+            ls_client=MagicMock(),
+            db_client=mock_db_client,
+            compute_cell="cell_a",
+            name="dry-run-circuit",
+            description="A dry run",
+            brain_region_id=uuid4(),
+            subject_id=uuid4(),
+            build_category="synaptic",
+            target_simulator="NEURON",
+            circuit_archive=self._mock_upload(),
+            dry_run=True,
+        )
+
+        call_kwargs = mock_register_circuit.call_args.kwargs
+        assert call_kwargs["dry_run"] is True
+        assert call_kwargs["skip_additional_assets"] is True
+        assert call_kwargs["include_visualization"] is False
+        mock_trigger_validation.assert_not_called()
+        assert result["status"] == "dry_run"
+        assert result["circuit_id"] is None
+        assert result["number_neurons"] == 42
+        assert result["number_synapses"] == 100
+        assert result["number_connections"] == 7
+        assert result["scale"] == "pair"
 
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
     @patch("app.endpoints.circuit_registration.register_circuit")
@@ -462,6 +547,7 @@ class TestRegisterCircuitEndpoint:
             result = register_circuit_endpoint(
                 ls_client=MagicMock(),
                 db_client=mock_db_client,
+                compute_cell="cell_a",
                 name="test-circuit",
                 description="A test circuit",
                 brain_region_id=uuid4(),
@@ -501,6 +587,7 @@ class TestRegisterCircuitEndpoint:
             register_circuit_endpoint(
                 ls_client=MagicMock(),
                 db_client=MagicMock(),
+                compute_cell="cell_a",
                 name="test-circuit",
                 description="A test circuit",
                 brain_region_id=uuid4(),
@@ -537,6 +624,7 @@ class TestRegisterCircuitEndpoint:
             register_circuit_endpoint(
                 ls_client=MagicMock(),
                 db_client=mock_db_client,
+                compute_cell="cell_a",
                 name="test-circuit",
                 description="A test circuit",
                 brain_region_id=uuid4(),
@@ -557,6 +645,7 @@ class TestRegisterCircuitEndpoint:
             register_circuit_endpoint(
                 ls_client=MagicMock(),
                 db_client=MagicMock(),
+                compute_cell="cell_a",
                 name="test-circuit",
                 description="A test circuit",
                 brain_region_id=uuid4(),
@@ -581,6 +670,7 @@ class TestRegisterCircuitEndpoint:
             register_circuit_endpoint(
                 ls_client=MagicMock(),
                 db_client=mock_db_client,
+                compute_cell="cell_a",
                 name="test-circuit",
                 description="A test circuit",
                 brain_region_id=uuid4(),
