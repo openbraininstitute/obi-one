@@ -16,7 +16,7 @@ class MEModelValidationSingleConfig(ValidationSingleConfig):
     """Configuration for MEModel validation task."""
 
     output_dir: str = Field(
-        default="/tmp/memodel_validation",
+        default="./memodel_validation",
         description="Output directory for MEModel validation artifacts.",
     )
 

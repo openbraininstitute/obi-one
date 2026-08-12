@@ -3,13 +3,11 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
+from bluecellulab.validation.base import TestResult, ValidationTest
 from entitysdk import Client
 from pydantic import Field
-
-from bluecellulab.validation.base import ValidationOutcome, ValidationTest
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.task import Task
@@ -17,43 +15,41 @@ from obi_one.core.task import Task
 logger = logging.getLogger(__name__)
 
 
+class InvalidValidationContextError(ValueError):
+    """Raised when a workflow context lacks required test inputs."""
+
+
 @dataclass
 class WorkflowContext:
     """Context produced by workflow setup, consumed by test execution.
 
     This is intentionally generic — each entity-specific workflow subclass
-    populates it with whatever its tests need.
+    populates it with whatever its tests need via subclassing or the extra dict.
 
     Attributes:
         entity_id: The platform entity ID being validated.
-        template_params: Cell template parameters (for electrophys workflows).
-        rheobase: Computed or stored rheobase current.
-        out_dir: Output directory for figures and artifacts.
         extra: Additional context specific to the entity type.
     """
 
     entity_id: str
-    template_params: Any = None
-    rheobase: float | None = None
-    out_dir: Path | None = None
     extra: dict = field(default_factory=dict)
 
 
-class ValidationWorkflow(ABC):
+class ValidationWorkflow[ContextT: WorkflowContext](ABC):
     """Abstract base for entity validation workflows.
 
     A workflow encapsulates the full lifecycle:
     1. setup — download/prepare the entity
     2. get_tests — return the list of ValidationTests to run
-    3. run — execute all tests and collect outcomes
-    4. register — persist outcomes as ValidationResult entities
+    3. run — execute all tests and collect test results
+    4. register — persist test results as ValidationResult entities
 
     The workflow is independent of the execution backend. It can be called
     from a notebook, an OBI-One Task, or any other orchestrator.
     """
 
     @abstractmethod
-    def setup(self, entity_id: str, client) -> WorkflowContext:
+    def setup(self, entity_id: str, client: Client) -> ContextT:
         """Download and prepare the entity for validation.
 
         Args:
@@ -65,7 +61,7 @@ class ValidationWorkflow(ABC):
         """
 
     @abstractmethod
-    def get_tests(self, context: WorkflowContext) -> list[ValidationTest]:
+    def get_tests(self, context: ContextT) -> list[ValidationTest]:
         """Return the validation tests to execute.
 
         Args:
@@ -75,25 +71,37 @@ class ValidationWorkflow(ABC):
             List of ValidationTest instances configured for this entity.
         """
 
-    def run(self, context: WorkflowContext) -> list[ValidationOutcome]:
-        """Execute all tests and collect outcomes.
+    @abstractmethod
+    def register(
+        self,
+        test_results: list[TestResult],
+        context: ContextT,
+        client: Client,
+        *,
+        skip_if_exists: bool = True,
+    ) -> list[Any]:
+        """Register test results on the platform.
+
+        Args:
+            test_results: Results produced by run().
+            context: The workflow context from setup().
+            client: entitysdk Client instance.
+            skip_if_exists: Whether to skip already registered results.
+
+        Returns:
+            Registered result records produced by the entity-specific workflow.
+        """
+
+    @abstractmethod
+    def run(self, context: ContextT) -> list[TestResult]:
+        """Execute the configured validations.
 
         Args:
             context: The workflow context from setup().
 
         Returns:
-            List of ValidationOutcome results.
+            List of TestResult results.
         """
-        tests = self.get_tests(context)
-        outcomes = []
-        for test in tests:
-            outcome = test.run(
-                context.template_params,
-                context.rheobase,
-                context.out_dir,
-            )
-            outcomes.append(outcome)
-        return outcomes
 
 
 class ValidationSingleConfig(OBIBaseModel):
@@ -107,7 +115,7 @@ class ValidationSingleConfig(OBIBaseModel):
 
     entity_id: str = Field(description="Entity ID to validate.")
     output_dir: str = Field(
-        default="/tmp/validation_output",
+        default="./validation_output",
         description="Output directory for validation artifacts.",
     )
     skip_if_exists: bool = Field(
@@ -131,7 +139,7 @@ class ValidationTask(Task):
 
     config: ValidationSingleConfig
 
-    def get_workflow(self) -> ValidationWorkflow:
+    def get_workflow(self) -> ValidationWorkflow[Any]:
         """Return the ValidationWorkflow instance for this task.
 
         Subclasses override this to provide entity-specific workflows.
@@ -156,6 +164,8 @@ class ValidationTask(Task):
         Returns:
             List of registered ValidationResult entity IDs.
         """
+        _ = entity_cache  # intentionally unused
+
         execution_activity = self._get_execution_activity(
             db_client=db_client,
             execution_activity_id=execution_activity_id,
@@ -163,17 +173,17 @@ class ValidationTask(Task):
 
         workflow = self.get_workflow()
 
-        logger.info(f"Starting validation for entity {self.config.entity_id}")
+        logger.info("Starting validation for entity %s", self.config.entity_id)
 
         context = workflow.setup(
             entity_id=self.config.entity_id,
             client=db_client,
         )
 
-        outcomes = workflow.run(context)
+        test_results = workflow.run(context)
 
         registered = workflow.register(
-            outcomes=outcomes,
+            test_results=test_results,
             context=context,
             client=db_client,
             skip_if_exists=self.config.skip_if_exists,
@@ -182,8 +192,9 @@ class ValidationTask(Task):
         generated_ids = [r.entity_id for r in registered if r.entity_id]
 
         logger.info(
-            f"Validation complete. Registered {len(generated_ids)} ValidationResult(s) "
-            f"for entity {self.config.entity_id}"
+            "Validation complete. Registered %d ValidationResult(s) for entity %s",
+            len(generated_ids),
+            self.config.entity_id,
         )
 
         self._update_execution_activity(

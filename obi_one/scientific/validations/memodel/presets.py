@@ -13,8 +13,7 @@ from bluecellulab.validation import (
 
 
 def spiking_preset() -> ParametricValidation:
-    """Spiking validation: neuron must produce at least one spike at 130% rheobase.
-    """
+    """Spiking validation: neuron must produce at least one spike at 130% rheobase."""
     return ParametricValidation(
         validation_name="Simulatable Neuron Spiking Validation",
         protocol=StepProtocol(threshold_percentage=130.0),

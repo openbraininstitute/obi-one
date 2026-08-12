@@ -2,7 +2,7 @@
 
 Provides entity-agnostic validation workflow abstractions, entity-specific
 validation workflows (MEModel, Morphology, etc.), and registration of
-ValidationOutcomes as ValidationResult entities on the platform.
+TestResults as ValidationResult entities on the platform.
 """
 
 from obi_one.scientific.validations.base import (

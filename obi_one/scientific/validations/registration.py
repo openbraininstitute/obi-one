@@ -1,4 +1,4 @@
-"""Registration of validation outcomes as ValidationResult entities.
+"""Registration of test results as ValidationResult entities.
 
 Handles:
 - Deduplication (skip if a ValidationResult with same name already exists for this entity)
@@ -10,12 +10,12 @@ Handles:
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from uuid import UUID
 
+from bluecellulab.validation.base import TestResult
 from entitysdk import Client
 from entitysdk.models import ValidationResult
 from entitysdk.types import AssetLabel, ContentType
-
-from bluecellulab.validation.base import ValidationOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -26,16 +26,16 @@ class RegisteredResult:
 
     Attributes:
         entity_id: The platform-assigned ID for the registered entity.
-        outcome: The original validation outcome.
+        test_result: The original test result.
         skipped: True if registration was skipped due to deduplication.
     """
 
     entity_id: str | None
-    outcome: ValidationOutcome
+    test_result: TestResult
     skipped: bool = False
 
 
-def _already_registered(client: Client, name: str, validated_entity_id: str) -> bool:
+def _already_registered(client: Client, name: str, validated_entity_id: UUID) -> bool:
     """Check if a ValidationResult with this name already exists for the entity."""
     iterator = client.search_entity(
         entity_type=ValidationResult,
@@ -46,28 +46,28 @@ def _already_registered(client: Client, name: str, validated_entity_id: str) -> 
 
 def _upload_figures(
     client: Client,
-    entity_id: str,
+    entity_id: UUID,
     figures: list[Path],
 ) -> None:
     """Upload figure files as assets on the ValidationResult entity."""
     for fig_path in figures:
-        fig_path = Path(fig_path)
-        if not fig_path.exists():
-            logger.warning(f"Figure not found, skipping: {fig_path}")
+        resolved_path = Path(fig_path)
+        if not resolved_path.exists():
+            logger.warning("Figure not found, skipping: %s", resolved_path)
             continue
 
-        if fig_path.suffix == ".pdf":
+        if resolved_path.suffix == ".pdf":
             content_type = ContentType.application_pdf
-        elif fig_path.suffix == ".png":
+        elif resolved_path.suffix == ".png":
             content_type = ContentType.image_png
         else:
-            logger.warning(f"Unsupported figure format, skipping: {fig_path}")
+            logger.warning("Unsupported figure format, skipping: %s", resolved_path)
             continue
 
         client.upload_file(
             entity_id=entity_id,
             entity_type=ValidationResult,
-            file_path=fig_path,
+            file_path=resolved_path,
             file_content_type=content_type,
             asset_label=AssetLabel.validation_result_figure,
         )
@@ -75,7 +75,7 @@ def _upload_figures(
 
 def _upload_details(
     client: Client,
-    entity_id: str,
+    entity_id: UUID,
     name: str,
     details: str,
     out_dir: Path,
@@ -99,16 +99,17 @@ def _upload_details(
 
 def register_outcome(
     client: Client,
-    outcome: ValidationOutcome,
+    test_result: TestResult,
     validated_entity_id: str,
+    *,
     out_dir: Path | None = None,
     skip_if_exists: bool = True,
 ) -> RegisteredResult:
-    """Register a single ValidationOutcome as a ValidationResult entity.
+    """Register a single TestResult as a ValidationResult entity.
 
     Args:
         client: entitysdk Client instance.
-        outcome: The validation outcome to register.
+        test_result: The test result to register.
         validated_entity_id: The entity ID that was validated.
         out_dir: Directory for writing temporary detail files.
         skip_if_exists: If True, skip registration when a result already exists.
@@ -116,50 +117,57 @@ def register_outcome(
     Returns:
         A RegisteredResult indicating success or skip.
     """
-    if skip_if_exists and _already_registered(client, outcome.name, validated_entity_id):
+    validated_entity_uuid = UUID(validated_entity_id)
+    if skip_if_exists and _already_registered(client, test_result.name, validated_entity_uuid):
         logger.info(
-            f"ValidationResult '{outcome.name}' already exists for entity "
-            f"{validated_entity_id}. Skipping."
+            "ValidationResult '%s' already exists for entity %s. Skipping.",
+            test_result.name,
+            validated_entity_id,
         )
-        return RegisteredResult(entity_id=None, outcome=outcome, skipped=True)
+        return RegisteredResult(entity_id=None, test_result=test_result, skipped=True)
 
     # Create the ValidationResult entity
     validation_result = ValidationResult(
-        name=outcome.name,
-        passed=outcome.passed,
-        validated_entity_id=validated_entity_id,
-        description=outcome.details,
+        name=test_result.name,
+        passed=test_result.passed,
+        validated_entity_id=validated_entity_uuid,
+        description=test_result.details,
     )
     registered = client.register_entity(entity=validation_result)
+    if registered.id is None:
+        raise RuntimeError
     entity_id = str(registered.id)
 
     # Upload figures
-    _upload_figures(client, entity_id, outcome.figures)
+    _upload_figures(client, registered.id, test_result.figures)
 
     # Upload details
     if out_dir:
-        _upload_details(client, entity_id, outcome.name, outcome.details, out_dir)
+        _upload_details(client, registered.id, test_result.name, test_result.details, out_dir)
 
     logger.info(
-        f"Registered ValidationResult '{outcome.name}' "
-        f"(id={entity_id}, passed={outcome.passed})"
+        "Registered ValidationResult '%s' (id=%s, passed=%s)",
+        test_result.name,
+        entity_id,
+        test_result.passed,
     )
 
-    return RegisteredResult(entity_id=entity_id, outcome=outcome, skipped=False)
+    return RegisteredResult(entity_id=entity_id, test_result=test_result, skipped=False)
 
 
 def register_outcomes(
     client: Client,
-    outcomes: list[ValidationOutcome],
+    test_results: list[TestResult],
     validated_entity_id: str,
+    *,
     out_dir: Path | None = None,
     skip_if_exists: bool = True,
 ) -> list[RegisteredResult]:
-    """Register multiple validation outcomes.
+    """Register multiple test results.
 
     Args:
         client: entitysdk Client instance.
-        outcomes: List of validation outcomes to register.
+        test_results: List of test results to register.
         validated_entity_id: The entity ID that was validated.
         out_dir: Directory for writing temporary detail files.
         skip_if_exists: If True, skip registration when a result already exists.
@@ -168,16 +176,21 @@ def register_outcomes(
         List of RegisteredResult objects.
     """
     results = []
-    for outcome in outcomes:
+    for test_result in test_results:
         try:
             result = register_outcome(
-                client, outcome, validated_entity_id, out_dir, skip_if_exists
+                client,
+                test_result,
+                validated_entity_id,
+                out_dir=out_dir,
+                skip_if_exists=skip_if_exists,
             )
             results.append(result)
         except Exception:
             logger.exception(
-                f"Failed to register ValidationResult '{outcome.name}' "
-                f"for entity {validated_entity_id}"
+                "Failed to register ValidationResult '%s' for entity %s",
+                test_result.name,
+                validated_entity_id,
             )
-            results.append(RegisteredResult(entity_id=None, outcome=outcome, skipped=False))
+            results.append(RegisteredResult(entity_id=None, test_result=test_result, skipped=False))
     return results
