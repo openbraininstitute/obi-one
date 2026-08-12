@@ -1,8 +1,10 @@
 import numpy as np
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
+from app.errors import internal_error, invalid_config_error
 from app.logger import L
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.parametric_multi_values import (
     MAX_N_COORDINATES,
 )
@@ -23,22 +25,29 @@ def grid_scan_parameters_count_endpoint(
     scan_config: ScanConfigsUnion,
 ) -> int:
     L.info("grid_scan_parameters_endpoint")
-    grid_scan = GridScanGenerationTask(
-        form=scan_config,
-        output_root="",  # ty:ignore[invalid-argument-type]
-        coordinate_directory_option="ZERO_INDEX",
-    )
 
-    n_grid_scan_coordinates = np.prod(
-        [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
-    )
-    if n_grid_scan_coordinates > MAX_N_COORDINATES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Number of grid scan coordinates {n_grid_scan_coordinates} exceeds\
-                maximum allowed {MAX_N_COORDINATES}.",
+    try:
+        grid_scan = GridScanGenerationTask(
+            form=scan_config,
+            output_root="",  # ty:ignore[invalid-argument-type]
+            coordinate_directory_option="ZERO_INDEX",
         )
 
-    n_grid_scan_coordinates = max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate
+        n_grid_scan_coordinates = np.prod(
+            [len(mv.values) for mv in grid_scan.multiple_value_parameters()]
+        )
+    except ConfigValidationError as e:
+        L.info("Rejected unrunnable config: %s", e)
+        raise invalid_config_error(str(e)) from e
+    except Exception as e:
+        L.exception("Failed to count grid scan coordinates")
+        raise internal_error(str(e)) from e
 
-    return n_grid_scan_coordinates
+    if n_grid_scan_coordinates > MAX_N_COORDINATES:
+        msg = (
+            f"Number of grid scan coordinates {n_grid_scan_coordinates} "
+            f"exceeds maximum allowed {MAX_N_COORDINATES}."
+        )
+        raise invalid_config_error(msg)
+
+    return max(1, n_grid_scan_coordinates)  # Ensure at least 1 coordinate

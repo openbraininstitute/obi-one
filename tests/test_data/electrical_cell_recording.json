@@ -21,7 +21,7 @@
       "id": "8fcdd90d-c36e-411c-a1f4-dea613c4acdf",
       "agent": {
         "id": "36b621f5-5d56-45a2-9b49-f36261142cc4",
-        "pref_label": "École Polytechnique Fédérale de Lausanne",
+        "pref_label": "\u00c9cole Polytechnique F\u00e9d\u00e9rale de Lausanne",
         "alternative_name": "",
         "type": "organization"
       },
@@ -61,17 +61,15 @@
   "update_date": "2024-01-11T07:56:56.842835Z",
   "created_by": {
     "id": "4067c358-4ee2-47f8-9a94-e3e8ab73738f",
-    "given_name": "Anna-Kristin",
-    "family_name": "Kaufmann",
     "pref_label": "Anna-Kristin Kaufmann",
-    "type": "person"
+    "creation_date": "2024-01-01T00:00:00Z",
+    "update_date": "2024-01-01T00:00:00Z"
   },
   "updated_by": {
     "id": "bd143fa9-b714-410c-a65d-7435c1066932",
-    "given_name": "Christina",
-    "family_name": "Gonzalez",
     "pref_label": "Christina Gonzalez",
-    "type": "person"
+    "creation_date": "2024-01-01T00:00:00Z",
+    "update_date": "2024-01-01T00:00:00Z"
   },
   "brain_region": {
     "creation_date": "2025-06-27T11:10:27.186088Z",

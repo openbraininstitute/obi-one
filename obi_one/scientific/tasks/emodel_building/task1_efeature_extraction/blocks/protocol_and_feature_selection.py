@@ -101,7 +101,7 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
     dimension.
     """
 
-    protocols: tuple[ProtocolUnion, ...] = Field(  # ty:ignore[invalid-assignment]
+    protocols: tuple[ProtocolUnion, ...] = Field(
         default_factory=_default_protocols,
         title="Protocols",
         description=(
