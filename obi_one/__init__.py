@@ -64,10 +64,6 @@ __all__ = [
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
     "ConstantCurrentClampSomaticStimulus",
-    "ContributeMorphologyScanConfig",
-    "ContributeMorphologySingleConfig",
-    "ContributeSubjectScanConfig",
-    "ContributeSubjectSingleConfig",
     "CoupledScan",
     "CoupledScanGenerationTask",
     "CreateExtracellularRecordingArrayScanConfig",
@@ -82,9 +78,13 @@ __all__ = [
     "EMSynapseMappingScanConfig",
     "EMSynapseMappingSingleConfig",
     "EMSynapseMappingTask",
+    "EModelEFeatureExtractionScanConfig",
+    "EModelEFeatureExtractionSingleConfig",
+    "EModelEFeatureExtractionTask",
     "EModelOptimizationScanConfig",
     "EModelOptimizationSingleConfig",
     "EModelOptimizationTask",
+    "ElectricalCellRecordingFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
     "ElectrophysiologyMetricsTask",
@@ -150,6 +150,7 @@ __all__ = [
     "MorphologyDecontainerizationScanConfig",
     "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
+    "MorphologyLocationsReference",
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
     "MorphologyLocationsTask",
@@ -251,7 +252,7 @@ __all__ = [
     "add_node_set_to_circuit",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
-    "get_configs_task_type",
+    "get_single_configs_task_type",
     "nbS1POmInputs",
     "nbS1VPMInputs",
     "rCA1CA3Inputs",
@@ -445,6 +446,9 @@ from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
 )
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
+)
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -460,7 +464,7 @@ from obi_one.scientific.mappings_and_registry.block_reference_registry import (
     AllBlockReferenceTypes,  # ruff: ignore[unused-import]
 )
 from obi_one.scientific.mappings_and_registry.config_task_map import (
-    get_configs_task_type,
+    get_single_configs_task_type,
 )
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
@@ -477,12 +481,6 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction import (
     ConnectivityMatrixExtractionSingleConfig,
     ConnectivityMatrixExtractionTask,
 )
-from obi_one.scientific.tasks.contribute import (
-    ContributeMorphologyScanConfig,
-    ContributeMorphologySingleConfig,
-    ContributeSubjectScanConfig,
-    ContributeSubjectSingleConfig,
-)
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
     CreateExtracellularRecordingArraySingleConfig,
@@ -495,6 +493,13 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import (
 )
 from obi_one.scientific.tasks.em_synapse_mapping.task import (
     EMSynapseMappingTask,
+)
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
+    EModelEFeatureExtractionScanConfig,
+    EModelEFeatureExtractionSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
@@ -596,6 +601,9 @@ from obi_one.scientific.unions_and_references.distributions import (
 from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
+)
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,

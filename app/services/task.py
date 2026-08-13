@@ -30,7 +30,7 @@ from app.schemas.task import (
     TaskLaunchSubmit,
 )
 from app.types import CallBackAction, CallBackEvent, TaskType
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 
 def submit_task_job(
@@ -401,7 +401,7 @@ def select_simulation_task(
         case TargetSimulator.NEURON | TargetSimulator.CORENEURON:
             match circuit.scale:
                 case CircuitScale.single | CircuitScale.pair | CircuitScale.small:
-                    return TaskType.circuit_simulation_neuron
+                    return TaskType.circuit_simulation_neurodamus_machine
                 case _:
                     return TaskType.circuit_simulation_neurodamus_cluster
         case _:

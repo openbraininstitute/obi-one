@@ -12,10 +12,16 @@ from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
 )
 from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsReference
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
+)
+from obi_one.scientific.unions_and_references.neuronal_manipulations import (
+    NeuronalManipulationReference,
 )
 from obi_one.scientific.unions_and_references.recordings import RecordingReference
 from obi_one.scientific.unions_and_references.stimuli import StimulusReference
@@ -35,8 +41,10 @@ AllBlockReferenceTypes = [
     PointNeuronSetReference,
     StimulusReference,
     SynapticManipulationsReference,
+    NeuronalManipulationReference,
     RecordingReference,
     TimestampsReference,
+    MorphologyLocationsReference,
     AllDistributionsReference,
     SynapticModelReference,
     SynapticModelAssignerReference,

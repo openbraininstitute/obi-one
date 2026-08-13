@@ -5,9 +5,11 @@ from pydantic import Discriminator
 from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
-from obi_one.scientific.tasks.contribute import ContributeMorphologyTask
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
+    EModelEFeatureExtractionTask,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
@@ -25,10 +27,10 @@ from obi_one.scientific.tasks.skeletonization import SkeletonizationTask
 TasksUnion = Annotated[
     GenerateSimulationTask
     | CircuitExtractionTask
-    | ContributeMorphologyTask
     | BasicConnectivityPlotsTask
     | ConnectivityMatrixExtractionTask
     | ElectrophysiologyMetricsTask
+    | EModelEFeatureExtractionTask
     | EModelOptimizationTask
     | FolderCompressionTask
     | IonChannelFittingTask

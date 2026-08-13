@@ -3,16 +3,52 @@ import logging
 import os
 import sys
 from functools import partial
+from pathlib import Path
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
-from entitysdk.types import ActivityStatus
 from entitysdk.token_manager import TokenFromFunction
+from entitysdk.types import ActivityStatus
 from obi_auth import get_token
+from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.core.run_tasks import run_task_type
-from obi_one.utils.db_sdk import update_activity_status, finalize_activity
+from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
 
 L = logging.getLogger(__name__)
+
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Script to launch a task for a single configuration asset."
+    )
+    parser.add_argument("--task-type", required=True, help="Task type")
+    parser.add_argument(
+        "--config_entity_type", required=False, help="EntitySDK entity type as string"
+    )
+    parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
+    parser.add_argument(
+        "--execution_activity_type",
+        required=False,
+        help="EntitySDK execution activity type as string",
+    )
+    parser.add_argument(
+        "--execution_activity_id", required=False, help="Execution activity ID as string"
+    )
+    parser.add_argument(
+        "--entity_cache",
+        required=True,
+        help="Boolean flag for campaign entity caching.\
+                Check if enabled for particular EntityFromID types.",
+    )
+    parser.add_argument(
+        "--scan_output_root",
+        required=True,
+        help="scan_output_root as string. The coordinate output root will be relative to this\
+            in a directory named using the idx of the single coordinate config.",
+    )
+    parser.add_argument("--virtual_lab_id", required=True, help="Virtual Lab ID as string")
+    parser.add_argument("--project_id", required=True, help="Project ID as string.")
+    return parser
 
 
 def main() -> int:
@@ -38,71 +74,44 @@ def main() -> int:
     persistent_token_id = os.getenv("PERSISTENT_TOKEN_ID")
     deployment = os.getenv("DEPLOYMENT")
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
-    db_client = None
 
     try:
-        parser = argparse.ArgumentParser(
-            description="Script to launch a task for a single configuration asset."
-        )
-        parser.add_argument("--task-type", required=True, help="Task type")
-        parser.add_argument("--config_entity_type", required=False, help="EntitySDK entity type as string")
-        parser.add_argument("--config_entity_id", required=True, help="Entity ID as string")
-        parser.add_argument(
-            "--execution_activity_type",
-            required=False,
-            help="EntitySDK execution activity type as string",
-        )
-        parser.add_argument(
-            "--execution_activity_id", required=False, help="Execution activity ID as string"
-        )
-        parser.add_argument(
-            "--entity_cache",
-            required=True,
-            help="Boolean flag for campaign entity caching.\
-                    Check if enabled for particular EntityFromID types.",
-        )
-        parser.add_argument(
-            "--scan_output_root",
-            required=True,
-            help="scan_output_root as string. The coordinate output root will be relative to this\
-                in a directory named using the idx of the single coordinate config.",
-        )
-        parser.add_argument("--virtual_lab_id", required=True, help="Virtual Lab ID as string")
-        parser.add_argument("--project_id", required=True, help="Project ID as string.")
-
-        args = parser.parse_args()
-
+        args = get_parser().parse_args()
     except ValueError as e:
         L.error(f"Argument parsing error: {e}")
         return 1
 
+    if args.config_entity_type:
+        config_entity_type = getattr(models, args.config_entity_type)
+        execution_activity_type = getattr(models, args.execution_activity_type)
+    else:
+        config_entity_type = models.TaskConfig
+        execution_activity_type = models.TaskActivity
+
+    # Get DB client (incl. file mounting)
+    token_manager = TokenFromFunction(
+        partial(
+            get_token,
+            environment=DeploymentEnvironment(deployment),
+            auth_mode=AuthMode.persistent_token,
+            persistent_token_id=persistent_token_id,
+        ),
+    )
+    project_context = ProjectContext(
+        project_id=args.project_id,
+        virtual_lab_id=args.virtual_lab_id,
+    )
+    db_client = Client(
+        environment=deployment,
+        project_context=project_context,
+        token_manager=token_manager,
+        local_store=None
+        if local_store_prefix is None
+        else LocalAssetStore(prefix=Path(local_store_prefix)),
+    )
+
     try:
         # TODO: Remove once legacy tasks are moved to generic configs/activities
-        if args.config_entity_type:
-            config_entity_type = getattr(models, args.config_entity_type)
-            execution_activity_type = getattr(models, args.execution_activity_type)
-        else:
-            config_entity_type = models.TaskConfig
-            execution_activity_type = models.TaskActivity
-
-        # Get DB client (incl. file mounting)
-        token_manager = TokenFromFunction(
-            partial(
-                get_token,
-                environment=deployment,
-                auth_mode="persistent_token",
-                persistent_token_id=persistent_token_id,
-            ),
-        )
-        project_context = ProjectContext(
-            project_id=args.project_id, virtual_lab_id=args.virtual_lab_id, environment=deployment
-        )
-        db_client = Client(
-            environment=deployment,
-            project_context=project_context,
-            token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),
-        )
         update_activity_status(
             client=db_client,
             activity_id=args.execution_activity_id,
@@ -118,7 +127,7 @@ def main() -> int:
             entity_cache=args.entity_cache,
             execution_activity_id=args.execution_activity_id,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # ruff: ignore[blind-except]
         # Catch any error that may occur to make sure that error status is correctly set
         L.exception(f"Error launching task for single configuration asset: {e}")
         finalize_activity(

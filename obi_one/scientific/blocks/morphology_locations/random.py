@@ -1,7 +1,10 @@
-import morphio
-import pandas  # noqa: ICN001
-from pydantic import Field
+from typing import ClassVar
 
+import morphio
+import pandas as pd
+from pydantic import Field, PositiveInt
+
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
@@ -12,9 +15,11 @@ _MIN_PD_SD = 0.1
 
 
 class RandomMorphologyLocations(MorphologyLocationsBlock):
-    """Completely random locations without constraint."""
+    """Uniformly distributed random locations."""
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    title: ClassVar[str] = "Random Morphology Locations"
+
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -30,7 +35,7 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.number_of_locations, list):  # noqa: SIM102
+        if not isinstance(self.number_of_locations, list):  # ruff: ignore[collapsible-if]
             if self.number_of_locations <= 0:
                 msg = f"Number of locations: {self.number_of_locations} <= 0"
                 raise ValueError(msg)
@@ -39,14 +44,21 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
 class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
     """Completely random locations, but grouped into abstract groups."""
 
-    n_groups: int | list[int] = Field(
+    title: ClassVar[str] = "Random Grouped Morphology Locations"
+
+    n_groups: PositiveInt | list[PositiveInt] = Field(
         default=1,
-        title="Number of groups",
-        description="Number of groups of locations to \
-            generate",
+        title="Number of Groups",
+        description=(
+            "Number of conceptual groups to assign across the generated random locations. "
+            "Groups can be used by downstream workflows to keep subsets of locations distinct."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
     )
 
-    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         locs = generate_neurite_locations_on(
             morphology,
             n_centers=1,
@@ -62,7 +74,7 @@ class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.n_groups, list):  # noqa: SIM102
+        if not isinstance(self.n_groups, list):  # ruff: ignore[collapsible-if]
             if self.n_groups <= 0:
                 msg = f"Number of groups: {self.n_groups} <= 0"
                 raise ValueError(msg)

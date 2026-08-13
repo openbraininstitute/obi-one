@@ -1,6 +1,7 @@
 import logging
 import math
 import sys
+from enum import StrEnum
 
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
@@ -9,6 +10,10 @@ from app.application import app
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
+from obi_one.scientific.library.entity_property_types import (
+    MappedPropertiesGroup,
+    MorphologyMappedProperties,
+)
 
 L = logging.getLogger()
 
@@ -42,6 +47,17 @@ def validate_string(schema: dict, prop: str, ref: str) -> None:
 
     if type(value) is not str:
         msg = f"Validation error at {ref}: {prop} must be a string. Got: {type(value)}"
+        raise ValueError(msg)
+
+
+def validate_enum_value(schema: dict, prop: str, enum_type: type[StrEnum], ref: str) -> None:
+    value = schema.get(prop)
+    allowed_values = {member.value for member in enum_type}
+    if value not in allowed_values:
+        msg = (
+            f"Validation error at {ref}: {prop} must be one of {sorted(allowed_values)}. "
+            f"Got: {value}"
+        )
         raise ValueError(msg)
 
 
@@ -188,6 +204,42 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
         raise ValidationError(msg) from None
 
 
+def validate_float_optional(schema: dict, param: str, ref: str) -> None:
+    any_of = schema.get("anyOf", [{}, {}])
+    if any_of[0].get("type") != "number":
+        msg = (
+            f"Validation error at {ref}: float_optional param {param} should "
+            "be a union with a 'number' as first element"
+        )
+        raise ValidationError(msg) from None
+
+    if any_of[1].get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: float_optional param {param} should "
+            "be a union with 'null' as second element"
+        )
+        raise ValidationError(msg) from None
+
+    test_value = determine_minimum_valid_numeric_value(schema)
+
+    try:
+        validate(test_value, schema)
+
+    except ValidationError:
+        msg = f"Validation error at {ref}: float_optional param {param} failed to validate a float"
+        raise ValidationError(msg) from None
+
+    try:
+        validate(None, schema)
+
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: float_optional param {param} failed "
+            "to validate a null value"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> None:
     validate_string(schema, SchemaKey.PROPERTY_GROUP, f"{param} at {ref}")
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
@@ -198,6 +250,70 @@ def validate_entity_property_dropdown(schema: dict, param: str, ref: str) -> Non
         msg = (
             f"Validation error at {ref}: entity_property_dropdown param {param} failed"
             "to validate a string"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_morphology_section_type_selection(schema: dict, param: str, ref: str) -> None:
+    validate_enum_value(
+        schema,
+        SchemaKey.PROPERTY_GROUP,
+        MappedPropertiesGroup,
+        f"{param} at {ref}",
+    )
+    validate_enum_value(
+        schema,
+        SchemaKey.PROPERTY,
+        MorphologyMappedProperties,
+        f"{param} at {ref}",
+    )
+
+    any_of = schema.get("anyOf", [])
+    if len(any_of) != 3:
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should be a union of array[int], array[array[int]], and null"
+        )
+        raise ValidationError(msg)
+
+    single_selection_schema, scan_schema, null_schema = any_of
+    if (
+        single_selection_schema.get("type") != "array"
+        or single_selection_schema.get("items", {}).get("type") != "integer"
+    ):
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have array[int] as its first union member"
+        )
+        raise ValidationError(msg)
+
+    scan_items = scan_schema.get("items", {})
+    if (
+        scan_schema.get("type") != "array"
+        or scan_items.get("type") != "array"
+        or scan_items.get("items", {}).get("type") != "integer"
+    ):
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have array[array[int]] as its second union member"
+        )
+        raise ValidationError(msg)
+
+    if null_schema.get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "should have null as its third union member"
+        )
+        raise ValidationError(msg)
+
+    try:
+        validate([3, 4], schema)
+        validate([[3], [3, 4]], schema)
+        validate(None, schema)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: morphology_section_type_selection param {param} "
+            "failed to validate supported values"
         )
         raise ValidationError(msg) from None
 
@@ -571,6 +687,25 @@ def validate_select_recordable_ion_channel_variable(schema: dict, param: str, re
     validate_string(schema, SchemaKey.PROPERTY, f"{param} at {ref}")
 
 
+def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) -> None:
+    location = f"{param} at {ref}"
+
+    # The field is a `$ref` to the object backing the widget (with the extras as
+    # siblings), so the `object` type the component spec requires lives on the
+    # referenced schema rather than on the field itself.
+    target_ref = schema.get("$ref") or (schema.get("allOf") or [{}])[0].get("$ref")
+    assert target_ref is not None, (
+        f"Validation error at {location}: select_efeatures_by_protocol param {param}"
+        " should reference the object holding the selection"
+    )
+    assert resolve_ref(openapi_schema, target_ref).get("type") == "object", (
+        f"Validation error at {location}: select_efeatures_by_protocol param {param}"
+        " should reference a schema of type 'object'"
+    )
+    # Which efeatures are valid per protocol is carried by each protocol's
+    # `features` union in the schema, so there is no catalogue extra to check.
+
+
 def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     assert schema.get("type") == "array", (
         f"Validation error at {ref}: voltage_duration param {param} should be of type 'array'"
@@ -614,7 +749,7 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
-def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa: PLR0912, C901
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, complex-structure]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
@@ -624,6 +759,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_float_param_sweep(schema, param, ref)
         case UIElement.INT_PARAMETER_SWEEP:
             validate_int_param_sweep(schema, param, ref)
+        case UIElement.FLOAT_OPTIONAL:
+            validate_float_optional(schema, param, ref)
         case UIElement.ENTITY_PROPERTY_DROPDOWN:
             validate_entity_property_dropdown(schema, param, ref)
         case UIElement.REFERENCE:
@@ -646,10 +783,14 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # noqa
             validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
+        case UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION:
+            validate_morphology_section_type_selection(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:
             validate_ion_channel_variable_modification_by_section_list(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON:
             validate_ion_channel_variable_modification_by_neuron(schema, param, ref)
+        case UIElement.SELECT_EFEATURES_BY_PROTOCOL:
+            validate_select_efeatures_by_protocol(schema, param, ref)
         case UIElement.SELECT_RECORDABLE_ION_CHANNEL_VARIABLE:
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case UIElement.VOLTAGE_DURATION:

@@ -8,8 +8,8 @@ from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.registry import task_registry
 from obi_one.core.scan_generation import ScanGenerationTask
 from obi_one.core.single import SingleConfigMixin
+from obi_one.db_sdk import db_sdk
 from obi_one.types import TaskType
-from obi_one.utils import db_sdk
 
 
 def run_task_for_single_config(
@@ -19,7 +19,7 @@ def run_task_for_single_config(
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
 ) -> Any:
-    task_type = task_registry.get_configs_task_type(single_config)
+    task_type = task_registry.get_single_configs_task_type(single_config)
     task = task_type(config=single_config)
     return task.execute(
         db_client=db_client, entity_cache=entity_cache, execution_activity_id=execution_activity_id
