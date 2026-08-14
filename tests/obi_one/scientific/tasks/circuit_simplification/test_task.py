@@ -32,6 +32,7 @@ from obi_one.scientific.tasks.circuit_simplification.task import (
     CircuitSimplificationSingleConfig,
     CircuitSimplificationTask,
 )
+from obi_one.types import SimulationBackend
 
 
 class TestInputEntities:
@@ -285,6 +286,7 @@ class TestTaskExecution:
         self,
         fake_simplified_circuit: Path,
         mock_pipeline,
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
         """execute() should construct and run SimplificationPipeline for each algorithm."""
@@ -452,6 +454,7 @@ class TestTaskExecution:
     def test_execute_skips_missing_output(
         self,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
         """execute() should skip algorithms whose output circuit_config.json is missing."""
@@ -528,6 +531,7 @@ class TestTaskExecution:
         self,
         fake_simplified_circuit: Path,
         mock_pipeline,
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
         """execute() should handle algorithms as a string (not list).
@@ -571,6 +575,7 @@ class TestTaskExecution:
     def test_execute_cleans_up_temp_dir(
         self,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
         """execute() should clean up the temp directory after completion."""
@@ -752,6 +757,122 @@ class TestTaskInternals:
         assert kwargs["derivation_type"] == DerivationType.circuit_simplification
 
 
+class TestMechanismBackendSelection:
+    """Tests for the shutil.which-based simulation backend selection."""
+
+    def test_uses_neurodamus_when_compile_mods_available(
+        self,
+        fake_simplified_circuit: Path,
+        mock_pipeline,  # ruff: ignore[unused-method-argument]
+        tmp_path: Path,
+    ):
+        """execute() should use neurodamus backend when neurodamus-compile-mods is on PATH."""
+        config = TestTaskExecution._make_config(tmp_path)
+        task = CircuitSimplificationTask(config=config)
+
+        mock_circuit = MagicMock()
+        mock_circuit.path = str(fake_simplified_circuit / "circuit_config.json")
+        mock_circuit.sonata_circuit = MagicMock()
+        mock_entity = MagicMock()
+
+        algo_dir = config.coordinate_output_root / "single_compartment" / "output"
+        algo_dir.mkdir(parents=True, exist_ok=True)
+        (algo_dir / "circuit_config.json").write_text("{}")
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                return_value=(mock_circuit, mock_entity),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._get_execution_activity",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._register_output",
+                return_value=MagicMock(id="new-circuit-id"),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.process.get_mechanisms_dirs",
+                return_value=[Path("/fake/mod")],
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.process.compile_mechanisms",
+            ) as mock_compile,
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.shutil.which",
+                return_value="/usr/bin/neurodamus-compile-mods",
+            ),
+        ):
+            task.execute(db_client=MagicMock())
+
+        mock_compile.assert_called_once()
+        assert mock_compile.call_args.kwargs["simulation_backend"] == SimulationBackend.neurodamus
+
+    def test_uses_bluecellulab_when_compile_mods_missing(
+        self,
+        fake_simplified_circuit: Path,
+        mock_pipeline,  # ruff: ignore[unused-method-argument]
+        tmp_path: Path,
+    ):
+        """execute() should fall back to bluecellulab when neurodamus-compile-mods is absent."""
+        config = TestTaskExecution._make_config(tmp_path)
+        task = CircuitSimplificationTask(config=config)
+
+        mock_circuit = MagicMock()
+        mock_circuit.path = str(fake_simplified_circuit / "circuit_config.json")
+        mock_circuit.sonata_circuit = MagicMock()
+        mock_entity = MagicMock()
+
+        algo_dir = config.coordinate_output_root / "single_compartment" / "output"
+        algo_dir.mkdir(parents=True, exist_ok=True)
+        (algo_dir / "circuit_config.json").write_text("{}")
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                return_value=(mock_circuit, mock_entity),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._get_execution_activity",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._register_output",
+                return_value=MagicMock(id="new-circuit-id"),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.process.get_mechanisms_dirs",
+                return_value=[Path("/fake/mod")],
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.process.compile_mechanisms",
+            ) as mock_compile,
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.shutil.which",
+                return_value=None,
+            ),
+        ):
+            task.execute(db_client=MagicMock())
+
+        mock_compile.assert_called_once()
+        assert mock_compile.call_args.kwargs["simulation_backend"] == SimulationBackend.bluecellulab
+
+
 class TestSmokeCheckLoadability:
     """F11: Tests for the loadability smoke check."""
 
@@ -780,6 +901,7 @@ class TestSmokeCheckLoadability:
         self,
         fake_simplified_circuit: Path,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
         """execute() should raise when smoke check fails, not register the circuit."""

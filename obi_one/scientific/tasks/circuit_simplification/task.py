@@ -11,6 +11,7 @@ entity with derivation links to the parent.
 import json
 import logging
 import os
+import shutil
 import tempfile
 from enum import StrEnum
 from pathlib import Path
@@ -423,7 +424,7 @@ class CircuitSimplificationTask(Task):
             )
             return types.TargetSimulator.NEURON
 
-    def execute(  # ruff: ignore[complex-structure, too-many-locals]
+    def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
@@ -469,10 +470,15 @@ class CircuitSimplificationTask(Task):
                 mechanisms_dir = process.get_mechanisms_dirs(input_circuit_path)
                 assert len(mechanisms_dir) == 1, "Do not currently handle multiple mechanisms_dirs"  # ruff: ignore[assert]
                 mechanisms_dir = next(iter(mechanisms_dir))
+                sim_backend = (
+                    SimulationBackend.neurodamus
+                    if shutil.which("neurodamus-compile-mods")
+                    else SimulationBackend.bluecellulab
+                )
                 process.compile_mechanisms(
                     output_dir=Path(),
                     mechanisms_dir=mechanisms_dir,
-                    simulation_backend=SimulationBackend.neurodamus,
+                    simulation_backend=sim_backend,
                 )
 
             # Import sonata_simplify lazily (heavy dependencies)

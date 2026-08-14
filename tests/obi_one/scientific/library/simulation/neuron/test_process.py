@@ -258,3 +258,43 @@ def test_compile_mechanisms_unsupported_backend(tmp_path):
             mechanisms_dir=tmp_path / "mech",
             simulation_backend="unsupported",  # ty:ignore[invalid-argument-type]
         )
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+def test_compile_neuron_mechanisms_finds_dylib_on_macos(mock_run_and_log, tmp_path):
+    """libnrnmech.dylib (macOS) should be found, not just libnrnmech.so (Linux)."""
+    mech_dir = tmp_path / "mech"
+    mech_dir.mkdir()
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    mock_run_and_log.return_value.stdout = "compilation done"
+
+    dylib_file = output_dir / "arm64" / "libnrnmech.dylib"
+    dylib_file.parent.mkdir(parents=True)
+    dylib_file.write_text("dummy")
+
+    mechanism_build = test_module.compile_mechanisms(
+        output_dir=output_dir,
+        mechanisms_dir=mech_dir,
+        simulation_backend=SimulationBackend.bluecellulab,
+    )
+
+    assert isinstance(mechanism_build, NeuronMechanismBuild)
+    assert mechanism_build.libnrnmech_path == dylib_file
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+def test_compile_neuron_mechanisms_raises_when_no_libnrnmech(mock_run_and_log, tmp_path):
+    """RuntimeError should be raised when no libnrnmech shared object is found."""
+    mech_dir = tmp_path / "mech"
+    mech_dir.mkdir()
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    mock_run_and_log.return_value.stdout = "compilation done"
+
+    with pytest.raises(RuntimeError, match="libnrnmech was not found"):
+        test_module.compile_mechanisms(
+            output_dir=output_dir,
+            mechanisms_dir=mech_dir,
+            simulation_backend=SimulationBackend.bluecellulab,
+        )
