@@ -973,6 +973,78 @@ class TestResolveNeuronSetAndGetTemplates:
         )
         assert config_call.kwargs["strategy"] == FetchFileStrategy.copy_or_download
 
+    def test_continues_without_node_sets_json(self, tmp_path):
+        """Missing node_sets.json is logged and skipped, not raised."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(TINY_CIRCUIT_DIR, circuit_dir)
+        # Remove node_sets.json to trigger the exception path
+        (circuit_dir / "node_sets.json").unlink()
+
+        client = MagicMock()
+        asset = MagicMock()
+        asset.is_directory = True
+        asset.label.value = "sonata_circuit"
+        asset.id = uuid4()
+        entity = MagicMock()
+        entity.name = "test_circuit"
+        entity.assets = [asset]
+        client.get_entity.return_value = entity
+        client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+
+        # Should not raise despite missing node_sets.json
+        populations, node_to_template = _resolve_neuron_set_and_get_templates(
+            db_client=client,
+            circuit_id=str(uuid4()),
+            circuit_entity=entity,
+            asset_id=asset.id,
+            neuron_set=neuron_set,
+        )
+
+        assert populations == ["S1nonbarrel_neurons"]
+        assert len(node_to_template) == 3
+
+    def test_raises_when_population_not_in_nodes_mapping(self, tmp_path):
+        """Population returned by neuron set but missing from staging raises ValueError."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(TINY_CIRCUIT_DIR, circuit_dir)
+
+        client = MagicMock()
+        asset = MagicMock()
+        asset.is_directory = True
+        asset.label.value = "sonata_circuit"
+        asset.id = uuid4()
+        entity = MagicMock()
+        entity.name = "test_circuit"
+        entity.assets = [asset]
+        client.get_entity.return_value = entity
+        client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
+
+        neuron_set = MagicMock()
+        # Return a population that doesn't exist in the circuit's nodes
+        neuron_set.get_neuron_ids.return_value = {"nonexistent_pop": [0, 1]}
+
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "._stage_circuit_for_neuron_set",
+                return_value=(
+                    circuit_dir / "circuit_config.json",
+                    {"S1nonbarrel_neurons": "nodes.h5"},
+                ),
+            ),
+            pytest.raises(ValueError, match="No nodes file found for population"),
+        ):
+            _resolve_neuron_set_and_get_templates(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                circuit_entity=entity,
+                asset_id=asset.id,
+                neuron_set=neuron_set,
+            )
+
     def test_raises_when_neuron_set_resolves_to_no_nodes(self, mock_db_client):
         """Empty node IDs raises ValueError."""
         circuit_id = str(uuid4())
