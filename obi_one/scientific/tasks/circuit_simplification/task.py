@@ -33,6 +33,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.library.simulation.neuron import process
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
@@ -43,6 +44,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BiophysicalNeuronSetReference,
 )
+from obi_one.types import SimulationBackend
 
 L = logging.getLogger(__name__)
 
@@ -447,13 +449,12 @@ class CircuitSimplificationTask(Task):
                 temp_dir=Path(temp_dir),
             )
 
-            input_circuit_path = self._circuit.path
-            simplification = self.config.simplification
+            input_circuit_path = Path(self._circuit.path).absolute()
 
             # After GridScanGenerationTask expands the scan config, list fields
             # with a single element are unwrapped to scalar values. Wrap algorithms
             # back into a list so iteration works correctly either way.
-            algorithms = simplification.algorithms
+            algorithms = self.config.simplification.algorithms
             if isinstance(algorithms, str):
                 algorithms = [algorithms]
 
@@ -463,13 +464,22 @@ class CircuitSimplificationTask(Task):
             # the sim config's node sets with the circuit's, same as BCL/ND).
             node_set_name = self._resolve_node_set(self.config.coordinate_output_root)
 
+            output_circuit_ids: list[str] = []
+            if "single_compartment" in algorithms:
+                mechanisms_dir = process.get_mechanisms_dirs(input_circuit_path)
+                assert len(mechanisms_dir) == 1, "Do not currently handle multiple mechanisms_dirs"  # ruff: ignore[assert]
+                mechanisms_dir = next(iter(mechanisms_dir))
+                process.compile_mechanisms(
+                    output_dir=Path(),
+                    mechanisms_dir=mechanisms_dir,
+                    simulation_backend=SimulationBackend.neurodamus,
+                )
+
             # Import sonata_simplify lazily (heavy dependencies)
             from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level]
                 SimplificationPipeline,
             )
             from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level]
-
-            output_circuit_ids: list[str] = []
 
             for algorithm_name in algorithms:
                 L.info(f"Running simplification with algorithm: {algorithm_name}")
@@ -479,7 +489,7 @@ class CircuitSimplificationTask(Task):
                 base_algorithm, exporter_name = ALGORITHM_EXPORT_MAP[algorithm_name]
 
                 # Create output directory for this algorithm
-                output_dir = self.config.coordinate_output_root / algorithm_name
+                output_dir = (self.config.coordinate_output_root / algorithm_name).absolute()
                 output_dir.mkdir(parents=True, exist_ok=True)
 
                 # Build simulation config for the pipeline.
@@ -494,7 +504,7 @@ class CircuitSimplificationTask(Task):
                     else None
                 )
                 sim_config_path = CircuitSimplificationTask._build_simulation_config(
-                    input_circuit_path,
+                    str(input_circuit_path),
                     output_dir,
                     node_set_name=node_set_name,
                     node_sets_file=node_sets_file,
