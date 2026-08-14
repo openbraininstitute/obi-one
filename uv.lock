@@ -3390,7 +3390,7 @@ wheels = [
 
 [[package]]
 name = "sonata-simplify"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
 dependencies = [
     { name = "click" },
@@ -3400,9 +3400,9 @@ dependencies = [
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.0/sonata_simplify-0.2.0.tar.gz", hash = "sha512:0337cc68f154c3e7d69adb92a8db036c6f51186bcb26fb634171e4d293d135a990feae3fe80e14f2fcba5bfb6d6bee21fe3b7c15afed7a100b51e1dcb7740934", size = 2217086, upload-time = "2026-08-05T15:22:07.038Z" }
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.1/sonata_simplify-0.2.1.tar.gz", hash = "sha512:ab79ad8f6f4893879cb87ad3624845ad0e0ef5e351fe1c377660e6812064981565b25eebfaf359c971a9b59efa061e799d88bc69c8db417824ea1758e4585be1", size = 2216676, upload-time = "2026-08-13T11:08:43.8Z" }
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.0/sonata_simplify-0.2.0-py3-none-any.whl", hash = "sha512:e743323e2e80188aee5f3b68ad480bed0a19e98f2d75f62b76fdf07f21aac1b7670174220802533fddd90c39a91577807342951b104f761fac652d209c664a98", size = 198115, upload-time = "2026-08-05T15:22:06.603Z" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.1/sonata_simplify-0.2.1-py3-none-any.whl", hash = "sha512:87ec98338972e5c03b8605682402807b2819538813dc80320c0f7e337a4c1a1b9ea2d05a10dc0a6a7d3dfa4c77893b2b9e6a242d3445c899456ed14c84d5d157", size = 197947, upload-time = "2026-08-13T11:08:43.408Z" },
 ]
 
 [[package]]
