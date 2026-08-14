@@ -22,8 +22,6 @@ from entitysdk.types import DerivationType
 from pydantic import Field, PrivateAttr
 from sonata_simplify.algorithms import ALGORITHM_DESCRIPTIONS, ALGORITHM_TITLES
 
-from obi_one.types import SimulationBackend
-from obi_one.scientific.library.simulation.neuron import process
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
@@ -35,6 +33,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.library.simulation.neuron import process
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
@@ -45,6 +44,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BiophysicalNeuronSetReference,
 )
+from obi_one.types import SimulationBackend
 
 L = logging.getLogger(__name__)
 
@@ -450,12 +450,11 @@ class CircuitSimplificationTask(Task):
             )
 
             input_circuit_path = Path(self._circuit.path).absolute()
-            simplification = self.config.simplification
 
             # After GridScanGenerationTask expands the scan config, list fields
             # with a single element are unwrapped to scalar values. Wrap algorithms
             # back into a list so iteration works correctly either way.
-            algorithms = simplification.algorithms
+            algorithms = self.config.simplification.algorithms
             if isinstance(algorithms, str):
                 algorithms = [algorithms]
 
@@ -468,13 +467,13 @@ class CircuitSimplificationTask(Task):
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithms:
                 mechanisms_dir = process.get_mechanisms_dirs(input_circuit_path)
-                assert len(mechanisms_dir) == 1, "Do not currently handle multiple mechanisms_dirs"
+                assert len(mechanisms_dir) == 1, "Do not currently handle multiple mechanisms_dirs"  # ruff: ignore[assert]
                 mechanisms_dir = next(iter(mechanisms_dir))
                 process.compile_mechanisms(
                     output_dir=Path(),
                     mechanisms_dir=mechanisms_dir,
-                    simulation_backend=SimulationBackend.neurodamus)
-
+                    simulation_backend=SimulationBackend.neurodamus,
+                )
 
             # Import sonata_simplify lazily (heavy dependencies)
             from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level]

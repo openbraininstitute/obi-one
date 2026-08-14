@@ -210,7 +210,7 @@ def get_mechanisms_dirs(circuit_config_path: Path) -> list[Path]:
         d
         for pop in config.node_populations
         if (d := config.node_population_properties(pop).mechanisms_dir)
-        ]:
+    ]:
         return mechanisms_dirs
 
     if (fallback := (circuit_config_path.parent / "mod")) and fallback.exists():
