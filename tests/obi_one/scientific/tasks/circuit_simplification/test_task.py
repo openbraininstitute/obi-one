@@ -194,20 +194,20 @@ class TestApiCompatibility:
         assert brian2_entries == {"adex_brian2"}
 
 
-class TestNodeSetField:
-    """Tests for the node_set field in Initialize."""
+class TestTargetNeuronSetField:
+    """Tests for the target_neuron_set field in Initialize."""
 
-    def test_node_set_field_exists(self):
-        """Initialize block should have a node_set field."""
+    def test_target_neuron_set_field_exists(self):
+        """Initialize block should have a target_neuron_set field."""
         fields = CircuitSimplificationScanConfig.Initialize.model_fields
-        assert "node_set" in fields
+        assert "target_neuron_set" in fields
 
-    def test_node_set_defaults_to_none(self):
-        """node_set should default to None (resolved to AllBiophysicalNeurons at execution)."""
+    def test_target_neuron_set_defaults_to_none(self):
+        """target_neuron_set should default to None (AllBiophysicalNeurons at execution)."""
         init = CircuitSimplificationScanConfig.Initialize(
             circuit=CircuitFromID(id_str="test-circuit-id"),
         )
-        assert init.node_set is None
+        assert init.target_neuron_set is None
 
     def test_default_neuron_set_reference(self):
         """default_neuron_set_reference should return AllBiophysicalNeurons."""
@@ -220,12 +220,12 @@ class TestNodeSetField:
         )
         ref = config.default_neuron_set_reference
         assert ref is not None
-        assert ref.block_name == config.default_node_set_name
+        assert ref.block_name == config.default_target_neuron_set_name
 
-    def test_default_node_set_name(self):
-        """default_node_set_name should be 'Default: All Biophysical Neurons'."""
+    def test_default_target_neuron_set_name(self):
+        """default_target_neuron_set_name should be 'Default: All Biophysical Neurons'."""
         assert (
-            CircuitSimplificationScanConfig.default_node_set_name
+            CircuitSimplificationScanConfig.default_target_neuron_set_name
             == "Default: All Biophysical Neurons"
         )
 
@@ -236,7 +236,7 @@ class TestNodeSetField:
         sim_config_path = CircuitSimplificationTask._build_simulation_config(
             "some/circuit_config.json",
             output_dir,
-            node_set_name="MyNodeSet",
+            target_neuron_set_name="MyNodeSet",
             node_sets_file="node_sets.json",
         )
         with Path(sim_config_path).open(encoding="utf-8") as f:
@@ -328,7 +328,7 @@ class TestTaskExecution:
                 return_value=MagicMock(id="new-circuit-id"),
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value="TestNodeSet",
             ),
             patch(
@@ -394,7 +394,7 @@ class TestTaskExecution:
                 side_effect=[registered_sonata, registered_export],
             ) as register_output,
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
             patch(
@@ -438,7 +438,7 @@ class TestTaskExecution:
                 return_value=None,
             ) as register_output,
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
             patch(
@@ -478,7 +478,7 @@ class TestTaskExecution:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
         ):
@@ -516,7 +516,7 @@ class TestTaskExecution:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
         ):
@@ -562,7 +562,7 @@ class TestTaskExecution:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
         ):
@@ -622,7 +622,7 @@ class TestTaskExecution:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
         ):
@@ -641,27 +641,27 @@ class TestTaskInternals:
         config = TestTaskExecution._make_config(tmp_path)
         return CircuitSimplificationTask(config=config)
 
-    def test_resolve_node_set_writes_generated_file(self, tmp_path: Path):
+    def test_resolve_target_neuron_set_writes_generated_file(self, tmp_path: Path):
         """A default neuron-set reference should be materialized and written."""
         task = self._make_task(tmp_path)
         task._circuit = MagicMock()
         block = MagicMock()
         block.has_block_name.return_value = False
         block.block_name = "TestNodeSet"
-        node_set_ref = MagicMock(block=block, block_name="TestNodeSet")
+        target_neuron_set_ref = MagicMock(block=block, block_name="TestNodeSet")
 
         with (
             patch.object(
                 CircuitSimplificationScanConfig,
                 "default_neuron_set_reference",
                 new_callable=PropertyMock,
-                return_value=node_set_ref,
+                return_value=target_neuron_set_ref,
             ),
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.write_circuit_node_set_file"
             ) as write_node_sets,
         ):
-            result = task._resolve_node_set(tmp_path)
+            result = task._resolve_target_neuron_set(tmp_path)
 
         assert result == "TestNodeSet"
         block.set_block_name.assert_called_once_with("TestNodeSet")
@@ -677,7 +677,7 @@ class TestTaskInternals:
             overwrite_if_exists=True,
         )
 
-    def test_resolve_node_set_returns_none_without_reference(self, tmp_path: Path):
+    def test_resolve_target_neuron_set_returns_none_without_reference(self, tmp_path: Path):
         """A missing configured and default reference should be handled."""
         task = self._make_task(tmp_path)
 
@@ -687,7 +687,7 @@ class TestTaskInternals:
             new_callable=PropertyMock,
             return_value=None,
         ):
-            assert task._resolve_node_set(tmp_path) is None
+            assert task._resolve_target_neuron_set(tmp_path) is None
 
     def test_read_target_simulator_from_config(self, tmp_path: Path):
         """Known target-simulator values should be returned from the config."""
@@ -789,7 +789,7 @@ class TestMechanismBackendSelection:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
             patch(
@@ -845,7 +845,7 @@ class TestMechanismBackendSelection:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
             patch(
@@ -931,7 +931,7 @@ class TestSmokeCheckLoadability:
                 return_value=None,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_node_set",
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
             patch(

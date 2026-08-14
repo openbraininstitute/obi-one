@@ -118,17 +118,17 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
         " exported to NEST format."
     )
 
-    default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
+    default_target_neuron_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
     default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
 
     @property
     def default_neuron_set_reference(self) -> BiophysicalNeuronSetReference:
         """The default neuron set reference (all biophysical neurons)."""
         ref = BiophysicalNeuronSetReference(
-            block_dict_name="neuron_sets", block_name=self.default_node_set_name
+            block_dict_name="neuron_sets", block_name=self.default_target_neuron_set_name
         )
         ref.block = self.default_neuron_set_type()
-        ref.block.set_block_name(self.default_node_set_name)
+        ref.block.set_block_name(self.default_target_neuron_set_name)
         return ref
 
     json_schema_extra_additions: ClassVar[dict] = {
@@ -161,9 +161,9 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
-        node_set: BiophysicalNeuronSetReference | None = Field(
+        target_neuron_set: BiophysicalNeuronSetReference | None = Field(
             default=None,
-            title="Neuron Set",
+            title="Target Neuron Set",
             description=(
                 "Neuron set to simplify. If None, defaults to all biophysical neurons."
                 " Currently hidden from the UI — always uses the default."
@@ -293,13 +293,13 @@ class CircuitSimplificationTask(Task):
     def _build_simulation_config(
         input_circuit_path: str,
         output_dir: Path,
-        node_set_name: str | None = None,
+        target_neuron_set_name: str | None = None,
         node_sets_file: str | None = None,
     ) -> Path:
         """Build a simulation_config.json for the sonata_simplify pipeline.
 
         The pipeline expects a simulation config JSON that references the
-        circuit config and output directory. If ``node_set_name`` and
+        circuit config and output directory. If ``target_neuron_set_name`` and
         ``node_sets_file`` are provided, they are included in the sim config
         so the pipeline can resolve the node set via BluePySnap (merging
         the sim config's node sets with the circuit's, same as BCL/ND).
@@ -320,8 +320,8 @@ class CircuitSimplificationTask(Task):
                 "v_init": -80.0,
             },
         }
-        if node_set_name is not None:
-            sim_config["node_set"] = node_set_name
+        if target_neuron_set_name is not None:
+            sim_config["node_set"] = target_neuron_set_name
         if node_sets_file is not None:
             sim_config["node_sets_file"] = node_sets_file
 
@@ -331,8 +331,8 @@ class CircuitSimplificationTask(Task):
 
         return sim_config_path
 
-    def _resolve_node_set(self, output_dir: Path) -> str | None:
-        """Resolve the neuron set and write a node_sets.json to the output dir.
+    def _resolve_target_neuron_set(self, output_dir: Path) -> str | None:
+        """Resolve the target neuron set and write a node_sets.json to the output dir.
 
         Follows the same pattern as generate_simulations: adds the neuron set
         to the SONATA circuit object (in memory), writes the updated node sets
@@ -343,18 +343,18 @@ class CircuitSimplificationTask(Task):
 
         Returns the node set name, or None if no neuron set is configured.
         """
-        node_set_ref = self.config.initialize.node_set
-        if node_set_ref is None:
+        target_neuron_set_ref = self.config.initialize.target_neuron_set
+        if target_neuron_set_ref is None:
             # Use default: all biophysical neurons
-            node_set_ref = self.config.default_neuron_set_reference
+            target_neuron_set_ref = self.config.default_neuron_set_reference
 
-        if node_set_ref is None:
+        if target_neuron_set_ref is None:
             return None
 
         # Set block name if not already set
-        block = node_set_ref.block
+        block = target_neuron_set_ref.block
         if not block.has_block_name():
-            block.set_block_name(node_set_ref.block_name)
+            block.set_block_name(target_neuron_set_ref.block_name)
 
         # Add node set to the SONATA circuit object (in memory) and write to file.
         # This does NOT modify the input circuit files — it only writes a new
@@ -459,11 +459,13 @@ class CircuitSimplificationTask(Task):
             if isinstance(algorithms, str):
                 algorithms = [algorithms]
 
-            # Resolve neuron set and write node_sets.json to the output root.
+            # Resolve target neuron set and write node_sets.json to the output root.
             # The node set name and node_sets_file are passed via the sim config
             # so the pipeline can resolve the node set via BluePySnap (merging
             # the sim config's node sets with the circuit's, same as BCL/ND).
-            node_set_name = self._resolve_node_set(self.config.coordinate_output_root)
+            target_neuron_set_name = self._resolve_target_neuron_set(
+                self.config.coordinate_output_root
+            )
 
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithms:
@@ -499,20 +501,20 @@ class CircuitSimplificationTask(Task):
                 output_dir.mkdir(parents=True, exist_ok=True)
 
                 # Build simulation config for the pipeline.
-                # If a node set was resolved, include node_set (name) and
+                # If a target neuron set was resolved, include node_set (name) and
                 # node_sets_file derived relative to this algorithm's sim config.
                 node_sets_file = (
                     os.path.relpath(
                         self.config.coordinate_output_root / "node_sets.json",
                         start=output_dir,
                     )
-                    if node_set_name is not None
+                    if target_neuron_set_name is not None
                     else None
                 )
                 sim_config_path = CircuitSimplificationTask._build_simulation_config(
                     str(input_circuit_path),
                     output_dir,
-                    node_set_name=node_set_name,
+                    target_neuron_set_name=target_neuron_set_name,
                     node_sets_file=node_sets_file,
                 )
 
