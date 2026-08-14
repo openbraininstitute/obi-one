@@ -49,6 +49,7 @@ def write_circuit_node_set_file(
         if len(path.stem) == 0 or path.suffix.lower() != ".json":
             msg = "File name must be non-empty and of type .json!"
             raise ValueError(msg)
+    Path(output_path).mkdir(parents=True, exist_ok=True)
     output_file = Path(output_path) / file_name
 
     if not overwrite_if_exists and Path(output_file).exists():
