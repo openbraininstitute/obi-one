@@ -71,6 +71,7 @@ def _stage_file(
     asset_id: UUID,
     temp_dir: Path,
     asset_path: str,
+    strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
 ) -> Path:
     """Stage a single file from the circuit's sonata_circuit asset into temp_dir."""
     output_path = temp_dir / asset_path
@@ -81,9 +82,56 @@ def _stage_file(
         asset_id=asset_id,
         output_path=output_path,
         asset_path=Path(asset_path),
-        strategy=FetchFileStrategy.link_or_download,
+        strategy=strategy,
     )
     return output_path
+
+
+def _stage_circuit_for_neuron_set(
+    db_client: entitysdk.client.Client,
+    circuit_id: str,
+    asset_id: UUID,
+    temp_dir_path: Path,
+) -> tuple[Path, dict[str, str]]:
+    """Stage the files needed to resolve a neuron set against a circuit.
+
+    Copies circuit_config.json as a real file (not a symlink) so that
+    $BASE_DIR resolves to the temp directory rather than the S3 cache.
+    Node sets and nodes.h5 files are staged with link_or_download (symlinks
+    to the S3 cache where available, downloads otherwise).
+    """
+    # Copy config as a real file so $BASE_DIR resolves to temp_dir
+    _stage_file(
+        db_client,
+        circuit_id,
+        asset_id,
+        temp_dir_path,
+        "circuit_config.json",
+        strategy=FetchFileStrategy.copy_or_download,
+    )
+
+    config_path = temp_dir_path / "circuit_config.json"
+
+    # Stage node_sets.json (needed for neuron set resolution)
+    try:
+        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "node_sets.json")
+    except Exception:  # ruff: ignore[blind-except]
+        L.debug("node_sets.json not available, continuing without it")
+
+    # Load circuit — $BASE_DIR now resolves to temp_dir because config is a real file
+    snap_circuit = SnapCircuit(str(config_path))
+
+    # Stage all nodes.h5 files and build population -> relative path mapping.
+    # Paths resolve correctly under temp_dir because the config is a real file,
+    # not a symlink to the S3 cache.
+    pop_to_nodes_path: dict[str, str] = {}
+    for population in snap_circuit.nodes.population_names:
+        nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
+        nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
+        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
+        pop_to_nodes_path[population] = nodes_relative
+
+    return config_path, pop_to_nodes_path
 
 
 def _resolve_neuron_set_and_get_templates(
@@ -107,29 +155,16 @@ def _resolve_neuron_set_and_get_templates(
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
 
-        # Stage circuit_config.json
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "circuit_config.json")
-
-        # Stage node_sets.json (needed for neuron set resolution)
-        try:
-            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "node_sets.json")
-        except Exception:  # ruff: ignore[blind-except]
-            L.debug("node_sets.json not available, continuing without it")
-
-        # Load circuit
-        config_path = temp_dir_path / "circuit_config.json"
-        snap_circuit = SnapCircuit(str(config_path))
-
-        # Stage all nodes.h5 files upfront so that neuron set resolution
-        # (which accesses property_names via bluepysnap) can open them.
-        for population in snap_circuit.nodes.population_names:
-            nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
-            nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
-            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
+        config_path, pop_to_nodes_path = _stage_circuit_for_neuron_set(
+            db_client,
+            circuit_id,
+            asset_id,
+            temp_dir_path,
+        )
 
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
-        # Resolve neuron set → node IDs per population (new API)
+        # Resolve neuron set -> node IDs per population (new API)
         ids_per_population: dict[str, list[int]] = neuron_set.get_neuron_ids(obi_circuit)
 
         if not ids_per_population:
@@ -146,8 +181,11 @@ def _resolve_neuron_set_and_get_templates(
             populations.append(population)
 
             # Resolve the population's nodes.h5 (already staged above)
-            nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
-            nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
+            try:
+                nodes_relative = pop_to_nodes_path[population]
+            except KeyError as err:
+                msg = f"No nodes file found for population '{population}'."
+                raise ValueError(msg) from err
 
             # Read model_template for those node IDs
             nodes_path = temp_dir_path / nodes_relative
@@ -197,21 +235,12 @@ def get_circuit_node_ids(
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
 
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "circuit_config.json")
-        try:
-            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "node_sets.json")
-        except Exception:  # ruff: ignore[blind-except]
-            L.debug("node_sets.json not available, continuing without it")
-
-        config_path = temp_dir_path / "circuit_config.json"
-
-        # Stage all nodes.h5 files upfront so that neuron set resolution
-        # (which accesses property_names via bluepysnap) can open them.
-        snap_circuit = SnapCircuit(str(config_path))
-        for population in snap_circuit.nodes.population_names:
-            nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
-            nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
-            _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
+        config_path, _ = _stage_circuit_for_neuron_set(
+            db_client,
+            circuit_id,
+            asset_id,
+            temp_dir_path,
+        )
 
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
