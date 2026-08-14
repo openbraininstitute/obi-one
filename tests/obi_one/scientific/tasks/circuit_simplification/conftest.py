@@ -38,3 +38,23 @@ def mock_pipeline(fake_simplified_circuit: Path):
         # run_recipe returns a list of output paths (one per target)
         m.return_value.run_recipe.return_value = [fake_simplified_circuit]
         yield m
+
+
+@pytest.fixture
+def mock_mechanism_compilation():
+    """Mock the mechanism compilation step added by the task launch fix.
+
+    Patches ``process.get_mechanisms_dirs`` and ``process.compile_mechanisms``
+    so tests that exercise ``execute()`` with ``single_compartment`` don't
+    require a real circuit with MOD files.
+    """
+    with (
+        patch(
+            "obi_one.scientific.tasks.circuit_simplification.task.process.get_mechanisms_dirs",
+            return_value=[Path("/fake/mod")],
+        ),
+        patch(
+            "obi_one.scientific.tasks.circuit_simplification.task.process.compile_mechanisms",
+        ),
+    ):
+        yield

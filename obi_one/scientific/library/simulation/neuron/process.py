@@ -156,9 +156,9 @@ def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> Neu
     L.debug(compilation_output)
 
     try:
-        libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
+        libnrnmech_path = next(output_dir.rglob("libnrnmech.*"))
     except StopIteration as e:
-        msg = "Compiled mechanisms shared object libnrnmech.so was not found."
+        msg = "Compiled mechanisms shared object libnrnmech was not found."
         raise RuntimeError(msg) from e
 
     return NeuronMechanismBuild(libnrnmech_path=libnrnmech_path)
