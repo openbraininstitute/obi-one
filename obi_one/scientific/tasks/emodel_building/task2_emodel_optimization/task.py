@@ -57,15 +57,17 @@ class EModelOptimizationTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> Path:
-        from bluepyemodel.access_point.local import LocalAccessPoint  # noqa: PLC0415
-        from bluepyemodel.export_emodel.export_emodel import (  # noqa: PLC0415
+        from bluepyemodel.access_point.local import (  # ruff: ignore[import-outside-top-level]
+            LocalAccessPoint,
+        )
+        from bluepyemodel.export_emodel.export_emodel import (  # ruff: ignore[import-outside-top-level]
             export_emodels_hoc,
             export_emodels_sonata,
         )
-        from bluepyemodel.optimisation import (  # noqa: PLC0415
+        from bluepyemodel.optimisation import (  # ruff: ignore[import-outside-top-level]
             setup_and_run_optimisation,
             store_best_model,
         )
@@ -91,7 +93,9 @@ class EModelOptimizationTask(Task):
         # --- 5. Stage params file (before building recipe) ---
         params_path = self._stage_params(coord_root)
 
-        # --- 6. Reconstruct recipe ---
+        # --- 6. Build recipe from scratch ---
+        # The recipe is constructed entirely from the optimisation config;
+        # no recipe asset exists on the extraction TaskResult.
         recipes = {}
 
         morph_dir = "./morphologies/"
@@ -185,7 +189,7 @@ class EModelOptimizationTask(Task):
         db_client: entitysdk.client.Client,
     ) -> Path:
         """Download extracted features JSON from extraction TaskResult."""
-        from entitysdk.types import AssetLabel  # noqa: PLC0415
+        from entitysdk.types import AssetLabel  # ruff: ignore[import-outside-top-level]
 
         features_dir = coord_root / "config" / "features"
         features_dir.mkdir(parents=True, exist_ok=True)
@@ -244,10 +248,10 @@ class EModelOptimizationTask(Task):
         params_path.write_text(json.dumps(params, indent=4), encoding="utf-8")
         return params_path
 
-    def _stage_traces(  # noqa: PLR6301
+    def _stage_traces(  # ruff: ignore[no-self-use]
         self,
         extraction_tr: TaskResultFromID,
-        coord_root: Path,  # noqa: ARG002
+        coord_root: Path,  # ruff: ignore[unused-method-argument]
         db_client: entitysdk.client.Client,
     ) -> list[str]:
         """Fetch trace IDs via derivation chain from extraction TaskResult.
@@ -256,7 +260,7 @@ class EModelOptimizationTask(Task):
         assets are not downloaded because the optimisation stage only needs
         the extracted features and protocols, not the raw traces.
         """
-        from entitysdk.models import Derivation  # noqa: PLC0415
+        from entitysdk.models import Derivation  # ruff: ignore[import-outside-top-level]
 
         tr_entity = extraction_tr.entity(db_client=db_client)
         derivations = db_client.search_entity(
@@ -341,8 +345,11 @@ class EModelOptimizationTask(Task):
         task_result_id: str,
     ) -> None:
         """Upload recipes, params, HOC, and SONATA to the TaskResult for task3."""
-        from entitysdk.models import TaskResult  # noqa: PLC0415
-        from entitysdk.types import AssetLabel, ContentType  # noqa: PLC0415
+        from entitysdk.models import TaskResult  # ruff: ignore[import-outside-top-level]
+        from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
+            AssetLabel,
+            ContentType,
+        )
 
         # Recipes.json — needed by task3 to reconstruct pipeline settings
         recipes_path = coord_root / "config" / "recipes.json"
@@ -397,7 +404,7 @@ class EModelOptimizationTask(Task):
             )
             L.info("Uploaded SONATA to TaskResult.")
 
-    def register_output_entities(  # noqa: PLR0914
+    def register_output_entities(  # ruff: ignore[too-many-locals]
         self,
         coord_root: Path,
         db_client: entitysdk.Client,
@@ -410,16 +417,20 @@ class EModelOptimizationTask(Task):
         Uses the shared registration helpers from entitysdk PR #252 to ensure
         alignment with the launch-system ``run_optimisation.py`` flow.
         """
-        from entitysdk.models import (  # noqa: PLC0415
+        from entitysdk.models import (  # ruff: ignore[import-outside-top-level]
             License,
             TaskActivity,
         )
-        from entitysdk.registration.emodel import register_emodel  # noqa: PLC0415
-        from entitysdk.registration.memodel import register_memodel  # noqa: PLC0415
-        from entitysdk.registration.task_result.emodel_optimization import (  # noqa: PLC0415
+        from entitysdk.registration.emodel import (  # ruff: ignore[import-outside-top-level]
+            register_emodel,
+        )
+        from entitysdk.registration.memodel import (  # ruff: ignore[import-outside-top-level]
+            register_memodel,
+        )
+        from entitysdk.registration.task_result.emodel_optimization import (  # ruff: ignore[import-outside-top-level]
             register_emodel_optimization_result,
         )
-        from entitysdk.types import (  # noqa: PLC0415
+        from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
             EntityLifecycleStatus,
             ValidationStatus,
         )
