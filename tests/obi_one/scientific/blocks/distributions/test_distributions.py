@@ -10,12 +10,68 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
 
 
 class TestDistanceDependentDistributions:
-    def test_default_legacy_distributions_serialize(self):
-        distribution = obi.LinearHDApicDistanceDependentDistribution()
+    @pytest.mark.parametrize(
+        ("distribution_class", "expected_name", "expected_function"),
+        [
+            (obi.UniformDistanceDependentDistribution, "uniform", None),
+            (
+                obi.ExponentialDistanceDependentDistribution,
+                "exp",
+                "(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
+            ),
+            (
+                obi.StepDistanceDependentDistribution,
+                "step",
+                (
+                    "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                    "({distance} < {step_end})))"
+                ),
+            ),
+            (
+                obi.ExponentialNaDendDistanceDependentDistribution,
+                "exp_na_dend",
+                "math.exp((-{distance})/50)*{value}",
+            ),
+            (
+                obi.LinearHDApicDistanceDependentDistribution,
+                "linear_hd_apic",
+                "(1. + 3./100. * {distance})*{value}",
+            ),
+            (
+                obi.SigmoidKADApicDistanceDependentDistribution,
+                "sigmoid_kad_apic",
+                "(15./(1. + math.exp((300-{distance})/50)))*{value}",
+            ),
+            (
+                obi.LinearEPasApicDistanceDependentDistribution,
+                "linear_e_pas_apic",
+                "({value}-5*{distance}/150)",
+            ),
+            (
+                obi.LinearHDPasDistanceDependentDistribution,
+                "linear_hdpas",
+                "(1. + 3./100. * {distance})*{value}",
+            ),
+            (
+                obi.SigmoidKADDistanceDependentDistribution,
+                "sigmoid_kad",
+                "(15./(1. + math.exp((150-{distance})/10)))*{value}",
+            ),
+            (
+                obi.SigmoidKDBMApicDistanceDependentDistribution,
+                "sigmoid_kdbm_apic",
+                "(15./(1. + math.exp(({distance}-50)/50)))*{value}",
+            ),
+        ],
+    )
+    def test_legacy_distributions_serialize(
+        self, distribution_class, expected_name, expected_function
+    ):
+        distribution = distribution_class()
 
         assert distribution.to_emc_dict() == {
-            "name": "linear_hd_apic",
-            "function": "(1. + 3./100. * {distance})*{value}",
+            "name": expected_name,
+            "function": expected_function,
             "soma_ref_location": 0.5,
         }
 
@@ -32,12 +88,61 @@ class TestDistanceDependentDistributions:
             "soma_ref_location": 0.25,
         }
 
+    def test_custom_distribution_serializes_parameters(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="decay",
+            function="math.exp({distance}*{constant})*{value}",
+            parameters=["constant"],
+        )
+
+        assert distribution.to_emc_dict() == {
+            "name": "decay",
+            "function": "math.exp({distance}*{constant})*{value}",
+            "soma_ref_location": 0.5,
+            "parameters": ["constant"],
+        }
+
+    def test_empty_distribution_parameters_are_not_serialized(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="custom_profile",
+            function="({value} + {distance}) / 2",
+            parameters=[],
+        )
+
+        assert "parameters" not in distribution.to_emc_dict()
+
     def test_custom_distribution_requires_value_and_distance(self):
-        with pytest.raises(ValueError, match="\\{value\\} placeholder"):
+        with pytest.raises(ValueError, match=r"\{value\} placeholder"):
             obi.CustomDistanceDependentDistribution(name="custom", function="{distance}")
 
-        with pytest.raises(ValueError, match="\\{distance\\} placeholder"):
+        with pytest.raises(ValueError, match=r"\{distance\} placeholder"):
             obi.CustomDistanceDependentDistribution(name="custom", function="{value}")
+
+    def test_custom_distribution_requires_declared_parameters(self):
+        with pytest.raises(ValueError, match=r"\{constant\} placeholder"):
+            obi.CustomDistanceDependentDistribution(
+                name="custom",
+                function="math.exp({distance})*{value}",
+                parameters=["constant"],
+            )
+
+    def test_distribution_parameters_require_a_function(self):
+        with pytest.raises(ValueError, match="must define a function"):
+            obi.DistanceDependentDistribution(parameters=["constant"])
+
+    def test_new_distribution_deserializes_through_union(self):
+        parameters = ParametersSelection(
+            distance_dependent_distributions={
+                "mouse": {
+                    "type": "LinearHDPasDistanceDependentDistribution",
+                }
+            }
+        )
+
+        assert isinstance(
+            parameters.distance_dependent_distributions["mouse"],
+            obi.LinearHDPasDistanceDependentDistribution,
+        )
 
     def test_optimization_parameter_selection_defaults_to_uniform(self):
         parameters = ParametersSelection()

@@ -46,25 +46,48 @@ class DistanceDependentDistribution(Block):
         description="Reference location of the soma along the morphology.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
+    parameters: list[str] | None = Field(
+        default=None,
+        title="Distribution parameters",
+        description=(
+            "Names of additional parameters that parametrize the function "
+            "(excluding {value} and {distance}). Used by BluePyEModel's "
+            "ParameterScaler."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_function(self) -> "DistanceDependentDistribution":
-        """Require custom functions to expose the value and distance inputs."""
+        """Require functions to expose implicit and declared inputs."""
+        if self.parameters and self.function is None:
+            msg = "Distance-dependent distributions with parameters must define a function."
+            raise ValueError(msg)
         if self.function is not None and "{value}" not in self.function:
             msg = "Distance-dependent functions must contain the {value} placeholder."
             raise ValueError(msg)
         if self.function is not None and "{distance}" not in self.function:
             msg = "Distance-dependent functions must contain the {distance} placeholder."
             raise ValueError(msg)
+        if self.function is not None:
+            for parameter in self.parameters or []:
+                placeholder = f"{{{parameter}}}"
+                if placeholder not in self.function:
+                    msg = (
+                        f"Distance-dependent functions must contain the {placeholder} placeholder."
+                    )
+                    raise ValueError(msg)
         return self
 
-    def to_emc_dict(self, name: str | None = None) -> dict[str, str | float | None]:
+    def to_emc_dict(self, name: str | None = None) -> dict[str, Any]:
         """Convert the block to the legacy EMC distribution representation."""
-        return {
+        emc_dict: dict[str, Any] = {
             "name": name or self.name,
             "function": self.function,
             "soma_ref_location": self.soma_ref_location,
         }
+        if self.parameters:
+            emc_dict["parameters"] = list(self.parameters)
+        return emc_dict
 
 
 class UniformDistanceDependentDistribution(DistanceDependentDistribution):
@@ -126,6 +149,33 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
     function: str = Field(default="({value}-5*{distance}/150)", frozen=True)
 
 
+class LinearHDPasDistanceDependentDistribution(DistanceDependentDistribution):
+    """Linear h-current passive distance distribution used by mouse models."""
+
+    name: str = Field(default="linear_hdpas", frozen=True)
+    function: str = Field(default="(1. + 3./100. * {distance})*{value}", frozen=True)
+
+
+class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
+    """Sigmoid potassium A-current distance distribution used by mouse models."""
+
+    name: str = Field(default="sigmoid_kad", frozen=True)
+    function: str = Field(
+        default="(15./(1. + math.exp((150-{distance})/10)))*{value}",
+        frozen=True,
+    )
+
+
+class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution):
+    """Sigmoid potassium D-type apical distance distribution used by mouse models."""
+
+    name: str = Field(default="sigmoid_kdbm_apic", frozen=True)
+    function: str = Field(
+        default="(15./(1. + math.exp(({distance}-50)/50)))*{value}",
+        frozen=True,
+    )
+
+
 class CustomDistanceDependentDistribution(DistanceDependentDistribution):
     """User-defined distance-dependent distribution for the optimization workflow."""
 
@@ -146,6 +196,9 @@ DistanceDependentDistributionUnion = Annotated[
     | LinearHDApicDistanceDependentDistribution
     | SigmoidKADApicDistanceDependentDistribution
     | LinearEPasApicDistanceDependentDistribution
+    | LinearHDPasDistanceDependentDistribution
+    | SigmoidKADDistanceDependentDistribution
+    | SigmoidKDBMApicDistanceDependentDistribution
     | CustomDistanceDependentDistribution,
     Discriminator("type"),
 ]
@@ -286,12 +339,68 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
 
+    # -- Settings inherited from / shared with the extraction pipeline --------
+    default_std_value: PositiveFloat | list[PositiveFloat] = Field(
+        default=0.01,
+        title="Default std value",
+        description=(
+            "Replaces zero standard deviations in the target features."
+            " Should match the value used during e-feature extraction."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    efel_settings: dict[str, Any] = Field(
+        default_factory=lambda: {"strict_stiminterval": True, "interp_step": 0.025},
+        title="eFEL settings",
+        description=(
+            "eFEL detection knobs applied during optimisation evaluations."
+            " Defaults match the L5PC recipe. ``strict_stiminterval`` is"
+            " recommended so spikes are only counted within the stimulus window."
+        ),
+    )
+    validation_protocols: tuple[str, ...] = Field(
+        default_factory=tuple,
+        title="Validation protocols",
+        description=(
+            "Protocol names (as written in the features file) to hold out from"
+            " the optimisation and use only for validation. Leave empty to"
+            " disable validation."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    name_rin_protocol: str | None = Field(
+        default=None,
+        title="Rin protocol name",
+        description=(
+            "Name (and optionally amplitude) of the protocol used to compute"
+            " input resistance. ``None`` disables Rin correction."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    name_rmp_protocol: str | None = Field(
+        default=None,
+        title="RMP protocol name",
+        description=(
+            "Name (and optionally amplitude) of the protocol used to compute"
+            " the resting membrane potential. ``None`` disables RMP correction."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+
     def to_dict(self, optimisation_params: OptimizationParams) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "optimiser": self.optimiser,
             "max_ngen": self.max_ngen,
             "optimisation_timeout": self.optimisation_timeout,
             "validation_threshold": self.validation_threshold,
             "optimisation_params": optimisation_params.to_dict(),
             "plot_currentscape": True,
+            "default_std_value": self.default_std_value,
+            "efel_settings": dict(self.efel_settings),
+            "validation_protocols": list(self.validation_protocols),
         }
+        if self.name_rin_protocol is not None:
+            d["name_Rin_protocol"] = self.name_rin_protocol
+        if self.name_rmp_protocol is not None:
+            d["name_rmp_protocol"] = self.name_rmp_protocol
+        return d
