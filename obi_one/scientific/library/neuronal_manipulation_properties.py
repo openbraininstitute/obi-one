@@ -134,7 +134,7 @@ def _stage_circuit_for_neuron_set(
     return config_path, pop_to_nodes_path
 
 
-def _resolve_neuron_set_and_get_templates(
+def _stage_circuit_for_neuron_set_resolution(
     db_client: entitysdk.client.Client,
     circuit_id: str,
     circuit_entity: Circuit,
@@ -460,7 +460,7 @@ def get_circuit_manipulation_properties(
     # Accurate path: resolve neuron set to node IDs across all populations
     circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
 
-    resolved_populations, node_to_template = _resolve_neuron_set_and_get_templates(
+    resolved_populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
         db_client,
         circuit_id,
         circuit_entity,

@@ -30,7 +30,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _fetch_emodel_derivation_mapping,
     _get_circuit_asset,
     _match_templates_to_emodels,
-    _resolve_neuron_set_and_get_templates,
+    _stage_circuit_for_neuron_set_resolution,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -611,7 +611,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         deriv2.used.id = emodel_id_2
         mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
 
-        # Mock _resolve_neuron_set_and_get_templates to avoid file I/O
+        # Mock _stage_circuit_for_neuron_set_resolution to avoid file I/O
         mock_populations = ["S1nonbarrel_neurons"]
         mock_templates = {
             ("S1nonbarrel_neurons", 0): "hoc:cACint_L23MC",
@@ -624,7 +624,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                "._resolve_neuron_set_and_get_templates",
+                "._stage_circuit_for_neuron_set_resolution",
                 return_value=(mock_populations, mock_templates),
             ),
             patch(
@@ -676,7 +676,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
 
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
-            "._resolve_neuron_set_and_get_templates",
+            "._stage_circuit_for_neuron_set_resolution",
             return_value=(["S1nonbarrel_neurons"], mock_templates),
         ):
             result = get_circuit_manipulation_properties(
@@ -747,7 +747,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                "._resolve_neuron_set_and_get_templates",
+                "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["S1nonbarrel_neurons"], mock_templates),
             ),
             patch(
@@ -811,7 +811,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                "._resolve_neuron_set_and_get_templates",
+                "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["S1nonbarrel_neurons"], mock_templates),
             ),
             patch(
@@ -907,8 +907,8 @@ class TestGetCircuitNodeIds:
         }
 
 
-class TestResolveNeuronSetAndGetTemplates:
-    """Tests for _resolve_neuron_set_and_get_templates using tiny circuit data."""
+class TestStageCircuitForNeuronSetResolution:
+    """Tests for _stage_circuit_for_neuron_set_resolution using tiny circuit data."""
 
     def test_reads_model_templates_from_circuit(self, mock_db_client):
         """Stages circuit files and reads model_template for resolved node IDs."""
@@ -918,7 +918,7 @@ class TestResolveNeuronSetAndGetTemplates:
         neuron_set = MagicMock()
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template = _resolve_neuron_set_and_get_templates(
+        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
             db_client=mock_db_client,
             circuit_id=circuit_id,
             circuit_entity=circuit_entity,
@@ -955,7 +955,7 @@ class TestResolveNeuronSetAndGetTemplates:
         neuron_set = MagicMock()
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template = _resolve_neuron_set_and_get_templates(
+        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
             db_client=client,
             circuit_id=str(uuid4()),
             circuit_entity=entity,
@@ -995,7 +995,7 @@ class TestResolveNeuronSetAndGetTemplates:
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
         # Should not raise despite missing node_sets.json
-        populations, node_to_template = _resolve_neuron_set_and_get_templates(
+        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
             db_client=client,
             circuit_id=str(uuid4()),
             circuit_entity=entity,
@@ -1037,7 +1037,7 @@ class TestResolveNeuronSetAndGetTemplates:
             ),
             pytest.raises(ValueError, match="No nodes file found for population"),
         ):
-            _resolve_neuron_set_and_get_templates(
+            _stage_circuit_for_neuron_set_resolution(
                 db_client=client,
                 circuit_id=str(uuid4()),
                 circuit_entity=entity,
@@ -1054,7 +1054,7 @@ class TestResolveNeuronSetAndGetTemplates:
         neuron_set.get_neuron_ids.return_value = {}
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _resolve_neuron_set_and_get_templates(
+            _stage_circuit_for_neuron_set_resolution(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
                 circuit_entity=circuit_entity,
@@ -1078,7 +1078,7 @@ class TestResolveNeuronSetAndGetTemplates:
             mock_ns.return_value.open_population.return_value = mock_pop
 
             with pytest.raises(ValueError, match="model_template"):
-                _resolve_neuron_set_and_get_templates(
+                _stage_circuit_for_neuron_set_resolution(
                     db_client=mock_db_client,
                     circuit_id=circuit_id,
                     circuit_entity=circuit_entity,
@@ -1184,7 +1184,7 @@ class TestMultiPopulationRegression:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                "._resolve_neuron_set_and_get_templates",
+                "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["pop_A", "pop_B"], mock_templates),
             ),
             patch(
@@ -1232,7 +1232,7 @@ class TestMultiPopulationRegression:
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": []}
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _resolve_neuron_set_and_get_templates(
+            _stage_circuit_for_neuron_set_resolution(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
                 circuit_entity=circuit_entity,
@@ -1252,7 +1252,7 @@ class TestMultiPopulationRegression:
         }
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _resolve_neuron_set_and_get_templates(
+            _stage_circuit_for_neuron_set_resolution(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
                 circuit_entity=circuit_entity,
