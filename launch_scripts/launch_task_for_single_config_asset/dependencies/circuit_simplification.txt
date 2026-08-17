@@ -1,2 +1,2 @@
-obi-one @ git+https://github.com/openbraininstitute/obi-one@b83c74ed14e8d3f3b3411baf076e252bb92d18e7
+obi-one @ git+https://github.com/openbraininstitute/obi-one@65c4ac90c2d35bd30f6d4f34f62c62304a03d669
 sonata-simplify[simulation]
