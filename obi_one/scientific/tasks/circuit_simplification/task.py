@@ -10,7 +10,6 @@ entity with derivation links to the parent.
 
 import json
 import logging
-import os
 import shutil
 import tempfile
 from enum import StrEnum
@@ -376,7 +375,7 @@ class CircuitSimplificationTask(Task):
             )
             return types.TargetSimulator.NEURON
 
-    def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
+    def execute(  # ruff: ignore[complex-structure, too-many-locals]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
@@ -410,13 +409,9 @@ class CircuitSimplificationTask(Task):
             algorithm_blocks = self.config.algorithms
             algorithm_names = [block.algorithm_name for block in algorithm_blocks.values()]
 
-            # Resolve target neuron set and write node_sets.json to the output root.
-            # The node set name and node_sets_file are passed via the sim config
-            # so the pipeline can resolve the node set via BluePySnap (merging
-            # the sim config's node sets with the circuit's, same as BCL/ND).
-            target_neuron_set_name = self._resolve_target_neuron_set(
-                self.config.coordinate_output_root
-            )
+            # All algorithms currently simplify all biophysical populations.
+            # Target neuron-set selection is intentionally disabled for now and
+            # will be enabled later for every algorithm consistently.
 
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithm_names:
@@ -452,22 +447,12 @@ class CircuitSimplificationTask(Task):
                 output_dir = (self.config.coordinate_output_root / algorithm_name).absolute()
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                # Build simulation config for the pipeline.
-                # If a target neuron set was resolved, include node_set (name) and
-                # node_sets_file derived relative to this algorithm's sim config.
-                node_sets_file = (
-                    os.path.relpath(
-                        self.config.coordinate_output_root / "node_sets.json",
-                        start=output_dir,
-                    )
-                    if target_neuron_set_name is not None
-                    else None
-                )
+                # All algorithms currently simplify all biophysical populations.
+                # Do not pass node_set/node_sets_file until selective neuron-set
+                # support is added for every algorithm.
                 sim_config_path = CircuitSimplificationTask._build_simulation_config(
                     str(input_circuit_path),
                     output_dir,
-                    target_neuron_set_name=target_neuron_set_name,
-                    node_sets_file=node_sets_file,
                 )
 
                 # Initialize the pipeline with the BASE algorithm name
