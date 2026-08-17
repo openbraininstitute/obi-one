@@ -243,16 +243,6 @@ def generate_additional_circuit_assets(
             shutil.rmtree(d)
 
     # Run additional asset generation
-    try:
-        generate_compressed_circuit_asset(
-            circuit_path=circuit_path_compressed or circuit_path,
-            output_dir=compressed_dir,
-            client=client,
-            circuit_entity=circuit_entity,
-        )
-    except Exception as e:  # ruff: ignore[blind-except]
-        L.warning(f"Compressed circuit asset generation/registration failed: {e}")
-
     if edge_population is not None:
         try:
             _, matrix_config, edge_population = generate_connectivity_matrix_asset(
@@ -299,3 +289,15 @@ def generate_additional_circuit_assets(
         )
     except Exception as e:  # ruff: ignore[blind-except]
         L.warning(f"Sim designer image asset generation/registration failed: {e}")
+
+    # Compressed circuit generation last — it can consume significant disk space
+    # and should not affect the other asset generation steps.
+    try:
+        generate_compressed_circuit_asset(
+            circuit_path=circuit_path_compressed or circuit_path,
+            output_dir=compressed_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+    except Exception as e:  # ruff: ignore[blind-except]
+        L.warning(f"Compressed circuit asset generation/registration failed: {e}")
