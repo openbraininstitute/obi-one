@@ -251,7 +251,7 @@ def validate_synaptome_artifact(
         raise BuildSynaptomeError(f"Generated SONATA circuit failed validation: {exc}") from exc
 
 
-def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
+def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branches, too-many-locals, too-many-statements]
     config: "MEModelSynapticModelPlacementSingleConfig",
     output_directory: Path,
     *,
@@ -300,9 +300,18 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-locals
                 )
             used_names.add(source_population)
 
-            locations = _generate_locations(
-                morphology, group.placement_strategy, group_name=group_key
-            )
+            try:
+                placement_strategy = group.placement_strategy.block
+            except Exception as exc:
+                raise BuildSynaptomeError(
+                    f"Synapse group '{group_key}' has an unresolved placement strategy: {exc}"
+                ) from exc
+            if not isinstance(placement_strategy, MorphologyLocationsBlock):
+                raise BuildSynaptomeError(
+                    f"Synapse group '{group_key}' uses unsupported placement strategy "
+                    f"{type(placement_strategy).__name__}."
+                )
+            locations = _generate_locations(morphology, placement_strategy, group_name=group_key)
             count = len(locations)
             source_ids = locations[_PRE_IDX].to_numpy(dtype=np.int64)
             source_count = int(source_ids.max()) + 1
