@@ -244,17 +244,12 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         task_type=TaskType.emodel_optimization,
         config_type=TaskConfigType.emodel_optimization__config,
         activity_type=TaskActivityType.emodel_optimization__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
-        ),
-        resources=MachineResources(
-            cores=4,
-            memory=16,
-            timelimit="04:00",
-            compute_cell="local",
+        code=BuiltinCode(script=BuiltinScript.emodel_optimisation),
+        resources=ClusterResources(
+            instances=1,
+            instance_type="small",
+            timelimit="02:00",
+            compute_cell="cell_a",
         ),
     ),
     TaskType.extracellular_recording_weights_calculation: TaskDefinition(
