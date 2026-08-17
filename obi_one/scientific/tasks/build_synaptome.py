@@ -8,14 +8,17 @@ from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.unions.unions_distributions import (
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
+from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
-from obi_one.scientific.unions.unions_synaptic_models import (
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+    MorphologyLocationUnion,
+)
+from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )
@@ -38,18 +41,18 @@ class SynapticModelPlacer(Block):
         description="Synaptic physiology model assigned to this incoming synapse group.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
         },
     )
-    placement_strategy: MorphologyLocationUnion = Field(
-        default_factory=RandomMorphologyLocations,
+    placement_strategy: MorphologyLocationsReference = Field(
         title="Placement strategy",
         description=(
             "Existing morphology-location block used to place this group's incoming synapses. "
             "The number of locations corresponds to the number of synapses."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
         },
     )
 
@@ -72,6 +75,11 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             SynapticModelReference.__name__: "Default: Synaptic Model",
             AllDistributionsReference.__name__: "Default: Distribution",
+            MorphologyLocationsReference.__name__: "Default: Placement Strategy",
+        },
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.MORPHOLOGY: "/mapped-morphology-properties/{circuit_id}",
         },
     }
 
@@ -111,7 +119,7 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
         description="Synaptic physiology models available for incoming synapse groups.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: SynapticModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Model",
             SchemaKey.GROUP: BlockGroup.SYNAPTIC_PHYSIOLOGY,
             SchemaKey.GROUP_ORDER: 0,
@@ -123,10 +131,22 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
         description="Distributions used by synaptic physiology models.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: AllDistributionsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Distribution",
             SchemaKey.GROUP: BlockGroup.SYNAPTIC_PHYSIOLOGY,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Placement strategies",
+        description="Reusable morphology-location strategies for incoming synapse groups.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Placement Strategy",
+            SchemaKey.GROUP: BlockGroup.SYNAPSE_GROUPS,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
     synapse_groups: dict[str, SynapticModelPlacer] = Field(
@@ -137,7 +157,7 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Synaptic Model Placer",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_GROUPS,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
