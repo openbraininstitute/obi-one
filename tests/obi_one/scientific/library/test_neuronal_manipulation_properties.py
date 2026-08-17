@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from entitysdk.types import FetchFileStrategy
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library import circuit as circuit_module
@@ -29,7 +30,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _fetch_emodel_derivation_mapping,
     _get_circuit_asset,
     _match_templates_to_emodels,
-    _resolve_neuron_set_and_get_templates,
+    _stage_circuit_for_neuron_set_resolution,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -52,6 +53,21 @@ def _make_fetch_file_side_effect(circuit_dir: Path):
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, output_path)
+
+    return _fetch_file
+
+
+def _make_link_or_copy_fetch_file_side_effect(circuit_dir: Path):
+    """Return a side effect matching entitysdk's link-or-download behavior."""
+
+    def _fetch_file(*, output_path, asset_path, strategy, **_kwargs):
+        src = circuit_dir / asset_path
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if strategy == FetchFileStrategy.copy_or_download:
+            shutil.copy2(src, output_path)
+        else:
+            output_path.symlink_to(src)
 
     return _fetch_file
 
@@ -123,7 +139,7 @@ class TestComputeCommonMechanismVariables:
         assert "gNaTgbar_NaTg" in result["NaTg"].variables
 
     def test_two_emodels_full_overlap(self):
-        """Both groups have identical channels/variables → intersection = full set."""
+        """Both groups have identical channels/variables -> intersection = full set."""
         var1 = _make_var(limits=[0.0, 1.0], section_lists_original_values={"somatic": 0.04})
         var2 = _make_var(limits=[0.0, 0.8], section_lists_original_values={"somatic": 0.06})
 
@@ -152,7 +168,7 @@ class TestComputeCommonMechanismVariables:
         assert var.section_lists_original_values == {"somatic": None}
 
     def test_two_emodels_partial_overlap(self):
-        """Channel A in both, channel B only in one → intersection has only A."""
+        """Channel A in both, channel B only in one -> intersection has only A."""
         var_a = _make_var(limits=[0.0, 1.0])
 
         groups = {
@@ -179,7 +195,7 @@ class TestComputeCommonMechanismVariables:
         assert "SK_E2" not in result
 
     def test_two_emodels_no_overlap(self):
-        """Completely different channels → empty intersection."""
+        """Completely different channels -> empty intersection."""
         groups = {
             "emodel-1": _make_emodel_group(
                 [0],
@@ -197,7 +213,7 @@ class TestComputeCommonMechanismVariables:
         assert result == {}
 
     def test_variable_level_intersection(self):
-        """Same channel but different variables → only common variables kept."""
+        """Same channel but different variables -> only common variables kept."""
         groups = {
             "emodel-1": _make_emodel_group(
                 [0],
@@ -235,7 +251,7 @@ class TestComputeCommonMechanismVariables:
         assert "vshifth_NaTg" not in result["NaTg"].variables
 
     def test_section_list_intersection(self):
-        """Same channel+variable but different section_lists → only common kept."""
+        """Same channel+variable but different section_lists -> only common kept."""
         groups = {
             "emodel-1": _make_emodel_group(
                 [0],
@@ -581,7 +597,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
     """Integration test for get_circuit_manipulation_properties with mocked I/O."""
 
     def test_full_flow_with_neuron_set(self, mock_db_client):
-        """Full flow: neuron_set → resolve templates → derivations → intersection."""
+        """Full flow: neuron_set -> resolve templates -> derivations -> intersection."""
         circuit_id = str(uuid4())
         emodel_id_1 = str(uuid4())
         emodel_id_2 = str(uuid4())
@@ -595,7 +611,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         deriv2.used.id = emodel_id_2
         mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
 
-        # Mock _resolve_neuron_set_and_get_templates to avoid file I/O
+        # Mock _stage_circuit_for_neuron_set_resolution to avoid file I/O
         mock_populations = ["S1nonbarrel_neurons"]
         mock_templates = {
             ("S1nonbarrel_neurons", 0): "hoc:cACint_L23MC",
@@ -608,7 +624,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                "._resolve_neuron_set_and_get_templates",
+                "._stage_circuit_for_neuron_set_resolution",
                 return_value=(mock_populations, mock_templates),
             ),
             patch(
@@ -660,7 +676,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
 
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
-            "._resolve_neuron_set_and_get_templates",
+            "._stage_circuit_for_neuron_set_resolution",
             return_value=(["S1nonbarrel_neurons"], mock_templates),
         ):
             result = get_circuit_manipulation_properties(
@@ -731,7 +747,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                "._resolve_neuron_set_and_get_templates",
+                "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["S1nonbarrel_neurons"], mock_templates),
             ),
             patch(
@@ -750,12 +766,83 @@ class TestGetCircuitManipulationPropertiesIntegration:
         assert result["warnings"] is not None
         assert any("No common mechanism variables" in w for w in result["warnings"])
 
+    def test_multi_emodel_intersection_preserves_bounds(self, mock_db_client):
+        """Multi-emodel intersection preserves hardcoded limits across emodels.
+
+        Both emodels share the NaTg channel with the same conductance variable.
+        Since limits are hardcoded (not per-emodel), the intersection should
+        preserve them unchanged: [0.0, 20.0] for conductance variables.
+        """
+        circuit_id = str(uuid4())
+        emodel_id_1 = str(uuid4())
+        emodel_id_2 = str(uuid4())
+
+        deriv1 = MagicMock()
+        deriv1.label = "hoc:cACint_L23MC"
+        deriv1.used.id = emodel_id_1
+        deriv2 = MagicMock()
+        deriv2.label = "hoc:cADpyr_L6BPC"
+        deriv2.used.id = emodel_id_2
+        mock_db_client.search_entity.return_value.all.return_value = [deriv1, deriv2]
+
+        mock_templates = {
+            ("S1nonbarrel_neurons", 0): "hoc:cACint_L23MC",
+            ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
+        }
+        neuron_set = MagicMock()
+
+        def _mock_get_vars(_db_client, emodel_id):
+            # Both emodels get the same hardcoded limits for conductance vars
+            return (
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04 if emodel_id == emodel_id_1 else 0.06,
+                        units="S/cm2",
+                        limits=[0.0, 10.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    ),
+                ],
+                NATG_CHANNEL_MAPPING,
+            )
+
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "._stage_circuit_for_neuron_set_resolution",
+                return_value=(["S1nonbarrel_neurons"], mock_templates),
+            ),
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                ".get_mechanism_variables_for_emodel",
+                side_effect=_mock_get_vars,
+            ),
+        ):
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                neuron_set=neuron_set,
+            )
+
+        channels = result["MechanismVariablesByIonChannel"]
+        assert "NaTg" in channels
+        natg = channels["NaTg"]
+        natg_var = natg.variables["gNaTgbar_NaTg"]
+        # Both emodels have [0.0, 10.0] -> intersection preserves it
+        assert natg_var.limits == [0.0, 10.0]
+        assert natg_var.units == "S/cm2"
+        assert natg_var.variable_type == "RANGE"
+        assert natg.section_lists == ["somatic"]
+        assert result["warnings"] is None
+
 
 class TestComputeCommonMechanismVariablesEdgeCases:
     """Additional edge case tests for _compute_common_mechanism_variables."""
 
     def test_all_groups_failed_fetch(self):
-        """All groups have empty mechanism_variables → returns empty dict."""
+        """All groups have empty mechanism_variables -> returns empty dict."""
         groups = {
             "emodel-1": _make_emodel_group([0], "hoc:cADpyr_L5TPC", {}),
             "emodel-2": _make_emodel_group([1], "hoc:bAC_L6BTC", {}),
@@ -765,7 +852,7 @@ class TestComputeCommonMechanismVariablesEdgeCases:
         assert result == {}
 
     def test_common_channel_but_no_common_variables(self):
-        """Same channel in both groups but completely different variables → channel excluded."""
+        """Same channel in both groups but completely different variables -> channel excluded."""
         groups = {
             "emodel-1": _make_emodel_group(
                 [0],
@@ -780,7 +867,7 @@ class TestComputeCommonMechanismVariablesEdgeCases:
         }
 
         result = _compute_common_mechanism_variables(groups)
-        # NaTg is a common channel but has no common variables → excluded
+        # NaTg is a common channel but has no common variables -> excluded
         assert result == {}
 
 
@@ -820,8 +907,8 @@ class TestGetCircuitNodeIds:
         }
 
 
-class TestResolveNeuronSetAndGetTemplates:
-    """Tests for _resolve_neuron_set_and_get_templates using tiny circuit data."""
+class TestStageCircuitForNeuronSetResolution:
+    """Tests for _stage_circuit_for_neuron_set_resolution using tiny circuit data."""
 
     def test_reads_model_templates_from_circuit(self, mock_db_client):
         """Stages circuit files and reads model_template for resolved node IDs."""
@@ -831,7 +918,7 @@ class TestResolveNeuronSetAndGetTemplates:
         neuron_set = MagicMock()
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template = _resolve_neuron_set_and_get_templates(
+        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
             db_client=mock_db_client,
             circuit_id=circuit_id,
             circuit_entity=circuit_entity,
@@ -847,6 +934,117 @@ class TestResolveNeuronSetAndGetTemplates:
         # model_template values from tiny circuit
         assert all(t.startswith("hoc:") for t in node_to_template.values())
 
+    def test_copies_config_before_loading_linked_circuit(self, tmp_path):
+        """Config is copied (not symlinked) so $BASE_DIR resolves to temp dir."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(TINY_CIRCUIT_DIR, circuit_dir)
+        config_path = circuit_dir / "circuit_config.json"
+        original_config = config_path.read_bytes()
+
+        client = MagicMock()
+        asset = MagicMock()
+        asset.is_directory = True
+        asset.label.value = "sonata_circuit"
+        asset.id = uuid4()
+        entity = MagicMock()
+        entity.name = "test_circuit"
+        entity.assets = [asset]
+        client.get_entity.return_value = entity
+        client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+
+        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
+            db_client=client,
+            circuit_id=str(uuid4()),
+            circuit_entity=entity,
+            asset_id=asset.id,
+            neuron_set=neuron_set,
+        )
+
+        assert populations == ["S1nonbarrel_neurons"]
+        assert len(node_to_template) == 3
+        assert config_path.read_bytes() == original_config
+        config_call = next(
+            call
+            for call in client.fetch_file.call_args_list
+            if call.kwargs["asset_path"] == Path("circuit_config.json")
+        )
+        assert config_call.kwargs["strategy"] == FetchFileStrategy.copy_or_download
+
+    def test_continues_without_node_sets_json(self, tmp_path):
+        """Missing node_sets.json is logged and skipped, not raised."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(TINY_CIRCUIT_DIR, circuit_dir)
+        # Remove node_sets.json to trigger the exception path
+        (circuit_dir / "node_sets.json").unlink()
+
+        client = MagicMock()
+        asset = MagicMock()
+        asset.is_directory = True
+        asset.label.value = "sonata_circuit"
+        asset.id = uuid4()
+        entity = MagicMock()
+        entity.name = "test_circuit"
+        entity.assets = [asset]
+        client.get_entity.return_value = entity
+        client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
+
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+
+        # Should not raise despite missing node_sets.json
+        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
+            db_client=client,
+            circuit_id=str(uuid4()),
+            circuit_entity=entity,
+            asset_id=asset.id,
+            neuron_set=neuron_set,
+        )
+
+        assert populations == ["S1nonbarrel_neurons"]
+        assert len(node_to_template) == 3
+
+    def test_raises_when_population_not_in_nodes_mapping(self, tmp_path):
+        """Population returned by neuron set but missing from staging raises ValueError."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(TINY_CIRCUIT_DIR, circuit_dir)
+
+        client = MagicMock()
+        asset = MagicMock()
+        asset.is_directory = True
+        asset.label.value = "sonata_circuit"
+        asset.id = uuid4()
+        entity = MagicMock()
+        entity.name = "test_circuit"
+        entity.assets = [asset]
+        client.get_entity.return_value = entity
+        client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
+
+        neuron_set = MagicMock()
+        # Return a population that doesn't exist in the circuit's nodes
+        neuron_set.get_neuron_ids.return_value = {"nonexistent_pop": [0, 1]}
+
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "._stage_circuit_for_neuron_set",
+                return_value=(
+                    circuit_dir / "circuit_config.json",
+                    {"S1nonbarrel_neurons": "nodes.h5"},
+                ),
+            ),
+            pytest.raises(ValueError, match="No nodes file found for population"),
+        ):
+            _stage_circuit_for_neuron_set_resolution(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                circuit_entity=entity,
+                asset_id=asset.id,
+                neuron_set=neuron_set,
+            )
+
     def test_raises_when_neuron_set_resolves_to_no_nodes(self, mock_db_client):
         """Empty node IDs raises ValueError."""
         circuit_id = str(uuid4())
@@ -856,7 +1054,7 @@ class TestResolveNeuronSetAndGetTemplates:
         neuron_set.get_neuron_ids.return_value = {}
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _resolve_neuron_set_and_get_templates(
+            _stage_circuit_for_neuron_set_resolution(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
                 circuit_entity=circuit_entity,
@@ -880,7 +1078,7 @@ class TestResolveNeuronSetAndGetTemplates:
             mock_ns.return_value.open_population.return_value = mock_pop
 
             with pytest.raises(ValueError, match="model_template"):
-                _resolve_neuron_set_and_get_templates(
+                _stage_circuit_for_neuron_set_resolution(
                     db_client=mock_db_client,
                     circuit_id=circuit_id,
                     circuit_entity=circuit_entity,
@@ -986,7 +1184,7 @@ class TestMultiPopulationRegression:
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
-                "._resolve_neuron_set_and_get_templates",
+                "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["pop_A", "pop_B"], mock_templates),
             ),
             patch(
@@ -1017,7 +1215,7 @@ class TestMultiPopulationRegression:
 
         # Both emodels should have been fetched (2 calls)
         assert mock_get_vars.call_count == 2
-        # NaTg is common to both → should appear in intersection
+        # NaTg is common to both -> should appear in intersection
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
         assert result["warnings"] is None
 
@@ -1034,7 +1232,7 @@ class TestMultiPopulationRegression:
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": []}
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _resolve_neuron_set_and_get_templates(
+            _stage_circuit_for_neuron_set_resolution(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
                 circuit_entity=circuit_entity,
@@ -1054,7 +1252,7 @@ class TestMultiPopulationRegression:
         }
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _resolve_neuron_set_and_get_templates(
+            _stage_circuit_for_neuron_set_resolution(
                 db_client=mock_db_client,
                 circuit_id=circuit_id,
                 circuit_entity=circuit_entity,
@@ -1089,7 +1287,7 @@ class TestMemodelMechanismVariableResponse:
                 channel_name="-",
                 section_list="axonal",
                 units="ohm-cm",
-                limits=[10.0, 500.0],
+                limits=[0.0, 1000.0],
                 variable_type="RANGE",
             ),
             MechanismVariable(
