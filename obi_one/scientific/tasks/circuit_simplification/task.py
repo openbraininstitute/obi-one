@@ -2,10 +2,9 @@
 
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
 simplified point-neuron or single-compartment circuits while preserving network
-connectivity. Point-neuron algorithms (LIF, AdEx, Izhikevich, GLIF, GIF) are
-automatically exported to NEST format; single_compartment produces SONATA/NEURON
-output only. Each output (SONATA + export) is registered as a separate Circuit
-entity with derivation links to the parent.
+connectivity. Each selected algorithm registers exactly one circuit in its target
+simulator format: single_compartment as NEURON, point-neuron NEST variants as NEST,
+and adex_brian2 as Brian2.
 """
 
 import json
@@ -185,9 +184,8 @@ class CircuitSimplificationTask(Task):
 
     For each selected algorithm, the task:
     1. Runs the SimplificationPipeline to reduce the input circuit.
-    2. For point-neuron algorithms, automatically exports to NEST format.
-    3. Registers each output (SONATA + NEST export) as a Circuit entity
-       with derivation links to the parent, using the correct target_simulator.
+    2. Uses the simulator-specific exporter when the algorithm has one.
+    3. Registers exactly one output Circuit entity with a derivation link to the parent.
     """
 
     config: CircuitSimplificationSingleConfig
@@ -375,7 +373,7 @@ class CircuitSimplificationTask(Task):
             )
             return types.TargetSimulator.NEURON
 
-    def execute(  # ruff: ignore[complex-structure, too-many-locals]
+    def execute(  # ruff: ignore[too-many-locals]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
@@ -384,7 +382,7 @@ class CircuitSimplificationTask(Task):
     ) -> str | None:
         """Execute the circuit simplification task.
 
-        Returns the ID of the first registered simplified circuit, or None.
+        Returns the ID of the first registered simulator-specific circuit, or None.
         """
         # Get execution activity
         execution_activity = CircuitSimplificationTask._get_execution_activity(
@@ -477,41 +475,42 @@ class CircuitSimplificationTask(Task):
                     )
                     continue
 
-                # Smoke check: verify the simplified circuit is loadable
-                # before registering it. A malformed output would create an
-                # unusable circuit entity (F11).
-                self._smoke_check_loadability(simplified_circuit_path, algorithm_name)
-
-                # Register the SONATA output circuit entity
-                if db_client and self._circuit_entity:
-                    new_circuit_entity = self._register_output(
-                        db_client=db_client,
-                        circuit_path=simplified_circuit_path,
-                        algorithm_name=algorithm_name,
-                    )
-                    if new_circuit_entity is not None:
-                        output_circuit_ids.append(str(new_circuit_entity.id))
-
-                # Register the exported circuit (if an exporter was used)
-                if exporter_name and db_client and self._circuit_entity:
+                # Register only the circuit in the simulator-specific format
+                # selected by this algorithm. Exporter algorithms use their
+                # converted output; single_compartment uses the base NEURON
+                # output because it has no exporter.
+                export_suffix = ""
+                registration_path = simplified_circuit_path
+                if exporter_name:
                     export_suffix = exporter_name.replace(":", "_")
-                    export_dir = simplified_circuit_path.parent / f"output_{export_suffix}"
-                    export_circuit_path = export_dir / "circuit_config.json"
-                    if export_circuit_path.exists():
-                        L.info(f"Registering exported circuit: {export_circuit_path}")
-                        export_entity = self._register_output(
-                            db_client=db_client,
-                            circuit_path=export_circuit_path,
-                            algorithm_name=algorithm_name,
-                            export_suffix=f"_{export_suffix}",
+                    registration_path = (
+                        simplified_circuit_path.parent
+                        / f"output_{export_suffix}"
+                        / "circuit_config.json"
+                    )
+                    if not registration_path.exists():
+                        message = (
+                            f"Expected {exporter_name} export at {registration_path}"
+                            f" for algorithm '{algorithm_name}', but it was not found"
                         )
-                        if export_entity is not None:
-                            output_circuit_ids.append(str(export_entity.id))
-                    else:
-                        L.warning(
-                            f"Export output not found at {export_circuit_path}"
-                            f" for algorithm '{algorithm_name}'"
-                        )
+                        L.error(message)
+                        raise RuntimeError(message)
+                    L.info(f"Using exported circuit for registration: {registration_path}")
+
+                # Smoke check the exact output that will be registered. This
+                # prevents an intermediate generic point-neuron output from
+                # being treated as the NEST or Brian2 circuit.
+                self._smoke_check_loadability(registration_path, algorithm_name)
+
+                if db_client and self._circuit_entity:
+                    registered_entity = self._register_output(
+                        db_client=db_client,
+                        circuit_path=registration_path,
+                        algorithm_name=algorithm_name,
+                        export_suffix=f"_{export_suffix}" if export_suffix else "",
+                    )
+                    if registered_entity is not None:
+                        output_circuit_ids.append(str(registered_entity.id))
 
                 L.info(f"Simplification with '{algorithm_name}' DONE")
 
