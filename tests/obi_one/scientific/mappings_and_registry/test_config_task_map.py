@@ -28,6 +28,8 @@ from obi_one.types import TaskType
             test_module.CircuitSimulationExecutionTask,
         ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationTask),
+        (TaskType.circuit_single_build, test_module.MEModelSynapticModelPlacementTask),
+        (TaskType.me_model_synapse_placement, test_module.MEModelSynapticModelPlacementTask),
     ],
 )
 def test_get_task_type(task_type, task_class):
@@ -56,6 +58,8 @@ def test_get_task_type(task_type, task_class):
             test_module.CircuitSimulationExecutionSingleConfig,
         ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationSingleConfig),
+        (TaskType.circuit_single_build, test_module.MEModelSynapticModelPlacementSingleConfig),
+        (TaskType.me_model_synapse_placement, test_module.MEModelSynapticModelPlacementSingleConfig),
     ],
 )
 def test_get_task_type_single_config(task_type, single_config_class):
@@ -68,6 +72,7 @@ def test_get_task_type_single_config(task_type, single_config_class):
     [
         (TaskType.circuit_extraction, test_module.AssetLabel.task_config),
         (TaskType.morphology_skeletonization, test_module.AssetLabel.task_config),
+        (TaskType.circuit_single_build, test_module.AssetLabel.task_config),
         (TaskType.circuit_simulation, None),
         (TaskType.ion_channel_model_simulation_execution, None),
         (TaskType.single_neuron_simulation_execution, None),
