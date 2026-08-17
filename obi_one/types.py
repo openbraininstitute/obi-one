@@ -44,7 +44,6 @@ class TaskType(StrEnum):
     learning_engine_circuit_simulation = auto()
     me_model_simulation = auto()
     me_model_with_synapses_circuit_simulation = auto()
-    me_model_synapse_placement = auto()
     morphology_containerization = auto()
     morphology_decontainerization = auto()
     morphology_locations = auto()

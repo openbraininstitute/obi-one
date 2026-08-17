@@ -29,7 +29,6 @@ from obi_one.types import TaskType
         ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationTask),
         (TaskType.circuit_single_build, test_module.MEModelSynapticModelPlacementTask),
-        (TaskType.me_model_synapse_placement, test_module.MEModelSynapticModelPlacementTask),
     ],
 )
 def test_get_task_type(task_type, task_class):
@@ -59,7 +58,6 @@ def test_get_task_type(task_type, task_class):
         ),
         (TaskType.morphology_skeletonization, test_module.SkeletonizationSingleConfig),
         (TaskType.circuit_single_build, test_module.MEModelSynapticModelPlacementSingleConfig),
-        (TaskType.me_model_synapse_placement, test_module.MEModelSynapticModelPlacementSingleConfig),
     ],
 )
 def test_get_task_type_single_config(task_type, single_config_class):

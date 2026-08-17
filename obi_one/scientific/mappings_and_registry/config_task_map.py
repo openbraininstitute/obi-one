@@ -339,18 +339,6 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         single_task_config_type=TaskConfigType.circuit_single_build__config,
         single_task_activity_type=TaskActivityType.circuit_single_build__execution,
     ),
-    TaskType.me_model_synapse_placement: TaskRegistration(
-        task_cls=MEModelSynapticModelPlacementTask,
-        single_config_cls=MEModelSynapticModelPlacementSingleConfig,
-        scan_config_cls=MEModelSynapticModelPlacementScanConfig,
-        asset_label=AssetLabel.task_config,
-        campaign_task_config_type=TaskConfigType.circuit_single_build__campaign,
-        campaign_generation_task_activity_type=(
-            TaskActivityType.circuit_single_build__config_generation
-        ),
-        single_task_config_type=TaskConfigType.circuit_single_build__config,
-        single_task_activity_type=TaskActivityType.circuit_single_build__execution,
-    ),
 }
 
 # Populate the registry from the static map
