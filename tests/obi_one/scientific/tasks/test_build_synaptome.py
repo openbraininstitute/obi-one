@@ -13,6 +13,7 @@ import pytest
 from obi_one.core.info import Info
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
 from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
 )
@@ -38,6 +39,9 @@ from obi_one.scientific.tasks.build_synaptome import (
     build_synaptome,
 )
 from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 from obi_one.scientific.unions_and_references.synaptic_models import SynapticModelReference
 
 _SWC_MORPHOLOGY = (
@@ -125,9 +129,14 @@ def _reference(name: str) -> SynapticModelReference:
     return SynapticModelReference(block_dict_name="synaptic_models", block_name=name)
 
 
+def _placement_reference(name: str) -> MorphologyLocationsReference:
+    return MorphologyLocationsReference(block_dict_name="morphology_locations", block_name=name)
+
+
 def _config(
     *,
     groups: dict[str, SynapticModelPlacer] | None = None,
+    morphology_locations: dict[str, MorphologyLocationsBlock] | None = None,
     distributed: bool = False,
 ) -> MEModelSynapticModelPlacementSingleConfig:
     distributions = {
@@ -159,13 +168,17 @@ def _config(
             )
         ),
     }
+    if morphology_locations is None:
+        morphology_locations = {
+            "basal": RandomMorphologyLocations(
+                number_of_locations=4, section_types=(3,), random_seed=11
+            )
+        }
     if groups is None:
         groups = {
             "basal": SynapticModelPlacer(
                 synaptic_model=_reference("exc"),
-                placement_strategy=RandomMorphologyLocations(
-                    number_of_locations=4, section_types=(3,), random_seed=11
-                ),
+                placement_strategy=_placement_reference("basal"),
             )
         }
     return MEModelSynapticModelPlacementSingleConfig(
@@ -175,6 +188,7 @@ def _config(
         ),
         distributions=distributions,
         synaptic_models=models,
+        morphology_locations=morphology_locations,
         synapse_groups=groups,
     )
 
@@ -211,25 +225,33 @@ def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):
 
 def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stage_memodel):
     stage_memodel()
+    morphology_locations = {
+        "basal": RandomMorphologyLocations(
+            number_of_locations=3, section_types=(3,), random_seed=1
+        ),
+        "apical": PathDistanceMorphologyLocations(
+            number_of_locations=2,
+            section_types=(4,),
+            path_dist_mean=20.0,
+            path_dist_tolerance=30.0,
+            random_seed=9,
+        ),
+    }
     groups = {
         "basal": SynapticModelPlacer(
             synaptic_model=_reference("exc"),
-            placement_strategy=RandomMorphologyLocations(
-                number_of_locations=3, section_types=(3,), random_seed=1
-            ),
+            placement_strategy=_placement_reference("basal"),
         ),
         "apical": SynapticModelPlacer(
             synaptic_model=_reference("inh"),
-            placement_strategy=PathDistanceMorphologyLocations(
-                number_of_locations=2,
-                section_types=(4,),
-                path_dist_mean=20.0,
-                path_dist_tolerance=30.0,
-                random_seed=9,
-            ),
+            placement_strategy=_placement_reference("apical"),
         ),
     }
-    result = build_synaptome(_config(groups=groups), tmp_path / "artifact", db_client=object())
+    result = build_synaptome(
+        _config(groups=groups, morphology_locations=morphology_locations),
+        tmp_path / "artifact",
+        db_client=object(),
+    )
     circuit = bluepysnap.Circuit(result.circuit_config_path)
     basal = circuit.edges["synaptome_basal__target__chemical"]
     apical = circuit.edges["synaptome_apical__target__chemical"]
@@ -258,15 +280,22 @@ def test_build_is_deterministic_for_equal_seeds(tmp_path, stage_memodel):
 def test_different_placement_seed_changes_locations(tmp_path, stage_memodel):
     stage_memodel()
     first = build_synaptome(_config(), tmp_path / "first", db_client=object())
+    morphology_locations = {
+        "basal": RandomMorphologyLocations(
+            number_of_locations=4, section_types=(3,), random_seed=12
+        )
+    }
     groups = {
         "basal": SynapticModelPlacer(
             synaptic_model=_reference("exc"),
-            placement_strategy=RandomMorphologyLocations(
-                number_of_locations=4, section_types=(3,), random_seed=12
-            ),
+            placement_strategy=_placement_reference("basal"),
         )
     }
-    second = build_synaptome(_config(groups=groups), tmp_path / "second", db_client=object())
+    second = build_synaptome(
+        _config(groups=groups, morphology_locations=morphology_locations),
+        tmp_path / "second",
+        db_client=object(),
+    )
     edge_name = "synaptome_basal__target__chemical"
     columns = ["afferent_section_id", "afferent_segment_id", "afferent_segment_offset"]
 
@@ -294,17 +323,42 @@ def test_impossible_section_constraint_identifies_group(tmp_path, stage_memodel,
         "morphio_morphology",
         lambda _self, _db_client: morphio.Morphology(basal_only_swc, "swc"),
     )
+    morphology_locations = {
+        "apical-only": RandomMorphologyLocations(
+            number_of_locations=2, section_types=(4,), random_seed=1
+        )
+    }
     groups = {
         "apical-only": SynapticModelPlacer(
             synaptic_model=_reference("exc"),
-            placement_strategy=RandomMorphologyLocations(
-                number_of_locations=2, section_types=(4,), random_seed=1
-            ),
+            placement_strategy=_placement_reference("apical-only"),
         )
     }
 
     with pytest.raises(BuildSynaptomeError, match=r"apical-only.*could not generate locations"):
-        build_synaptome(_config(groups=groups), tmp_path / "artifact", db_client=object())
+        build_synaptome(
+            _config(groups=groups, morphology_locations=morphology_locations),
+            tmp_path / "artifact",
+            db_client=object(),
+        )
+
+
+def test_unresolved_placement_strategy_identifies_group(tmp_path, stage_memodel):
+    stage_memodel()
+    config = _config()
+    config.synapse_groups["basal"].placement_strategy._block = None
+
+    with pytest.raises(BuildSynaptomeError, match=r"basal.*unresolved placement strategy"):
+        build_synaptome(config, tmp_path / "artifact", db_client=object())
+
+
+def test_unsupported_placement_strategy_identifies_group(tmp_path, stage_memodel):
+    stage_memodel()
+    config = _config()
+    config.synapse_groups["basal"].placement_strategy.block = object()
+
+    with pytest.raises(BuildSynaptomeError, match=r"basal.*unsupported placement strategy"):
+        build_synaptome(config, tmp_path / "artifact", db_client=object())
 
 
 def test_missing_morphology_is_reported(tmp_path, stage_memodel):
