@@ -6,7 +6,6 @@ heavy NEURON dependencies and verify the task's orchestration logic.
 
 import inspect
 import json
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -328,10 +327,6 @@ class TestTaskExecution:
                 return_value=MagicMock(id="new-circuit-id"),
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
-                return_value="TestNodeSet",
-            ),
-            patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
             ),
         ):
@@ -349,11 +344,8 @@ class TestTaskExecution:
         mock_pipeline.return_value.run_recipe.assert_called_once()
         sim_config_path = Path(mock_pipeline.call_args.kwargs["simulation_config"])
         sim_config = json.loads(sim_config_path.read_text(encoding="utf-8"))
-        assert sim_config["node_set"] == "TestNodeSet"
-        assert sim_config["node_sets_file"] == os.path.relpath(
-            config.coordinate_output_root / "node_sets.json",
-            start=sim_config_path.parent,
-        )
+        assert "node_set" not in sim_config
+        assert "node_sets_file" not in sim_config
 
     def test_execute_registers_sonata_and_exported_circuits(
         self,
@@ -517,7 +509,7 @@ class TestTaskExecution:
             ),
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
-                return_value=None,
+                return_value="Default: All Biophysical Neurons",
             ),
         ):
             task.execute(db_client=None)
@@ -526,6 +518,51 @@ class TestTaskExecution:
         # (compound name "lif_nest" → base "lif")
         call_kwargs = mock_pipeline.call_args
         assert call_kwargs.kwargs.get("simplification_mode") == "lif"
+
+        # The implicit all-biophysical selection must not be passed to point-
+        # neuron modes because sonata_simplify rejects node_set/node_ids there.
+        sim_config_path = Path(call_kwargs.kwargs["simulation_config"])
+        sim_config = json.loads(sim_config_path.read_text(encoding="utf-8"))
+        assert "node_set" not in sim_config
+        assert "node_sets_file" not in sim_config
+
+    def test_execute_omits_target_set_for_single_compartment(
+        self,
+        fake_simplified_circuit: Path,
+        mock_pipeline,
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
+        tmp_path: Path,
+    ):
+        """All algorithms currently omit target node-set selection."""
+        config = self._make_config(tmp_path, algorithm="single_compartment")
+        task = CircuitSimplificationTask(config=config)
+
+        mock_circuit = MagicMock()
+        mock_circuit.path = str(fake_simplified_circuit / "circuit_config.json")
+        mock_circuit.sonata_circuit = MagicMock()
+        mock_entity = MagicMock()
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                return_value=(mock_circuit, mock_entity),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._get_execution_activity",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
+                return_value="Default: All Biophysical Neurons",
+            ),
+        ):
+            task.execute(db_client=None)
+
+        sim_config = json.loads(
+            Path(mock_pipeline.call_args.kwargs["simulation_config"]).read_text(encoding="utf-8")
+        )
+        assert "node_set" not in sim_config
+        assert "node_sets_file" not in sim_config
 
     def test_execute_runs_multiple_algorithm_blocks(
         self,
@@ -537,7 +574,9 @@ class TestTaskExecution:
         """execute() should run each algorithm block in the selected dictionary."""
 
         config = self._make_config(tmp_path, algorithm="single_compartment")
-        config.algorithms["lif_nest"] = ALGORITHM_BLOCK_CLASSES["lif_nest"]()
+        for algorithm in ALGORITHM_BLOCK_CLASSES:
+            if algorithm != "single_compartment":
+                config.algorithms[algorithm] = ALGORITHM_BLOCK_CLASSES[algorithm]()
         task = CircuitSimplificationTask(config=config)
 
         mock_circuit = MagicMock()
@@ -545,7 +584,7 @@ class TestTaskExecution:
         mock_circuit.sonata_circuit = MagicMock()
         mock_entity = MagicMock()
 
-        for algorithm in ("single_compartment", "lif_nest"):
+        for algorithm in ALGORITHM_BLOCK_CLASSES:
             output = config.coordinate_output_root / algorithm / "output"
             output.mkdir(parents=True, exist_ok=True)
             (output / "circuit_config.json").write_text("{}")
@@ -569,7 +608,13 @@ class TestTaskExecution:
         ):
             task.execute(db_client=None)
 
-        assert mock_pipeline.call_count == 2
+        assert mock_pipeline.call_count == len(ALGORITHM_BLOCK_CLASSES)
+        for call in mock_pipeline.call_args_list:
+            sim_config = json.loads(
+                Path(call.kwargs["simulation_config"]).read_text(encoding="utf-8")
+            )
+            assert "node_set" not in sim_config
+            assert "node_sets_file" not in sim_config
 
     def test_execute_cleans_up_temp_dir(
         self,
