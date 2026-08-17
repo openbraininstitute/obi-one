@@ -1002,7 +1002,6 @@ dependencies = [
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/4c/e0/91e55419d616c45f505a4095b5cb592a694bfd31aac89a7b744d37b553ed/entitysdk-0.19.16.tar.gz", hash = "sha256:30698e35e2bd71c8e597ad4406948a96dec3940bbf09164b98cc9500b0a828b8", size = 93824, upload-time = "2026-08-20T07:20:19.682Z" }
 
-
 [[package]]
 name = "executing"
 version = "2.2.1"
