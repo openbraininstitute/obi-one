@@ -167,21 +167,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
 
     # Determine algorithm type from the selected algorithm blocks. The block's
     # algorithm_name is the OBI-One compound name (for example, "adex_nest").
-    algorithms = getattr(single_config, "algorithms", {})
-    if isinstance(algorithms, dict):
-        algorithm_names = [algorithm.algorithm_name for algorithm in algorithms.values()]
-    else:
-        # Keep the estimator tolerant of older in-memory configs while persisted
-        # configs migrate to the root block-dictionary shape.
-        legacy_simplification = getattr(single_config, "simplification", None)
-        legacy_algorithms = getattr(legacy_simplification, "algorithms", algorithms)
-        algorithm_names = [
-            value if isinstance(value, str) else value.algorithm_name
-            for value in legacy_algorithms
-        ]
+    algorithm_names = [algorithm.algorithm_name for algorithm in single_config.algorithms.values()]
     base_algorithms = [
-        name.removesuffix("_nest").removesuffix("_brian2")
-        for name in algorithm_names
+        name.removesuffix("_nest").removesuffix("_brian2") for name in algorithm_names
     ]
     has_filter_algo = any(a in FILTER_ALGORITHMS for a in base_algorithms)
 
