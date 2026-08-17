@@ -5,10 +5,11 @@ directory from extraction features and entity downloads, reconstructs the
 optimisation recipe, and runs the full pipeline.
 """
 
+import inspect
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import entitysdk
 from pydantic import PrivateAttr
@@ -16,11 +17,41 @@ from pydantic import PrivateAttr
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.emodel_building import _shared
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifacts import (
+    OptimizationArtifacts,
+    build_optimization_artifacts,
+    build_optimization_recipe,  # ruff: ignore[unused-import]
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
+    build_params_definition,
+    resolve_ion_channel_models,
+)
+
+from .morphology_preflight import MorphologyCapabilities, preflight_morphology
 
 L = logging.getLogger(__name__)
+
+
+def _validation_status_keyword(register_emodel: Any) -> str:
+    """Select the validation-status keyword supported by an EntitySDK helper."""
+    try:
+        parameters = inspect.signature(register_emodel).parameters
+    except (TypeError, ValueError):
+        return "validation_result_status"
+    if "validation_result_status" in parameters:
+        return "validation_result_status"
+    if "validateion_result_status" in parameters:
+        return "validateion_result_status"
+    if any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()):
+        return "validation_result_status"
+    msg = (
+        "EntitySDK register_emodel does not expose validation_result_status or "
+        "validateion_result_status."
+    )
+    raise TypeError(msg)
 
 
 class EModelOptimizationTask(Task):
@@ -81,8 +112,12 @@ class EModelOptimizationTask(Task):
         extraction_tr = init.target_efeatures
         self._download_extraction_features(extraction_tr, coord_root, db_client)
 
-        # --- 2. Download morphology ---
+        # --- 2. Download and preflight morphology ---
         morph_filename = self._stage_morphology(coord_root, db_client)
+        morphology_capabilities = preflight_morphology(
+            coord_root / "morphologies" / morph_filename,
+            self.config.morphology_settings.axon_modifier,
+        )
 
         # --- 3. Download ion channel models (.mod files) ---
         self._stage_mechanisms(coord_root, db_client)
@@ -90,32 +125,14 @@ class EModelOptimizationTask(Task):
         # --- 4. Fetch traces via derivation chain ---
         trace_ids = self._stage_traces(extraction_tr, coord_root, db_client)
 
-        # --- 5. Stage params file (before building recipe) ---
-        params_path = self._stage_params(coord_root)
-
-        # --- 6. Build recipe from scratch ---
-        # The recipe is constructed entirely from the optimisation config;
-        # no recipe asset exists on the extraction TaskResult.
-        recipes = {}
-
-        morph_dir = "./morphologies/"
-        features_path = f"config/features/{emodel}.json"
-        recipes[emodel] = {
-            "morph_path": morph_dir,
-            "morphology": [[mtype, morph_filename]],
-            "features": features_path,
-            "params": f"config/params/{params_path.name}",
-        }
-
-        recipes = _shared.update_pipeline_settings(
-            recipes,
-            emodel=emodel,
-            overrides=self.config.optimization_settings.to_dict(
-                self.config.optimization_params,
-            ),
+        # --- 5. Build and stage the versioned params/recipe artifact bundle ---
+        artifacts = self._build_artifacts(
+            db_client=db_client,
+            mtype=mtype,
+            morph_filename=morph_filename,
+            morphology_capabilities=morphology_capabilities,
         )
-        recipes_target = coord_root / "config" / "recipes.json"
-        _shared.write_recipes(recipes, recipes_target)
+        artifacts.write(coord_root)
 
         # --- 6. Compile mechanisms ---
         _shared.compile_mechanisms(coord_root / "mechanisms")
@@ -222,29 +239,54 @@ class EModelOptimizationTask(Task):
         return morph_filename
 
     def _stage_mechanisms(self, coord_root: Path, db_client: entitysdk.client.Client) -> None:
-        """Download .mod files from ion channel model entities."""
+        """Download .mod files from all referenced ion channel model entities."""
         mech_dir = coord_root / "mechanisms"
         mech_dir.mkdir(parents=True, exist_ok=True)
-        for icm in self.config.parameters_selection.ion_channel_models:
-            icm.download_asset(dest_dir=mech_dir, db_client=db_client)
-        L.info(
-            "Staged %d ion channel models.",
-            len(self.config.parameters_selection.ion_channel_models),
+        references = self.config.parameters_selection.ion_channel_model_references
+        for reference in references:
+            reference.download_asset(dest_dir=mech_dir, db_client=db_client)
+        L.info("Staged %d ion channel models.", len(references))
+
+    def _build_artifacts(
+        self,
+        *,
+        db_client: entitysdk.client.Client,
+        mtype: str | None,
+        morph_filename: str,
+        morphology_capabilities: MorphologyCapabilities,
+    ) -> OptimizationArtifacts:
+        """Resolve entity metadata and build the portable artifact bundle."""
+        references = self.config.parameters_selection.ion_channel_model_references
+        normalized_models = resolve_ion_channel_models(references, db_client)
+        return build_optimization_artifacts(
+            self.config,
+            normalized_models,
+            mtype=mtype,
+            morphology_filename=morph_filename,
+            morphology_capabilities=morphology_capabilities,
         )
 
-    def _stage_params(self, coord_root: Path) -> Path:
-        """Stage the BluePyEModel params file with optimization distributions."""
+    def _stage_params(
+        self,
+        coord_root: Path,
+        db_client: entitysdk.client.Client,
+        morphology_capabilities: MorphologyCapabilities | None = None,
+    ) -> Path:
+        """Compile and stage the complete BluePyEModel params file."""
         params_dir = coord_root / "config" / "params"
         params_dir.mkdir(parents=True, exist_ok=True)
         params_path = params_dir / "params.json"
 
-        params = {"mechanisms": [], "distributions": [], "parameters": []}
-        if params_path.exists():
-            params = json.loads(params_path.read_text(encoding="utf-8"))
-        distributions = self.config.parameters_selection.distance_dependent_distributions.items()
-        params["distributions"] = [
-            distribution.to_emc_dict(name=name) for name, distribution in distributions
-        ]
+        references = self.config.parameters_selection.ion_channel_model_references
+        normalized_models = resolve_ion_channel_models(references, db_client)
+        capabilities = morphology_capabilities or MorphologyCapabilities(
+            has_myelinated=self.config.morphology_settings.expected_myelinated,
+        )
+        params = build_params_definition(
+            self.config,
+            normalized_models,
+            morphology_capabilities=capabilities,
+        )
         params_path.write_text(json.dumps(params, indent=4), encoding="utf-8")
         return params_path
 
@@ -404,7 +446,7 @@ class EModelOptimizationTask(Task):
             )
             L.info("Uploaded SONATA to TaskResult.")
 
-    def register_output_entities(  # ruff: ignore[too-many-locals]
+    def register_output_entities(  # ruff: ignore[too-many-locals, too-many-statements]
         self,
         coord_root: Path,
         db_client: entitysdk.Client,
@@ -421,15 +463,24 @@ class EModelOptimizationTask(Task):
             License,
             TaskActivity,
         )
-        from entitysdk.registration.emodel import (  # ruff: ignore[import-outside-top-level]
-            register_emodel,
-        )
-        from entitysdk.registration.memodel import (  # ruff: ignore[import-outside-top-level]
-            register_memodel,
-        )
-        from entitysdk.registration.task_result.emodel_optimization import (  # ruff: ignore[import-outside-top-level]
-            register_emodel_optimization_result,
-        )
+
+        try:
+            from entitysdk.registration.emodel import (  # ruff: ignore[import-outside-top-level]
+                register_emodel,
+            )
+            from entitysdk.registration.memodel import (  # ruff: ignore[import-outside-top-level]
+                register_memodel,
+            )
+            from entitysdk.registration.task_result.emodel_optimization import (  # ruff: ignore[import-outside-top-level]
+                register_emodel_optimization_result,
+            )
+        except ModuleNotFoundError as exc:
+            msg = (
+                "Task 2 output registration requires an EntitySDK release that provides "
+                "entitysdk.registration.emodel, entitysdk.registration.memodel, and "
+                "entitysdk.registration.task_result.emodel_optimization."
+            )
+            raise RuntimeError(msg) from exc
         from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
             EntityLifecycleStatus,
             ValidationStatus,
@@ -512,10 +563,8 @@ class EModelOptimizationTask(Task):
         self._upload_optimization_assets(coord_root, db_client, task_result.id)
 
         # --- Collect ion channel model entities ---
-        ion_channel_models = [
-            icm.entity(db_client=db_client)
-            for icm in self.config.parameters_selection.ion_channel_models
-        ]
+        references = self.config.parameters_selection.ion_channel_model_references
+        ion_channel_models = [reference.entity(db_client=db_client) for reference in references]
 
         # --- Register draft EModel via helper ---
         hoc_dir = coord_root / "export_emodels_hoc"
@@ -525,6 +574,7 @@ class EModelOptimizationTask(Task):
                 hoc_file = hf
                 break
 
+        validation_status_keyword = _validation_status_keyword(register_emodel)
         emodel_entity = register_emodel(
             client=db_client,
             name=f"{emodel_name} (draft)",
@@ -544,7 +594,7 @@ class EModelOptimizationTask(Task):
             emodel_summary_file=emodel_summary_file,
             electrical_cell_recording_ids=trace_ids or [],
             validation_result_figure_files=validation_figures,
-            validateion_result_status=False,
+            **{validation_status_keyword: False},
         )
         L.info("Draft EModel registered: %s", emodel_entity.id)
 

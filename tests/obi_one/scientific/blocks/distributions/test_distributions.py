@@ -4,9 +4,24 @@ import numpy as np
 import pytest
 
 import obi_one as obi
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
-    ParametersSelection,
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
 )
+
+
+def _optimization_config(**overrides):
+    config_data = {
+        "info": {"campaign_name": "test", "campaign_description": "test"},
+        "initialize": {
+            "target_efeatures": {"id_str": "target"},
+            "emodel": "test",
+            "morphology": {"id_str": "morphology"},
+            "etype": {"id_str": "etype"},
+        },
+        "parameters_selection": {"ion_channel_models": [{"id_str": "icm"}]},
+    }
+    config_data.update(overrides)
+    return EModelOptimizationScanConfig.model_validate(config_data)
 
 
 class TestDistanceDependentDistributions:
@@ -111,6 +126,16 @@ class TestDistanceDependentDistributions:
 
         assert "parameters" not in distribution.to_emc_dict()
 
+    def test_distribution_parameter_names_are_not_scan_dimensions(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="decay",
+            function="math.exp({distance}*{constant})*{value}",
+            parameters=["constant"],
+        )
+
+        assert distribution.parameters == ("constant",)
+        assert distribution.multiple_value_parameters(category_name="distributions") == []
+
     def test_custom_distribution_requires_value_and_distance(self):
         with pytest.raises(ValueError, match=r"\{value\} placeholder"):
             obi.CustomDistanceDependentDistribution(name="custom", function="{distance}")
@@ -131,24 +156,25 @@ class TestDistanceDependentDistributions:
             obi.DistanceDependentDistribution(parameters=["constant"])
 
     def test_new_distribution_deserializes_through_union(self):
-        parameters = ParametersSelection(
+        config = _optimization_config(
             distance_dependent_distributions={
+                "uniform": {"type": "UniformDistanceDependentDistribution"},
                 "mouse": {
                     "type": "LinearHDPasDistanceDependentDistribution",
-                }
+                },
             }
         )
 
         assert isinstance(
-            parameters.distance_dependent_distributions["mouse"],
+            config.distance_dependent_distributions["mouse"],
             obi.LinearHDPasDistanceDependentDistribution,
         )
 
     def test_optimization_parameter_selection_defaults_to_uniform(self):
-        parameters = ParametersSelection()
+        config = _optimization_config()
 
-        assert list(parameters.distance_dependent_distributions) == ["uniform"]
-        assert parameters.distance_dependent_distributions["uniform"].to_emc_dict() == {
+        assert list(config.distance_dependent_distributions) == ["uniform"]
+        assert config.distance_dependent_distributions["uniform"].to_emc_dict() == {
             "name": "uniform",
             "function": None,
             "soma_ref_location": 0.5,
