@@ -3,13 +3,10 @@ from typing import Annotated, ClassVar, override
 import morphio
 import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.morphology_locations.base import (
-    MorphologyLocationsBlock,
-    SectionTypes,
-)
+from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
@@ -166,27 +163,6 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_LOCATION_SELECTION,
         },
-    )
-
-    # Re-declared only to hide the parent's sampling knobs: locations are given outright, so
-    # `_make_points` never reads them.
-    random_seed: NonNegativeInt = Field(
-        default=0,
-        title="Random Seed",
-        description="Unused: explicit locations involve no random sampling.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    number_of_locations: PositiveInt = Field(
-        default=1,
-        title="Number of Locations",
-        description="Unused: the number of locations is the length of `locations`.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    section_types: SectionTypes = Field(
-        default=None,
-        title="Section Types",
-        description="Unused: each location names its own section.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:

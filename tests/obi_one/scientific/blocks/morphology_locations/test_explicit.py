@@ -246,14 +246,3 @@ def test_only_offered_for_single_neuron_targets():
     # The siblings sample rather than name locations, so they stay on the broader gate.
     sibling = RandomMorphologyLocations.model_json_schema()["block_usability_dictionary"]
     assert sibling["property"] == CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS
-
-
-def test_sampling_parameters_are_hidden_from_the_ui():
-    """The inherited sampling knobs do not apply to explicitly listed locations."""
-    schema = ExplicitMorphologyLocations.model_json_schema()
-
-    for param in ("random_seed", "number_of_locations", "section_types"):
-        assert schema["properties"][param].get("ui_hidden") is True, param
-        assert param not in schema.get("required", []), param
-
-    assert schema["properties"]["locations"].get("ui_element") == "morphology_location_selection"
