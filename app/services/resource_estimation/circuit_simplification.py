@@ -121,10 +121,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     point-neuron algorithms), then memory is computed as
     base + cores x per_worker_gb.
 
-    The algorithm type is read from the config's ``simplification.algorithms``
-    field. Only ``single_compartment`` triggers filter computation; all other
-    algorithms (lif, adex, izhikevich, glif, gif) are point-neuron exports
-    that skip the expensive filter step.
+    The algorithm blocks are read from the root ``algorithms`` dictionary. Each
+    block exposes its stable compound algorithm name; only ``single_compartment``
+    triggers filter computation.
     """
     # Get simplification config
     config_type = models.TaskConfig
@@ -166,11 +165,24 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
     )
 
-    # Determine algorithm type from config.
-    # Algorithm names may be compound (e.g. "adex_nest") — strip the
-    # simulator suffix to get the base algorithm for work estimation.
-    algorithms = getattr(single_config.simplification, "algorithms", ["single_compartment"])  # ty:ignore[unresolved-attribute]
-    base_algorithms = [a.split("_nest")[0].split("_brian2")[0] for a in algorithms]
+    # Determine algorithm type from the selected algorithm blocks. The block's
+    # algorithm_name is the OBI-One compound name (for example, "adex_nest").
+    algorithms = getattr(single_config, "algorithms", {})
+    if isinstance(algorithms, dict):
+        algorithm_names = [algorithm.algorithm_name for algorithm in algorithms.values()]
+    else:
+        # Keep the estimator tolerant of older in-memory configs while persisted
+        # configs migrate to the root block-dictionary shape.
+        legacy_simplification = getattr(single_config, "simplification", None)
+        legacy_algorithms = getattr(legacy_simplification, "algorithms", algorithms)
+        algorithm_names = [
+            value if isinstance(value, str) else value.algorithm_name
+            for value in legacy_algorithms
+        ]
+    base_algorithms = [
+        name.removesuffix("_nest").removesuffix("_brian2")
+        for name in algorithm_names
+    ]
     has_filter_algo = any(a in FILTER_ALGORITHMS for a in base_algorithms)
 
     # Estimate work units based on algorithm type
