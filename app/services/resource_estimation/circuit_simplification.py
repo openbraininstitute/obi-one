@@ -28,6 +28,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationSingleConfig
 
 # --- Calibration constants (PLACEHOLDERS - TODO: calibrate empirically) ---
 
@@ -147,7 +148,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     ).decode(encoding="utf-8")
 
     json_dict = json.loads(json_str)
-    single_config = deserialize_obi_object_from_json_data(json_dict)
+    single_config = CircuitSimplificationSingleConfig.model_validate(
+        deserialize_obi_object_from_json_data(json_dict).model_dump()
+    )
 
     # Get parent circuit metrics
     circuit_id = config.inputs[0].id  # ty:ignore[not-subscriptable]
