@@ -15,13 +15,12 @@ import shutil
 import tempfile
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 import bluepysnap as snap
 from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 from pydantic import Field, PrivateAttr
-from sonata_simplify.algorithms import ALGORITHM_DESCRIPTIONS, ALGORITHM_TITLES
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
@@ -31,6 +30,11 @@ from obi_one.core.task import Task
 from obi_one.db_sdk import db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
+from obi_one.scientific.blocks.simplification_algorithms import (
+    ALGORITHM_EXPORT_MAP,
+    SimplificationAlgorithmUnion,
+    default_simplification_algorithms,
+)
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
@@ -45,6 +49,9 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
     BiophysicalNeuronSetReference,
 )
+from obi_one.scientific.unions_and_references.simplification_algorithms import (
+    SIMPLIFICATION_ALGORITHM_REFERENCE_TYPES,
+)
 from obi_one.types import SimulationBackend
 
 L = logging.getLogger(__name__)
@@ -55,51 +62,6 @@ class BlockGroup(StrEnum):
 
     SETUP = "Setup"
     SIMPLIFICATION = "Simplification"
-
-
-# Literal type for algorithm selection.
-# Names encode both the base algorithm and the target simulator:
-#   <algorithm>_<simulator>  →  simplifies + exports to that simulator
-#   single_compartment       →  SONATA/NEURON only (no export)
-SimplificationModelType = Literal[
-    "single_compartment",
-    "lif_nest",
-    "adex_nest",
-    "adex_brian2",
-    "izhikevich_nest",
-    "glif_nest",
-    "gif_nest",
-]
-
-# Maps compound name → (base_algorithm, exporter_name or None)
-# Brian2 only supports AdEx; other algorithms use NEST.
-ALGORITHM_EXPORT_MAP: dict[str, tuple[str, str | None]] = {
-    "single_compartment": ("single_compartment", None),
-    "lif_nest": ("lif", "nest:iaf_psc_alpha"),
-    "adex_nest": ("adex", "nest:aeif_cond_alpha"),
-    "adex_brian2": ("adex", "brian2:adex"),
-    "izhikevich_nest": ("izhikevich", "nest:izhikevich"),
-    "glif_nest": ("glif", "nest:glif_psc"),
-    "gif_nest": ("gif", "nest:gif_cond_exp"),
-}
-
-# UI display titles for compound names (extends ALGORITHM_TITLES from sonata_simplify)
-ALGORITHM_EXPORT_TITLES: dict[str, str] = {
-    "single_compartment": (
-        f"{ALGORITHM_TITLES.get('single_compartment', 'Single Compartment')} (NEURON)"
-    ),
-    "lif_nest": f"{ALGORITHM_TITLES.get('lif', 'LIF')} (NEST)",
-    "adex_nest": f"{ALGORITHM_TITLES.get('adex', 'AdEx')} (NEST)",
-    "adex_brian2": f"{ALGORITHM_TITLES.get('adex', 'AdEx')} (Brian2)",
-    "izhikevich_nest": f"{ALGORITHM_TITLES.get('izhikevich', 'Izhikevich')} (NEST)",
-    "glif_nest": f"{ALGORITHM_TITLES.get('glif', 'GLIF')} (NEST)",
-    "gif_nest": f"{ALGORITHM_TITLES.get('gif', 'GIF')} (NEST)",
-}
-
-# UI descriptions for compound names
-ALGORITHM_EXPORT_DESCRIPTIONS: dict[str, str] = {
-    name: ALGORITHM_DESCRIPTIONS.get(base, "") for name, (base, _) in ALGORITHM_EXPORT_MAP.items()
-}
 
 
 class CircuitSimplificationScanConfig(InfoScanConfig):
@@ -176,22 +138,21 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
             },
         )
 
-    class Simplification(Block):
-        algorithms: list[SimplificationModelType] = Field(
-            default=["single_compartment"],
-            title="Algorithms",
-            description=(
-                "Select one or more target models for simplification."
-                " Each produces a separate simplified output circuit."
-                " Names encode the target simulator: e.g. 'adex_nest' exports"
-                " to NEST, 'adex_brian2' exports to Brian2."
-            ),
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
-                SchemaKey.TITLE_BY_KEY: ALGORITHM_EXPORT_TITLES,
-                SchemaKey.DESCRIPTION_BY_KEY: ALGORITHM_EXPORT_DESCRIPTIONS,
-            },
-        )
+    algorithms: dict[str, SimplificationAlgorithmUnion] = Field(
+        default_factory=default_simplification_algorithms,
+        title="Algorithms",
+        description=(
+            "Add one or more target models for simplification."
+            " Each selected model produces a separate simplified output circuit."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.SINGULAR_NAME: "Algorithm",
+            SchemaKey.REFERENCE_TYPES: SIMPLIFICATION_ALGORITHM_REFERENCE_TYPES,
+            SchemaKey.GROUP: BlockGroup.SIMPLIFICATION,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
 
     info: Info = Field(
         title="Info",
@@ -209,15 +170,6 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
             SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-    simplification: Simplification = Field(
-        title="Algorithms",
-        description="Target models for simplification.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SIMPLIFICATION,
-            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -452,12 +404,11 @@ class CircuitSimplificationTask(Task):
 
             input_circuit_path = Path(self._circuit.path).absolute()
 
-            # After GridScanGenerationTask expands the scan config, list fields
-            # with a single element are unwrapped to scalar values. Wrap algorithms
-            # back into a list so iteration works correctly either way.
-            algorithms = self.config.simplification.algorithms
-            if isinstance(algorithms, str):
-                algorithms = [algorithms]
+            # The block dictionary contains one concrete block for each selected
+            # algorithm. The block's stable algorithm_name is used instead of the
+            # UI-generated dictionary key (for example, "Algorithm 0").
+            algorithm_blocks = self.config.algorithms
+            algorithm_names = [block.algorithm_name for block in algorithm_blocks.values()]
 
             # Resolve target neuron set and write node_sets.json to the output root.
             # The node set name and node_sets_file are passed via the sim config
@@ -468,7 +419,7 @@ class CircuitSimplificationTask(Task):
             )
 
             output_circuit_ids: list[str] = []
-            if "single_compartment" in algorithms:
+            if "single_compartment" in algorithm_names:
                 mechanisms_dir = process.get_mechanisms_dirs(input_circuit_path)
                 assert len(mechanisms_dir) == 1, "Do not currently handle multiple mechanisms_dirs"  # ruff: ignore[assert]
                 mechanisms_dir = next(iter(mechanisms_dir))
@@ -489,7 +440,8 @@ class CircuitSimplificationTask(Task):
             )
             from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level]
 
-            for algorithm_name in algorithms:
+            for algorithm_block in algorithm_blocks.values():
+                algorithm_name = algorithm_block.algorithm_name
                 L.info(f"Running simplification with algorithm: {algorithm_name}")
 
                 # Split compound name into base algorithm and exporter

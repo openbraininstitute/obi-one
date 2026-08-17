@@ -25,6 +25,10 @@ from app.services.resource_estimation.circuit_simplification import (
 from app.services.task import estimate_task_resources
 from app.types import TaskType
 from obi_one.core.info import Info
+from obi_one.scientific.blocks.simplification_algorithms import (
+    ALGORITHM_BLOCK_CLASSES,
+    SingleCompartmentAlgorithm,
+)
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_simplification.task import (
     ALGORITHM_EXPORT_MAP,
@@ -75,22 +79,23 @@ class TestInputEntities:
 
 
 class TestSimplificationBlock:
-    """Tests for the Simplification block."""
+    """Tests for the circuit simplification algorithm block dictionary."""
 
     def test_algorithms_field_exists(self):
-        """Simplification block should have an algorithms field."""
-        fields = CircuitSimplificationScanConfig.Simplification.model_fields
+        """The scan config should expose an algorithms block dictionary."""
+        fields = CircuitSimplificationScanConfig.model_fields
         assert "algorithms" in fields
 
     def test_algorithms_defaults_to_single_compartment(self):
-        """algorithms should default to ['single_compartment']."""
-        s = CircuitSimplificationScanConfig.Simplification()
-        assert s.algorithms == ["single_compartment"]
+        """The default algorithm selection should contain single_compartment."""
+        config = CircuitSimplificationScanConfig.empty_config()
+        assert list(config.algorithms) == ["single_compartment"]
+        assert isinstance(config.algorithms["single_compartment"], SingleCompartmentAlgorithm)
 
-    def test_no_extra_fields(self):
-        """Simplification block should only have the algorithms field (plus type discriminator)."""
-        fields = set(CircuitSimplificationScanConfig.Simplification.model_fields.keys())
-        assert fields == {"algorithms", "type"}
+    def test_algorithms_field_is_a_block_dictionary(self):
+        """The algorithms field should use the block_dictionary UI element."""
+        field = CircuitSimplificationScanConfig.model_fields["algorithms"]
+        assert field.json_schema_extra["ui_element"] == "block_dictionary"
 
 
 class TestTaskDefinitionsEntry:
@@ -216,7 +221,7 @@ class TestTargetNeuronSetField:
             initialize=CircuitSimplificationScanConfig.Initialize(
                 circuit=CircuitFromID(id_str="test-circuit-id"),
             ),
-            simplification=CircuitSimplificationScanConfig.Simplification(),
+            algorithms={"single_compartment": ALGORITHM_BLOCK_CLASSES["single_compartment"]()},
         )
         ref = config.default_neuron_set_reference
         assert ref is not None
@@ -263,19 +268,14 @@ class TestTaskExecution:
 
     @staticmethod
     def _make_config(tmp_path: Path, algorithm: str = "single_compartment"):
-        """Build a CircuitSimplificationSingleConfig for testing.
-
-        Uses model_construct to bypass SingleConfigMixin's no-list validation,
-        since ``algorithms`` is a list field that the task iterates over.
-        """
+        """Build a CircuitSimplificationSingleConfig with one algorithm block."""
+        algorithm_block = ALGORITHM_BLOCK_CLASSES[algorithm]()
         config = CircuitSimplificationSingleConfig.model_construct(
             info={"campaign_name": "test", "campaign_description": "test"},
             initialize=CircuitSimplificationScanConfig.Initialize(
                 circuit=CircuitFromID(id_str="test-circuit-id"),
             ),
-            simplification=CircuitSimplificationScanConfig.Simplification(
-                algorithms=[algorithm],
-            ),
+            algorithms={algorithm: algorithm_block},
         )
         config.scan_output_root = tmp_path / "scan_output"
         config.coordinate_output_root = tmp_path / "coord_output"
@@ -527,30 +527,28 @@ class TestTaskExecution:
         call_kwargs = mock_pipeline.call_args
         assert call_kwargs.kwargs.get("simplification_mode") == "lif"
 
-    def test_execute_handles_unwrapped_algorithm_string(
+    def test_execute_runs_multiple_algorithm_blocks(
         self,
         fake_simplified_circuit: Path,
         mock_pipeline,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
-        """execute() should handle algorithms as a string (not list).
-
-        After GridScanGenerationTask expands a scan config with a single
-        algorithm, the list is unwrapped to a scalar string. The task must
-        wrap it back into a list before iterating.
-        """
+        """execute() should run each algorithm block in the selected dictionary."""
 
         config = self._make_config(tmp_path, algorithm="single_compartment")
-        # Simulate the unwrapping that GridScanGenerationTask does
-        config.simplification.algorithms = "single_compartment"  # type: ignore[assignment]
-
+        config.algorithms["lif_nest"] = ALGORITHM_BLOCK_CLASSES["lif_nest"]()
         task = CircuitSimplificationTask(config=config)
 
         mock_circuit = MagicMock()
         mock_circuit.path = str(fake_simplified_circuit / "circuit_config.json")
         mock_circuit.sonata_circuit = MagicMock()
         mock_entity = MagicMock()
+
+        for algorithm in ("single_compartment", "lif_nest"):
+            output = config.coordinate_output_root / algorithm / "output"
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "circuit_config.json").write_text("{}")
 
         with (
             patch(
@@ -565,12 +563,13 @@ class TestTaskExecution:
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
+            ),
         ):
             task.execute(db_client=None)
 
-        # Should pass the full algorithm name, not 's' (first char)
-        call_kwargs = mock_pipeline.call_args
-        assert call_kwargs.kwargs.get("simplification_mode") == "single_compartment"
+        assert mock_pipeline.call_count == 2
 
     def test_execute_cleans_up_temp_dir(
         self,
