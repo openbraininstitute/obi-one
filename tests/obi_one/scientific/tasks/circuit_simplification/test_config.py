@@ -1,8 +1,11 @@
-"""Config validation tests for circuit simplification."""
-
 import pytest
 
 from obi_one.core.info import Info
+from obi_one.scientific.blocks.simplification_algorithms import (
+    AdexNestAlgorithm,
+    LifNestAlgorithm,
+    SingleCompartmentAlgorithm,
+)
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_simplification.task import (
     CircuitSimplificationScanConfig,
@@ -10,40 +13,44 @@ from obi_one.scientific.tasks.circuit_simplification.task import (
 
 
 class TestSimplificationConfig:
-    """Tests for the Simplification block configuration."""
+    """Tests for the circuit simplification algorithm block dictionary."""
 
     def test_default_config(self):
-        """Test default config creation."""
-        s = CircuitSimplificationScanConfig.Simplification()
-        assert s.algorithms == ["single_compartment"]
+        """The default config contains the single-compartment algorithm block."""
+        config = CircuitSimplificationScanConfig.empty_config()
+        assert list(config.algorithms) == ["single_compartment"]
+        assert isinstance(config.algorithms["single_compartment"], SingleCompartmentAlgorithm)
 
     def test_algorithm_validation_rejects_unknown(self):
-        """Test that unknown algorithms are rejected (Literal type fires first)."""
-        with pytest.raises(ValueError, match="Input should be"):
-            CircuitSimplificationScanConfig.Simplification(algorithms=["nonexistent_algo"])
+        """Unknown algorithm block discriminators are rejected."""
+        with pytest.raises(ValueError, match="UnknownAlgorithm"):
+            CircuitSimplificationScanConfig.model_validate(
+                {"algorithms": {"invalid": {"type": "UnknownAlgorithm"}}}
+            )
 
     def test_algorithm_validation_accepts_known(self):
-        """Test that known algorithms are accepted."""
-        s = CircuitSimplificationScanConfig.Simplification(
-            algorithms=["single_compartment", "lif_nest"]
+        """Multiple known algorithm blocks can be selected together."""
+        config = CircuitSimplificationScanConfig(
+            info=Info(campaign_name="test", campaign_description="test"),
+            initialize=CircuitSimplificationScanConfig.Initialize(
+                circuit=CircuitFromID(id_str="test-circuit-id")
+            ),
+            algorithms={
+                "single_compartment": SingleCompartmentAlgorithm(),
+                "lif_nest": LifNestAlgorithm(),
+                "adex_nest": AdexNestAlgorithm(),
+            },
         )
-        assert "single_compartment" in s.algorithms
-        assert "lif_nest" in s.algorithms
+        assert list(config.algorithms) == ["single_compartment", "lif_nest", "adex_nest"]
+        assert all(block.has_block_name() for block in config.algorithms.values())
 
     def test_scan_config_creation(self):
-        """Test creating a ScanConfig with required fields.
-
-        Note: CircuitSimplificationSingleConfig cannot be directly instantiated
-        because ``algorithms`` is a list field, which SingleConfigMixin
-        prohibits. SingleConfigs are created by the scan expansion process.
-        """
-        cfg = CircuitSimplificationScanConfig(
+        """A scan config can contain multiple selected algorithm blocks."""
+        config = CircuitSimplificationScanConfig(
             info=Info(campaign_name="test", campaign_description="test campaign"),
             initialize=CircuitSimplificationScanConfig.Initialize(
                 circuit=CircuitFromID(id_str="test-circuit-id")
             ),
-            simplification=CircuitSimplificationScanConfig.Simplification(
-                algorithms=["single_compartment"]
-            ),
+            algorithms={"single_compartment": SingleCompartmentAlgorithm()},
         )
-        assert cfg.simplification.algorithms == ["single_compartment"]
+        assert list(config.algorithms) == ["single_compartment"]

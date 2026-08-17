@@ -504,7 +504,7 @@ def _extract_section_properties(
     - value: None (user checks defaults on platform)
     - units: r"$\mu$F/cm$^2$" for cm, r"$\Omega$-cm" for Ra
     - variable_type: "RANGE"
-    - limits: [0.0, 10.0] for cm, [10.0, 500.0] for Ra
+    - limits: [0.0, 10.0] for cm, [0.0, 1000.0] for Ra
     """
     variables = []
 
@@ -537,7 +537,7 @@ def _extract_section_properties(
                     section_list=section_list,
                     value=None,
                     units=r"$\Omega$-cm",
-                    limits=[10.0, 500.0],
+                    limits=[0.0, 1000.0],
                     variable_type="RANGE",
                 ),
             ]

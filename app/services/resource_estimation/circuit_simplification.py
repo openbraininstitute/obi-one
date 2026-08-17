@@ -28,6 +28,7 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
+from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationSingleConfig
 
 # --- Calibration constants (PLACEHOLDERS - TODO: calibrate empirically) ---
 
@@ -121,10 +122,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     point-neuron algorithms), then memory is computed as
     base + cores x per_worker_gb.
 
-    The algorithm type is read from the config's ``simplification.algorithms``
-    field. Only ``single_compartment`` triggers filter computation; all other
-    algorithms (lif, adex, izhikevich, glif, gif) are point-neuron exports
-    that skip the expensive filter step.
+    The algorithm blocks are read from the root ``algorithms`` dictionary. Each
+    block exposes its stable compound algorithm name; only ``single_compartment``
+    triggers filter computation.
     """
     # Get simplification config
     config_type = models.TaskConfig
@@ -148,7 +148,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     ).decode(encoding="utf-8")
 
     json_dict = json.loads(json_str)
-    single_config = deserialize_obi_object_from_json_data(json_dict)
+    single_config = CircuitSimplificationSingleConfig.model_validate(
+        deserialize_obi_object_from_json_data(json_dict).model_dump()
+    )
 
     # Get parent circuit metrics
     circuit_id = config.inputs[0].id  # ty:ignore[not-subscriptable]
@@ -166,11 +168,12 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
     )
 
-    # Determine algorithm type from config.
-    # Algorithm names may be compound (e.g. "adex_nest") — strip the
-    # simulator suffix to get the base algorithm for work estimation.
-    algorithms = getattr(single_config.simplification, "algorithms", ["single_compartment"])  # ty:ignore[unresolved-attribute]
-    base_algorithms = [a.split("_nest")[0].split("_brian2")[0] for a in algorithms]
+    # Determine algorithm type from the selected algorithm blocks. The block's
+    # algorithm_name is the OBI-One compound name (for example, "adex_nest").
+    algorithm_names = [algorithm.algorithm_name for algorithm in single_config.algorithms.values()]
+    base_algorithms = [
+        name.removesuffix("_nest").removesuffix("_brian2") for name in algorithm_names
+    ]
     has_filter_algo = any(a in FILTER_ALGORITHMS for a in base_algorithms)
 
     # Estimate work units based on algorithm type
