@@ -14,9 +14,6 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions_and_references.combined_neuron_sets import (
-    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
-)
 from obi_one.scientific.library.morphology_locations import (
     _PRE_IDX,
     _SEC_ID,
@@ -26,6 +23,9 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_OFF,
     _SOM_PAD,
     MorphologyPathDistanceCalculator,
+)
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
 )
 
 _LOCATION_COLUMNS = pandas.Index(
