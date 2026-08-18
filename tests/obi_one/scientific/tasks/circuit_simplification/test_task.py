@@ -362,7 +362,7 @@ class TestTaskExecution:
         sonata_output = config.coordinate_output_root / "adex_brian2" / "output"
         sonata_output.mkdir(parents=True, exist_ok=True)
         (sonata_output / "circuit_config.json").write_text("{}")
-        export_output = sonata_output / "output_brian2_adex"
+        export_output = sonata_output.parent / "output_brian2_adex"
         export_output.mkdir()
         export_config = export_output / "circuit_config.json"
         export_config.write_text("{}")
@@ -595,7 +595,9 @@ class TestTaskExecution:
             _, exporter_name = ALGORITHM_EXPORT_MAP[algorithm]
             if exporter_name:
                 export_suffix = exporter_name.replace(":", "_")
-                export_config = output / f"output_{export_suffix}" / "circuit_config.json"
+                export_config = (
+                    output.parent / f"{output.name}_{export_suffix}" / "circuit_config.json"
+                )
                 export_config.parent.mkdir(parents=True, exist_ok=True)
                 export_config.write_text("{}")
 
