@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import obi_one as obi
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.compartment_sets import (
     CompartmentLocation,
     MaterializedCompartmentSet,
@@ -233,6 +234,46 @@ def test_materialization_handles_recording_location_targets():
 
     assert config["compartment_set"] == "locations"
     assert config["type"] == "compartment_set"
+
+
+def _morphology_location_recording():
+    locations = obi.RandomMorphologyLocations()
+    locations.set_block_name("locations")
+    locations_ref = MorphologyLocationsReference(
+        block_dict_name="morphology_locations",
+        block_name="locations",
+    )
+    locations_ref.block = locations
+    recording = obi.MorphologyLocationVoltageRecording(morphology_locations=locations_ref)
+    recording.set_block_name("recording")
+    return recording
+
+
+def test_morphology_location_recording_rejects_none_locations():
+    with pytest.raises(ValueError, match="require morphology locations"):
+        obi.MorphologyLocationVoltageRecording(morphology_locations=None)
+
+
+def test_morphology_location_recording_requires_end_time():
+    recording = _morphology_location_recording()
+
+    with pytest.raises(OBIONEError, match="End time must be specified"):
+        recording.config()
+
+
+def test_morphology_location_recording_requires_materialized_compartment_set():
+    recording = _morphology_location_recording()
+
+    with pytest.raises(OBIONEError, match="no compartment set was materialized"):
+        recording.config(end_time=100.0)
+
+
+def test_morphology_location_recording_requires_end_time_after_start():
+    recording = _morphology_location_recording()
+    recording.set_materialized_compartment_set_target("locations")
+
+    with pytest.raises(OBIONEError, match="End time must be later"):
+        recording.config(end_time=0.0)
 
 
 def test_continuous_stimulus_without_target_uses_default_node_set():
