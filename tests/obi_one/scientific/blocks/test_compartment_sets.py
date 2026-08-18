@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import obi_one as obi
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.compartment_sets import (
     CompartmentLocation,
     MaterializedCompartmentSet,
@@ -121,7 +122,7 @@ def test_build_compartment_set_skips_unavailable_morphologies():
     ]
 
 
-def test_materialization_without_stimuli_returns_empty():
+def test_materialization_without_location_targets_returns_empty():
     assert (
         materialize_locations_to_compartment_sets(
             single_config=SimpleNamespace(),
@@ -195,6 +196,84 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
     build_compartment_set.assert_called_once()
     assert build_compartment_set.call_args.kwargs["name"] == "locations"
     assert build_compartment_set.call_args.kwargs["neuron_set"] is default_ref
+
+
+def test_materialization_handles_recording_location_targets():
+    locations = obi.RandomMorphologyLocations()
+    locations.set_block_name("locations")
+    locations_ref = MorphologyLocationsReference(
+        block_dict_name="morphology_locations",
+        block_name="locations",
+    )
+    locations_ref.block = locations
+    recording = obi.MorphologyLocationVoltageRecording(morphology_locations=locations_ref)
+    recording.set_block_name("recording")
+    default_ref = MagicMock()
+
+    with patch(
+        "obi_one.scientific.tasks.generate_simulations.materialize_locations."
+        "build_compartment_set_for_neuron_set"
+    ) as build_compartment_set:
+        build_compartment_set.return_value = MaterializedCompartmentSet(
+            name="locations",
+            population="pop",
+        )
+
+        materialize_locations_to_compartment_sets(
+            single_config=SimpleNamespace(
+                recordings={"recording": recording},
+                default_neuron_set_reference=default_ref,
+            ),
+            circuit=MagicMock(),
+            node_population="pop",
+            population="pop",
+        )
+
+    build_compartment_set.assert_called_once()
+    config = recording.config(end_time=100.0)["recording"]
+
+    assert config["compartment_set"] == "locations"
+    assert config["type"] == "compartment_set"
+
+
+def _morphology_location_recording():
+    locations = obi.RandomMorphologyLocations()
+    locations.set_block_name("locations")
+    locations_ref = MorphologyLocationsReference(
+        block_dict_name="morphology_locations",
+        block_name="locations",
+    )
+    locations_ref.block = locations
+    recording = obi.MorphologyLocationVoltageRecording(morphology_locations=locations_ref)
+    recording.set_block_name("recording")
+    return recording
+
+
+def test_morphology_location_recording_rejects_none_locations():
+    with pytest.raises(ValueError, match="require morphology locations"):
+        obi.MorphologyLocationVoltageRecording(morphology_locations=None)
+
+
+def test_morphology_location_recording_requires_end_time():
+    recording = _morphology_location_recording()
+
+    with pytest.raises(OBIONEError, match="End time must be specified"):
+        recording.config()
+
+
+def test_morphology_location_recording_requires_materialized_compartment_set():
+    recording = _morphology_location_recording()
+
+    with pytest.raises(OBIONEError, match="no compartment set was materialized"):
+        recording.config(end_time=100.0)
+
+
+def test_morphology_location_recording_requires_end_time_after_start():
+    recording = _morphology_location_recording()
+    recording.set_materialized_compartment_set_target("locations")
+
+    with pytest.raises(OBIONEError, match="End time must be later"):
+        recording.config(end_time=0.0)
 
 
 def test_continuous_stimulus_without_target_uses_default_node_set():
