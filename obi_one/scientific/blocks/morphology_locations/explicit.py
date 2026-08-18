@@ -141,7 +141,10 @@ def _point_on_section(
 
 
 class ExplicitMorphologyLocations(MorphologyLocationsBlock):
-    """A deterministic collection of SONATA locations on an nrn_order morphology."""
+    """Manually chosen locations on the neuron's morphology.
+
+    Click on branches in the 3D viewer to select where stimuli or recordings are placed.
+    """
 
     title: ClassVar[str] = "Explicit Morphology Locations"
 
