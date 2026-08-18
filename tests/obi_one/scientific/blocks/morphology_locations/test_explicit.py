@@ -225,15 +225,11 @@ def test_morphology_location_union_round_trip():
     assert restored == original
 
 
-def test_locations_default_to_the_soma():
-    """`min_length=1` makes an empty list invalid, so a freshly added block needs a default.
-
-    Section 0 is the soma on every morphology, and `_point_on_section` resolves it without a
-    path-distance calculator, so the default block materializes on any morphology.
-    """
+def test_locations_default_to_none():
+    """A freshly added block starts with no locations; the user adds them via the 3D viewer."""
     locations = ExplicitMorphologyLocations()
 
-    assert locations.locations == (MorphologyLocationPoint(section_id=0, offset=0.0),)
+    assert locations.locations is None
 
 
 def test_only_offered_for_single_neuron_targets():

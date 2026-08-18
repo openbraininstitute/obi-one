@@ -152,9 +152,8 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         },
     }
 
-    locations: tuple[MorphologyLocationPoint, ...] = Field(
-        default=(MorphologyLocationPoint(section_id=_SOMA_SECTION_ID, offset=0.0),),
-        min_length=1,
+    locations: Annotated[tuple[MorphologyLocationPoint, ...], Field(min_length=1)] | None = Field(
+        default=None,
         title="Explicit locations",
         description=(
             "The exact points on the neuron to target. Click anywhere on the neuron in the 3D "
@@ -190,6 +189,10 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+        if not self.locations:
+            msg = "At least one explicit location is required."
+            raise ValueError(msg)
+
         path_distance_calculator = (
             MorphologyPathDistanceCalculator(morphology)
             if any(location.section_id != _SOMA_SECTION_ID for location in self.locations)
