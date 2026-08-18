@@ -9,7 +9,7 @@ name instead of carrying a node set.
 import pytest
 
 import obi_one as obi
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -120,6 +120,18 @@ class TestCompartmentSetGeneration:
 
         assert result.compartment_sets is None
         assert "compartment_sets_file" not in result.sonata_config
+
+    def test_empty_explicit_location_block_referenced_by_stimulus_is_rejected(
+        self, morphology_circuit, tmp_path
+    ):
+        locations = obi.ExplicitMorphologyLocations()
+        config = _locations_config(morphology_circuit, locations)
+
+        with pytest.raises(
+            ConfigValidationError,
+            match="must contain at least one point before they can be used",
+        ):
+            generate(config, tmp_path)
 
     def test_an_unreferenced_location_block_is_not_materialised(self, morphology_circuit, tmp_path):
         """Only locations a stimulus actually targets become compartment sets."""

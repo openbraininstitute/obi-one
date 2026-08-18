@@ -5,6 +5,7 @@ import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import (
     MorphologyLocationsBlock,
@@ -203,8 +204,11 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         if not self.locations:
-            msg = "At least one explicit location is required."
-            raise ValueError(msg)
+            msg = (
+                "Explicit morphology locations must contain at least one point before they can "
+                "be used as a stimulus or recording target."
+            )
+            raise ConfigValidationError(msg)
 
         path_distance_calculator = (
             MorphologyPathDistanceCalculator(morphology)
