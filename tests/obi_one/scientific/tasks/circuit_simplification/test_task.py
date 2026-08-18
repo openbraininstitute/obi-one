@@ -347,12 +347,12 @@ class TestTaskExecution:
         assert "node_set" not in sim_config
         assert "node_sets_file" not in sim_config
 
-    def test_execute_registers_sonata_and_exported_circuits(
+    def test_execute_registers_only_exported_circuit(
         self,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
-        """An exporter algorithm should register both SONATA and export outputs."""
+        """An exporter algorithm registers only its simulator-specific output."""
         config = self._make_config(tmp_path, algorithm="adex_brian2")
         task = CircuitSimplificationTask(config=config)
 
@@ -364,8 +364,8 @@ class TestTaskExecution:
         (sonata_output / "circuit_config.json").write_text("{}")
         export_output = sonata_output / "output_brian2_adex"
         export_output.mkdir()
-        (export_output / "circuit_config.json").write_text("{}")
-        registered_sonata = MagicMock(id="sonata-id")
+        export_config = export_output / "circuit_config.json"
+        export_config.write_text("{}")
         registered_export = MagicMock(id="brian2-id")
         execution_activity = MagicMock()
 
@@ -383,7 +383,7 @@ class TestTaskExecution:
             ) as update_activity,
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._register_output",
-                side_effect=[registered_sonata, registered_export],
+                return_value=registered_export,
             ) as register_output,
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
@@ -395,18 +395,23 @@ class TestTaskExecution:
         ):
             result = task.execute(db_client=MagicMock())
 
-        assert result == "sonata-id"
-        assert register_output.call_count == 2
+        assert result == "brian2-id"
+        register_output.assert_called_once_with(
+            db_client=register_output.call_args.kwargs["db_client"],
+            circuit_path=export_config,
+            algorithm_name="adex_brian2",
+            export_suffix="_brian2_adex",
+        )
         update_activity.assert_called_once()
-        assert update_activity.call_args.kwargs["generated"] == ["sonata-id", "brian2-id"]
+        assert update_activity.call_args.kwargs["generated"] == ["brian2-id"]
 
-    def test_execute_handles_missing_export_output(
+    def test_execute_fails_when_required_export_output_is_missing(
         self,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
         caplog,
     ):
-        """A missing exporter file should warn without failing the task."""
+        """An exporter algorithm must not fall back to its intermediate output."""
         config = self._make_config(tmp_path, algorithm="adex_brian2")
         task = CircuitSimplificationTask(config=config)
         mock_circuit = MagicMock()
@@ -427,7 +432,6 @@ class TestTaskExecution:
             ),
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._register_output",
-                return_value=None,
             ) as register_output,
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
@@ -436,12 +440,12 @@ class TestTaskExecution:
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
             ),
+            pytest.raises(RuntimeError, match="Expected brian2:adex export"),
         ):
-            result = task.execute(db_client=MagicMock())
+            task.execute(db_client=MagicMock())
 
-        assert result is None
-        register_output.assert_called_once()
-        assert "Export output not found" in caplog.text
+        register_output.assert_not_called()
+        assert "Expected brian2:adex export" in caplog.text
 
     def test_execute_skips_missing_output(
         self,
@@ -588,6 +592,12 @@ class TestTaskExecution:
             output = config.coordinate_output_root / algorithm / "output"
             output.mkdir(parents=True, exist_ok=True)
             (output / "circuit_config.json").write_text("{}")
+            _, exporter_name = ALGORITHM_EXPORT_MAP[algorithm]
+            if exporter_name:
+                export_suffix = exporter_name.replace(":", "_")
+                export_config = output / f"output_{export_suffix}" / "circuit_config.json"
+                export_config.parent.mkdir(parents=True, exist_ok=True)
+                export_config.write_text("{}")
 
         with (
             patch(
