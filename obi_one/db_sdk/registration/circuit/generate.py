@@ -197,7 +197,17 @@ def generate_sim_designer_image_asset(
         )
 
 
-def generate_additional_circuit_assets(
+def _entity_has_asset(circuit_entity: models.Circuit | None, asset_label: str) -> bool:
+    """Return True if circuit_entity already has an asset with the given label."""
+    if circuit_entity is None:
+        return False
+    existing = {
+        getattr(asset.label, "value", asset.label) for asset in (circuit_entity.assets or [])
+    }
+    return asset_label in existing
+
+
+def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-many-branches]
     circuit_path: Path,
     circuit_path_compressed: Path | None = None,
     edge_population: str | None = None,
@@ -205,12 +215,16 @@ def generate_additional_circuit_assets(
     sim_designer_image_path: Path | None = None,
     client: Client | None = None,
     circuit_entity: models.Circuit | None = None,
+    *,
+    force: bool = False,
+    include_visualization: bool = True,
 ) -> None:
     """Generate and register additional circuit assets.
 
-    Generates compressed circuit, connectivity matrices, connectivity plots,
-    and overview figures. Each step is independent — failures are logged as
-    warnings without aborting the remaining steps.
+    Always considers compressed circuit and connectivity matrices. When
+    ``include_visualization`` is True (default), also generates connectivity
+    plots and overview figures. Each step is independent — failures are logged
+    as warnings without aborting the remaining steps.
 
     If client and circuit_entity are provided, assets are registered to entitycore.
     Otherwise, only generation is performed (useful for local runs).
@@ -227,6 +241,12 @@ def generate_additional_circuit_assets(
             If provided, generation is skipped and this file is registered directly (optional).
         client: The entitycore SDK client (optional).
         circuit_entity: The registered circuit entity to attach assets to (optional).
+        force: If True, regenerate and re-upload compressed/matrices even when they
+            already exist. If False (default), skip assets that are already present.
+        include_visualization: If True (default), also generate plots and overview /
+            sim-designer images. Set False for the post-validation async job, which
+            only needs compressed + connectivity matrices (viz assets are created
+            synchronously at register/customize time).
     """
     output_root = circuit_path.parents[1]
     circuit_name = circuit_path.parent.name
@@ -238,22 +258,39 @@ def generate_additional_circuit_assets(
     viz_dir = output_root / (circuit_name + "__CIRCUIT_VIZ__")
 
     # Clean up existing output directories for idempotent reruns
-    for d in (compressed_dir, matrix_dir, plot_dir, viz_dir):
+    dirs_to_clean = [compressed_dir, matrix_dir]
+    if include_visualization:
+        dirs_to_clean.extend([plot_dir, viz_dir])
+    for d in dirs_to_clean:
         if d.exists():
             shutil.rmtree(d)
 
     # Run additional asset generation
-    try:
-        generate_compressed_circuit_asset(
-            circuit_path=circuit_path_compressed or circuit_path,
-            output_dir=compressed_dir,
-            client=client,
-            circuit_entity=circuit_entity,
+    skip_compressed = not force and _entity_has_asset(circuit_entity, "compressed_sonata_circuit")
+    if skip_compressed:
+        L.info(
+            "compressed_sonata_circuit already present on circuit %s — skipping compression",
+            getattr(circuit_entity, "id", None),
         )
-    except Exception as e:  # ruff: ignore[blind-except]
-        L.warning(f"Compressed circuit asset generation/registration failed: {e}")
+    else:
+        try:
+            generate_compressed_circuit_asset(
+                circuit_path=circuit_path_compressed or circuit_path,
+                output_dir=compressed_dir,
+                client=client,
+                circuit_entity=circuit_entity,
+            )
+        except Exception as e:  # ruff: ignore[blind-except]
+            L.warning(f"Compressed circuit asset generation/registration failed: {e}")
 
-    if edge_population is not None:
+    skip_matrices = not force and _entity_has_asset(circuit_entity, "circuit_connectivity_matrices")
+    matrix_config = None
+    if skip_matrices:
+        L.info(
+            "circuit_connectivity_matrices already present on circuit %s — skipping",
+            getattr(circuit_entity, "id", None),
+        )
+    elif edge_population is not None:
         try:
             _, matrix_config, edge_population = generate_connectivity_matrix_asset(
                 circuit_path=circuit_path,
@@ -266,17 +303,20 @@ def generate_additional_circuit_assets(
             L.warning(f"Connectivity matrix asset generation/registration failed: {e}")
             matrix_config = None
 
-        if matrix_config is not None:
-            try:
-                generate_connectivity_plot_assets(
-                    matrix_config=matrix_config,
-                    edge_population=edge_population,
-                    output_dir=plot_dir,
-                    client=client,
-                    circuit_entity=circuit_entity,
-                )
-            except Exception as e:  # ruff: ignore[blind-except]
-                L.warning(f"Connectivity plot assets generation/registration failed: {e}")
+    if not include_visualization:
+        return
+
+    if matrix_config is not None and edge_population is not None:
+        try:
+            generate_connectivity_plot_assets(
+                matrix_config=matrix_config,
+                edge_population=edge_population,
+                output_dir=plot_dir,
+                client=client,
+                circuit_entity=circuit_entity,
+            )
+        except Exception as e:  # ruff: ignore[blind-except]
+            L.warning(f"Connectivity plot assets generation/registration failed: {e}")
 
     try:
         generate_overview_image_asset(

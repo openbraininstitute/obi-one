@@ -6,6 +6,7 @@ from pathlib import Path
 
 from entitysdk import Client, MultipartUploadTransferConfig, models
 
+from obi_one.db_sdk.db_sdk import _upload_or_replace_directory, _upload_or_replace_file
 from obi_one.utils.io import convert_image_to_webp
 
 L = logging.getLogger(__name__)
@@ -182,18 +183,18 @@ def register_asset(
         if num_ignored > 0:
             L.warning(f"{num_ignored} '.DS_Store' file(s) found in '{file_path}' - ignoring")
         files_in_dir = {k: v for k, v in files_in_dir.items() if ".ds_store" not in k.lower()}
-        asset = client.upload_directory(
-            label=asset_label,  # ty:ignore[invalid-argument-type]
+        asset = _upload_or_replace_directory(
+            client,
+            registered_circuit,
+            asset_label=asset_label,
             name=asset_label,
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
-            paths=files_in_dir,  # ty:ignore[invalid-argument-type]
+            paths=files_in_dir,
         )
     else:
-        asset = client.upload_file(
-            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
+        asset = _upload_or_replace_file(
+            client,
+            registered_circuit,
+            asset_label=asset_label,
             file_path=file_path,
             file_content_type=content_type,
         )
@@ -211,14 +212,14 @@ def add_compressed_circuit_asset(
         msg = f"Compressed circuit file '{compressed_file}' does not exist!"
         raise FileNotFoundError(msg)
 
-    # Upload compressed file asset
+    # Upload compressed file asset (replace if present)
     transfer_config = MultipartUploadTransferConfig()
-    compressed_asset = client.upload_file(
-        entity_id=registered_circuit.id,
-        entity_type=models.Circuit,
+    compressed_asset = _upload_or_replace_file(
+        client,
+        registered_circuit,
+        asset_label=asset_label,
         file_path=compressed_file,
-        file_content_type="application/gzip",  # ty:ignore[invalid-argument-type]
-        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+        file_content_type="application/gzip",
         transfer_config=transfer_config,
     )
     L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
@@ -241,13 +242,13 @@ def add_connectivity_matrix_asset(
     }
     L.info(f"{len(matrix_files)} files in '{matrix_dir}'")
 
-    # Upload directory asset
-    matrix_asset = client.upload_directory(
-        label=asset_label,  # ty:ignore[invalid-argument-type]
+    # Upload directory asset (replace if present)
+    matrix_asset = _upload_or_replace_directory(
+        client,
+        registered_circuit,
+        asset_label=asset_label,
         name=asset_label,
-        entity_id=registered_circuit.id,
-        entity_type=models.Circuit,
-        paths=matrix_files,  # ty:ignore[invalid-argument-type]
+        paths=matrix_files,
     )
     L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
     return matrix_asset
@@ -293,12 +294,12 @@ def add_image_assets(
         if "." + fmt != file_path.suffix:
             msg = f"File format mismatch '{file_path.name}' (.{fmt} required)!"
             raise ValueError(msg)
-        plot_asset = client.upload_file(
-            entity_id=registered_circuit.id,
-            entity_type=models.Circuit,
+        plot_asset = _upload_or_replace_file(
+            client,
+            registered_circuit,
+            asset_label=asset_label,
             file_path=file_path,
-            file_content_type=f"image/{fmt}",  # ty:ignore[invalid-argument-type]
-            asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+            file_content_type=f"image/{fmt}",
         )
         L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
         plot_assets.append(plot_asset)

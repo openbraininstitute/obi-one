@@ -5,11 +5,16 @@ from pydantic import Field
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.efeatures import (  # ruff: ignore[line-too-long]
+    EFeature,
+    EFeatureUnion,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long]
     APWaveformProtocol,
     IDRestProtocol,
     IDThreshProtocol,
     IVProtocol,
+    Protocol,
     ProtocolUnion,
     SAHPProtocol,
 )
@@ -101,7 +106,22 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
     dimension.
     """
 
-    protocols: tuple[ProtocolUnion, ...] = Field(  # ty:ignore[invalid-assignment]
+    # declares the universal EFeatureUnion once for the whole schema. The UI dereferences the
+    # OpenAPI document before validating, so every occurrence of the 146-branch union is copied:
+    # one costs ~1.2 MB of generated validator code, 26 cost ~30 MB and exceed the browser's
+    # stack. Keep each protocol's own ``features`` annotation narrow.
+    extra_features_by_protocol: dict[str, tuple[EFeatureUnion, ...]] = Field(
+        default_factory=dict,
+        title="Extra features by protocol",
+        description=(
+            "eFEL features added beyond a protocol's own default set, keyed by the"
+            " protocol's type name (e.g. ``IDRestProtocol``). Any feature in the eFEL"
+            " catalogue is accepted for any protocol. Duplicates of a protocol's"
+            " defaults are ignored."
+        ),
+    )
+
+    protocols: tuple[ProtocolUnion, ...] = Field(
         default_factory=_default_protocols,
         title="Protocols",
         description=(
@@ -111,13 +131,25 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
         ),
     )
 
+    def features_for(self, protocol: Protocol) -> tuple[EFeature, ...]:
+        """Return ``protocol``'s own features followed by its extras.
+
+        An extra that duplicates one of the protocol's own features is dropped, so the
+        default's setting overrides win.
+        """
+        extras = self.extra_features_by_protocol.get(type(protocol).__name__, ())
+        already_selected = {type(feature).__name__ for feature in protocol.features}
+        return (
+            *protocol.features,
+            *(feature for feature in extras if type(feature).__name__ not in already_selected),
+        )
+
 
 class ProtocolAndFeatureSelection(Block):
-    """Per-protocol picker for timing, amplitudes, and chosen efeatures.
+    """Choose the protocols, amplitudes, and eFEL features for your recordings.
 
-    The selection itself lives in :class:`SelectEFeaturesByProtocol`, exposed as
-    a single object field so the schema advertises ``type: object`` as the
-    ``select_efeatures_by_protocol`` component spec requires.
+    Select which electrical features (efeatures) to extract for each protocol. The available
+    protocols and amplitudes depend on the recordings you choose.
     """
 
     selection: SelectEFeaturesByProtocol = Field(

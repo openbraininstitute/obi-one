@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from pydantic import ValidationError
 
 import obi_one as obi
 
@@ -128,8 +129,17 @@ def test_deserialization_of_deprecated_neuron_set_reference_raises(filename):
     deprecated_json_path = MODEL_DUMPS_DIR / filename
 
     data = json.loads(deprecated_json_path.read_bytes())
-    with pytest.raises(DeprecationWarning, match="NeuronSetReference is deprecated"):
+    with pytest.raises(ValueError, match="NeuronSetReference is deprecated"):
         obi.deserialize_obi_object_from_json_data(data)
 
-    with pytest.raises(DeprecationWarning, match="NeuronSetReference is deprecated"):
+    with pytest.raises(ValueError, match="NeuronSetReference is deprecated"):
         obi.deserialize_obi_object_from_json_file(deprecated_json_path)
+
+
+@pytest.mark.parametrize("filename", DEPRECATED_SERIALIZATION_FILES)
+def test_deprecated_neuron_set_reference_is_wrapped_by_pydantic(filename):
+    """The deprecation must surface as a pydantic ValidationError, not a bare exception."""
+    data = json.loads((MODEL_DUMPS_DIR / filename).read_bytes())
+
+    with pytest.raises(ValidationError, match="NeuronSetReference is deprecated"):
+        obi.deserialize_obi_object_from_json_data(data)
