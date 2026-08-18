@@ -993,14 +993,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.8"
+version = "0.19.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/f7/3fcda544cd6f86c0deb1d4442f7f5155971c21a1dd2722e540d108dfc9c6/entitysdk-0.19.8.tar.gz", hash = "sha256:fd5fe5313c0facb144e66f3d9553d1342b91e46f9f38063140fa0632d0b59b4c", size = 92353, upload-time = "2026-07-23T14:05:30.306Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/b5/f8909e412a2454d29ffa5ba0e1c1e4a98dd4621f1aae86df99e9e79e29f2/entitysdk-0.19.14.tar.gz", hash = "sha256:e9486123b0be8e40426b776284189b5975a82df8b81404cec365ca7873455b51", size = 93790, upload-time = "2026-08-14T14:22:16.367Z" }
 
 [[package]]
 name = "executing"
@@ -2466,7 +2466,7 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'notebooks'" },
     { name = "jupyterlab", marker = "extra == 'notebooks'", specifier = ">=4.4.8" },
     { name = "libsonata", specifier = ">=0.2.0" },
-    { name = "morph-spines" },
+    { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
     { name = "neurom" },

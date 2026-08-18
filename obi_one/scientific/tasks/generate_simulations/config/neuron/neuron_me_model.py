@@ -39,7 +39,6 @@ MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discrimin
 class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
@@ -105,6 +104,9 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
             MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/memodel-neuronal-manipulation-properties"
+            ),
         },
     }
 

@@ -9,7 +9,7 @@ that is an error.
 import pytest
 
 import obi_one as obi
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
 from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
 from obi_one.scientific.blocks.neuron_sets.id import (
@@ -210,7 +210,7 @@ class TestNeuronSetsReachNodeSetsFile:
             blocks={name: DEPRECATED_NEURON_SETS[name].model_copy(deep=True)},
         )
 
-        with pytest.raises(NotImplementedError, match=f"{name} is deprecated"):
+        with pytest.raises(ConfigValidationError, match=f"{name} is deprecated"):
             generate(config, tmp_path)
 
     def test_node_set_is_named_after_the_dictionary_key_not_the_block(self, circuit, tmp_path):

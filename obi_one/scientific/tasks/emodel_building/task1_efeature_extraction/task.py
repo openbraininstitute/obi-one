@@ -7,13 +7,15 @@ from typing import Any, ClassVar
 
 import entitysdk
 import httpx
-from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
 from obi_one.scientific.tasks.emodel_building import _shared
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.protocol_and_feature_selection import (  # ruff: ignore[line-too-long]
+    SelectEFeaturesByProtocol,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.settings import (
     Settings,
 )
@@ -60,21 +62,23 @@ def _build_files_metadata(
 
 
 def _build_targets(
-    protocols: tuple,
+    selection: SelectEFeaturesByProtocol,
     global_efel_settings: dict,
 ) -> tuple[list[dict], list[str]]:
     """Flatten the per-protocol selection into ``bluepyefe.extract`` target rows.
 
     For every protocol, every ``(amplitude, is_validation)`` pair in
-    ``extraction_amplitudes`` and every feature in ``features`` yields one target.
-    Each target's ``efel_settings`` apply the cascade feature > protocol > global.
+    ``extraction_amplitudes`` and every feature in ``selection.features_for(protocol)``
+    yields one target. Each target's ``efel_settings`` apply the cascade
+    feature > protocol > global.
     Amplitudes flagged ``is_validation`` are returned as ``{protocol}_{amplitude}``
     validation-protocol names for the recipe.
     """
     rows: list[dict] = []
     validation_names: list[str] = []
-    for protocol in protocols:
+    for protocol in selection.protocols:
         protocol_overrides = protocol.efel_settings_overrides()
+        features = selection.features_for(protocol)
         for amplitude, is_validation in protocol.extraction_amplitudes:
             if is_validation:
                 validation_names.append(f"{protocol.protocol_name}_{amplitude}")
@@ -91,7 +95,7 @@ def _build_targets(
                         **feature.efel_settings_overrides(),
                     },
                 }
-                for feature in protocol.features
+                for feature in features
             )
     return rows, validation_names
 
@@ -160,8 +164,6 @@ class EModelEFeatureExtractionTask(Task):
 
     config: EModelEFeatureExtractionSingleConfig
 
-    _registered_task_result_id: str | None = PrivateAttr(default=None)
-
     def _download_recordings(
         self,
         ephys_data_root: Path,
@@ -193,8 +195,8 @@ class EModelEFeatureExtractionTask(Task):
             TargetsConfiguration,
         )
 
-        protocols = self.config.efeatures_by_protocol.selection.protocols
-        ecode_timing = {p.protocol_name: p.stim_timing() for p in protocols}
+        selection = self.config.efeatures_by_protocol.selection
+        ecode_timing = {p.protocol_name: p.stim_timing() for p in selection.protocols}
 
         files = _build_files_metadata(nwb_paths_with_ljp=downloaded, ecode_timing=ecode_timing)
         if not files:
@@ -202,7 +204,7 @@ class EModelEFeatureExtractionTask(Task):
             raise FileNotFoundError(msg)
 
         targets, validation_names = _build_targets(
-            protocols, self.config.settings.global_efel_settings()
+            selection, self.config.settings.global_efel_settings()
         )
         configuration = TargetsConfiguration(files=files, targets=targets, protocols_rheobase=[])
         return configuration, validation_names
@@ -212,7 +214,7 @@ class EModelEFeatureExtractionTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> Path:
         from bluepyemodel.access_point import (  # ruff: ignore[import-outside-top-level]
             get_access_point,
@@ -222,6 +224,10 @@ class EModelEFeatureExtractionTask(Task):
         )
 
         coord_root = Path(self.config.coordinate_output_root).resolve()
+
+        execution_activity = self._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
 
         # 1. Download the NWB ephys assets from entitycore (with per-recording LJP).
         downloaded = self._download_recordings(coord_root / "ephys_data", db_client)
@@ -253,15 +259,23 @@ class EModelEFeatureExtractionTask(Task):
             extract_save_features_protocols(access_point=access_point, mapper=map)
 
         # 5. Register TaskResult entity and upload assets to entitycore.
+        registered_task_result_id: str | None = None
         if db_client is not None:
             try:
-                self._register_task_result(coord_root, db_client)
+                registered_task_result_id = self._register_task_result(coord_root, db_client)
             except httpx.HTTPError as e:
                 L.warning(
                     "TaskResult registration failed (extraction output is still"
                     " available locally at %s): %s",
                     coord_root,
                     e,
+                )
+
+            if registered_task_result_id is not None:
+                self._update_execution_activity(
+                    db_client=db_client,
+                    execution_activity=execution_activity,
+                    generated=[registered_task_result_id],
                 )
 
         return coord_root
@@ -309,8 +323,11 @@ class EModelEFeatureExtractionTask(Task):
         self,
         coord_root: Path,
         db_client: entitysdk.client.Client,
-    ) -> None:
-        """Register a TaskResult entity and upload extraction output assets."""
+    ) -> str | None:
+        """Register a TaskResult entity and upload extraction output assets.
+
+        Returns the registered TaskResult ID, or None if registration fails.
+        """
         import json  # ruff: ignore[import-outside-top-level]
 
         from entitysdk.models import TaskResult  # ruff: ignore[import-outside-top-level]
@@ -332,14 +349,11 @@ class EModelEFeatureExtractionTask(Task):
         )
         L.info("TaskResult entity registered: %s", task_result.id)
 
-        # Store registered entity ID on the task instance for external access
-        self._registered_task_result_id = str(task_result.id)
-
         # Upload extracted features JSON.
         features_path = coord_root / EXTRACTED_FEATURES_FILENAME
         if features_path.exists():
             db_client.upload_file(
-                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                entity_id=task_result.id,
                 entity_type=TaskResult,
                 file_path=features_path,
                 asset_label=AssetLabel.efeature_extraction_features,
@@ -368,7 +382,7 @@ class EModelEFeatureExtractionTask(Task):
                     paths[rel] = str(file_path)
 
             db_client.upload_directory(
-                entity_id=task_result.id,  # ty:ignore[invalid-argument-type]
+                entity_id=task_result.id,
                 entity_type=TaskResult,
                 name="figures",
                 paths={Path(k): Path(v) for k, v in paths.items()},
@@ -402,3 +416,5 @@ class EModelEFeatureExtractionTask(Task):
             "Linked %d input recordings to TaskResult.",
             len(self.config.initialize.electrical_cell_recording),
         )
+
+        return str(task_result.id)

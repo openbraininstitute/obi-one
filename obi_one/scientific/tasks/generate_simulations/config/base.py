@@ -69,7 +69,6 @@ class BlockGroup(StrEnum):
 class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
-    single_coord_class_name: ClassVar[str]
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
@@ -130,6 +129,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/circuit-neuronal-manipulation-properties-by-neuron-set"
+            ),
         },
     }
 

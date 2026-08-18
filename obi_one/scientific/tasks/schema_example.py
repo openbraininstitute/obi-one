@@ -44,7 +44,6 @@ class EntityDependentBlockExample(Block):
 class SchemaExampleScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "Schema Example"
     description: ClassVar[str] = "Useful for testing and generating example schema."
 
