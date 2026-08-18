@@ -14,6 +14,9 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+)
 from obi_one.scientific.library.morphology_locations import (
     _PRE_IDX,
     _SEC_ID,
@@ -168,7 +171,14 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
     )
 
     # Re-declared only to hide the parent's sampling knobs: locations are given outright, so
-    # `_make_points` never reads them.
+    # `_make_points` never reads them. neuron_set is also hidden because explicit locations
+    # are gated to single-neuron targets where the default is always correct.
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Neuron Set",
+        description="Unused: explicit locations target the single neuron in the circuit.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
     random_seed: NonNegativeInt = Field(
         default=0,
         title="Random Seed",
