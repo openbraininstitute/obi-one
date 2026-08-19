@@ -4,7 +4,6 @@ from typing import Annotated, ClassVar
 from pydantic import Discriminator, Field
 
 from obi_one.core.block import Block
-from obi_one.core.block_reference import BlockReference
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
@@ -66,10 +65,6 @@ SynapticModelPlacerUnion = Annotated[
 ]
 
 
-class SynapticModelPlacerReference(BlockReference):
-    allowed_block_types = SynapticModelPlacerUnion
-
-
 class MEModelSynapticModelPlacementScanConfig(ScanConfig):
     """Form for placing synaptic models on a single ME-model."""
 
@@ -86,11 +81,11 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
             BlockGroup.SYNAPSE_GROUPS,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            SynapticModelReference.__name__: "Default: Synaptic Model",
+            SynapticModelReference.__name__: "Select a synaptic model",
             AllDistributionsReference.__name__: (
                 "Default: Built-in distribution (see field description)"
             ),
-            MorphologyLocationsReference.__name__: "Default: Placement Strategy",
+            MorphologyLocationsReference.__name__: "Select a placement strategy",
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
@@ -179,7 +174,7 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
         description="Incoming synapse groups to attach to the ME-model.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [SynapticModelPlacerReference.__name__],
+            SchemaKey.REFERENCE_TYPES: [],
             SchemaKey.SINGULAR_NAME: "Synaptic Model Placer",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_GROUPS,
             SchemaKey.GROUP_ORDER: 1,
