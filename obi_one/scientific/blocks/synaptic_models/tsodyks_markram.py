@@ -72,6 +72,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_HILL_COEFFICIENT.label,
         },
     )
 
@@ -85,6 +86,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE.label,
         },
     )
 
@@ -100,6 +102,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE_SCALE_FACTOR.label,
         },
     )
 
@@ -113,6 +116,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_FACILITATION_TIME.label,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -127,6 +131,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DEPRESSION_TIME.label,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -141,6 +146,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_N_RRP_VESICLES.label,
         },
     )
 
@@ -154,6 +160,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DECAY_TIME.label,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -169,6 +176,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_SYN.label,
         },
     )
 
@@ -183,6 +191,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DELAY.label,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
