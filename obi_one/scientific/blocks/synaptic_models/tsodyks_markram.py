@@ -1,5 +1,6 @@
 import abc
 import logging
+from typing import ClassVar
 
 from pandas import DataFrame
 from pydantic import Field
@@ -299,6 +300,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     """Excitatory Tsodyks-Markram synaptic model."""
 
+    title: ClassVar[str] = "Excitatory Tsodyks-Markram"
+
     @property
     def syn_type_id(self) -> int:
         return 113  # 128, 130, 114, 123 are other values in edges files
@@ -306,6 +309,8 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
 class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     """Inhibitory Tsodyks-Markram synaptic model."""
+
+    title: ClassVar[str] = "Inhibitory Tsodyks-Markram"
 
     @property
     def syn_type_id(self) -> int:

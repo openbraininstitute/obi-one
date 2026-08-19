@@ -37,6 +37,8 @@ class BlockGroup(StrEnum):
 class SynapticModelPlacer(Block):
     """Places synapses with a given synaptic model on a single-cell morphology."""
 
+    title: ClassVar[str] = "Synaptic Model Placer"
+
     synaptic_model: SynapticModelReference = Field(
         title="Synaptic model",
         description="Synaptic physiology model assigned to this incoming synapse group.",
@@ -96,6 +98,8 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
 
     class Initialize(Block):
         """ME-model to use as the postsynaptic cell."""
+
+        title: ClassVar[str] = "ME-model Initialization"
 
         me_model: MEModelFromID = Field(
             title="ME-model",
