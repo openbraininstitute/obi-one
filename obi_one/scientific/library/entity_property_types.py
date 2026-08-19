@@ -39,6 +39,7 @@ class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
     SHOW_MORPHOLOGY_LOCATIONS = "ShowMorphologyLocations"
+    SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS = "ShowExplicitMorphologyLocations"
     SHOW_BIOPHYSICAL_NEURON_SETS = "ShowBiophysicalNeuronSets"
     SHOW_POINT_NEURON_SETS = "ShowPointNeuronSets"
     SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"

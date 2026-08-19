@@ -25,6 +25,7 @@ from app.services.circuit_visualization import (
     get_morphology,
     get_morphology_data,
     get_nodes,
+    load_morphology,
     resolve_morph_path,
 )
 
@@ -399,6 +400,62 @@ def assert_sections(sections: list[Section]):
     assert soma.parent_id is None
 
     assert axon_0.parent_id == "soma"
+
+
+# A dendrite root written before the axon root. In file order the first section is a
+# basal dendrite; under nrn_order NEURON hoists the axon to the front. Any morphology
+# whose roots already happen to be axon-first cannot tell the two orderings apart, so
+# the ordering has to be pinned with a fixture that actually differs.
+_DENDRITE_BEFORE_AXON_SWC = """\
+1 1 0 0 0 5 -1
+2 3 0 5 0 1 1
+3 3 0 10 0 1 2
+4 2 0 -5 0 1 1
+5 2 0 -10 0 1 4
+"""
+
+_SWC_TYPE_AXON = 2
+_SWC_TYPE_BASAL_DENDRITE = 3
+
+
+@pytest.fixture
+def dendrite_before_axon_morphology(tmp_path) -> Path:
+    path = tmp_path / "dendrite_before_axon.swc"
+    path.write_text(_DENDRITE_BEFORE_AXON_SWC)
+    return path
+
+
+def test_load_morphology_uses_nrn_order(dendrite_before_axon_morphology):
+    """Sections must be ordered as NEURON orders them, not as the file lists them.
+
+    A section id is its position in the section list, and the morphology-location
+    blocks resolve `section_id` against an nrn_order morphology. Reading the file in
+    its own order would hand out ids that point at a different branch.
+    """
+    morphology = load_morphology(dendrite_before_axon_morphology, None)
+
+    assert [int(section.type) for section in morphology.sections] == [
+        _SWC_TYPE_AXON,
+        _SWC_TYPE_BASAL_DENDRITE,
+    ]
+
+
+def test_sonata_section_id_resolves_to_the_reported_section(dendrite_before_axon_morphology):
+    """`sonata_section_id` must survive the round trip the location blocks perform.
+
+    `ExplicitMorphologyLocations` turns a section id back into geometry with
+    `morphology.section(section_id - 1)`, so every reported id has to land on the very
+    section whose points were sent alongside it.
+    """
+    morphology = load_morphology(dendrite_before_axon_morphology, None)
+
+    for section in get_morphology_data(morphology):
+        if section["id"] == "soma":
+            assert section["sonata_section_id"] == 0
+            continue
+
+        resolved = morphology.section(section["sonata_section_id"] - 1)
+        assert resolved.points.tolist() == section["points"]
 
 
 def test_get_morphology(mock_client, test_circuit_dir):
