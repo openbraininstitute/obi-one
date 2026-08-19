@@ -483,11 +483,11 @@ class CircuitSimplificationTask(Task):
                 registration_path = simplified_circuit_path
                 if exporter_name:
                     export_suffix = exporter_name.replace(":", "_")
-                    registration_path = (
-                        simplified_circuit_path.parent
-                        / f"output_{export_suffix}"
-                        / "circuit_config.json"
+                    simplified_output_dir = simplified_circuit_path.parent
+                    export_dir = simplified_output_dir.parent / (
+                        f"{simplified_output_dir.name}_{export_suffix}"
                     )
+                    registration_path = export_dir / "circuit_config.json"
                     if not registration_path.exists():
                         message = (
                             f"Expected {exporter_name} export at {registration_path}"
