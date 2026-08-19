@@ -14,6 +14,7 @@ from obi_one.core.exception import ConfigValidationError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
+from obi_one.scientific.tasks.circuit_simplification import CircuitSimplificationScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
@@ -139,6 +140,7 @@ def activate_scan_config_endpoints() -> None:
         (IonChannelModelSimulationScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
         (CircuitExtractionScanConfig, "generate", "", False),
+        (CircuitSimplificationScanConfig, "generate", "", False),
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
         (EMSynapseMappingScanConfig, "generate", "", False),
