@@ -53,11 +53,7 @@ _DEFAULT_DELAY = DistributionDefault(
 
 
 class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
-    """Tsodyks-Markram synaptic model with optional distribution references.
-
-    When a distribution reference is omitted, the built-in fallback described in the
-    corresponding field is used.
-    """
+    """Tsodyks-Markram synaptic model with optional distribution references."""
 
     _synapse_model_family = "TM_model"
 
@@ -372,10 +368,13 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
 
 class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
-    """Excitatory Tsodyks-Markram synaptic model.
+    """Tsodyks-Markram model of short-term plasticity at excitatory chemical synapses.
 
-    Optional distribution references use the built-in defaults documented on each field when
-    omitted.
+    It models how presynaptic activity changes synaptic efficacy through utilization and
+    recovery of a finite pool of synaptic resources, capturing facilitation and depression.
+
+    Original model: Tsodyks & Markram (1997)
+    https://doi.org/10.1073/pnas.94.2.719
     """
 
     title: ClassVar[str] = "Excitatory Tsodyks-Markram"
@@ -386,10 +385,13 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
 
 class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
-    """Inhibitory Tsodyks-Markram synaptic model.
+    """Tsodyks-Markram model of short-term plasticity at inhibitory chemical synapses.
 
-    Optional distribution references use the built-in defaults documented on each field when
-    omitted.
+    It models how presynaptic activity changes synaptic efficacy through utilization and
+    recovery of a finite pool of synaptic resources, capturing facilitation and depression.
+
+    Original model: Tsodyks & Markram (1997)
+    https://doi.org/10.1073/pnas.94.2.719
     """
 
     title: ClassVar[str] = "Inhibitory Tsodyks-Markram"
