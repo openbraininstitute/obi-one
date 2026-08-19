@@ -95,7 +95,7 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
     }
 
     class Initialize(Block):
-        """Inputs supplied when initializing synapse placement."""
+        """ME-model to use as the postsynaptic cell."""
 
         me_model: MEModelFromID = Field(
             title="ME-model",
@@ -116,8 +116,8 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
         },
     )
     initialize: Initialize = Field(
-        title="Initialization",
-        description="Inputs supplied when initializing synapse placement.",
+        title="ME-model",
+        description="ME-model to use as the postsynaptic cell.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.ME_MODEL,
