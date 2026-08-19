@@ -2366,6 +2366,7 @@ dependencies = [
     { name = "pylmesh" },
     { name = "python-multipart" },
     { name = "scipy" },
+    { name = "sonata-simplify" },
 ]
 
 [package.optional-dependencies]
@@ -2488,6 +2489,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
+    { name = "sonata-simplify", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
@@ -3384,6 +3386,23 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1f/ea/49c993d6dfdd7338c9b1000a0f36817ed7ec84577ae2e52f890d1a4ff909/smmap-5.0.3.tar.gz", hash = "sha256:4d9debb8b99007ae47165abc08670bd74cb74b5227dda7f643eccc4e9eb5642c", size = 22506, upload-time = "2026-03-09T03:43:26.1Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl", hash = "sha256:c106e05d5a61449cf6ba9a1e650227ecfb141590d2a98412103ff35d89fc7b2f", size = 24390, upload-time = "2026-03-09T03:43:24.361Z" },
+]
+
+[[package]]
+name = "sonata-simplify"
+version = "0.2.1"
+source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
+dependencies = [
+    { name = "click" },
+    { name = "h5py" },
+    { name = "numpy" },
+    { name = "pydantic" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.1/sonata_simplify-0.2.1.tar.gz", hash = "sha512:ab79ad8f6f4893879cb87ad3624845ad0e0ef5e351fe1c377660e6812064981565b25eebfaf359c971a9b59efa061e799d88bc69c8db417824ea1758e4585be1", size = 2216676, upload-time = "2026-08-13T11:08:43.8Z" }
+wheels = [
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.1/sonata_simplify-0.2.1-py3-none-any.whl", hash = "sha512:87ec98338972e5c03b8605682402807b2819538813dc80320c0f7e337a4c1a1b9ea2d05a10dc0a6a7d3dfa4c77893b2b9e6a242d3445c899456ed14c84d5d157", size = 197947, upload-time = "2026-08-13T11:08:43.408Z" },
 ]
 
 [[package]]
