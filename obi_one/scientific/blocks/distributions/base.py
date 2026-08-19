@@ -13,33 +13,37 @@ class Distribution(Block, abc.ABC):
     min: float | list[float] | None = Field(
         default=None,
         title="Minimum",
-        description="Minimum value below which we truncate.",
+        description="Optional lower bound applied to the generated values.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: -1,
         },
     )
     max: float | list[float] | None = Field(
         default=None,
         title="Maximum",
-        description="Maximum value above which we truncate.",
+        description="Optional upper bound applied to the generated values.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: -1,
         },
     )
     include_min: bool = Field(
         default=True,
         title="Include minimum",
-        description="Include minimum value (if specified).",
+        description="Whether the lower bound is inclusive when a minimum is set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: -1,
         },
     )
     include_max: bool = Field(
         default=False,
         title="Include maximum",
-        description="Include maximum value (if specified).",
+        description="Whether the upper bound is inclusive when a maximum is set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: -1,
         },
     )
 
