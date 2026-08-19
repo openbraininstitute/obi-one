@@ -98,12 +98,9 @@ class ByNeuronModification(ComplexVariableHolder):
 class BySectionListMechanismVariableNeuronalManipulation(Block):
     """Set values for an ion channel variable in each section list where the ion channel exists.
 
-
-    Example section lists: axonal, apical, basal and somatic.
-
-
-    These correspond to `section lists` in the NEURON simulator nomenclature. See [here]
-    (https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist).
+    Example section lists: axonal, apical, basal and somatic. These correspond to `section lists`
+    in the NEURON simulator nomenclature. See
+    [SectionList](https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology.html)
     """
 
     title: ClassVar[str] = "Variable Modification by Section List"
@@ -240,12 +237,9 @@ class CircuitBySectionListMechanismVariableNeuronalManipulation(
 ):
     """Set values for an ion channel variable in each section list where the ion channel exists.
 
-
-    Example section lists: axonal, apical, basal and somatic.
-
-
-    These correspond to `section lists` in the NEURON simulator nomenclature. See [here]
-    (https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist).
+    Example section lists: axonal, apical, basal and somatic. These correspond to `section lists`
+    in the NEURON simulator nomenclature. See
+    [SectionList](https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology.html)
     """
 
     title: ClassVar[str] = "Variable Modification by Section List"

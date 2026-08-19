@@ -1,19 +1,20 @@
 [project]
 name = "obi-one"
 authors = [
-  { name="James Isbister", email="james.isbister@openbraininstitute.org" },
-  { name="Christoph Pokorny", email="christoph.pokorny@openbraininstitute.org" },
-  { name="Daniela Egas Santander", email="daniela.egassantander@openbraininstitute.org" },
-  { name="Gianluca Ficarelli", email="gianluca.ficarelli@openbraininstitute.org" },
-  { name="Michael Reimann", email="michael.reimann@openbraininstitute.org" },
-  { name="Darshan Mandge", email="darshan.mandge@openbraininstitute.org" },
-  { name="Ilkan Kilic", email="ilkan.kilic@openbraininstitute.org" },
-  { name="Aurélien Jaquier", email="aurelien.jaquier@openbraininstitute.org" },
-  { name="Dries Verachtert", email="dries.verachtert@openbraininstitute.org" },
-  { name="Jean-Denis Courcol", email="jean-denis.courcol@openbraininstitute.org"},
-  { name="Armando Romani", email="armando.romani@openbraininstitute.org" },
-  { name="Mike Geveart", email="michael.gevaert@openbraininstitute.org" },
-  { name="Nicolas Frank", email="nicolas.frank@openbraininstitute.org" }
+    { name = "James Isbister", email = "james.isbister@openbraininstitute.org" },
+    { name = "Christoph Pokorny", email = "christoph.pokorny@openbraininstitute.org" },
+    { name = "Daniela Egas Santander", email = "daniela.egassantander@openbraininstitute.org" },
+    { name = "Gianluca Ficarelli", email = "gianluca.ficarelli@openbraininstitute.org" },
+    { name = "Michael Reimann", email = "michael.reimann@openbraininstitute.org" },
+    { name = "Darshan Mandge", email = "darshan.mandge@openbraininstitute.org" },
+    { name = "Ilkan Kilic", email = "ilkan.kilic@openbraininstitute.org" },
+    { name = "Aurélien Jaquier", email = "aurelien.jaquier@openbraininstitute.org" },
+    { name = "Dries Verachtert", email = "dries.verachtert@openbraininstitute.org" },
+    { name = "Jean-Denis Courcol", email = "jean-denis.courcol@openbraininstitute.org" },
+    { name = "Armando Romani", email = "armando.romani@openbraininstitute.org" },
+    { name = "Mike Geveart", email = "michael.gevaert@openbraininstitute.org" },
+    { name = "Nicolas Frank", email = "nicolas.frank@openbraininstitute.org" },
+    { name = "Bilal Meddah", email = "bilal.meddah@openbraininstitute.org" },
 ]
 description = "Standardized library of functions and workflows for biophysically-detailed brain modeling"
 readme = "README.md"
@@ -45,7 +46,7 @@ dependencies = [
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
     "connectome-manipulator>=1.0.4",
-    "morph_spines",
+    "morph_spines>=1.1.0",
     "morph-tool",
     "neurom",
     "libsonata>=0.2.0",
@@ -60,21 +61,13 @@ dependencies = [
 
 [project.optional-dependencies]
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
-emodel = [
-    "bluepyemodel>=1.0.43",
-]
+emodel = ["bluepyemodel>=1.0.43"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation
-connectivity = [
-    "connectome-analysis>=1.0.1",
-    "networkx>=3.4.2",
-]
+connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 
 # MESHING - optional, private dependency needed to create meshes from morphologies
-meshing = [
-    "neuromorphomesh",
-    "ultraliser>=2.1.9"
-]
+meshing = ["neuromorphomesh", "ultraliser>=2.1.9"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
@@ -101,16 +94,12 @@ service = [
 ]
 
 # ALL - convenience alias to install all optional dependencies
-all = [
-    "obi-one[connectivity,emodel,meshing,notebooks,service]",
-]
+all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # Requires MPI-enabled h5py and NEURON built from source.
 # Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
-bluerecording = [
-    "bluerecording>=0.4.6",
-]
+bluerecording = ["bluerecording>=0.4.6"]
 
 [dependency-groups]
 dev = [
@@ -123,17 +112,10 @@ dev = [
     "ruff",
     "ty>=0.0.33",
 ]
-docs = [
-    "mkdocs>=1.6.1",
-    "mkdocs-material>=9.7.1",
-]
+docs = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.1"]
 
 [build-system]
-requires = [
-    "setuptools>=42",
-    "setuptools-scm[toml]>=6.2",
-    "wheel",
-]
+requires = ["setuptools>=42", "setuptools-scm[toml]>=6.2", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project.urls]
@@ -161,7 +143,7 @@ url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaw
 explicit = true
 
 [tool.uv.sources]
-repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch="main" }
+repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch = "main" }
 neuromorphomesh = { index = "obi-codeartifact" }
 ultraliser = { index = "obi-codeartifact" }
 
@@ -187,29 +169,29 @@ force-exclude = true
 preview = true
 select = ["ALL"]
 ignore = [
-    "stdlib-module-shadowing",    # Module is shadowing a Python builtin module
-    "missing-type-args",  # Missing type annotation for `*args`
-    "missing-type-kwargs",  # Missing type annotation for `**kwargs`
-    "any-type",  # Dynamically typed expressions (typing.Any) are disallowed
-    "missing-trailing-comma",  # Trailing comma (to have similar behavior to black)
-    "missing-copyright-notice",  # Missing copyright notice at top of file
-    "single-line-implicit-string-concatenation",  # single line implicit string concatenation (disabling suggested by ruff formatter)
-    "invalid-function-name",    # function name should be lowercase
-    "undocumented-public-module",    # Missing docstring in public module
-    "undocumented-public-class",    # Missing docstring in public class
-    "undocumented-public-method",    # Missing docstring in public method
-    "undocumented-public-function",    # Missing docstring in public function
-    "undocumented-public-package",    # Missing docstring in public package
-    "undocumented-public-nested-class",    # Missing docstring in public nested class
-    "docstring-missing-returns",  # `return` is not documented in docstring
-    "docstring-missing-yields",  # `yield` is not documented in docstring
-    "docstring-missing-exception",  # Raised exception missing from docstring
-    "unnecessary-assign",  # Unnecessary assignment before `return` statement
-    "unused-async",  # Function is declared `async`, but doesn't `await` or use `async` features.
-    "line-contains-todo",  # Line contains TODO, consider resolving the issue
-    "missing-todo-author",   # Missing author in TODO
-    "missing-todo-link",   # Missing issue link for this TODO
-    "missing-blank-line-after-summary",    # 1 blank line required between summary line and description
+    "stdlib-module-shadowing",                   # Module is shadowing a Python builtin module
+    "missing-type-args",                         # Missing type annotation for `*args`
+    "missing-type-kwargs",                       # Missing type annotation for `**kwargs`
+    "any-type",                                  # Dynamically typed expressions (typing.Any) are disallowed
+    "missing-trailing-comma",                    # Trailing comma (to have similar behavior to black)
+    "missing-copyright-notice",                  # Missing copyright notice at top of file
+    "single-line-implicit-string-concatenation", # single line implicit string concatenation (disabling suggested by ruff formatter)
+    "invalid-function-name",                     # function name should be lowercase
+    "undocumented-public-module",                # Missing docstring in public module
+    "undocumented-public-class",                 # Missing docstring in public class
+    "undocumented-public-method",                # Missing docstring in public method
+    "undocumented-public-function",              # Missing docstring in public function
+    "undocumented-public-package",               # Missing docstring in public package
+    "undocumented-public-nested-class",          # Missing docstring in public nested class
+    "docstring-missing-returns",                 # `return` is not documented in docstring
+    "docstring-missing-yields",                  # `yield` is not documented in docstring
+    "docstring-missing-exception",               # Raised exception missing from docstring
+    "unnecessary-assign",                        # Unnecessary assignment before `return` statement
+    "unused-async",                              # Function is declared `async`, but doesn't `await` or use `async` features.
+    "line-contains-todo",                        # Line contains TODO, consider resolving the issue
+    "missing-todo-author",                       # Missing author in TODO
+    "missing-todo-link",                         # Missing issue link for this TODO
+    "missing-blank-line-after-summary",          # 1 blank line required between summary line and description
 ]
 
 [tool.ruff.lint.isort]
@@ -221,26 +203,22 @@ builtins-ignorelist = ["license"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
-    "ANN", # Missing type annotation
-    "D", # pydocstyle
-    "commented-out-code", # Found commented-out code
-    "import-private-name", # Private name import from external module
+    "ANN",                    # Missing type annotation
+    "D",                      # pydocstyle
+    "commented-out-code",     # Found commented-out code
+    "import-private-name",    # Private name import from external module
     "magic-value-comparison", # magic value (constant) used in comparison (i.e. expected == 3)
-    "no-self-use", # Method could be a function (class-based test organization)
-    "assert", # Use of `assert` detected
-    "private-member-access", # private member access
+    "no-self-use",            # Method could be a function (class-based test organization)
+    "assert",                 # Use of `assert` detected
+    "private-member-access",  # private member access
 ]
-"obi_one/scientific/blocks/neuron_sets/old/pair.py" = [
-    "private-member-access"
-]
+"obi_one/scientific/blocks/neuron_sets/old/pair.py" = ["private-member-access"]
 # Overrides that keep their base class signature but only raise; ruff's exemption for this
 # covers NotImplementedError stubs, not ConfigValidationError ones.
 "obi_one/scientific/blocks/neuron_sets/deprecated.py" = [
-    "unused-method-argument"
+    "unused-method-argument",
 ]
-"launch_scripts/**/*.py" = [
-    "implicit-namespace-package",
-]
+"launch_scripts/**/*.py" = ["implicit-namespace-package"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -254,11 +232,7 @@ max-statements = 50
 max-public-methods = 60
 
 [tool.ty.src]
-include = [
-    "app",
-    "obi_one",
-    "launch_scripts",
-]
+include = ["app", "obi_one", "launch_scripts"]
 # Legacy modules kept for reference; excluded from ty type checking.
 exclude = [
     "obi_one/scientific/blocks/neuron_sets/old",
@@ -276,33 +250,23 @@ addopts = [
     "--durations-min=1.0",
     "-m not integration",
 ]
-testpaths = [
-    "tests",
-    "examples",
-]
+testpaths = ["tests", "examples"]
 markers = [
     "integration: integration tests requiring a running API (deselected by default)",
 ]
-filterwarnings = [
-    "error::pydantic.warnings.PydanticDeprecationWarning",
-]
+filterwarnings = ["error::pydantic.warnings.PydanticDeprecationWarning"]
 
 [tool.coverage.run]
 branch = true
 parallel = false
-source_pkgs = [
-    "app",
-    "obi_one",
-]
+source_pkgs = ["app", "obi_one"]
 data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]
 show_missing = true
 precision = 0
 fail_under = 30
-omit = [
-    "__main__.py",
-]
+omit = ["__main__.py"]
 
 [tool.coverage.xml]
 output = ".coverage/coverage.xml"

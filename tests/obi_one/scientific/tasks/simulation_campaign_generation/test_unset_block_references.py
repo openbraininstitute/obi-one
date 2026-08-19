@@ -134,7 +134,10 @@ EXPECTED_COMBINED_DEFAULTS = {
 
 def _block(name: str):
     """Construct a block by class name with every field, references included, left at default."""
-    return getattr(obi, name)()
+    cls = getattr(obi, name)
+    if cls is obi.ExplicitMorphologyLocations:
+        return cls(locations=(obi.MorphologyLocationPoint(section_id=1, offset=0.5),))
+    return cls()
 
 
 def _input_entry(result, name: str) -> dict:
