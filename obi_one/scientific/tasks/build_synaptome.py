@@ -1,9 +1,10 @@
 from enum import StrEnum
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
-from pydantic import Field
+from pydantic import Discriminator, Field
 
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.info import Info
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
@@ -55,6 +56,16 @@ class SynapticModelPlacer(Block):
             SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
         },
     )
+
+
+SynapticModelPlacerUnion = Annotated[
+    SynapticModelPlacer,
+    Discriminator("type"),
+]
+
+
+class SynapticModelPlacerReference(BlockReference):
+    allowed_block_types = SynapticModelPlacerUnion
 
 
 class MEModelSynapticModelPlacementScanConfig(ScanConfig):
@@ -149,12 +160,13 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
-    synapse_groups: dict[str, SynapticModelPlacer] = Field(
+    synapse_groups: dict[str, SynapticModelPlacerUnion] = Field(
         default_factory=dict,
         title="Synapse groups",
         description="Incoming synapse groups to attach to the ME-model.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [SynapticModelPlacerReference.__name__],
             SchemaKey.SINGULAR_NAME: "Synaptic Model Placer",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_GROUPS,
             SchemaKey.GROUP_ORDER: 1,
