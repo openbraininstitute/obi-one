@@ -199,6 +199,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         " efficacy (u) is shared within the synapses between the source and target"
         " neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -209,6 +210,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Whether the synaptic conductance (g_syn) is shared within the synapses"
         " between the source and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -219,6 +221,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Whether the conductance scale factor distribution is shared within "
         "the synapses between the source and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -229,6 +232,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Whether the facilitation time is shared within the synapses"
         " between the source and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -239,6 +243,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Whether the depression time is shared within the synapses"
         " between the source and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -249,6 +254,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Whether the number of RRP vesicles is shared within the synapses"
         " between the source and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -259,6 +265,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Whether the decay time is shared within the synapses"
         " between the source and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -270,6 +277,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         "in a spike train is shared within the synapses between the source "
         "and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
@@ -280,6 +288,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description="Whether the synaptic delay is shared within the synapses between the source "
         "and target neuron sets.",
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
         },
     )
