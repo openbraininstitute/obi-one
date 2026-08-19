@@ -99,13 +99,16 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
     }
 
     class Initialize(Block):
-        """ME-model to use as the postsynaptic cell."""
+        """Configuration for the single-cell ME-model that receives incoming synapses."""
 
-        title: ClassVar[str] = "ME-model Initialization"
+        title: ClassVar[str] = "Postsynaptic ME-model Initialization"
 
         me_model: MEModelFromID = Field(
-            title="ME-model",
-            description="Existing ME-model supplied as the postsynaptic cell context.",
+            title="Postsynaptic ME-model",
+            description=(
+                "Existing single-cell ME-model providing the morphology and "
+                "electrophysiological properties of the postsynaptic neuron."
+            ),
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
@@ -122,8 +125,12 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
         },
     )
     initialize: Initialize = Field(
-        title="ME-model",
-        description="ME-model to use as the postsynaptic cell.",
+        title="Postsynaptic ME-model",
+        description=(
+            "Existing single-cell ME-model providing the morphology and "
+            "electrophysiological properties of the postsynaptic neuron receiving "
+            "the incoming synapses."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.ME_MODEL,
