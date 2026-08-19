@@ -87,7 +87,9 @@ class MEModelSynapticModelPlacementScanConfig(ScanConfig):
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             SynapticModelReference.__name__: "Default: Synaptic Model",
-            AllDistributionsReference.__name__: "Default: Distribution",
+            AllDistributionsReference.__name__: (
+                "Default: Built-in distribution (see field description)"
+            ),
             MorphologyLocationsReference.__name__: "Default: Placement Strategy",
         },
         SchemaKey.PROPERTY_ENDPOINTS: {
