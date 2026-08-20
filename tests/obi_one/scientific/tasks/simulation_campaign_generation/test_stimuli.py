@@ -36,7 +36,7 @@ from obi_one.scientific.unions_and_references.stimuli import (
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     BIOPHYSICAL_POPULATION,
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
+    DEFAULT_POINT_NODE_SET,
     POINT_POPULATION,
     VIRTUAL_POPULATION,
     build_config,
@@ -104,8 +104,21 @@ class TestUnionCoverage:
         assert union_member_names(MEModelStimulusUnion) <= set(CONTINUOUS_STIMULI)
         assert union_member_names(LearningEngineCircuitStimulusUnion) <= set(CONTINUOUS_STIMULI)
 
-    def test_brian2_accepts_only_the_direct_poisson_stimulus(self):
-        assert union_member_names(Brian2CircuitStimulusUnion) == {"Brian2DirectPoissonStimulus"}
+    def test_brian2_accepts_the_current_injections_the_poisson_kick_and_the_spike_replays(self):
+        """The Brian2 runner turns `linear`, `pulse` and `sinusoidal` into current injections.
+
+        It also understands `poisson` and `synapse_replay`. Its sinusoidal input has to be
+        sampled on the simulation timestep, hence the dedicated block rather than
+        `SinusoidalCurrentClampSomaticStimulus`.
+        """
+        assert union_member_names(Brian2CircuitStimulusUnion) == {
+            "Brian2DirectPoissonStimulus",
+            "ConstantCurrentClampSomaticStimulus",
+            "LinearCurrentClampSomaticStimulus",
+            "MultiPulseCurrentClampSomaticStimulus",
+            "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+            *SPIKE_STIMULI,
+        }
 
     def test_ion_channel_only_adds_the_voltage_clamps(self):
         """The SE clamps are reachable only from the ion channel config, which needs a database."""
@@ -370,12 +383,12 @@ class TestSpikeStimuli:
 
 
 class TestBrian2DirectPoissonStimulus:
-    def test_untargeted_stimulus_drives_the_sugar_node_set(self, brian2_config, tmp_path):
+    def test_untargeted_stimulus_uses_the_simulation_default(self, brian2_config, tmp_path):
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.inputs["DirectPoisson"]["node_set"] == DEFAULT_BRIAN2_STIMULUS_NODE_SET
+        assert result.inputs["DirectPoisson"]["node_set"] == DEFAULT_POINT_NODE_SET
         assert result.inputs["DirectPoisson"]["input_type"] == "spikes"
         assert result.inputs["DirectPoisson"]["module"] == "poisson"
 
@@ -412,7 +425,7 @@ class TestBrian2DirectPoissonStimulus:
         assert result.inputs["DirectPoisson"] == {
             "input_type": "spikes",
             "module": "poisson",
-            "node_set": DEFAULT_BRIAN2_STIMULUS_NODE_SET,
+            "node_set": DEFAULT_POINT_NODE_SET,
             "rate": 25.0,
             "weight": 0.3,
             "delay": 0.0,
@@ -420,7 +433,7 @@ class TestBrian2DirectPoissonStimulus:
         }
 
     def test_a_circuit_without_a_point_population_is_refused(self, circuit, tmp_path):
-        """Resolving the `sugar` default needs exactly one point population to name."""
+        """`Brian2SimulationScanConfig.validate_circuit` refuses it before anything runs."""
         config = build_config(
             Brian2CircuitSimulationSingleConfig,
             circuit=circuit,
@@ -430,16 +443,28 @@ class TestBrian2DirectPoissonStimulus:
         with pytest.raises(OBIONEError, match="needs exactly one point node population"):
             generate(config, tmp_path)
 
-    def test_the_stimulus_default_is_a_strict_subset_of_the_simulation_default(
-        self, brian2_config, tmp_path
-    ):
-        """The two Brian2 defaults are separate: `sugar` for stimuli, all point neurons for the
-        simulation. Collapsing them would push the stimulus over its 100-neuron ceiling on a real
-        circuit."""
+    def test_the_stimulus_default_is_the_simulation_default(self, brian2_config, tmp_path):
+        """Brian2 has one default neuron set, shared by every untargeted block."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        stimulus_ids = result.node_sets[DEFAULT_BRIAN2_STIMULUS_NODE_SET]["node_id"]
-        simulation_ids = result.node_sets[result.sonata_config["node_set"]]["node_id"]
-        assert set(stimulus_ids) < set(simulation_ids)
+        assert result.inputs["DirectPoisson"]["node_set"] == result.sonata_config["node_set"]
+
+    def test_an_untargeted_stimulus_is_refused_when_the_default_is_too_large(
+        self, point_circuit, tmp_path, monkeypatch
+    ):
+        """One `PoissonInput` is built per target neuron, so the target has to stay small.
+
+        Inheriting the simulation-wide default puts an untargeted stimulus over that ceiling on
+        any real circuit, and it has to name its own neuron set instead.
+        """
+        monkeypatch.setattr(Brian2DirectPoissonStimulus, "MAX_NEURONS", 2)
+        config = build_config(
+            Brian2CircuitSimulationSingleConfig,
+            circuit=point_circuit,
+            blocks={"DirectPoisson": Brian2DirectPoissonStimulus()},
+        )
+
+        with pytest.raises(ValueError, match="exceeds the maximum allowed"):
+            generate(config, tmp_path)

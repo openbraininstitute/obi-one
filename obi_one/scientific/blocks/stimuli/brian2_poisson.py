@@ -44,6 +44,9 @@ class Brian2DirectPoissonStimulus(Block):
 
     title: ClassVar[str] = "Direct Poisson Input"
 
+    # Brian2 instantiates one `PoissonInput` per target neuron, so the target has to be small.
+    MAX_NEURONS: ClassVar[int] = 100
+
     neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
         title="Neuron Set",
@@ -101,7 +104,7 @@ class Brian2DirectPoissonStimulus(Block):
     def config(
         self,
         circuit: Circuit,
-        default_node_set: str = "sugar",
+        default_node_set: str = "All",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
         """Return the SONATA inputs entry for this block.
@@ -114,20 +117,19 @@ class Brian2DirectPoissonStimulus(Block):
         self._default_node_set = default_node_set
         _ = default_timestamps or SingleTimestamp(start_time=0.0)
 
-        # An untargeted stimulus has already been pointed at the `sugar` node set by the
-        # generation task (see Brian2SimulationScanConfig.default_stimulus_neuron_set_reference),
-        # which is small enough to stay under the limit; an explicit choice is checked here.
+        # One PoissonInput is instantiated per target neuron, so the target has to stay small.
+        # An untargeted stimulus inherits the simulation-wide default (every point neuron), which
+        # exceeds the limit on any real circuit -- such a stimulus has to name its own neuron set.
         neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.neuron_set,
             self._default_node_set,  # ty:ignore[invalid-argument-type]
         )
-        max_n_neurons = 100
         neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
         total_neurons = sum(len(ids) for ids in neuron_ids.values())
-        if total_neurons > max_n_neurons:
+        if total_neurons > self.MAX_NEURONS:
             msg = (
                 f"Number of neurons used with the {self.title} exceeds the maximum "
-                f"allowed: {max_n_neurons}."
+                f"allowed: {self.MAX_NEURONS}."
             )
             raise ValueError(msg)
 
