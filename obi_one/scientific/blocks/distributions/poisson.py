@@ -8,20 +8,20 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 
 
 class PoissonDistribution(Distribution):
-    """Values sampled from a Poisson distribution."""
+    """Samples non-negative integer event counts from a Poisson distribution."""
 
     title: ClassVar[str] = "Poisson"
 
     rate: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=1.0,
         title="Event Rate",
-        description="Average event occurrence rate for the sampled interval.",
+        description="Expected event count represented by the distribution.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     random_seed: int | list[int] = Field(
         default=1,
-        title="Random Seed",
-        description="Seed for drawing random values from the Poisson distribution.",
+        title="Random seed",
+        description="Seed for reproducible sampling.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
 

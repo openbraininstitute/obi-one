@@ -8,26 +8,26 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 
 
 class NormalDistribution(Distribution):
-    """Values sampled from a normal distribution."""
+    """Samples values around a mean using a symmetric, bell-shaped distribution."""
 
     title: ClassVar[str] = "Normal"
 
     mean: float | list[float] = Field(
         default=0.0,
         title="Mean",
-        description="Mean of the normal distribution.",
+        description="Center of the normal distribution.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
         default=1.0,
         title="Standard Deviation",
-        description="Standard deviation of the normal distribution.",
+        description="Standard deviation controlling the spread of the samples.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     random_seed: int | list[int] = Field(
         default=1,
-        title="Random Seed",
-        description="Seed for drawing random values from the normal distribution.",
+        title="Random seed",
+        description="Seed for reproducible sampling.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
 

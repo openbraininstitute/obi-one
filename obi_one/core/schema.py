@@ -4,6 +4,7 @@ from enum import StrEnum
 class SchemaKey(StrEnum):
     ACCEPTED_INPUT_TYPES = "accepted_input_types"
     BLOCK_USABILITY_DICTIONARY = "block_usability_dictionary"
+    DEFAULT_BLOCK_REFERENCE_LABEL = "default_block_reference_label"
     DEFAULT_BLOCK_REFERENCE_LABELS = "default_block_reference_labels"
     DESCRIPTION_BY_KEY = "description_by_key"
     EFEL_DOC_ANCHOR = "efel_doc_anchor"
