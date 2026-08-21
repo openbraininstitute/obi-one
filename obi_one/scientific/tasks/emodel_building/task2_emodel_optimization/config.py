@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, ClassVar, Literal
+from typing import ClassVar, Literal
 
 from entitysdk import Client
 from entitysdk.types import TaskActivityType, TaskConfigType
@@ -10,6 +10,8 @@ from pydantic import Field, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
@@ -18,23 +20,28 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifact
     TASK2_CONFIG_CONTRACT_VERSION,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
-    DistanceDependentDistributionUnion,
+    CustomDistanceDependentDistribution,
     MorphologySettings,
     OptimizationInitialize,
     OptimizationParams,
     OptimizationSettings,
     ParametersSelection,
     default_distance_dependent_distributions,
+    resolve_distance_dependent_distribution,
 )
 
 
 class BlockGroup(StrEnum):
-    """Block groups for the optimisation stage."""
+    """Block groups for the optimisation stage, matching the Figma left navigation.
 
-    INPUT = "Input"
-    MORPHOLOGY = "Morphology"
-    PARAMETERS = "Parameters"
-    OPTIMIZATION = "Optimization Settings"
+    Figma renders ``SETUP`` (Info, Initialization), ``INPUTS`` (Extraction TaskResult,
+    Morphology, Mechanisms), and ``SETTINGS`` (the single "Optimisation settings" tab,
+    which also holds morphology/axon settings and optimisation parameters).
+    """
+
+    SETUP = "Setup"
+    INPUTS = "Inputs"
+    SETTINGS = "Settings"
 
 
 def _used_distribution_names(selection: ParametersSelection) -> set[str]:
@@ -77,10 +84,13 @@ def _validate_section_list_availability(
 
 def _validate_distribution_declarations(
     selection: ParametersSelection,
-    distributions: Mapping[str, Any],
+    custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
 ) -> None:
     for distribution_name, configured_parameters in selection.distribution_parameters.items():
-        distribution = distributions.get(distribution_name)
+        distribution = resolve_distance_dependent_distribution(
+            distribution_name,
+            custom_distributions,
+        )
         if distribution is None:
             msg = (
                 f"Distribution parameters reference undeclared distribution '{distribution_name}'."
@@ -97,16 +107,25 @@ def _validate_distribution_declarations(
 
 def _validate_used_distributions(
     selection: ParametersSelection,
-    distributions: Mapping[str, Any],
+    custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
 ) -> None:
     used_distributions = _used_distribution_names(selection)
-    missing_distributions = used_distributions - set(distributions)
+    resolved = {
+        name: resolve_distance_dependent_distribution(name, custom_distributions)
+        for name in used_distributions
+    }
+    missing_distributions = {
+        name for name, distribution in resolved.items() if distribution is None
+    }
     if missing_distributions:
         msg = f"Parameters reference undeclared distributions: {sorted(missing_distributions)}."
         raise ValueError(msg)
 
     for distribution_name in sorted(used_distributions):
-        declared = set(distributions[distribution_name].parameters or [])
+        distribution = resolved[distribution_name]
+        if distribution is None:  # pragma: no cover - guarded above
+            continue
+        declared = set(distribution.parameters or [])
         if not declared:
             continue
         configured = selection.distribution_parameters.get(distribution_name, {})
@@ -122,10 +141,11 @@ def _validate_used_distributions(
 class EModelOptimizationScanConfig(InfoScanConfig):
     """ScanConfig for the BluePyEModel optimisation step.
 
-    Runs optimisation + analysis + export in a single task. Seeds the working
-    directory from the extraction ``TaskResult`` assets, downloads morphology
-    and ion channel model entities, merges optimisation settings into the
-    recipe, and runs ``pipeline.optimise()`` followed by analysis and export.
+    Registered TaskConfigs from this class are normally executed by a remote
+    launch-system worker: the worker stages entity assets, compiles this config
+    into the versioned params/recipe artifacts, runs BluePyEModel/NEURON, and
+    registers the draft result. See ``EModelOptimizationTask.execute()`` for the
+    optional local diagnostic path.
     """
 
     single_coord_class_name: ClassVar[str] = "EModelOptimizationSingleConfig"
@@ -137,12 +157,12 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
+        # InfoBlockGroup.SETUP_BLOCK_GROUP and BlockGroup.SETUP share the value "Setup" by
+        # design, so `info` and `initialize` render under one Figma "Setup" section.
         SchemaKey.GROUP_ORDER: [
             InfoBlockGroup.SETUP_BLOCK_GROUP,
-            BlockGroup.INPUT,
-            BlockGroup.MORPHOLOGY,
-            BlockGroup.PARAMETERS,
-            BlockGroup.OPTIMIZATION,
+            BlockGroup.INPUTS,
+            BlockGroup.SETTINGS,
         ],
     }
 
@@ -155,8 +175,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
-            self.initialize.target_efeatures.entity(db_client=db_client),
-            self.initialize.morphology.entity(db_client=db_client),
+            self.target_efeatures.entity(db_client=db_client),
+            self.morphology.entity(db_client=db_client),
         ]
         entities.extend(
             reference.entity(db_client=db_client)
@@ -198,7 +218,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         )
         return self
 
-    contract_version: Literal["task2-config-v1"] = Field(
+    contract_version: Literal["task2-config-v2"] = Field(
         default=TASK2_CONFIG_CONTRACT_VERSION,
         frozen=True,
         title="Task 2 configuration contract version",
@@ -206,15 +226,77 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         json_schema_extra={SchemaKey.UI_ENABLED: False},
     )
 
+    # --- Setup ---
+
     initialize: OptimizationInitialize = Field(
         title="Initialize",
-        description="Entity-based inputs and ``EModel_pipeline`` constructor arguments.",
+        description="E-model name and E-type entity used by the ``EModel_pipeline`` constructor.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.INPUT,
+            SchemaKey.GROUP: InfoBlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    # --- Inputs ---
+
+    target_efeatures: TaskResultFromID = Field(
+        title="Target EFeatures",
+        description=(
+            "TaskResult entity from the 01_efeature_extraction stage. Assets"
+            " (extracted features, recipes, targets config) are downloaded from"
+            " this entity to seed the optimisation working directory."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
+
+    morphology: CellMorphologyFromID = Field(
+        title="Cell morphology",
+        description=(
+            "Morphology entity whose SWC/ASC asset is staged into"
+            " ``./morphologies/``. The m-type, species and brain region are all"
+            " derived from this entity."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    parameters_selection: ParametersSelection = Field(
+        default_factory=ParametersSelection,
+        title="Mechanisms",
+        description="Ion channel models, region assignments, and parameter values.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
+            SchemaKey.GROUP_ORDER: 2,
+        },
+    )
+
+    distance_dependent_distributions: dict[str, CustomDistanceDependentDistribution] = Field(
+        default_factory=default_distance_dependent_distributions,
+        title="Custom distance-dependent distributions",
+        description=(
+            "User-defined distance-dependent parameter transformations. The ten standard "
+            "distributions (uniform, exp, step, ...) are always selectable by name on any "
+            "parameter row without being declared here; this field only holds custom "
+            "distributions declared by the user."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
+            SchemaKey.GROUP_ORDER: 3,
+            SchemaKey.SINGULAR_NAME: "Custom Distance-Dependent Distribution",
+        },
+    )
+
+    # --- Settings ---
 
     morphology_settings: MorphologySettings = Field(
         default_factory=MorphologySettings,
@@ -222,34 +304,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         description="Axon replacement and morphology section-list behavior.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.MORPHOLOGY,
+            SchemaKey.GROUP: BlockGroup.SETTINGS,
             SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    parameters_selection: ParametersSelection = Field(
-        default_factory=ParametersSelection,
-        title="Parameters",
-        description="Ion channel models, region assignments, and parameter values.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.PARAMETERS,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion] = Field(
-        default_factory=default_distance_dependent_distributions,
-        title="Distance-dependent distributions",
-        description=(
-            "Reusable distance-dependent parameter transformations. Parameter rows select "
-            "these distributions by name."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.GROUP: BlockGroup.PARAMETERS,
-            SchemaKey.GROUP_ORDER: 1,
-            SchemaKey.SINGULAR_NAME: "Distance-Dependent Distribution",
         },
     )
 
@@ -261,8 +317,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.OPTIMIZATION,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP: BlockGroup.SETTINGS,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
@@ -272,8 +328,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         description="``optimisation_params`` (offspring size).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.OPTIMIZATION,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP: BlockGroup.SETTINGS,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 

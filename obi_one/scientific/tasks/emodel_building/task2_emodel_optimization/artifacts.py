@@ -20,7 +20,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_
     DEFAULT_SECTION_LIST_CATALOG,
 )
 
-TASK2_CONFIG_CONTRACT_VERSION = "task2-config-v1"
+TASK2_CONFIG_CONTRACT_VERSION = "task2-config-v2"
 TASK2_ARTIFACT_CONTRACT_VERSION = "task2-artifacts-v1"
 PARAMS_ARTIFACT_PATH = "config/params/params.json"
 RECIPES_ARTIFACT_PATH = "config/recipes.json"

@@ -1,8 +1,14 @@
 """Task wrapper for the BluePyEModel optimisation step.
 
-Runs optimisation + analysis + export in a single task. Seeds the working
-directory from extraction features and entity downloads, reconstructs the
-optimisation recipe, and runs the full pipeline.
+Registered ``TaskConfig``s produced from this stage are normally executed by a
+remote launch-system worker, not by calling :meth:`EModelOptimizationTask.execute`
+locally: the worker stages entity assets, builds the versioned params/recipe
+artifacts via this module's compiler, runs BluePyEModel/NEURON, and registers the
+draft result. ``execute()`` remains available as an optional, lowest-priority local
+diagnostic (see the Task 2 living plan) and performs the full local pipeline:
+downloads extraction features and entity assets, builds and stages the
+params/recipe artifact bundle, compiles mechanisms, runs the full BluePyEModel
+pipeline, and registers output entities.
 """
 
 import inspect
@@ -109,7 +115,7 @@ class EModelOptimizationTask(Task):
         mtype = self._derive_mtype(db_client)
 
         # --- 1. Download extracted features ---
-        extraction_tr = init.target_efeatures
+        extraction_tr = self.config.target_efeatures
         self._download_extraction_features(extraction_tr, coord_root, db_client)
 
         # --- 2. Download and preflight morphology ---
@@ -146,8 +152,8 @@ class EModelOptimizationTask(Task):
                 etype=init.etype.entity(db_client=db_client).pref_label,
                 mtype=mtype,
                 ttype=None,
-                species=init.morphology.entity(db_client=db_client).subject.species.name,
-                brain_region=init.morphology.entity(db_client=db_client).brain_region.name,
+                species=self.config.morphology.entity(db_client=db_client).subject.species.name,
+                brain_region=self.config.morphology.entity(db_client=db_client).brain_region.name,
                 iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
@@ -226,7 +232,7 @@ class EModelOptimizationTask(Task):
         """Download morphology SWC and return the filename."""
         morph_dir = coord_root / "morphologies"
         morph_dir.mkdir(parents=True, exist_ok=True)
-        morph_entity = self.config.initialize.morphology
+        morph_entity = self.config.morphology
         swc_content = morph_entity.swc_file_content(db_client=db_client)
         # Use entity ID as filename base
         morph_id = morph_entity.id_str
@@ -322,7 +328,7 @@ class EModelOptimizationTask(Task):
         Uses the first m-type if multiple are available. Returns None when
         the morphology has no m-types, which is acceptable for optimisation.
         """
-        morph_entity = self.config.initialize.morphology
+        morph_entity = self.config.morphology
         entity = morph_entity.entity(db_client=db_client)
         if hasattr(entity, "mtypes") and entity.mtypes:
             return str(entity.mtypes[0].pref_label)  # ty:ignore[union-attr]
@@ -456,8 +462,9 @@ class EModelOptimizationTask(Task):
     ) -> None:
         """Register TaskResult, draft EModel, draft MEModel using entitysdk helpers.
 
-        Uses the shared registration helpers from entitysdk PR #252 to ensure
-        alignment with the launch-system ``run_optimisation.py`` flow.
+        Uses the shared ``entitysdk.registration`` helper package so this local path and
+        the remote launch-system worker register output entities identically. Raises
+        ``RuntimeError`` if the installed EntitySDK release does not provide that package.
         """
         from entitysdk.models import (  # ruff: ignore[import-outside-top-level]
             License,
@@ -493,7 +500,7 @@ class EModelOptimizationTask(Task):
         # --- Gather metadata ---
         # Species and brain region come from the morphology entity, so the
         # registered emodel/me-model inherit the morphology's provenance.
-        morph_entity = self.config.initialize.morphology.entity(db_client=db_client)
+        morph_entity = self.config.morphology.entity(db_client=db_client)
         brain_region_entity = morph_entity.brain_region
         species_entity = morph_entity.subject.species
 

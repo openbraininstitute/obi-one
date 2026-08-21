@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     REGIONAL_PARAMETER_LOCATIONS,
+    STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS,
     OptimizationValue,
     ParametersSelection,
 )
@@ -168,6 +169,38 @@ def resolve_ion_channel_models(
     return normalized
 
 
+def fetch_variable_catalog(
+    ion_channel_ids: Iterable[str],
+    db_client: Any,
+) -> dict[str, NormalizedIonChannelModel]:
+    """Fetch and normalize the RANGE/GLOBAL/conductance variable catalog for entities.
+
+    This is the single owner of the ``gNa`` → ``gNa_NaTg`` qualified-naming rule and
+    the RANGE-vs-GLOBAL placement rule (:meth:`NormalizedIonChannelModel.find_variable`,
+    used by ``_build_mechanism_parameters()`` / ``_build_global_parameters()``). UI
+    clients must consume this catalog through the ``GET /declared/mapped-ion-channel-
+    properties/emodel-optimization-variables`` endpoint rather than re-deriving
+    qualified names from raw EntitySDK ``neuron_block`` data, so the naming rule
+    cannot drift between the compiler and the form.
+
+    Returns a mapping keyed by entity ID, matching the shape used internally by
+    :func:`resolve_ion_channel_models`.
+    """
+    from entitysdk.models import IonChannelModel  # ruff: ignore[import-outside-top-level]
+
+    catalog: dict[str, NormalizedIonChannelModel] = {}
+    for ion_channel_id in ion_channel_ids:
+        entity = db_client.get_entity(
+            entity_id=ion_channel_id,
+            entity_type=IonChannelModel,
+        )
+        catalog[str(ion_channel_id)] = normalize_ion_channel_model(
+            entity,
+            entity_id=str(ion_channel_id),
+        )
+    return catalog
+
+
 def _validate_bounds(name: str, bounds: tuple[float, float]) -> None:
     if any(not math.isfinite(bound) for bound in bounds):
         msg = f"Bounds for parameter '{name}' must be finite."
@@ -299,6 +332,14 @@ def _build_mechanisms(
     selection: ParametersSelection,
     normalized_models: Mapping[str, NormalizedIonChannelModel],
 ) -> list[dict[str, Any]]:
+    """Compile the mechanisms array, always including the built-in ``pas`` mechanism.
+
+    ``pas`` (NEURON's built-in passive leak channel, with ``g_pas`` conductance and
+    ``e_pas`` reversal potential) has no EntityCore entity: it is not an
+    IonChannelModel selection, it is always available. It is emitted on every
+    location where ``g_pas`` or ``e_pas`` is configured, matching legacy EMC files
+    where ``pas`` is declared alongside its passive parameters (e.g. under ``"all"``).
+    """
     mechanisms: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     for location in _ordered_locations(selection.mechanism_regions):
@@ -500,14 +541,11 @@ def _build_distribution_parameters(
     return parameters
 
 
-def _validate_morphology_capabilities(
+def _validate_myelinated_capability(
     selection: ParametersSelection,
-    capabilities: MorphologyCapabilities | None,
+    capabilities: MorphologyCapabilities,
 ) -> None:
-    if capabilities is not None and not isinstance(capabilities, MorphologyCapabilities):
-        msg = "morphology_capabilities must be a MorphologyCapabilities model."
-        raise TypeError(msg)
-    if capabilities is None or capabilities.has_myelinated is True:
+    if capabilities.has_myelinated is True:
         return
     uses_myelinated = (
         "myelinated" in selection.base_parameters or "myelinated" in selection.mechanism_regions
@@ -527,6 +565,44 @@ def _validate_morphology_capabilities(
     raise ValueError(msg)
 
 
+def _validate_physical_section_availability(
+    selection: ParametersSelection,
+    capabilities: MorphologyCapabilities,
+) -> None:
+    """Reject a configured region the source morphology does not physically provide.
+
+    ``available_physical_sections`` is empty when preflight was skipped (e.g. a caller
+    constructed ``MorphologyCapabilities`` directly, as tests and the strategy-only
+    fallback in ``task.py`` do); in that case this check is intentionally a no-op.
+    """
+    if not capabilities.available_physical_sections:
+        return
+    available = set(capabilities.available_physical_sections) | {"myelinated"}
+    configured_locations = set(selection.base_parameters) | set(selection.mechanism_regions)
+    for location in sorted(configured_locations):
+        expanded = set(DEFAULT_SECTION_LIST_CATALOG.expand(location))
+        missing = expanded - available
+        if missing:
+            msg = (
+                f"Configured region '{location}' expands to {sorted(expanded)}, but the "
+                f"imported morphology has no source sections for {sorted(missing)}."
+            )
+            raise ValueError(msg)
+
+
+def _validate_morphology_capabilities(
+    selection: ParametersSelection,
+    capabilities: MorphologyCapabilities | None,
+) -> None:
+    if capabilities is not None and not isinstance(capabilities, MorphologyCapabilities):
+        msg = "morphology_capabilities must be a MorphologyCapabilities model."
+        raise TypeError(msg)
+    if capabilities is None:
+        return
+    _validate_myelinated_capability(selection, capabilities)
+    _validate_physical_section_availability(selection, capabilities)
+
+
 def build_params_definition(
     config: Any,
     normalized_models: Mapping[str, NormalizedIonChannelModel],
@@ -534,9 +610,15 @@ def build_params_definition(
     morphology_capabilities: MorphologyCapabilities | None = None,
     bounds_fallbacks: Mapping[str, tuple[float, float]] | None = None,
 ) -> dict[str, Any]:
-    """Compile a complete BluePyEModel params definition from Task 2 config."""
+    """Compile a complete BluePyEModel params definition from Task 2 config.
+
+    Distribution names are resolved against the built-in standard catalog
+    (``STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS``) first, then against the
+    config's custom-only ``distance_dependent_distributions`` declarations.
+    """
     selection: ParametersSelection = config.parameters_selection
-    distributions = config.distance_dependent_distributions
+    custom_distributions = config.distance_dependent_distributions
+    combined_distributions = {**STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS, **custom_distributions}
     fallbacks = DEFAULT_BOUNDS_FALLBACKS if bounds_fallbacks is None else bounds_fallbacks
     for fallback_name, fallback_bounds in fallbacks.items():
         _validate_bounds(fallback_name, fallback_bounds)
@@ -554,8 +636,8 @@ def build_params_definition(
         for parameter in assignment.parameters.values()
     )
     for distribution_name in used_distributions:
-        _validate_distribution(distribution_name, distributions)
-        declared = set(distributions[distribution_name].parameters or [])
+        _validate_distribution(distribution_name, combined_distributions)
+        declared = set(combined_distributions[distribution_name].parameters or [])
         configured = selection.distribution_parameters.get(distribution_name, {})
         if declared - set(configured):
             missing = sorted(declared - set(configured))
@@ -565,17 +647,20 @@ def build_params_definition(
             )
             raise ValueError(msg)
 
+    emitted_distribution_names = sorted(used_distributions | set(custom_distributions))
     return {
         "morphology": {},
         "mechanisms": _build_mechanisms(selection, normalized_models),
         "distributions": [
-            distribution.to_emc_dict(name=name)
-            for name, distribution in sorted(distributions.items())
+            combined_distributions[name].to_emc_dict(name=name)
+            for name in emitted_distribution_names
         ],
         "parameters": [
             *_build_global_parameters(selection, normalized_models, fallbacks),
-            *_build_distribution_parameters(selection, distributions, fallbacks),
-            *_build_base_parameters(selection, distributions, fallbacks),
-            *_build_mechanism_parameters(selection, normalized_models, distributions, fallbacks),
+            *_build_distribution_parameters(selection, combined_distributions, fallbacks),
+            *_build_base_parameters(selection, combined_distributions, fallbacks),
+            *_build_mechanism_parameters(
+                selection, normalized_models, combined_distributions, fallbacks
+            ),
         ],
     }
