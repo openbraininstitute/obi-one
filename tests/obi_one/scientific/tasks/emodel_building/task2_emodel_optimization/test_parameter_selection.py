@@ -42,12 +42,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task imp
 def _scan_config_data(**overrides):
     config_data = {
         "info": {"campaign_name": "test", "campaign_description": "test"},
-        "initialize": {
-            "target_efeatures": {"id_str": "target"},
-            "emodel": "test",
-            "morphology": {"id_str": "morphology"},
-            "etype": {"id_str": "etype"},
-        },
+        "initialize": {"emodel": "test", "etype": {"id_str": "etype"}},
+        "target_efeatures": {"id_str": "target"},
+        "morphology": {"id_str": "morphology"},
         "parameters_selection": {"ion_channel_models": [{"id_str": "icm-1"}]},
     }
     config_data.update(overrides)
@@ -195,6 +192,48 @@ def test_section_list_choices_follow_modifier_capabilities():
         }
         assert choices["myelinated"].available is available
         assert choices["myelinated"].availability == availability
+
+
+def test_mechanisms_wizard_steps_are_mapped_in_figma_order():
+    assert ParametersSelection.steps == (
+        "Mechanism Selection",
+        "Region assignment",
+        "Parameters selection",
+    )
+
+    schema = EModelOptimizationScanConfig.model_json_schema()
+    parameters_schema = schema["$defs"]["ParametersSelection"]["properties"]
+
+    assert parameters_schema["ion_channel_models"]["step"] == "Mechanism Selection"
+    assert parameters_schema["ion_channel_models"]["step_order"] == 1
+    assert parameters_schema["mechanism_regions"]["step"] == "Region assignment"
+    assert parameters_schema["mechanism_regions"]["step_order"] == 2
+    assert parameters_schema["global_parameters"]["step"] == "Parameters selection"
+    assert parameters_schema["base_parameters"]["step"] == "Parameters selection"
+    assert parameters_schema["distribution_parameters"]["step"] == "Parameters selection"
+
+    # distance_dependent_distributions no longer belongs to the Mechanisms wizard: it is
+    # a standalone Inputs-group field for user-defined distributions only.
+    top_level_schema = schema["properties"]
+    assert "step" not in top_level_schema["distance_dependent_distributions"]
+
+
+def test_schema_groups_match_figma_navigation():
+    schema = EModelOptimizationScanConfig.model_json_schema()
+    properties = schema["properties"]
+
+    assert properties["info"]["group"] == "Setup"
+    assert properties["initialize"]["group"] == "Setup"
+    assert properties["target_efeatures"]["group"] == "Inputs"
+    assert properties["morphology"]["group"] == "Inputs"
+    assert properties["parameters_selection"]["group"] == "Inputs"
+    assert properties["parameters_selection"]["title"] == "Mechanisms"
+    assert properties["distance_dependent_distributions"]["group"] == "Inputs"
+    assert properties["morphology_settings"]["group"] == "Settings"
+    assert properties["morphology_settings"]["title"] == "Morphology settings"
+    assert properties["optimization_settings"]["group"] == "Settings"
+    assert properties["optimization_params"]["group"] == "Settings"
+    assert schema["group_order"] == ["Setup", "Inputs", "Settings"]
 
 
 def test_section_list_schema_exposes_typed_choices_and_aliases():
@@ -386,7 +425,8 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
             return "1  soma  0 0 0 1 -1\\n"
 
     config = SimpleNamespace(
-        initialize=SimpleNamespace(emodel="test", morphology=FakeMorphology()),
+        initialize=SimpleNamespace(emodel="test"),
+        morphology=FakeMorphology(),
     )
     task = EModelOptimizationTask.model_construct(config=config)
 
@@ -583,21 +623,92 @@ def test_stage_params_overwrites_stale_json_and_deduplicates_nested_models(tmp_p
     )
 
 
-def test_global_parameter_view_includes_read_only_distribution_constants():
+def test_parameter_group_view_matches_figma_card_order():
     config, _, _ = _compiler_fixture()
 
-    view = config.parameters_selection.global_parameter_view
+    groups = config.parameters_selection.parameter_group_view
 
-    assert [(entry.key, entry.location, entry.editable) for entry in view] == [
-        ("ena", "global", True),
-        ("v_init", "global", True),
-        ("distribution_decay.constant", "distribution_decay", False),
+    # Global, Distribution parameters, then configured regions in display order:
+    # "all" (base_parameters) and "apical"/"somatic" (mechanism_regions).
+    assert [group.key for group in groups] == ["global", "distribution", "all", "somatic", "apical"]
+    assert [group.kind for group in groups] == [
+        "global",
+        "distribution",
+        "region",
+        "region",
+        "region",
     ]
-    distribution_entry = view[-1]
-    assert distribution_entry.name == "constant"
-    assert distribution_entry.distribution == "decay"
-    assert distribution_entry.value.bounds == (-0.1, 0.0)
-    assert "global_parameter_view" not in config.parameters_selection.model_dump(mode="json")
+    global_group, distribution_group, all_group, somatic_group, apical_group = groups
+    assert global_group.count_label == "2 parameters"
+    assert distribution_group.count_label == "1 parameters"
+    assert all_group.count_label == "0 channels assigned"
+    assert apical_group.count_label == "1 channels assigned"
+    assert somatic_group.count_label == "1 channels assigned"
+    assert "parameter_group_view" not in config.parameters_selection.model_dump(mode="json")
+
+
+def test_distribution_group_rows_are_editable_not_read_only():
+    config, _, _ = _compiler_fixture()
+
+    rows = config.parameters_selection.parameter_rows("distribution")
+
+    assert [(row.key, row.location, row.editable) for row in rows] == [
+        ("distribution_decay.constant", "distribution_decay", True)
+    ]
+    assert rows[0].name == "constant"
+    assert rows[0].distribution == "decay"
+    assert rows[0].value.bounds == (-0.1, 0.0)
+
+
+def test_global_group_rows_list_ordinary_globals_only():
+    config, _, _ = _compiler_fixture()
+
+    rows = config.parameters_selection.parameter_rows("global")
+
+    assert [row.key for row in rows] == ["ena", "v_init"]
+    assert all(row.kind == "global" for row in rows)
+
+
+def test_region_group_rows_include_base_and_mechanism_parameters():
+    config, _, _ = _compiler_fixture()
+
+    apical_rows = config.parameters_selection.parameter_rows("apical")
+
+    assert {row.name for row in apical_rows} == {"gNa", "vshift"}
+    assert all(row.kind == "region" for row in apical_rows)
+    assert all(row.mechanism == "icm-1" for row in apical_rows)
+
+
+def test_parameter_group_view_omits_unconfigured_regions():
+    selection = ParametersSelection()
+
+    groups = selection.parameter_group_view
+
+    # Defaults configure base parameters under all, myelinated, somatic, axonal,
+    # apical, and basal; region order follows the catalog's display order.
+    assert [group.key for group in groups] == [
+        "global",
+        "distribution",
+        "all",
+        "myelinated",
+        "somatic",
+        "axonal",
+        "apical",
+        "basal",
+    ]
+
+
+def test_build_params_definition_unchanged_by_parameter_group_view():
+    """The Figma-shaped projection must never influence the compiled params."""
+    config, _, normalized = _compiler_fixture()
+
+    before = build_params_definition(config, normalized)
+    # Touch the projection to ensure it has no side effects on the config.
+    _ = config.parameters_selection.parameter_group_view
+    _ = config.parameters_selection.parameter_rows("global")
+    after = build_params_definition(config, normalized)
+
+    assert before == after
 
 
 def test_fallback_bounds_resolve_context_specific_parameter_names():
@@ -628,13 +739,18 @@ def test_fallback_bounds_resolve_context_specific_parameter_names():
     assert by_name_and_location["constant", "distribution_decay"] == [-0.2, 0.0]
 
 
+def _fake_section(section_type):
+    section = SimpleNamespace()
+    section.type = section_type
+    return section
+
+
 def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatch):
-    class FakeSection:
-        def __init__(self):
-            self.type = morphology_preflight.morphio.SectionType.axon
+    morphio_type = morphology_preflight.morphio.SectionType
+    axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
 
     class FakeMorphology:
-        sections = (FakeSection(), FakeSection(), FakeSection())
+        sections = (*axon_sections, _fake_section(morphio_type.soma))
 
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
@@ -658,9 +774,78 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
         source_has_myelinated=True,
     )
 
-    assert tapered == MorphologyCapabilities(has_myelinated=True, axonal_section_count=3)
-    assert no_replacement == MorphologyCapabilities(has_myelinated=None, axonal_section_count=3)
+    assert tapered == MorphologyCapabilities(
+        has_myelinated=True,
+        axonal_section_count=3,
+        available_physical_sections=("somatic", "axonal"),
+    )
+    assert no_replacement == MorphologyCapabilities(
+        has_myelinated=None,
+        axonal_section_count=3,
+        available_physical_sections=("somatic", "axonal"),
+    )
     assert source_myelin.has_myelinated is True
+
+
+def test_morphology_preflight_reports_available_physical_sections_in_catalog_order(
+    tmp_path, monkeypatch
+):
+    morphio_type = morphology_preflight.morphio.SectionType
+    axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
+
+    class FakeMorphology:
+        sections = (
+            _fake_section(morphio_type.apical_dendrite),
+            *axon_sections,
+            _fake_section(morphio_type.soma),
+            _fake_section(morphio_type.basal_dendrite),
+        )
+
+    morphology_path = tmp_path / "morphology.swc"
+    morphology_path.write_text("", encoding="utf-8")
+    monkeypatch.setattr(
+        morphology_preflight,
+        "load_morphology_nrn_order",
+        lambda _path: FakeMorphology(),
+    )
+
+    capabilities = morphology_preflight.preflight_morphology(
+        morphology_path,
+        "replace_axon_with_taper",
+    )
+
+    assert capabilities.available_physical_sections == ("somatic", "basal", "apical", "axonal")
+
+
+def test_params_builder_rejects_region_the_morphology_does_not_provide():
+    config, _, normalized = _compiler_fixture()
+
+    axon_only_capabilities = MorphologyCapabilities(
+        has_myelinated=True,
+        axonal_section_count=3,
+        available_physical_sections=("somatic", "axonal"),
+    )
+
+    with pytest.raises(ValueError, match=r"no source sections for \['apical', 'basal'\]"):
+        build_params_definition(
+            config,
+            normalized,
+            morphology_capabilities=axon_only_capabilities,
+        )
+
+
+def test_morphology_capabilities_without_preflight_skips_region_check():
+    """Direct construction (no preflight) must not spuriously reject configured regions."""
+    config, _, normalized = _compiler_fixture()
+
+    # available_physical_sections defaults to (): "not inspected".
+    params = build_params_definition(
+        config,
+        normalized,
+        morphology_capabilities=MorphologyCapabilities(has_myelinated=True),
+    )
+
+    assert params["parameters"]
 
 
 def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path, monkeypatch):

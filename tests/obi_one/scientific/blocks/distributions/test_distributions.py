@@ -4,6 +4,10 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS,
+    resolve_distance_dependent_distribution,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
 )
@@ -12,12 +16,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config i
 def _optimization_config(**overrides):
     config_data = {
         "info": {"campaign_name": "test", "campaign_description": "test"},
-        "initialize": {
-            "target_efeatures": {"id_str": "target"},
-            "emodel": "test",
-            "morphology": {"id_str": "morphology"},
-            "etype": {"id_str": "etype"},
-        },
+        "initialize": {"emodel": "test", "etype": {"id_str": "etype"}},
+        "target_efeatures": {"id_str": "target"},
+        "morphology": {"id_str": "morphology"},
         "parameters_selection": {"ion_channel_models": [{"id_str": "icm"}]},
     }
     config_data.update(overrides)
@@ -155,28 +156,63 @@ class TestDistanceDependentDistributions:
         with pytest.raises(ValueError, match="must define a function"):
             obi.DistanceDependentDistribution(parameters=["constant"])
 
-    def test_new_distribution_deserializes_through_union(self):
+    def test_standard_distributions_are_available_without_declaration(self):
+        """The ten legacy distributions are selectable by name without being declared."""
+        assert set(STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS) == {
+            "uniform",
+            "exp",
+            "step",
+            "exp_na_dend",
+            "linear_hd_apic",
+            "sigmoid_kad_apic",
+            "linear_e_pas_apic",
+            "linear_hdpas",
+            "sigmoid_kad",
+            "sigmoid_kdbm_apic",
+        }
+        assert isinstance(
+            resolve_distance_dependent_distribution("linear_hdpas", {}),
+            obi.LinearHDPasDistanceDependentDistribution,
+        )
+
+    def test_custom_distribution_declared_on_the_config_deserializes(self):
         config = _optimization_config(
             distance_dependent_distributions={
-                "uniform": {"type": "UniformDistanceDependentDistribution"},
-                "mouse": {
-                    "type": "LinearHDPasDistanceDependentDistribution",
+                "mouse_decay": {
+                    "type": "CustomDistanceDependentDistribution",
+                    "function": "math.exp({distance})*{value}",
                 },
             }
         )
 
         assert isinstance(
-            config.distance_dependent_distributions["mouse"],
-            obi.LinearHDPasDistanceDependentDistribution,
+            config.distance_dependent_distributions["mouse_decay"],
+            obi.CustomDistanceDependentDistribution,
         )
 
-    def test_optimization_parameter_selection_defaults_to_uniform(self):
+    def test_optimization_parameter_selection_has_no_declared_distributions_by_default(self):
         config = _optimization_config()
 
-        assert list(config.distance_dependent_distributions) == ["uniform"]
-        assert config.distance_dependent_distributions["uniform"].to_emc_dict() == {
-            "name": "uniform",
-            "function": None,
+        assert dict(config.distance_dependent_distributions) == {}
+
+    def test_step_distribution_preserves_morphology_derived_placeholders(self):
+        """BluePyEModel computes step_begin/step_end from the morphology hot-spot.
+
+        They must not be required as user-declared ``parameters`` and must be
+        preserved verbatim in the function string for BluePyEModel to substitute
+        at runtime via ``get_hotspot_location()``.
+        """
+        distribution = obi.StepDistanceDependentDistribution()
+
+        assert "{step_begin}" in distribution.function
+        assert "{step_end}" in distribution.function
+        assert distribution.parameters is None
+        assert distribution.to_emc_dict() == {
+            "name": "step",
+            "function": (
+                "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                "({distance} < {step_end})))"
+            ),
             "soma_ref_location": 0.5,
         }
 

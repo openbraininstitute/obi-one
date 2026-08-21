@@ -1,6 +1,7 @@
 """Blocks for the 02_emodel_optimization stage."""
 
 import math
+from collections.abc import Mapping
 from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import (
@@ -17,10 +18,8 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_lists import (
     AXON_MODIFIER_DESCRIPTIONS,
     DEFAULT_SECTION_LIST_CATALOG,
@@ -71,7 +70,13 @@ class DistanceDependentDistribution(Block):
 
     @model_validator(mode="after")
     def validate_function(self) -> "DistanceDependentDistribution":
-        """Require functions to expose implicit and declared inputs."""
+        """Require functions to expose implicit and declared inputs.
+
+        This only checks placeholder presence; it is not an AST validator or a
+        sandbox. BluePyEModel evaluates the function string with Python ``eval()``
+        at runtime (see ``bluepyemodel.model.model.define_distributions()``), so
+        this validator must never be described as a security boundary.
+        """
         if self.parameters and self.function is None:
             msg = "Distance-dependent distributions with parameters must define a function."
             raise ValueError(msg)
@@ -121,7 +126,14 @@ class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
 
 
 class StepDistanceDependentDistribution(DistanceDependentDistribution):
-    """Step distance distribution used by detailed SSCX models."""
+    """Step distance distribution used by detailed SSCX models.
+
+    ``{step_begin}`` and ``{step_end}`` are not user-declared placeholders.
+    BluePyEModel's ``define_distributions()`` special-cases the name ``step`` and
+    computes both values from the imported morphology's calcium hot-spot via
+    ``get_hotspot_location()`` (Larkum & Zhu, 2002). Do not add them to
+    ``parameters``; they must remain in the function string verbatim.
+    """
 
     name: str = Field(default="step", frozen=True)
     function: str = Field(
@@ -218,31 +230,12 @@ DistanceDependentDistributionUnion = Annotated[
 
 
 class OptimizationInitialize(Block):
-    """Entity-based inputs for the optimisation stage."""
-
-    target_efeatures: TaskResultFromID = Field(
-        title="Target EFeatures",
-        description=(
-            "TaskResult entity from the 01_efeature_extraction stage. Assets"
-            " (extracted features, recipes, targets config) are downloaded from"
-            " this entity to seed the optimisation working directory."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
-    )
+    """Entity-based inputs for the optimisation stage's Setup > Initialization card."""
 
     emodel: str = Field(
         title="E-Model name",
         description="Top-level key in ``recipes.json`` to operate on (e.g. ``L5PC``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    morphology: CellMorphologyFromID = Field(
-        title="Cell morphology",
-        description=(
-            "Morphology entity whose SWC/ASC asset is staged into"
-            " ``./morphologies/``. The m-type, species and brain region are all"
-            " derived from this entity."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
     )
     etype: ETypeClassFromID = Field(
         title="E-type",
@@ -256,8 +249,57 @@ class OptimizationInitialize(Block):
     )
 
 
-def default_distance_dependent_distributions() -> dict[str, DistanceDependentDistributionUnion]:
-    return {"uniform": UniformDistanceDependentDistribution()}
+def default_distance_dependent_distributions() -> dict[str, CustomDistanceDependentDistribution]:
+    """Custom distance-dependent distributions declared by the user (empty by default).
+
+    The ten legacy distributions are always selectable by name from
+    ``STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS`` without being declared here; this
+    dict only holds user-defined distributions (see ``CustomDistanceDependentDistribution``).
+    """
+    return {}
+
+
+STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS: dict[str, DistanceDependentDistributionUnion] = {
+    "uniform": UniformDistanceDependentDistribution(),
+    "exp": ExponentialDistanceDependentDistribution(),
+    "step": StepDistanceDependentDistribution(),
+    "exp_na_dend": ExponentialNaDendDistanceDependentDistribution(),
+    "linear_hd_apic": LinearHDApicDistanceDependentDistribution(),
+    "sigmoid_kad_apic": SigmoidKADApicDistanceDependentDistribution(),
+    "linear_e_pas_apic": LinearEPasApicDistanceDependentDistribution(),
+    "linear_hdpas": LinearHDPasDistanceDependentDistribution(),
+    "sigmoid_kad": SigmoidKADDistanceDependentDistribution(),
+    "sigmoid_kdbm_apic": SigmoidKDBMApicDistanceDependentDistribution(),
+}
+"""Built-in legacy distance-dependent distributions, selectable by name on any parameter row
+without being declared in the config's ``distance_dependent_distributions`` field. That field
+is reserved for user-defined (``CustomDistanceDependentDistribution``) distributions only."""
+
+
+def resolve_distance_dependent_distribution(
+    name: str,
+    custom_distributions: Mapping[str, "CustomDistanceDependentDistribution"],
+) -> DistanceDependentDistributionUnion | None:
+    """Resolve a distribution name against the standard catalog, then custom declarations."""
+    standard = STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS.get(name)
+    if standard is not None:
+        return standard
+    return custom_distributions.get(name)
+
+
+# The Figma "Mechanisms" card is a 3-step wizard. All three steps share the
+# "Mechanisms" GROUP (see BlockGroup.INPUTS in config.py); STEP/STEP_ORDER order
+# sub-steps within that one group. Distribution selection happens per parameter
+# row (see `ParameterSelection.distribution`) against the combined standard +
+# custom distribution catalog, so it is not a wizard sub-step of its own.
+MECHANISM_SELECTION_STEP = "Mechanism Selection"
+REGION_ASSIGNMENT_STEP = "Region assignment"
+PARAMETERS_SELECTION_STEP = "Parameters selection"
+MECHANISMS_WIZARD_STEPS: tuple[str, ...] = (
+    MECHANISM_SELECTION_STEP,
+    REGION_ASSIGNMENT_STEP,
+    PARAMETERS_SELECTION_STEP,
+)
 
 
 ParameterLocation = Literal["global"] | SectionListName
@@ -346,19 +388,45 @@ class GlobalParameterSelection(Block):
     )
 
 
-class GlobalParameterView(BaseModel):
-    """Read-only aggregate view used by a UI global-parameter list."""
+ParameterGroupKind = Literal["global", "distribution", "region"]
+
+
+class ParameterRowView(BaseModel):
+    """One editable row inside a parameter group, shaped for the Figma parameter cards."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    group_key: str
+    kind: ParameterGroupKind
     key: str
     name: str
     value: OptimizationValue
     location: str
-    source: Literal["global", "distribution"]
-    editable: bool
+    mechanism: str | None = None
     distribution: str | None = None
     ion_channel_model: IonChannelModelFromID | None = None
+    editable: bool = True
+
+
+class ParameterGroupView(BaseModel):
+    """One card in the Figma "Parameters grouped by region" list.
+
+    Groups are always ``global``, then ``distribution``, then regions in the
+    section-list catalog's display order. This mirrors the Figma step-4A
+    layout, where ``Global`` and ``Distribution parameters`` are separate
+    cards, not a single merged list.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    key: str
+    kind: ParameterGroupKind
+    label: str
+    description: str
+    order: int
+    item_count: int
+    count_label: str
+    section_lists: tuple[SectionListName, ...] | None = None
 
 
 class MechanismRegionSelection(Block):
@@ -477,7 +545,16 @@ def _default_base_parameters() -> dict[SectionListName, dict[str, ParameterSelec
 
 
 class ParametersSelection(Block):
-    """Mechanisms and values selected for the optimization params compiler."""
+    """Mechanisms and values selected for the optimization params compiler.
+
+    Rendered by the UI as the "Mechanisms" card, expanded into the 3-step wizard
+    listed in ``MECHANISMS_WIZARD_STEPS``: Mechanism Selection, Region assignment,
+    and Parameters selection. Distribution selection is a per-row choice (see
+    ``ParameterSelection.distribution``) against the combined standard + custom
+    catalog, not a separate wizard step.
+    """
+
+    steps: ClassVar[tuple[str, ...]] = MECHANISMS_WIZARD_STEPS
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
         default_factory=tuple,
@@ -486,7 +563,11 @@ class ParametersSelection(Block):
             "Ion channel model entities whose .mod assets are staged into mechanisms. "
             "The same entity may be assigned to multiple regions."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+            SchemaKey.STEP: MECHANISM_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 1,
+        },
     )
     mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
         default_factory=dict,
@@ -504,21 +585,24 @@ class ParametersSelection(Block):
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_recipe_multiloc_map(),
+            SchemaKey.STEP: REGION_ASSIGNMENT_STEP,
+            SchemaKey.STEP_ORDER: 2,
         },
     )
     global_parameters: dict[str, GlobalParameterSelection] = Field(
         default_factory=_default_global_parameters,
         title="Global parameters",
         description=(
-            "Canonical editable global values such as v_init and celsius. "
-            "Use global_parameter_view for the combined read-only list that also includes "
-            "configured distribution constants."
+            "Editable global values such as v_init and celsius. Shown as the 'Global' card; "
+            "see parameter_group_view for the Figma-shaped card list, which keeps distribution "
+            "constants on their own 'Distribution parameters' card."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Global Parameter",
-            "derived_view": "global_parameter_view",
-            "includes_distribution_constants": True,
+            "derived_view": "parameter_group_view",
+            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 4,
         },
     )
     base_parameters: dict[SectionListName, dict[str, ParameterSelection]] = Field(
@@ -538,6 +622,8 @@ class ParametersSelection(Block):
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_recipe_multiloc_map(),
+            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 4,
         },
     )
     distribution_parameters: dict[str, dict[str, OptimizationValue]] = Field(
@@ -549,38 +635,137 @@ class ParametersSelection(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Distribution Parameter",
+            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 4,
         },
     )
 
-    @property
-    def global_parameter_view(self) -> tuple[GlobalParameterView, ...]:
-        """Combined read-only list of ordinary globals and distribution constants."""
-        views = [
-            GlobalParameterView(
+    def _global_group_rows(self) -> tuple[ParameterRowView, ...]:
+        return tuple(
+            ParameterRowView(
+                group_key="global",
+                kind="global",
                 key=name,
                 name=name,
                 value=selection.value,
                 location="global",
-                source="global",
-                editable=True,
                 ion_channel_model=selection.ion_channel_model,
             )
             for name, selection in sorted(self.global_parameters.items())
-        ]
-        views.extend(
-            GlobalParameterView(
+        )
+
+    def _distribution_group_rows(self) -> tuple[ParameterRowView, ...]:
+        return tuple(
+            ParameterRowView(
+                group_key="distribution",
+                kind="distribution",
                 key=f"distribution_{distribution_name}.{name}",
                 name=name,
                 value=value,
                 location=f"distribution_{distribution_name}",
-                source="distribution",
-                editable=False,
                 distribution=distribution_name,
             )
             for distribution_name in sorted(self.distribution_parameters)
             for name, value in sorted(self.distribution_parameters[distribution_name].items())
         )
-        return tuple(views)
+
+    def _region_group_rows(self, location: SectionListName) -> tuple[ParameterRowView, ...]:
+        empty_base: dict[str, ParameterSelection] = {}
+        base_parameters = self.base_parameters.get(location, empty_base)
+        mechanism_assignments = self.mechanism_regions.get(location) or ()
+        rows = [
+            ParameterRowView(
+                group_key=location,
+                kind="region",
+                key=f"{location}.{name}",
+                name=name,
+                value=selected.value,
+                location=location,
+                mechanism="pas" if name in {"g_pas", "e_pas"} else None,
+                distribution=selected.distribution,
+            )
+            for name, selected in sorted(base_parameters.items())
+        ]
+        rows.extend(
+            ParameterRowView(
+                group_key=location,
+                kind="region",
+                key=f"{location}.{assignment.ion_channel_model.id_str}.{name}",
+                name=name,
+                value=selected.value,
+                location=location,
+                mechanism=assignment.ion_channel_model.id_str,
+                distribution=selected.distribution,
+                ion_channel_model=assignment.ion_channel_model,
+            )
+            for assignment in mechanism_assignments
+            for name, selected in sorted(assignment.parameters.items())
+        )
+        return tuple(rows)
+
+    def parameter_rows(self, group_key: str) -> tuple[ParameterRowView, ...]:
+        """Return the editable rows for one parameter-group card."""
+        if group_key == "global":
+            return self._global_group_rows()
+        if group_key == "distribution":
+            return self._distribution_group_rows()
+        return self._region_group_rows(group_key)  # ty:ignore[invalid-argument-type]
+
+    @property
+    def parameter_group_view(self) -> tuple[ParameterGroupView, ...]:
+        """Figma-shaped card list: ``Global``, ``Distribution parameters``, then regions.
+
+        Regions are ordered by the section-list catalog's display order and only
+        included when they have configured base or mechanism parameters, so the
+        card list matches what the user has actually configured.
+        """
+        groups = [
+            ParameterGroupView(
+                key="global",
+                kind="global",
+                label="Global",
+                description="Global values such as v_init and celsius.",
+                order=0,
+                item_count=len(self.global_parameters),
+                count_label=f"{len(self.global_parameters)} parameters",
+            ),
+            ParameterGroupView(
+                key="distribution",
+                kind="distribution",
+                label="Distribution parameters",
+                description="Values for placeholders declared by distance-dependent distributions.",
+                order=1,
+                item_count=sum(len(values) for values in self.distribution_parameters.values()),
+                count_label=(
+                    f"{sum(len(values) for values in self.distribution_parameters.values())} "
+                    "parameters"
+                ),
+            ),
+        ]
+        configured_locations = set(self.base_parameters) | set(self.mechanism_regions)
+        ordered_choices = sorted(
+            (
+                choice
+                for choice in DEFAULT_SECTION_LIST_CATALOG.choices()
+                if choice.name in configured_locations
+            ),
+            key=lambda choice: choice.display_order,
+        )
+        for order, choice in enumerate(ordered_choices, start=len(groups)):
+            channels_assigned = len(self.mechanism_regions.get(choice.name, ()))
+            groups.append(
+                ParameterGroupView(
+                    key=choice.name,
+                    kind="region",
+                    label=choice.label,
+                    description=choice.description,
+                    order=order,
+                    item_count=channels_assigned,
+                    count_label=f"{channels_assigned} channels assigned",
+                    section_lists=DEFAULT_SECTION_LIST_CATALOG.expand(choice.name),
+                )
+            )
+        return tuple(groups)
 
     @property
     def ion_channel_model_references(self) -> tuple[IonChannelModelFromID, ...]:

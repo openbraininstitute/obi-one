@@ -112,6 +112,14 @@ class SectionListDefinition(BaseModel):
         title="Requires myelinated sections",
         description="Whether the choice requires a synthesized or source myelinated list.",
     )
+    display_order: int = Field(
+        default=0,
+        title="Display order",
+        description=(
+            "Position of this choice in the form's region-card list. Independent from "
+            "compilation order, which is always broad-to-narrow."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_expansion(self) -> SectionListDefinition:
@@ -159,6 +167,11 @@ class SectionListChoice(BaseModel):
         default=None,
         title="Disabled reason",
         description="Reason shown when a section list is not selectable.",
+    )
+    display_order: int = Field(
+        default=0,
+        title="Display order",
+        description="Position of this choice in the form's region-card list.",
     )
 
     @model_validator(mode="after")
@@ -238,6 +251,7 @@ class SectionListCatalog(BaseModel):
                 name=definition.name,
                 label=definition.label,
                 description=definition.description,
+                display_order=definition.display_order,
             )
 
         modifier = AxonModifier(axon_modifier)
@@ -254,6 +268,7 @@ class SectionListCatalog(BaseModel):
                 disabled_reason=(
                     f"The '{modifier.value}' modifier does not create a myelinated section list."
                 ),
+                display_order=definition.display_order,
             )
         if modifier == AxonModifier.NONE:
             return SectionListChoice(
@@ -269,11 +284,13 @@ class SectionListCatalog(BaseModel):
                     "No replacement leaves source myelination unknown, so the myelinated "
                     "section list is unavailable without morphology preflight."
                 ),
+                display_order=definition.display_order,
             )
         return SectionListChoice(
             name=definition.name,
             label=definition.label,
             description=definition.description,
+            display_order=definition.display_order,
         )
 
     def choices(
@@ -326,65 +343,7 @@ def _make_default_section_list_definitions() -> tuple[SectionListDefinition, ...
             description="Apical, basal, somatic, and axonal sections.",
             expanded_sections=("apical", "basal", "somatic", "axonal"),
             is_composite=True,
-        ),
-        SectionListDefinition(
-            name="alldend",
-            label="All dendrites",
-            description="Apical and basal dendritic sections.",
-            expanded_sections=("apical", "basal"),
-            is_composite=True,
-        ),
-        SectionListDefinition(
-            name="allnoaxon",
-            label="All sections without axon",
-            description="Apical, basal, and somatic sections.",
-            expanded_sections=("apical", "basal", "somatic"),
-            is_composite=True,
-        ),
-        SectionListDefinition(
-            name="somadend",
-            label="Soma and dendrites",
-            description="Apical, basal, and somatic sections.",
-            expanded_sections=("apical", "basal", "somatic"),
-            is_composite=True,
-        ),
-        SectionListDefinition(
-            name="somaxon",
-            label="Soma and axon",
-            description="Axonal and somatic sections.",
-            expanded_sections=("axonal", "somatic"),
-            is_composite=True,
-        ),
-        SectionListDefinition(
-            name="allact",
-            label="All active sections",
-            description="Apical, basal, somatic, and axonal sections for active mechanisms.",
-            expanded_sections=("apical", "basal", "somatic", "axonal"),
-            is_composite=True,
-        ),
-        SectionListDefinition(
-            name="somatic",
-            label="Somatic",
-            description="Somatic sections only.",
-            expanded_sections=("somatic",),
-        ),
-        SectionListDefinition(
-            name="basal",
-            label="Basal",
-            description="Basal dendritic sections only.",
-            expanded_sections=("basal",),
-        ),
-        SectionListDefinition(
-            name="apical",
-            label="Apical",
-            description="Apical dendritic sections only.",
-            expanded_sections=("apical",),
-        ),
-        SectionListDefinition(
-            name="axonal",
-            label="Axonal",
-            description="Axonal sections only.",
-            expanded_sections=("axonal",),
+            display_order=0,
         ),
         SectionListDefinition(
             name="myelinated",
@@ -392,6 +351,75 @@ def _make_default_section_list_definitions() -> tuple[SectionListDefinition, ...
             description="Myelinated sections created by a compatible axon modifier.",
             expanded_sections=("myelinated",),
             requires_myelinated=True,
+            display_order=1,
+        ),
+        SectionListDefinition(
+            name="somadend",
+            label="Soma and dendrites",
+            description="Apical, basal, and somatic sections.",
+            expanded_sections=("apical", "basal", "somatic"),
+            is_composite=True,
+            display_order=2,
+        ),
+        SectionListDefinition(
+            name="somatic",
+            label="Somatic",
+            description="Somatic sections only.",
+            expanded_sections=("somatic",),
+            display_order=3,
+        ),
+        SectionListDefinition(
+            name="axonal",
+            label="Axonal",
+            description="Axonal sections only.",
+            expanded_sections=("axonal",),
+            display_order=4,
+        ),
+        SectionListDefinition(
+            name="apical",
+            label="Apical",
+            description="Apical dendritic sections only.",
+            expanded_sections=("apical",),
+            display_order=5,
+        ),
+        SectionListDefinition(
+            name="basal",
+            label="Basal",
+            description="Basal dendritic sections only.",
+            expanded_sections=("basal",),
+            display_order=6,
+        ),
+        SectionListDefinition(
+            name="alldend",
+            label="All dendrites",
+            description="Apical and basal dendritic sections.",
+            expanded_sections=("apical", "basal"),
+            is_composite=True,
+            display_order=7,
+        ),
+        SectionListDefinition(
+            name="allnoaxon",
+            label="All sections without axon",
+            description="Apical, basal, and somatic sections.",
+            expanded_sections=("apical", "basal", "somatic"),
+            is_composite=True,
+            display_order=8,
+        ),
+        SectionListDefinition(
+            name="somaxon",
+            label="Soma and axon",
+            description="Axonal and somatic sections.",
+            expanded_sections=("axonal", "somatic"),
+            is_composite=True,
+            display_order=9,
+        ),
+        SectionListDefinition(
+            name="allact",
+            label="All active sections",
+            description="Apical, basal, somatic, and axonal sections for active mechanisms.",
+            expanded_sections=("apical", "basal", "somatic", "axonal"),
+            is_composite=True,
+            display_order=10,
         ),
     )
 
