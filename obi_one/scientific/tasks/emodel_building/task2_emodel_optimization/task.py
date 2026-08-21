@@ -115,7 +115,7 @@ class EModelOptimizationTask(Task):
         mtype = self._derive_mtype(db_client)
 
         # --- 1. Download extracted features ---
-        extraction_tr = self.config.target_efeatures
+        extraction_tr = self.config.inputs.target_efeatures
         self._download_extraction_features(extraction_tr, coord_root, db_client)
 
         # --- 2. Download and preflight morphology ---
@@ -152,8 +152,12 @@ class EModelOptimizationTask(Task):
                 etype=init.etype.entity(db_client=db_client).pref_label,
                 mtype=mtype,
                 ttype=None,
-                species=self.config.morphology.entity(db_client=db_client).subject.species.name,
-                brain_region=self.config.morphology.entity(db_client=db_client).brain_region.name,
+                species=self.config.inputs.morphology.entity(
+                    db_client=db_client
+                ).subject.species.name,
+                brain_region=self.config.inputs.morphology.entity(
+                    db_client=db_client
+                ).brain_region.name,
                 iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
@@ -232,7 +236,7 @@ class EModelOptimizationTask(Task):
         """Download morphology SWC and return the filename."""
         morph_dir = coord_root / "morphologies"
         morph_dir.mkdir(parents=True, exist_ok=True)
-        morph_entity = self.config.morphology
+        morph_entity = self.config.inputs.morphology
         swc_content = morph_entity.swc_file_content(db_client=db_client)
         # Use entity ID as filename base
         morph_id = morph_entity.id_str
@@ -328,7 +332,7 @@ class EModelOptimizationTask(Task):
         Uses the first m-type if multiple are available. Returns None when
         the morphology has no m-types, which is acceptable for optimisation.
         """
-        morph_entity = self.config.morphology
+        morph_entity = self.config.inputs.morphology
         entity = morph_entity.entity(db_client=db_client)
         if hasattr(entity, "mtypes") and entity.mtypes:
             return str(entity.mtypes[0].pref_label)  # ty:ignore[union-attr]
@@ -500,7 +504,7 @@ class EModelOptimizationTask(Task):
         # --- Gather metadata ---
         # Species and brain region come from the morphology entity, so the
         # registered emodel/me-model inherit the morphology's provenance.
-        morph_entity = self.config.morphology.entity(db_client=db_client)
+        morph_entity = self.config.inputs.morphology.entity(db_client=db_client)
         brain_region_entity = morph_entity.brain_region
         species_entity = morph_entity.subject.species
 

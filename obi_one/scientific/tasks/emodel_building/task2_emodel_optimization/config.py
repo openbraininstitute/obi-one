@@ -10,8 +10,6 @@ from pydantic import Field, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
@@ -23,6 +21,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     CustomDistanceDependentDistribution,
     MorphologySettings,
     OptimizationInitialize,
+    OptimizationInputs,
     OptimizationParams,
     OptimizationSettings,
     ParametersSelection,
@@ -175,8 +174,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
-            self.target_efeatures.entity(db_client=db_client),
-            self.morphology.entity(db_client=db_client),
+            self.inputs.target_efeatures.entity(db_client=db_client),
+            self.inputs.morphology.entity(db_client=db_client),
         ]
         entities.extend(
             reference.entity(db_client=db_client)
@@ -240,31 +239,14 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     # --- Inputs ---
 
-    target_efeatures: TaskResultFromID = Field(
-        title="Target EFeatures",
-        description=(
-            "TaskResult entity from the 01_efeature_extraction stage. Assets"
-            " (extracted features, recipes, targets config) are downloaded from"
-            " this entity to seed the optimisation working directory."
-        ),
+    inputs: OptimizationInputs = Field(
+        default_factory=OptimizationInputs,
+        title="Inputs",
+        description="Extraction result and morphology entity.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-    morphology: CellMorphologyFromID = Field(
-        title="Cell morphology",
-        description=(
-            "Morphology entity whose SWC/ASC asset is staged into"
-            " ``./morphologies/``. The m-type, species and brain region are all"
-            " derived from this entity."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-            SchemaKey.GROUP: BlockGroup.INPUTS,
-            SchemaKey.GROUP_ORDER: 1,
         },
     )
 
@@ -275,7 +257,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.INPUTS,
-            SchemaKey.GROUP_ORDER: 2,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

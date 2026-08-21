@@ -44,7 +44,7 @@ class IdentifiableFromID(OBIBaseModel, abc.ABC):
 
     These are not full Entity objects (no assets), but they are identifiable
     database records that can be fetched by ID.
-    """  # noqa: E501
+    """  # ruff: ignore[line-too-long]
 
     entitysdk_class: ClassVar[type[Identifiable]] = None  # ty:ignore[invalid-assignment]
     id_str: str = Field(description="ID of the identifiable in string format.")
