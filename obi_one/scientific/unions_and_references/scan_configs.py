@@ -48,6 +48,9 @@ from obi_one.scientific.tasks.morphology_decontainerization import (
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
+from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationScanConfig,
+)
 
 ScanConfigsUnion = Annotated[
     CircuitSimulationScanConfig
@@ -71,6 +74,7 @@ ScanConfigsUnion = Annotated[
     | Brian2CircuitSimulationScanConfig
     | CreateExtracellularRecordingArrayScanConfig
     | IonChannelModelSimulationScanConfig
-    | LearningEngineCircuitSimulationScanConfig,
+    | LearningEngineCircuitSimulationScanConfig
+    | SynapseParameterizationScanConfig,
     Discriminator("type"),
 ]

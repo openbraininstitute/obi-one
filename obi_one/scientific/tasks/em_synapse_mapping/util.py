@@ -1,120 +1,68 @@
+"""Utilities for the EM synapse mapping task."""
+
 import logging
 from pathlib import Path
 
 import h5py
+from morph_spines.utils.morph_spine_merger import merge_morphologies_with_spines
 
 L = logging.getLogger(__name__)
 
 
 def merge_spiny_morphologies(
-    source_files: list[Path],
+    source_files_with_neuron_names: list[tuple[Path, str]],
     output_path: Path,
-    neuron_id_strings: list[str],
     *,
     include_meshes: bool = True,
 ) -> None:
-    """Merge multiple morphology-with-spines HDF5 files into one.
+    """Merge multiple morphology-with-spines HDF5 files into one, renaming each neuron.
 
-    Supports merging files with already multiple morphologies-with-spines in them.
-    All morphologies and spines are copied into the output file, keeping their original keys.
-    Raises ValueError in case of duplicated keys between source files.
+    Each source file must contain exactly one morphology. The single morphology
+    in each file is renamed to the corresponding destination name.
+    Spine libraries that share the neuron's name are renamed accordingly;
+    shared spine libraries with different names are kept as-is.
+
+    This is a convenience wrapper around morph_spines' merge_morphologies_with_spines
+    for the common case where each source file has a single morphology and should be
+    renamed to a known identifier.
 
     Args:
-        source_files: list of morphology-with-spines HDF5 files to merge.
-        output_path: path to write the combined HDF5 file. For simplicity, must be a new file.
-        neuron_id_strings: List of string that identify the neurons within the merged file.
-           Same order (and length) as soiurce_files.
+        source_files_with_neuron_names: list of (source_file_path, destination_name)
+            pairs. Each source file must contain exactly one morphology, which will
+            be renamed to the given destination name in the output.
+        output_path: path to write the combined HDF5 file. Must not already exist.
         include_meshes: if True (default), include soma and spine mesh datasets.
             Otherwise, skip mesh datasets for a smaller file size.
+
+    Raises:
+        ValueError: If any source file does not contain exactly one morphology.
     """
-    neuron_keyed_groups = ["edges", "morphology"]
-    if include_meshes:
-        neuron_keyed_groups.append("soma/meshes")
-    spine_library_groups = ["spines/skeletons"]
-    if include_meshes:
-        spine_library_groups.append("spines/meshes")
-    if len(source_files) != len(neuron_id_strings):
-        err_str = "Must provide an identifier for each input."
-        raise ValueError(err_str)
+    # Build rename_map by resolving the single morphology name in each file
+    source_files: list[Path] = []
+    rename_map: dict[tuple[Path, str], str] = {}
 
-    with h5py.File(output_path, "w") as h5_out:
-        for src_path, dest_str in zip(source_files, neuron_id_strings, strict=True):
-            with h5py.File(src_path, "r") as h5_in:
-                _merge_one_source(
-                    h5_in, h5_out, src_path, dest_str, neuron_keyed_groups, spine_library_groups
-                )
+    for path, dest_name in source_files_with_neuron_names:
+        src_path = Path(path)
+        source_files.append(src_path)
 
-
-def _merge_one_source(
-    h5_in: h5py.File,
-    h5_out: h5py.File,
-    src_path: Path,
-    morph_key_out: str,
-    neuron_keyed_groups: list[str],
-    spine_library_groups: list[str],
-) -> None:
-    """Merge all morphologies from one source file into the output."""
-    if "morphology" not in h5_in:
-        err_str = f"No /morphology group found in {src_path}"
-        raise ValueError(err_str)
-
-    src_names = list(h5_in["morphology"].keys())
-
-    for morph_key in src_names:
-        # If there is more than one morphology in the input file this will lead to an error.
-        # That is intended! Could check for len(src_names) == 1 here..?
-        _copy_neuron_groups(h5_in, h5_out, morph_key, morph_key_out, src_path, neuron_keyed_groups)
-
-    for grp_path in spine_library_groups:
-        src_grp = _navigate_h5_path(h5_in, grp_path)
-        if src_grp is None:
-            continue
-        dst_parent = h5_out.require_group(grp_path)
-        for spine_key in src_grp:
-            if spine_key in dst_parent:
+        with h5py.File(src_path, "r") as h5:
+            if "morphology" not in h5:
+                err_str = f"No /morphology group found in {src_path}"
+                raise ValueError(err_str)
+            morph_keys = list(h5["morphology"].keys())
+            if len(morph_keys) != 1:
                 err_str = (
-                    f"Duplicate spine key '{spine_key}' in "
-                    f"output group '{grp_path}' (from {src_path})"
+                    f"Expected exactly 1 morphology in {src_path}, "
+                    f"found {len(morph_keys)}: {morph_keys}"
                 )
                 raise ValueError(err_str)
-            h5_in.copy(src_grp[spine_key], dst_parent, name=spine_key)
+            original_name = morph_keys[0]
 
+        rename_map[src_path, original_name] = dest_name
 
-def _copy_neuron_groups(
-    h5_in: h5py.File,
-    h5_out: h5py.File,
-    morph_key_in: str,
-    morph_key_out: str,
-    src_path: Path,
-    neuron_keyed_groups: list[str],
-) -> None:
-    """Copy neuron-keyed groups for one morphology key, raising on duplicates."""
-    for grp_path in neuron_keyed_groups:
-        src_grp = _navigate_h5_path(h5_in, grp_path)
-        if src_grp is None or morph_key_in not in src_grp:
-            continue
-        dst_parent = h5_out.require_group(grp_path)
-        if morph_key_out in dst_parent:
-            err_str = (
-                f"Duplicate morphology key '{morph_key_out}' in "
-                f"output group '{grp_path}' (from {src_path})"
-            )
-            raise ValueError(err_str)
-        h5_in.copy(src_grp[morph_key_in], dst_parent, name=morph_key_out)
-        if grp_path == "edges":
-            metadata_path = f"{grp_path}/{morph_key_in}/metadata"
-            if metadata_path in h5_in:
-                dst_grp = dst_parent[morph_key_out]
-                if "metadata" not in dst_grp:
-                    h5_in.copy(h5_in[metadata_path], dst_grp, name="metadata")
-
-
-def _navigate_h5_path(h5: h5py.File, path: str) -> h5py.Group | None:
-    """Navigate an HDF5 file to a nested group path, returning None if not found."""
-    grp = h5
-    for part in path.split("/"):
-        if part in grp:
-            grp = grp[part]
-        else:
-            return None
-    return grp
+    merge_morphologies_with_spines(
+        source_files=source_files,
+        output_path=output_path,
+        rename_map=rename_map,
+        include_meshes=include_meshes,
+    )

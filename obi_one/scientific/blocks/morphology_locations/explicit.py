@@ -1,0 +1,231 @@
+from typing import Annotated, ClassVar, override
+
+import morphio
+import numpy as np
+import pandas  # ruff: ignore[unconventional-import-alias]
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
+
+from obi_one.core.exception import ConfigValidationError
+from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.morphology_locations.base import (
+    MorphologyLocationsBlock,
+    SectionTypes,
+)
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
+from obi_one.scientific.library.morphology_locations import (
+    _PRE_IDX,
+    _SEC_ID,
+    _SEC_LOC,
+    _SEC_TYP,
+    _SEG_ID,
+    _SEG_OFF,
+    _SOM_PAD,
+    MorphologyPathDistanceCalculator,
+)
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+)
+
+_LOCATION_COLUMNS = pandas.Index(
+    [
+        _SEG_ID,
+        _SEC_ID,
+        _SEC_TYP,
+        _SEG_OFF,
+        _SOM_PAD,
+        _PRE_IDX,
+        _SEC_LOC,
+    ]
+)
+
+_SOMA_SECTION_ID = 0
+
+_SectionID = Annotated[
+    int,
+    Field(
+        ge=0,
+        strict=True,
+        title="Section ID",
+        description="SONATA global section ID: 0 for soma, then nrn_order neurites.",
+    ),
+]
+_NormalizedSectionOffset = Annotated[
+    float,
+    Field(
+        ge=0.0,
+        le=1.0,
+        title="Normalized section offset",
+        description="Normalized location along the section.",
+    ),
+]
+
+
+class MorphologyLocationPoint(BaseModel):
+    """A SONATA global section ID and normalized offset defining one location."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    section_id: _SectionID
+    offset: _NormalizedSectionOffset
+
+
+def _neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> morphio.Section:
+    try:
+        return morphology.section(section_id - 1)
+    except morphio.RawDataError:
+        msg = f"Section ID {section_id} does not exist in the provided morphology."
+        raise ValueError(msg) from None
+
+
+def _point_on_section(
+    morphology: morphio.Morphology,
+    path_distance_calculator: MorphologyPathDistanceCalculator | None,
+    section_id: int,
+    offset: float,
+) -> dict[str, int | float]:
+    if section_id == _SOMA_SECTION_ID:
+        return {
+            _SEG_ID: 0,
+            _SEC_ID: 0,
+            _SEC_TYP: int(morphio.SectionType.soma),
+            _SEG_OFF: 0.0,
+            _SOM_PAD: 0.0,
+            _PRE_IDX: 0,
+            _SEC_LOC: offset,
+        }
+
+    if path_distance_calculator is None:
+        msg = "A path-distance calculator is required for neurite locations."
+        raise ValueError(msg)
+
+    section = _neurite_section_for_id(morphology, section_id)
+    segment_lengths = np.linalg.norm(np.diff(section.points, axis=0), axis=1)
+    section_length = float(segment_lengths.sum())
+    if section_length <= 0.0:
+        msg = f"Section ID {section_id} has no positive-length segments."
+        raise ValueError(msg)
+
+    distance_on_section = offset * section_length
+    cumulative_lengths = np.cumsum(segment_lengths)
+    segment_id = min(
+        int(np.searchsorted(cumulative_lengths, distance_on_section, side="right")),
+        len(segment_lengths) - 1,
+    )
+    segment_start = 0.0 if segment_id == 0 else float(cumulative_lengths[segment_id - 1])
+    segment_offset = distance_on_section - segment_start
+    soma = pandas.DataFrame({_SEC_ID: [0], _SEG_ID: [0], _SEG_OFF: [0.0]})
+    location = pandas.DataFrame(
+        {_SEC_ID: [section_id], _SEG_ID: [segment_id], _SEG_OFF: [segment_offset]}
+    )
+    path_distance = float(
+        path_distance_calculator.path_distances(
+            soma,
+            location,
+            str_section_id=_SEC_ID,
+            str_segment_id=_SEG_ID,
+            str_offset=_SEG_OFF,
+        )[0, 0]
+    )
+
+    return {
+        _SEG_ID: segment_id,
+        _SEC_ID: section_id,
+        _SEC_TYP: int(section.type),
+        _SEG_OFF: segment_offset,
+        _SOM_PAD: path_distance,
+        _PRE_IDX: 0,
+        _SEC_LOC: offset,
+    }
+
+
+class ExplicitMorphologyLocations(MorphologyLocationsBlock):
+    """Manually chosen locations on the neuron's morphology.
+
+    Click on branches in the 3D viewer to select where stimuli or recordings are placed.
+    """
+
+    title: ClassVar[str] = "Explicit Morphology Locations"
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS,
+            SchemaKey.FALSE_MESSAGE: (
+                "Explicit morphology locations are only available for single-neuron targets."
+            ),
+        },
+    }
+
+    locations: Annotated[tuple[MorphologyLocationPoint, ...], Field(min_length=1)] | None = Field(
+        default=None,
+        title="Explicit locations",
+        description=(
+            "The exact points on the neuron to target. Click anywhere on the neuron in the 3D "
+            "view to add one, or type it in by hand. Each row is a single point: which branch "
+            "of the neuron it sits on, and how far along that branch it is — 0 is the start of "
+            "the branch, 1 is the end, 0.5 is halfway. Branch 0 is always the soma. At least "
+            "one point is required."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_LOCATION_SELECTION,
+        },
+    )
+
+    # Re-declared only to hide the parent's sampling knobs: locations are given outright, so
+    # `_make_points` never reads them. neuron_set is also hidden because explicit locations
+    # are gated to single-neuron targets where the default is always correct.
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Neuron Set",
+        description="Unused: explicit locations target the single neuron in the circuit.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    random_seed: NonNegativeInt = Field(
+        default=0,
+        title="Random Seed",
+        description="Unused: explicit locations involve no random sampling.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    number_of_locations: PositiveInt = Field(
+        default=1,
+        title="Number of Locations",
+        description="Unused: the number of locations is the length of `locations`.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    section_types: SectionTypes = Field(
+        default=None,
+        title="Section Types",
+        description="Unused: each location names its own section.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+
+    def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
+        if not self.locations:
+            msg = (
+                "Explicit morphology locations must contain at least one point before they can "
+                "be used as a stimulus or recording target."
+            )
+            raise ConfigValidationError(msg)
+
+        path_distance_calculator = (
+            MorphologyPathDistanceCalculator(morphology)
+            if any(location.section_id != _SOMA_SECTION_ID for location in self.locations)
+            else None
+        )
+        points = [
+            _point_on_section(
+                morphology,
+                path_distance_calculator,
+                location.section_id,
+                location.offset,
+            )
+            for location in self.locations
+        ]
+        return pandas.DataFrame(points, columns=_LOCATION_COLUMNS)
+
+    @override
+    def _check_parameter_values(self) -> None:
+        return None

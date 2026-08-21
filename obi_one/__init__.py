@@ -91,6 +91,7 @@ __all__ = [
     "EntityFromID",
     "ExcitatoryNeurons",
     "ExcitatoryTsodyksMarkramSynapticModel",
+    "ExplicitMorphologyLocations",
     "ExponentialDistanceDependentDistribution",
     "ExponentialDistribution",
     "ExponentialNaDendDistanceDependentDistribution",
@@ -151,6 +152,7 @@ __all__ = [
     "MorphologyDecontainerizationScanConfig",
     "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
+    "MorphologyLocationPoint",
     "MorphologyLocationsReference",
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
@@ -319,6 +321,10 @@ from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.explicit import (
+    ExplicitMorphologyLocations,
+    MorphologyLocationPoint,
 )
 from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
