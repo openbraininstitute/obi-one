@@ -17,8 +17,10 @@ def _optimization_config(**overrides):
     config_data = {
         "info": {"campaign_name": "test", "campaign_description": "test"},
         "initialize": {"emodel": "test", "etype": {"id_str": "etype"}},
-        "target_efeatures": {"id_str": "target"},
-        "morphology": {"id_str": "morphology"},
+        "inputs": {
+            "target_efeatures": {"id_str": "target"},
+            "morphology": {"id_str": "morphology"},
+        },
         "parameters_selection": {"ion_channel_models": [{"id_str": "icm"}]},
     }
     config_data.update(overrides)

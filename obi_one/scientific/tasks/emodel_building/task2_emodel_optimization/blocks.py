@@ -18,8 +18,10 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
+from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_lists import (
     AXON_MODIFIER_DESCRIPTIONS,
     DEFAULT_SECTION_LIST_CATALOG,
@@ -815,6 +817,29 @@ class ParametersSelection(Block):
         return self
 
 
+class OptimizationInputs(Block):
+    """Entity inputs and mechanism selections for the Task 2 Inputs group."""
+
+    target_efeatures: TaskResultFromID = Field(
+        title="Target EFeatures",
+        description=(
+            "TaskResult entity from the 01_efeature_extraction stage. Assets"
+            " (extracted features, recipes, targets config) are downloaded from"
+            " this entity to seed the optimisation working directory."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+    )
+    morphology: CellMorphologyFromID = Field(
+        title="Cell morphology",
+        description=(
+            "Morphology entity whose SWC/ASC asset is staged into"
+            " ``./morphologies/``. The m-type, species and brain region are all"
+            " derived from this entity."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+    )
+
+
 Probability = Annotated[float, Field(ge=0.0, le=1.0)]
 ProbabilityValue = Probability | list[Probability]
 
@@ -911,6 +936,7 @@ class OptimizationParams(Block):
         default=None,
         title="CMA centroids",
         description="Optional fixed initial CMA centroid vector; valid for SO-CMA and MO-CMA.",
+        json_schema_extra={SchemaKey.UI_ENABLED: False},
     )
 
     @model_validator(mode="after")

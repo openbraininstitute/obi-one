@@ -43,11 +43,16 @@ def _scan_config_data(**overrides):
     config_data = {
         "info": {"campaign_name": "test", "campaign_description": "test"},
         "initialize": {"emodel": "test", "etype": {"id_str": "etype"}},
-        "target_efeatures": {"id_str": "target"},
-        "morphology": {"id_str": "morphology"},
+        "inputs": {
+            "target_efeatures": {"id_str": "target"},
+            "morphology": {"id_str": "morphology"},
+        },
         "parameters_selection": {"ion_channel_models": [{"id_str": "icm-1"}]},
     }
+    parameters_selection = overrides.pop("parameters_selection", None)
     config_data.update(overrides)
+    if parameters_selection is not None:
+        config_data["parameters_selection"] = parameters_selection
     return config_data
 
 
@@ -221,11 +226,14 @@ def test_mechanisms_wizard_steps_are_mapped_in_figma_order():
 def test_schema_groups_match_figma_navigation():
     schema = EModelOptimizationScanConfig.model_json_schema()
     properties = schema["properties"]
+    inputs_schema = schema["$defs"]["OptimizationInputs"]["properties"]
 
     assert properties["info"]["group"] == "Setup"
     assert properties["initialize"]["group"] == "Setup"
-    assert properties["target_efeatures"]["group"] == "Inputs"
-    assert properties["morphology"]["group"] == "Inputs"
+    assert properties["inputs"]["group"] == "Inputs"
+    assert properties["inputs"]["title"] == "Inputs"
+    assert inputs_schema["target_efeatures"]["title"] == "Target EFeatures"
+    assert inputs_schema["morphology"]["title"] == "Cell morphology"
     assert properties["parameters_selection"]["group"] == "Inputs"
     assert properties["parameters_selection"]["title"] == "Mechanisms"
     assert properties["distance_dependent_distributions"]["group"] == "Inputs"
@@ -426,7 +434,7 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
 
     config = SimpleNamespace(
         initialize=SimpleNamespace(emodel="test"),
-        morphology=FakeMorphology(),
+        inputs=SimpleNamespace(morphology=FakeMorphology()),
     )
     task = EModelOptimizationTask.model_construct(config=config)
 
