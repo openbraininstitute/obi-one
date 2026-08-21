@@ -16,6 +16,7 @@ class TaskType(StrEnum):
 
     # Task types supported for job submission (via the launch-system)
     circuit_extraction = auto()
+    circuit_single_build = auto()
     circuit_simulation = auto()
     circuit_simulation_inait_machine = auto()
     circuit_simulation_neuron = auto()
@@ -43,7 +44,6 @@ class TaskType(StrEnum):
     learning_engine_circuit_simulation = auto()
     me_model_simulation = auto()
     me_model_with_synapses_circuit_simulation = auto()
-    me_model_synapse_placement = auto()
     morphology_containerization = auto()
     morphology_decontainerization = auto()
     morphology_locations = auto()

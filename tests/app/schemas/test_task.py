@@ -7,10 +7,14 @@ from app.schemas.task import TaskLaunchSubmit
 from obi_one.types import TaskType
 
 
-def test_task_launch_submit_accepts_launchable_task_type():
+@pytest.mark.parametrize(
+    "task_type",
+    [TaskType.circuit_extraction, TaskType.circuit_single_build],
+)
+def test_task_launch_submit_accepts_launchable_task_type(task_type):
     """Launchable task types should be accepted."""
-    model = TaskLaunchSubmit(task_type=TaskType.circuit_extraction, config_id=uuid4())
-    assert model.task_type == TaskType.circuit_extraction
+    model = TaskLaunchSubmit(task_type=task_type, config_id=uuid4())
+    assert model.task_type == task_type
 
 
 def test_task_launch_submit_rejects_non_launchable_task_type():
