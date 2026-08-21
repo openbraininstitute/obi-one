@@ -14,6 +14,9 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingS
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+)
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
@@ -55,6 +58,7 @@ ScanConfigsUnion = Annotated[
     | CircuitExtractionScanConfig
     | EMSynapseMappingScanConfig
     | EModelEFeatureExtractionScanConfig
+    | EModelOptimizationScanConfig
     | BasicConnectivityPlotsScanConfig
     | ConnectivityMatrixExtractionScanConfig
     | FolderCompressionScanConfig

@@ -79,6 +79,8 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[c
 
         group = root_element_schema.get(SchemaKey.GROUP)
         group_order = root_element_schema.get(SchemaKey.GROUP_ORDER)
+        if not root_element_schema.get(SchemaKey.UI_ENABLED, True):
+            continue
         if not group:
             msg = f"Validation error at {form_ref}: {root_element} must have a group"
             raise ValueError(msg)
@@ -176,14 +178,22 @@ def validate_scan_config_dependendent_block_components(block_schema, ref, form):
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
-    if schema.get("additionalProperties", {}).get("oneOf") is None:
-        msg = (
-            f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
-            "in additionalProperties"
-        )
-        raise ValueError(msg)
+    additional_properties = schema.get("additionalProperties", {})
+    block_schemas = additional_properties.get("oneOf")
+    direct_schema = block_schemas is None
+    if direct_schema:
+        if not isinstance(additional_properties, dict) or not (
+            additional_properties.get("$ref")
+            or isinstance(additional_properties.get("properties"), dict)
+        ):
+            msg = (
+                f"Validation error at {config_ref}: block_dictionary {key} must have a block "
+                "schema in additionalProperties"
+            )
+            raise ValueError(msg)
+        block_schemas = [additional_properties]
 
-    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
+    for block_schema in block_schemas:
         ref = block_schema.get("$ref")
 
         if ref:
@@ -191,7 +201,14 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dic
 
         validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
-        validate_block(block_schema, ref)
+        if direct_schema and not isinstance(block_schema.get("properties"), dict):
+            msg = (
+                f"Validation error at {config_ref}: block_dictionary {key} must reference an "
+                "object schema"
+            )
+            raise TypeError(msg)
+        if not direct_schema:
+            validate_block(block_schema, ref)
 
 
 def validate_block_union(schema: dict, key: str, config_ref: str, form: dict) -> None:
@@ -234,6 +251,8 @@ def validate_config(form: dict, config_ref: str) -> None:
     for root_element, root_element_schema in form.get("properties", {}).items():
         if root_element == "type":
             validate_type(root_element_schema, config_ref)
+            continue
+        if not root_element_schema.get(SchemaKey.UI_ENABLED, True):
             continue
 
         ref = root_element_schema.get("$ref")

@@ -34,6 +34,7 @@ class BuiltinScript(StrEnum):
     """Builtin script."""
 
     circuit_simulation = auto()
+    emodel_optimisation = auto()
 
 
 class MachineExecutorImageType(StrEnum):

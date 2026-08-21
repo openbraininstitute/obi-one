@@ -25,6 +25,7 @@ class TaskType(StrEnum):
     circuit_synaptic_physiology_assignment = auto()
     em_synapse_mapping = auto()
     efeature_extraction = auto()
+    emodel_optimization = auto()
     extracellular_recording_weights_calculation = auto()
     ion_channel_model_simulation_execution = auto()
     single_neuron_simulation_execution = auto()

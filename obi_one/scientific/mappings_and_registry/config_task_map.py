@@ -33,6 +33,13 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
+    EModelOptimizationTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
@@ -181,6 +188,18 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         ),
         single_task_config_type=TaskConfigType.efeature_extraction__config,
         single_task_activity_type=(TaskActivityType.efeature_extraction__execution),
+    ),
+    TaskType.emodel_optimization: TaskRegistration(
+        task_cls=EModelOptimizationTask,
+        single_config_cls=EModelOptimizationSingleConfig,
+        scan_config_cls=EModelOptimizationScanConfig,
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.emodel_optimization__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.emodel_optimization__config_generation
+        ),
+        single_task_config_type=TaskConfigType.emodel_optimization__config,
+        single_task_activity_type=TaskActivityType.emodel_optimization__execution,
     ),
     TaskType.extracellular_recording_weights_calculation: TaskRegistration(
         task_cls=CreateExtracellularRecordingArrayTask,
