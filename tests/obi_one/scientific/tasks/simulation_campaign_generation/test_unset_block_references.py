@@ -42,7 +42,6 @@ from obi_one.scientific.unions_and_references.stimuli import CircuitStimulusUnio
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
     POINT_POPULATION,
@@ -426,15 +425,12 @@ class TestNoDanglingNodeSetReferences:
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_brian2_stimulus_leaves_nothing_dangling(self, brian2_config, tmp_path):
-        """Brian2 resolves two different defaults, and both node sets have to be written."""
+        """Brian2 resolves one default, shared by the simulation and the stimulus."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.referenced_node_sets() == {
-            DEFAULT_POINT_NODE_SET,
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET,
-        }
+        assert result.referenced_node_sets() == {DEFAULT_POINT_NODE_SET}
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_learning_engine_stimulus_leaves_nothing_dangling(

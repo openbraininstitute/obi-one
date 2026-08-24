@@ -36,6 +36,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
     SEClampSomaticStimulus,
+    SimulationDtSinusoidalCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
@@ -76,7 +77,18 @@ _FIELD_STIMULI = (
 
 _SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
 
-_BRIAN2_STIMULI = Brian2DirectPoissonStimulus
+# The Brian2 runner turns SONATA `linear`, `pulse` and `sinusoidal` inputs into current
+# injections, `poisson` into a direct membrane kick, and `synapse_replay` into a
+# SpikeGeneratorGroup wired through the circuit's own connectivity. Relative-to-threshold, noise,
+# electric field and voltage clamp modules have no counterpart there.
+_BRIAN2_STIMULI = (
+    Brian2DirectPoissonStimulus
+    | ConstantCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SimulationDtSinusoidalCurrentClampSomaticStimulus
+    | _SPIKE_STIMULI
+)
 
 _LE_ABSOLUTE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
