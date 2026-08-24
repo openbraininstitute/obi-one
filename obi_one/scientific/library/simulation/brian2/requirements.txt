@@ -1,3 +1,6 @@
+# simulate_brian2.py imports obi_one.db_sdk.registration, and the executor
+# sparse-checks-out only this script, so obi-one has to be installed.
+obi-one
 obi-auth
 entitysdk
 brian2
