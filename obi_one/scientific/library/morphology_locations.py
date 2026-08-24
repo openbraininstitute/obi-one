@@ -302,7 +302,7 @@ def add_normalized_section_offset(
     )
     sec_o = (
         path_distance_calculator.offset[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
-        + dataframe[_SEG_OFF]
+        + dataframe[_SEG_OFF].to_numpy()
     )
     sec_l = sec_lengths[dataframe[_SEC_ID] - 1]
     dataframe[_SEC_LOC] = sec_o / sec_l
