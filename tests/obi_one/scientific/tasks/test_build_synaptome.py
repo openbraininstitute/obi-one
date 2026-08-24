@@ -26,6 +26,7 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.build_synaptome import (
     BuildSynaptomeError,
     _generate_locations,
+    _location_edge_properties,
     _sample_physiology,
     _target_population,
 )
@@ -197,6 +198,43 @@ def _edge_frame(result, edge_name: str):
     circuit = bluepysnap.Circuit(result.circuit_config_path)
     edge = circuit.edges[edge_name]
     return edge.get(edge.ids(), properties=sorted(edge.property_names))
+
+
+def test_location_edge_properties_rejects_soma_section_id():
+    locations = pd.DataFrame({"section_id": [0]})
+
+    with pytest.raises(
+        BuildSynaptomeError,
+        match=r"Invalid morphology location section=0; soma locations are not supported",
+    ):
+        _location_edge_properties(Mock(), locations)
+
+
+def test_default_placement_seed_is_unique_per_synapse_group():
+    morphology = morphio.Morphology(_SWC_MORPHOLOGY, "swc")
+    placement = RandomMorphologyLocations(number_of_locations=4, section_types=(3,))
+
+    first_group = _generate_locations(
+        morphology,
+        placement,
+        group_name="excitatory",
+        group_index=0,
+    )
+    second_group = _generate_locations(
+        morphology,
+        placement,
+        group_name="inhibitory",
+        group_index=1,
+    )
+    repeated_second_group = _generate_locations(
+        morphology,
+        placement,
+        group_name="inhibitory",
+        group_index=1,
+    )
+
+    assert not first_group.equals(second_group)
+    pd.testing.assert_frame_equal(second_group, repeated_second_group)
 
 
 def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):

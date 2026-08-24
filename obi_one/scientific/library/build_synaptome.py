@@ -80,11 +80,17 @@ def _target_population(circuit: bluepysnap.Circuit) -> tuple[str, NodePopulation
     return populations[0], population
 
 
+def _derive_group_seed(random_seed: int, group_index: int) -> int:
+    """Derive a reproducible placement seed for a synapse group."""
+    return int(np.random.SeedSequence([random_seed, group_index]).generate_state(1)[0])
+
+
 def _generate_locations(
     morphology: morphio.Morphology,
     placement: MorphologyLocationsBlock,
     *,
     group_name: str,
+    group_index: int = 0,
 ) -> pd.DataFrame:
     count = placement.number_of_locations
     if not isinstance(count, int) or count <= 0:
@@ -92,8 +98,15 @@ def _generate_locations(
             f"Synapse group '{group_name}' has invalid location count {count!r}."
         )
     try:
+        placement_for_group = placement
+        if group_index and isinstance(placement.random_seed, int):
+            placement_for_group = placement.model_copy(
+                update={
+                    "random_seed": _derive_group_seed(placement.random_seed, group_index),
+                }
+            )
         with _preserve_numpy_random_state():
-            locations = placement.points_on(morphology)
+            locations = placement_for_group.points_on(morphology)
     except Exception as exc:
         msg = (
             f"Synapse group '{group_name}' could not generate locations using "
@@ -114,6 +127,12 @@ def _location_edge_properties(
     rows: list[dict[str, float | int]] = []
     for location in locations.to_dict(orient="records"):
         section_id = int(location[_SEC_ID])
+        if section_id < 1:
+            msg = (
+                f"Invalid morphology location section={section_id}; "
+                "soma locations are not supported."
+            )
+            raise BuildSynaptomeError(msg)
         segment_id = int(location[_SEG_ID])
         physical_offset = float(location[_SEG_OFF])
         try:
@@ -311,7 +330,12 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
                     f"Synapse group '{group_key}' uses unsupported placement strategy "
                     f"{type(placement_strategy).__name__}."
                 )
-            locations = _generate_locations(morphology, placement_strategy, group_name=group_key)
+            locations = _generate_locations(
+                morphology,
+                placement_strategy,
+                group_name=group_key,
+                group_index=group_index,
+            )
             count = len(locations)
             source_ids = locations[_PRE_IDX].to_numpy(dtype=np.int64)
             source_count = int(source_ids.max()) + 1
