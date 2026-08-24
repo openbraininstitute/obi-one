@@ -284,11 +284,6 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
     if db_client is None:
         raise BuildSynaptomeError("Build Synaptome requires a db_client to resolve the ME-model.")
     try:
-        morphology = config.initialize.me_model.morphio_morphology(db_client)
-    except Exception as exc:
-        msg = f"Unable to load morphology for ME-model '{config.initialize.me_model.id_str}': {exc}"
-        raise BuildSynaptomeError(msg) from exc
-    try:
         staged = config.initialize.me_model.stage_circuit(
             db_client=db_client, dest_dir=output_directory, entity_cache=False
         )
@@ -300,6 +295,22 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
     try:
         circuit = bluepysnap.Circuit(circuit_config_path)
         target_name, _ = _target_population(circuit)
+    except BuildSynaptomeError:
+        raise
+    except Exception as exc:
+        msg = f"Unable to load staged ME-model '{config.initialize.me_model.id_str}': {exc}"
+        raise BuildSynaptomeError(msg) from exc
+
+    try:
+        morphology = staged.load_morphology(0, population=target_name)
+    except Exception as exc:
+        msg = (
+            f"Unable to load morphology from staged ME-model "
+            f"'{config.initialize.me_model.id_str}': {exc}"
+        )
+        raise BuildSynaptomeError(msg) from exc
+
+    try:
         circuit_config = json.loads(circuit_config_path.read_text())
         if circuit.edges.population_names:
             raise BuildSynaptomeError(
@@ -337,8 +348,9 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
                 group_index=group_index,
             )
             count = len(locations)
-            source_ids = locations[_PRE_IDX].to_numpy(dtype=np.int64)
-            source_count = int(source_ids.max()) + 1
+            source_ids, source_labels = pd.factorize(locations[_PRE_IDX], sort=False)
+            source_ids = source_ids.astype(np.int64, copy=False)
+            source_count = len(source_labels)
             source_target = pd.DataFrame(
                 {_SOURCE_ID: source_ids, _TARGET_ID: np.zeros(count, dtype=np.int64)}
             )

@@ -189,7 +189,16 @@ class CellMorphologyFromID(EntityFromID):
             entity = self.entity(db_client=db_client)
             for content_type, suffix in _MORPHOLOGY_ASSET_FORMATS:
                 asset = next(
-                    (asset for asset in entity.assets if asset.content_type == content_type), None
+                    (
+                        asset
+                        for asset in entity.assets
+                        if asset.content_type == content_type
+                        and (
+                            content_type != ContentType.application_x_hdf5
+                            or asset.label == AssetLabel.morphology
+                        )
+                    ),
+                    None,
                 )
                 if asset is None:
                     continue

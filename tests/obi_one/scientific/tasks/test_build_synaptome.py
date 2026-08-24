@@ -33,6 +33,8 @@ from obi_one.scientific.library.build_synaptome import (
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     write_virtual_nodes,
 )
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.scientific.library.morphology_locations import _PRE_IDX
 from obi_one.scientific.tasks.build_synaptome import (
     MEModelSynapticModelPlacementScanConfig,
     MEModelSynapticModelPlacementSingleConfig,
@@ -59,12 +61,13 @@ def _write_staged_memodel(
     path: Path,
     *,
     include_morphology: bool = True,
+    morphology_text: str = _SWC_MORPHOLOGY,
 ) -> Path:
     path.mkdir()
     (path / "hoc").mkdir()
     (path / "morphologies").mkdir()
     if include_morphology:
-        (path / "morphologies" / "cell.swc").write_text(_SWC_MORPHOLOGY)
+        (path / "morphologies" / "cell.swc").write_text(morphology_text)
     with h5py.File(path / "nodes.h5", "w") as h5:
         population = h5.create_group("nodes/target")
         population.create_dataset("node_type_id", data=[-1])
@@ -103,24 +106,19 @@ def stage_memodel(monkeypatch):
     def configure(
         *,
         include_morphology: bool = True,
+        morphology_text: str = _SWC_MORPHOLOGY,
         failure: Exception | None = None,
     ):
-        def load_morphology(_self, db_client):  # ruff: ignore[unused-function-argument]
-            if not include_morphology:
-                msg = "missing morphology asset"
-                raise ValueError(msg)
-            return morphio.Morphology(_SWC_MORPHOLOGY, "swc")
-
         def stage(_self, *, db_client, dest_dir, entity_cache=False):  # ruff: ignore[unused-function-argument]
             if failure is not None:
                 raise failure
             config_path = _write_staged_memodel(
                 dest_dir,
                 include_morphology=include_morphology,
+                morphology_text=morphology_text,
             )
-            return SimpleNamespace(path=str(config_path))
+            return MEModelCircuit(name="single_cell", path=str(config_path))
 
-        monkeypatch.setattr(MEModelFromID, "morphio_morphology", load_morphology)
         monkeypatch.setattr(MEModelFromID, "stage_circuit", stage)
 
     return configure
@@ -261,6 +259,42 @@ def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):
     assert result.circuit_config_path in result.generated_files
 
 
+def test_build_loads_morphology_from_staged_circuit(tmp_path, stage_memodel, monkeypatch):
+    stage_memodel()
+    direct_loader = Mock(side_effect=AssertionError("direct morphology loading is not allowed"))
+    monkeypatch.setattr(MEModelFromID, "morphio_morphology", direct_loader)
+
+    build_synaptome(_config(), tmp_path / "artifact", db_client=object())
+
+    direct_loader.assert_not_called()
+
+
+def test_build_densifies_sparse_source_ids(tmp_path, stage_memodel, monkeypatch):
+    stage_memodel()
+    sparse_locations = pd.DataFrame(
+        {
+            "section_id": [1, 1],
+            "segment_id": [0, 0],
+            "segment_offset": [1.0, 2.0],
+            "normalized_section_offset": [0.05, 0.1],
+            "section_type": [3, 3],
+            _PRE_IDX: [0, 2],
+        }
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.library.build_synaptome._generate_locations",
+        Mock(return_value=sparse_locations),
+    )
+
+    result = build_synaptome(_config(), tmp_path / "artifact", db_client=object())
+    circuit = bluepysnap.Circuit(result.circuit_config_path)
+    edge = circuit.edges["synaptome_basal__target__chemical"]
+    refs = edge.get(edge.ids(), properties=["@source_node"])
+
+    assert edge.source.size == 2
+    np.testing.assert_array_equal(np.sort(refs["@source_node"]), np.array([0, 1]))
+
+
 def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stage_memodel):
     stage_memodel()
     morphology_locations = {
@@ -352,15 +386,10 @@ def test_placement_does_not_mutate_global_numpy_rng(tmp_path, stage_memodel):
     np.testing.assert_array_equal(np.random.random(3), expected)  # ruff: ignore[numpy-legacy-random]
 
 
-def test_impossible_section_constraint_identifies_group(tmp_path, stage_memodel, monkeypatch):
+def test_impossible_section_constraint_identifies_group(tmp_path, stage_memodel):
     # Use a morphology with only basal dendrites (type 3), then request apical (type 4)
     basal_only_swc = "1 1 0 0 0 5 -1\n2 3 0 10 0 1 1\n3 3 0 30 0 1 2\n"
-    stage_memodel()
-    monkeypatch.setattr(
-        MEModelFromID,
-        "morphio_morphology",
-        lambda _self, _db_client: morphio.Morphology(basal_only_swc, "swc"),
-    )
+    stage_memodel(morphology_text=basal_only_swc)
     morphology_locations = {
         "apical-only": RandomMorphologyLocations(
             number_of_locations=2, section_types=(4,), random_seed=1
@@ -402,7 +431,7 @@ def test_unsupported_placement_strategy_identifies_group(tmp_path, stage_memodel
 def test_missing_morphology_is_reported(tmp_path, stage_memodel):
     stage_memodel(include_morphology=False)
 
-    with pytest.raises(BuildSynaptomeError, match="Unable to load morphology for ME-model"):
+    with pytest.raises(BuildSynaptomeError, match="Unable to load morphology from staged ME-model"):
         build_synaptome(_config(), tmp_path / "artifact", db_client=object())
 
 
