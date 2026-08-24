@@ -327,8 +327,6 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     )
 
 
-
-
 def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):
     stage_memodel()
     result = build_synaptome(_config(), tmp_path / "artifact", db_client=object())
