@@ -1,6 +1,7 @@
 """Unit tests for circuit customization staging helpers."""
 
 import json
+import re
 import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -212,52 +213,156 @@ class TestNetworkFileNames:
 
 
 class TestApplyNodeSetsOverride:
-    def test_copies_and_patches_config(self, tmp_path):
+    def _staged_config(self, circuit_dir: Path, cfg: dict) -> Path:
+        config_path = circuit_dir / "circuit_config.json"
+        config_path.write_text(json.dumps(cfg))
+        return config_path
+
+    def test_replaces_referenced_file(self, tmp_path):
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
-        config_path = circuit_dir / "circuit_config.json"
-        config_path.write_text(json.dumps({"networks": {}}))
+        (circuit_dir / "node_sets.json").write_text(json.dumps({"All": {}}))
+        config_path = self._staged_config(circuit_dir, {"node_sets_file": "node_sets.json"})
 
-        node_sets = tmp_path / "my_node_sets.json"
+        node_sets = tmp_path / "upload" / "node_sets.json"
+        node_sets.parent.mkdir()
         node_sets.write_text(json.dumps({"All": {"population": "default"}}))
 
-        _apply_node_sets_override(node_sets, circuit_dir, config_path)
+        _apply_node_sets_override(
+            node_sets,
+            circuit_dir,
+            {"node_sets_file": "node_sets.json"},
+            config_path,
+            config_overridden=False,
+        )
 
-        assert (circuit_dir / "my_node_sets.json").exists()
-        cfg = json.loads(config_path.read_text())
-        assert cfg["node_sets_file"] == "my_node_sets.json"
+        assert json.loads((circuit_dir / "node_sets.json").read_text()) == {
+            "All": {"population": "default"}
+        }
+        # No reference change was needed
+        assert json.loads(config_path.read_text())["node_sets_file"] == "node_sets.json"
 
-    def test_does_not_patch_if_already_set(self, tmp_path):
+    def test_replaces_file_referenced_by_absolute_path(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        (circuit_dir / "nested").mkdir(parents=True)
+        target = circuit_dir / "nested" / "node_sets.json"
+        target.write_text(json.dumps({"All": {}}))
+        config_path = self._staged_config(circuit_dir, {"node_sets_file": str(target)})
+
+        node_sets = tmp_path / "node_sets.json"
+        node_sets.write_text(json.dumps({"Layer1": {"layer": 1}}))
+
+        _apply_node_sets_override(
+            node_sets,
+            circuit_dir,
+            {"node_sets_file": str(target)},
+            config_path,
+            config_overridden=False,
+        )
+
+        assert json.loads(target.read_text()) == {"Layer1": {"layer": 1}}
+
+    def test_replaces_symlinked_file(self, tmp_path):
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
-        config_path = circuit_dir / "circuit_config.json"
-        config_path.write_text(json.dumps({"networks": {}, "node_sets_file": "existing.json"}))
+        original = tmp_path / "parent_ns.json"
+        original.write_text(json.dumps({"old": {}}))
+        (circuit_dir / "ns.json").symlink_to(original)
+        config_path = self._staged_config(circuit_dir, {"node_sets_file": "ns.json"})
+
+        node_sets = tmp_path / "upload" / "ns.json"
+        node_sets.parent.mkdir()
+        node_sets.write_text(json.dumps({"new": {"population": "pop_a"}}))
+
+        _apply_node_sets_override(
+            node_sets,
+            circuit_dir,
+            {"node_sets_file": "ns.json"},
+            config_path,
+            config_overridden=False,
+        )
+
+        assert not (circuit_dir / "ns.json").is_symlink()
+        assert json.loads((circuit_dir / "ns.json").read_text()) == {"new": {"population": "pop_a"}}
+        # The parent's file behind the symlink is untouched
+        assert json.loads(original.read_text()) == {"old": {}}
+
+    def test_adds_reference_when_config_has_none(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        config_path = self._staged_config(circuit_dir, {"networks": {}})
+
+        node_sets = tmp_path / "my_node_sets.json"
+        node_sets.write_text(json.dumps({"All": {}}))
+
+        _apply_node_sets_override(
+            node_sets, circuit_dir, {"networks": {}}, config_path, config_overridden=False
+        )
+
+        assert (circuit_dir / "my_node_sets.json").exists()
+        assert json.loads(config_path.read_text())["node_sets_file"] == "my_node_sets.json"
+
+    def test_repoints_reference_for_differently_named_upload(self, tmp_path):
+        """The upload must take effect, not sit unreferenced next to the parent's file."""
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        (circuit_dir / "existing.json").write_text(json.dumps({"old": {}}))
+        config_path = self._staged_config(circuit_dir, {"node_sets_file": "existing.json"})
 
         node_sets = tmp_path / "new_node_sets.json"
         node_sets.write_text(json.dumps({"All": {}}))
 
-        _apply_node_sets_override(node_sets, circuit_dir, config_path)
+        _apply_node_sets_override(
+            node_sets,
+            circuit_dir,
+            {"node_sets_file": "existing.json"},
+            config_path,
+            config_overridden=False,
+        )
 
-        cfg = json.loads(config_path.read_text())
-        assert cfg["node_sets_file"] == "existing.json"  # not changed
+        assert json.loads(config_path.read_text())["node_sets_file"] == "new_node_sets.json"
+        assert json.loads((circuit_dir / "new_node_sets.json").read_text()) == {"All": {}}
 
-    def test_replaces_existing_symlink(self, tmp_path):
+    def test_never_writes_through_the_staged_config_symlink(self, tmp_path):
+        """Patching must not edit the parent circuit's own config on shared storage."""
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
+        parent_config = tmp_path / "parent_circuit_config.json"
+        parent_config.write_text(json.dumps({"networks": {}}))
         config_path = circuit_dir / "circuit_config.json"
-        config_path.write_text(json.dumps({"node_sets_file": "ns.json"}))
+        config_path.symlink_to(parent_config)
 
-        # Create a symlink in the circuit dir
-        original = tmp_path / "parent_ns.json"
-        original.write_text(json.dumps({"old": {}}))
-        (circuit_dir / "new_ns.json").symlink_to(original)
+        node_sets = tmp_path / "my_node_sets.json"
+        node_sets.write_text(json.dumps({"All": {}}))
 
-        node_sets = tmp_path / "new_ns.json"
-        node_sets.write_text(json.dumps({"new": {"population": "pop_a"}}))
+        _apply_node_sets_override(
+            node_sets, circuit_dir, {"networks": {}}, config_path, config_overridden=False
+        )
 
-        _apply_node_sets_override(node_sets, circuit_dir, config_path)
-        # Symlink should be replaced with the actual file
-        assert not (circuit_dir / "new_ns.json").is_symlink()
+        assert json.loads(parent_config.read_text()) == {"networks": {}}
+        assert json.loads(config_path.read_text())["node_sets_file"] == "my_node_sets.json"
+
+    def test_mismatch_with_supplied_config_raises(self, tmp_path):
+        """A user-supplied circuit_config is authoritative and is never rewritten."""
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+        config_path = self._staged_config(circuit_dir, {"node_sets_file": "declared.json"})
+
+        node_sets = tmp_path / "new_node_sets.json"
+        node_sets.write_text(json.dumps({"All": {}}))
+
+        with pytest.raises(ValueError, match=re.escape("new_node_sets.json")) as exc:
+            _apply_node_sets_override(
+                node_sets,
+                circuit_dir,
+                {"node_sets_file": "declared.json"},
+                config_path,
+                config_overridden=True,
+            )
+
+        assert "declared.json" in str(exc.value)
+        assert not (circuit_dir / "new_node_sets.json").exists()
+        assert json.loads(config_path.read_text())["node_sets_file"] == "declared.json"
 
 
 # ---------------------------------------------------------------------------
@@ -288,13 +393,13 @@ class TestRemoveStaleNetworkFiles:
         _remove_stale_network_files(circuit_dir, config_path, parent_config)
         assert not stale_link.exists()
 
-    def test_does_not_remove_non_symlinks(self, tmp_path):
+    def test_removes_stale_plain_files(self, tmp_path):
+        """Staging downloads real files when storage is not mounted — those go too."""
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
 
-        # Create a regular file (not a symlink — user upload)
-        real_file = circuit_dir / "old_nodes.h5"
-        real_file.write_bytes(b"data")
+        stale_file = circuit_dir / "old_nodes.h5"
+        stale_file.write_bytes(b"data")
 
         config_path = circuit_dir / "circuit_config.json"
         config_path.write_text(json.dumps({"networks": {"nodes": [], "edges": []}}))
@@ -304,7 +409,26 @@ class TestRemoveStaleNetworkFiles:
         }
 
         _remove_stale_network_files(circuit_dir, config_path, parent_config)
-        assert real_file.exists()  # not removed because it's not a symlink
+        assert not stale_file.exists()
+
+    def test_keeps_files_still_referenced(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        circuit_dir.mkdir()
+
+        kept = circuit_dir / "nodes.h5"
+        kept.write_bytes(b"data")
+
+        config_path = circuit_dir / "circuit_config.json"
+        config_path.write_text(
+            json.dumps({"networks": {"nodes": [{"nodes_file": "nodes.h5"}], "edges": []}})
+        )
+
+        parent_config = {
+            "networks": {"nodes": [{"nodes_file": "nodes.h5"}], "edges": []},
+        }
+
+        _remove_stale_network_files(circuit_dir, config_path, parent_config)
+        assert kept.exists()
 
 
 # ---------------------------------------------------------------------------

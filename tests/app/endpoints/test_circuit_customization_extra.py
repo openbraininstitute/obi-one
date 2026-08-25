@@ -14,8 +14,9 @@ from fastapi import HTTPException
 from app.endpoints.circuit_customization import (
     EdgeValidationError,
     NodeSetsValidationError,
+    ParentCircuitContext,
     _collect_templates_from_group,
-    _get_parent_mechanism_names,
+    _get_parent_context,
     _parse_population_manifest,
     _run_cross_validations,
     _stage_and_register,
@@ -28,6 +29,7 @@ from app.endpoints.circuit_customization import (
 from tests.utils import CIRCUIT_DIR
 
 TINY_CIRCUIT = CIRCUIT_DIR / "N_10__top_nodes_dim6"
+CUSTOMIZATION_MODULE = "app.endpoints.circuit_customization"
 
 # ---------------------------------------------------------------------------
 # _parse_population_manifest
@@ -296,6 +298,74 @@ class TestNodesHocConsistencyExtra:
         with pytest.raises(ValueError, match="SomeCell"):
             _validate_nodes_hoc_consistency([node], [hoc])
 
+    def _nodes_with_template(self, path: Path, template: bytes) -> Path:
+        with h5py.File(path, "w") as f:
+            grp = f.create_group("nodes/pop/0")
+            grp.create_dataset("model_template", data=[template])
+            f["nodes/pop"].create_dataset("node_type_id", data=[0])
+        return path
+
+    def test_hoc_referenced_only_by_parent_nodes_is_accepted(self, tmp_path):
+        """A HOC replacement used by a population the customization does not touch."""
+        node = self._nodes_with_template(tmp_path / "nodes.h5", b"hoc:UploadedCell")
+
+        uploaded = tmp_path / "UploadedCell.hoc"
+        uploaded.write_text("begintemplate UploadedCell\nendtemplate UploadedCell\n")
+        parent_only = tmp_path / "ParentCell.hoc"
+        parent_only.write_text("begintemplate ParentCell\nendtemplate ParentCell\n")
+
+        parent = ParentCircuitContext(
+            mechanism_names=set(),
+            hoc_stems={"ParentCell", "UploadedCell"},
+            model_template_stems={"ParentCell", "UploadedCell"},
+        )
+        _validate_nodes_hoc_consistency([node], [uploaded, parent_only], parent)
+
+    def test_hoc_referenced_nowhere_raises(self, tmp_path):
+        node = self._nodes_with_template(tmp_path / "nodes.h5", b"hoc:UploadedCell")
+
+        uploaded = tmp_path / "UploadedCell.hoc"
+        uploaded.write_text("begintemplate UploadedCell\nendtemplate UploadedCell\n")
+        orphan = tmp_path / "Orphan.hoc"
+        orphan.write_text("begintemplate Orphan\nendtemplate Orphan\n")
+
+        parent = ParentCircuitContext(
+            mechanism_names=set(),
+            hoc_stems={"UploadedCell"},
+            model_template_stems={"UploadedCell"},
+        )
+        with pytest.raises(ValueError, match="Orphan"):
+            _validate_nodes_hoc_consistency([node], [uploaded, orphan], parent)
+
+    def test_template_without_matching_hoc_raises(self, tmp_path):
+        """Check 1: an uploaded node references a HOC that is nowhere to be found."""
+        node = self._nodes_with_template(tmp_path / "nodes.h5", b"hoc:GhostCell")
+
+        uploaded = tmp_path / "UploadedCell.hoc"
+        uploaded.write_text("begintemplate UploadedCell\nendtemplate UploadedCell\n")
+
+        parent = ParentCircuitContext(
+            mechanism_names=set(),
+            hoc_stems={"ParentCell"},
+            model_template_stems={"ParentCell", "UploadedCell"},
+        )
+        with pytest.raises(ValueError, match="GhostCell"):
+            _validate_nodes_hoc_consistency([node], [uploaded], parent)
+
+    def test_template_check_skipped_without_parent_hoc_stems(self, tmp_path):
+        """An unreadable parent must not turn into a spurious rejection."""
+        node = self._nodes_with_template(tmp_path / "nodes.h5", b"hoc:GhostCell")
+
+        uploaded = tmp_path / "GhostCell.hoc"
+        uploaded.write_text("begintemplate GhostCell\nendtemplate GhostCell\n")
+        other = tmp_path / "OtherCell.hoc"
+        other.write_text("begintemplate OtherCell\nendtemplate OtherCell\n")
+
+        empty_parent = ParentCircuitContext(
+            mechanism_names=set(), hoc_stems=set(), model_template_stems={"OtherCell"}
+        )
+        _validate_nodes_hoc_consistency([node], [uploaded, other], empty_parent)
+
 
 # ---------------------------------------------------------------------------
 # _run_cross_validations
@@ -304,48 +374,69 @@ class TestNodesHocConsistencyExtra:
 
 class TestRunCrossValidations:
     def test_empty_paths(self):
-        errors = _run_cross_validations(
-            hoc_paths=[], mod_paths=[], node_paths=[], parent_mechanism_names=None
-        )
+        errors = _run_cross_validations(hoc_paths=[], mod_paths=[], node_paths=[], parent=None)
         assert errors == []
 
     def test_new_synapse_mod_rejected(self, tmp_path):
         mod = tmp_path / "NewSyn.mod"
         mod.write_text("NEURON {\n  POINT_PROCESS NewSyn\n}\nNET_RECEIVE (w) {}\n")
         errors = _run_cross_validations(
-            hoc_paths=[], mod_paths=[mod], node_paths=[], parent_mechanism_names=set()
+            hoc_paths=[],
+            mod_paths=[mod],
+            node_paths=[],
+            parent=ParentCircuitContext(
+                mechanism_names=set(), hoc_stems=set(), model_template_stems=set()
+            ),
         )
         assert len(errors) == 1
         assert "NET_RECEIVE" in errors[0]
 
 
 # ---------------------------------------------------------------------------
-# _get_parent_mechanism_names
+# _get_parent_context
 # ---------------------------------------------------------------------------
 
 
-class TestGetParentMechanismNames:
-    def test_returns_mod_stems_from_tiny_circuit(self):
-        """Stage the repo tiny circuit (mocked entitysdk) and collect MOD stems via SNAP."""
-        expected = {p.stem for p in (TINY_CIRCUIT / "mod").glob("*.mod")}
-        assert expected  # sanity: fixture has mechanisms
+def _fake_stage_circuit(_client, *, model, output_dir: Path) -> Path:
+    del model
+    dest = output_dir / "sonata_circuit"
+    shutil.copytree(TINY_CIRCUIT, dest)
+    return dest / "circuit_config.json"
 
-        def fake_stage_circuit(_client, *, model, output_dir: Path) -> Path:
-            del model
-            dest = output_dir / "sonata_circuit"
-            shutil.copytree(TINY_CIRCUIT, dest)
-            return dest / "circuit_config.json"
+
+class TestGetParentContext:
+    def test_reads_tiny_circuit_in_one_staging_pass(self):
+        """Stage the repo tiny circuit (mocked entitysdk) and read its facts via SNAP."""
+        expected_mods = {p.stem for p in (TINY_CIRCUIT / "mod").glob("*.mod")}
+        expected_hocs = {p.stem for p in (TINY_CIRCUIT / "emodels_hoc").glob("*.hoc")}
+        assert expected_mods  # sanity: fixture has mechanisms
+        assert expected_hocs  # sanity: fixture has e-models
 
         with patch(
-            "entitysdk.staging.circuit.stage_circuit",
-            side_effect=fake_stage_circuit,
+            f"{CUSTOMIZATION_MODULE}.stage_circuit",
+            side_effect=_fake_stage_circuit,
         ) as mock_stage:
-            names = _get_parent_mechanism_names(MagicMock(), MagicMock(name="parent"))
+            context = _get_parent_context(MagicMock(), MagicMock(name="parent"))
 
         mock_stage.assert_called_once()
-        assert names == expected
+        assert context.mechanism_names == expected_mods
         # Spot-check a few well-known mechanisms from the N_10 fixture
-        assert {"NaTg", "Ca_HVA2", "ProbAMPANMDA_EMS", "ProbGABAAB_EMS"} <= names
+        assert {"NaTg", "Ca_HVA2", "ProbAMPANMDA_EMS", "ProbGABAAB_EMS"} <= context.mechanism_names
+        assert context.hoc_stems == expected_hocs
+        # Every template the circuit references is backed by one of those HOC files
+        assert context.model_template_stems
+        assert context.model_template_stems <= context.hoc_stems
+
+    def test_staging_failure_yields_empty_context(self):
+        with patch(
+            f"{CUSTOMIZATION_MODULE}.stage_circuit",
+            side_effect=OSError("no assets"),
+        ):
+            context = _get_parent_context(MagicMock(), MagicMock(name="parent"))
+
+        assert context.mechanism_names == set()
+        assert context.hoc_stems == set()
+        assert context.model_template_stems == set()
 
 
 # ---------------------------------------------------------------------------

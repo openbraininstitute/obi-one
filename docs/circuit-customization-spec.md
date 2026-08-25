@@ -99,6 +99,21 @@ File fields (at least one required):
   circuit_config_file: UploadFile     — circuit_config.json override
 ```
 
+### Placing a node sets override
+
+An uploaded node sets file is always made effective — it never ends up staged but
+unreferenced:
+
+| Situation | What happens |
+|---|---|
+| Upload uses the filename the config references | That file is replaced |
+| Upload uses another name, or the circuit has no node sets file | The file is added and `node_sets_file` is repointed at it |
+| A `circuit_config.json` override was also uploaded | That config is authoritative: it must reference the uploaded file, otherwise HTTP 422 |
+
+Repointing rewrites the staged `circuit_config.json` as a fresh file rather than
+editing it in place, since staging may leave it as a symlink into the parent
+circuit's storage.
+
 ## Lifecycle Status Values
 
 | Status | Meaning |

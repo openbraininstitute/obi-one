@@ -101,7 +101,13 @@ def stage_customized_circuit(
         _copy_into(mechanism_overrides, mod_dir)
 
     if node_sets_override:
-        _apply_node_sets_override(node_sets_override, circuit_dir, circuit_config_path)
+        _apply_node_sets_override(
+            node_sets_override,
+            circuit_dir,
+            active_config,
+            circuit_config_path,
+            config_overridden=bool(circuit_config_override),
+        )
 
     # 5. Remove network files from the parent that the override config no longer references
     if circuit_config_override:
@@ -245,24 +251,72 @@ def _apply_emodel_overrides(
 
 
 def _apply_node_sets_override(
-    node_sets_path: Path, circuit_dir: Path, circuit_config_path: Path
+    node_sets_path: Path,
+    circuit_dir: Path,
+    config: dict,
+    circuit_config_path: Path,
+    *,
+    config_overridden: bool,
 ) -> None:
-    """Copy the nodeset file into the circuit dir and patch circuit_config if needed."""
-    dest = circuit_dir / node_sets_path.name
-    if dest.exists() or dest.is_symlink():
-        dest.unlink()
-    shutil.copy2(node_sets_path, dest)
-    L.info("Copied nodeset file: %s", node_sets_path.name)
+    """Place the uploaded node sets file and make sure the circuit config points at it.
 
-    # If the current circuit_config doesn't reference node_sets_file, add the reference
+    An upload under the referenced filename simply replaces that file. Any other name
+    is copied into the circuit directory and the config is repointed at it, so adding
+    or renaming node sets needs no hand-written config override — the upload never
+    silently ends up unreferenced.
+
+    A user-supplied ``circuit_config.json`` is authoritative and never rewritten: the
+    upload has to be the file that config references.
+
+    Raises:
+        ValueError: if a circuit config override was supplied that does not reference
+            the uploaded file.
+    """
+    referenced = config.get("node_sets_file")
+    referenced_name = Path(referenced).name if referenced else None
+
+    if referenced_name == node_sets_path.name:
+        target = Path(referenced)  # ty:ignore[invalid-argument-type]
+        if not target.is_absolute():
+            target = circuit_dir / target
+        _replace_file(node_sets_path, target)
+        L.info("Replaced node sets file: %s", target)
+        return
+
+    if config_overridden:
+        msg = (
+            f"Uploaded node sets file '{node_sets_path.name}' is not referenced by the supplied"
+            f" circuit_config.json (which references {referenced_name or 'no node sets file'})."
+            " Upload the file the config declares, or point the config at this one."
+        )
+        raise ValueError(msg)
+
+    target = circuit_dir / node_sets_path.name
+    _replace_file(node_sets_path, target)
+    _set_node_sets_reference(circuit_config_path, node_sets_path.name)
+    L.info(
+        "Added node sets file '%s' and pointed circuit_config.json at it (was: %s)",
+        node_sets_path.name,
+        referenced_name or "none",
+    )
+
+
+def _set_node_sets_reference(circuit_config_path: Path, node_sets_name: str) -> None:
+    """Point the staged circuit config at a node sets file in the circuit directory.
+
+    The staged config may be a symlink into the parent's storage, so it is rewritten
+    as a fresh file: editing it in place would modify the parent circuit itself.
+    """
     try:
         cfg = json.loads(circuit_config_path.read_text(encoding="utf-8"))
-        if not cfg.get("node_sets_file"):
-            cfg["node_sets_file"] = node_sets_path.name
-            circuit_config_path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-            L.info("Patched circuit_config.json to reference nodeset: %s", node_sets_path.name)
-    except Exception:  # ruff: ignore[blind-except]
-        L.warning("Could not patch circuit_config.json for nodeset file", exc_info=True)
+    except (OSError, json.JSONDecodeError) as e:
+        msg = f"Could not read circuit_config.json to reference '{node_sets_name}': {e}"
+        raise ValueError(msg) from e
+
+    cfg["node_sets_file"] = node_sets_name
+    if circuit_config_path.is_symlink():
+        circuit_config_path.unlink()
+    circuit_config_path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
 
 
 def _remove_stale_network_files(
@@ -270,8 +324,10 @@ def _remove_stale_network_files(
 ) -> None:
     """Unlink parent network files no longer referenced by the override circuit_config.
 
-    Only removes symlinks (files that came from the parent via EFS staging), never
-    files the user explicitly uploaded.
+    Staging fetches the parent with a link-or-download strategy, so its files are
+    symlinks into mounted storage on the cluster but plain copies elsewhere — both
+    are removed here. Uploads are never at risk: they are only ever written to paths
+    the override config references, and those names are by definition not stale.
     """
     try:
         override_cfg = json.loads(circuit_config_path.read_text(encoding="utf-8"))
@@ -285,9 +341,9 @@ def _remove_stale_network_files(
 
     for stale_name in stale_names:
         for candidate in circuit_dir.rglob(stale_name):
-            if candidate.is_symlink():
+            if candidate.is_symlink() or candidate.is_file():
                 candidate.unlink()
-                L.info("Removed stale network symlink: %s", candidate)
+                L.info("Removed stale network file: %s", candidate)
 
 
 def _network_file_names(cfg: dict) -> set[str]:

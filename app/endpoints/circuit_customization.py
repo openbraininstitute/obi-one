@@ -3,6 +3,8 @@
 import json
 import logging
 import tempfile
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
@@ -11,7 +13,9 @@ import entitysdk.client
 import entitysdk.exception
 import h5py
 import numpy as np
+from bluepysnap import Circuit as SnapCircuit
 from entitysdk import models
+from entitysdk.staging.circuit import stage_circuit
 from entitysdk.types import DerivationType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -56,6 +60,20 @@ class NodeValidationError(ValueError):
 
 class NodeSetsValidationError(ValueError):
     """Raised when a nodeset file fails validation."""
+
+
+@dataclass(frozen=True)
+class ParentCircuitContext:
+    """What the cross-file validations need to know about the parent circuit.
+
+    Collected in a single staging pass, since staging the parent is the expensive
+    part. Every field is empty when the parent could not be resolved, in which
+    case the checks that depend on it are skipped rather than failed.
+    """
+
+    mechanism_names: set[str]
+    hoc_stems: set[str]
+    model_template_stems: set[str]
 
 
 def _save_uploads(files: list[UploadFile], target_dir: Path) -> list[Path]:
@@ -258,43 +276,66 @@ def _collect_templates_from_group(
             templates.update(v.decode() if isinstance(v, bytes) else v for v in lib[:])
 
 
-def _validate_nodes_hoc_consistency(node_paths: list[Path], hoc_paths: list[Path]) -> None:
-    """Check consistency between uploaded nodes and HOC files.
+def _template_stems(templates: Iterable[str]) -> set[str]:
+    """Reduce SONATA model_template values ('hoc:MyCell') to their file stems."""
+    return {t.split(":", 1)[1] for t in templates if ":" in t}
 
-    Validates:
-    1. All model_templates in the nodes reference existing HOC files (uploaded or will be in parent)
-    2. All uploaded HOC files are referenced by at least one node's model_template
-    """
-    import h5py as h5  # ruff: ignore[import-outside-top-level]
 
-    # Collect all model_template values from uploaded nodes files
-    templates_in_nodes: set[str] = set()
+def _collect_uploaded_model_templates(node_paths: list[Path]) -> set[str]:
+    """Collect the model_template values declared by the uploaded node files."""
+    templates: set[str] = set()
     for node_path in node_paths:
         try:
-            with h5.File(node_path, "r") as f:
+            with h5py.File(node_path, "r") as f:
                 for pop_name in f.get("nodes", {}):
                     group = f["nodes"][pop_name].get("0", f["nodes"][pop_name])
-                    _collect_templates_from_group(f, group, pop_name, templates_in_nodes)
+                    _collect_templates_from_group(f, group, pop_name, templates)
         except Exception:  # ruff: ignore[blind-except, try-except-continue]
             continue
+    return templates
 
+
+def _validate_nodes_hoc_consistency(
+    node_paths: list[Path],
+    hoc_paths: list[Path],
+    parent: ParentCircuitContext | None = None,
+) -> None:
+    """Check consistency between the uploaded nodes and HOC files.
+
+    Validates:
+    1. Every model_template in the uploaded nodes resolves to a HOC file, either
+       uploaded here or already present in the parent. Skipped when the parent's
+       HOC files could not be resolved, so that an unreadable parent cannot turn
+       into a spurious rejection — the async validation task checks emodel paths
+       against the merged circuit either way.
+    2. Every uploaded HOC file is referenced by a model_template, either in the
+       uploaded nodes or in one of the parent's node populations. The latter covers
+       replacing a HOC used by populations the customization does not touch.
+    """
+    parent_hoc_stems = parent.hoc_stems if parent else set()
+    parent_template_stems = parent.model_template_stems if parent else set()
+
+    templates_in_nodes = _collect_uploaded_model_templates(node_paths)
     if not templates_in_nodes:
         return
 
-    # Extract HOC template names from uploaded files
     uploaded_hoc_stems = {p.stem for p in hoc_paths}
+    node_template_stems = _template_stems(templates_in_nodes)
 
-    # Check: every uploaded HOC must be used in at least one node
-    node_template_stems = set()
-    for t in templates_in_nodes:
-        if ":" in t:
-            node_template_stems.add(t.split(":", 1)[1])
+    if parent_hoc_stems:
+        missing_hoc = node_template_stems - uploaded_hoc_stems - parent_hoc_stems
+        if missing_hoc:
+            msg = (
+                f"model_template(s) {sorted(missing_hoc)} in the uploaded nodes files have no"
+                " matching HOC file, neither uploaded nor present in the parent circuit"
+            )
+            raise ValueError(msg)
 
-    unused_hoc = uploaded_hoc_stems - node_template_stems
+    unused_hoc = uploaded_hoc_stems - node_template_stems - parent_template_stems
     if unused_hoc:
         msg = (
-            f"Uploaded HOC file(s) {unused_hoc} are not referenced "
-            f"by any model_template in the uploaded nodes files"
+            f"Uploaded HOC file(s) {sorted(unused_hoc)} are not referenced by any model_template,"
+            " neither in the uploaded nodes files nor in the parent circuit"
         )
         raise ValueError(msg)
 
@@ -303,22 +344,24 @@ def _run_cross_validations(
     hoc_paths: list[Path],
     mod_paths: list[Path],
     node_paths: list[Path],
-    parent_mechanism_names: set[str] | None = None,
+    parent: ParentCircuitContext | None = None,
 ) -> list[str]:
     """Run cross-file validations and return collected error messages."""
     errors: list[str] = []
     if hoc_paths:
         try:
-            _validate_hoc_mechanisms(hoc_paths, mod_paths, parent_mechanism_names)
+            _validate_hoc_mechanisms(
+                hoc_paths, mod_paths, parent.mechanism_names if parent else None
+            )
         except HocValidationError as e:
             errors.append(f"hoc/mod cross-check: {e}")
     if node_paths and hoc_paths and not errors:
         try:
-            _validate_nodes_hoc_consistency(node_paths, hoc_paths)
+            _validate_nodes_hoc_consistency(node_paths, hoc_paths, parent)
         except ValueError as e:
             errors.append(f"nodes/hoc cross-check: {e}")
-    if mod_paths and parent_mechanism_names is not None:
-        synapse_errors = _validate_new_mod_not_synapse(mod_paths, parent_mechanism_names)
+    if mod_paths and parent is not None:
+        synapse_errors = _validate_new_mod_not_synapse(mod_paths, parent.mechanism_names)
         errors.extend(synapse_errors)
     return errors
 
@@ -347,36 +390,51 @@ def _validate_new_mod_not_synapse(
     return errors
 
 
-def _get_parent_mechanism_names(
-    db_client: entitysdk.client.Client, parent: models.Circuit
-) -> set[str]:
-    """Get MOD file stems from each population's resolved mechanisms_dir via SNAP."""
-    try:  # ruff: ignore[too-many-statements-in-try-clause]
-        from bluepysnap import Circuit as SnapCircuit  # ruff: ignore[import-outside-top-level]
-        from entitysdk.staging.circuit import (  # ruff: ignore[import-outside-top-level]
-            stage_circuit,
-        )
+def _collect_parent_node_facts(circuit: SnapCircuit) -> tuple[set[str], set[str], set[str]]:
+    """Collect mechanism, HOC, and model_template names from each node population."""
+    mechanism_names: set[str] = set()
+    hoc_stems: set[str] = set()
+    template_stems: set[str] = set()
 
+    for pop_name in circuit.nodes.population_names:
+        pop = circuit.nodes[pop_name]
+
+        mech_dir_str = pop.config.get("mechanisms_dir")
+        if mech_dir_str and Path(mech_dir_str).is_dir():
+            mechanism_names |= {p.stem for p in Path(mech_dir_str).glob("*.mod")}
+
+        hoc_dir_str = pop.config.get("biophysical_neuron_models_dir")
+        if hoc_dir_str and Path(hoc_dir_str).is_dir():
+            hoc_stems |= {p.stem for p in Path(hoc_dir_str).glob("*.hoc")}
+
+        if "model_template" in pop.property_names:
+            template_stems |= _template_stems(pop.property_values("model_template"))
+
+    return mechanism_names, hoc_stems, template_stems
+
+
+def _get_parent_context(
+    db_client: entitysdk.client.Client, parent: models.Circuit
+) -> ParentCircuitContext:
+    """Stage the parent circuit once and read what the cross-checks need via SNAP."""
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         with tempfile.TemporaryDirectory() as ptmp:
             config_path = stage_circuit(db_client, model=parent, output_dir=Path(ptmp))
             circuit = SnapCircuit(str(config_path))
-            names: set[str] = set()
-            for pop_name in circuit.nodes.population_names:
-                mech_dir_str = circuit.nodes[pop_name].config.get("mechanisms_dir")
-                if not mech_dir_str:
-                    continue
-                mech_dir = Path(mech_dir_str)
-                if mech_dir.is_dir():
-                    names |= {p.stem for p in mech_dir.glob("*.mod")}
-            if names:
-                return names
-            # Fallback: scan staged directory for MOD files
-            mods = list(Path(ptmp).rglob("*.mod"))
-            if mods:
-                return {p.stem for p in mods}
+            mechanism_names, hoc_stems, template_stems = _collect_parent_node_facts(circuit)
+
+            if not mechanism_names:
+                # Fallback for circuits predating per-population "mechanisms_dir"
+                mechanism_names = {p.stem for p in Path(ptmp).rglob("*.mod")}
+
+            return ParentCircuitContext(
+                mechanism_names=mechanism_names,
+                hoc_stems=hoc_stems,
+                model_template_stems=template_stems,
+            )
     except (OSError, KeyError, ValueError, TypeError) as e:
-        L.warning("Could not resolve parent mechanism names: %s", e)
-    return set()
+        L.warning("Could not resolve parent circuit context: %s", e)
+    return ParentCircuitContext(mechanism_names=set(), hoc_stems=set(), model_template_stems=set())
 
 
 def _run_validations(
@@ -560,6 +618,9 @@ def _parse_population_manifest(manifest_json: str | None) -> dict[str, str]:
         " with status 'draft' and transitions to 'active' after async validation passes."
         "\n\nWhen uploading nodes or edges alongside a circuit_config override, every uploaded"
         " file must be referenced in the config's networks section."
+        "\n\nA node_sets upload replaces the file the circuit config references when it carries"
+        " the same name, and is otherwise added with the config repointed at it. Alongside a"
+        " circuit_config override, that config is authoritative and must reference the upload."
         "\n\nTo place HOC files into a population-specific model directory, supply"
         " emodel_population_manifest as a JSON object mapping filename → population name."
     ),
@@ -648,12 +709,10 @@ def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-pos
 
         # Cross-validations
         if not errors:
-            parent_mech_names = (
-                _get_parent_mechanism_names(db_client, parent) if (mod_paths or hoc_paths) else None
+            parent_context = (
+                _get_parent_context(db_client, parent) if (mod_paths or hoc_paths) else None
             )
-            errors.extend(
-                _run_cross_validations(hoc_paths, mod_paths, node_paths, parent_mech_names)
-            )
+            errors.extend(_run_cross_validations(hoc_paths, mod_paths, node_paths, parent_context))
 
         if errors:
             raise HTTPException(status_code=422, detail={"validation_errors": errors})
