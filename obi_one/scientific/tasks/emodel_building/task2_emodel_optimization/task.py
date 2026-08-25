@@ -149,15 +149,15 @@ class EModelOptimizationTask(Task):
         with _shared.chdir(coord_root):
             access_point = LocalAccessPoint(
                 emodel=emodel,
-                etype=init.etype.entity(db_client=db_client).pref_label,
+                etype=init.etype.entity(db_client=db_client).pref_label,  # ty:ignore[unresolved-attribute]
                 mtype=mtype,
                 ttype=None,
                 species=self.config.inputs.morphology.entity(
                     db_client=db_client
-                ).subject.species.name,
+                ).subject.species.name,  # ty:ignore[unresolved-attribute]
                 brain_region=self.config.inputs.morphology.entity(
                     db_client=db_client
-                ).brain_region.name,
+                ).brain_region.name,  # ty:ignore[unresolved-attribute]
                 iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
@@ -335,7 +335,7 @@ class EModelOptimizationTask(Task):
         morph_entity = self.config.inputs.morphology
         entity = morph_entity.entity(db_client=db_client)
         if hasattr(entity, "mtypes") and entity.mtypes:
-            return str(entity.mtypes[0].pref_label)  # ty:ignore[union-attr]
+            return str(entity.mtypes[0].pref_label)  # ty:ignore[not-subscriptable]
         return None
 
     @staticmethod
@@ -505,8 +505,8 @@ class EModelOptimizationTask(Task):
         # Species and brain region come from the morphology entity, so the
         # registered emodel/me-model inherit the morphology's provenance.
         morph_entity = self.config.inputs.morphology.entity(db_client=db_client)
-        brain_region_entity = morph_entity.brain_region
-        species_entity = morph_entity.subject.species
+        brain_region_entity = morph_entity.brain_region  # ty:ignore[unresolved-attribute]
+        species_entity = morph_entity.subject.species  # ty:ignore[unresolved-attribute]
 
         # Fetch license (CC-BY-4.0)
         license_entity = db_client.search_entity(
