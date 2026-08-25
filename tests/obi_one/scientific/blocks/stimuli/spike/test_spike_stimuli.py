@@ -5,11 +5,15 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.id import (
+    BiophysicalPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
+)
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.stimuli.spike.sinusoidal_poisson import (
     _draw_inhomogeneous_poisson_interval_ms,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 from tests.utils import CIRCUIT_DIR
 
@@ -335,11 +339,15 @@ def _build_sim_config_with_all_neuron_sets():
     circuit = _make_circuit()
     sim_duration = 3000.0
 
-    sim_neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="AllIDs", elements=range(10)))
+    sim_neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="AllIDs", elements=range(10)),
+        population="S1nonbarrel_neurons",
+    )
     sim_conf.add(sim_neuron_set, name="SimNeurons")
 
-    source_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5))
+    source_neuron_set = VirtualPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5)),
+        population="VPM",
     )
     sim_conf.add(source_neuron_set, name="SourceNeurons")
 
@@ -421,11 +429,11 @@ class TestSimulationCampaignWithAllSpikeTypes:
                 stim_cfg = cfg["inputs"][stim_name]
                 assert stim_cfg["module"] == "synapse_replay"
                 assert stim_cfg["input_type"] == "spikes"
-                assert stim_cfg["delay"] == 0.0
-                assert stim_cfg["duration"] == 3000.0
+                assert stim_cfg["delay"] == 0.0  # ruff: ignore[float-equality-comparison]
+                assert stim_cfg["duration"] == 3000.0  # ruff: ignore[float-equality-comparison]
                 assert stim_cfg["node_set"] == "SimNeurons"
 
-            pop = instance.initialize.circuit.default_population_name
+            pop = "VPM"  # Source neuron set population
 
             # Check Poisson and Sinusoidal spike files
             _check_spike_file_ids_and_bounds(sim_dir, "PoissonStim", pop, source_ids, 1500.0)
@@ -452,7 +460,10 @@ def _build_config_no_source_neuron_set():
     circuit = _make_circuit()
     sim_duration = 1000.0
 
-    target_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="TargetIDs", elements=range(10)))
+    target_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="TargetIDs", elements=range(10)),
+        population="S1nonbarrel_neurons",
+    )
     sim_conf.add(target_set, name="TargetNeurons")
 
     regular_timestamps = obi.RegularTimestamps(
@@ -494,7 +505,10 @@ def _build_config_no_target_neuron_set():
     circuit = _make_circuit()
     sim_duration = 1000.0
 
-    source_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5)))
+    source_set = VirtualPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5)),
+        population="VPM",
+    )
     sim_conf.add(source_set, name="SourceNeurons")
 
     regular_timestamps = obi.RegularTimestamps(
@@ -574,7 +588,10 @@ def _build_config_no_node_set_on_initialize():
     circuit = _make_circuit()
     sim_duration = 1000.0
 
-    source_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(3)))
+    source_set = VirtualPopulationIDNeuronSet(
+        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(3)),
+        population="VPM",
+    )
     sim_conf.add(source_set, name="SourceNeurons")
 
     regular_timestamps = obi.RegularTimestamps(
@@ -646,7 +663,7 @@ class TestSimCampaignMissingTargetNeuronSet:
 
         for instance in scan.single_configs:
             sim_dir = tmp_path / scan.output_root / str(instance.idx)
-            pop = instance.initialize.circuit.default_population_name
+            pop = "VPM"  # Source neuron set population
 
             # Source should use the explicit SourceNeurons
             poisson_ids, _ = _read_spike_file(sim_dir / "PoissonNoTarget_spikes.h5", pop)
@@ -747,7 +764,10 @@ class TestSpikeStimParameterSweep:
 
         circuit = _make_circuit()
 
-        neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="IDs", elements=range(10)))
+        neuron_set = BiophysicalPopulationIDNeuronSet(
+            neuron_ids=obi.NamedTuple(name="IDs", elements=range(10)),
+            population="S1nonbarrel_neurons",
+        )
         sim_conf.add(neuron_set, name="Neurons")
 
         ts = obi.RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)

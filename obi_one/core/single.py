@@ -3,18 +3,19 @@ import logging
 from collections import OrderedDict
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import TaskActivityType
+from entitysdk.types import TaskConfigType
 from pydantic import Field, field_validator
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
-from obi_one.scientific.library.constants import _COORDINATE_CONFIG_FILENAME
-from obi_one.utils import db_sdk
+from obi_one.core.registry import task_registry
+from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -26,9 +27,9 @@ class SingleCoordinateScanParams(OBIBaseModel):
     @property
     def nested_param_name_and_value_subpath(self) -> Path:
         if len(self.scan_params):
-            self.nested_coordinate_subpath_str = ""
+            self.nested_coordinate_subpath_str = ""  # ty:ignore[invalid-assignment]
             for scan_param in self.scan_params:
-                self.nested_coordinate_subpath_str += (
+                self.nested_coordinate_subpath_str += (  # ty:ignore[unsupported-operator]
                     f"{scan_param.location_str}={scan_param.value}/"
                 )
             return Path(self.nested_coordinate_subpath_str)
@@ -37,9 +38,9 @@ class SingleCoordinateScanParams(OBIBaseModel):
     @property
     def nested_param_value_subpath(self) -> Path:
         if len(self.scan_params):
-            self.nested_coordinate_subpath_str = ""
+            self.nested_coordinate_subpath_str = ""  # ty:ignore[invalid-assignment]
             for scan_param in self.scan_params:
-                self.nested_coordinate_subpath_str += f"{scan_param.value}/"
+                self.nested_coordinate_subpath_str += f"{scan_param.value}/"  # ty:ignore[unsupported-operator]
             return Path(self.nested_coordinate_subpath_str)
         return Path(self.nested_coordinate_subpath_str)
 
@@ -64,8 +65,8 @@ class SingleCoordinateScanParams(OBIBaseModel):
 
     @property
     def scan_multi_dim_index(self) -> dict[str, int]:
-        """Return a dictionary with the multi-dimensional index of the scan parameters."""
-        d = {}
+        """Dictionary with the multi-dimensional index of the scan parameters."""
+        d: dict = {}
         for scan_param in self.scan_params:
             d[scan_param.location_str] = scan_param.index_in_scan_dimension
         return d
@@ -79,10 +80,9 @@ class SingleConfigMixin:
     coordinate_output_root: Path = Path()
     obi_one_version: str | None = None
     _coordinate_directory_option: str = "NAME_EQUALS_VALUE"
-    single_coordinate_scan_params: SingleCoordinateScanParams = None
+    single_coordinate_scan_params: SingleCoordinateScanParams = None  # ty:ignore[invalid-assignment]
 
-    _single_task_config_type: ClassVar[TaskActivityType] = None
-    _single_entity: Entity = None
+    _single_entity: Entity = None  # ty:ignore[invalid-assignment]
 
     @property
     def single_entity(self) -> Entity:
@@ -93,8 +93,9 @@ class SingleConfigMixin:
         self._single_entity = entity
 
     @property
-    def single_task_config_type(self) -> TaskActivityType:
-        return self._single_task_config_type
+    def single_task_config_type(self) -> TaskConfigType | None:
+        registration = task_registry.get_registration_for_single_config(type(self))
+        return registration.single_task_config_type if registration is not None else None
 
     def create_single_entity_with_config(
         self,
@@ -122,8 +123,8 @@ class SingleConfigMixin:
             description=f"{single_name} {self.idx}",
             task_config_type=self.single_task_config_type,
             multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
-            input_entities=self.input_entities(db_client=db_client),
-            task_config_file_path=Path(self.coordinate_output_root, _COORDINATE_CONFIG_FILENAME),
+            input_entities=self.input_entities(db_client=db_client),  # ty:ignore[unresolved-attribute]
+            task_config_file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             task_config_generator_id=campaign.id,
         )
 
@@ -165,10 +166,16 @@ class SingleConfigMixin:
             )
         elif self._coordinate_directory_option == "ZERO_INDEX":
             self.coordinate_output_root = self.scan_output_root / f"{self.idx}"
+        elif self._coordinate_directory_option == "NONE":
+            # Don't create any subfolder; only works w/o scan params
+            if self.single_coordinate_scan_params.scan_params:
+                msg = "Invalid coordinate_directory_option: NONE only valid w/o scan params."
+                raise ValueError(msg)
+            self.coordinate_output_root = self.scan_output_root
         else:
             msg = (
                 f"Invalid coordinate_directory_option: {self._coordinate_directory_option}. "
-                "Valid options are: NAME_EQUALS_VALUE, VALUE, ZERO_INDEX."
+                "Valid options are: NAME_EQUALS_VALUE, VALUE, ZERO_INDEX, NONE."
             )
             raise ValueError(msg)
 
@@ -179,7 +186,7 @@ class SingleConfigMixin:
         """Serialize the object to a JSON file."""
         # Important to use model_dump_json() instead of model_dump()
         # (so Path objects are serialized as strings)
-        model_dump = self.model_dump_json()
+        model_dump = self.model_dump_json()  # ty:ignore[unresolved-attribute]
 
         # Now load it back into a dict to do some additional modifications
         model_dump = OrderedDict(json.loads(model_dump))

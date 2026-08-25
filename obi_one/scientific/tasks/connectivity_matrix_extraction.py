@@ -29,7 +29,6 @@ class ConnectivityMatrixExtractionScanConfig(ScanConfig):
     table (dataframe) of selected node attributes.
     """
 
-    single_coord_class_name: ClassVar[str] = "ConnectivityMatrixExtractionSingleConfig"
     name: ClassVar[str] = "Connectivity Matrix Extraction"
     description: ClassVar[str] = (
         "Extracts a connectivity matrix of a given edge population of a SONATA circuit in"
@@ -114,15 +113,15 @@ class ConnectivityMatrixExtractionTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         L.info(f"Info: Running idx {self.config.idx}")
 
         # Load circuit
         L.info(f"Info: Loading circuit '{self.config.initialize.circuit}'")
-        c = self.config.initialize.circuit.sonata_circuit
+        c = self.config.initialize.circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
         popul_names = c.edges.population_names
         if len(popul_names) == 0:
             msg = "Circuit does not have any edge populations!"
@@ -144,7 +143,7 @@ class ConnectivityMatrixExtractionTask(Task):
             raise ValueError(msg)
 
         # Prepare/check output file(s)
-        output_file, config_file = self._prepare_output_files(edge_popul)
+        output_file, config_file = self._prepare_output_files(edge_popul)  # ty:ignore[invalid-argument-type]
 
         # Extract connectivity matrix
         if self.config.initialize.node_attributes is None:
@@ -176,7 +175,7 @@ class ConnectivityMatrixExtractionTask(Task):
             raise OBIONEError(msg)
 
         # Write matrix config
-        self._write_matrix_config(output_file, config_file, edge_popul)
+        self._write_matrix_config(output_file, config_file, edge_popul)  # ty:ignore[invalid-argument-type]
         if config_file and config_file.exists():
             L.info(f"Matrix config successfully written to '{config_file}'")
         elif config_file and not config_file.exists():

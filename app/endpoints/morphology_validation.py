@@ -6,7 +6,10 @@ from fastapi.responses import FileResponse
 from app.dependencies.auth import user_verified
 from app.dependencies.file import TempDirDep
 from app.services import file as file_service, morphology as morphology_service
-from app.services.morphology import ALLOWED_EXTENSIONS, DEFAULT_SINGLE_POINT_SOMA_BY_EXT
+from app.services.morphology import (
+    ALLOWED_EXTENSIONS,
+    DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
+)
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -16,7 +19,8 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
     summary="Validate a morphology and return the conversion to other formats.",
     description=(
         "Validate a morphology in a supported format (.swc, .h5, or .asc), "
-        "and return a zip file containing the morphology converted to the other formats."
+        "and return a zip file containing the morphology converted to the other formats. "
+        "If validation fails, diagnostic errors are included in the response."
     ),
 )
 def validate_neuron_file(
@@ -25,7 +29,6 @@ def validate_neuron_file(
     *,
     single_point_soma: Annotated[bool, Query(description="Convert soma to single point")] = False,
 ) -> FileResponse:
-    # 1. Save the uploaded file to a temporary location
     input_morphology = file_service.save_upload_file(
         upload_file=file,
         output_dir=temp_dir,
@@ -34,13 +37,10 @@ def validate_neuron_file(
         force_lower_case=True,
     )
 
-    # 2. Validate the morphology with MorphIO
     morphology_service.load_morphio_morphology(input_morphology, raise_warnings=True)
 
-    # 3. Validate soma diameter with neurom
     morphology_service.validate_soma_diameter(file_path=input_morphology)
 
-    # 4. Handle conversion logic with morph-tool
     if single_point_soma:
         single_point_soma_by_ext = dict.fromkeys(DEFAULT_SINGLE_POINT_SOMA_BY_EXT, True)
     else:
@@ -52,9 +52,10 @@ def validate_neuron_file(
         single_point_soma_by_ext=single_point_soma_by_ext,
     )
 
-    # 5. Create and return the zip archive
     zip_file = temp_dir / "morph_archive.zip"
-    file_service.create_zip_file(input_files=morphology, output_file=zip_file, delete_input=True)
+    file_service.create_zip_file(
+        input_files=morphology.paths(), output_file=zip_file, delete_input=True
+    )
 
     return FileResponse(
         path=zip_file,

@@ -6,7 +6,7 @@ These tests use minimal concrete subclasses to avoid importing scientific module
 from typing import Annotated, Any, ClassVar
 
 import pytest
-from pydantic import Discriminator, Field
+from pydantic import Discriminator, Field, ValidationError
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
@@ -28,16 +28,19 @@ BlockUnion = Annotated[BlockTypeA | BlockTypeB, Discriminator("type")]
 
 class TestRef(BlockReference):
     allowed_block_types: ClassVar[Any] = BlockUnion
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": ["BlockTypeA", "BlockTypeB"]
+    }
 
 
 class SimpleConfig(ScanConfig):
     """ScanConfig with only a root-level Block, no dicts."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "SimpleConfig"
     description: ClassVar[str] = "Simple"
 
     class Initialize(Block):
+        type: str = "Block"
         x: int = 0
 
     initialize: Initialize
@@ -46,18 +49,18 @@ class SimpleConfig(ScanConfig):
 class DictBlockConfig(ScanConfig):
     """ScanConfig with a dictionary of Blocks, for block_mapping tests."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "DictBlockConfig"
     description: ClassVar[str] = "Has dict blocks"
 
     class Initialize(Block):
+        type: str = "Block"
         x: int = 0
 
     initialize: Initialize
 
     blocks: dict[str, BlockUnion] = Field(
         default_factory=dict,
-        json_schema_extra={"reference_type": "TestRef"},
+        json_schema_extra={"reference_types": ["TestRef"]},
     )
 
 
@@ -70,18 +73,18 @@ class RefHolder(Block):
 class ConfigWithRefBlock(ScanConfig):
     """ScanConfig where a root-level block contains a BlockReference."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "ConfigWithRefBlock"
     description: ClassVar[str] = "Has ref block"
 
     class Initialize(Block):
+        type: str = "Block"
         x: int = 0
 
     initialize: Initialize
 
     blocks: dict[str, BlockUnion] = Field(
         default_factory=dict,
-        json_schema_extra={"reference_type": "TestRef"},
+        json_schema_extra={"reference_types": ["TestRef"]},
     )
 
     ref_holder: RefHolder = Field(default_factory=RefHolder)
@@ -118,7 +121,7 @@ class TestBlockMappingDict:
             initialize=DictBlockConfig.Initialize(),
         )
         mapping = config.block_mapping
-        assert mapping["BlockTypeA"]["reference_type"] == "TestRef"
+        assert mapping["BlockTypeA"]["reference_types"] == ["TestRef"]
 
     def test_mapping_cached_on_second_call(self):
         config = DictBlockConfig(
@@ -134,12 +137,11 @@ class TestBlockMappingMissingReferenceType:
         """If json_schema_extra lacks 'reference_type', should raise."""
 
         class BadConfig(ScanConfig):
-            single_coord_class_name: ClassVar[str] = ""
             name: ClassVar[str] = "Bad"
             description: ClassVar[str] = ""
 
             class Initialize(Block):
-                pass
+                type: str = "Block"
 
             initialize: Initialize
             blocks: dict[str, BlockUnion] = Field(
@@ -187,7 +189,7 @@ class TestFillBlockReferences:
 
     def test_block_reference_bad_dict_name_raises(self):
         holder = RefHolder(ref_field=TestRef(block_dict_name="nonexistent_dict", block_name="x"))
-        with pytest.raises(KeyError):
+        with pytest.raises(ValidationError, match="nonexistent_dict"):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),
                 blocks={},
@@ -196,7 +198,7 @@ class TestFillBlockReferences:
 
     def test_block_reference_bad_block_name_raises(self):
         holder = RefHolder(ref_field=TestRef(block_dict_name="blocks", block_name="missing"))
-        with pytest.raises(KeyError, match="missing"):
+        with pytest.raises(ValidationError, match="missing"):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),
                 blocks={"other": BlockTypeA()},
@@ -248,3 +250,29 @@ class TestScanConfigSerialization:
         json_str = config.model_dump_json()
         restored = DictBlockConfig.model_validate_json(json_str)
         assert restored.blocks["b1"].val_a == 10
+
+
+class TestAddBlockUnknownReferenceType:
+    def test_add_block_with_unknown_reference_type_raises(self):
+        """Adding a block when the reference type is not in the registry should raise."""
+        from obi_one.core.exception import OBIONEError  # ruff: ignore[import-outside-top-level]
+
+        class UnregisteredRefConfig(ScanConfig):
+            name: ClassVar[str] = "UnregisteredRefConfig"
+            description: ClassVar[str] = "Has unregistered ref"
+
+            class Initialize(Block):
+                type: str = "Block"
+                x: int = 0
+
+            initialize: Initialize
+
+            blocks: dict[str, BlockUnion] = Field(
+                default_factory=dict,
+                json_schema_extra={"reference_types": ["NonExistentRef"]},
+            )
+
+        config = UnregisteredRefConfig(initialize=UnregisteredRefConfig.Initialize())
+        block = BlockTypeA(val_a=42)
+        with pytest.raises(OBIONEError, match="No reference type from"):
+            config.add(block, name="test_block")

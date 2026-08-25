@@ -9,7 +9,6 @@ import bluepysnap as snap
 import entitysdk.client
 import h5py
 import numpy as np
-import tqdm
 from morph_tool import convert
 from morphio import MorphioError
 
@@ -37,7 +36,6 @@ class MorphologyDecontainerizationScanConfig(ScanConfig):
                to the output location where all operations take place.
     """
 
-    single_coord_class_name: ClassVar[str] = "MorphologyDecontainerizationSingleConfig"
     name: ClassVar[str] = "Morphology Decontainerization"
     description: ClassVar[str] = (
         "Creates a circuit with individual morphology files instead of containerized morphologies"
@@ -60,7 +58,7 @@ class MorphologyDecontainerizationTask(Task):
     config: MorphologyDecontainerizationSingleConfig
 
     def _copy_circuit_folder(self) -> Path:
-        input_path, input_config = os.path.split(self.config.initialize.circuit.path)
+        input_path, input_config = os.path.split(self.config.initialize.circuit.path)  # ty:ignore[unresolved-attribute]
         output_path = self.config.coordinate_output_root
         circuit_config = Path(output_path) / input_config
         if Path(circuit_config).exists():
@@ -73,7 +71,7 @@ class MorphologyDecontainerizationTask(Task):
 
     def _load_node_population(
         self, c: snap.Circuit, npop: str
-    ) -> (snap.nodes.NodePopulation, np.ndarray, str, Path, Path):
+    ) -> (snap.nodes.NodePopulation, np.ndarray, str, Path, Path):  # ty:ignore[invalid-type-form, possibly-missing-submodule]
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
             morph_names = None
@@ -87,7 +85,7 @@ class MorphologyDecontainerizationTask(Task):
                     ({nodes.size})"
             )
 
-            h5_container = nodes.morph._get_morphology_base(  # noqa: SLF001
+            h5_container = nodes.morph._get_morphology_base(  # ruff: ignore[private-member-access]
                 "h5"
             )  # TODO: Should not use private function!!
             if Path(h5_container).suffix.lower() != ".h5":
@@ -95,7 +93,7 @@ class MorphologyDecontainerizationTask(Task):
                 raise ValueError(msg)
             h5_folder = Path(os.path.split(h5_container)[0]) / "h5"
             target_folder = (
-                Path(os.path.split(h5_container)[0]) / self.config.initialize.output_format
+                Path(os.path.split(h5_container)[0]) / self.config.initialize.output_format  # ty:ignore[unsupported-operator]
             )
 
             h5_folder.mkdir(parents=True, exist_ok=True)
@@ -136,21 +134,21 @@ class MorphologyDecontainerizationTask(Task):
     ) -> None:
         with h5py.File(h5_container, "r") as f_container:
             skip_counter = 0
-            for _m in tqdm.tqdm(morph_names, desc="Extracting/converting from .h5 container"):
-                h5_file = Path(h5_folder) / (_m + ".h5")
+            for m in morph_names:
+                h5_file = Path(h5_folder) / (m + ".h5")
                 if Path(h5_file).exists():
                     skip_counter += 1
                 else:
                     # Create individual .h5 morphology file
                     with h5py.File(h5_file, "w") as f_h5:
                         # Copy all groups/datasets into root of the file
-                        for _key in f_container[_m]:
-                            f_container.copy(f_container[f"{_m}/{_key}"], f_h5)
+                        for key in f_container[m]:
+                            f_container.copy(f_container[f"{m}/{key}"], f_h5)
                     # Convert to required output format
                     if self.config.initialize.output_format != "h5":
-                        src_file = Path(h5_folder) / (_m + ".h5")
+                        src_file = Path(h5_folder) / (m + ".h5")
                         dest_file = Path(target_folder) / (
-                            _m + f".{self.config.initialize.output_format}"
+                            m + f".{self.config.initialize.output_format}"
                         )
                         if not Path(dest_file).exists():
                             convert(src_file, dest_file)
@@ -206,14 +204,14 @@ class MorphologyDecontainerizationTask(Task):
 
     def _set_population_morph_entry(
         self,
-        nodes: snap.nodes.NodePopulation,
+        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
         cfg_dict: dict,
         h5_folder: Path,
         rel_target_folder: Path,
     ) -> None:
-        for _ndict in cfg_dict["networks"]["nodes"]:
-            if nodes.name in _ndict["populations"]:
-                pop = _ndict["populations"][nodes.name]
+        for ndict in cfg_dict["networks"]["nodes"]:
+            if nodes.name in ndict["populations"]:
+                pop = ndict["populations"][nodes.name]
                 if self.config.initialize.output_format == "h5":
                     pop["alternate_morphologies"] = {"h5v1": str(h5_folder)}
                     if "morphologies_dir" in pop:
@@ -232,7 +230,7 @@ class MorphologyDecontainerizationTask(Task):
         self,
         circuit_config: str,
         target_folder: Path,
-        nodes: snap.nodes.NodePopulation,
+        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
         *,
         global_morph_entry: bool,
         cfg_dict: dict,
@@ -257,9 +255,9 @@ class MorphologyDecontainerizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         L.info(f"Running morphology decontainerization for '{self.config.initialize.circuit}'")
 
@@ -300,8 +298,8 @@ class MorphologyDecontainerizationTask(Task):
             # before (but removing all other references to the original morphology folders)
 
             # Save original config file
-            # cname, cext = os.path.splitext(circuit_config)  # noqa: ERA001
-            # shutil.copy(circuit_config, cname + "__BAK__" + cext) # noqa: ERA001
+            # cname, cext = os.path.splitext(circuit_config)  # ruff: ignore[commented-out-code]
+            # shutil.copy(circuit_config, cname + "__BAK__" + cext) # ruff: ignore[commented-out-code]
 
             with Path(circuit_config).open(encoding="utf-8") as f:
                 cfg_dict = json.load(f)
@@ -310,10 +308,10 @@ class MorphologyDecontainerizationTask(Task):
 
             # Check & set if there is a global entry for morphologies (initially not set)
             global_morph_entry = self._set_morph_entry(
-                circuit_config,
+                circuit_config,  # ty:ignore[invalid-argument-type]
                 target_folder,
                 nodes,
-                global_morph_entry=global_morph_entry,
+                global_morph_entry=global_morph_entry,  # ty:ignore[invalid-argument-type]
                 cfg_dict=cfg_dict,
                 h5_folder=h5_folder,
             )
@@ -323,14 +321,14 @@ class MorphologyDecontainerizationTask(Task):
 
         # Clean up morphology folders with individual morphologies
         L.info(f"Cleaning morphology container(s): {morph_containers_to_delete}")
-        for _file in morph_containers_to_delete:
-            Path(_file).unlink()
+        for file in morph_containers_to_delete:
+            Path(file).unlink()
         L.info(f"Cleaning morphology folder(s): {morph_folders_to_delete}")
-        for _folder in morph_folders_to_delete:
-            shutil.rmtree(_folder)
+        for folder in morph_folders_to_delete:
+            shutil.rmtree(folder)
 
         # Reload and check morphologies in modified circuit
-        if not self._check_morphologies(circuit_config, self.config.initialize.output_format):
+        if not self._check_morphologies(circuit_config, self.config.initialize.output_format):  # ty:ignore[invalid-argument-type]
             msg = "ERROR: Morphology check not successful!"
             raise ValueError(msg)
         L.info("Morphology decontainerization DONE")

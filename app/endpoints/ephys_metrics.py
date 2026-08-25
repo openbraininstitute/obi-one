@@ -26,7 +26,7 @@ def electrophysiologyrecording_metrics_endpoint(
     trace_id: str,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     requested_metrics: Annotated[CALCULATED_FEATURES | None, Query()] = None,
-    amplitude: Annotated[AmplitudeInput, Depends()] = None,
+    amplitude: Annotated[AmplitudeInput, Depends()] = None,  # ty:ignore[invalid-parameter-default]
     protocols: Annotated[STIMULI_TYPES | None, Query()] = None,
 ) -> ElectrophysiologyMetricsOutput:
     try:

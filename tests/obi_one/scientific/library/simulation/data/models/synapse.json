@@ -1,0 +1,10 @@
+{
+  "params": {
+    "model": "w : volt",
+    "on_pre": "v += w",
+    "delay": [0, "ms"]
+  },
+  "dynamics": {
+    "w": "mV"
+  }
+}

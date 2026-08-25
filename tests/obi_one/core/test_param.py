@@ -58,7 +58,7 @@ class TestSingleValueScanParam:
 
     def test_with_float_value(self):
         param = SingleValueScanParam(location_list=["dt"], value=0.025)
-        assert param.value == 0.025
+        assert param.value == 0.025  # ruff: ignore[float-equality-comparison]
 
     def test_with_none_value(self):
         param = SingleValueScanParam(location_list=["opt"], value=None)

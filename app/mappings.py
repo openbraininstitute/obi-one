@@ -13,8 +13,9 @@ from app.schemas.task import (
     PythonRepositoryCode,
     TaskDefinition,
     TaskDefinitionLegacy,
+    TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -40,26 +41,85 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.morphology_skeletonization: TaskDefinition(
-        task_type=TaskType.morphology_skeletonization,
-        config_type=TaskConfigType.skeletonization__config,
-        activity_type=TaskActivityType.skeletonization__execution,
+    TaskType.circuit_simulation: TaskGroupLegacyDefinition(
+        task_type=TaskType.circuit_simulation,
+        config_type=models.Simulation,
+    ),
+    TaskType.circuit_simulation_inait_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_inait_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location="https://github.com/openbraininstitute-partners/inait",
+            ref="commit:62a6257b91872483ee6ffd6d5f61ba8642ffe67f",
+            path="scripts/simulate-circuits/run.py",
+            dependencies="scripts/simulate-circuits/requirements.txt",
+            staged_directories=["wheels", "scripts/simulate-circuits/"],
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_inait,
+        ),
+    ),
+    TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_brian2_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
+            dependencies="obi_one/scientific/library/simulation/brian2/requirements.txt",
+            staged_directories=[],
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+        ),
+    ),
+    TaskType.circuit_simulation_neuron: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neuron,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
-            capabilities=Capabilities(private_packages=True),
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
         resources=MachineResources(
-            cores=16,
-            memory=32,
-            timelimit="00:30",
+            cores=1,
+            memory=8,
+            timelimit="00:10",
             compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.circuit_simulation: TaskDefinitionLegacy(
-        task_type=TaskType.circuit_simulation,
+    TaskType.circuit_simulation_neurodamus_machine: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neurodamus_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neurodamus_cluster,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         code=BuiltinCode(
@@ -83,9 +143,63 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
         resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.single_neuron_simulation_execution: TaskDefinitionLegacy(
+        task_type=TaskType.single_neuron_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.single_neuron_synaptome_simulation_execution: TaskDefinitionLegacy(
+        task_type=TaskType.single_neuron_synaptome_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.circuit_synaptic_physiology_assignment: TaskDefinition(
+        task_type=TaskType.circuit_synaptic_physiology_assignment,
+        config_type=TaskConfigType.circuit_synaptic_physiology_assignment__config,
+        activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
             cores=1,
-            memory=2,
-            timelimit="00:10",
+            memory=8,
+            timelimit="01:00",
             compute_cell="local",
         ),
     ),
@@ -109,7 +223,60 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-}
+    TaskType.efeature_extraction: TaskDefinition(
+        task_type=TaskType.efeature_extraction,
+        config_type=TaskConfigType.efeature_extraction__config,
+        activity_type=TaskActivityType.efeature_extraction__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=4,
+            timelimit="00:30",
+            compute_cell="local",
+        ),
+    ),
+    TaskType.extracellular_recording_weights_calculation: TaskDefinition(
+        task_type=TaskType.extracellular_recording_weights_calculation,
+        config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
+        activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskType.morphology_skeletonization: TaskDefinition(
+        task_type=TaskType.morphology_skeletonization,
+        config_type=TaskConfigType.skeletonization__config,
+        activity_type=TaskActivityType.skeletonization__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
+            capabilities=Capabilities(private_packages=True),
+        ),
+        resources=MachineResources(
+            cores=16,
+            memory=32,
+            timelimit="02:00",
+            compute_cell="local",
+        ),
+    ),
+}  # ty:ignore[invalid-assignment]
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [
@@ -121,7 +288,7 @@ CLUSTER_INSTANCES_INFO = {
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
-            memory_per_instance_gb=384,
+            memory_per_instance_gb=768,
         ),
     ],
     "cell_b": [

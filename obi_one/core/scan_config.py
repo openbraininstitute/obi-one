@@ -18,10 +18,10 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
-from obi_one.scientific.library.constants import _SCAN_CONFIG_FILENAME
-from obi_one.scientific.unions.block_references import AllBlockReferenceTypes
-from obi_one.utils import db_sdk
+from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -43,46 +43,49 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     name: ClassVar[str] = "Add a name class' name variable"
     description: ClassVar[str] = """Add a description to the class' description variable"""
-    single_coord_class_name: ClassVar[str] = ""
 
-    _block_mapping: dict = None
+    _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 
-    _campaign: Entity = None
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
+    _campaign: Entity = None  # ty:ignore[invalid-assignment]
 
     @property
     def campaign(
         self,
-    ) -> entitysdk.models.Entity | None:
+    ) -> entitysdk.models.Entity | None:  # ty:ignore[possibly-missing-submodule]
         return self._campaign
 
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: PLR6301, ARG002
+    def input_entities(self, db_client: Client) -> list[Entity]:  # ruff: ignore[no-self-use, unused-method-argument]
         return []
 
     @property
-    def campaign_name(self) -> None:
+    def campaign_name(self) -> str:
         msg = "You must define a campaign_name property for your ScanConfig subclass."
         raise NotImplementedError(msg)
 
     @property
-    def campaign_description(self) -> None:
+    def campaign_description(self) -> str:
         msg = "You must define a campaign_description property for your ScanConfig subclass."
         raise NotImplementedError(msg)
 
     @property
-    def campaign_task_config_type(self) -> None:
-        return self._campaign_task_config_type
+    def campaign_task_config_type(self) -> TaskConfigType | None:
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        return registration.campaign_task_config_type if registration is not None else None
 
     @property
-    def campaign_generation_task_activity_type(self) -> None:
-        return self._campaign_generation_task_activity_type
+    def campaign_generation_task_activity_type(self) -> TaskActivityType | None:
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        return (
+            registration.campaign_generation_task_activity_type
+            if registration is not None
+            else None
+        )
 
     def create_campaign_entity_with_config(
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> TaskConfig:
         if self.campaign_task_config_type is None:
             msg = "campaign_task_config_type must be defined to create generic campaign TaskConfig."
@@ -96,8 +99,8 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             multiple_value_parameters_dictionary={
                 "scan_parameters": multiple_value_parameters_dictionary
             },
-            input_entities=self.input_entities(db_client=db_client),
-            task_config_file_path=output_root / _SCAN_CONFIG_FILENAME,
+            input_entities=self.input_entities(db_client=db_client),  # ty:ignore[invalid-argument-type]
+            task_config_file_path=output_root / SCAN_CONFIG_FILENAME,
         )
 
         return self._campaign
@@ -118,7 +121,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             client=db_client,
             activity_type=self.campaign_generation_task_activity_type,
             used=[self._campaign],
-            generated=generated,
+            generated=generated,  # ty:ignore[invalid-argument-type]
             activity_status=ActivityStatus.done,
             start_time=time_now,
             end_time=time_now,
@@ -134,7 +137,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def block_mapping(self) -> dict:
-        """Returns a mapping of block class names to block_dict_name and reference_type."""
+        """Mapping of block class names to block_dict_name and reference_type."""
         if self._block_mapping is None:
             # Get type annotations of the instance's class
             annotations = get_all_annotations(self.__class__)
@@ -159,9 +162,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     field_info = self.__pydantic_fields__[attr_name]
                     if (
                         field_info.json_schema_extra
-                        and SchemaKey.REFERENCE_TYPE in field_info.json_schema_extra
+                        and SchemaKey.REFERENCE_TYPES in field_info.json_schema_extra
                     ):
-                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPE]
+                        reference_type = field_info.json_schema_extra[SchemaKey.REFERENCE_TYPES]
                     else:
                         msg = (
                             f"Attribute '{attr_name}' does not have a 'reference_type'"
@@ -199,7 +202,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                         # Otherwise initialize a new dictionary for this block class in the mapping
                         self._block_mapping[block_class.__name__] = {
                             "block_dict_name": attr_name,
-                            SchemaKey.REFERENCE_TYPE: reference_type,
+                            SchemaKey.REFERENCE_TYPES: reference_type,
                         }
 
         return self._block_mapping
@@ -207,41 +210,50 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     def fill_block_reference_for_block(self, block: Block) -> None:
         """Fill the block reference with the actual Block object it references."""
         for block_attr_value in block.__dict__.values():
-            # If the Block instance has a `BlockReference` attribute,
-            # set it to the object it references
-            if isinstance(block_attr_value, BlockReference):
-                block_reference = block_attr_value
+            self._resolve_references_in(block_attr_value)
 
-                if block_reference.block_dict_name and block_reference.block_name:
-                    try:
-                        block_reference.block = self.__dict__[block_reference.block_dict_name][
-                            block_reference.block_name
-                        ]
-                    except KeyError:
-                        msg = (
-                            f"Block '{block_reference.block_name}' not found in "
-                            f"'{block_reference.block_dict_name}'. `block_dict_name` must "
-                            f"correspond to the name of the root level dictionary which contains "
-                            f"the block you are referencing, or should be an empty string to "
-                            f"reference a root level block."
-                        )
-                        raise KeyError(msg) from None
+    def _resolve_references_in(self, value: object) -> None:
+        """Recursively resolve BlockReference instances in a value."""
+        if isinstance(value, BlockReference):
+            self._resolve_block_reference(value)
+        elif isinstance(value, (tuple, list)):
+            for item in value:
+                self._resolve_references_in(item)
 
-                elif not block_reference.block_dict_name and block_reference.block_name:
-                    # If the block_dict_name is empty, we assume the block_name
-                    # is a direct reference to a Block instance
-                    if block_reference.block_name == "neuron_set_extra":
-                        block_reference.block = self.__dict__[block_reference.block_name]
-                else:
-                    msg = "BlockReference must have a non-empty block_dict_name and block_name."
-                    raise ValueError(msg)
+    def _resolve_block_reference(self, block_reference: BlockReference) -> None:
+        """Resolve a single block reference to its actual Block object."""
+        if block_reference.block_dict_name and block_reference.block_name:
+            try:
+                block_reference.block = self.__dict__[block_reference.block_dict_name][
+                    block_reference.block_name
+                ]
+            except KeyError:
+                msg = (
+                    f"Block '{block_reference.block_name}' not found in "
+                    f"'{block_reference.block_dict_name}'. `block_dict_name` must "
+                    f"correspond to the name of the root level dictionary which contains "
+                    f"the block you are referencing, or should be an empty string to "
+                    f"reference a root level block."
+                )
+                # ValueError, not KeyError: only ValueError/AssertionError are folded into a
+                # ValidationError by the model validator this runs inside.
+                raise ValueError(msg) from None
+
+        elif not block_reference.block_dict_name and block_reference.block_name:
+            # If the block_dict_name is empty, we assume the block_name
+            # is a direct reference to a Block instance
+            if block_reference.block_name == "neuron_set_extra":
+                block_reference.block = self.__dict__[block_reference.block_name]
+        else:
+            msg = "BlockReference must have a non-empty block_dict_name and block_name."
+            raise ValueError(msg)
 
     @model_validator(mode="after")
     def fill_block_references_and_names(self) -> "ScanConfig":
         for attr_value in self.__dict__.values():
             # Check if the attribute is a dictionary of Block instances
             if isinstance(attr_value, dict) and all(
-                isinstance(dict_val, Block) for dict_key, dict_val in attr_value.items()
+                isinstance(dict_val, Block) for dict_val in attr_value.values()
             ):
                 category_blocks_dict = attr_value
 
@@ -256,33 +268,61 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
         return self
 
+    @property
+    def single_config_class(self) -> type[OBIBaseModel]:
+        """The SingleConfig class this ScanConfig expands into, from TASK_MAP."""
+        registration = task_registry.get_registration_for_scan_config(type(self))
+        if registration is None:
+            msg = (
+                f"'{type(self).__name__}' has no entry in TASK_MAP, so the SingleConfig "
+                "class it expands into cannot be resolved."
+            )
+            raise OBIONEError(msg)
+        return registration.single_config_cls
+
     def cast_to_single_coord(self) -> OBIBaseModel:
         """Cast the form to a single coordinate object."""
-        module = __import__(self.__module__)
-        class_to_cast_to = getattr(module, self.single_coord_class_name)
+        class_to_cast_to = self.single_config_class
         single_coord = class_to_cast_to.model_construct(**self.__dict__)
-        single_coord.type = self.single_coord_class_name
+        single_coord.type = class_to_cast_to.__name__
         return single_coord
 
     @property
     def single_coord_scan_default_subpath(self) -> str:
-        return self.single_coord_class_name + "/"
+        return self.single_config_class.__name__ + "/"
 
     def add(self, block: Block, name: str = "") -> None:
         block_dict_name = self.block_mapping[block.__class__.__name__]["block_dict_name"]
-        reference_type_name = self.block_mapping[block.__class__.__name__][SchemaKey.REFERENCE_TYPE]
+        reference_type_names = self.block_mapping[block.__class__.__name__][
+            SchemaKey.REFERENCE_TYPES
+        ]
 
-        if name in self.__dict__.get(block_dict_name):
+        if name in self.__dict__.get(block_dict_name):  # ty:ignore[unsupported-operator]
             msg = f"Block with name '{name}' already exists in '{block_dict_name}'!"
             raise OBIONEError(msg)
 
-        # Find the class in AllReferenceTypes whose name matches reference_type_name
-        reference_type = next(
-            (cls for cls in AllBlockReferenceTypes if cls.__name__ == reference_type_name),
-            None,
-        )
+        # Find the reference type that accepts this block class
+        block_class_name = block.__class__.__name__
+        reference_type = None
+        for ref_name in reference_type_names:
+            ref_cls = block_ref_registry.get_by_name(ref_name)
+            if ref_cls is None:
+                continue
+            extras = getattr(ref_cls, "json_schema_extra_additions", None)
+            if extras is None:
+                # No restrictions — accept any block
+                reference_type = ref_cls
+                break
+            allowed = extras.get("allowed_block_types", [])
+            if not allowed or block_class_name in allowed:
+                reference_type = ref_cls
+                break
+
         if reference_type is None:
-            msg = f"Reference type '{reference_type_name}' not found in AllReferenceTypes."
+            msg = (
+                f"No reference type from {reference_type_names}"
+                f" accepts block class '{block_class_name}'."
+            )
             raise OBIONEError(msg)
 
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)

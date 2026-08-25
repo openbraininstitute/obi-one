@@ -2,7 +2,10 @@ from types import SimpleNamespace
 
 import pytest
 
+import obi_one as obi
 from obi_one.scientific.library import circuit as test_module
+
+from tests.utils import CIRCUIT_DIR
 
 
 class _FakePopulation:
@@ -136,13 +139,16 @@ def test_get_node_population_names_filters(fake_snap_circuit):
     assert "virt" in fake_snap_circuit.Circuit.get_node_population_names(c)
     assert "virt" not in fake_snap_circuit.Circuit.get_node_population_names(c, incl_virtual=False)
     assert "point" not in fake_snap_circuit.Circuit.get_node_population_names(c, incl_point=False)
+    assert "bio" not in fake_snap_circuit.Circuit.get_node_population_names(
+        c, incl_biophysical=False
+    )
 
 
 def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_population_name(c) == "bio"
 
-    def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         if not incl_point:
             return []
         return []
@@ -154,7 +160,7 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
     )
     assert fake_snap_circuit.Circuit._default_population_name(c) is None
 
-    def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         return ["a", "b"]
 
     monkeypatch.setattr(
@@ -173,13 +179,16 @@ def test_get_edge_population_names_filters(fake_snap_circuit):
         c, incl_virtual=False
     )
     assert "e_point" not in fake_snap_circuit.Circuit.get_edge_population_names(c, incl_point=False)
+    assert "e_bio" not in fake_snap_circuit.Circuit.get_edge_population_names(
+        c, incl_biophysical=False
+    )
 
 
 def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "e_bio"
 
-    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
         return []
 
     monkeypatch.setattr(
@@ -201,7 +210,7 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
         target=_FakePopulation("biophysical", name="bio"),
     )
 
-    def fake_get_edge_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # noqa: ARG001
+    def fake_get_edge_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
         return ["a", "b"]
 
     monkeypatch.setattr(
@@ -211,6 +220,34 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
     )
     with pytest.raises(ValueError, match="Default edge population unknown"):
         fake_snap_circuit.Circuit._default_edge_population_name(c)
+
+
+def test_default_edge_population_name_infer_from_name(fake_snap_circuit, monkeypatch):
+    """When multiple intrinsic edge pops exist, infer from population naming convention."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    # Set up two intrinsic edge populations where one follows the naming convention
+    c.edges._pops["bio__bio__chemical"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["other_intrinsic"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__chemical", "other_intrinsic"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    # Should infer "bio__bio__chemical" because it starts with "bio__bio"
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
 
 
 def test_connectivity_matrix_none_raises(fake_snap_circuit, tmp_path):
@@ -313,7 +350,7 @@ def test_mechanisms_dir_validations(fake_snap_circuit, tmp_path):
 
 def test_mechanisms_dir_for_subclass(fake_snap_circuit, tmp_path):
     class Other(fake_snap_circuit.Circuit):
-        pass
+        type: str = "Circuit"
 
     cfg = tmp_path / "circuit_config.json"
     cfg.write_text("{}")
@@ -322,3 +359,67 @@ def test_mechanisms_dir_for_subclass(fake_snap_circuit, tmp_path):
     mech_dir = tmp_path / "mechanisms"
     mech_dir.mkdir()
     assert c.mechanisms_dir == mech_dir
+
+
+def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
+    circuit = obi.Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+
+    pop_cfg = circuit._population_config(circuit.default_population_name)
+
+    assert "morphologies_dir" in pop_cfg
+
+    morph_path = circuit.get_morphology_path(
+        node_id=0,
+        population=circuit.default_population_name,
+    )
+
+    assert morph_path.exists()
+    assert morph_path.suffix in {".asc", ".swc", ".h5"}
+
+
+def test_circuit_resolves_morphology_name_that_already_includes_directory(monkeypatch, tmp_path):
+    cfg = tmp_path / "circuit_config.json"
+    cfg.write_text("{}")
+    morph_path = tmp_path / "morphologies" / "cell.swc"
+    morph_path.parent.mkdir()
+    morph_path.write_text("")
+
+    class _Population:
+        type = "biophysical"
+
+        @staticmethod
+        def get(_node_id):
+            return SimpleNamespace(morphology="morphologies/cell")
+
+    class _Nodes:
+        def __init__(self):
+            self.population_names = ["All"]
+            self.node_sets = SimpleNamespace(content={})
+
+        @staticmethod
+        def __getitem__(_population):
+            return _Population()
+
+    class _SnapCircuit:
+        def __init__(self):
+            self.nodes = _Nodes()
+            self.edges = _FakeEdges({})
+            self.node_sets = self.nodes.node_sets
+            self.config = {
+                "manifest": {"$BASE_DIR": "."},
+                "components": {},
+                "networks": {
+                    "nodes": [
+                        {"populations": {"All": {"morphologies_dir": "$BASE_DIR/morphologies"}}}
+                    ]
+                },
+            }
+
+    monkeypatch.setattr(test_module.snap, "Circuit", lambda _path: _SnapCircuit())
+
+    circuit = test_module.Circuit(name="c1", path=str(cfg))
+
+    assert circuit.get_morphology_path(node_id=0, population="All") == morph_path

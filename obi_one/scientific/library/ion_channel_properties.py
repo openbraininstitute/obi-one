@@ -55,7 +55,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         """Length."""
         return len(self.model_fields)
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator:  # ty:ignore[invalid-method-override]
         """Iterable."""
         return iter(self.model_dump())
 
@@ -63,7 +63,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
     def variables(self) -> list[str]:
         current_variables = [
             IonChannelVariable(
-                ion_channel_id=self.ion_channel_id,
+                ion_channel_id=self.ion_channel_id,  # ty:ignore[invalid-argument-type]
                 channel_name=self.ion_channel_suffix,
                 variable_name=f"{current}_{self.ion_channel_suffix}",
                 unit="mA/cm2",
@@ -72,7 +72,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         ]
         non_specific_current_variables = [
             IonChannelVariable(
-                ion_channel_id=self.ion_channel_id,
+                ion_channel_id=self.ion_channel_id,  # ty:ignore[invalid-argument-type]
                 channel_name=self.ion_channel_suffix,
                 variable_name=f"{non_specific_current}_{self.ion_channel_suffix}",
                 unit="mA/cm2",
@@ -81,7 +81,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         ]
         concentration = [
             IonChannelVariable(
-                ion_channel_id=self.ion_channel_id,
+                ion_channel_id=self.ion_channel_id,  # ty:ignore[invalid-argument-type]
                 channel_name=self.ion_channel_suffix,
                 variable_name=conc,
                 unit="mM",
@@ -90,7 +90,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         ]
         return list(
             itertools.chain(current_variables, non_specific_current_variables, concentration)
-        )
+        )  # ty:ignore[invalid-return-type]
 
 
 def get_ion_channel_variables(
@@ -127,4 +127,4 @@ def get_ion_channel_variables(
             concentration=concentration,
         )
 
-    return output
+    return output  # ty:ignore[invalid-return-type]

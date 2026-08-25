@@ -7,5 +7,5 @@ from obi_one.core.entity_from_id import EntityFromID
 
 
 class EMCellMeshFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[entitysdk.models.entity.Entity]] = entitysdk.models.EMCellMesh
-    _entity: entitysdk.models.EMCellMesh | None = PrivateAttr(default=None)
+    entitysdk_class: ClassVar[type[entitysdk.models.entity.Entity]] = entitysdk.models.EMCellMesh  # ty:ignore[possibly-missing-submodule]
+    _entity: entitysdk.models.EMCellMesh | None = PrivateAttr(default=None)  # ty:ignore[possibly-missing-submodule]

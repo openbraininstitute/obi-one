@@ -30,4 +30,4 @@ class RegularTimestamps(Timestamps):
     )
 
     def _resolve_timestamps(self) -> list[float]:
-        return [self.start_time + i * self.interval for i in range(self.number_of_repetitions)]
+        return [self.start_time + i * self.interval for i in range(self.number_of_repetitions)]  # ty:ignore[invalid-argument-type, unsupported-operator]

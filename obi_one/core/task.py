@@ -5,7 +5,7 @@ from entitysdk import Client
 from entitysdk.models import TaskActivity
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ L = logging.getLogger(__name__)
 class Task(OBIBaseModel, abc.ABC):
     @staticmethod
     def _get_execution_activity(
-        db_client: Client = None,
+        db_client: Client | None = None,
         execution_activity_id: str | None = None,
     ) -> TaskActivity | None:
         """Returns the TaskAcitivity.
@@ -23,13 +23,14 @@ class Task(OBIBaseModel, abc.ABC):
         execution_activity = None
         if db_client and execution_activity_id:
             execution_activity = db_sdk.get_execution_activity(
-                client=db_client, execution_activity_id=execution_activity_id
+                client=db_client,
+                execution_activity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
             )
         return execution_activity
 
     @staticmethod
     def _update_execution_activity(
-        db_client: Client = None,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
         execution_activity: TaskActivity | None = None,
         generated: list[str] | None = None,
     ) -> TaskActivity | None:

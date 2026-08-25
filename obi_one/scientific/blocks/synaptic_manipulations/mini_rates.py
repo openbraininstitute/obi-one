@@ -12,7 +12,7 @@ class SetSpontaneousMinisRate0HzSynapticManipulation(InterNeuronSetSynapticManip
 
     title: ClassVar[str] = "0Hz Spontaneous Minis (Between Neuron Sets)"
 
-    def _sonata_manipulations_list(self) -> list:
+    def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
         sonata_config = super()._sonata_manipulations_list()[0]
         sonata_config["spont_minis"] = 0.0
 
@@ -34,7 +34,7 @@ class SetSpontaneousMinisRateSynapticManipulation(InterNeuronSetSynapticManipula
         },
     )
 
-    def _sonata_manipulations_list(self) -> list:
+    def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
         sonata_config = super()._sonata_manipulations_list()[0]
         sonata_config["spont_minis"] = self.rate
         return [sonata_config]

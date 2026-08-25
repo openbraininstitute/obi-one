@@ -1,0 +1,6 @@
+Drosophila_brain_model/
+sonata_circuit/
+obi_simulation_output/
+output/
+*.executed.ipynb
+_reference_trial_seed_*.pkl

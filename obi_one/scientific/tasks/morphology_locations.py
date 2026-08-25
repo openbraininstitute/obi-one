@@ -14,16 +14,19 @@ from pydantic import Field
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
+from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
+from obi_one.scientific.library.morphology_loader import load_morphology_nrn_order
 from obi_one.scientific.library.morphology_locations import (
     _PRE_IDX,
     _SEC_ID,
     _SEG_ID,
     _SEG_OFF,
 )
-from obi_one.scientific.unions.unions_morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
 
 L = logging.getLogger(__name__)
 
@@ -31,11 +34,15 @@ L = logging.getLogger(__name__)
 class MorphologyLocationsScanConfig(ScanConfig):
     """ScanConfig for generating locations on a morphology skeleton."""
 
-    single_coord_class_name: ClassVar[str] = "MorphologyLocationsSingleConfig"
     name: ClassVar[str] = "Point locations on neurite skeletons"
     description: ClassVar[str] = (
         "Generates optionally clustered locations on neurites of a morphology skeleton"
     )
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{morphology_id}"),
+        },
+    }
 
     class Initialize(Block):
         morphology: CellMorphologyFromID | list[CellMorphologyFromID] | Path | list[Path] = Field(
@@ -59,10 +66,10 @@ class MorphologyLocationsTask(Task):
     config: MorphologyLocationsSingleConfig
 
     @staticmethod
-    def generate_plot(m: morphio.Morphology, dataframe: pd.DataFrame) -> plt.figure:
+    def generate_plot(m: morphio.Morphology, dataframe: pd.DataFrame) -> plt.figure:  # ty:ignore[invalid-type-form]
         """Generate a plot of the morphology with locations on it."""
 
-        def location_xyz(row: pd.Series) -> plt.figure:
+        def location_xyz(row: pd.Series) -> plt.figure:  # ty:ignore[invalid-type-form]
             secid = int(row[_SEC_ID])
             segid = int(row[_SEG_ID])
             o = row[_SEG_OFF]
@@ -75,7 +82,7 @@ class MorphologyLocationsTask(Task):
         ax = fig.gca()
 
         xyz = pd.concat([dataframe.apply(location_xyz, axis=1), dataframe[_PRE_IDX]], axis=1)
-        neurom.view.plot_morph(neurom.io.utils.Morphology(m), ax=ax)
+        neurom.view.plot_morph(neurom.io.utils.Morphology(m), ax=ax)  # ty:ignore[possibly-missing-submodule]
         xyz.groupby(_PRE_IDX).apply(lambda _x: ax.scatter(_x["x"], _x["y"], s=6))
         plt.axis("equal")
         return fig
@@ -83,15 +90,15 @@ class MorphologyLocationsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
-        try:
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
             if isinstance(self.config.initialize.morphology, Path):
-                m = morphio.Morphology(self.config.initialize.morphology)
+                m = load_morphology_nrn_order(self.config.initialize.morphology)
             else:
-                m = self.config.initialize.morphology.morphio_morphology
+                m = self.config.initialize.morphology.morphio_morphology  # ty:ignore[unresolved-attribute]
             dataframe = self.config.morph_locations.points_on(m)
 
             fig = MorphologyLocationsTask.generate_plot(m, dataframe)

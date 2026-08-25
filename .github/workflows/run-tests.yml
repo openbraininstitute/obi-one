@@ -11,18 +11,34 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "latest"
           enable-cache: true
       - name: Setup python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: "pyproject.toml"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::985539765147:role/gh_codeartifact_read_all
+          aws-region: us-east-1
+      - name: Get CodeArtifact token
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+            --domain openbraininstitute \
+            --query authorizationToken \
+            --output text)
+          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
+          echo "UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
+          echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
+          echo "CODEARTIFACT_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
       - name: Check requirements
         run: make check-deps
       - name: Install mandatory and optional requirements
@@ -34,7 +50,7 @@ jobs:
       - name: Run pip-audit
         run: make pip-audit
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: openbraininstitute/obi-one

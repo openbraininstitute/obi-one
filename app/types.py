@@ -2,7 +2,7 @@ from enum import StrEnum, auto
 
 # re-export from obi-one so that obi_one is not
 # imported everywhere
-from obi_one.types import TaskType as TaskType  # noqa: PLC0414
+from obi_one.types import TaskType as TaskType  # ruff: ignore[useless-import-alias]
 
 
 class CallBackEvent(StrEnum):
@@ -34,3 +34,14 @@ class BuiltinScript(StrEnum):
     """Builtin script."""
 
     circuit_simulation = auto()
+
+
+class MachineExecutorImageType(StrEnum):
+    python_3_12_compiler = auto()
+    python_3_12_inait = auto()
+    python_3_12_openmpi5_neuron9_neurodamus = auto()
+
+
+class IdentifierType(StrEnum):
+    orcid = auto()
+    ror = auto()

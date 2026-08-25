@@ -11,9 +11,9 @@ from entitysdk import models
 from entitysdk.client import Client
 from entitysdk.types import AssetLabel, ContentType, FetchFileStrategy
 
+from obi_one.db_sdk.db_sdk import get_entity_asset_by_label
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
-from obi_one.utils.db_sdk import get_entity_asset_by_label
 
 
 def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -> float:
@@ -65,6 +65,9 @@ def _get_skeletonization_config(
     asset = get_entity_asset_by_label(
         client=db_client, config=task_config, asset_label=AssetLabel.task_config
     )
+    if asset.id is None:
+        msg = "Asset must have an id"
+        raise ValueError(msg)
 
     # Download and parse the config JSON
     config_bytes = db_client.download_content(
@@ -96,6 +99,6 @@ def estimate_skeletonization_count(
     """
     config = _get_skeletonization_config(db_client, config_id)
     cell_mesh = config.initialize.cell_mesh
-    total_area = _compute_mesh_surface_area(db_client, cell_mesh)
+    total_area = _compute_mesh_surface_area(db_client, cell_mesh)  # ty:ignore[invalid-argument-type]
 
     return max(1, math.ceil(total_area))

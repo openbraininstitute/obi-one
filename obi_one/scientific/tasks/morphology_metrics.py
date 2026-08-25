@@ -18,7 +18,6 @@ L = logging.getLogger(__name__)
 
 
 class MorphologyMetricsScanConfig(ScanConfig):
-    single_coord_class_name: ClassVar[str] = "MorphologyMetricsSingleConfig"
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
@@ -40,14 +39,14 @@ class MorphologyMetricsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> MorphologyMetricsOutput:
         try:
             L.info("Running Morphology Metrics...")
             morphology_metrics = MorphologyMetricsOutput.from_morphology(
-                self.config.initialize.morphology.neurom_morphology(db_client=db_client)
+                self.config.initialize.morphology.neurom_morphology(db_client=db_client)  # ty:ignore[unresolved-attribute]
             )
             L.info(morphology_metrics)
 

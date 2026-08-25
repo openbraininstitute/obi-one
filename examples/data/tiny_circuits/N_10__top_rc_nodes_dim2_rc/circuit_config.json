@@ -1,7 +1,7 @@
 {
     "components": {
         "biophysical_neuron_models_dir": "",
-        "mechanisms_dir": "",
+        "mechanisms_dir": "$BASE_DIR/mod",
         "morphologies_dir": "",
         "point_neuron_models_dir": "",
         "synaptic_models_dir": "",

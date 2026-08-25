@@ -2,6 +2,7 @@
 
 import json
 import sys
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -14,8 +15,7 @@ from entitysdk.models.brain_region import BrainRegion
 from entitysdk.models.cell_morphology_protocol import (
     DigitalReconstructionCellMorphologyProtocol,
 )
-from entitysdk.models.contribution import Role
-from entitysdk.models.core import Person
+from entitysdk.models.core import PlatformUser
 from entitysdk.models.em_dense_reconstruction_dataset import EMDenseReconstructionDataset
 from entitysdk.models.license import License
 from entitysdk.models.skeletonization_config import SkeletonizationConfig
@@ -30,17 +30,14 @@ from entitysdk.types import (
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
+from obi_one.core.serialization_constants import (
+    COORDINATE_CONFIG_FILENAME,
+    SCAN_CONFIG_FILENAME,
+)
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
-from obi_one.scientific.library.constants import (
-    _COORDINATE_CONFIG_FILENAME,
-    _SCAN_CONFIG_FILENAME,
-)
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
-from obi_one.scientific.tasks.skeletonization.constants import (
-    LICENSE_LABEL,
-    ROLE_NAME,
-)
+from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL
 from obi_one.scientific.tasks.skeletonization.process import (
     _create_process_outputs,
     _run_process_executable,
@@ -76,6 +73,19 @@ def _asset_json():
     }
 
 
+def _derivation_handler(used: dict, generated: dict):
+    """Return httpx callback that echoes derivation payload with nested entities."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status_code=200,
+            json=json.loads(request.content)
+            | {"id": str(uuid4()), "used": used, "generated": generated},
+        )
+
+    return handler
+
+
 @pytest.fixture
 def species():
     return Species(name="Mus musculus", taxonomy_id="NCBITaxon:10090")
@@ -108,19 +118,20 @@ def license_entity():
 
 
 @pytest.fixture
-def role():
-    return Role(name=ROLE_NAME, role_id="data_modeling_role")
-
-
-@pytest.fixture
-def agent():
-    return Person(pref_label="Test User")
+def platform_user():
+    return PlatformUser(
+        id=uuid4(),
+        pref_label="Test User",
+        creation_date=datetime(2025, 1, 1, tzinfo=UTC),
+        update_date=datetime(2025, 1, 1, tzinfo=UTC),
+    )
 
 
 @pytest.fixture
 def em_dataset_no_slicing():
     """EM dataset without slicing_thickness (protocol branch skipped)."""
     return EMDenseReconstructionDataset(
+        id=uuid4(),
         name="test-dataset",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
@@ -135,6 +146,7 @@ def em_dataset_no_slicing():
 def em_dataset_with_slicing():
     """EM dataset with slicing_thickness (protocol branch used)."""
     return EMDenseReconstructionDataset(
+        id=uuid4(),
         name="test-dataset",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
@@ -189,7 +201,7 @@ def protocol_created(metadata_with_protocol):
 def entitysdk_client():
     return Client(
         api_url=API_URL,
-        token_manager="token",  # noqa: S106
+        token_manager="token",  # ruff: ignore[hardcoded-password-func-arg]
         project_context=ProjectContext(virtual_lab_id=uuid4(), project_id=uuid4()),
     )
 
@@ -331,20 +343,17 @@ def test_register_output_resource_creates_protocol_when_missing(
     tmp_path,
     httpx_mock,
     entitysdk_client,
-    role,
     license_entity,
-    agent,
+    platform_user,
     metadata_with_protocol,
+    protocol_created,
 ):
     morphology_id = uuid4()
-    role_json = _serialize(role)
+    protocol_id = uuid4()
+    protocol_json = _serialize(protocol_created)
     license_json = _serialize(license_entity)
-    agent_json = _serialize(agent)
+    platform_user_json = _serialize(platform_user)
 
-    httpx_mock.add_response(
-        url=f"{API_URL}/role?name=data+modeling+role&page=1",
-        json={"data": [role_json], "pagination": PAGINATION},
-    )
     httpx_mock.add_response(
         url=f"{API_URL}/license?label=CC+BY-NC+4.0&page=1",
         json={"data": [license_json], "pagination": PAGINATION},
@@ -357,7 +366,7 @@ def test_register_output_resource_creates_protocol_when_missing(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(uuid4())},
+            json=json.loads(r.content) | {"id": str(protocol_id)},
         ),
         url=f"{API_URL}/cell-morphology-protocol",
         method="POST",
@@ -365,18 +374,26 @@ def test_register_output_resource_creates_protocol_when_missing(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(morphology_id), "created_by": agent_json},
+            json=json.loads(r.content)
+            | {
+                "id": str(morphology_id),
+                "created_by": platform_user_json,
+                "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
+            },
         ),
         url=f"{API_URL}/cell-morphology",
         method="POST",
     )
     httpx_mock.add_callback(
-        lambda r: httpx.Response(
-            status_code=200,
-            json=json.loads(r.content)
-            | {"id": str(uuid4()), "role": role_json, "agent": agent_json},
+        _derivation_handler(
+            used=_serialize(metadata_with_protocol.em_dense_reconstruction_dataset),
+            generated={
+                "id": str(morphology_id),
+                "name": metadata_with_protocol.cell_morphology_name,
+                "type": "cell_morphology",
+            },
         ),
-        url=f"{API_URL}/contribution",
+        url=f"{API_URL}/derivation",
         method="POST",
     )
     for _ in range(4):
@@ -398,22 +415,17 @@ def test_register_output_resource_reuses_existing_protocol(
     tmp_path,
     httpx_mock,
     entitysdk_client,
-    role,
     license_entity,
-    agent,
+    platform_user,
     metadata_with_protocol,
     protocol_created,
 ):
     morphology_id = uuid4()
-    role_json = _serialize(role)
+    protocol_id = uuid4()
     license_json = _serialize(license_entity)
-    agent_json = _serialize(agent)
+    platform_user_json = _serialize(platform_user)
     protocol_json = _serialize(protocol_created)
 
-    httpx_mock.add_response(
-        url=f"{API_URL}/role?name=data+modeling+role&page=1",
-        json={"data": [role_json], "pagination": PAGINATION},
-    )
     httpx_mock.add_response(
         url=f"{API_URL}/license?label=CC+BY-NC+4.0&page=1",
         json={"data": [license_json], "pagination": PAGINATION},
@@ -426,18 +438,26 @@ def test_register_output_resource_reuses_existing_protocol(
     httpx_mock.add_callback(
         lambda r: httpx.Response(
             status_code=200,
-            json=json.loads(r.content) | {"id": str(morphology_id), "created_by": agent_json},
+            json=json.loads(r.content)
+            | {
+                "id": str(morphology_id),
+                "created_by": platform_user_json,
+                "cell_morphology_protocol": protocol_json | {"id": str(protocol_id)},
+            },
         ),
         url=f"{API_URL}/cell-morphology",
         method="POST",
     )
     httpx_mock.add_callback(
-        lambda r: httpx.Response(
-            status_code=200,
-            json=json.loads(r.content)
-            | {"id": str(uuid4()), "role": role_json, "agent": agent_json},
+        _derivation_handler(
+            used=_serialize(metadata_with_protocol.em_dense_reconstruction_dataset),
+            generated={
+                "id": str(morphology_id),
+                "name": metadata_with_protocol.cell_morphology_name,
+                "type": "cell_morphology",
+            },
         ),
-        url=f"{API_URL}/contribution",
+        url=f"{API_URL}/derivation",
         method="POST",
     )
     for _ in range(4):
@@ -473,7 +493,7 @@ def test_create_campaign_entity_with_config_single_mesh(
     campaign_id = uuid4()
     output_root = tmp_path / "scan"
     output_root.mkdir()
-    (output_root / _SCAN_CONFIG_FILENAME).write_text("{}")
+    (output_root / SCAN_CONFIG_FILENAME).write_text("{}")
 
     httpx_mock.add_response(
         url=f"{API_URL}/em-cell-mesh/{single_cell_mesh_id}",
@@ -494,7 +514,7 @@ def test_create_campaign_entity_with_config_single_mesh(
         json=_asset_json()
         | {
             "label": "task_config",
-            "path": _SCAN_CONFIG_FILENAME,
+            "path": SCAN_CONFIG_FILENAME,
         },
     )
 
@@ -515,7 +535,7 @@ def test_create_campaign_generation_entity(
     config_id_1, config_id_2 = uuid4(), uuid4()
     output_root = tmp_path / "scan"
     output_root.mkdir()
-    (output_root / _SCAN_CONFIG_FILENAME).write_text("{}")
+    (output_root / SCAN_CONFIG_FILENAME).write_text("{}")
 
     httpx_mock.add_response(
         url=f"{API_URL}/em-cell-mesh/{single_cell_mesh_id}",
@@ -536,7 +556,7 @@ def test_create_campaign_generation_entity(
         json=_asset_json()
         | {
             "label": "task_config",
-            "path": _SCAN_CONFIG_FILENAME,
+            "path": SCAN_CONFIG_FILENAME,
         },
     )
 
@@ -584,8 +604,8 @@ def test_create_single_entity_with_config(
     config_id = uuid4()
     output_root = tmp_path / "scan"
     output_root.mkdir()
-    (output_root / _SCAN_CONFIG_FILENAME).write_text("{}")
-    coord_path = tmp_path / _COORDINATE_CONFIG_FILENAME
+    (output_root / SCAN_CONFIG_FILENAME).write_text("{}")
+    coord_path = tmp_path / COORDINATE_CONFIG_FILENAME
     coord_path.write_text("{}")
 
     httpx_mock.add_response(
@@ -607,7 +627,7 @@ def test_create_single_entity_with_config(
         json=_asset_json()
         | {
             "label": "task_config",
-            "path": _SCAN_CONFIG_FILENAME,
+            "path": SCAN_CONFIG_FILENAME,
             "inputs": [],
         },
     )
@@ -632,7 +652,7 @@ def test_create_single_entity_with_config(
         | {
             "id": str(uuid4()),
             "label": "task_config",
-            "path": _COORDINATE_CONFIG_FILENAME,
+            "path": COORDINATE_CONFIG_FILENAME,
         },
     )
 

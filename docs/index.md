@@ -30,6 +30,44 @@ OBI-ONE is a standardized library of workflows for biophysically-detailed brain 
 brew install uv open-mpi boost cmake
 ```
 
+### Private neuromorphomesh from AWS CodeArtifacts
+
+Certain commands require the installation of `neuromorphomesh`.
+At the OBI [AWS Console](https://openbraininstitute.awsapps.com/start), first check that you have access to the `Container Registry` (AWS Account Id: `985539765147`).
+
+Then setup the the SSO AWS login; steps 1 and 2 from: [Bastion Access](https://github.com/openbraininstitute/aws-terraform-deployment/blob/staging/bastion_host/BASTION_ACCESS.md#database-access-via-port-forwarding)
+
+Make sure you have the following profile in your `~/.aws/config` file:
+
+```ini
+[profile codeartifact]
+sso_session = obi
+sso_account_id = 985539765147
+sso_role_name = ReadOnlyAccess
+region = us-east-1
+output = json
+```
+
+Then login to SSO if you haven't already:
+
+```bash
+aws sso login --sso-session obi
+```
+
+Then one can get the credentials with:
+
+```bash
+export AWS_PROFILE=codeartifact
+export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+  --domain openbraininstitute \
+  --query authorizationToken \
+  --output text \
+  --region us-east-1)
+export UV_INDEX_OBI_CODEARTIFACT_PASSWORD="$CODEARTIFACT_AUTH_TOKEN"
+export UV_INDEX_OBI_CODEARTIFACT_USERNAME="aws"
+```
+Then `uv` operations should work.
+
 ### For Most Users (Default)
 
 ```bash
@@ -69,7 +107,7 @@ The package is split into **core/** and **scientific/** code.
 
 - **ScanConfig**: Defines configurations for specific modeling use cases. A Form is composed of one or multiple Blocks, which define the parameterization of a use case. Currently Forms can have both single Blocks and dictionaries of Blocks. Each Form has its own Initialize Block for specifying the base parameters of the use case.
 - **Block**: Defines a component of a ScanConfig. Blocks support the specification of parameters which should be scanned over in the multi-dimensional parameter scan. When using the Form (in a Jupyter Notebook for example), any parameter which is specified as a list is used as a dimension of a multi-dimensional parameter scan when passed to a Scan object.
-- **SingleConfig**: A single configuration instance within a scan.
+- **SingleConfig**: A single configuration instance within a scan. Which SingleConfig a given ScanConfig expands into is declared once in `config_task_map.TASK_MAP`, as the `scan_config_cls`/`single_config_cls` pair of that task's `TaskRegistration`. A ScanConfig reads it back through its `single_config_class` property, so the pairing does not have to be repeated on the config classes themselves.
 - **Task**: Defines executable tasks that operate on configurations.
 - **ScanGenerationTask**: Takes a single ScanConfig as input, an output path and a string for specifying how output files should be stored. The `scan.execute()` function can then be called which generates the multi-dimensional scan.
 

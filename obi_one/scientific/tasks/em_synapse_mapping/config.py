@@ -1,16 +1,16 @@
 import logging
 from enum import StrEnum
-from typing import ClassVar
+from typing import ClassVar, Self
 
 from entitysdk.client import Client
 from entitysdk.models import Entity
-from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.exception import OBIONEError
+from obi_one.core.schema import AcceptedInputTypes, SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 
 L = logging.getLogger(__name__)
@@ -18,80 +18,126 @@ L = logging.getLogger(__name__)
 
 class BlockGroup(StrEnum):
     SETUP_BLOCK_GROUP = "Setup"
+    ADVANCED_BLOCK_GROUP = "Advanced"
+
+
+class AdvancedEMSynapseMappingOptions(Block):
+    custom_physical_edge_population_name: str = Field(
+        title="Custom physical edge population name",
+        description="Custom name for the population of connections between neurons in the circuit."
+        " 'physical_connections' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_virtual_edge_population_name: str = Field(
+        title="Custom virtual edge population name",
+        description="Custom name for the population of connections from virtual neurons."
+        " 'virtual_afferents' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_biophysical_node_population: str = Field(
+        title="Custom biophysical node population name",
+        description="Custom name for the population of physical neurons in the circuit."
+        " 'biophysical_neurons' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    custom_virtual_node_population: str = Field(
+        title="Custom virtual node population name",
+        description="Custom name for the population of external presynaptic neurons."
+        " 'virtual_afferent_neurons' is used if not specified.",
+        default="",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+        },
+    )
+    include_spiny_morphologies: bool = Field(
+        title="Include spiny morphologies",
+        description="Include a container file with spiny morphologies in the output circuit.",
+        default=True,
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
+        },
+    )
 
 
 class EMSynapseMappingScanConfig(InfoScanConfig):
-    """Map location of afferent synapses from EM onto a spiny morphology."""
+    """Map location of afferent synapses from EM onto one or more spiny morphologies."""
 
     name: ClassVar[str] = "Map synapse locations"
-    single_coord_class_name: ClassVar[str] = "EMSynapseMappingSingleConfig"
     description: ClassVar[str] = "EM synapse mapping campaign"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.ADVANCED_BLOCK_GROUP,
         ],
     }
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.em_synapse_mapping__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.em_synapse_mapping__config_generation
-    )
-
     def input_entities(self, db_client: Client) -> list[Entity]:
-        return [self.initialize.spiny_neuron.entity(db_client=db_client)]
+        if isinstance(self.initialize.neurons, EMSynapseMappingInputNamedTuple):
+            return [n.entity(db_client=db_client) for n in self.initialize.neurons.elements]
+        if isinstance(self.initialize.neurons, list):
+            # make sure that there are no duplicate in the returned list of entities
+            to_return = []
+            to_return_ids = []
+            for input_tuple in self.initialize.neurons:
+                for n in input_tuple.elements:
+                    if n.id_str not in to_return_ids:
+                        to_return_ids.append(n.id_str)
+                        to_return.append(n.entity(db_client=db_client))
+            return to_return
+        msg = (
+            "Invalid type for neurons. "
+            "Expected EMSynapseMappingInputNamedTuple or list of EMSynapseMappingInputNamedTuple."
+        )
+        raise ValueError(msg)
 
     class Initialize(Block):
-        spiny_neuron: CellMorphologyFromID = Field(  # | MEModelFromID
-            title="EM skeletonized morphology",
-            description="""A neuron morphology with spines obtained from an electron-microscopy
-            datasets through the skeletonization task.""",
+        # We use a named tuple instead of a list to avoid getting it taken as scan dimensions
+        # in the scan config. list[named tuple] for scanning over different sets of neurons.
+        neurons: EMSynapseMappingInputNamedTuple | list[EMSynapseMappingInputNamedTuple] = Field(
+            title="Neurons",
+            description="Neurons to include in the circuit (>= 1).",
             json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-                SchemaKey.ENTITY_QUERY: {
-                    "type": EntityType.cell_morphology,
-                    "filters": {
-                        "cell_morphology_protocol": "ultraliser",
-                    },
-                },
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+                SchemaKey.ACCEPTED_INPUT_TYPES: [
+                    AcceptedInputTypes.CELL_MORPHOLOGY_FROM_ID,
+                    AcceptedInputTypes.ME_MODEL_FROM_ID,
+                ],
             },
         )
-        edge_population_name: str = Field(
-            default="afferent_synapses",
-            min_length=1,
-            title="Edge population name",
-            description="Name of the edge population to write the synapse information into",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        node_population_pre: str = Field(
-            default="afferent_neurons",
-            min_length=1,
-            title="Presynaptic node population name",
-            description="""Name of the node population to write the information about the
-            innervating neurons into""",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
-        node_population_post: str = Field(
-            default="biophysical_neuron",
-            min_length=1,
-            title="Postsynaptic node population name",
-            description="""Name of the node population to write the information about the
-            synaptome neuron into""",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            },
-        )
+
+        @model_validator(mode="after")
+        def check_neuron_structure(self) -> Self:
+            if isinstance(self.neurons, list):
+                if len(self.neurons) < 1:
+                    msg = (
+                        "At least one set of neurons must be provided in "
+                        "EM Synapse Mapping Scan Config."
+                    )
+                    raise OBIONEError(msg)
+
+                tuple_names = [input_tuple.name for input_tuple in self.neurons]
+                if len(tuple_names) != len(set(tuple_names)):
+                    msg = (
+                        "All named tuples in the list of neurons must have unique names "
+                        "in EM Synapse Mapping Scan Config."
+                    )
+                    raise OBIONEError(msg)
+            return self
 
     initialize: Initialize = Field(
         title="Initialization",
-        description="Parameters for initializing...",
+        description="Parameters for initializing the EM Synaptome.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
@@ -99,9 +145,16 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
         },
     )
 
+    advanced_options: AdvancedEMSynapseMappingOptions = Field(
+        title="Advanced",
+        description="Advanced options for EM synapse mapping.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.ADVANCED_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 2,
+        },
+    )
+
 
 class EMSynapseMappingSingleConfig(EMSynapseMappingScanConfig, SingleConfigMixin):
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.em_synapse_mapping__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.em_synapse_mapping__execution
-    )
+    """Single-coordinate EM synapse mapping configuration."""

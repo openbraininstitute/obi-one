@@ -32,7 +32,7 @@ class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulati
         return f"mg = {self.magnesium_value}"
 
     @staticmethod
-    def _get_modoverride_name() -> str:
+    def _get_modoverride_name() -> str:  # ty:ignore[invalid-method-override]
         return "GluSynapse"
 
 

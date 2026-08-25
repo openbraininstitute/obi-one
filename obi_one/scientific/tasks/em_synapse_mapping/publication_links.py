@@ -1,14 +1,11 @@
 import logging
 
 from entitysdk import Client
-from entitysdk._server_schemas import (
-    PublicationType,  # NOQA: PLC2701
-)
 from entitysdk.models import (
     EMDenseReconstructionDataset,
-    Publication,
     ScientificArtifactPublicationLink,
 )
+from entitysdk.types import PublicationType
 
 L = logging.getLogger(__name__)
 
@@ -16,14 +13,19 @@ L = logging.getLogger(__name__)
 def assemble_publication_links(
     db_client: Client,
     em_dataset: EMDenseReconstructionDataset,
-    lst_notices: list[str],  # NOQA: ARG001
-) -> list[Publication]:
+    lst_notices: list[str],  # ruff: ignore[unused-function-argument]
+) -> dict:
+    """Assemble publication links for an EM dataset.
+
+    Returns a dict mapping DOI to {"entity": Publication, "type": PublicationType},
+    compatible with register_circuit's publications parameter.
+    """
     src_links = db_client.search_entity(
         entity_type=ScientificArtifactPublicationLink,
         query={"scientific_artifact__id": em_dataset.id},
     ).all()
     src_pubs = [
-        _x.publication for _x in src_links if _x.publication_type != PublicationType.application
+        x.publication for x in src_links if x.publication_type != PublicationType.application
     ]
     # TODO: Parse DOIs out of the lst_notices. Create publications for them.
-    return src_pubs
+    return {pub.DOI: {"entity": pub, "type": PublicationType.component_source} for pub in src_pubs}

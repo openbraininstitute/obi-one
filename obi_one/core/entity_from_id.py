@@ -15,13 +15,13 @@ class LoadAssetMethod(Enum):
 
 
 class EntityFromID(OBIBaseModel, abc.ABC):
-    entitysdk_class: ClassVar[type[Entity]] = None
+    entitysdk_class: ClassVar[type[Entity]] = None  # ty:ignore[invalid-assignment]
     id_str: str = Field(description="ID of the entity in string format.")
     _entity: Entity | None = PrivateAttr(default=None)
 
     @classmethod
     def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Entity:
-        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)
+        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)  # ty:ignore[invalid-argument-type]
 
     def entity(self, db_client: entitysdk.client.Client) -> Entity:
         if self._entity is None:

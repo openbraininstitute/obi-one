@@ -23,7 +23,6 @@ from obi_one.scientific.library.ephys_extraction import (
 class ElectrophysiologyMetricsScanConfig(ScanConfig):
     """ScanConfig for extracting electrophysiological metrics from a trace."""
 
-    single_coord_class_name: ClassVar[str] = "ElectrophysiologyMetricsSingleConfig"
     name: ClassVar[str] = "Electrophysiology Metrics"
     description: ClassVar[str] = "Calculates ephys metrics for a given trace."
 
@@ -73,9 +72,9 @@ class ElectrophysiologyMetricsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(

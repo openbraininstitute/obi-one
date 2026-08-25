@@ -1,0 +1,161 @@
+{
+    "obi_one_version": "2025.9.1.dev26",
+    "type": "CircuitSimulationSingleConfig",
+    "idx": 0,
+    "coordinate_output_root": "../../../../obi-output/circuit_simulations/grid_scan_explicit/stimuli.CurrentStimulus.amplitude=0.2/initialize.circuit=N_10__top_nodes_dim6",
+    "scan_output_root": "../../../../obi-output/circuit_simulations/grid_scan_explicit",
+    "single_coordinate_scan_params": {
+        "scan_params": [
+            {
+                "location_list": [
+                    "stimuli",
+                    "CurrentStimulus",
+                    "amplitude"
+                ],
+                "type": "SingleValueScanParam",
+                "value": 0.2
+            },
+            {
+                "location_list": [
+                    "initialize",
+                    "circuit"
+                ],
+                "type": "SingleValueScanParam",
+                "value": {
+                    "name": "N_10__top_nodes_dim6",
+                    "path": "examples/tiny_circuits/N_10__top_nodes_dim6/circuit_config.json",
+                    "matrix_path": null,
+                    "type": "Circuit"
+                }
+            }
+        ],
+        "nested_coordinate_subpath_str": "stimuli.CurrentStimulus.amplitude=0.2/initialize.circuit=N_10__top_nodes_dim6/",
+        "type": "SingleCoordinateScanParams"
+    },
+    "timestamps": {
+        "stim_times": {
+            "type": "RegularTimestamps",
+            "start_time": 0.0,
+            "interval": 1000.0,
+            "number_of_repetitions": 3
+        }
+    },
+    "stimuli": {
+        "CurrentStimulus": {
+            "type": "ConstantCurrentClampSomaticStimulus",
+            "timestamps": {
+                "block_dict_name": "timestamps",
+                "block_name": "stim_times",
+                "type": "TimestampsReference"
+            },
+            "neuron_set": {
+                "block_dict_name": "neuron_sets",
+                "block_name": "POM_input",
+                "type": "NeuronSetReference"
+            },
+            "timestamp_offset": 0.0,
+            "duration": 5.0,
+            "amplitude": 0.2
+        },
+        "SyncCurrentStimulus": {
+            "type": "ConstantCurrentClampSomaticStimulus",
+            "timestamps": {
+                "block_dict_name": "timestamps",
+                "block_name": "stim_times",
+                "type": "TimestampsReference"
+            },
+            "neuron_set": {
+                "block_dict_name": "neuron_sets",
+                "block_name": "POM_input",
+                "type": "NeuronSetReference"
+            },
+            "timestamp_offset": 0.0,
+            "duration": 100.0,
+            "amplitude": 0.1
+        },
+        "PoissonInputStimulus": {
+            "type": "PoissonSpikeStimulus",
+            "timestamps": {
+                "block_dict_name": "timestamps",
+                "block_name": "stim_times",
+                "type": "TimestampsReference"
+            },
+            "source_neuron_set": {
+                "block_dict_name": "neuron_sets",
+                "block_name": "POM_input",
+                "type": "NeuronSetReference"
+            },
+            "targeted_neuron_set": {
+                "block_dict_name": "neuron_sets",
+                "block_name": "POM_input",
+                "type": "NeuronSetReference"
+            },
+            "timestamp_offset": 0.0,
+            "duration": 800.0,
+            "frequency": 20.0,
+            "random_seed": 0
+        }
+    },
+    "recordings": {
+        "SomaVoltRec": {
+            "type": "SomaVoltageRecording",
+            "neuron_set": {
+                "block_dict_name": "neuron_sets",
+                "block_name": "POM_input",
+                "type": "NeuronSetReference"
+            },
+            "dt": 0.1
+        }
+    },
+    "neuron_sets": {
+        "SimNeurons": {
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
+        },
+        "StimNeurons": {
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
+        },
+        "RecNeurons": {
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
+        },
+        "PropertyNeuronSet": {
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
+        },
+        "POM_input": {
+            "type": "AllNeurons",
+            "sample_percentage": 100.0,
+            "sample_seed": 1
+        }
+    },
+    "synaptic_manipulations": {},
+    "initialize": {
+        "type": "CircuitSimulationScanConfig.Initialize",
+        "circuit": {
+            "name": "N_10__top_nodes_dim6",
+            "path": "examples/data/tiny_circuits/N_10__top_nodes_dim6/circuit_config.json",
+            "matrix_path": null,
+            "type": "Circuit"
+        },
+        "node_set": {
+            "block_dict_name": "neuron_sets",
+            "block_name": "POM_input",
+            "type": "NeuronSetReference"
+        },
+        "simulation_length": 3000.0,
+        "extracellular_calcium_concentration": 1.1,
+        "v_init": -80.0,
+        "random_seed": 1
+    },
+    "info": {
+        "type": "Info",
+        "campaign_name": "Small microcircuit simulation",
+        "campaign_description": "Simulation of two small microcircuits with predefined neuron set and constant current stimulus"
+    }
+}

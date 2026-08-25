@@ -1,3 +1,4 @@
+import tempfile
 from http import HTTPStatus
 from pathlib import Path
 from uuid import UUID
@@ -7,15 +8,20 @@ import morphio
 import numpy as np
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import Circuit
-from entitysdk.types import CircuitScale
+from entitysdk.models import CellMorphology, Circuit, MEModel
+from entitysdk.types import AssetLabel, CircuitScale, ContentType
 from fastapi import HTTPException
 
 from app.errors import ApiErrorCode
 from app.logger import L
-from app.schemas.circuit_visualization import Morphology, MorphPath, NeuronSectionInfo, Node, Nodes
-
-MAX_NODES = 10
+from app.schemas.circuit_visualization import (
+    MorphoViewerTreeItemType,
+    MorphPath,
+    Node,
+    Nodes,
+    SectionDict,
+    SynapseGroup,
+)
 
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
@@ -31,12 +37,12 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         ) from e
 
-    if circuit.scale not in {CircuitScale.small, CircuitScale.pair}:
+    if circuit.scale not in {CircuitScale.single, CircuitScale.pair, CircuitScale.small}:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
                 "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Circuit's scale should be 'small' or 'pair'",
+                "detail": "Circuit's scale should be 'single', 'pair' or 'small'",
             },
         )
 
@@ -60,18 +66,7 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     return asset.id
 
 
-def check_node_limit(total_nodes: int, population_size: int) -> None:
-    if total_nodes + population_size > MAX_NODES:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": "Circuit has too many nodes for visualization (limit: 10)",
-            },
-        )
-
-
-def get_population_nodes(  # noqa: PLR0914
+def get_population_nodes(  # ruff: ignore[too-many-locals]
     population_name: str,
     db_client: Client,
     circuit_id: UUID,
@@ -79,7 +74,6 @@ def get_population_nodes(  # noqa: PLR0914
     parent_dir: Path,
     asset_path: Path,
     morphologies_path: MorphPath,
-    total_nodes: int,
 ) -> Nodes:
     nodes_file_path = parent_dir / asset_path
 
@@ -100,11 +94,9 @@ def get_population_nodes(  # noqa: PLR0914
             },
         ) from e
 
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         storage = libsonata.NodeStorage(str(nodes_file_path))
         population = storage.open_population(population_name)
-
-        check_node_limit(total_nodes, population.size)
 
         selection = libsonata.Selection([(0, population.size)])
 
@@ -124,18 +116,6 @@ def get_population_nodes(  # noqa: PLR0914
         for i in range(population.size):
             m_name = morph_files[i]
             m_file = m_path if m_path.suffix else m_path / f"{m_name}.{morphologies_path.format}"
-            try:
-                morph = get_morphology(parent_dir, db_client, circuit_id, asset_id, m_file, m_name)
-
-                soma_diameters = morph.soma.diameters
-                radius = float(np.mean(soma_diameters) / 2.0) if len(soma_diameters) > 0 else 0.0
-
-                if len(soma_diameters) == 0:
-                    radius = 0.0
-
-            except Exception as e:  # noqa: BLE001
-                L.warning(e.__cause__)
-                radius = None
 
             nodes_list.append(
                 Node(
@@ -143,7 +123,6 @@ def get_population_nodes(  # noqa: PLR0914
                     orientation=(float(qx[i]), float(qy[i]), float(qz[i]), float(qw[i])),
                     morphology_file=str(m_file),
                     morphology_name=m_name,
-                    soma_radius=radius,
                 )
             )
 
@@ -190,7 +169,7 @@ def get_nodes(
     asset_id: UUID,
 ) -> Nodes:
     all_nodes = []
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         for pop_name in config.node_populations:
             pop_properties = config.node_population_properties(pop_name)
 
@@ -210,7 +189,6 @@ def get_nodes(
                 parent_path,
                 asset_path,
                 morph_path,
-                len(all_nodes),
             )
 
     except HTTPException:
@@ -266,11 +244,16 @@ def download_circuit_config(
 
 
 def load_morphology(path: Path, morph_name: str | None) -> morphio.Morphology:
+    """Load a circuit morphology in NEURON-compatible section order.
+
+    ``nrn_order`` is required, not cosmetic: a section's id is its position in the
+    section list, so a different ordering yields different ids for the same branch.
+    """
     try:
-        return morphio.Morphology(path)
+        return morphio.Morphology(path, options=morphio.Option.nrn_order)
     except morphio.MorphioError:
         collection = morphio.Collection(path.as_posix())
-        return collection.load(morph_name)
+        return collection.load(morph_name, morphio.Option.nrn_order)
 
 
 def get_morphology(
@@ -280,7 +263,7 @@ def get_morphology(
     asset_id: UUID,
     morph_path: Path,
     morph_name: str | None,
-) -> Morphology:
+) -> morphio.Morphology:
     parent_dir = parent_dir.resolve()
     output_path = (parent_dir / morph_path).resolve()
 
@@ -307,133 +290,293 @@ def get_morphology(
         raise HTTPException(status_code=500, detail=msg) from e
 
 
-SWC_TYPES = {
-    morphio.SectionType.soma: "soma",
-    morphio.SectionType.axon: "axon",
-    morphio.SectionType.basal_dendrite: "dend",
-    morphio.SectionType.apical_dendrite: "apic",
-}
+def _map_section_type(sec_type: morphio.SectionType) -> MorphoViewerTreeItemType:
+    mapping = {
+        morphio.SectionType.soma: MorphoViewerTreeItemType.Soma,
+        morphio.SectionType.basal_dendrite: MorphoViewerTreeItemType.BasalDendrite,
+        morphio.SectionType.apical_dendrite: MorphoViewerTreeItemType.ApicalDendrite,
+        morphio.SectionType.axon: MorphoViewerTreeItemType.Axon,
+    }
+    return mapping.get(sec_type, MorphoViewerTreeItemType.Unknown)
 
 
-def get_morphology_data(morphology) -> Morphology:  # noqa: PLR0914, ANN001
-    """Parses an morphology filefile into a segment-based dictionary optimized for visualization."""
-    section_start_distances: dict[int, float] = {sec.id: 0.0 for sec in morphology.sections}
+SOMA_SONATA_SECTION_ID = 0
 
-    def walk_tree_for_distances(section: morphio.Section, current_path_distance: float) -> None:
-        section_start_distances[section.id] = current_path_distance
 
-        points = section.points
-        vectors = np.diff(points, axis=0)
-        section_length = np.sum(np.linalg.norm(vectors, axis=1))
+def sonata_section_id(morphio_section_id: int) -> int:
+    """Convert a morphio section id into a SONATA global section id.
 
-        for child in section.children:
-            walk_tree_for_distances(child, current_path_distance + section_length)
+    SONATA reserves 0 for the soma and numbers neurites from 1, while morphio keeps
+    the soma aside and numbers neurites from 0. The morphology-location blocks undo
+    this with ``morphology.section(section_id - 1)``.
+    """
+    return morphio_section_id + 1
 
-    for root_section in morphology.root_sections:
-        walk_tree_for_distances(root_section, 0.0)
 
-    morphology_data: Morphology = {}
+def get_morphology_data(morphology: morphio.Morphology) -> list[SectionDict]:
+    sections: list[SectionDict] = []
 
-    for section in morphology.sections:
-        base_name = SWC_TYPES.get(section.type, "section")
-        section_key = f"{base_name}[{section.id}]"
-        points = section.points
-        diameters = section.diameters
-
-        starts = points[:-1]
-        ends = points[1:]
-
-        directions = ends - starts
-        segment_lengths = np.linalg.norm(directions, axis=1)
-        midpoints = (starts + ends) / 2.0
-
-        start_dist = section_start_distances[section.id]
-        cumulative_internal_lengths = np.cumsum(segment_lengths)
-        seg_distances = start_dist + np.insert(cumulative_internal_lengths[:-1], 0, 0)
-        parent_id = section.parent.id if not section.is_root else -1
-
-        num_segments = len(segment_lengths)
-
-        morphology_data[section_key] = NeuronSectionInfo(
-            index=section.id,
-            parent_index=parent_id,
-            name=section_key,
-            nseg=num_segments,
-            distance_from_soma=float(start_dist),
-            sec_length=float(np.sum(segment_lengths)),
-            xstart=starts[:, 0].tolist(),
-            xend=ends[:, 0].tolist(),
-            xcenter=midpoints[:, 0].tolist(),
-            xdirection=directions[:, 0].tolist(),
-            ystart=starts[:, 1].tolist(),
-            yend=ends[:, 1].tolist(),
-            ycenter=midpoints[:, 1].tolist(),
-            ydirection=directions[:, 1].tolist(),
-            zstart=starts[:, 2].tolist(),
-            zend=ends[:, 2].tolist(),
-            zcenter=midpoints[:, 2].tolist(),
-            zdirection=directions[:, 2].tolist(),
-            diam=diameters[:-1].tolist(),
-            length=segment_lengths.tolist(),
-            distance=seg_distances.tolist(),
-            segment_distance_from_soma=seg_distances.tolist(),
-            segx=np.linspace(0, 1, num_segments).tolist(),
-            neuron_section_id=section.id,
-            neuron_segments_offset=[0] * num_segments,
-        )
-
-    # 1. Soma Processing
     soma = morphology.soma
-    if len(soma.points) > 0:
-        points = soma.points
-        diameters = soma.diameters
+    has_soma = soma is not None and len(soma.points) > 0
 
-        # Handle single-point vs multi-point somas
-        if len(points) == 1:
-            starts = points
-            ends = points
-            midpoints = points
-            directions = np.zeros_like(points)
-            segment_lengths = np.array([0.0])
-            diam_list = diameters.tolist()
-        else:
-            starts = points[:-1]
-            ends = points[1:]
-            directions = ends - starts
-            segment_lengths = np.linalg.norm(directions, axis=1)
-            midpoints = (starts + ends) / 2.0
-            diam_list = diameters[:-1].tolist()
-
-        num_segments = len(segment_lengths)
-        cumulative_internal_lengths = np.cumsum(segment_lengths)
-        seg_distances = np.insert(cumulative_internal_lengths[:-1], 0, 0)
-
-        morphology_data["soma[0]"] = NeuronSectionInfo(
-            index=-1,
-            parent_index=-1,
-            name="soma[0]",
-            nseg=num_segments,
-            distance_from_soma=0.0,
-            sec_length=float(np.sum(segment_lengths)),
-            xstart=starts[:, 0].tolist(),
-            xend=ends[:, 0].tolist(),
-            xcenter=midpoints[:, 0].tolist(),
-            xdirection=directions[:, 0].tolist(),
-            ystart=starts[:, 1].tolist(),
-            yend=ends[:, 1].tolist(),
-            ycenter=midpoints[:, 1].tolist(),
-            ydirection=directions[:, 1].tolist(),
-            zstart=starts[:, 2].tolist(),
-            zend=ends[:, 2].tolist(),
-            zcenter=midpoints[:, 2].tolist(),
-            zdirection=directions[:, 2].tolist(),
-            diam=diam_list,
-            length=segment_lengths.tolist(),
-            distance=seg_distances.tolist(),
-            segment_distance_from_soma=seg_distances.tolist(),
-            segx=np.linspace(0, 1, num_segments).tolist() if num_segments > 1 else [0.5],
-            neuron_section_id=-1,
-            neuron_segments_offset=[0] * num_segments,
+    if has_soma:
+        sections.append(
+            {
+                "id": "soma",
+                "sonata_section_id": SOMA_SONATA_SECTION_ID,
+                "parent_id": None,
+                "type": MorphoViewerTreeItemType.Soma,
+                "points": soma.points.tolist(),
+                "radii": (np.array(soma.diameters) / 2.0).tolist(),
+            }
         )
 
-    return morphology_data
+    for section in morphology.iter():
+        if section.is_root:  # ruff: ignore[if-else-block-instead-of-if-exp]
+            parent_id = "soma" if has_soma else None
+        else:
+            parent_id = str(section.parent.id)
+
+        sections.append(
+            {
+                "id": str(section.id),
+                "sonata_section_id": sonata_section_id(section.id),
+                "parent_id": parent_id,
+                "type": _map_section_type(section.type),
+                "points": section.points.tolist(),
+                "radii": (np.array(section.diameters) / 2.0).tolist(),
+            }
+        )
+
+    return sections
+
+
+_MORPHOLOGY_ASSET_TYPES = (
+    (ContentType.application_swc, ".swc"),
+    (ContentType.application_x_hdf5, ".h5"),
+    (ContentType.application_asc, ".asc"),
+)
+
+
+def _load_morphology_content(content: bytes, suffix: str) -> morphio.Morphology:
+    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
+        tmp.write(content)
+        tmp.flush()
+        return morphio.Morphology(tmp.name, options=morphio.Option.nrn_order)
+
+
+def load_cell_morphology(client: Client, morphology: CellMorphology) -> morphio.Morphology:
+    """Load a cell morphology asset in NEURON-compatible section order.
+
+    Uses ``nrn_order`` to match :func:`load_morphology`. A section's id is its position in the
+    section list, so both must agree for an id to mean the same branch.
+
+    Args:
+        client: entitycore client used to download the asset.
+        morphology: The cell morphology whose asset to load.
+
+    Returns:
+        The morphology, sections ordered as NEURON orders them.
+
+    Raises:
+        ValueError: If the morphology or its asset has no id, or carries no SWC, H5 or ASC asset.
+    """
+    if morphology.id is None:
+        msg = "Cell morphology is missing an id."
+        raise ValueError(msg)
+
+    assets = morphology.assets or []
+    for content_type, suffix in _MORPHOLOGY_ASSET_TYPES:
+        asset = next(
+            (
+                asset
+                for asset in assets
+                if asset.content_type == content_type and asset.label == AssetLabel.morphology
+            ),
+            None,
+        )
+        if asset is None:
+            continue
+        if asset.id is None:
+            msg = "Morphology asset is missing an id."
+            raise ValueError(msg)
+
+        content = client.download_content(
+            entity_id=morphology.id,
+            entity_type=CellMorphology,
+            asset_id=asset.id,
+        )
+        return _load_morphology_content(content, suffix)
+
+    msg = "Cell morphology has no supported SWC, H5, or ASC asset."
+    raise ValueError(msg)
+
+
+def memodel_cell_morphology(client: Client, memodel: MEModel) -> CellMorphology:
+    """Return the MEModel's cell morphology, re-fetching it if its assets were not embedded.
+
+    Args:
+        client: entitycore client used for the re-fetch.
+        memodel: The MEModel whose morphology to resolve.
+
+    Returns:
+        The cell morphology, with its assets populated.
+
+    Raises:
+        ValueError: If the linked morphology has no id.
+    """
+    morphology = memodel.morphology
+    if morphology.assets or []:
+        return morphology
+
+    if morphology.id is None:
+        msg = "MEModel morphology is missing an id."
+        raise ValueError(msg)
+    return client.get_entity(entity_id=morphology.id, entity_type=CellMorphology)
+
+
+def load_memodel_morphology(client: Client, memodel: MEModel) -> morphio.Morphology:
+    """Load an MEModel's morphology in NEURON-compatible section order.
+
+    Args:
+        client: entitycore client used to resolve and download the morphology.
+        memodel: The MEModel to load.
+
+    Returns:
+        The morphology, sections ordered as NEURON orders them. Propagates ``ValueError`` when
+        the morphology cannot be resolved or carries no usable asset.
+    """
+    return load_cell_morphology(client, memodel_cell_morphology(client, memodel))
+
+
+_AFFERENT_SURFACE_ATTRIBUTES = (
+    "afferent_surface_x",
+    "afferent_surface_y",
+    "afferent_surface_z",
+)
+_SECTION_ID_ATTRIBUTE = "afferent_section_id"
+
+
+def _has_afferent_surface(population: libsonata.EdgePopulation) -> bool:
+    """Whether this population records where on the target's surface each synapse sits.
+
+    A purely functional connectome carries connectivity without geometry; there is nothing to
+    draw for those.
+    """
+    names = set(population.attribute_names)
+    return all(name in names for name in (*_AFFERENT_SURFACE_ATTRIBUTES, _SECTION_ID_ATTRIBUTE))
+
+
+def _resolve_edge_path(parent_dir: Path, elements_path: str) -> Path:
+    """Place an edge file inside the working directory, refusing anything that escapes it.
+
+    The path comes from the circuit's own config and is used as a download target, so a ``..``
+    or absolute path would write wherever it pointed. Mirrors the guard in :func:`get_morphology`.
+
+    Raises:
+        HTTPException: 400 if the path resolves outside ``parent_dir``.
+    """
+    edges_path = (parent_dir / elements_path).resolve()
+    if not edges_path.is_relative_to(parent_dir):
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": "Invalid edge file path",
+            },
+        )
+    return edges_path
+
+
+def _fetch_edge_file(
+    client: Client, circuit_id: UUID, asset_id: UUID, parent_dir: Path, edges_path: Path
+) -> bool:
+    """Download one edge file into the working directory, if it is not already there.
+
+    The asset arrives a file at a time, so each edge file is asked for by name.
+
+    Returns:
+        True if the file is present afterwards; False if it could not be fetched, which leaves
+        the circuit drawable without its synapses.
+    """
+    if edges_path.exists():
+        return True
+    try:
+        client.download_file(
+            entity_id=circuit_id,
+            entity_type=Circuit,
+            asset_id=asset_id,
+            output_path=edges_path,
+            asset_path=edges_path.relative_to(parent_dir),
+        )
+    except Exception as exc:  # ruff: ignore[blind-except]
+        L.warning(f"Could not download edge file {edges_path}: {exc}")
+        return False
+
+    # A download can report success and write nothing; failing here beats a raw HDF5 error.
+    if not edges_path.exists():
+        L.warning(f"Edge file {edges_path} was not written by the download.")
+        return False
+    return True
+
+
+def get_afferent_synapses(
+    config: libsonata.CircuitConfig,
+    parent_dir: Path,
+    client: Client,
+    circuit_id: UUID,
+    asset_id: UUID,
+) -> list[SynapseGroup]:
+    """Afferent synapse positions for every edge population that records them.
+
+    Read from the same SONATA circuit as the morphologies, so a synapse and the branch it sits
+    on come from one source.
+
+    Args:
+        config: The circuit's SONATA config.
+        parent_dir: Working directory the edge files are downloaded into.
+        client: entitycore client used to fetch them.
+        circuit_id: Circuit the asset belongs to.
+        asset_id: The circuit's ``sonata_circuit`` asset.
+
+    Returns:
+        One group per drawable edge population. Empty when the circuit records connectivity
+        without geometry, which is not an error. Raises ``HTTPException`` (400) if an edge path
+        escapes ``parent_dir``.
+    """
+    groups: list[SynapseGroup] = []
+
+    parent_dir = parent_dir.resolve()
+
+    for population_name in config.edge_populations:
+        properties = config.edge_population_properties(population_name)
+        edges_path = _resolve_edge_path(parent_dir, properties.elements_path)
+        if not _fetch_edge_file(client, circuit_id, asset_id, parent_dir, edges_path):
+            continue
+
+        storage = libsonata.EdgeStorage(str(edges_path))
+        population = storage.open_population(population_name)
+        if not _has_afferent_surface(population):
+            L.info(f"Edge population {population_name!r} has no afferent surface positions.")
+            continue
+
+        selection = libsonata.Selection([(0, population.size)])
+        xs, ys, zs = (
+            population.get_attribute(name, selection) for name in _AFFERENT_SURFACE_ATTRIBUTES
+        )
+        section_ids = population.get_attribute(_SECTION_ID_ATTRIBUTE, selection)
+
+        coordinates: list[float] = []
+        for x, y, z in zip(xs, ys, zs, strict=True):
+            coordinates.extend((float(x), float(y), float(z)))
+
+        groups.append(
+            SynapseGroup(
+                population_name=population_name,
+                coordinates=coordinates,
+                section_ids=[int(section_id) for section_id in section_ids],
+                target_node_ids=[int(node_id) for node_id in population.target_nodes(selection)],
+            )
+        )
+
+    return groups

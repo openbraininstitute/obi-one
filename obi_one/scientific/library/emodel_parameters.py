@@ -6,13 +6,12 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-import entitysdk.client
 from entitysdk.models import EModel, MEModel
 from entitysdk.types import AssetLabel
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    import entitysdk.exception
+    import entitysdk.client
 
 _VARIABLE_SECTION_PARTS = 2
 _MULTILOC_MAP = {
@@ -22,6 +21,17 @@ _MULTILOC_MAP = {
     "somaxon": ["axonal", "somatic"],
     "allact": ["apical", "basal", "somatic", "axonal"],
     "all": ["apical", "basal", "somatic", "axonal"],
+}
+
+# All recognized section list names (concrete names + aliases).
+# Used to detect when the second part of a parameter name is NOT a section list,
+# which indicates a distribution meta-parameter (e.g. "constant.distribution_decay").
+_VALID_SECTION_LISTS: set[str] = {
+    "somatic",
+    "basal",
+    "apical",
+    "axonal",
+    *_MULTILOC_MAP.keys(),
 }
 
 
@@ -114,7 +124,23 @@ def get_mechanism_variables(
         Tuple of (variables_list, channel_mapping) where channel_mapping shows
         which section lists each ion channel appears in based on emodel JSON.
     """
-    emodel = db_client.get_entity(entity_id=memodel.emodel.id, entity_type=EModel)
+    return get_mechanism_variables_for_emodel(db_client, str(memodel.emodel.id))
+
+
+def get_mechanism_variables_for_emodel(
+    db_client: entitysdk.client.Client,
+    emodel_id: str,
+) -> tuple[list[MechanismVariable], ChannelSectionListMapping]:
+    """Fetch all modifiable mechanism variables directly from an EModel entity ID.
+
+    Retrieves optimized parameters from the emodel_optimization_output asset and
+    additional RANGE/GLOBAL variables from ion channel models.
+
+    Returns:
+        Tuple of (variables_list, channel_mapping) where channel_mapping shows
+        which section lists each ion channel appears in based on emodel JSON.
+    """
+    emodel = db_client.get_entity(entity_id=emodel_id, entity_type=EModel)  # ty:ignore[invalid-argument-type]
 
     optimized_params = _fetch_optimization_parameters(db_client, emodel)
     ion_channel_vars = _get_ion_channel_variables(emodel)
@@ -154,7 +180,7 @@ def get_mechanism_variables(
     ]
 
     # Add section properties (cm and Ra) for all section lists
-    section_properties = _extract_section_properties(memodel, channel_mapping)
+    section_properties = _extract_section_properties(channel_mapping)
     merged.extend(section_properties)
 
     return merged, channel_mapping
@@ -173,7 +199,7 @@ def _fetch_optimization_parameters(
     content_bytes = db_client.download_content(
         entity_id=emodel.id,
         entity_type=EModel,
-        asset_id=asset.id,
+        asset_id=asset.id,  # ty:ignore[unresolved-attribute]
     )
     data = json.loads(content_bytes)
     return _parse_optimization_parameters(data.get("parameter", []), emodel)
@@ -196,7 +222,13 @@ def _parse_optimization_parameters(
 
     Each parameter name follows the format "<neuron_variable>.<section_list>"
     (e.g. "decay_CaDynamics_DC0.somatic", "g_pas.all").
+
+    Parameters whose second part is not a recognized section list AND whose first
+    part has no ion channel suffix are treated as GLOBAL distribution parameters
+    (e.g. "constant.distribution_decay").
     """
+    known_suffixes = [icm.nmodl_suffix for icm in emodel.ion_channel_models or []]
+
     parsed = []
     for param in parameters_json:
         name = param.get("name", "")
@@ -210,6 +242,17 @@ def _parse_optimization_parameters(
 
         # Add limits for variables starting with 'g'
         limits = [0.0, 10.0] if neuron_variable.startswith("g") else None
+
+        # Skip distribution meta-parameters (e.g. "constant.distribution_decay").
+        # These are optimization parameters for spatial distribution formulas
+        # (like exp(distance * constant) * value) that are already substituted into
+        # the final HOC file. They are not runtime-modifiable NEURON variables.
+        # Detection: section_list is not a recognized name AND variable has no
+        # ion channel suffix.
+        if section_list not in _VALID_SECTION_LISTS and not _extract_channel_suffix(
+            neuron_variable, known_suffixes
+        ):
+            continue
 
         # Determine variable type: GLOBAL only if in neuron_block.global_, otherwise RANGE
         variable_type = "GLOBAL" if _is_global_variable(emodel, neuron_variable) else "RANGE"
@@ -246,7 +289,7 @@ def _extract_channel_suffix(neuron_variable: str, known_suffixes: list[str]) -> 
     # Sort by length descending to match longest suffix first
     for suffix in sorted(known_suffixes, key=len, reverse=True):
         if neuron_variable.endswith(f"_{suffix}"):
-            return suffix
+            return suffix  # ty:ignore[invalid-return-type]
 
     # Fallback: extract the last part after underscore for built-in mechanisms
     # This handles cases like g_pas, e_pas, etc.
@@ -450,18 +493,18 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
 
 
 def _extract_section_properties(
-    _memodel: MEModel, channel_mapping: ChannelSectionListMapping
+    channel_mapping: ChannelSectionListMapping,
 ) -> list[MechanismVariable]:
-    r"""Extract cm and Ra properties for all section lists in the MEModel.
+    r"""Extract cm and Ra properties for all section lists.
 
     Returns MechanismVariable objects for cm and Ra with:
     - neuron_variable: "cm" or "Ra"
     - channel_name: "-" (special identifier for section properties)
     - section_list: derived from channel_mapping section lists
-    - value: None if not found in MEModel, actual value if available
+    - value: None (user checks defaults on platform)
     - units: r"$\mu$F/cm$^2$" for cm, r"$\Omega$-cm" for Ra
     - variable_type: "RANGE"
-    - limits: [0.0, 10.0] for cm, [10.0, 500.0] for Ra
+    - limits: [0.0, 10.0] for cm, [0.0, 1000.0] for Ra
     """
     variables = []
 
@@ -483,7 +526,7 @@ def _extract_section_properties(
                     neuron_variable="cm",
                     channel_name="-",
                     section_list=section_list,
-                    value=None,  # Not available in MEModel, will be null
+                    value=None,
                     units=r"$\mu$F/cm$^2$",
                     limits=[0.0, 10.0],
                     variable_type="RANGE",
@@ -492,9 +535,9 @@ def _extract_section_properties(
                     neuron_variable="Ra",
                     channel_name="-",
                     section_list=section_list,
-                    value=None,  # Not available in MEModel, will be null
+                    value=None,
                     units=r"$\Omega$-cm",
-                    limits=[10.0, 500.0],
+                    limits=[0.0, 1000.0],
                     variable_type="RANGE",
                 ),
             ]

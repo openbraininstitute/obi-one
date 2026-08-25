@@ -3,10 +3,16 @@ import re
 from pathlib import Path
 
 import numpy as np
+import pydantic
 import pytest
 from bluepysnap import Circuit
 
 import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+    SetOperation,
+)
+from obi_one.scientific.blocks.neuron_sets.population import VirtualPopulationNeuronSet
 
 from tests.utils import CIRCUIT_DIR
 
@@ -34,15 +40,15 @@ def _get_population_ids(circuit, neuron_set, with_virtual, with_external):
         src = edges.source
         tgt = edges.target
         if _is_virtual_epop(circuit, epop_name):
-            tgt_nids = neuron_set.get_neuron_ids(circuit, population=tgt.name)
+            tgt_nids = neuron_set.get_neuron_ids(circuit)[tgt.name]
             etab = edges.pathway_edges(target=tgt_nids, properties=["@source_node", "@target_node"])
             if with_virtual:
                 _update_ids(npop_dict, src.name, etab["@source_node"].to_numpy())
                 _update_ids(epop_dict, epop_name, etab.index.to_numpy())
             _update_ids(npop_dict, tgt.name, etab["@target_node"].to_numpy())
         else:
-            src_nids = neuron_set.get_neuron_ids(circuit, population=src.name)
-            tgt_nids = neuron_set.get_neuron_ids(circuit, population=tgt.name)
+            src_nids = neuron_set.get_neuron_ids(circuit)[src.name]
+            tgt_nids = neuron_set.get_neuron_ids(circuit)[tgt.name]
             etab = edges.pathway_edges(
                 source=src_nids, target=tgt_nids, properties=["@source_node", "@target_node"]
             )
@@ -79,15 +85,13 @@ def _check_nodes(npop_dict, c_orig, c_res, id_map):
         np.testing.assert_array_equal(id_map[npop_name]["original_id"], npop_ids)
         np.testing.assert_array_equal(id_map[npop_name]["new_id"], nids_res)
         # Check node properties
-        if npop_name.startswith("external_"):
-            np.testing.assert_array_equal(
-                c_orig.nodes[npop_name.replace("external_", "")].property_names,
-                c_res.nodes[npop_name].property_names,
-            )
+        # brainbuilder drops "model_template" for all virtual populations during extraction
+        orig_props = set(c_orig.nodes[npop_name.replace("external_", "")].property_names)
+        res_props = set(c_res.nodes[npop_name].property_names)
+        if c_res.nodes[npop_name].config["type"] == "virtual":
+            assert res_props == orig_props - {"model_template"}
         else:
-            np.testing.assert_array_equal(
-                c_orig.nodes[npop_name].property_names, c_res.nodes[npop_name].property_names
-            )
+            assert res_props == orig_props
 
 
 def _check_edges(epop_dict, c_orig, c_res, id_map):
@@ -128,8 +132,8 @@ def _check_hoc(npop_dict, c_res):
         if nodes.type == "biophysical":
             # Check HOC files
             hoc_files = [
-                _hoc.split(":")[-1] + ".hoc"
-                for _hoc in nodes.get(properties="model_template").unique()
+                hoc_.split(":")[-1] + ".hoc"
+                for hoc_ in nodes.get(properties="model_template").unique()
             ]
             hoc_path = Path(nodes.config["biophysical_neuron_models_dir"])
             for hoc in hoc_files:
@@ -159,17 +163,23 @@ def test_circuit_extraction(tmp_path):
                 / f"do_virtual={do_virtual}"
                 / f"create_external={create_external}"
             )
+            neuron_set = obi.BiophysicalPopulationPredefinedNeuronSet(
+                node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+            )
+            info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
+
+            circuit_extractions_scan_config = obi.CircuitExtractionScanConfig.empty_config()
+            circuit_extractions_scan_config.set(info, name="info")
+            circuit_extractions_scan_config.add(neuron_set, name="TestNeuronSet")
+
             extraction_init = obi.CircuitExtractionScanConfig.Initialize(
                 circuit=circuit_list,
+                neuron_set=neuron_set.ref,
                 do_virtual=do_virtual,
                 create_external=create_external,
             )
-            neuron_set = obi.PredefinedNeuronSet(node_set=["L6_IPC", "L6_TPC:A"])
-            info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
-
-            circuit_extractions_scan_config = obi.CircuitExtractionScanConfig(
-                initialize=extraction_init, neuron_set=neuron_set, info=info
-            )
+            circuit_extractions_scan_config.set(extraction_init, name="initialize")
+            circuit_extractions_scan_config = circuit_extractions_scan_config.validated_config()
 
             grid_scan = obi.GridScanGenerationTask(
                 form=circuit_extractions_scan_config,
@@ -197,7 +207,7 @@ def test_circuit_extraction(tmp_path):
 
                 npop_dict, epop_dict = _get_population_ids(
                     instance.initialize.circuit,
-                    instance.neuron_set,
+                    instance.initialize.neuron_set.block,
                     with_virtual=instance.initialize.do_virtual,
                     with_external=instance.initialize.create_external,
                 )
@@ -221,3 +231,119 @@ def test_circuit_extraction(tmp_path):
 
                 # Check HOC files
                 _check_hoc(npop_dict, c_res)
+
+
+def test_circuit_extraction_rejects_virtual_neuron_set():
+    """CircuitExtractionScanConfig should not accept virtual neuron sets in neuron_sets."""
+    virtual_nset = VirtualPopulationNeuronSet(population="VPM")
+
+    config = obi.CircuitExtractionScanConfig.empty_config()
+    config.neuron_sets["virtual"] = virtual_nset
+    with pytest.raises(pydantic.ValidationError, match="union_tag_invalid"):
+        config.validated_config()
+
+
+def test_circuit_extraction_with_default_neuron_set(tmp_path):
+    """Test that extraction works when neuron_set is None (default AllBiophysicalNeurons)."""
+    config = obi.CircuitExtractionScanConfig.empty_config()
+    config.set(
+        obi.Info(campaign_name="DefaultTest", campaign_description="Test default neuron set"),
+        name="info",
+    )
+    init = obi.CircuitExtractionScanConfig.Initialize(
+        circuit=obi.Circuit(
+            name="N_10__top_nodes_dim6",
+            path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+        ),
+        neuron_set=None,
+        do_virtual=False,
+        create_external=False,
+    )
+    config.set(init, name="initialize")
+
+    validated = config.validated_config()
+    grid_scan = obi.GridScanGenerationTask(
+        form=validated,
+        output_root=tmp_path,
+        coordinate_directory_option="ZERO_INDEX",
+    )
+    grid_scan.execute()
+    obi.run_tasks_for_generated_scan(grid_scan)
+
+    # Verify the default neuron set was used (AllBiophysicalNeurons = all biophysical neurons)
+    instance = grid_scan.single_configs[0]
+    assert instance.initialize.neuron_set is not None
+    assert instance.initialize.neuron_set.block_name == "Default: All Biophysical Neurons"
+    assert isinstance(instance.initialize.neuron_set.block, obi.AllBiophysicalNeurons)
+
+    # Verify extracted circuit exists and has same number of neurons as input
+    # (AllBiophysicalNeurons extracts all neurons, so sizes must match)
+    extracted_path = Path(instance.coordinate_output_root) / "circuit_config.json"
+    assert extracted_path.exists()
+    c_res = Circuit(extracted_path)
+    c_orig = instance.initialize.circuit.sonata_circuit
+    assert c_res.nodes["S1nonbarrel_neurons"].size == c_orig.nodes["S1nonbarrel_neurons"].size
+
+
+def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
+    """Test that combined neuron sets with None references get defaults filled in."""
+    config = obi.CircuitExtractionScanConfig.empty_config()
+    config.set(
+        obi.Info(campaign_name="CombinedTest", campaign_description="Test combined neuron set"),
+        name="info",
+    )
+
+    # Add a combined neuron set with None base and multiple None entries in combined_with
+    # (all should get default filled in)
+    combined = BiophysicalCombinedNeuronSet(
+        base_neuron_set=None,
+        combined_with=[
+            (None, SetOperation.INTERSECT),
+            (None, SetOperation.INTERSECT),
+            (None, SetOperation.INTERSECT),
+        ],
+    )
+    config.add(combined, name="CombinedEXC")
+
+    # Point initialize.neuron_set to the combined set
+    init = obi.CircuitExtractionScanConfig.Initialize(
+        circuit=obi.Circuit(
+            name="N_10__top_nodes_dim6",
+            path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+        ),
+        neuron_set=combined.ref,
+        do_virtual=False,
+        create_external=False,
+    )
+    config.set(init, name="initialize")
+
+    validated = config.validated_config()
+    grid_scan = obi.GridScanGenerationTask(
+        form=validated,
+        output_root=tmp_path,
+        coordinate_directory_option="ZERO_INDEX",
+    )
+    grid_scan.execute()
+    obi.run_tasks_for_generated_scan(grid_scan)
+
+    # Verify the combined neuron set's base_neuron_set and combined_with were filled with defaults
+    instance = grid_scan.single_configs[0]
+    combined_block = instance.neuron_sets["CombinedEXC"]
+    assert combined_block.base_neuron_set is not None
+    assert combined_block.base_neuron_set.block_name == "Default: All Biophysical Neurons"
+    assert isinstance(combined_block.base_neuron_set.block, obi.AllBiophysicalNeurons)
+
+    # combined_with entry should also have been filled with the default
+    assert len(combined_block.combined_with) == 3
+    for ref, _op in combined_block.combined_with:
+        assert ref is not None
+        assert ref.block_name == "Default: All Biophysical Neurons"
+        assert isinstance(ref.block, obi.AllBiophysicalNeurons)
+
+    # Verify extraction produced a valid circuit
+    extracted_path = Path(instance.coordinate_output_root) / "circuit_config.json"
+    assert extracted_path.exists()
+    c_res = Circuit(extracted_path)
+    # Combined = AllBiophysicalNeurons INTERSECT AllBiophysicalNeurons = all biophysical neurons
+    c_orig = instance.initialize.circuit.sonata_circuit
+    assert c_res.nodes["S1nonbarrel_neurons"].size == c_orig.nodes["S1nonbarrel_neurons"].size

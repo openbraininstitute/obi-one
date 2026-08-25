@@ -4,7 +4,7 @@ from enum import StrEnum
 from http import HTTPStatus
 from typing import Annotated, NoReturn
 
-import pyvista as pv
+import pylmesh
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -18,6 +18,9 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 # Max file size: 5 GB
 MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024
+
+# Supported MESH file extensions
+VALID_MESH_EXTENSIONS = {".obj", ".glb"}
 
 
 class ValidationStatus(StrEnum):
@@ -39,21 +42,18 @@ def _handle_empty_geometry(path: str) -> NoReturn:
 
 def _handle_mesh_load_error(error: Exception) -> NoReturn:
     """Helper to raise ValueError for mesh loading failures."""
-    msg = f"Failed to load OBJ file with PyVista: {error}"
+    msg = f"Failed to load MESH file with PyVista: {error}"
     raise ValueError(msg) from error
 
 
-def validate_mesh_reader(mesh_file_path: str) -> pv.DataSet:
-    """Try PyVista reader to validate the mesh file."""
+def validate_mesh_reader(mesh_file_path: str) -> pylmesh.Mesh:
+    """Try pylmesh reader to validate the mesh file."""
     try:
-        # pyvista.read handles various formats including OBJ
-        mesh = pv.read(mesh_file_path)
-    except (ValueError, RuntimeError, Exception) as e:
-        # Catch PyVista/VTK specific loading errors
+        mesh = pylmesh.load_mesh(mesh_file_path)
+    except (RuntimeError, ValueError, OSError) as e:
         _handle_mesh_load_error(e)
     else:
-        # PyVista meshes don't have 'is_empty'; we check point/cell counts
-        if mesh.n_points == 0 or mesh.n_cells == 0:
+        if mesh.is_empty():
             _handle_empty_geometry(mesh_file_path)
 
         return mesh
@@ -97,8 +97,8 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_path = temp_file.name
 
-        try:
-            file.file.seek(0)  # Reset pointer
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
+            file.file.seek(0)
             while True:
                 chunk = file.file.read(chunk_size)
                 if not chunk:
@@ -130,13 +130,14 @@ def _cleanup_temp_file(temp_path: str) -> None:
 
 
 def validate_mesh_file(
-    file: Annotated[UploadFile, File(description="MESH file to upload (.obj)")],
+    file: Annotated[UploadFile, File(description="MESH file to upload (.obj, .glb)")],
     background_tasks: BackgroundTasks,
 ) -> MESHValidationResponse:
-    """Validates an uploaded .obj file using PyVista."""
+    """Validates an uploaded .obj or .glb file using pylmesh."""
     file_extension = pathlib.Path(file.filename).suffix.lower() if file.filename else ""
-    if file_extension != ".obj":
-        msg = "Invalid file extension. Must be .obj"
+    if file_extension not in VALID_MESH_EXTENSIONS:
+        valid_extensions = ", ".join(sorted(VALID_MESH_EXTENSIONS))
+        msg = f"Invalid file extension. Must be one of: {valid_extensions}"
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -160,12 +161,11 @@ def validate_mesh_file(
     temp_file_path = ""
 
     try:
-        temp_file_path = _save_upload_to_tempfile(file, suffix=".obj")
+        temp_file_path = _save_upload_to_tempfile(file, suffix=file_extension)
 
         if pathlib.Path(temp_file_path).stat().st_size == 0:
             _handle_empty_file(file)
 
-        # PyVista validation
         validate_mesh_reader(temp_file_path)
 
         background_tasks.add_task(_cleanup_temp_file, temp_file_path)
@@ -209,7 +209,7 @@ def activate_test_mesh_endpoint(router: APIRouter) -> None:
     router.post(
         "/test-mesh-file",
         summary="Validate MESH file format for OBP.",
-        description="Validates an uploaded .obj file using PyVista.",
+        description="Validates an uploaded .obj or .glb file using pylmesh.",
     )(validate_mesh_file)
 
 

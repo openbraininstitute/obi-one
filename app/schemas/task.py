@@ -4,13 +4,14 @@ from uuid import UUID
 from entitysdk.models.activity import Activity, Entity
 from entitysdk.types import TaskActivityType, TaskConfigType
 from obp_accounting_sdk.constants import ServiceSubtype
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.schemas.accounting import AccountingParameters
 from app.schemas.base import Schema
 from app.types import (
     BuiltinScript,
     CodeType,
+    MachineExecutorImageType,
     ResourcesConfigType,
     TaskType,
 )
@@ -18,7 +19,7 @@ from app.types import (
 
 class Capabilities(Schema):
     private_packages: bool = False
-    env_secrets: list[str] = []  # noqa: RUF012
+    env_secrets: list[str] = []  # ruff: ignore[mutable-class-default]
 
 
 class PythonRepositoryCode(Schema):
@@ -28,6 +29,7 @@ class PythonRepositoryCode(Schema):
     path: str
     dependencies: str
     capabilities: Capabilities = Capabilities()
+    staged_directories: list[str] = []  # ruff: ignore[mutable-class-default]
 
 
 class BuiltinCode(Schema):
@@ -49,6 +51,8 @@ class MachineResources(Schema):
     memory: int = 2
     compute_cell: str
     timelimit: str | None = None
+    image_type: MachineExecutorImageType = MachineExecutorImageType.python_3_12_compiler
+    ephemeral_storage: int | None = None
 
 
 class ClusterResources(Schema):
@@ -73,6 +77,16 @@ class TaskLaunchSubmit(Schema):
     task_type: TaskType
     config_id: UUID
 
+    @field_validator("task_type")
+    @classmethod
+    def task_type_must_be_launchable(cls, v: TaskType) -> TaskType:
+        from app.mappings import TASK_DEFINITIONS  # ruff: ignore[import-outside-top-level]
+
+        if v not in TASK_DEFINITIONS:
+            msg = f"Task type '{v}' is not launchable. Valid types: {list(TASK_DEFINITIONS.keys())}"
+            raise ValueError(msg)
+        return v
+
 
 class TaskLaunchInfo(TaskLaunchSubmit):
     activity_id: UUID
@@ -91,6 +105,11 @@ class TaskAccountingInfo(TaskAccountingCreate):
     parameters: AccountingParameters
 
 
+class TaskGroupLegacyDefinition(Schema):
+    task_type: TaskType
+    config_type: type[Entity]
+
+
 class TaskDefinition(Schema):
     """Definition of a task type with its associated models and configuration."""
 
@@ -102,12 +121,12 @@ class TaskDefinition(Schema):
 
     @property
     def config_type_name(self) -> str:
-        """Return the name of the config class."""
+        """The name of the config class."""
         return self.config_type
 
     @property
     def activity_type_name(self) -> str:
-        """Return the name of the activity class."""
+        """The name of the activity class."""
         return self.activity_type
 
 
@@ -122,12 +141,12 @@ class TaskDefinitionLegacy(Schema):
 
     @property
     def config_type_name(self) -> str:
-        """Return the name of the config class."""
+        """The name of the config class."""
         return self.config_type.__name__
 
     @property
     def activity_type_name(self) -> str:
-        """Return the name of the activity class."""
+        """The name of the activity class."""
         return self.activity_type.__name__
 
 

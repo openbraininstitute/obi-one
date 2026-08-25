@@ -11,13 +11,12 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.tasks.generate_simulations.config.circuit import (
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    CircuitExtractionNeuronSetUnion,
-    NeuronSetReference,
-    SimulationNeuronSetUnion,
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NEURONSimulationNeuronSetUnion,
 )
 
 
@@ -45,7 +44,6 @@ class EntityDependentBlockExample(Block):
 class SchemaExampleScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "Schema Example"
     description: ClassVar[str] = "Useful for testing and generating example schema."
 
@@ -148,7 +146,7 @@ class SchemaExampleScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    neuron_set: CircuitExtractionNeuronSetUnion = Field(
+    neuron_set: NEURONSimulationNeuronSetUnion = Field(
         title="Neuron Set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
@@ -159,13 +157,13 @@ class SchemaExampleScanConfig(ScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
             SchemaKey.GROUP_ORDER: 1,
         },
