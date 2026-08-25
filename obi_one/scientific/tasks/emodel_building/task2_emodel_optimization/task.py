@@ -476,13 +476,13 @@ class EModelOptimizationTask(Task):
         )
 
         try:
-            from entitysdk.registration.emodel import (  # ruff: ignore[import-outside-top-level]
+            from entitysdk.registration.emodel import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
                 register_emodel,
             )
-            from entitysdk.registration.memodel import (  # ruff: ignore[import-outside-top-level]
+            from entitysdk.registration.memodel import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
                 register_memodel,
             )
-            from entitysdk.registration.task_result.emodel_optimization import (  # ruff: ignore[import-outside-top-level]
+            from entitysdk.registration.task_result.emodel_optimization import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
                 register_emodel_optimization_result,
             )
         except ModuleNotFoundError as exc:
