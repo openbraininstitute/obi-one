@@ -12,6 +12,7 @@ import entitysdk.exception
 import h5py
 import numpy as np
 from entitysdk import models
+from entitysdk.types import DerivationType
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -19,12 +20,8 @@ from app.dependencies.auth import user_verified
 from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
-from app.endpoints.circuit_helpers import (
-    compute_circuit_metadata,
-    generate_and_register_visualization_assets,
-    trigger_validation_task,
-    upload_sonata_circuit,
-)
+from app.endpoints.circuit_helpers import trigger_validation_task
+from obi_one.db_sdk.registration.circuit import register_circuit
 from obi_one.scientific.validations.emodels import BUILTIN_NEURON_MECHANISMS
 from obi_one.utils.circuit_customization.staging import stage_customized_circuit
 
@@ -458,7 +455,7 @@ def _validate_file_groups(
     return edge_paths, hoc_paths, mod_paths, node_paths, errors
 
 
-def _register_and_stage(
+def _stage_and_register(
     *,
     db_client: entitysdk.client.Client,
     parent: models.Circuit,
@@ -473,12 +470,19 @@ def _register_and_stage(
     cfg_path: Path | None,
     pop_map: dict[str, str],
 ) -> models.Circuit:
-    """Register a new circuit entity, stage overrides, and upload the merged directory."""
+    """Stage the parent circuit with the overrides applied, then register the merged circuit.
+
+    Registration itself is delegated to ``register_circuit``, which computes metadata,
+    creates the entity and its derivation from the parent, and registers the SONATA
+    folder plus visualization assets. The compressed archive is left to the
+    post-validation asset job: the staged folder is a tree of symlinks into the parent's
+    storage, so compressing it here would archive links rather than data.
+    """
     staged_dir = tmp / "staged"
     staged_dir.mkdir()
 
     try:
-        stage_customized_circuit(
+        merged_config = stage_customized_circuit(
             db_client,
             parent=parent,
             output_dir=staged_dir,
@@ -493,73 +497,38 @@ def _register_and_stage(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
-    # Compute metadata from the merged circuit
-    merged_config = staged_dir / "circuit_config.json"
-    if not merged_config.exists():
-        raise HTTPException(status_code=500, detail="Staged circuit is missing circuit_config.json")
+    if parent.brain_region is None or parent.subject is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Parent circuit {parent.id} has no brain region or subject to inherit from.",
+        )
 
     try:
-        (
-            c,
-            scale,
-            number_neurons,
-            number_synapses,
-            number_connections,
-            has_morphologies,
-            has_point_neurons,
-            has_electrical_cell_models,
-            has_spines,
-        ) = compute_circuit_metadata(name, merged_config)
+        registered = register_circuit(
+            client=db_client,
+            circuit_path=merged_config,
+            name=name,
+            description=description,
+            build_category=parent.build_category,
+            brain_region=parent.brain_region,
+            subject=parent.subject,
+            target_simulator=parent.target_simulator,
+            license=parent.license,
+            parent=parent,
+            derivation_type=DerivationType.circuit_customization,
+            skip_validation=True,
+            lifecycle_status="draft",
+            include_compressed=False,
+        )
     except (OSError, ValueError, RuntimeError) as e:
         raise HTTPException(
-            status_code=422, detail=f"Failed to compute circuit metadata: {e}"
+            status_code=422, detail=f"Failed to register customized circuit: {e}"
         ) from e
-
-    circuit_model = models.Circuit(
-        name=name,
-        description=description,
-        subject=parent.subject,
-        brain_region=parent.brain_region,
-        license=parent.license,
-        number_neurons=number_neurons,
-        number_synapses=number_synapses,
-        number_connections=number_connections,
-        has_morphologies=has_morphologies,
-        has_point_neurons=has_point_neurons,
-        has_electrical_cell_models=has_electrical_cell_models,
-        has_spines=has_spines,
-        scale=scale,
-        build_category=parent.build_category,
-        target_simulator=parent.target_simulator,
-        root_circuit_id=parent.root_circuit_id or parent.id,
-        lifecycle_status="draft",  # ty:ignore[invalid-argument-type]
-    )
-
-    try:
-        registered = db_client.register_entity(circuit_model)
     except entitysdk.exception.EntitySDKError as e:
         raise HTTPException(status_code=500, detail=f"Failed to register circuit: {e}") from e
 
-    # Create derivation link between the customized circuit and its parent
-    from entitysdk.types import DerivationType  # ruff: ignore[import-outside-top-level]
-
-    derivation_model = models.Derivation(
-        used=parent,
-        generated=registered,
-        derivation_type=DerivationType.circuit_customization,
-    )
-    db_client.register_entity(derivation_model)
-
-    upload_sonata_circuit(db_client, registered, staged_dir)
-
-    generate_and_register_visualization_assets(
-        circuit=c,
-        config_path=merged_config,
-        output_root=staged_dir,
-        db_client=db_client,
-        registered=registered,
-    )
-
+    if registered is None:
+        raise HTTPException(status_code=500, detail="Circuit registration returned no entity")
     return registered
 
 
@@ -689,8 +658,8 @@ def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-pos
         if errors:
             raise HTTPException(status_code=422, detail={"validation_errors": errors})
 
-        # 3. Register, stage, and upload
-        registered = _register_and_stage(
+        # 3. Stage, override, and register
+        registered = _stage_and_register(
             db_client=db_client,
             parent=parent,
             name=name,
@@ -705,7 +674,7 @@ def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-pos
             pop_map=pop_map,
         )
 
-    # 5. Trigger async validation task via launch-system
+    # 4. Trigger async validation task via launch-system
     trigger_validation_task(
         ls_client=ls_client,
         circuit_id=registered.id,

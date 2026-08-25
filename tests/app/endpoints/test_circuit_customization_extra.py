@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import h5py
 import numpy as np
 import pytest
+from entitysdk.types import DerivationType
 from fastapi import HTTPException
 
 from app.endpoints.circuit_customization import (
@@ -17,6 +18,7 @@ from app.endpoints.circuit_customization import (
     _get_parent_mechanism_names,
     _parse_population_manifest,
     _run_cross_validations,
+    _stage_and_register,
     _validate_edges,
     _validate_mod,
     _validate_node_sets,
@@ -344,3 +346,118 @@ class TestGetParentMechanismNames:
         assert names == expected
         # Spot-check a few well-known mechanisms from the N_10 fixture
         assert {"NaTg", "Ca_HVA2", "ProbAMPANMDA_EMS", "ProbGABAAB_EMS"} <= names
+
+
+# ---------------------------------------------------------------------------
+# _stage_and_register
+# ---------------------------------------------------------------------------
+
+
+def _make_parent() -> MagicMock:
+    parent = MagicMock(name="parent")
+    parent.build_category = "computational_model"
+    parent.target_simulator = "NEURON"
+    return parent
+
+
+def _call_stage_and_register(db_client, parent, tmp_path: Path):
+    return _stage_and_register(
+        db_client=db_client,
+        parent=parent,
+        name="customized",
+        description="a customized circuit",
+        tmp=tmp_path,
+        edge_paths=[],
+        hoc_paths=[],
+        mod_paths=[],
+        node_paths=[],
+        node_sets_path=None,
+        cfg_path=None,
+        pop_map={},
+    )
+
+
+class TestStageAndRegister:
+    def test_delegates_registration_to_register_circuit(self, tmp_path):
+        """Staging output is handed to register_circuit with parent-derived metadata."""
+        parent = _make_parent()
+        registered = MagicMock(name="registered")
+        merged_config = tmp_path / "staged" / "circuit_config.json"
+
+        with (
+            patch(
+                "app.endpoints.circuit_customization.stage_customized_circuit",
+                return_value=merged_config,
+            ) as mock_stage,
+            patch(
+                "app.endpoints.circuit_customization.register_circuit",
+                return_value=registered,
+            ) as mock_register,
+        ):
+            result = _call_stage_and_register(MagicMock(), parent, tmp_path)
+
+        assert result is registered
+        assert mock_stage.call_args.kwargs["output_dir"] == tmp_path / "staged"
+
+        kwargs = mock_register.call_args.kwargs
+        assert kwargs["circuit_path"] == merged_config
+        assert kwargs["parent"] is parent
+        assert kwargs["derivation_type"] == DerivationType.circuit_customization
+        assert kwargs["build_category"] == parent.build_category
+        assert kwargs["target_simulator"] == parent.target_simulator
+        assert kwargs["brain_region"] is parent.brain_region
+        assert kwargs["subject"] is parent.subject
+        assert kwargs["license"] is parent.license
+        assert kwargs["lifecycle_status"] == "draft"
+        assert kwargs["skip_validation"] is True
+        # The staged tree is symlinks into the parent's storage: the compressed
+        # archive is produced later by the post-validation asset job.
+        assert kwargs["include_compressed"] is False
+
+    def test_staging_error_becomes_422(self, tmp_path):
+        with (
+            patch(
+                "app.endpoints.circuit_customization.stage_customized_circuit",
+                side_effect=ValueError("bad population"),
+            ),
+            patch("app.endpoints.circuit_customization.register_circuit") as mock_register,
+            pytest.raises(HTTPException) as exc,
+        ):
+            _call_stage_and_register(MagicMock(), _make_parent(), tmp_path)
+
+        assert exc.value.status_code == 422
+        assert "bad population" in str(exc.value.detail)
+        mock_register.assert_not_called()
+
+    def test_registration_error_becomes_422(self, tmp_path):
+        with (
+            patch(
+                "app.endpoints.circuit_customization.stage_customized_circuit",
+                return_value=tmp_path / "staged" / "circuit_config.json",
+            ),
+            patch(
+                "app.endpoints.circuit_customization.register_circuit",
+                side_effect=ValueError("species mismatch"),
+            ),
+            pytest.raises(HTTPException) as exc,
+        ):
+            _call_stage_and_register(MagicMock(), _make_parent(), tmp_path)
+
+        assert exc.value.status_code == 422
+        assert "species mismatch" in str(exc.value.detail)
+
+    def test_missing_entity_becomes_500(self, tmp_path):
+        with (
+            patch(
+                "app.endpoints.circuit_customization.stage_customized_circuit",
+                return_value=tmp_path / "staged" / "circuit_config.json",
+            ),
+            patch(
+                "app.endpoints.circuit_customization.register_circuit",
+                return_value=None,
+            ),
+            pytest.raises(HTTPException) as exc,
+        ):
+            _call_stage_and_register(MagicMock(), _make_parent(), tmp_path)
+
+        assert exc.value.status_code == 500

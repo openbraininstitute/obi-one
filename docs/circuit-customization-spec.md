@@ -24,13 +24,16 @@ User uploads overrides
 │     • Nodes↔HOC consistency                             │
 │     • New MOD must not be synapse (no NET_RECEIVE)      │
 │  3. Stage parent (symlinks) + overlay overrides         │
-│  4. Compute metadata (get_circuit_size, properties)     │
-│  5. Upload merged directory as sonata_circuit asset     │
-│  6. Generate sync assets (node_stats, network_stats,    │
-│     circuit_visualization, simulation_designer_image)   │
-│  7. Create Circuit entity (lifecycle_status=draft)      │
-│  8. Create derivation link (circuit_customization)      │
-│  9. Submit validation job to launch-system              │
+│  4. register_circuit(...) on the merged directory:      │
+│     • Compute metadata (get_circuit_size, properties)   │
+│     • Create Circuit entity (lifecycle_status=draft)    │
+│     • Create derivation link (circuit_customization)    │
+│     • Upload merged dir as sonata_circuit asset         │
+│     • Generate sync assets (node_stats, network_stats,  │
+│       circuit_visualization, simulation_designer_image) │
+│     • No compressed archive: staged tree is symlinks,   │
+│       so the asset job builds it from a full copy       │
+│  5. Submit validation job to launch-system              │
 │                                                         │
 │  Returns: { circuit_id, status: "draft" }               │
 └─────────────────────────────────────────────────────────┘
