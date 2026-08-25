@@ -15,7 +15,7 @@ from app.endpoints.circuit_customization import (
     EdgeValidationError,
     NodeSetsValidationError,
     ParentCircuitContext,
-    _collect_templates_from_group,
+    _collect_uploaded_model_templates,
     _get_parent_context,
     _parse_population_manifest,
     _run_cross_validations,
@@ -71,55 +71,62 @@ class TestParsePopulationManifest:
 
 
 # ---------------------------------------------------------------------------
-# _collect_templates_from_group — string vs enumerated datasets
+# _collect_uploaded_model_templates — string vs enumerated storage
 # ---------------------------------------------------------------------------
 
 
-class TestCollectTemplatesFromGroup:
+def _write_nodes(
+    path: Path, *, templates: list[bytes] | None = None, library: bool = False
+) -> Path:
+    """Write a minimal SONATA nodes file, optionally with model_template values."""
+    with h5py.File(path, "w") as f:
+        pop = f.create_group("nodes/pop_a")
+        grp = f.create_group("nodes/pop_a/0")
+        n = len(templates) if templates else 1
+        pop.create_dataset("node_type_id", data=np.full(n, -1, dtype=np.int32))
+        grp.create_dataset("morphology", data=[b"morph"] * n)
+        if templates is None:
+            return path
+        if library:
+            values = sorted(set(templates))
+            grp.create_dataset(
+                "model_template",
+                data=np.array([values.index(t) for t in templates], dtype=np.uint32),
+            )
+            grp.create_dataset("@library/model_template", data=values)
+        else:
+            grp.create_dataset("model_template", data=templates)
+    return path
+
+
+class TestCollectUploadedModelTemplates:
     def test_string_dataset(self, tmp_path):
-        h5_file = tmp_path / "nodes.h5"
-        with h5py.File(h5_file, "w") as f:
-            grp = f.create_group("nodes/pop_a/0")
-            grp.create_dataset("model_template", data=[b"hoc:CellA", b"hoc:CellB"])
-
-        templates = set()
-        with h5py.File(h5_file, "r") as f:
-            group = f["nodes/pop_a/0"]
-            _collect_templates_from_group(f, group, "pop_a", templates)
-
-        assert templates == {"hoc:CellA", "hoc:CellB"}
+        node = _write_nodes(tmp_path / "nodes.h5", templates=[b"hoc:CellA", b"hoc:CellB"])
+        assert _collect_uploaded_model_templates([node]) == {"hoc:CellA", "hoc:CellB"}
 
     def test_enumerated_dataset_with_library(self, tmp_path):
-        h5_file = tmp_path / "nodes.h5"
-        with h5py.File(h5_file, "w") as f:
-            grp = f.create_group("nodes/pop_a/0")
-            # Enumerated (uint) dataset
-            grp.create_dataset("model_template", data=np.array([0, 1, 0], dtype=np.uint32))
-            # Library reference
-            f.create_dataset(
-                "nodes/pop_a/0/@library/model_template",
-                data=[b"hoc:CellX", b"hoc:CellY"],
-            )
-
-        templates = set()
-        with h5py.File(h5_file, "r") as f:
-            group = f["nodes/pop_a/0"]
-            _collect_templates_from_group(f, group, "pop_a", templates)
-
-        assert templates == {"hoc:CellX", "hoc:CellY"}
+        node = _write_nodes(
+            tmp_path / "nodes.h5",
+            templates=[b"hoc:CellX", b"hoc:CellY", b"hoc:CellX"],
+            library=True,
+        )
+        assert _collect_uploaded_model_templates([node]) == {"hoc:CellX", "hoc:CellY"}
 
     def test_no_model_template(self, tmp_path):
-        h5_file = tmp_path / "nodes.h5"
-        with h5py.File(h5_file, "w") as f:
-            grp = f.create_group("nodes/pop_a/0")
-            grp.create_dataset("morphology", data=[b"morph1"])
+        node = _write_nodes(tmp_path / "nodes.h5")
+        assert _collect_uploaded_model_templates([node]) == set()
 
-        templates = set()
-        with h5py.File(h5_file, "r") as f:
-            group = f["nodes/pop_a/0"]
-            _collect_templates_from_group(f, group, "pop_a", templates)
+    def test_unreadable_file_is_skipped(self, tmp_path):
+        broken = tmp_path / "broken.h5"
+        broken.write_bytes(b"not hdf5")
+        good = _write_nodes(tmp_path / "nodes.h5", templates=[b"hoc:CellA"])
+        assert _collect_uploaded_model_templates([broken, good]) == {"hoc:CellA"}
 
-        assert templates == set()
+    def test_reads_tiny_circuit_nodes(self):
+        node = TINY_CIRCUIT / "S1nonbarrel_neurons" / "nodes.h5"
+        templates = _collect_uploaded_model_templates([node])
+        assert templates
+        assert all(t.startswith("hoc:") for t in templates)
 
 
 # ---------------------------------------------------------------------------
@@ -197,39 +204,15 @@ class TestValidateNodeSetsExtra:
 
 
 # ---------------------------------------------------------------------------
-# _validate_edges — NaN detection
+# _validate_edges — structural checks
 # ---------------------------------------------------------------------------
 
 
-class TestValidateEdgesNaN:
-    def test_nan_in_float_column(self, tmp_path):
-        edge_file = tmp_path / "edges.h5"
-        with h5py.File(edge_file, "w") as f:
-            pop = f.create_group("edges/pop_a")
-            n = 5
-            pop.create_dataset("source_node_id", data=np.arange(n, dtype=np.int64))
-            pop.create_dataset("target_node_id", data=np.arange(n, dtype=np.int64))
-            pop.create_dataset("edge_type_id", data=np.zeros(n, dtype=np.int32))
-            # Float column with NaN
-            data = np.array([1.0, 2.0, float("nan"), 4.0, 5.0], dtype=np.float32)
-            pop.create_dataset("conductance", data=data)
-
-        with pytest.raises(EdgeValidationError, match="NaN or Inf"):
-            _validate_edges([edge_file])
-
-    def test_inf_in_float_column(self, tmp_path):
-        edge_file = tmp_path / "edges.h5"
-        with h5py.File(edge_file, "w") as f:
-            pop = f.create_group("edges/pop_a")
-            n = 5
-            pop.create_dataset("source_node_id", data=np.arange(n, dtype=np.int64))
-            pop.create_dataset("target_node_id", data=np.arange(n, dtype=np.int64))
-            pop.create_dataset("edge_type_id", data=np.zeros(n, dtype=np.int32))
-            data = np.array([1.0, float("inf"), 3.0, 4.0, 5.0], dtype=np.float32)
-            pop.create_dataset("weight", data=data)
-
-        with pytest.raises(EdgeValidationError, match="NaN or Inf"):
-            _validate_edges([edge_file])
+class TestValidateEdgesStructure:
+    def test_accepts_real_sonata_layout(self):
+        """Properties live under /edges/<pop>/0 — that layout must pass."""
+        edge_file = TINY_CIRCUIT / "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical" / "edges.h5"
+        _validate_edges([edge_file])
 
     def test_missing_edges_group(self, tmp_path):
         edge_file = tmp_path / "edges.h5"

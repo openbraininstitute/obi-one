@@ -128,7 +128,7 @@ Note: entitysdk v0.18.0 only has `draft` and `active`. The `disqualified` value 
 
 ### Layer 1 (Sync, at upload time)
 Fast checks that reject immediately with HTTP 422:
-- Edge files: valid HDF5, `edges` group, required columns, no NaN/Inf in floats
+- Edge files: valid HDF5, `edges` group, required columns
 - HOC files: `.hoc` extension, `begintemplate`/`endtemplate` structure
 - MOD files: `.mod` extension, `NEURON` block present
 - Node files: valid HDF5, `nodes` group

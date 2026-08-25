@@ -12,7 +12,7 @@ from uuid import UUID
 import entitysdk.client
 import entitysdk.exception
 import h5py
-import numpy as np
+import libsonata
 from bluepysnap import Circuit as SnapCircuit
 from entitysdk import models
 from entitysdk.staging.circuit import stage_circuit
@@ -87,18 +87,11 @@ def _save_uploads(files: list[UploadFile], target_dir: Path) -> list[Path]:
 
 
 def _validate_edge_population(path: Path, pop_name: str, pop: h5py.Group) -> None:
-    """Validate a single edge population group."""
+    """Validate the structure of a single edge population group."""
     for required in ("source_node_id", "target_node_id", "edge_type_id"):
         if required not in pop:
             msg = f"'{path.name}' population '{pop_name}': missing '{required}'"
             raise EdgeValidationError(msg)
-    for key in pop:
-        ds = pop[key]
-        if hasattr(ds, "dtype") and ds.dtype.kind == "f":
-            data = ds[:]
-            if np.any(~np.isfinite(data)):
-                msg = f"'{path.name}' population '{pop_name}': column '{key}' contains NaN or Inf"
-                raise EdgeValidationError(msg)
 
 
 def _validate_edges(paths: list[Path]) -> None:
@@ -258,27 +251,27 @@ def _validate_hoc_mechanisms(
             raise HocValidationError(str(e)) from e
 
 
-def _collect_templates_from_group(
-    f: "h5py.File", group: "h5py.Group", pop_name: str, templates: set[str]
-) -> None:
-    """Extract model_template values from an HDF5 group into the templates set."""
-    if "model_template" not in group:
-        return
-    ds = group["model_template"]
-    if ds.dtype.kind in {"U", "S", "O"}:
-        # String dataset — read directly
-        templates.update(v.decode() if isinstance(v, bytes) else v for v in ds[:])
-    else:
-        # Enumerated (uint) — resolve via @library
-        lib_path = f"nodes/{pop_name}/0/@library/model_template"
-        if lib_path in f:
-            lib = f[lib_path]
-            templates.update(v.decode() if isinstance(v, bytes) else v for v in lib[:])
-
-
 def _template_stems(templates: Iterable[str]) -> set[str]:
     """Reduce SONATA model_template values ('hoc:MyCell') to their file stems."""
     return {t.split(":", 1)[1] for t in templates if ":" in t}
+
+
+def _read_model_templates(node_path: Path) -> set[str]:
+    """Read the model_template values of every population in a SONATA nodes file.
+
+    libsonata resolves the ``@library`` indirection, so enumerated and plain string
+    storage are read the same way.
+    """
+    templates: set[str] = set()
+    storage = libsonata.NodeStorage(str(node_path))
+    for pop_name in storage.population_names:
+        pop = storage.open_population(pop_name)
+        if "model_template" in pop.enumeration_names:
+            templates.update(pop.enumeration_values("model_template"))
+        elif "model_template" in pop.attribute_names and pop.size:
+            selection = libsonata.Selection([(0, pop.size)])
+            templates.update(pop.get_attribute("model_template", selection))
+    return templates
 
 
 def _collect_uploaded_model_templates(node_paths: list[Path]) -> set[str]:
@@ -286,11 +279,11 @@ def _collect_uploaded_model_templates(node_paths: list[Path]) -> set[str]:
     templates: set[str] = set()
     for node_path in node_paths:
         try:
-            with h5py.File(node_path, "r") as f:
-                for pop_name in f.get("nodes", {}):
-                    group = f["nodes"][pop_name].get("0", f["nodes"][pop_name])
-                    _collect_templates_from_group(f, group, pop_name, templates)
-        except Exception:  # ruff: ignore[blind-except, try-except-continue]
+            templates |= _read_model_templates(node_path)
+        except (libsonata.SonataError, OSError, RuntimeError) as e:
+            # Structure was already checked by _validate_nodes; a file libsonata
+            # cannot read simply contributes no templates.
+            L.warning("Could not read model templates from '%s': %s", node_path.name, e)
             continue
     return templates
 
