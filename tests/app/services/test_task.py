@@ -113,6 +113,7 @@ def callbacks(activity_id):
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -124,6 +125,7 @@ def callbacks(activity_id):
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -232,6 +234,7 @@ def test_submit_task_job__success(
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -243,6 +246,7 @@ def test_submit_task_job__success(
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
