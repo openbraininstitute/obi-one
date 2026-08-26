@@ -51,7 +51,7 @@ L = logging.getLogger(__name__)
 
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
-DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: No Locations"
+DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: Soma (no explicit compartment)"
 
 
 class BlockGroup(StrEnum):
