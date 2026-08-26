@@ -252,6 +252,10 @@ def mapped_circuit_properties_endpoint(
                     entitysdk.types.CircuitScale.small,  # ty:ignore[possibly-missing-submodule]
                     entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
                 },
+                # Single-neuron only: a location carries no cell id, so on a multi-neuron
+                # circuit it applies to every morphology, where it names a different branch.
+                CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
+                and circuit.scale == entitysdk.types.CircuitScale.single,  # ty:ignore[possibly-missing-submodule]
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: any(
                     INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names  # ty:ignore[unresolved-attribute, unsupported-operator]
                     for population in circuit_metrics.biophysical_node_populations
@@ -286,6 +290,7 @@ def mapped_circuit_properties_endpoint(
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: False,
+                CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
                 CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
                 CircuitUsability.SHOW_POINT_NEURON_SETS: False,
@@ -299,6 +304,7 @@ def mapped_circuit_properties_endpoint(
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
             CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: True,
+            CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
             CircuitUsability.SHOW_BIOPHYSICAL_NEURON_SETS: False,
             CircuitUsability.SHOW_POINT_NEURON_SETS: False,
