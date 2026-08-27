@@ -71,7 +71,6 @@ __all__ = [
     "CreateExtracellularRecordingArrayScanConfig",
     "CreateExtracellularRecordingArraySingleConfig",
     "CreateExtracellularRecordingArrayTask",
-    "CustomDtRecording",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
     "EMCellMeshFromID",
@@ -191,6 +190,7 @@ __all__ = [
     "RandomMorphologyLocations",
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
+    "Recording",
     "RecordingReference",
     "RecordingUnion",
     "RegularTimestamps",
@@ -369,7 +369,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPopulationNeurons,
     AllVirtualNeurons,
 )
-from obi_one.scientific.blocks.recordings.base import CustomDtRecording
+from obi_one.scientific.blocks.recordings.base import Recording
 from obi_one.scientific.blocks.recordings.soma import (
     SimulationDtSomaVoltageRecording,
     SimulationDtTimeWindowSomaVoltageRecording,

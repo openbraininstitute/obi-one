@@ -73,11 +73,11 @@ simulation timestep rather than a parameter of its own. The same applies to the 
 stimulus, which is why `SimulationDtSinusoidalCurrentClampSomaticStimulus` has no Timestep either.
 
 The blocks are named for this distinction rather than for Brian2: a `SimulationDt…` block is
-clocked by the simulation timestep, and the block that adds an independently settable interval
-derives from it — `SomaVoltageRecording` from `CustomDtRecording`, and
-`SinusoidalCurrentClampSomaticStimulus` from
-`SimulationDtSinusoidalCurrentClampSomaticStimulus`. Nothing about the `SimulationDt…` blocks is
-Brian2-specific, so any simulator with the same constraint can use them.
+clocked by the simulation timestep, and its counterpart adds an interval that can be set
+independently. For recordings the two are separate branches of a shared `BaseRecording`,
+`SimulationDtRecording` and `Recording`; `SinusoidalCurrentClampSomaticStimulus` instead derives
+from `SimulationDtSinusoidalCurrentClampSomaticStimulus`. Nothing about the `SimulationDt…` blocks
+is Brian2-specific, so any simulator with the same constraint can use them.
 
 Only soma voltage (`variable_name: "v"`) is reported.
 

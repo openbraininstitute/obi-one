@@ -17,14 +17,15 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
+    resolve_neuron_set_ref_to_node_set,
 )
 
 
-class SimulationDtRecording(Block, ABC):
-    """A recording sampled at the simulation timestep.
+class BaseRecording(Block, ABC):
+    """What every recording has in common, whatever decides how often it samples.
 
-    Simulators that can only report on their own integration timestep (Brian2) build on this
-    directly; :class:`CustomDtRecording` adds the user-settable interval the others accept.
+    The two subclasses differ only in :attr:`recording_timestep`: :class:`Recording` takes it from
+    a parameter of its own, :class:`SimulationDtRecording` from the simulation timestep.
     """
 
     neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
@@ -44,9 +45,14 @@ class SimulationDtRecording(Block, ABC):
     _simulation_timestep: PositiveFloat = PrivateAttr(default=SIMULATION_TIMESTEP_MILLISECONDS)
 
     @property
+    @abstractmethod
     def recording_timestep(self) -> PositiveFloat:
         """Interval between recorded samples in milliseconds (ms)."""
-        return self._simulation_timestep
+
+    @property
+    def node_set(self) -> str:
+        """Node set to record from, falling back to the simulation's default if none is set."""
+        return resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
 
     def config(
         self,
@@ -95,8 +101,8 @@ class SimulationDtRecording(Block, ABC):
         pass
 
 
-class CustomDtRecording(SimulationDtRecording, ABC):
-    """A recording sampled at an interval chosen independently of the simulation timestep."""
+class Recording(BaseRecording, ABC):
+    """A recording sampled at an interval of its own, set independently of the simulation."""
 
     dt: (
         Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
@@ -116,3 +122,16 @@ class CustomDtRecording(SimulationDtRecording, ABC):
     def recording_timestep(self) -> PositiveFloat:
         """Interval between recorded samples in milliseconds (ms)."""
         return self.dt  # ty:ignore[invalid-return-type]
+
+
+class SimulationDtRecording(BaseRecording, ABC):
+    """A recording sampled at the simulation timestep, with no interval of its own.
+
+    Simulators that can only report on their own integration timestep (Brian2) build on this
+    rather than on :class:`Recording`.
+    """
+
+    @property
+    def recording_timestep(self) -> PositiveFloat:
+        """Interval between recorded samples in milliseconds (ms)."""
+        return self._simulation_timestep
