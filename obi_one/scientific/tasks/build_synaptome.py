@@ -82,7 +82,6 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     name: ClassVar[str] = "ME-model Synapse Placement"
     description: ClassVar[str] = "Place synaptic models on a single ME-model."
 
-
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
@@ -202,7 +201,6 @@ class MEModelSynapticModelPlacementSingleConfig(
     MEModelSynapticModelPlacementScanConfig, SingleConfigMixin
 ):
     """Single-coordinate ME-model synapse placement config."""
-
 
 
 def build_synaptome(
