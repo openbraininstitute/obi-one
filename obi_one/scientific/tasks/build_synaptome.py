@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar, cast
 
 from entitysdk import Client, models, types
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Discriminator, Field
 
 from obi_one.core.block import Block
@@ -80,16 +79,9 @@ SynapticModelPlacerUnion = Annotated[
 class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     """Form for placing synaptic models on a single ME-model."""
 
-    single_coord_class_name: ClassVar[str] = "MEModelSynapticModelPlacementSingleConfig"
     name: ClassVar[str] = "ME-model Synapse Placement"
     description: ClassVar[str] = "Place synaptic models on a single ME-model."
 
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.circuit_single_build__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_single_build__config_generation
-    )
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -211,10 +203,6 @@ class MEModelSynapticModelPlacementSingleConfig(
 ):
     """Single-coordinate ME-model synapse placement config."""
 
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.circuit_single_build__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_single_build__execution
-    )
 
 
 def build_synaptome(
