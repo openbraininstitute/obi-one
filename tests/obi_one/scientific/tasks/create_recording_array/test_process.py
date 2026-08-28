@@ -15,7 +15,7 @@ from obi_one.scientific.tasks.create_recording_array.process import (
 )
 
 try:
-    import bluerecording.electrodes  # noqa: F401
+    import bluerecording.electrodes  # ruff: ignore[unused-import]
 
     _has_bluerecording = True
 except ModuleNotFoundError:

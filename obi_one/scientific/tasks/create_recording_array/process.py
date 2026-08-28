@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ def compile_mechanisms(
         )
 
     L.info("Compiling mechanisms: %s", " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # ruff: ignore[subprocess-without-shell-equals-true]
 
     if result.returncode != 0:
         if "No mod files selected" in result.stderr:
@@ -94,8 +94,8 @@ def write_electrode_json(
     Returns:
         The output path.
     """
-    import numpy as np  # noqa: PLC0415
-    from bluerecording.electrodes import (  # noqa: PLC0415 # ty:ignore[unresolved-import]
+    import numpy as np  # ruff: ignore[import-outside-top-level]
+    from bluerecording.electrodes import (  # ruff: ignore[import-outside-top-level] # ty:ignore[unresolved-import]
         Electrode,
         ElectrodeType,
     )
@@ -150,7 +150,7 @@ def run_bluerecording_write_weights(
     # neurodamus internals compiled together, avoiding duplicate mechanism errors.
     subprocess_env = {**os.environ, **env}
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
         cmd, capture_output=True, text=True, check=False, env=subprocess_env
     )
 
