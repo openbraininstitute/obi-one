@@ -35,4 +35,4 @@ def test_folder_compression(tmp_path):
     for instance in instances:
         fmt = instance.initialize.file_format
         out_path = tmp_path / grid_scan.output_root / instance.initialize.folder_path.name / fmt
-        assert (out_path / f"{instance.initialize.file_name}.{fmt}").exists()
+        assert (out_path / f"{instance.initialize.file_name}.tar.{fmt}").exists()

@@ -69,7 +69,7 @@ class FolderCompressionTask(Task):
 
         output_file = (
             Path(self.config.coordinate_output_root)
-            / f"{self.config.initialize.file_name}.{self.config.initialize.file_format}"
+            / f"{self.config.initialize.file_name}.tar.{self.config.initialize.file_format}"
         )
         if Path(output_file).exists():
             msg = f"Output file '{output_file}' already exists!"

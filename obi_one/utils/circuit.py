@@ -484,7 +484,7 @@ def run_circuit_folder_compression(
         output_root: Directory where the compressed output will be written.
 
     Returns:
-        Path to the generated .gz file.
+        Path to the generated .tar.gz file.
     """
     from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
         run_tasks_for_generated_scan,
@@ -518,7 +518,7 @@ def run_circuit_folder_compression(
 
     output_file = (
         grid_scan.single_configs[0].coordinate_output_root
-        / f"{compression_init.file_name}.{compression_init.file_format}"
+        / f"{compression_init.file_name}.tar.{compression_init.file_format}"
     )
     if not output_file.exists():
         msg = "Compressed circuit file does not exist!"
