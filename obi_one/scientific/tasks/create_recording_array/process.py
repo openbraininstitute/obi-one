@@ -8,6 +8,8 @@ import os
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -94,7 +96,6 @@ def write_electrode_json(
     Returns:
         The output path.
     """
-    import numpy as np  # ruff: ignore[import-outside-top-level]
     from bluerecording.electrodes import (  # ruff: ignore[import-outside-top-level] # ty:ignore[unresolved-import]
         Electrode,
         ElectrodeType,
