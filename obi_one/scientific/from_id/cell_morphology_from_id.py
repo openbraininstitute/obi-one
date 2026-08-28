@@ -213,7 +213,9 @@ class CellMorphologyFromID(EntityFromID):
                         asset_id=asset.id,
                         output_path=path,
                     )
-                    self._morphio_morphology = morphio.Morphology(path)
+                    self._morphio_morphology = morphio.Morphology(
+                        path, options=morphio.Option.nrn_order
+                    )
                 break
 
             if self._morphio_morphology is None:

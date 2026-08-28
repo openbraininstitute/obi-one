@@ -121,3 +121,33 @@ def test_memodel_morphology_delegates_to_cell_morphology_entity():
 
     assert result is expected
     load.assert_called_once()
+
+
+def test_morphio_morphology_uses_nrn_order_for_entity_asset(tmp_path):
+    source = tmp_path / "dendrite_before_axon.swc"
+    source.write_text(
+        "1 1 0 0 0 5 -1\n2 3 0 5 0 1 1\n3 3 0 10 0 1 2\n4 2 0 -5 0 1 1\n5 2 0 -10 0 1 4\n"
+    )
+    entity = SimpleNamespace(
+        id="morphology-id",
+        assets=[
+            SimpleNamespace(
+                id="asset-id",
+                content_type=ContentType.application_swc,
+                label=None,
+            )
+        ],
+    )
+    client = Mock()
+    client.download_file.side_effect = lambda **kwargs: shutil.copyfile(
+        source, kwargs["output_path"]
+    )
+    reference = CellMorphologyFromID(id_str="morphology-id")
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
+        morphology = reference.morphio_morphology(client)
+
+    assert [int(section.type) for section in morphology.sections] == [
+        int(morphio.SectionType.axon),
+        int(morphio.SectionType.basal_dendrite),
+    ]
