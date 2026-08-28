@@ -5,7 +5,6 @@ from typing import Annotated, ClassVar
 
 from entitysdk.client import Client
 from entitysdk.models import Entity
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import ConfigDict, Field, PositiveFloat
 
 from obi_one.core.block import Block
@@ -28,7 +27,6 @@ class BlockGroup(StrEnum):
 class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for skeletonization scan configurations."""
 
-    single_coord_class_name: ClassVar[str] = "SkeletonizationSingleConfig"
     name: ClassVar[str] = "Skeletonization Campaign"
     description: ClassVar[str] = "Skeletonization campaign"
 
@@ -39,11 +37,6 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
                 BlockGroup.SETUP_BLOCK_GROUP,
             ],
         }
-    )
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.skeletonization__campaign
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.skeletonization__config_generation
     )
 
     def input_entities(self, db_client: Client) -> list[Entity]:
@@ -121,7 +114,4 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
 
 
 class SkeletonizationSingleConfig(SkeletonizationScanConfig, SingleConfigMixin):
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.skeletonization__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.skeletonization__execution
-    )
+    """Single-coordinate skeletonization configuration."""

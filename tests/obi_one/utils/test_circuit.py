@@ -9,6 +9,7 @@ from entitysdk import types
 from PIL import Image
 
 from obi_one.core.exception import OBIONEError
+from obi_one.db_sdk.registration.circuit import register_circuit, register_circuit_from_metadata
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
     copy_mod_files,
@@ -20,7 +21,6 @@ from obi_one.utils.circuit import (
     run_connectivity_matrix_extraction,
     run_validation,
 )
-from obi_one.utils.circuit_registration import register_circuit, register_circuit_from_metadata
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
@@ -410,9 +410,9 @@ def _register_and_get_scale(scale_override):
     brain_region, subject = _matching_brain_region_and_subject()
 
     with (
-        patch("obi_one.utils.circuit_registration.register.models.Circuit", _FakeCircuitModel),
-        patch("obi_one.utils.circuit_registration.register.register_asset"),
-        patch("obi_one.utils.circuit_registration.register.generate_additional_circuit_assets"),
+        patch("obi_one.db_sdk.registration.circuit.register.models.Circuit", _FakeCircuitModel),
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
             client=client,
@@ -468,16 +468,16 @@ def test_register_circuit_from_metadata_forwards_scale_override():
     }
 
     with (
-        patch("obi_one.utils.circuit_registration.register.check_if_circuit_exists"),
-        patch("obi_one.utils.circuit_registration.register.get_subject"),
-        patch("obi_one.utils.circuit_registration.register.get_brain_region_hierarchy"),
-        patch("obi_one.utils.circuit_registration.register.check_hierarchy_species"),
-        patch("obi_one.utils.circuit_registration.register.get_brain_region"),
-        patch("obi_one.utils.circuit_registration.register.get_license"),
-        patch("obi_one.utils.circuit_registration.register.get_root_circuit"),
-        patch("obi_one.utils.circuit_registration.register.get_parent_circuit"),
-        patch("obi_one.utils.circuit_registration.register.get_exp_date"),
-        patch("obi_one.utils.circuit_registration.register.register_circuit") as mock_register,
+        patch("obi_one.db_sdk.registration.circuit.register.check_if_circuit_exists"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_subject"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region_hierarchy"),
+        patch("obi_one.db_sdk.registration.circuit.register.check_hierarchy_species"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_license"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_root_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_parent_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_exp_date"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_circuit") as mock_register,
     ):
         register_circuit_from_metadata(
             client=client,

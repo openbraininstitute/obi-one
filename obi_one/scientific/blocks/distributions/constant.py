@@ -24,7 +24,7 @@ class FloatConstantDistribution(Distribution):
     def _sample_generator(
         self,
         n: int = 1,
-        rng: np.random.Generator | None = None,  # noqa: ARG002
+        rng: np.random.Generator | None = None,  # ruff: ignore[unused-method-argument]
     ) -> list[float]:
         if isinstance(self.value, list):
             return [float(v) for v in self.value][:n]
@@ -48,7 +48,7 @@ class IntConstantDistribution(Distribution):
     def _sample_generator(
         self,
         n: int = 1,
-        rng: np.random.Generator | None = None,  # noqa: ARG002
+        rng: np.random.Generator | None = None,  # ruff: ignore[unused-method-argument]
     ) -> list[float]:
         if isinstance(self.value, list):
             return [float(v) for v in self.value][:n]

@@ -5,14 +5,13 @@ from typing import ClassVar
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.core.info import Info
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONSynapseParameterizationNeuronSetUnion,
@@ -41,7 +40,7 @@ class BlockGroup(StrEnum):
     CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
 
 
-class SynapseParameterizationScanConfig(ScanConfig):
+class SynapseParameterizationScanConfig(InfoScanConfig):
     """Generate or replace a physiological parameterization of an anatomical circuit."""
 
     name: ClassVar[str] = "Synapse parameterization"
@@ -49,7 +48,6 @@ class SynapseParameterizationScanConfig(ScanConfig):
         "Generates a physiological parameterization of an anatomical circuit or replaces an"
         " existing parameterization."
     )
-    single_coord_class_name: ClassVar[str] = "SynapseParameterizationSingleConfig"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -72,15 +70,6 @@ class SynapseParameterizationScanConfig(ScanConfig):
             },
         )
 
-    info: Info = Field(
-        title="Info",
-        description="Information about the circuit extraction campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the circuit extraction campaign.",
@@ -141,4 +130,4 @@ class SynapseParameterizationScanConfig(ScanConfig):
 
 
 class SynapseParameterizationSingleConfig(SynapseParameterizationScanConfig, SingleConfigMixin):
-    pass
+    """Single-coordinate synapse parameterization configuration."""

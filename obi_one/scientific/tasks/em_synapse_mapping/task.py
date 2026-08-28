@@ -2,8 +2,8 @@ import json
 import logging
 import os
 
-import numpy  # NOQA: ICN001
-import pandas  # NOQA: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
+import pandas  # ruff: ignore[unconventional-import-alias]
 from entitysdk import Client
 from matplotlib import pyplot as plt
 
@@ -58,11 +58,11 @@ class EMSynapseMappingTask(Task):
 
     config: EMSynapseMappingSingleConfig
 
-    def execute(  # NOQA: PLR0914, PLR0915, C901, PLR0912
+    def execute(  # ruff: ignore[too-many-locals, too-many-statements, complex-structure, too-many-branches]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> None:
         if db_client is None:
@@ -125,9 +125,10 @@ class EMSynapseMappingTask(Task):
         if advanced.include_spiny_morphologies:
             L.info("Merging spiny morphologies into combined file...")
             merge_spiny_morphologies(
-                source_files=[spiny_dir / rn.fn_morph_h5 for rn in resolved_neurons],
+                source_files_with_neuron_names=[
+                    (spiny_dir / rn.fn_morph_h5, rn.name_in_circuit) for rn in resolved_neurons
+                ],
                 output_path=out_root / fn_merged_h5,
-                neuron_id_strings=[rn.name_in_circuit for rn in resolved_neurons],
                 include_meshes=True,
             )
 

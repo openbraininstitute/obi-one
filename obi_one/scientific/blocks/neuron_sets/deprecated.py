@@ -3,6 +3,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field, NonNegativeFloat
 
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.tuple import NamedTuple
 from obi_one.core.units import Units
@@ -35,31 +36,28 @@ class DeprecatedNeuronSet(NeuronSet, abc.ABC):
 
     @property
     def deprecation_error_message(self) -> str:
-        """Returns a deprecation error message indicating that this neuron set is deprecated."""
+        """Deprecation error message indicating that this neuron set is deprecated."""
         return (
             f"{self.__class__.__name__} is deprecated and should not be used. "
             "Please use an alternative neuron set instead."
         )
 
     def _resolve_ids(self, circuit: Circuit) -> list[int]:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def get_neuron_ids(self, circuit: Circuit) -> dict[str, list[int]]:
-        raise NotImplementedError(self.deprecation_error_message)
-
-    def _get_expression(self, circuit: Circuit) -> dict | list:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def get_node_set_definition(
         self, circuit: Circuit, *, force_resolve_ids: bool = False
     ) -> tuple[dict | list, dict]:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def get_populations(self, circuit: Circuit) -> list[str]:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
     def _get_expression(self, circuit: Circuit) -> dict | list:
-        raise NotImplementedError(self.deprecation_error_message)
+        raise ConfigValidationError(self.deprecation_error_message)
 
 
 class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):
@@ -116,7 +114,7 @@ class InhibitoryNeurons(DeprecatedSampleNeuronSet):
     )
 
 
-class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # noqa: N801
+class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-name]
     """Virtual neurons projecting from the VPM thalamic nucleus.
 
     Specifically, virtual neurons projecting from the VPM thalamic nucleus to biophysical
@@ -128,7 +126,7 @@ class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # noqa: N801
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
 
-class nbS1POmInputs(DeprecatedSampleNeuronSet):  # noqa: N801
+class nbS1POmInputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-name]
     """Virtual neurons projecting from the POm thalamic nucleus.
 
     Specifically, virtual neurons projecting from the POm thalamic nucleus to biophysical
@@ -140,7 +138,7 @@ class nbS1POmInputs(DeprecatedSampleNeuronSet):  # noqa: N801
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
 
-class rCA1CA3Inputs(DeprecatedSampleNeuronSet):  # noqa: N801
+class rCA1CA3Inputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-name]
     """Virtual neurons projecting from CA3 to CA1.
 
     Specifically, virtual neurons projecting from the CA3 region to biophysical CA1 neurons

@@ -9,6 +9,7 @@ import entitysdk
 import httpx
 import libsonata
 import pytest
+from entitysdk.common import ProjectContext
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
@@ -31,7 +32,11 @@ TASK_TYPES = [
 @pytest.fixture
 def db_client():
     """Database client."""
-    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # noqa: S106
+    return entitysdk.Client(
+        api_url="http://my-url",
+        token_manager="my-token",  # ruff: ignore[hardcoded-password-func-arg]
+        project_context=ProjectContext(virtual_lab_id=VIRTUAL_LAB_ID, project_id=PROJECT_ID),
+    )
 
 
 @pytest.fixture
@@ -108,6 +113,7 @@ def callbacks(activity_id):
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -119,6 +125,7 @@ def callbacks(activity_id):
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -227,6 +234,7 @@ def test_submit_task_job__success(
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -238,6 +246,7 @@ def test_submit_task_job__success(
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -755,7 +764,10 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
     ("target_simulator_name", "circuit_scale", "expected_task"),
     [
         ("LearningEngine", "system", TaskType.circuit_simulation_inait_machine),
-        ("NEURON", "small", TaskType.circuit_simulation_neuron),
+        ("NEURON", "small", TaskType.circuit_simulation_neurodamus_machine),
+        ("NEURON", "single", TaskType.circuit_simulation_neurodamus_machine),
+        ("NEURON", "pair", TaskType.circuit_simulation_neurodamus_machine),
+        ("CORENEURON", "small", TaskType.circuit_simulation_neurodamus_machine),
         ("CORENEURON", "microcircuit", TaskType.circuit_simulation_neurodamus_cluster),
         ("Brian2", "small", TaskType.circuit_simulation_brian2_machine),
     ],
@@ -821,7 +833,7 @@ def test_select_simulation_task_falls_back_to_circuit_target_simulator():
             config_type=entitysdk.models.Simulation,
         )
 
-    assert task_type == TaskType.circuit_simulation_neuron
+    assert task_type == TaskType.circuit_simulation_neurodamus_machine
 
 
 def test_select_simulation_task_raises_for_unsupported_target_simulator():
