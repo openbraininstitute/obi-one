@@ -4,10 +4,11 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from obi_one.db_sdk.registration.circuit import assets as assets_module
+from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENAME
 
 
 def test_add_compressed_circuit_asset_uses_upload_or_replace(tmp_path):
-    compressed = tmp_path / "circuit.gz"
+    compressed = tmp_path / COMPRESSED_CIRCUIT_FILENAME
     compressed.write_bytes(b"gz")
     circuit = MagicMock()
     circuit.id = uuid4()
