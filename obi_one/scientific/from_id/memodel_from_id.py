@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, cast
 
+import morphio
 from entitysdk.client import Client
 from entitysdk.models import MEModel
 from entitysdk.models.entity import Entity
@@ -8,12 +9,22 @@ from entitysdk.staging.memodel import stage_sonata_from_memodel
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
+from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
 class MEModelFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = MEModel
     _entity: MEModel | None = PrivateAttr(default=None)
+
+    def morphio_morphology(
+        self,
+        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> morphio.Morphology:
+        """Load this ME-model's morphology through its CellMorphology entity."""
+        memodel = cast("MEModel", self.entity(db_client))
+        morphology = CellMorphologyFromID(id_str=str(memodel.morphology.id))
+        return morphology.morphio_morphology(db_client)
 
     def stage_circuit(
         self,
