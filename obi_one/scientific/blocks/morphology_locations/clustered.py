@@ -1,4 +1,5 @@
-from typing import Annotated, ClassVar
+import math
+from typing import Annotated, ClassVar, cast
 
 import morphio
 import pandas as pd
@@ -51,12 +52,12 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        # TODO: This rounds down. Could make missing points
-        # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
+        count = cast("int", self.number_of_locations)
+        n_clusters = cast("int", self.n_clusters)
+        n_per_cluster = math.ceil(count / n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_centers=n_clusters,
             n_per_center=n_per_cluster,
             srcs_per_center=1,
             center_path_distances_mean=0.0,
@@ -65,6 +66,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
             lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
             seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
+        locs = locs.iloc[:count]
         return locs
 
     def _check_parameter_values(self) -> None:
@@ -89,12 +91,12 @@ class ClusteredGroupedMorphologyLocations(
     title: ClassVar[str] = "Clustered Grouped Morphology Locations"
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        # TODO: This rounds down. Could make missing points
-        # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
+        count = cast("int", self.number_of_locations)
+        n_clusters = cast("int", self.n_clusters)
+        n_per_cluster = math.ceil(count / n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_centers=n_clusters,
             n_per_center=n_per_cluster,
             srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=0.0,
@@ -103,6 +105,7 @@ class ClusteredGroupedMorphologyLocations(
             lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
             seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
+        locs = locs.iloc[:count]
         return locs
 
     def _check_parameter_values(self) -> None:
@@ -150,12 +153,12 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        # TODO: This rounds down. Could make missing points
-        # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
+        count = cast("int", self.number_of_locations)
+        n_clusters = cast("int", self.n_clusters)
+        n_per_cluster = math.ceil(count / n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_centers=n_clusters,
             n_per_center=n_per_cluster,
             srcs_per_center=self.n_groups_per_cluster,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
@@ -164,7 +167,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
             lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
             seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         )
-        return locs
+        return locs.iloc[:count]
 
     def _check_parameter_values(self) -> None:
         super()._check_parameter_values()
