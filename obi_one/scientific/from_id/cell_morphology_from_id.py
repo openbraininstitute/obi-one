@@ -208,7 +208,7 @@ class CellMorphologyFromID(EntityFromID):
                 with tempfile.TemporaryDirectory() as directory:
                     path = Path(directory) / f"morphology{suffix}"
                     db_client.download_file(
-                        entity_id=entity.id,  # ty:ignore[invalid-argument-type]
+                        entity_id=entity.id,
                         entity_type=self.entitysdk_class,
                         asset_id=asset.id,
                         output_path=path,
