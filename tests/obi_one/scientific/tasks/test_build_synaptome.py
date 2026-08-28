@@ -635,3 +635,63 @@ def test_build_wraps_virtual_node_writer_failure(tmp_path, stage_memodel, monkey
         build_synaptome(_config(), tmp_path / "artifact", db_client=object())
 
     assert isinstance(exc.value.__cause__, ValueError)
+
+
+def test_build_synaptome_task_rejects_me_model_without_subject(monkeypatch):
+    config = _config()
+    me_model = SimpleNamespace(
+        id="me-model-id",
+        morphology=SimpleNamespace(subject=None),
+    )
+    monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
+    get_activity = Mock()
+    monkeypatch.setattr(MEModelSynapticModelPlacementTask, "_get_execution_activity", get_activity)
+
+    db_client = Mock()
+    with pytest.raises(ValueError, match="has no subject for Circuit registration"):
+        MEModelSynapticModelPlacementTask(config=config).execute(db_client=db_client)
+
+    get_activity.assert_called_once_with(db_client=db_client, execution_activity_id=None)
+
+
+def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monkeypatch):
+    config = _config()
+    config.coordinate_output_root = tmp_path
+    subject = Mock()
+    morphology = SimpleNamespace(
+        subject=subject,
+        experiment_date="2026-08-05",
+        license=None,
+    )
+    me_model = SimpleNamespace(
+        id="me-model-id",
+        morphology=morphology,
+        brain_region=Mock(),
+        license=Mock(),
+    )
+    monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
+    monkeypatch.setattr(
+        MEModelSynapticModelPlacementTask,
+        "_get_execution_activity",
+        Mock(return_value=SimpleNamespace(id="activity-id")),
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.tasks.build_synaptome.build_synaptome_artifact",
+        Mock(
+            return_value=BuildSynaptomeResult(
+                circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
+                output_directory=tmp_path / "SONATA",
+                generated_files=(),
+            )
+        ),
+    )
+    register = Mock(return_value=None)
+    monkeypatch.setattr(
+        "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_circuit",
+        register,
+    )
+
+    with pytest.raises(RuntimeError, match="did not return a Circuit"):
+        MEModelSynapticModelPlacementTask(config=config).execute(db_client=Mock())
+
+    register.assert_called_once()
