@@ -20,6 +20,7 @@ from obi_one.utils.circuit_customization.staging import (
     _replace_file,
     _resolve_hoc_dir,
     _resolve_mod_dir,
+    _validate_staged_id_mapping,
     stage_customized_circuit,
 )
 
@@ -821,3 +822,48 @@ class TestStageCustomizedCircuit:
             json.loads(config_path.read_text())["networks"]["edges"]
             == override_cfg["networks"]["edges"]
         )
+
+
+class TestValidateStagedIdMapping:
+    def test_removes_stale_id_mapping(self, tmp_path):
+        id_mapping = tmp_path / "id_mapping.json"
+        id_mapping.write_text(json.dumps({"pop_a": {"new_id": [0, 99]}}))
+
+        cfg = {
+            "components": {"provenance": {"id_mapping": "id_mapping.json"}},
+            "networks": {"nodes": []},
+        }
+        config_path = tmp_path / "circuit_config.json"
+        config_path.write_text(json.dumps(cfg))
+
+        mock_circuit = MagicMock()
+        mock_circuit.nodes.population_names = ["pop_a"]
+        mock_circuit.nodes.__getitem__.return_value.size = 10
+
+        with (
+            patch(f"{STAGING_MODULE}.SnapCircuit", return_value=mock_circuit),
+            patch(
+                f"{STAGING_MODULE}.validate_id_mapping_files",
+                return_value=["id_mapping.json is stale"],
+            ) as mock_validate,
+        ):
+            _validate_staged_id_mapping(config_path)
+
+        mock_validate.assert_called_once_with(config_path, mock_circuit)
+
+    @patch(f"{STAGING_MODULE}.stage_circuit")
+    def test_stage_customized_circuit_validates_id_mapping(self, mock_stage, tmp_path):
+        circuit_dir = tmp_path / "staged"
+        circuit_dir.mkdir()
+        config_path = circuit_dir / "circuit_config.json"
+        config_path.write_text(json.dumps({"networks": {"nodes": [], "edges": []}}))
+        mock_stage.return_value = config_path
+
+        with patch(f"{STAGING_MODULE}._validate_staged_id_mapping") as mock_validate:
+            stage_customized_circuit(
+                MagicMock(),
+                parent=MagicMock(),
+                output_dir=tmp_path / "out",
+            )
+
+        mock_validate.assert_called_once_with(config_path)

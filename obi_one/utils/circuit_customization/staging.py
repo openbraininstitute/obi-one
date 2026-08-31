@@ -11,9 +11,12 @@ from pathlib import Path
 
 import h5py
 import libsonata
+from bluepysnap import Circuit as SnapCircuit
 from entitysdk.client import Client
 from entitysdk.models import Circuit
 from entitysdk.staging.circuit import stage_circuit
+
+from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_files
 
 L = logging.getLogger(__name__)
 
@@ -113,7 +116,17 @@ def stage_customized_circuit(
     if circuit_config_override:
         _remove_stale_network_files(circuit_dir, circuit_config_path, parent_config)
 
+    # 6. Drop stale id_mapping.json before the staged circuit is registered
+    _validate_staged_id_mapping(circuit_config_path)
+
     return circuit_config_path
+
+
+def _validate_staged_id_mapping(circuit_config_path: Path) -> None:
+    """Remove a stale brainbuilder id_mapping.json from the staged circuit copy."""
+    circuit = SnapCircuit(str(circuit_config_path))
+    for warning in validate_id_mapping_files(circuit_config_path, circuit):
+        L.warning(warning)
 
 
 def _network_file_for_population(

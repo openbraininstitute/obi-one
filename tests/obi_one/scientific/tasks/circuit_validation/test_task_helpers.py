@@ -10,16 +10,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from obi_one.scientific.library.circuit_id_mapping import (
+    find_stale_populations,
+    get_population_sizes,
+    validate_id_mapping_files,
+)
 from obi_one.scientific.tasks.circuit_validation.task import (
     _compile_mechanisms,
     _find_mod_dir,
     _find_morphology_for_template,
-    _get_population_sizes,
     _load_compiled_mechanisms,
     _mechanism_suffixes_from_mod_dir,
     _validate_emodel_paths,
     _validate_hoc_loading,
-    _validate_id_mapping_files,
     _validate_morphology_paths,
 )
 
@@ -137,12 +140,12 @@ class TestGetPopulationSizes:
         mock_pop_b.size = 10
         mock_circuit.nodes.__getitem__ = lambda _self, k: mock_pop_a if k == "pop_a" else mock_pop_b
 
-        assert _get_population_sizes(mock_circuit) == {"pop_a": 42, "pop_b": 10}
+        assert get_population_sizes(mock_circuit) == {"pop_a": 42, "pop_b": 10}
 
     def test_empty_populations(self):
         mock_circuit = MagicMock()
         mock_circuit.nodes.population_names = []
-        assert _get_population_sizes(mock_circuit) == {}
+        assert get_population_sizes(mock_circuit) == {}
 
 
 # ---------------------------------------------------------------------------
@@ -322,13 +325,13 @@ class TestValidateIdMappingFiles:
         config_path.write_text(json.dumps(cfg))
 
         with patch(
-            "obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file"
+            "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
         ) as mock_cfg:
             m = MagicMock()
             m.expanded_json = json.dumps(cfg)
             mock_cfg.return_value = m
 
-            result = _validate_id_mapping_files(config_path, MagicMock())
+            result = validate_id_mapping_files(config_path, MagicMock())
         assert result == []
 
     def test_missing_id_mapping_file(self, tmp_path):
@@ -340,13 +343,13 @@ class TestValidateIdMappingFiles:
         config_path.write_text(json.dumps(cfg))
 
         with patch(
-            "obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file"
+            "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
         ) as mock_cfg:
             m = MagicMock()
             m.expanded_json = json.dumps(cfg)
             mock_cfg.return_value = m
 
-            result = _validate_id_mapping_files(config_path, MagicMock())
+            result = validate_id_mapping_files(config_path, MagicMock())
         assert result == []  # file doesn't exist => nothing to validate
 
     def test_stale_mapping_removed(self, tmp_path):
@@ -363,10 +366,10 @@ class TestValidateIdMappingFiles:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file"
+                "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
             ) as mock_cfg,
             patch(
-                "obi_one.scientific.tasks.circuit_validation.task._get_population_sizes",
+                "obi_one.scientific.library.circuit_id_mapping.get_population_sizes",
                 return_value={"pop_a": 10},
             ),
         ):
@@ -374,7 +377,7 @@ class TestValidateIdMappingFiles:
             m.expanded_json = json.dumps(cfg)
             mock_cfg.return_value = m
 
-            result = _validate_id_mapping_files(config_path, MagicMock())
+            result = validate_id_mapping_files(config_path, MagicMock())
         assert len(result) == 1
         assert "stale" in result[0]
         assert "removed" in result[0]
@@ -393,10 +396,10 @@ class TestValidateIdMappingFiles:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file"
+                "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
             ) as mock_cfg,
             patch(
-                "obi_one.scientific.tasks.circuit_validation.task._get_population_sizes",
+                "obi_one.scientific.library.circuit_id_mapping.get_population_sizes",
                 return_value={"pop_a": 100},
             ),
         ):
@@ -404,7 +407,7 @@ class TestValidateIdMappingFiles:
             m.expanded_json = json.dumps(cfg)
             mock_cfg.return_value = m
 
-            result = _validate_id_mapping_files(config_path, MagicMock())
+            result = validate_id_mapping_files(config_path, MagicMock())
         assert result == []
 
 

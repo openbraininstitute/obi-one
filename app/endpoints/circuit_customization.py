@@ -16,7 +16,7 @@ import libsonata
 from bluepysnap import Circuit as SnapCircuit
 from entitysdk import models
 from entitysdk.staging.circuit import stage_circuit
-from entitysdk.types import DerivationType
+from entitysdk.types import DerivationType, EntityLifecycleStatus
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -26,7 +26,11 @@ from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.circuit_helpers import trigger_validation_task
 from obi_one.db_sdk.registration.circuit import register_circuit
-from obi_one.scientific.validations.emodels import BUILTIN_NEURON_MECHANISMS
+from obi_one.scientific.validations.emodels import (
+    BUILTIN_NEURON_MECHANISMS,
+    check_mechanisms,
+    check_structure,
+)
 from obi_one.utils.circuit_customization.staging import stage_customized_circuit
 
 L = logging.getLogger(__name__)
@@ -112,10 +116,6 @@ def _validate_edges(paths: list[Path]) -> None:
 
 def _validate_hoc(paths: list[Path]) -> None:
     """Layer 1 validation for HOC files: check template structure (begintemplate/endtemplate)."""
-    from obi_one.scientific.validations.emodels import (  # ruff: ignore[import-outside-top-level]
-        check_structure,
-    )
-
     for path in paths:
         if path.suffix.lower() != ".hoc":
             msg = f"'{path.name}': expected .hoc extension"
@@ -236,10 +236,6 @@ def _validate_hoc_mechanisms(
     hoc_paths: list[Path], mod_paths: list[Path], parent_mechanism_names: set[str] | None = None
 ) -> None:
     """Check that mechanisms used in HOC files are available (built-in or from provided MODs)."""
-    from obi_one.scientific.validations.emodels import (  # ruff: ignore[import-outside-top-level]
-        check_mechanisms,
-    )
-
     available = BUILTIN_NEURON_MECHANISMS | _extract_mod_mechanism_names(mod_paths)
     if parent_mechanism_names:
         available |= parent_mechanism_names
@@ -674,8 +670,6 @@ def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-pos
         raise HTTPException(
             status_code=404, detail=f"Parent circuit {parent_circuit_id} not found: {e}"
         ) from e
-
-    from entitysdk.types import EntityLifecycleStatus  # ruff: ignore[import-outside-top-level]
 
     if parent.lifecycle_status != EntityLifecycleStatus.active:
         raise HTTPException(
