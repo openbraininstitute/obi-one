@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import h5py
+import libsonata
 import numpy as np
 import pytest
 
@@ -31,6 +32,15 @@ EDGE_POP = "S1nonbarrel_neurons__S1nonbarrel_neurons__chemical"
 NODE_POP = "S1nonbarrel_neurons"
 STAGING_MODULE = "obi_one.utils.circuit_customization.staging"
 
+
+def _circuit_config(cfg: dict, circuit_dir: Path) -> libsonata.CircuitConfig:
+    """Build a libsonata config from a dict rooted at ``circuit_dir``."""
+    networks = cfg.setdefault("networks", {})
+    networks.setdefault("nodes", [])
+    networks.setdefault("edges", [])
+    return libsonata.CircuitConfig(json.dumps(cfg), str(circuit_dir))
+
+
 # ---------------------------------------------------------------------------
 # _resolve_hoc_dir
 # ---------------------------------------------------------------------------
@@ -39,15 +49,22 @@ STAGING_MODULE = "obi_one.utils.circuit_customization.staging"
 class TestResolveHocDir:
     def test_absolute_path(self, tmp_path):
         hoc_dir = tmp_path / "abs_hoc"
-        config = {"components": {"biophysical_neuron_models_dir": str(hoc_dir)}}
-        result = _resolve_hoc_dir(config, tmp_path / "circuit")
+        circuit_dir = tmp_path / "circuit"
+        config = _circuit_config(
+            {"components": {"biophysical_neuron_models_dir": str(hoc_dir)}},
+            circuit_dir,
+        )
+        result = _resolve_hoc_dir(config, circuit_dir)
         assert result == hoc_dir
         assert result.exists()
 
     def test_relative_path(self, tmp_path):
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
-        config = {"components": {"biophysical_neuron_models_dir": "models/hoc"}}
+        config = _circuit_config(
+            {"components": {"biophysical_neuron_models_dir": "models/hoc"}},
+            circuit_dir,
+        )
         result = _resolve_hoc_dir(config, circuit_dir)
         assert result == circuit_dir / "models" / "hoc"
         assert result.exists()
@@ -55,7 +72,7 @@ class TestResolveHocDir:
     def test_fallback_to_hoc(self, tmp_path):
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
-        config = {"components": {}}
+        config = _circuit_config({"components": {}}, circuit_dir)
         result = _resolve_hoc_dir(config, circuit_dir)
         assert result == circuit_dir / "hoc"
         assert result.exists()
@@ -69,15 +86,16 @@ class TestResolveHocDir:
 class TestResolveModDir:
     def test_absolute_path(self, tmp_path):
         mod_dir = tmp_path / "abs_mod"
-        config = {"components": {"mechanisms_dir": str(mod_dir)}}
-        result = _resolve_mod_dir(config, tmp_path / "circuit")
+        circuit_dir = tmp_path / "circuit"
+        config = _circuit_config({"components": {"mechanisms_dir": str(mod_dir)}}, circuit_dir)
+        result = _resolve_mod_dir(config, circuit_dir)
         assert result == mod_dir
         assert result.exists()
 
     def test_relative_path(self, tmp_path):
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
-        config = {"components": {"mechanisms_dir": "mechanisms"}}
+        config = _circuit_config({"components": {"mechanisms_dir": "mechanisms"}}, circuit_dir)
         result = _resolve_mod_dir(config, circuit_dir)
         assert result == circuit_dir / "mechanisms"
         assert result.exists()
@@ -85,7 +103,7 @@ class TestResolveModDir:
     def test_fallback_to_mod(self, tmp_path):
         circuit_dir = tmp_path / "circuit"
         circuit_dir.mkdir()
-        config = {"components": {}}
+        config = _circuit_config({"components": {}}, circuit_dir)
         result = _resolve_mod_dir(config, circuit_dir)
         assert result == circuit_dir / "mod"
         assert result.exists()
@@ -180,31 +198,49 @@ class TestReplaceFile:
 
 
 class TestNetworkFileNames:
-    def test_collects_all_types(self):
-        cfg = {
-            "networks": {
-                "nodes": [{"nodes_file": "/path/to/nodes.h5"}],
-                "edges": [{"edges_file": "/path/to/edges.h5"}],
-            },
-            "node_sets_file": "/path/to/node_sets.json",
-        }
-        result = _network_file_names(cfg)
-        assert result == {"nodes.h5", "edges.h5", "node_sets.json"}
-
-    def test_empty_config(self):
-        assert _network_file_names({}) == set()
-
-    def test_multiple_files(self):
+    def test_collects_all_types(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
         cfg = {
             "networks": {
                 "nodes": [
-                    {"nodes_file": "a.h5"},
-                    {"nodes_file": "b.h5"},
+                    {
+                        "nodes_file": "/path/to/nodes.h5",
+                        "populations": {"pop_a": {"type": "virtual"}},
+                    }
+                ],
+                "edges": [
+                    {
+                        "edges_file": "/path/to/edges.h5",
+                        "populations": {"pop_a__pop_a__chemical": {"type": "chemical"}},
+                    }
+                ],
+            },
+            "node_sets_file": "/path/to/node_sets.json",
+        }
+        result = _network_file_names(_circuit_config(cfg, circuit_dir))
+        assert result == {"nodes.h5", "edges.h5", "node_sets.json"}
+
+    def test_empty_config(self, tmp_path):
+        assert _network_file_names(_circuit_config({}, tmp_path / "circuit")) == set()
+
+    def test_multiple_files(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        cfg = {
+            "networks": {
+                "nodes": [
+                    {
+                        "nodes_file": "a.h5",
+                        "populations": {"pop_a": {"type": "virtual"}},
+                    },
+                    {
+                        "nodes_file": "b.h5",
+                        "populations": {"pop_b": {"type": "virtual"}},
+                    },
                 ],
                 "edges": [],
             },
         }
-        result = _network_file_names(cfg)
+        result = _network_file_names(_circuit_config(cfg, circuit_dir))
         assert result == {"a.h5", "b.h5"}
 
 
@@ -232,7 +268,7 @@ class TestApplyNodeSetsOverride:
         _apply_node_sets_override(
             node_sets,
             circuit_dir,
-            {"node_sets_file": "node_sets.json"},
+            _circuit_config({"node_sets_file": "node_sets.json"}, circuit_dir),
             config_path,
             config_overridden=False,
         )
@@ -256,7 +292,7 @@ class TestApplyNodeSetsOverride:
         _apply_node_sets_override(
             node_sets,
             circuit_dir,
-            {"node_sets_file": str(target)},
+            _circuit_config({"node_sets_file": str(target)}, circuit_dir),
             config_path,
             config_overridden=False,
         )
@@ -278,7 +314,7 @@ class TestApplyNodeSetsOverride:
         _apply_node_sets_override(
             node_sets,
             circuit_dir,
-            {"node_sets_file": "ns.json"},
+            _circuit_config({"node_sets_file": "ns.json"}, circuit_dir),
             config_path,
             config_overridden=False,
         )
@@ -297,7 +333,11 @@ class TestApplyNodeSetsOverride:
         node_sets.write_text(json.dumps({"All": {}}))
 
         _apply_node_sets_override(
-            node_sets, circuit_dir, {"networks": {}}, config_path, config_overridden=False
+            node_sets,
+            circuit_dir,
+            _circuit_config({}, circuit_dir),
+            config_path,
+            config_overridden=False,
         )
 
         assert (circuit_dir / "my_node_sets.json").exists()
@@ -316,7 +356,7 @@ class TestApplyNodeSetsOverride:
         _apply_node_sets_override(
             node_sets,
             circuit_dir,
-            {"node_sets_file": "existing.json"},
+            _circuit_config({"node_sets_file": "existing.json"}, circuit_dir),
             config_path,
             config_overridden=False,
         )
@@ -337,7 +377,11 @@ class TestApplyNodeSetsOverride:
         node_sets.write_text(json.dumps({"All": {}}))
 
         _apply_node_sets_override(
-            node_sets, circuit_dir, {"networks": {}}, config_path, config_overridden=False
+            node_sets,
+            circuit_dir,
+            _circuit_config({}, circuit_dir),
+            config_path,
+            config_overridden=False,
         )
 
         assert json.loads(parent_config.read_text()) == {"networks": {}}
@@ -356,7 +400,7 @@ class TestApplyNodeSetsOverride:
             _apply_node_sets_override(
                 node_sets,
                 circuit_dir,
-                {"node_sets_file": "declared.json"},
+                _circuit_config({"node_sets_file": "declared.json"}, circuit_dir),
                 config_path,
                 config_overridden=True,
             )
@@ -384,12 +428,35 @@ class TestRemoveStaleNetworkFiles:
 
         config_path = circuit_dir / "circuit_config.json"
         config_path.write_text(
-            json.dumps({"networks": {"nodes": [], "edges": [{"edges_file": "new_edges.h5"}]}})
+            json.dumps(
+                {
+                    "networks": {
+                        "nodes": [],
+                        "edges": [
+                            {
+                                "edges_file": "new_edges.h5",
+                                "populations": {"pop_a__pop_a__chemical": {"type": "chemical"}},
+                            }
+                        ],
+                    }
+                }
+            )
         )
 
-        parent_config = {
-            "networks": {"nodes": [], "edges": [{"edges_file": "old_edges.h5"}]},
-        }
+        parent_config = _circuit_config(
+            {
+                "networks": {
+                    "nodes": [],
+                    "edges": [
+                        {
+                            "edges_file": "old_edges.h5",
+                            "populations": {"pop_a__pop_a__chemical": {"type": "chemical"}},
+                        }
+                    ],
+                }
+            },
+            circuit_dir,
+        )
 
         _remove_stale_network_files(circuit_dir, config_path, parent_config)
         assert not stale_link.exists()
@@ -403,11 +470,24 @@ class TestRemoveStaleNetworkFiles:
         stale_file.write_bytes(b"data")
 
         config_path = circuit_dir / "circuit_config.json"
-        config_path.write_text(json.dumps({"networks": {"nodes": [], "edges": []}}))
+        config_path.write_text(
+            json.dumps({"networks": {"nodes": [], "edges": []}}),
+        )
 
-        parent_config = {
-            "networks": {"nodes": [{"nodes_file": "old_nodes.h5"}], "edges": []},
-        }
+        parent_config = _circuit_config(
+            {
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": "old_nodes.h5",
+                            "populations": {"pop_a": {"type": "virtual"}},
+                        }
+                    ],
+                    "edges": [],
+                }
+            },
+            circuit_dir,
+        )
 
         _remove_stale_network_files(circuit_dir, config_path, parent_config)
         assert not stale_file.exists()
@@ -421,12 +501,35 @@ class TestRemoveStaleNetworkFiles:
 
         config_path = circuit_dir / "circuit_config.json"
         config_path.write_text(
-            json.dumps({"networks": {"nodes": [{"nodes_file": "nodes.h5"}], "edges": []}})
+            json.dumps(
+                {
+                    "networks": {
+                        "nodes": [
+                            {
+                                "nodes_file": "nodes.h5",
+                                "populations": {"pop_a": {"type": "virtual"}},
+                            }
+                        ],
+                        "edges": [],
+                    }
+                }
+            )
         )
 
-        parent_config = {
-            "networks": {"nodes": [{"nodes_file": "nodes.h5"}], "edges": []},
-        }
+        parent_config = _circuit_config(
+            {
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": "nodes.h5",
+                            "populations": {"pop_a": {"type": "virtual"}},
+                        }
+                    ],
+                    "edges": [],
+                }
+            },
+            circuit_dir,
+        )
 
         _remove_stale_network_files(circuit_dir, config_path, parent_config)
         assert kept.exists()
@@ -463,9 +566,20 @@ class TestApplyFileOverrides:
             pop.create_dataset("target_node_id", data=np.arange(n, dtype=np.int64))
             pop.create_dataset("edge_type_id", data=np.zeros(n, dtype=np.int32))
 
-        config = {
-            "networks": {"edges": [{"edges_file": str(parent_edges)}]},
-        }
+        config = _circuit_config(
+            {
+                "networks": {
+                    "nodes": [],
+                    "edges": [
+                        {
+                            "edges_file": str(parent_edges),
+                            "populations": {"pop_a__pop_a__chemical": {"type": "chemical"}},
+                        }
+                    ],
+                }
+            },
+            circuit_dir,
+        )
 
         _apply_file_overrides([override], circuit_dir, config, component_type="edges")
 
@@ -482,9 +596,20 @@ class TestApplyFileOverrides:
         with h5py.File(override, "w") as f:
             f.create_group("edges/unknown_pop")
 
-        config = {
-            "networks": {"edges": [{"edges_file": str(circuit_dir / "edges.h5")}]},
-        }
+        config = _circuit_config(
+            {
+                "networks": {
+                    "nodes": [],
+                    "edges": [
+                        {
+                            "edges_file": str(circuit_dir / "edges.h5"),
+                            "populations": {"pop_a__pop_a__chemical": {"type": "chemical"}},
+                        }
+                    ],
+                }
+            },
+            circuit_dir,
+        )
 
         with pytest.raises(ValueError, match="unknown_pop"):
             _apply_file_overrides([override], circuit_dir, config, component_type="edges")
@@ -498,16 +623,20 @@ class TestApplyFileOverrides:
             f.create_group("nodes/new_virt")
             f["nodes/new_virt"].create_dataset("node_type_id", data=np.zeros(2, dtype=np.int32))
 
-        config = {
-            "networks": {
-                "nodes": [
-                    {
-                        "nodes_file": "virtual_nodes.h5",
-                        "populations": {"new_virt": {"type": "virtual"}},
-                    }
-                ]
+        config = _circuit_config(
+            {
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": "virtual_nodes.h5",
+                            "populations": {"new_virt": {"type": "virtual"}},
+                        }
+                    ],
+                    "edges": [],
+                }
             },
-        }
+            circuit_dir,
+        )
 
         _apply_file_overrides(
             [override],
@@ -531,7 +660,7 @@ class TestApplyFileOverrides:
         with h5py.File(override, "w") as f:
             f.create_group("nodes/new_virt")
 
-        config = {"networks": {"nodes": []}}
+        config = _circuit_config({"networks": {"nodes": [], "edges": []}}, circuit_dir)
 
         with pytest.raises(ValueError, match="new_virt"):
             _apply_file_overrides(
@@ -556,9 +685,20 @@ class TestApplyFileOverrides:
             f.create_group("nodes/pop_a")
             f["nodes/pop_a"].create_dataset("node_type_id", data=np.ones(10, dtype=np.int32))
 
-        config = {
-            "networks": {"nodes": [{"nodes_file": str(nodes_file)}]},
-        }
+        config = _circuit_config(
+            {
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": str(nodes_file),
+                            "populations": {"pop_a": {"type": "virtual"}},
+                        }
+                    ],
+                    "edges": [],
+                }
+            },
+            circuit_dir,
+        )
 
         _apply_file_overrides([override], circuit_dir, config, component_type="nodes")
 
@@ -582,10 +722,21 @@ class TestApplyEmodelOverrides:
         hoc_file = tmp_path / "MyCell.hoc"
         hoc_file.write_text("begintemplate MyCell\nendtemplate MyCell\n")
 
-        config = {
-            "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
-            "networks": {"nodes": [{"populations": {"pop_a": {}}}]},
-        }
+        config = _circuit_config(
+            {
+                "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": "nodes.h5",
+                            "populations": {"pop_a": {"type": "virtual"}},
+                        }
+                    ],
+                    "edges": [],
+                },
+            },
+            circuit_dir,
+        )
 
         _apply_emodel_overrides([hoc_file], {}, config, circuit_dir)
         assert (hoc_dir / "MyCell.hoc").exists()
@@ -599,20 +750,26 @@ class TestApplyEmodelOverrides:
         hoc_file = tmp_path / "PopCell.hoc"
         hoc_file.write_text("begintemplate PopCell\nendtemplate PopCell\n")
 
-        config = {
-            "components": {"biophysical_neuron_models_dir": str(circuit_dir / "hoc")},
-            "networks": {
-                "nodes": [
-                    {
-                        "populations": {
-                            "pop_a": {
-                                "biophysical_neuron_models_dir": str(pop_dir),
-                            }
+        config = _circuit_config(
+            {
+                "components": {"biophysical_neuron_models_dir": str(circuit_dir / "hoc")},
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": "nodes.h5",
+                            "populations": {
+                                "pop_a": {
+                                    "type": "virtual",
+                                    "biophysical_neuron_models_dir": str(pop_dir),
+                                }
+                            },
                         }
-                    }
-                ]
+                    ],
+                    "edges": [],
+                },
             },
-        }
+            circuit_dir,
+        )
 
         _apply_emodel_overrides([hoc_file], {"PopCell.hoc": "pop_a"}, config, circuit_dir)
         assert (pop_dir / "PopCell.hoc").exists()
@@ -628,20 +785,26 @@ class TestApplyEmodelOverrides:
         hoc_file = tmp_path / "Generic.hoc"
         hoc_file.write_text("begintemplate Generic\nendtemplate Generic\n")
 
-        config = {
-            "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
-            "networks": {
-                "nodes": [
-                    {
-                        "populations": {
-                            "pop_a": {
-                                "biophysical_neuron_models_dir": str(pop_dir),
-                            }
+        config = _circuit_config(
+            {
+                "components": {"biophysical_neuron_models_dir": str(hoc_dir)},
+                "networks": {
+                    "nodes": [
+                        {
+                            "nodes_file": "nodes.h5",
+                            "populations": {
+                                "pop_a": {
+                                    "type": "virtual",
+                                    "biophysical_neuron_models_dir": str(pop_dir),
+                                }
+                            },
                         }
-                    }
-                ]
+                    ],
+                    "edges": [],
+                },
             },
-        }
+            circuit_dir,
+        )
 
         # File not in population_map → goes to component dir
         _apply_emodel_overrides([hoc_file], {}, config, circuit_dir)

@@ -61,15 +61,13 @@ def stage_customized_circuit(
     L.info("Parent circuit staged at %s", circuit_dir)
 
     # 2. Load parent circuit_config (expanded paths) for overlay decisions
-    ls_config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    parent_config = json.loads(ls_config.expanded_json)
+    parent_config = _load_circuit_config(circuit_config_path)
 
     # 3. Apply circuit_config override first so subsequent placement uses the new layout
     if circuit_config_override:
         _replace_file(circuit_config_override, circuit_config_path)
         L.info("Replaced circuit_config.json with override")
-        ls_config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-        active_config = json.loads(ls_config.expanded_json)
+        active_config = _load_circuit_config(circuit_config_path)
         allow_new_populations = True
     else:
         active_config = parent_config
@@ -122,6 +120,11 @@ def stage_customized_circuit(
     return circuit_config_path
 
 
+def _load_circuit_config(circuit_config_path: Path) -> libsonata.CircuitConfig:
+    """Load a circuit config with libsonata so paths and populations are expanded."""
+    return libsonata.CircuitConfig.from_file(str(circuit_config_path))
+
+
 def _validate_staged_id_mapping(circuit_config_path: Path) -> None:
     """Remove a stale brainbuilder id_mapping.json from the staged circuit copy."""
     circuit = SnapCircuit(str(circuit_config_path))
@@ -129,26 +132,35 @@ def _validate_staged_id_mapping(circuit_config_path: Path) -> None:
         L.warning(warning)
 
 
+def _population_names(config: libsonata.CircuitConfig, component_type: str) -> list[str]:
+    return list(config.edge_populations if component_type == "edges" else config.node_populations)
+
+
+def _population_elements_path(
+    config: libsonata.CircuitConfig, component_type: str, pop_name: str
+) -> str:
+    if component_type == "nodes":
+        return config.node_population_properties(pop_name).elements_path
+    return config.edge_population_properties(pop_name).elements_path
+
+
 def _network_file_for_population(
-    config: dict, component_type: str, pop_name: str, circuit_dir: Path
+    config: libsonata.CircuitConfig, component_type: str, pop_name: str, circuit_dir: Path
 ) -> Path | None:
     """Resolve the nodes/edges H5 path for a population from circuit config."""
-    file_key = "nodes_file" if component_type == "nodes" else "edges_file"
-    for entry in config.get("networks", {}).get(component_type, []):
-        if pop_name not in entry.get("populations", {}):
-            continue
-        h5_file = entry.get(file_key)
-        if not h5_file:
-            return None
-        path = Path(h5_file)
-        return path if path.is_absolute() else circuit_dir / path
-    return None
+    if pop_name not in _population_names(config, component_type):
+        return None
+    elements_path = _population_elements_path(config, component_type, pop_name)
+    if not elements_path:
+        return None
+    path = Path(elements_path)
+    return path if path.is_absolute() else circuit_dir / path
 
 
-def _apply_file_overrides(  # ruff: ignore[complex-structure]
+def _apply_file_overrides(  # ruff: ignore[complex-structure, too-many-branches]
     overrides: list[Path],
     circuit_dir: Path,
-    config: dict,
+    config: libsonata.CircuitConfig,
     component_type: str,
     *,
     allow_new_populations: bool = False,
@@ -167,18 +179,20 @@ def _apply_file_overrides(  # ruff: ignore[complex-structure]
 
     # Build map: population_name -> path of the H5 file in the parent circuit
     pop_to_parent_file: dict[str, Path] = {}
-    for entry in config.get("networks", {}).get(component_type, []):
-        h5_file = entry.get(file_key)
-        if not h5_file:
+    for pop_name in _population_names(config, component_type):
+        elements_path = _population_elements_path(config, component_type, pop_name)
+        if not elements_path:
             continue
-        h5_path = Path(h5_file) if Path(h5_file).is_absolute() else circuit_dir / h5_file
+        h5_path = Path(elements_path)
+        if not h5_path.is_absolute():
+            h5_path = circuit_dir / h5_path
         if not h5_path.exists():
             # Config may already declare new populations whose files are not staged yet
             continue
         try:
             with h5py.File(h5_path, "r") as f:
-                for pop_name in f.get(component_type, {}):
-                    pop_to_parent_file[pop_name] = h5_path
+                for staged_pop_name in f.get(component_type, {}):
+                    pop_to_parent_file[staged_pop_name] = h5_path
         except Exception as e:  # ruff: ignore[blind-except]
             L.warning("Could not read parent %s file '%s': %s", component_type, h5_path.name, e)
 
@@ -233,7 +247,7 @@ def _apply_file_overrides(  # ruff: ignore[complex-structure]
 def _apply_emodel_overrides(
     overrides: list[Path],
     population_map: dict[str, str],
-    config: dict,
+    config: libsonata.CircuitConfig,
     circuit_dir: Path,
 ) -> None:
     """Place HOC files in the appropriate population-specific or component-level model dir.
@@ -241,14 +255,12 @@ def _apply_emodel_overrides(
     population_map maps filename → population name. Files not in the map fall back to
     the component-level biophysical_neuron_models_dir.
     """
-    # Build map: population_name -> resolved model dir (from per-population config overrides)
     pop_dirs: dict[str, Path] = {}
-    for entry in config.get("networks", {}).get("nodes", []):
-        for pop_name, pop_cfg in entry.get("populations", {}).items():
-            pop_model_dir = pop_cfg.get("biophysical_neuron_models_dir", "")
-            if pop_model_dir:
-                p = Path(pop_model_dir)
-                pop_dirs[pop_name] = p if p.is_absolute() else circuit_dir / p
+    for pop_name in config.node_populations:
+        pop_model_dir = config.node_population_properties(pop_name).biophysical_neuron_models_dir
+        if pop_model_dir:
+            path = Path(pop_model_dir)
+            pop_dirs[pop_name] = path if path.is_absolute() else circuit_dir / path
 
     component_dir = _resolve_hoc_dir(config, circuit_dir)
 
@@ -266,7 +278,7 @@ def _apply_emodel_overrides(
 def _apply_node_sets_override(
     node_sets_path: Path,
     circuit_dir: Path,
-    config: dict,
+    config: libsonata.CircuitConfig,
     circuit_config_path: Path,
     *,
     config_overridden: bool,
@@ -285,7 +297,7 @@ def _apply_node_sets_override(
         ValueError: if a circuit config override was supplied that does not reference
             the uploaded file.
     """
-    referenced = config.get("node_sets_file")
+    referenced = config.node_sets_path
     referenced_name = Path(referenced).name if referenced else None
 
     if referenced_name == node_sets_path.name:
@@ -333,7 +345,9 @@ def _set_node_sets_reference(circuit_config_path: Path, node_sets_name: str) -> 
 
 
 def _remove_stale_network_files(
-    circuit_dir: Path, circuit_config_path: Path, parent_config: dict
+    circuit_dir: Path,
+    circuit_config_path: Path,
+    parent_config: libsonata.CircuitConfig,
 ) -> None:
     """Unlink parent network files no longer referenced by the override circuit_config.
 
@@ -343,13 +357,13 @@ def _remove_stale_network_files(
     the override config references, and those names are by definition not stale.
     """
     try:
-        override_cfg = json.loads(circuit_config_path.read_text(encoding="utf-8"))
-    except Exception:  # ruff: ignore[blind-except]
+        override_config = _load_circuit_config(circuit_config_path)
+    except libsonata.SonataError:
         L.warning("Could not parse final circuit_config for stale file cleanup", exc_info=True)
         return
 
     parent_names = _network_file_names(parent_config)
-    override_names = _network_file_names(override_cfg)
+    override_names = _network_file_names(override_config)
     stale_names = parent_names - override_names
 
     for stale_name in stale_names:
@@ -359,42 +373,67 @@ def _remove_stale_network_files(
                 L.info("Removed stale network file: %s", candidate)
 
 
-def _network_file_names(cfg: dict) -> set[str]:
-    """Collect the bare filenames of all nodes, edges, and nodeset files in a config dict."""
+def _network_file_names(config: libsonata.CircuitConfig) -> set[str]:
+    """Collect the bare filenames of all nodes, edges, and nodeset files in a config."""
     names: set[str] = set()
-    for entry in cfg.get("networks", {}).get("nodes", []):
-        if f := entry.get("nodes_file"):
-            names.add(Path(f).name)
-    for entry in cfg.get("networks", {}).get("edges", []):
-        if f := entry.get("edges_file"):
-            names.add(Path(f).name)
-    if f := cfg.get("node_sets_file"):
-        names.add(Path(f).name)
+    for pop_name in config.node_populations:
+        elements_path = config.node_population_properties(pop_name).elements_path
+        if elements_path:
+            names.add(Path(elements_path).name)
+    for pop_name in config.edge_populations:
+        elements_path = config.edge_population_properties(pop_name).elements_path
+        if elements_path:
+            names.add(Path(elements_path).name)
+    if config.node_sets_path:
+        names.add(Path(config.node_sets_path).name)
     return names
 
 
-def _resolve_hoc_dir(config: dict, circuit_dir: Path) -> Path:
+def _component_dir(
+    config: libsonata.CircuitConfig,
+    circuit_dir: Path,
+    *,
+    component_key: str,
+    fallback_name: str,
+) -> Path:
+    """Resolve a component-level directory declared in the circuit config."""
+    components = json.loads(config.expanded_json).get("components", {})
+    configured = components.get(component_key, "")
+    if configured:
+        path = Path(configured)
+        resolved = path if path.is_absolute() else circuit_dir / path
+    else:
+        resolved = circuit_dir / fallback_name
+    resolved.mkdir(parents=True, exist_ok=True)
+    return resolved
+
+
+def _resolve_hoc_dir(config: libsonata.CircuitConfig, circuit_dir: Path) -> Path:
     """Find or create the HOC/e-model directory from the component-level config."""
-    components = config.get("components", {})
-    hoc_dir = components.get("biophysical_neuron_models_dir", "")
-    if hoc_dir:
-        path = Path(hoc_dir) if Path(hoc_dir).is_absolute() else circuit_dir / hoc_dir
-    else:
-        path = circuit_dir / "hoc"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    return _component_dir(
+        config,
+        circuit_dir,
+        component_key="biophysical_neuron_models_dir",
+        fallback_name="hoc",
+    )
 
 
-def _resolve_mod_dir(config: dict, circuit_dir: Path) -> Path:
+def _resolve_mod_dir(config: libsonata.CircuitConfig, circuit_dir: Path) -> Path:
     """Find or create the MOD/mechanisms directory from circuit config."""
-    components = config.get("components", {})
-    mod_dir = components.get("mechanisms_dir", "")
-    if mod_dir:
-        path = Path(mod_dir) if Path(mod_dir).is_absolute() else circuit_dir / mod_dir
-    else:
-        path = circuit_dir / "mod"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    if config.node_populations:
+        first_population = next(iter(config.node_populations))
+        mechanisms_dir = config.node_population_properties(first_population).mechanisms_dir
+        if mechanisms_dir:
+            path = Path(mechanisms_dir)
+            resolved = path if path.is_absolute() else circuit_dir / path
+            resolved.mkdir(parents=True, exist_ok=True)
+            return resolved
+    return _component_dir(
+        config,
+        circuit_dir,
+        component_key="mechanisms_dir",
+        fallback_name="mod",
+    )
 
 
 def _copy_into(files: list[Path], target_dir: Path) -> None:
