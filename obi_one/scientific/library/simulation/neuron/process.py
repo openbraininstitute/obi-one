@@ -173,12 +173,12 @@ def _compile_neurodamus_mechanisms(
 ) -> NeurodamusMechanismBuild:
     command = [
         "neurodamus-compile-mods",
+        *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d))),
         "--output-dir",
         str(output_dir),
         "--with-internal-mods",
         "--simulator",
         "coreneuron",
-        *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d))),
         "--output-type",
         "json",
     ]

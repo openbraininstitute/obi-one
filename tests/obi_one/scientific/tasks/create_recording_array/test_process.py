@@ -24,11 +24,13 @@ class TestRunBluerecordingWriteWeights:
         circuit_config = tmp_path / "circuit_config.json"
         electrode_json = tmp_path / "electrodes.json"
         output_path = tmp_path / "weights.h5"
-        env = {"NRNMECH_LIB_PATH": str(tmp_path / "libnrnmech.so")}
 
         with patch("subprocess.run", return_value=mock_result) as mock_run:
             result = run_bluerecording_write_weights(
-                circuit_config, electrode_json, output_path, env=env
+                circuit_config,
+                electrode_json,
+                output_path,
+                nrnmech_lib_path=str(tmp_path / "libnrnmech.so"),
             )
 
         assert result == output_path
@@ -57,5 +59,5 @@ class TestRunBluerecordingWriteWeights:
                 tmp_path / "config.json",
                 tmp_path / "electrodes.json",
                 tmp_path / "weights.h5",
-                env={"NRNMECH_LIB_PATH": str(tmp_path / "lib.so")},
+                nrnmech_lib_path=str(tmp_path / "lib.so"),
             )

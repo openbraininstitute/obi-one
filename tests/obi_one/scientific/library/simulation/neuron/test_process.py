@@ -184,7 +184,7 @@ def test_compile_neuron_mechanisms(mock_run_and_log, tmp_path):
 
     mechanism_build = test_module.compile_mechanisms(
         output_dir=output_dir,
-        mechanisms_dir=[mech_dir],
+        mechanisms_dirs=[mech_dir],
         simulation_backend=SimulationBackend.bluecellulab,
     )
 
@@ -222,7 +222,7 @@ def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
 
     mechanism_build = test_module.compile_mechanisms(
         output_dir=output_dir,
-        mechanisms_dir=[mech_dir],
+        mechanisms_dirs=[mech_dir],
         simulation_backend=SimulationBackend.neurodamus,
     )
 
@@ -255,6 +255,6 @@ def test_compile_mechanisms_unsupported_backend(tmp_path):
     with pytest.raises(RuntimeError, match="Unsupported simulation backend"):
         test_module.compile_mechanisms(
             output_dir=tmp_path,
-            mechanisms_dir=[tmp_path / "mech"],
+            mechanisms_dirs=[tmp_path / "mech"],
             simulation_backend="unsupported",  # ty:ignore[invalid-argument-type]
         )
