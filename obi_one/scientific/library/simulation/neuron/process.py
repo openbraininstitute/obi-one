@@ -121,7 +121,7 @@ def _collect_simulation_outputs(results_dir: Path) -> SimulationResults:
 def compile_mechanisms(
     *,
     output_dir: Path,
-    mechanisms_dir: Path,
+    mechanisms_dirs: list[Path],
     simulation_backend: SimulationBackend,
 ) -> MechanismBuild:
 
@@ -129,24 +129,30 @@ def compile_mechanisms(
         case SimulationBackend.bluecellulab:
             return _compile_neuron_mechanisms(
                 output_dir=output_dir,
-                mechanisms_dir=mechanisms_dir,
+                mechanisms_dirs=mechanisms_dirs,
             )
         case SimulationBackend.neurodamus:
             return _compile_neurodamus_mechanisms(
                 output_dir=output_dir,
-                mechanisms_dir=mechanisms_dir,
+                mechanisms_dirs=mechanisms_dirs,
             )
         case _:
             msg = f"Unsupported simulation backend {simulation_backend}."
             raise RuntimeError(msg)
 
 
-def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> NeuronMechanismBuild:
+def _compile_neuron_mechanisms(
+    *, output_dir: Path, mechanisms_dirs: list[Path]
+) -> NeuronMechanismBuild:
+    if len(mechanisms_dirs) != 1:
+        msg = "Only allowed a single mod file directory for NEURON"
+        raise RuntimeError(msg)
+
     command = [
         "nrnivmodl",
         "-incflags",
         "-DDISABLE_REPORTINGLIB",
-        str(mechanisms_dir),
+        str(mechanisms_dirs[0]),
     ]
 
     compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
@@ -163,17 +169,16 @@ def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> Neu
 
 
 def _compile_neurodamus_mechanisms(
-    *, output_dir: Path, mechanisms_dir: Path
+    *, output_dir: Path, mechanisms_dirs: list[Path]
 ) -> NeurodamusMechanismBuild:
     command = [
         "neurodamus-compile-mods",
-        "--input-dir",
-        str(mechanisms_dir),
         "--output-dir",
         str(output_dir),
         "--with-internal-mods",
         "--simulator",
         "coreneuron",
+        *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d))),
     ]
 
     compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
