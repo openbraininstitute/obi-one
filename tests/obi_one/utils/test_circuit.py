@@ -10,6 +10,7 @@ from PIL import Image
 
 from obi_one.core.exception import OBIONEError
 from obi_one.db_sdk.registration.circuit import register_circuit, register_circuit_from_metadata
+from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENAME
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
     copy_mod_files,
@@ -51,6 +52,7 @@ def test_run_circuit_folder_compression(tmp_path):
     )
     assert result.exists()
     assert result.suffix == ".gz"
+    assert result.name == COMPRESSED_CIRCUIT_FILENAME
     assert result.stat().st_size > 0
 
 

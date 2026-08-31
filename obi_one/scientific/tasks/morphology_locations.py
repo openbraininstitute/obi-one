@@ -90,7 +90,7 @@ class MorphologyLocationsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
@@ -98,7 +98,7 @@ class MorphologyLocationsTask(Task):
             if isinstance(self.config.initialize.morphology, Path):
                 m = load_morphology_nrn_order(self.config.initialize.morphology)
             else:
-                m = self.config.initialize.morphology.morphio_morphology  # ty:ignore[unresolved-attribute]
+                m = self.config.initialize.morphology.morphio_morphology(db_client=db_client)  # ty:ignore[unresolved-attribute]
             dataframe = self.config.morph_locations.points_on(m)
 
             fig = MorphologyLocationsTask.generate_plot(m, dataframe)

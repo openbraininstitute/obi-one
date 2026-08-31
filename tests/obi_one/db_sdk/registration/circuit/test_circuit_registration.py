@@ -32,6 +32,7 @@ from obi_one.db_sdk.registration.circuit import (
     register_publication_links,
 )
 from obi_one.db_sdk.registration.circuit.assets import (
+    COMPRESSED_CIRCUIT_FILENAME,
     _check_matrix_folder,
     _check_required_contents,
 )
@@ -104,10 +105,10 @@ def test_check_required_contents_directory_missing(tmp_path):
 
 def test_check_required_contents_file_valid(tmp_path):
     """Test that file name matches for non-directory check."""
-    f = tmp_path / "circuit.gz"
+    f = tmp_path / COMPRESSED_CIRCUIT_FILENAME
     f.write_text("data")
 
-    _check_required_contents(f, ["circuit.gz"], is_directory=False)
+    _check_required_contents(f, [COMPRESSED_CIRCUIT_FILENAME], is_directory=False)
 
 
 def test_check_required_contents_file_mismatch(tmp_path):
@@ -116,7 +117,7 @@ def test_check_required_contents_file_mismatch(tmp_path):
     f.write_text("data")
 
     with pytest.raises(ValueError, match="does not match"):
-        _check_required_contents(f, ["circuit.gz"], is_directory=False)
+        _check_required_contents(f, [COMPRESSED_CIRCUIT_FILENAME], is_directory=False)
 
 
 # --- _check_matrix_folder ---
@@ -826,7 +827,7 @@ def test_register_asset_local_directory(tmp_path):
 
 def test_register_asset_local_file(tmp_path):
     """Test uploading a local file asset."""
-    gz_file = tmp_path / "circuit.gz"
+    gz_file = tmp_path / COMPRESSED_CIRCUIT_FILENAME
     gz_file.write_text("compressed data")
 
     client = MagicMock()
@@ -887,7 +888,11 @@ def test_register_asset_missing_required_contents(tmp_path):
                 (p / "node_sets.json").write_text("{}"),
             ],
         ),
-        ("compressed_sonata_circuit", False, lambda p: (p / "circuit.gz").write_text("data")),
+        (
+            "compressed_sonata_circuit",
+            False,
+            lambda p: (p / COMPRESSED_CIRCUIT_FILENAME).write_text("data"),
+        ),
         (
             "circuit_connectivity_matrices",
             True,

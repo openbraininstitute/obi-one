@@ -485,13 +485,17 @@ def run_circuit_folder_compression(
         output_root: Directory where the compressed output will be written.
 
     Returns:
-        Path to the generated .gz file.
+        Path to the generated .tar.gz file.
     """
     from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
         run_tasks_for_generated_scan,
     )
     from obi_one.core.scan_generation import (  # ruff: ignore[import-outside-top-level]
         GridScanGenerationTask,
+    )
+    from obi_one.db_sdk.registration.circuit.assets import (  # ruff: ignore[import-outside-top-level]
+        COMPRESSED_CIRCUIT_FORMAT,
+        COMPRESSED_CIRCUIT_NAME,
     )
     from obi_one.scientific.tasks.folder_compression import (  # ruff: ignore[import-outside-top-level]
         FolderCompressionScanConfig,
@@ -503,8 +507,8 @@ def run_circuit_folder_compression(
     )
     compression_init = FolderCompressionScanConfig.Initialize(
         folder_path=folder_path,
-        file_format="gz",
-        file_name="circuit",
+        file_format=COMPRESSED_CIRCUIT_FORMAT,
+        file_name=COMPRESSED_CIRCUIT_NAME,
         archive_name=circuit_name,
     )
     folder_compressions_config = FolderCompressionScanConfig(initialize=compression_init)
@@ -517,10 +521,8 @@ def run_circuit_folder_compression(
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
 
-    output_file = (
-        grid_scan.single_configs[0].coordinate_output_root
-        / f"{compression_init.file_name}.{compression_init.file_format}"
-    )
+    single_config = grid_scan.single_configs[0]
+    output_file = single_config.output_path  # ty:ignore[unresolved-attribute]
     if not output_file.exists():
         msg = "Compressed circuit file does not exist!"
         raise OBIONEError(msg)

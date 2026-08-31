@@ -365,7 +365,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/26/b1/58fefcd7212c9792e
 
 [[package]]
 name = "bluerecording"
-version = "0.6.1"
+version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -377,9 +377,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ad/3f/1cbdd46084d19ac60d81dc2ae77e9ac0a58eeafb94bc2c041580b7a8b46d/bluerecording-0.6.1.tar.gz", hash = "sha256:6618b353f252156ea5b813596fd6ac31f8f5713db2aa69e92e9f1aa3d2f0386a", size = 25699, upload-time = "2026-07-17T15:03:48.003Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/1c/744739d3498bd21155d48c87be9029641363ac3d5700b846fbcf6ab3bd2e/bluerecording-0.6.2.tar.gz", hash = "sha256:1d817363abe2788840d4a9a9eef14cb3f82936daa4d142edefa135ad6a4142bd", size = 25602, upload-time = "2026-08-31T11:30:08.851Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/8c/57f793b3b9b442e1804c08533981b8ed9575f520c42746412f384c7f012d/bluerecording-0.6.1-py3-none-any.whl", hash = "sha256:369f0d5dd8ef9e37d72eec58a8545117c7318b88db6e827209318be6b3ba74b2", size = 29260, upload-time = "2026-07-17T15:03:46.999Z" },
+    { url = "https://files.pythonhosted.org/packages/75/73/e8b912d9bc8c0e9e5aaaf467a821d214a09c25af1bc2667e7c873603cda3/bluerecording-0.6.2-py3-none-any.whl", hash = "sha256:8b5fb34a6293e7d4327998f3dfa2804326e0b58a2a98ffa84c054a4b54d34287", size = 29138, upload-time = "2026-08-31T11:30:07.62Z" },
 ]
 
 [[package]]
@@ -993,14 +993,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.18"
+version = "0.19.19"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/c2/93f02a3ec9f5c615681b670403b418b57c2d45d171da4f9d7d36b26fb244/entitysdk-0.19.18.tar.gz", hash = "sha256:26669eb9a1efad0eabbd7d14f69c05439d785f90af7c148a5545828b601ac60d", size = 93869, upload-time = "2026-08-26T07:31:10.144Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/03/9c00958b27e581740d2676bf128ebc1bcece44313f030a374e72674e3675/entitysdk-0.19.19.tar.gz", hash = "sha256:e7c75ace74e227732ef74481c1ccaea5ce06080c701fe69ce2e1f6e9e16d60c8", size = 93932, upload-time = "2026-08-28T14:28:18.879Z" }
 
 [[package]]
 name = "executing"
@@ -2451,7 +2451,7 @@ requires-dist = [
     { name = "bluepyefe", specifier = ">=2.3.57" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.43" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.6.1" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.6.2" },
     { name = "brainbuilder", specifier = ">=0.20.6" },
     { name = "brian2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },

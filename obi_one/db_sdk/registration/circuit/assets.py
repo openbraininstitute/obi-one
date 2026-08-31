@@ -7,12 +7,19 @@ from pathlib import Path
 from entitysdk import Client, MultipartUploadTransferConfig, models
 
 from obi_one.db_sdk.db_sdk import _upload_or_replace_directory, _upload_or_replace_file
-from obi_one.utils.io import convert_image_to_webp
+from obi_one.utils.io import compressed_archive_filename, convert_image_to_webp
 
 L = logging.getLogger(__name__)
 
 OVERVIEW_IMAGE_NAME = "circuit_visualization"
 SIM_DESIGNER_IMAGE_NAME = "simulation_designer_image"
+
+# Canonical name/format for the compressed SONATA circuit asset (a gzip-compressed tar).
+COMPRESSED_CIRCUIT_NAME = "circuit"
+COMPRESSED_CIRCUIT_FORMAT = "gz"
+COMPRESSED_CIRCUIT_FILENAME = compressed_archive_filename(
+    COMPRESSED_CIRCUIT_NAME, COMPRESSED_CIRCUIT_FORMAT
+)
 
 
 def _check_required_contents(file_path: Path, contents: list[str], *, is_directory: bool) -> None:
@@ -72,7 +79,7 @@ CIRCUIT_ASSET_MAPPING: dict[str, dict] = {
     "compressed_sonata_circuit": {
         "is_directory": False,
         "content_type": "application/gzip",
-        "required_contents": ["circuit.gz"],
+        "required_contents": [COMPRESSED_CIRCUIT_FILENAME],
         "required_validations": [],
     },
     "circuit_connectivity_matrices": {
