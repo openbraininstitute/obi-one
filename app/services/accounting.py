@@ -110,7 +110,7 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(
+def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure]
     *,
     db_client: Client,
     config_id: UUID,
