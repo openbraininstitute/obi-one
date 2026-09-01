@@ -480,7 +480,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")
     @patch("obi_one.scientific.tasks.circuit_validation.task._find_mod_dir")
     @patch("obi_one.scientific.tasks.circuit_validation.task.circuit_validation")
-    @patch("obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file")
+    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_passes_with_no_errors(
         self,
@@ -538,7 +538,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._update_lifecycle_status")
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
     @patch("obi_one.scientific.tasks.circuit_validation.task.circuit_validation")
-    @patch("obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file")
+    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_fails_with_missing_morphology_dir(
         self,
@@ -606,7 +606,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
     @patch("obi_one.scientific.tasks.circuit_validation.task.circuit_validation")
-    @patch("obi_one.scientific.tasks.circuit_validation.task.libsonata.CircuitConfig.from_file")
+    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_mod_compilation_failure(
         self,
