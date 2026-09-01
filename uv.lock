@@ -2519,7 +2519,7 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/9f/658fb3d6cebd51ee86d01e41d4f2f294d5932df0a22078e844f04ee2d8e2/obp_accounting_sdk-0.6.4.tar.gz", hash = "sha256:663558377dc70f37777727c0c77e3960624eac9d39116b4740fc3d71507a792a", size = 36756, upload-time = "2026-08-31T14:48:17.372Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/9f/658fb3d6cebd51ee86d01e41d4f2f294d5932df0a22078e844f04ee2d8e2/obp_accounting_sdk-0.6.4.tar.gz", hash = "sha256:663558377dc70f37777727c0c77e3960624eac9d39116b4740fc3d71507a792a", size = 36756, upload-time = "2026-08-31T14:48:19.462Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/57/f4/84dbdc499737ea95730565286e656f4ab3219bff09e7b47a52ac3ad25a6f/obp_accounting_sdk-0.6.4-py3-none-any.whl", hash = "sha256:f5fe7304f9c934570a60ea4d0c73d7dadc9230cda9e84783c39fbfed23a6e7dc", size = 27768, upload-time = "2026-08-31T14:48:18.372Z" },
 ]
