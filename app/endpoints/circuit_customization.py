@@ -80,14 +80,24 @@ class ParentCircuitContext:
     model_template_stems: set[str]
 
 
+def _safe_upload_name(filename: str | None) -> str:
+    """Return the basename of an upload filename, discarding any path components."""
+    if not filename:
+        msg = "Uploaded file must have a filename"
+        raise ValueError(msg)
+    return Path(filename).name
+
+
+def _save_upload(upload: UploadFile, target_dir: Path) -> Path:
+    """Save a single uploaded file into target_dir using only its basename."""
+    dest = target_dir / _safe_upload_name(upload.filename)
+    dest.write_bytes(upload.file.read())
+    return dest
+
+
 def _save_uploads(files: list[UploadFile], target_dir: Path) -> list[Path]:
     """Save uploaded files to a directory and return their paths."""
-    paths = []
-    for f in files:
-        dest = target_dir / f.filename  # ty:ignore[unsupported-operator]
-        dest.write_bytes(f.file.read())
-        paths.append(dest)
-    return paths
+    return [_save_upload(f, target_dir) for f in files]
 
 
 def _validate_edge_population(path: Path, pop_name: str, pop: h5py.Group) -> None:
@@ -447,8 +457,7 @@ def _run_validations(
     )
 
     if node_sets_file:
-        node_sets_path = tmp / node_sets_file.filename  # ty:ignore[unsupported-operator]
-        node_sets_path.write_bytes(node_sets_file.file.read())
+        node_sets_path = _save_upload(node_sets_file, tmp)
         try:
             _validate_node_sets(node_sets_path)
         except NodeSetsValidationError as e:
@@ -687,8 +696,7 @@ def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-pos
 
         cfg_path: Path | None = None
         if circuit_config_file:
-            cfg_path = tmp / circuit_config_file.filename  # ty:ignore[unsupported-operator]
-            cfg_path.write_bytes(circuit_config_file.file.read())
+            cfg_path = _save_upload(circuit_config_file, tmp)
 
         edge_paths, hoc_paths, mod_paths, node_paths, node_sets_path, errors = _run_validations(
             tmp, edges_files, emodel_files, mechanism_files, node_files, node_sets_file

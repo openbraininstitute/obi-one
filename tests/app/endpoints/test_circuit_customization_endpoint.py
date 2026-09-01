@@ -45,6 +45,17 @@ class TestSaveUploads:
         assert len(paths) == 3
         assert all(p.exists() for p in paths)
 
+    def test_strips_path_components_from_filename(self, tmp_path):
+        upload = MagicMock(spec=UploadFile)
+        upload.filename = "../../etc/passwd"
+        upload.file = BytesIO(b"NEURON { SUFFIX X }\n")
+
+        paths = _save_uploads([upload], tmp_path)
+
+        assert len(paths) == 1
+        assert paths[0] == tmp_path / "passwd"
+        assert paths[0].read_bytes() == b"NEURON { SUFFIX X }\n"
+
 
 # ---------------------------------------------------------------------------
 # _validate_file_groups
