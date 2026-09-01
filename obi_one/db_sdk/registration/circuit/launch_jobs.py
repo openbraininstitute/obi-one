@@ -60,9 +60,7 @@ def submit_circuit_validation_job(
                 "action_type": "http_request_with_token",
                 "event_type": "job_on_success",
                 "config": {
-                    "url": (
-                        f"{api_url}/api/obi-one/declared/circuit/{circuit_id}/generate-assets"
-                    ),
+                    "url": (f"{api_url}/api/obi-one/declared/circuit/{circuit_id}/generate-assets"),
                     "method": "POST",
                 },
             }

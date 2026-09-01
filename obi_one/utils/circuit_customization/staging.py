@@ -301,7 +301,7 @@ def _apply_node_sets_override(
     referenced_name = Path(referenced).name if referenced else None
 
     if referenced_name == node_sets_path.name:
-        target = Path(referenced)  # ty:ignore[invalid-argument-type]
+        target = Path(referenced)
         if not target.is_absolute():
             target = circuit_dir / target
         _replace_file(node_sets_path, target)

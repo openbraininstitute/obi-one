@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import libsonata
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from bluepysnap import Circuit as SnapCircuitType
 
 L = logging.getLogger(__name__)

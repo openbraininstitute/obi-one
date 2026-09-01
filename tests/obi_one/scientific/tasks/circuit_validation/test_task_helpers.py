@@ -11,7 +11,6 @@ import pandas as pd
 import pytest
 
 from obi_one.scientific.library.circuit_id_mapping import (
-    find_stale_populations,
     get_population_sizes,
     validate_id_mapping_files,
 )

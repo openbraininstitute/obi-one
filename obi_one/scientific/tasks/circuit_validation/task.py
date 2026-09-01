@@ -7,14 +7,12 @@ compiles MOD files, runs snap validation, and updates the entity status.
 
 from __future__ import annotations
 
-import json
 import logging
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import libsonata
 from bluepysnap import circuit_validation
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
