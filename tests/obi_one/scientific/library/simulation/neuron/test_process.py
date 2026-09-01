@@ -267,7 +267,7 @@ def test_compile_neuron_mechanisms_missing_lib(mock_run_and_log, tmp_path):
     output_dir.mkdir()
     mock_run_and_log.return_value.stdout = "compilation done"
 
-    with pytest.raises(RuntimeError, match="libnrnmech.so was not found"):
+    with pytest.raises(RuntimeError, match=r"libnrnmech.so was not found"):
         test_module.compile_mechanisms(
             output_dir=output_dir,
             mechanisms_dirs=[mech_dir],

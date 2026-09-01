@@ -73,7 +73,9 @@ def _resolved_circuit(circuit_path):
 def test_write_electrode_json_writes_correct_format(tmp_path):
     pytest.importorskip("bluerecording")
 
-    block = SimpleNamespace(get_global_electrode_xyz_locations=lambda: [(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
+    block = SimpleNamespace(
+        get_global_electrode_xyz_locations=lambda: [(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)]
+    )
     output_path = tmp_path / "electrodes.json"
 
     result = test_module._write_electrode_json({"probe_a": block}, "PointSource", output_path)
@@ -266,6 +268,7 @@ def test_execute_uses_neocortex_fallback_without_mods(tmp_path, mock_db_client):
 
     mock_compile.assert_not_called()
     mock_bluerecording.assert_called_once()
-    assert mock_bluerecording.call_args.kwargs["nrnmech_lib_path"] == Path(
-        "/opt/obi/neocortex/x86_64/libnrnmech.so"
-    ).absolute()
+    assert (
+        mock_bluerecording.call_args.kwargs["nrnmech_lib_path"]
+        == Path("/opt/obi/neocortex/x86_64/libnrnmech.so").absolute()
+    )
