@@ -277,6 +277,21 @@ def _resolve_swc_bytes_for_mesh(
     return None
 
 
+def _upload_converted_morphology_assets(
+    client: Client,
+    entity_uuid: UUID,
+    converted_files: MorphologyFiles,
+) -> None:
+    """Upload every converted morphology variant (.swc, .h5, .asc) that exists.
+
+    The .asc variant is required by the simulator (bluecellulab), so it must be
+    registered alongside the .swc and .h5 variants.
+    """
+    for file_path in (converted_files.swc, converted_files.hdf5, converted_files.asc):
+        if file_path and file_path.exists():
+            upload_morphology_file(client, entity_uuid, file_path)
+
+
 async def _run_pipeline(
     client: Client,
     morphology_name: str,
@@ -306,6 +321,8 @@ async def _run_pipeline(
             stack.callback(converted_files.swc.unlink, missing_ok=True)
         if converted_files.hdf5:
             stack.callback(converted_files.hdf5.unlink, missing_ok=True)
+        if converted_files.asc:
+            stack.callback(converted_files.asc.unlink, missing_ok=True)
 
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
@@ -318,10 +335,7 @@ async def _run_pipeline(
         entity_uuid = UUID(str(data.id))
         try:
             upload_morphology_content(client, entity_uuid, morphology_name, content)
-            if converted_files.swc and converted_files.swc.exists():
-                upload_morphology_file(client, entity_uuid, converted_files.swc)
-            if converted_files.hdf5 and converted_files.hdf5.exists():
-                upload_morphology_file(client, entity_uuid, converted_files.hdf5)
+            _upload_converted_morphology_assets(client, entity_uuid, converted_files)
         except EntitySDKError as err:
             _raise_entitysdk_failure("registration", err)
         try:
