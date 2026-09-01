@@ -1856,6 +1856,31 @@ def test_generate_additional_compresses_when_missing(tmp_path):
     mock_compress.assert_called_once()
 
 
+def test_generate_additional_skips_compressed_when_not_requested(tmp_path):
+    """include_compressed=False skips compression even when the asset is missing."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=True,
+            include_compressed=False,
+        )
+
+    mock_compress.assert_not_called()
+
+
 def test_generate_additional_async_scope_skips_visualization(tmp_path):
     """Async job scope (include_visualization=False) skips plots and overview images."""
     circuit_dir = tmp_path / "my_circuit"

@@ -7,18 +7,17 @@ compiles MOD files, runs snap validation, and updates the entity status.
 
 from __future__ import annotations
 
-import json
 import logging
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import libsonata
 from bluepysnap import circuit_validation
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
 
+from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_files
 from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
 
 if TYPE_CHECKING:
@@ -87,7 +86,7 @@ def run_circuit_validation(
         fatal_errors.extend(_validate_emodel_paths(snap_circuit))
 
         # ID mapping file validity check (issue j)
-        id_map_warnings = _validate_id_mapping_files(circuit_config_path, snap_circuit)
+        id_map_warnings = validate_id_mapping_files(circuit_config_path, snap_circuit)
         warning_messages.extend(id_map_warnings)
 
         # HOC template instantiation with bluecellulab
@@ -243,85 +242,6 @@ def _validate_emodel_paths(circuit: SnapCircuitType) -> list[str]:  # ruff: igno
                 )
 
     return errors
-
-
-# ---------------------------------------------------------------------------
-# Issue j: ID mapping file validity
-# ---------------------------------------------------------------------------
-
-
-def _validate_id_mapping_files(circuit_config_path: Path, circuit: SnapCircuitType) -> list[str]:
-    """Validate the brainbuilder id_mapping.json if present.
-
-    id_mapping.json is produced by brainbuilder's subcircuit extraction and referenced at
-    components.provenance.id_mapping in circuit_config.json. Its format per population is:
-        { "new_id": [...], "parent_id": [...], "original_id": [...],
-          "parent_name": "...", "original_name": "..." }
-
-    When nodes are replaced (different count or IDs), the new_id values may exceed the
-    population size and the mapping becomes invalid. We warn and remove the stale file.
-
-    Returns a list of warning messages.
-    """
-    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    cfg = json.loads(config.expanded_json)
-
-    id_mapping_rel = cfg.get("components", {}).get("provenance", {}).get("id_mapping")
-    if not id_mapping_rel:
-        return []
-
-    id_mapping_path = circuit_config_path.parent / id_mapping_rel
-    if not id_mapping_path.exists():
-        return []
-
-    try:
-        mapping: dict = json.loads(id_mapping_path.read_text())
-    except Exception as e:  # ruff: ignore[blind-except]
-        return [f"id_mapping.json: could not parse: {e}"]
-
-    pop_sizes = _get_population_sizes(circuit)
-    stale_populations = _find_stale_populations(mapping, pop_sizes)
-
-    if not stale_populations:
-        return []
-
-    detail = "; ".join(stale_populations)
-    id_mapping_path.unlink()
-    msg = (
-        f"id_mapping.json is stale after nodes replacement ({detail}) — "
-        "file removed from the circuit (regenerate with brainbuilder if needed)"
-    )
-    L.warning(msg)
-    return [msg]
-
-
-def _get_population_sizes(circuit: SnapCircuitType) -> dict[str, int]:
-    """Return per-population node counts via bluepysnap ``population.size``."""
-    pop_sizes: dict[str, int] = {}
-    for pop_name in circuit.nodes.population_names:
-        try:
-            pop_sizes[pop_name] = int(circuit.nodes[pop_name].size)
-        except Exception as e:  # ruff: ignore[blind-except]
-            L.warning("Could not read size for population '%s': %s", pop_name, e)
-    return pop_sizes
-
-
-def _find_stale_populations(mapping: dict, pop_sizes: dict[str, int]) -> list[str]:
-    """Identify populations where id_mapping new_id exceeds the population size."""
-    stale: list[str] = []
-    for pop_name, entry in mapping.items():
-        if not isinstance(entry, dict) or "new_id" not in entry:
-            continue
-        new_ids = entry["new_id"]
-        if not new_ids:
-            continue
-        max_new_id = max(new_ids)
-        pop_size = pop_sizes.get(pop_name)
-        if pop_size is not None and max_new_id >= pop_size:
-            stale.append(
-                f"'{pop_name}': max new_id={max_new_id} but population has {pop_size} nodes"
-            )
-    return stale
 
 
 # ---------------------------------------------------------------------------
