@@ -1,9 +1,7 @@
-import json
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-import entitysdk
 import pytest
 
 from obi_one.scientific.tasks.circuit_simplification.estimate import (
@@ -12,7 +10,7 @@ from obi_one.scientific.tasks.circuit_simplification.estimate import (
 
 
 def test_estimate_circuit_simplification_count_from_target_neuron_set_size():
-    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
+    db_client = MagicMock()
     config_id = uuid4()
     task_config = SimpleNamespace()
     fake_circuit = SimpleNamespace()
@@ -29,14 +27,12 @@ def test_estimate_circuit_simplification_count_from_target_neuron_set_size():
     fake_deserialized = SimpleNamespace(
         model_dump=lambda: {"type": "CircuitSimplificationSingleConfig"}
     )
-
-    db_client.get_entity = lambda **_kwargs: task_config
-    db_client.download_content = lambda **_kwargs: json.dumps({}).encode("utf-8")
+    db_client.get_entity.return_value = task_config
 
     with (
         patch(
-            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_entity_asset_by_label",
-            return_value=SimpleNamespace(id=uuid4()),
+            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_task_config_asset_content",
+            return_value={"type": "CircuitSimplificationSingleConfig"},
         ),
         patch(
             "obi_one.scientific.tasks.circuit_simplification.estimate.deserialize_obi_object_from_json_data",
@@ -51,7 +47,7 @@ def test_estimate_circuit_simplification_count_from_target_neuron_set_size():
 
 
 def test_estimate_circuit_simplification_count_uses_default_neuron_set():
-    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
+    db_client = MagicMock()
     config_id = uuid4()
     task_config = SimpleNamespace()
     fake_circuit = SimpleNamespace()
@@ -68,14 +64,12 @@ def test_estimate_circuit_simplification_count_uses_default_neuron_set():
     fake_deserialized = SimpleNamespace(
         model_dump=lambda: {"type": "CircuitSimplificationSingleConfig"}
     )
-
-    db_client.get_entity = lambda **_kwargs: task_config
-    db_client.download_content = lambda **_kwargs: json.dumps({}).encode("utf-8")
+    db_client.get_entity.return_value = task_config
 
     with (
         patch(
-            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_entity_asset_by_label",
-            return_value=SimpleNamespace(id=uuid4()),
+            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_task_config_asset_content",
+            return_value={"type": "CircuitSimplificationSingleConfig"},
         ),
         patch(
             "obi_one.scientific.tasks.circuit_simplification.estimate.deserialize_obi_object_from_json_data",
@@ -90,7 +84,7 @@ def test_estimate_circuit_simplification_count_uses_default_neuron_set():
 
 
 def test_estimate_circuit_simplification_count_raises_for_empty_set():
-    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
+    db_client = MagicMock()
     config_id = uuid4()
     task_config = SimpleNamespace()
     fake_circuit = SimpleNamespace()
@@ -105,14 +99,12 @@ def test_estimate_circuit_simplification_count_raises_for_empty_set():
     fake_deserialized = SimpleNamespace(
         model_dump=lambda: {"type": "CircuitSimplificationSingleConfig"}
     )
-
-    db_client.get_entity = lambda **_kwargs: task_config
-    db_client.download_content = lambda **_kwargs: json.dumps({}).encode("utf-8")
+    db_client.get_entity.return_value = task_config
 
     with (
         patch(
-            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_entity_asset_by_label",
-            return_value=SimpleNamespace(id=uuid4()),
+            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_task_config_asset_content",
+            return_value={"type": "CircuitSimplificationSingleConfig"},
         ),
         patch(
             "obi_one.scientific.tasks.circuit_simplification.estimate.deserialize_obi_object_from_json_data",
@@ -128,7 +120,7 @@ def test_estimate_circuit_simplification_count_raises_for_empty_set():
 
 
 def test_estimate_circuit_simplification_count_with_circuit_from_id_staging():
-    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
+    db_client = MagicMock()
     config_id = uuid4()
     task_config = SimpleNamespace()
     staged_circuit = SimpleNamespace()
@@ -151,14 +143,12 @@ def test_estimate_circuit_simplification_count_with_circuit_from_id_staging():
         ),
         default_neuron_set_reference=SimpleNamespace(block=fake_neuron_set),
     )
-
-    db_client.get_entity = lambda **_kwargs: task_config
-    db_client.download_content = lambda **_kwargs: json.dumps({}).encode("utf-8")
+    db_client.get_entity.return_value = task_config
 
     with (
         patch(
-            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_entity_asset_by_label",
-            return_value=SimpleNamespace(id=uuid4()),
+            "obi_one.scientific.tasks.circuit_simplification.estimate.db_sdk.get_task_config_asset_content",
+            return_value={"type": "CircuitSimplificationSingleConfig"},
         ),
         patch(
             "obi_one.scientific.tasks.circuit_simplification.estimate.deserialize_obi_object_from_json_data",
