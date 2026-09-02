@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from typing import cast
 
+import libsonata
+
 from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     MechanismBuild,
@@ -154,9 +156,9 @@ def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> Neu
     L.debug(compilation_output)
 
     try:
-        libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
+        libnrnmech_path = next(output_dir.rglob("libnrnmech.*"))
     except StopIteration as e:
-        msg = "Compiled mechanisms shared object libnrnmech.so was not found."
+        msg = "Compiled mechanisms shared object libnrnmech was not found."
         raise RuntimeError(msg) from e
 
     return NeuronMechanismBuild(libnrnmech_path=libnrnmech_path)
@@ -191,3 +193,17 @@ def _compile_neurodamus_mechanisms(
         libcorenrnmech_path=Path(env["CORENEURONLIB"]),
         special_binary_path=Path(env["SPECIALS_PATH"]) / "special",
     )
+
+
+def get_mechanisms_dirs(circuit_config_path: Path) -> list[Path]:
+    config = libsonata.CircuitConfig.from_file(circuit_config_path)
+    if mechanisms_dirs := [
+        d
+        for pop in config.node_populations
+        if (d := config.node_population_properties(pop).mechanisms_dir)
+    ]:
+        return mechanisms_dirs
+
+    if (fallback := (circuit_config_path.parent / "mod")) and fallback.exists():
+        return [fallback]
+    return []

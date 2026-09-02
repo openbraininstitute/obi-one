@@ -293,6 +293,25 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.circuit_simplification: TaskDefinition(
+        task_type=TaskType.circuit_simplification,
+        config_type=TaskConfigType.circuit_simplification__config,
+        activity_type=TaskActivityType.circuit_simplification__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "circuit_simplification.txt"),
+            capabilities=Capabilities(private_packages=True),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
 }  # ty:ignore[invalid-assignment]
 
 CLUSTER_INSTANCES_INFO = {
