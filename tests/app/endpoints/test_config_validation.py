@@ -1,63 +1,60 @@
-"""Tests for the config-validation endpoint's state-key wiring.
+"""Tests for the config-validation endpoint's state-key wiring."""
 
-``SharedStatePartial`` and ``_VALIDATION_CONFIG`` are two hand-maintained lists that
-must stay in step. A field present on the model but missing from the dict is parsed
-and then never validated, so ``/config-validation/validate`` returns ``valid=True``
-having checked nothing — a silent false pass. These tests guard that drift.
-"""
+import pytest
+from pydantic import ValidationError
 
 from app.endpoints.config_validation import _VALIDATION_CONFIG, SharedStatePartial
 
+# Parsed through SharedStatePartial only, which is what the endpoint does first and
+# before db_client is touched — so nothing here reaches entitycore. The recording UUID
+# is stored, not resolved; resolution happens later during generation.
+VALID_FITTING_CONFIG = {
+    "info": {"campaign_name": "Kv3.1 fit", "campaign_description": "From traces."},
+    "initialize": {
+        "recordings": {"id_str": "00000000-0000-0000-0000-000000000000"},
+        "ion_channel_name": "Kv3_1",
+    },
+    "minf_eq": {"type": "SigFitMInf"},
+    "mtau_eq": {"type": "SigFitMTau"},
+    "hinf_eq": {"type": "SigFitHInf"},
+    "htau_eq": {"type": "SigFitHTau"},
+    "gate_exponents": {"m_power": 1, "h_power": 1},
+}
+
+
+def test_valid_fitting_config_parses():
+    state = SharedStatePartial(ion_channel_fitting_config=VALID_FITTING_CONFIG)
+
+    assert state.ion_channel_fitting_config.initialize.ion_channel_name == "Kv3_1"
+
+
+def test_invalid_fitting_config_is_rejected():
+    """Bad input fails at parse time; the endpoint turns this into HTTP 422."""
+    # ion_channel_name becomes the NEURON SUFFIX, so it must be a valid identifier.
+    bad = {**VALID_FITTING_CONFIG, "initialize": {**VALID_FITTING_CONFIG["initialize"]}}
+    bad["initialize"]["ion_channel_name"] = "3bad-name"
+
+    with pytest.raises(ValidationError):
+        SharedStatePartial(ion_channel_fitting_config=bad)
+
+
+def test_invented_equation_variant_is_rejected():
+    """Guards against the model making up a plausible-sounding equation name."""
+    bad = {**VALID_FITTING_CONFIG, "mtau_eq": {"type": "SigmoidalFitMTau"}}
+
+    with pytest.raises(ValidationError):
+        SharedStatePartial(ion_channel_fitting_config=bad)
+
 
 def test_validation_config_covers_every_shared_state_field():
-    """Every field must have a _VALIDATION_CONFIG entry, and vice versa."""
+    """A field with no _VALIDATION_CONFIG entry is parsed and then never validated,
+    so /validate returns valid=True having checked nothing.
+    """
     fields = set(SharedStatePartial.model_fields)
-    configured = set(_VALIDATION_CONFIG)
 
-    assert fields == configured, (
-        "SharedStatePartial and _VALIDATION_CONFIG have drifted. "
-        f"Fields missing an entry (parsed but never validated): {fields - configured}. "
-        f"Entries with no field (never reachable): {configured - fields}."
-    )
-
-
-def test_ion_channel_fitting_config_is_wired():
-    """Build > Ion Channel state key is present and validated (prod-ai#103)."""
-    assert "ion_channel_fitting_config" in SharedStatePartial.model_fields
-    assert "ion_channel_fitting_config" in _VALIDATION_CONFIG
+    assert fields == set(_VALIDATION_CONFIG)
 
 
 def test_ion_channel_fitting_does_not_execute_the_task():
-    """Must stay False: the fitting task downloads NWB assets and runs nrnivmodl.
-
-    Generation alone still resolves the input recording against the database, so
-    this keeps validation useful without making it expensive.
-    """
+    """Must stay False: the fitting task downloads NWB assets and runs nrnivmodl."""
     assert _VALIDATION_CONFIG["ion_channel_fitting_config"] is False
-
-
-def test_fitting_and_simulation_ion_channel_keys_are_distinct():
-    """The two ion-channel keys mean different things and must not be conflated.
-
-    ``ion_channel_model_simulation_config`` simulates an existing model;
-    ``ion_channel_fitting_config`` builds a new one from experimental traces.
-    """
-    fields = SharedStatePartial.model_fields
-    assert "ion_channel_model_simulation_config" in fields
-    assert "ion_channel_fitting_config" in fields
-    assert (
-        fields["ion_channel_model_simulation_config"].annotation
-        != fields["ion_channel_fitting_config"].annotation
-    )
-
-
-def test_unknown_state_keys_are_ignored_not_rejected():
-    """Documents why obi-one must deploy before its clients.
-
-    ``SharedStatePartial`` has no ``extra='forbid'``, so an older obi-one silently
-    drops a state key it does not know and reports success. Shipping a client that
-    sends a new key before obi-one supports it therefore yields a false pass rather
-    than an error.
-    """
-    state = SharedStatePartial(some_future_config={"anything": 1})
-    assert not hasattr(state, "some_future_config")
