@@ -35,6 +35,7 @@ from obi_one.scientific.blocks.simplification_algorithms import (
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.simulation.neuron import process
 from obi_one.scientific.library.sonata_circuit_helpers import (
@@ -98,7 +99,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
             BlockGroup.SIMPLIFICATION,
         ],
         SchemaKey.PROPERTY_ENDPOINTS: {
-            "circuit": "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
     }
 
