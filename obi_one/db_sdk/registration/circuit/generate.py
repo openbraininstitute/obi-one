@@ -217,14 +217,16 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     circuit_entity: models.Circuit | None = None,
     *,
     force: bool = False,
+    include_compressed: bool = True,
     include_visualization: bool = True,
 ) -> None:
     """Generate and register additional circuit assets.
 
-    Always considers compressed circuit and connectivity matrices. When
-    ``include_visualization`` is True (default), also generates connectivity
-    plots and overview figures. Each step is independent — failures are logged
-    as warnings without aborting the remaining steps.
+    Considers connectivity matrices, and — when ``include_compressed`` is True
+    (default) — the compressed circuit archive. When ``include_visualization``
+    is True (default), also generates connectivity plots and overview figures.
+    Each step is independent — failures are logged as warnings without aborting
+    the remaining steps.
 
     If client and circuit_entity are provided, assets are registered to entitycore.
     Otherwise, only generation is performed (useful for local runs).
@@ -243,6 +245,10 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
         circuit_entity: The registered circuit entity to attach assets to (optional).
         force: If True, regenerate and re-upload compressed/matrices even when they
             already exist. If False (default), skip assets that are already present.
+        include_compressed: If True (default), also generate the compressed circuit
+            archive. Set False when the circuit folder is staged as symlinks (circuit
+            customization), where compression would archive dangling links — the
+            post-validation asset job creates that asset from a fully staged copy.
         include_visualization: If True (default), also generate plots and overview /
             sim-designer images. Set False for the post-validation async job, which
             only needs compressed + connectivity matrices (viz assets are created
@@ -258,7 +264,9 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     viz_dir = output_root / (circuit_name + "__CIRCUIT_VIZ__")
 
     # Clean up existing output directories for idempotent reruns
-    dirs_to_clean = [compressed_dir, matrix_dir]
+    dirs_to_clean = [matrix_dir]
+    if include_compressed:
+        dirs_to_clean.append(compressed_dir)
     if include_visualization:
         dirs_to_clean.extend([plot_dir, viz_dir])
     for d in dirs_to_clean:
@@ -266,8 +274,12 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
             shutil.rmtree(d)
 
     # Run additional asset generation
-    skip_compressed = not force and _entity_has_asset(circuit_entity, "compressed_sonata_circuit")
-    if skip_compressed:
+    if not include_compressed:
+        L.info(
+            "Compression not requested for circuit %s — skipping compressed_sonata_circuit",
+            getattr(circuit_entity, "id", None),
+        )
+    elif not force and _entity_has_asset(circuit_entity, "compressed_sonata_circuit"):
         L.info(
             "compressed_sonata_circuit already present on circuit %s — skipping compression",
             getattr(circuit_entity, "id", None),
