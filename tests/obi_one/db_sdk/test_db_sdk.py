@@ -110,6 +110,27 @@ def test_get_task_config_asset():
     )
 
 
+def test_get_task_config_asset_content():
+    client = Mock()
+    config = Mock(spec=Entity)
+    config.id = uuid4()
+    expected_content = {"type": "CircuitSimplificationSingleConfig"}
+
+    with patch.object(
+        test_module,
+        "select_json_asset_content",
+        return_value=expected_content,
+    ) as mock_select_json_asset_content:
+        result = test_module.get_task_config_asset_content(client=client, config=config)
+
+    assert result == expected_content
+    mock_select_json_asset_content.assert_called_once_with(
+        client=client,
+        entity=config,
+        selection={"label": AssetLabel.task_config},
+    )
+
+
 def test_create_activity(client, mock_entity, httpx_mock):
     """Test successful activity creation."""
     activity_status = "pending"
