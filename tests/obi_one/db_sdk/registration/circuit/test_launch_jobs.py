@@ -68,8 +68,8 @@ class TestSubmitCircuitJobs:
         assert job["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job["inputs"]
         assert "--force true" in job["inputs"]
-        assert job["callbacks"][0]["config"]["url"].endswith(
-            f"/declared/circuit/{circuit_id}/generate-assets"
+        assert job["callbacks"][0]["config"]["url"] == (
+            f"http://localhost:8100/declared/circuit/{circuit_id}/generate-assets"
         )
 
     def test_validation_job_without_asset_callback(self):
