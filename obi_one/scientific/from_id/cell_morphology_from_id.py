@@ -10,7 +10,14 @@ import morphio
 import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # ruff: ignore[import-private-name]
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
+from entitysdk.models import (
+    BrainRegion,
+    CellMorphology,
+    EMCellMesh,
+    Species,
+    TaskActivity,
+    TaskConfig,
+)
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
 from entitysdk.models.entity import Entity
 from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivityType
@@ -81,6 +88,29 @@ class CellMorphologyFromID(EntityFromID):
                 io.StringIO(self.swc_file_content(db_client)), reader="swc"
             )
         return self._neurom_morphology
+
+    def metadata_entities(
+        self,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> tuple[Species, BrainRegion]:
+        """Return the species and brain-region entities linked to the morphology."""
+        morphology_entity = self.entity(db_client=db_client)
+        subject = getattr(morphology_entity, "subject", None)
+        if subject is None:
+            msg = f"CellMorphology {self.id_str} has no subject relationship."
+            raise EntitySDKError(msg)
+
+        species: Species | None = getattr(subject, "species", None)
+        if species is None:
+            msg = f"CellMorphology {self.id_str} has no subject.species relationship."
+            raise EntitySDKError(msg)
+
+        brain_region: BrainRegion | None = getattr(morphology_entity, "brain_region", None)
+        if brain_region is None:
+            msg = f"CellMorphology {self.id_str} has no brain_region relationship."
+            raise EntitySDKError(msg)
+
+        return species, brain_region
 
     def has_source_mesh(self, db_client: entitysdk.client.Client = None) -> bool:  # ty:ignore[invalid-parameter-default]
         """Does the cell morphology originate from an EMCellMesh?

@@ -190,3 +190,50 @@ def test_swc_file_content_rejects_invalid_assets(asset, message):
         pytest.raises(ValueError, match=message),
     ):
         morphology_from_id.swc_file_content(Mock())
+
+
+def test_metadata_entities_returns_species_and_brain_region():
+    species = SimpleNamespace(name="Mus musculus")
+    brain_region = SimpleNamespace(name="Somatosensory cortex")
+    entity = SimpleNamespace(
+        subject=SimpleNamespace(species=species),
+        brain_region=brain_region,
+    )
+    reference = CellMorphologyFromID(id_str="morphology-id")
+    db_client = Mock()
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity) as resolve:
+        result = reference.metadata_entities(db_client)
+
+    assert result == (species, brain_region)
+    resolve.assert_called_once_with(db_client=db_client)
+
+
+@pytest.mark.parametrize(
+    ("entity", "message"),
+    [
+        (SimpleNamespace(brain_region=SimpleNamespace()), "subject relationship"),
+        (
+            SimpleNamespace(
+                subject=SimpleNamespace(species=None),
+                brain_region=SimpleNamespace(),
+            ),
+            "subject.species relationship",
+        ),
+        (
+            SimpleNamespace(
+                subject=SimpleNamespace(species=SimpleNamespace()),
+                brain_region=None,
+            ),
+            "brain_region relationship",
+        ),
+    ],
+)
+def test_metadata_entities_rejects_missing_relationships(entity, message):
+    reference = CellMorphologyFromID(id_str="morphology-id")
+
+    with (
+        patch.object(CellMorphologyFromID, "entity", return_value=entity),
+        pytest.raises(EntitySDKError, match=message),
+    ):
+        reference.metadata_entities(Mock())
