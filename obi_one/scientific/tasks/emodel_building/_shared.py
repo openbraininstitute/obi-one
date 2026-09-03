@@ -34,7 +34,6 @@ WORKING_DIR_SUBPATHS: tuple[str, ...] = (
     "x86_64",
     "arm64",
     "final.json",
-    "export_emodels_hoc",
     "export_emodels_sonata",
 )
 

@@ -32,6 +32,8 @@ DEFAULT_BOUNDS_FALLBACKS: dict[str, tuple[float, float]] = {
     "g_pas": (1e-5, 6e-5),
     "e_pas": (-95.0, -60.0),
 }
+REVERSAL_POTENTIAL_IONS = {"ek": "k", "ena": "na"}
+DEFAULT_SOMA_REF_LOCATION = 0.5
 
 
 @dataclass(frozen=True)
@@ -56,6 +58,7 @@ class NormalizedIonChannelModel:
     temperature_celsius: int | None
     range_variables: tuple[IonChannelVariable, ...]
     global_variables: tuple[IonChannelVariable, ...]
+    ion_names: frozenset[str]
 
     @property
     def variables(self) -> tuple[IonChannelVariable, ...]:
@@ -114,6 +117,15 @@ def _normalize_variables(
     return tuple(variables)
 
 
+def _normalize_ion_names(entries: Iterable[Any] | None) -> frozenset[str]:
+    names = {
+        str(ion_name).strip().casefold()
+        for entry in entries or []
+        if (ion_name := _read_field(entry, "ion_name"))
+    }
+    return frozenset(names)
+
+
 def normalize_ion_channel_model(
     entity: Any,
     *,
@@ -152,6 +164,7 @@ def normalize_ion_channel_model(
             str(suffix),
             "GLOBAL",
         ),
+        ion_names=_normalize_ion_names(_read_field(neuron_block, "useion")),
     )
 
 
@@ -431,16 +444,40 @@ def _build_global_parameters(
     return parameters
 
 
+def _assigned_ion_names_by_section(
+    selection: ParametersSelection,
+    normalized_models: Mapping[str, NormalizedIonChannelModel],
+) -> dict[str, frozenset[str]]:
+    names_by_section: dict[str, set[str]] = {}
+    for location, assignments in selection.mechanism_regions.items():
+        sections = DEFAULT_SECTION_LIST_CATALOG.expand(location)
+        for assignment in assignments:
+            model = normalized_models.get(assignment.ion_channel_model.id_str)
+            if model is None:
+                continue
+            for section in sections:
+                names_by_section.setdefault(section, set()).update(model.ion_names)
+    return {section: frozenset(names) for section, names in names_by_section.items()}
+
+
 def _build_base_parameters(
     selection: ParametersSelection,
     distributions: Mapping[str, Any],
     bounds_fallbacks: Mapping[str, tuple[float, float]],
+    active_ions_by_section: Mapping[str, frozenset[str]],
 ) -> list[dict[str, Any]]:
     parameters: list[dict[str, Any]] = []
     overlap_rows: dict[tuple[str, str | None], list[SectionListName]] = {}
     for location in _ordered_locations(selection.base_parameters):
         _validate_location(location)
         for name in sorted(selection.base_parameters[location]):
+            required_ion = REVERSAL_POTENTIAL_IONS.get(name)
+            target_sections = DEFAULT_SECTION_LIST_CATALOG.expand(location)
+            if required_ion is not None and any(
+                required_ion not in active_ions_by_section.get(section, frozenset())
+                for section in target_sections
+            ):
+                continue
             selected = selection.base_parameters[location][name]
             _validate_distribution(selected.distribution, distributions)
             mechanism = "pas" if name in {"g_pas", "e_pas"} else None
@@ -603,6 +640,48 @@ def _validate_morphology_capabilities(
     _validate_physical_section_availability(selection, capabilities)
 
 
+def _to_legacy_mechanisms(mechanisms: Iterable[dict[str, Any]]) -> dict[str, dict[str, list[str]]]:
+    """Group compiled mechanism rows by legacy EMC section-list location."""
+    grouped: dict[str, dict[str, list[str]]] = {}
+    for mechanism in mechanisms:
+        location = str(mechanism["location"])
+        names = grouped.setdefault(location, {"mech": []})["mech"]
+        name = str(mechanism["name"])
+        if name not in names:
+            names.append(name)
+    return grouped
+
+
+def _to_legacy_distributions(distributions: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Convert modern distribution rows to the legacy EMC distribution mapping."""
+    legacy: dict[str, dict[str, Any]] = {}
+    for distribution in distributions:
+        name = str(distribution["name"])
+        definition: dict[str, Any] = {"fun": distribution["function"]}
+        if distribution.get("parameters"):
+            definition["parameters"] = distribution["parameters"]
+        soma_ref_location = distribution.get("soma_ref_location", DEFAULT_SOMA_REF_LOCATION)
+        if not math.isclose(soma_ref_location, DEFAULT_SOMA_REF_LOCATION):
+            definition["soma_ref_location"] = soma_ref_location
+        legacy[name] = definition
+    return legacy
+
+
+def _to_legacy_parameters(parameters: Iterable[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Group modern parameter rows into the legacy EMC location mapping."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for parameter in parameters:
+        location = str(parameter["location"])
+        legacy_parameter: dict[str, Any] = {
+            "name": parameter["name"],
+            "val": parameter["value"],
+        }
+        if parameter.get("dist") is not None:
+            legacy_parameter["dist"] = parameter["dist"]
+        grouped.setdefault(location, []).append(legacy_parameter)
+    return grouped
+
+
 def build_params_definition(
     config: Any,
     normalized_models: Mapping[str, NormalizedIonChannelModel],
@@ -610,7 +689,7 @@ def build_params_definition(
     morphology_capabilities: MorphologyCapabilities | None = None,
     bounds_fallbacks: Mapping[str, tuple[float, float]] | None = None,
 ) -> dict[str, Any]:
-    """Compile a complete BluePyEModel params definition from Task 2 config.
+    """Compile a complete legacy BluePyEModel params definition from Task 2 config.
 
     Distribution names are resolved against the built-in standard catalog
     (``STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS``) first, then against the
@@ -623,6 +702,7 @@ def build_params_definition(
     for fallback_name, fallback_bounds in fallbacks.items():
         _validate_bounds(fallback_name, fallback_bounds)
     _validate_morphology_capabilities(selection, morphology_capabilities)
+    active_ions_by_section = _assigned_ion_names_by_section(selection, normalized_models)
     used_distributions = {"uniform"}
     used_distributions.update(
         parameter.distribution
@@ -648,19 +728,27 @@ def build_params_definition(
             raise ValueError(msg)
 
     emitted_distribution_names = sorted(used_distributions | set(custom_distributions))
+    mechanism_rows = _build_mechanisms(selection, normalized_models)
+    distribution_rows = [
+        combined_distributions[name].to_emc_dict(name=name)
+        for name in emitted_distribution_names
+        if name != "uniform"
+    ]
+    parameter_rows = [
+        *_build_global_parameters(selection, normalized_models, fallbacks),
+        *_build_distribution_parameters(selection, combined_distributions, fallbacks),
+        *_build_base_parameters(
+            selection,
+            combined_distributions,
+            fallbacks,
+            active_ions_by_section,
+        ),
+        *_build_mechanism_parameters(
+            selection, normalized_models, combined_distributions, fallbacks
+        ),
+    ]
     return {
-        "morphology": {},
-        "mechanisms": _build_mechanisms(selection, normalized_models),
-        "distributions": [
-            combined_distributions[name].to_emc_dict(name=name)
-            for name in emitted_distribution_names
-        ],
-        "parameters": [
-            *_build_global_parameters(selection, normalized_models, fallbacks),
-            *_build_distribution_parameters(selection, combined_distributions, fallbacks),
-            *_build_base_parameters(selection, combined_distributions, fallbacks),
-            *_build_mechanism_parameters(
-                selection, normalized_models, combined_distributions, fallbacks
-            ),
-        ],
+        "mechanisms": _to_legacy_mechanisms(mechanism_rows),
+        "distributions": _to_legacy_distributions(distribution_rows),
+        "parameters": _to_legacy_parameters(parameter_rows),
     }

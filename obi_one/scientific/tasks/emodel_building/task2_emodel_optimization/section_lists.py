@@ -326,12 +326,20 @@ class SectionListCatalog(BaseModel):
             for modifier in AxonModifier
         }
 
-    def to_recipe_multiloc_map(self) -> dict[str, list[str]]:
-        """Build the BluePyEModel recipe map from validated alias definitions."""
+    def to_alias_expansions(self) -> dict[str, list[str]]:
+        """Build the complete alias expansion map for schema and form metadata."""
         return {
             definition.name: list(definition.expanded_sections)
             for definition in self.definitions
             if definition.is_composite
+        }
+
+    def to_recipe_multiloc_map(self) -> dict[str, list[str]]:
+        """Build the recipe map, excluding the built-in ``all`` alias."""
+        return {
+            definition.name: list(definition.expanded_sections)
+            for definition in self.definitions
+            if definition.is_composite and definition.name != "all"
         }
 
 

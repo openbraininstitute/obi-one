@@ -32,6 +32,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config i
     EModelOptimizationSingleConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
+    NormalizedIonChannelModel,
     build_params_definition,
     resolve_ion_channel_models,
 )
@@ -39,6 +40,46 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.paramete
 from .morphology_preflight import MorphologyCapabilities, preflight_morphology
 
 L = logging.getLogger(__name__)
+
+
+def _tag_local_mechanisms(
+    available_mechanisms: list[Any] | None,
+    normalized_models: dict[str, NormalizedIonChannelModel],
+) -> list[Any] | None:
+    """Attach EntityCore metadata to mechanisms discovered from local ``.mod`` files."""
+    if available_mechanisms is None:
+        return None
+
+    models_by_suffix = {model.nmodl_suffix: model for model in normalized_models.values()}
+    for mechanism in available_mechanisms:
+        model = models_by_suffix.get(mechanism.name)
+        if model is None:
+            continue
+        mechanism.temperature = model.temperature_celsius
+        mechanism.ljp_corrected = model.is_ljp_corrected
+        mechanism.id = model.entity_id
+    return available_mechanisms
+
+
+def _fresh_morph_modifiers(pipeline_settings: Any) -> list[str] | None:
+    """Return a new morphology-modifier list for a single evaluator build.
+
+    ``bluepyemodel.model.model.define_morphology`` rewrites the list it receives in
+    place, replacing each modifier name with its resolved callable. Task 2 builds
+    several evaluators from one access point (optimisation, model storage, plotting and
+    SONATA export), so a shared list keeps only callables after the first build. The branch
+    that also resolves the matching HOC snippet is then skipped, leaving
+    ``morph_modifiers_hoc = [None]`` and breaking the HOC generation inside
+    ``export_emodels_sonata`` with
+    ``TypeError: can only concatenate str (not "NoneType") to str``.
+
+    ``None`` is passed through unchanged so BluePyEModel keeps applying its own
+    default modifier, which it resolves into freshly created lists.
+    """
+    configured = pipeline_settings.morph_modifiers
+    if configured is None:
+        return None
+    return list(configured)
 
 
 def _validation_status_keyword(register_emodel: Any) -> str:
@@ -72,8 +113,8 @@ class EModelOptimizationTask(Task):
     5. Reconstruct the optimisation recipe and merge optimisation settings.
     6. Compile mechanisms via ``nrnivmodl``.
     7. Run ``setup_and_run_optimisation()`` → ``store_best_model()`` →
-       ``plot_models()`` → ``export_emodels_hoc()`` / ``export_emodels_sonata()``
-       using a ``LocalAccessPoint`` with metadata (emodel, etype, mtype, etc.).
+       ``plot_models()`` → ``export_emodels_sonata()`` using a ``LocalAccessPoint``
+       with metadata (emodel, etype, mtype, etc.).
     8. Register ``TaskResult`` + draft ``EModel`` + draft ``MEModel`` +
        ``Derivation`` links.
     """
@@ -101,7 +142,6 @@ class EModelOptimizationTask(Task):
             LocalAccessPoint,
         )
         from bluepyemodel.export_emodel.export_emodel import (  # ruff: ignore[import-outside-top-level]
-            export_emodels_hoc,
             export_emodels_sonata,
         )
         from bluepyemodel.optimisation import (  # ruff: ignore[import-outside-top-level]
@@ -132,11 +172,16 @@ class EModelOptimizationTask(Task):
         trace_ids = self._stage_traces(extraction_tr, coord_root, db_client)
 
         # --- 5. Build and stage the versioned params/recipe artifact bundle ---
+        normalized_models = resolve_ion_channel_models(
+            self.config.parameters_selection.ion_channel_model_references,
+            db_client,
+        )
         artifacts = self._build_artifacts(
             db_client=db_client,
             mtype=mtype,
             morph_filename=morph_filename,
             morphology_capabilities=morphology_capabilities,
+            normalized_models=normalized_models,
         )
         artifacts.write(coord_root)
 
@@ -146,18 +191,30 @@ class EModelOptimizationTask(Task):
         # --- 7. Run optimisation + store + plot + export ---
         # Species and brain region are taken from the morphology entity (cached
         # by the from-id wrapper, so this does not re-fetch).
+        etype_entity = init.etype.entity(db_client=db_client)
+        morphology_entity = self.config.inputs.morphology.entity(db_client=db_client)
+
+        class EntityCoreLocalAccessPoint(LocalAccessPoint):
+            """Use downloaded mechanisms and EntityCore metadata without Nexus lookup."""
+
+            def get_available_mechanisms(self) -> list[Any] | None:
+                mechanisms = super().get_available_mechanisms()
+                return _tag_local_mechanisms(mechanisms, normalized_models)
+
+            def get_model_configuration(self, *args: Any, **kwargs: Any) -> Any:
+                """Hand every evaluator build its own morphology-modifier list."""
+                configuration = super().get_model_configuration(*args, **kwargs)
+                configuration.morph_modifiers = _fresh_morph_modifiers(self.pipeline_settings)
+                return configuration
+
         with _shared.chdir(coord_root):
-            access_point = LocalAccessPoint(
+            access_point = EntityCoreLocalAccessPoint(
                 emodel=emodel,
-                etype=init.etype.entity(db_client=db_client).pref_label,  # ty:ignore[unresolved-attribute]
+                etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
                 mtype=mtype,
                 ttype=None,
-                species=self.config.inputs.morphology.entity(
-                    db_client=db_client
-                ).subject.species.name,  # ty:ignore[unresolved-attribute]
-                brain_region=self.config.inputs.morphology.entity(
-                    db_client=db_client
-                ).brain_region.name,  # ty:ignore[unresolved-attribute]
+                species=morphology_entity.subject.species.name,  # ty:ignore[unresolved-attribute]
+                brain_region=morphology_entity.brain_region.name,  # ty:ignore[unresolved-attribute]
                 iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
@@ -183,12 +240,8 @@ class EModelOptimizationTask(Task):
                 only_validated=False,
             )
 
-            # Export (always — spec says optimisation stage always exports)
-            export_emodels_hoc(
-                access_point=access_point,
-                only_best=False,
-                seeds=seeds,
-            )
+            # Export the SONATA package. It contains the model HOC required by SONATA,
+            # but no standalone export_emodels_hoc output is produced.
             export_emodels_sonata(
                 access_point=access_point,
                 only_best=False,
@@ -264,10 +317,12 @@ class EModelOptimizationTask(Task):
         mtype: str | None,
         morph_filename: str,
         morphology_capabilities: MorphologyCapabilities,
+        normalized_models: dict[str, NormalizedIonChannelModel] | None = None,
     ) -> OptimizationArtifacts:
-        """Resolve entity metadata and build the portable artifact bundle."""
-        references = self.config.parameters_selection.ion_channel_model_references
-        normalized_models = resolve_ion_channel_models(references, db_client)
+        """Build artifacts from EntityCore metadata resolved by entity IDs."""
+        if normalized_models is None:
+            references = self.config.parameters_selection.ion_channel_model_references
+            normalized_models = resolve_ion_channel_models(references, db_client)
         return build_optimization_artifacts(
             self.config,
             normalized_models,
@@ -396,7 +451,7 @@ class EModelOptimizationTask(Task):
         db_client: entitysdk.Client,
         task_result_id: str,
     ) -> None:
-        """Upload recipes, params, HOC, and SONATA to the TaskResult for task3."""
+        """Upload recipes, params, and the SONATA export to the TaskResult."""
         from entitysdk.models import TaskResult  # ruff: ignore[import-outside-top-level]
         from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
             AssetLabel,
@@ -426,23 +481,6 @@ class EModelOptimizationTask(Task):
                 asset_label=AssetLabel.neuron_mechanisms,
             )
             L.info("Uploaded params.json to TaskResult.")
-
-        # HOC file — needed by task3 for final export
-        hoc_dir = coord_root / "export_emodels_hoc"
-        hoc_file = None
-        if hoc_dir.exists():
-            for hf in hoc_dir.rglob("*.hoc"):
-                hoc_file = hf
-                break
-        if hoc_file is not None:
-            db_client.upload_file(
-                entity_id=task_result_id,  # ty:ignore[invalid-argument-type]
-                entity_type=TaskResult,
-                file_path=hoc_file,
-                file_content_type=ContentType.application_hoc,
-                asset_label=AssetLabel.neuron_hoc,
-            )
-            L.info("Uploaded HOC to TaskResult.")
 
         # SONATA directory — needed by task3 for final export
         sonata_dir = coord_root / "export_emodels_sonata"
@@ -578,13 +616,7 @@ class EModelOptimizationTask(Task):
         ion_channel_models = [reference.entity(db_client=db_client) for reference in references]
 
         # --- Register draft EModel via helper ---
-        hoc_dir = coord_root / "export_emodels_hoc"
         hoc_file = None
-        if hoc_dir.exists():
-            for hf in hoc_dir.rglob("*.hoc"):
-                hoc_file = hf
-                break
-
         validation_status_keyword = _validation_status_keyword(register_emodel)
         emodel_entity = register_emodel(
             client=db_client,
