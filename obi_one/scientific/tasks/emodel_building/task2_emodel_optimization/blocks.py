@@ -32,6 +32,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_
     SectionListName,
 )
 
+MIN_CMA_OFFSPRING_SIZE = 2
+MAX_OFFSPRING_SIZE = 200
+
 
 class DistanceDependentDistribution(Block):
     """A BluePyEModel distance-dependent parameter transformation."""
@@ -586,7 +589,7 @@ class ParametersSelection(Block):
             "availability_by_axon_modifier": (
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
-            "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_recipe_multiloc_map(),
+            "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
             SchemaKey.STEP: REGION_ASSIGNMENT_STEP,
             SchemaKey.STEP_ORDER: 2,
         },
@@ -623,7 +626,7 @@ class ParametersSelection(Block):
             "availability_by_axon_modifier": (
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
-            "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_recipe_multiloc_map(),
+            "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
             SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
             SchemaKey.STEP_ORDER: 4,
         },
@@ -887,12 +890,11 @@ class OptimizationParams(Block):
 
     offspring_size: PositiveInt | list[PositiveInt] = Field(
         default=20,
-        le=200,
         title="Offspring size",
         description=(
             "Population size per generation. The L5PC example uses 20; we default"
             " to a small value so the bundled example completes quickly."
-            " Allowed range: 1-200."
+            " Allowed range: 1-200 for IBEA and 2-200 for CMA optimisers."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -941,9 +943,15 @@ class OptimizationParams(Block):
 
     @model_validator(mode="after")
     def validate_centroids(self) -> "OptimizationParams":
-        """Reject non-finite initial centroid values."""
+        """Reject invalid CMA centroids and offspring-size values."""
         if self.centroids is not None and any(not math.isfinite(value) for value in self.centroids):
             msg = "CMA centroids must contain only finite values."
+            raise ValueError(msg)
+        offspring_sizes = (
+            self.offspring_size if isinstance(self.offspring_size, list) else [self.offspring_size]
+        )
+        if any(size > MAX_OFFSPRING_SIZE for size in offspring_sizes):
+            msg = f"offspring_size must be at most {MAX_OFFSPRING_SIZE}."
             raise ValueError(msg)
         return self
 
@@ -968,6 +976,18 @@ class OptimizationParams(Block):
         if optimiser == "SO-CMA" and self.weight_hv is not None:
             msg = "weight_hv is only valid for MO-CMA."
             raise ValueError(msg)
+        if optimiser in {"SO-CMA", "MO-CMA"}:
+            offspring_sizes = (
+                self.offspring_size
+                if isinstance(self.offspring_size, list)
+                else [self.offspring_size]
+            )
+            if any(size < MIN_CMA_OFFSPRING_SIZE for size in offspring_sizes):
+                msg = (
+                    "CMA offspring_size must be at least "
+                    f"{MIN_CMA_OFFSPRING_SIZE} to initialize the optimizer."
+                )
+                raise ValueError(msg)
 
     def to_dict(self, optimiser: str = "MO-CMA") -> dict[str, Any]:
         """Serialize only parameters accepted by the selected BluePyEModel optimizer."""

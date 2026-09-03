@@ -72,6 +72,12 @@ def _available_physical_sections(morphology: Any) -> tuple[PhysicalSectionListNa
         physical_name = _SECTION_TYPE_TO_PHYSICAL_NAME.get(section.type)
         if physical_name is not None:
             present.add(physical_name)
+
+    soma = getattr(morphology, "soma", None)
+    soma_points = getattr(soma, "points", None)
+    if soma_points is not None and len(soma_points) > 0:
+        present.add("somatic")
+
     return tuple(name for name in PHYSICAL_SECTION_LIST_NAMES if name in present)
 
 

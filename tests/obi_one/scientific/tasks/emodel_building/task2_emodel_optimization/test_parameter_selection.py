@@ -1,7 +1,11 @@
+import importlib.util
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from bluepyemodel.model.mechanism_configuration import MechanismConfiguration
+from bluepyemodel.model.model import define_morphology
 from bluepyemodel.model.neuron_model_configuration import NeuronModelConfiguration
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
@@ -34,6 +38,8 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
+    _fresh_morph_modifiers,
+    _tag_local_mechanisms,
     _validation_status_keyword,
     build_optimization_recipe,
 )
@@ -56,7 +62,7 @@ def _scan_config_data(**overrides):
     return config_data
 
 
-def _model_entity():
+def _model_entity(ion_names=("na",)):
     return SimpleNamespace(
         id="icm-1",
         name="Sodium channel",
@@ -67,6 +73,7 @@ def _model_entity():
         neuron_block=SimpleNamespace(
             range=[{"gNa": "S/cm2"}, {"variable": "vshift", "units": "mV"}],
             global_=[{"variable": "ena", "units": "mV"}],
+            useion=[SimpleNamespace(ion_name=ion_name) for ion_name in ion_names],
         ),
     )
 
@@ -138,6 +145,14 @@ def _compiler_fixture():
     return config, reference, normalized
 
 
+def _parameter_rows(params):
+    return [
+        {**parameter, "location": location, "value": parameter["val"]}
+        for location, parameters in params["parameters"].items()
+        for parameter in parameters
+    ]
+
+
 def test_parameter_selection_round_trips_and_serializes_axon_settings():
     config = EModelOptimizationScanConfig.model_validate(
         _scan_config_data(
@@ -170,13 +185,13 @@ def test_section_list_catalog_expands_aliases_and_emits_recipe_map():
         "myelinated" not in sections for sections in catalog.to_recipe_multiloc_map().values()
     )
     assert catalog.to_recipe_multiloc_map() == {
-        "all": ["apical", "basal", "somatic", "axonal"],
         "allact": ["apical", "basal", "somatic", "axonal"],
         "alldend": ["apical", "basal"],
         "allnoaxon": ["apical", "basal", "somatic"],
         "somadend": ["apical", "basal", "somatic"],
         "somaxon": ["axonal", "somatic"],
     }
+    assert "all" not in catalog.to_recipe_multiloc_map()
     assert isinstance(catalog.definitions, tuple)
     assert isinstance(catalog.expand("all"), tuple)
 
@@ -314,10 +329,11 @@ def test_modifier_validation_rejects_stale_myelinated_rows_with_path():
         )
 
 
-def test_recipe_contains_the_canonical_multiloc_map():
+def test_recipe_contains_multiloc_map_without_all_alias():
     recipes = build_optimization_recipe("test", "L5", "morphology.swc", "params.json")
 
     assert recipes["test"]["multiloc_map"] == DEFAULT_SECTION_LIST_CATALOG.to_recipe_multiloc_map()
+    assert "all" not in recipes["test"]["multiloc_map"]
     assert recipes["test"]["params"] == "config/params/params.json"
 
 
@@ -378,6 +394,13 @@ def test_optimization_params_reject_incompatible_algorithm_fields():
         OptimizationParams(eta=10.0).to_dict("MO-CMA")
     with pytest.raises(ValueError, match="only valid for MO-CMA"):
         OptimizationParams(weight_hv=0.5).to_dict("SO-CMA")
+
+
+def test_optimization_params_reject_single_member_cma_population():
+    with pytest.raises(ValueError, match="at least 2"):
+        OptimizationParams(offspring_size=1).to_dict("SO-CMA")
+    with pytest.raises(ValueError, match="at least 2"):
+        OptimizationParams(offspring_size=[1, 20]).to_dict("MO-CMA")
 
 
 @pytest.mark.parametrize(
@@ -467,7 +490,7 @@ def test_overlapping_rows_warn_and_preserve_broad_to_narrow_order(caplog):
 
     params = build_params_definition(config, {})
 
-    cm_rows = [parameter for parameter in params["parameters"] if parameter["name"] == "cm"]
+    cm_rows = [parameter for parameter in _parameter_rows(params) if parameter["name"] == "cm"]
     assert [parameter["location"] for parameter in cm_rows] == ["all", "apical"]
     assert len(cm_rows) == 2
     assert "Overlapping parameter rows" in caplog.text
@@ -516,6 +539,7 @@ def test_ion_channel_metadata_normalizes_mapping_entries_and_units():
     assert normalized.find_variable("gNa").name == "gNa_NaTg"
     assert normalized.find_variable("gNa").units == "S/cm2"
     assert normalized.find_variable("ena").variable_type == "GLOBAL"
+    assert normalized.ion_names == frozenset({"na"})
     assert [variable.name for variable in normalized.variables] == [
         "gNa_NaTg",
         "vshift_NaTg",
@@ -527,17 +551,20 @@ def test_params_builder_emits_complete_deterministic_definition():
     config, _, normalized = _compiler_fixture()
     params = build_params_definition(config, normalized)
 
-    assert params["morphology"] == {}
-    assert [(mechanism["name"], mechanism["location"]) for mechanism in params["mechanisms"]] == [
-        ("NaTg", "apical"),
-        ("NaTg", "somatic"),
-        ("pas", "all"),
-    ]
-    assert [distribution["name"] for distribution in params["distributions"]] == [
-        "decay",
-        "uniform",
-    ]
-    assert [(parameter["name"], parameter["location"]) for parameter in params["parameters"]] == [
+    assert "morphology" not in params
+    assert params["mechanisms"] == {
+        "apical": {"mech": ["NaTg"]},
+        "somatic": {"mech": ["NaTg"]},
+        "all": {"mech": ["pas"]},
+    }
+    assert params["distributions"] == {
+        "decay": {
+            "fun": "math.exp({distance}*{constant})*{value}",
+            "parameters": ["constant"],
+        }
+    }
+    parameter_rows = _parameter_rows(params)
+    assert [(parameter["name"], parameter["location"]) for parameter in parameter_rows] == [
         ("ena_NaTg", "global"),
         ("v_init", "global"),
         ("constant", "distribution_decay"),
@@ -548,12 +575,51 @@ def test_params_builder_emits_complete_deterministic_definition():
         ("vshift_NaTg", "apical"),
         ("gNa_NaTg", "somatic"),
     ]
-    assert params["parameters"][2]["value"] == [-0.1, 0.0]
-    assert params["parameters"][4]["value"] == [-95.0, -60.0]
-    assert params["parameters"][5]["value"] == [1e-5, 6e-5]
-    assert params["parameters"][8]["dist"] == "decay"
-    assert "distribution" not in params["parameters"][8]
-    assert "distribution" not in params["parameters"][7]
+    assert parameter_rows[2]["value"] == [-0.1, 0.0]
+    assert parameter_rows[4]["value"] == [-95.0, -60.0]
+    assert parameter_rows[5]["value"] == [1e-5, 6e-5]
+    assert parameter_rows[8]["dist"] == "decay"
+    assert "distribution" not in parameter_rows[8]
+    assert "distribution" not in parameter_rows[7]
+
+
+def test_params_builder_omits_reversal_potential_without_assigned_ion():
+    reference = IonChannelModelFromID(id_str="icm-1")
+    selection = ParametersSelection(
+        ion_channel_models=(reference,),
+        mechanism_regions={
+            "apical": (
+                MechanismRegionSelection(
+                    ion_channel_model=reference,
+                    parameters={
+                        "gNa": ParameterSelection(
+                            value=OptimizationValue(mode="bounds", bounds=(0.0, 1.0)),
+                        ),
+                    },
+                ),
+            ),
+        },
+    )
+    config = SimpleNamespace(
+        parameters_selection=selection,
+        distance_dependent_distributions={"uniform": UniformDistanceDependentDistribution()},
+    )
+    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+
+    params = build_params_definition(config, normalized)
+
+    parameter_rows = _parameter_rows(params)
+    regional_names = {
+        parameter["name"]
+        for parameter in parameter_rows
+        if parameter["location"] in {"apical", "axonal", "basal", "somatic"}
+    }
+    ena_locations = {
+        parameter["location"] for parameter in parameter_rows if parameter["name"] == "ena"
+    }
+    assert "ena" in regional_names
+    assert ena_locations == {"apical"}
+    assert "ek" not in regional_names
 
 
 def test_params_definition_is_accepted_by_bluepyemodel_parser():
@@ -561,7 +627,7 @@ def test_params_definition_is_accepted_by_bluepyemodel_parser():
     params = build_params_definition(config, normalized)
 
     neuron_configuration = NeuronModelConfiguration()
-    neuron_configuration.init_from_dict(params, {"name": "test-morphology"})
+    neuron_configuration.init_from_legacy_dict(params, {"name": "test-morphology"})
 
     assert neuron_configuration.morphology.name == "test-morphology"
     assert neuron_configuration.mechanism_names == {"NaTg", "pas"}
@@ -602,6 +668,68 @@ def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
             normalized,
             morphology_capabilities=MorphologyCapabilities(has_myelinated=False),
         )
+
+
+def test_registration_error_names_the_missing_entitysdk_package():
+    if importlib.util.find_spec("entitysdk.registration") is not None:
+        pytest.skip("installed EntitySDK provides the registration helpers")
+
+    with pytest.raises(RuntimeError, match=r"entitysdk\.registration"):
+        EModelOptimizationTask.register_output_entities(None, Path(), None)
+
+
+def test_morph_modifiers_survive_repeated_evaluator_builds():
+    model_configuration = SimpleNamespace(morphology=SimpleNamespace(path="cell.swc"))
+
+    # Sharing one list across builds is what broke the HOC export: BluePyEModel rewrites
+    # the list in place, so the second build never resolves the HOC snippet again.
+    shared = MorphologySettings().to_pipeline_settings()["morph_modifiers"]
+    first = define_morphology(model_configuration, morph_modifiers=shared)
+    second = define_morphology(model_configuration, morph_modifiers=shared)
+    assert isinstance(first.morph_modifiers_hoc[0], str)
+    assert second.morph_modifiers_hoc[0] is None
+
+    # Copying per build keeps every HOC snippet that export_emodels_hoc concatenates, and
+    # leaves the access point's own pipeline settings free of resolved callables.
+    pipeline_settings = SimpleNamespace(**MorphologySettings().to_pipeline_settings())
+    builds = [
+        define_morphology(
+            model_configuration,
+            morph_modifiers=_fresh_morph_modifiers(pipeline_settings),
+        )
+        for _ in range(3)
+    ]
+    assert all(isinstance(build.morph_modifiers_hoc[0], str) for build in builds)
+    assert pipeline_settings.morph_modifiers == ["replace_axon_with_taper"]
+
+
+def test_fresh_morph_modifiers_preserves_empty_and_default_selections():
+    without_replacement = MorphologySettings(axon_modifier="none").to_pipeline_settings()
+
+    assert _fresh_morph_modifiers(SimpleNamespace(**without_replacement)) == []
+    # None must stay None so BluePyEModel keeps applying its own default modifier.
+    assert _fresh_morph_modifiers(SimpleNamespace(morph_modifiers=None)) is None
+
+
+def test_local_mechanism_metadata_is_tagged_from_entitycore():
+    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    mechanism = MechanismConfiguration(name="NaTg", location=None)
+
+    tagged = _tag_local_mechanisms([mechanism], normalized)
+    configuration = NeuronModelConfiguration(available_mechanisms=tagged)
+    configuration.add_mechanism(
+        "NaTg",
+        "somatic",
+        version=None,
+        temperature=34,
+        ljp_corrected=False,
+    )
+
+    assert tagged is not None
+    assert tagged[0].temperature == 34
+    assert tagged[0].ljp_corrected is False
+    assert tagged[0].id == "icm-1"
+    assert configuration.mechanism_names == {"NaTg"}
 
 
 def test_stage_params_overwrites_stale_json_and_deduplicates_nested_models(tmp_path, monkeypatch):
@@ -741,7 +869,7 @@ def test_fallback_bounds_resolve_context_specific_parameter_names():
 
     by_name_and_location = {
         (parameter["name"], parameter["location"]): parameter["value"]
-        for parameter in params["parameters"]
+        for parameter in _parameter_rows(params)
     }
     assert by_name_and_location["gNa_NaTg", "apical"] == [0.0, 1.0]
     assert by_name_and_location["constant", "distribution_decay"] == [-0.2, 0.0]
@@ -793,6 +921,30 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
         available_physical_sections=("somatic", "axonal"),
     )
     assert source_myelin.has_myelinated is True
+
+
+def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path, monkeypatch):
+    morphio_type = morphology_preflight.morphio.SectionType
+    axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
+
+    class FakeMorphology:
+        sections = tuple(axon_sections)
+        soma = SimpleNamespace(points=((0.0, 0.0, 0.0),))
+
+    morphology_path = tmp_path / "morphology.swc"
+    morphology_path.write_text("", encoding="utf-8")
+    monkeypatch.setattr(
+        morphology_preflight,
+        "load_morphology_nrn_order",
+        lambda _path: FakeMorphology(),
+    )
+
+    capabilities = morphology_preflight.preflight_morphology(
+        morphology_path,
+        "replace_axon_with_taper",
+    )
+
+    assert capabilities.available_physical_sections == ("somatic", "axonal")
 
 
 def test_morphology_preflight_reports_available_physical_sections_in_catalog_order(
