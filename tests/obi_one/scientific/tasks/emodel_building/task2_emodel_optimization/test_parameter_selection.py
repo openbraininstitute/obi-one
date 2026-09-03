@@ -1524,6 +1524,71 @@ def test_derive_mtype_uses_first_label_and_handles_empty_mtypes():
     assert task._derive_mtype(object()) is None
 
 
+def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monkeypatch):
+    access_points = []
+
+    class FakeLocalAccessPoint:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            access_points.append(self)
+
+    monkeypatch.setattr(
+        "bluepyemodel.access_point.local.LocalAccessPoint",
+        FakeLocalAccessPoint,
+    )
+    monkeypatch.setattr(
+        "bluepyemodel.optimisation.setup_and_run_optimisation",
+        Mock(),
+    )
+    monkeypatch.setattr(
+        "bluepyemodel.optimisation.store_best_model",
+        Mock(),
+    )
+    monkeypatch.setattr(
+        "bluepyemodel.export_emodel.export_emodel.export_emodels_sonata",
+        Mock(),
+    )
+    monkeypatch.setattr(task_module._shared, "compile_mechanisms", Mock())
+    monkeypatch.setattr(task_module._shared, "run_plot_models", Mock())
+    monkeypatch.setattr(task_module, "preflight_morphology", Mock(return_value=object()))
+    monkeypatch.setattr(task_module, "resolve_ion_channel_models", Mock(return_value={}))
+    monkeypatch.setattr(EModelOptimizationTask, "_derive_mtype", Mock(return_value="L5_TTPC"))
+    monkeypatch.setattr(EModelOptimizationTask, "_download_extraction_features", Mock())
+    monkeypatch.setattr(
+        EModelOptimizationTask,
+        "_stage_morphology",
+        Mock(return_value="morphology.swc"),
+    )
+    monkeypatch.setattr(EModelOptimizationTask, "_stage_mechanisms", Mock())
+    monkeypatch.setattr(EModelOptimizationTask, "_stage_traces", Mock(return_value=["trace-1"]))
+    artifacts = Mock()
+    monkeypatch.setattr(EModelOptimizationTask, "_build_artifacts", Mock(return_value=artifacts))
+
+    species = SimpleNamespace(name="Mus musculus")
+    brain_region = SimpleNamespace(name="Somatosensory cortex")
+    metadata_entities = Mock(return_value=(species, brain_region))
+    morphology = SimpleNamespace(metadata_entities=metadata_entities)
+    etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(pref_label="cADpyr")))
+    config = SimpleNamespace(
+        coordinate_output_root=tmp_path,
+        initialize=SimpleNamespace(emodel="test", etype=etype),
+        inputs=SimpleNamespace(target_efeatures=object(), morphology=morphology),
+        morphology_settings=SimpleNamespace(axon_modifier="none"),
+        parameters_selection=SimpleNamespace(ion_channel_model_references=()),
+        optimization_settings=SimpleNamespace(seed=7),
+    )
+    task = EModelOptimizationTask.model_construct(config=config)
+
+    result = task.execute(db_client=None)
+
+    assert result == tmp_path.resolve()
+    assert len(access_points) == 1
+    assert access_points[0].kwargs["species"] == "Mus musculus"
+    assert access_points[0].kwargs["brain_region"] == "Somatosensory cortex"
+    metadata_entities.assert_called_once_with(db_client=None)
+    artifacts.write.assert_called_once_with(tmp_path.resolve())
+
+
 def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path):
     final_path = tmp_path / "final.json"
     defaults = {

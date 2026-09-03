@@ -188,10 +188,9 @@ class EModelOptimizationTask(Task):
         _shared.compile_mechanisms(coord_root / "mechanisms")
 
         # --- 7. Run optimisation + store + plot + export ---
-        # Species and brain region are taken from the morphology entity (cached
-        # by the from-id wrapper, so this does not re-fetch).
+        # Species and brain region are taken from the morphology entity.
         etype_entity = init.etype.entity(db_client=db_client)
-        morphology_entity = self.config.inputs.morphology.entity(db_client=db_client)
+        morphology_metadata = self.config.inputs.morphology.metadata_entities(db_client=db_client)
 
         class EntityCoreLocalAccessPoint(LocalAccessPoint):
             """Use downloaded mechanisms and EntityCore metadata without Nexus lookup."""
@@ -212,8 +211,8 @@ class EModelOptimizationTask(Task):
                 etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
                 mtype=mtype,
                 ttype=None,
-                species=morphology_entity.subject.species.name,  # ty:ignore[unresolved-attribute]
-                brain_region=morphology_entity.brain_region.name,  # ty:ignore[unresolved-attribute]
+                species=morphology_metadata[0].name,
+                brain_region=morphology_metadata[1].name,
                 iteration_tag=None,
                 recipes_path="./config/recipes.json",
             )
@@ -518,8 +517,9 @@ class EModelOptimizationTask(Task):
         # Species and brain region come from the morphology entity, so the
         # registered emodel/me-model inherit the morphology's provenance.
         morph_entity = self.config.inputs.morphology.entity(db_client=db_client)
-        brain_region_entity = morph_entity.brain_region  # ty:ignore[unresolved-attribute]
-        species_entity = morph_entity.subject.species  # ty:ignore[unresolved-attribute]
+        species_entity, brain_region_entity = self.config.inputs.morphology.metadata_entities(
+            db_client=db_client
+        )
 
         # Fetch license (CC-BY-4.0)
         license_entity = db_client.search_entity(
