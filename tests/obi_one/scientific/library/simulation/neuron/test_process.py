@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import pytest
@@ -200,19 +201,24 @@ def test_compile_neuron_mechanisms(mock_run_and_log, tmp_path):
     )
 
 
-@patch("obi_one.scientific.library.simulation.neuron.process.find_file")
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
-def test_compile_neurodamus_mechanisms(mock_run_and_log, mock_find_file, tmp_path):
+def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
     output_dir = tmp_path / "output"
     output_dir.mkdir()
-    mock_run_and_log.return_value.stdout = "compilation done"
 
     special_path = _touch(output_dir / "special")
     libnrnmech_path = _touch(output_dir / "libnrnmech.so")
     libcorenrnmech_path = _touch(output_dir / "libcorenrnmech.so")
-    mock_find_file.side_effect = [special_path, libnrnmech_path, libcorenrnmech_path]
+
+    mock_run_and_log.return_value.stdout = json.dumps(
+        {
+            "NRNMECH_LIB_PATH": str(libnrnmech_path),
+            "SPECIALS_PATH": str(special_path.parent),
+            "CORENEURONLIB": str(libcorenrnmech_path),
+        }
+    )
 
     mechanism_build = test_module.compile_mechanisms(
         output_dir=output_dir,
@@ -234,8 +240,14 @@ def test_compile_neurodamus_mechanisms(mock_run_and_log, mock_find_file, tmp_pat
             "--with-internal-mods",
             "--simulator",
             "coreneuron",
+            "--output-type",
+            "json",
         ],
-        cwd=str(output_dir),
+        cwd=output_dir,
+        env={
+            "PATH": "/opt/obi/:/code/.venv/bin:/usr/local/bin:/usr/local/sbin:"
+            "/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        },
     )
 
 

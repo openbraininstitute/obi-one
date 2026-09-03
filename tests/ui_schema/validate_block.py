@@ -352,14 +352,20 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
-    schema_union = schema.get("anyOf", [])
+    schema_union = schema.get("anyOf")
+    schema_union = [{"$ref": schema.get("$ref")}] if schema_union is None else list(schema_union)
 
-    if (refref := schema_union[0].get("$ref")) is None:
+    non_null_refs = [
+        union_member.get("$ref") for union_member in schema_union if union_member.get("$ref")
+    ]
+    if not non_null_refs:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
-            "be a union with a 'BlockReference' as first element"
+            "be a BlockReference or a union with a BlockReference as first element"
         )
         raise ValidationError(msg) from None
+
+    allows_null = len(schema_union) == 2 and schema_union[1].get("type") == "null"
 
     # Each non-null member of the union is a $ref to a BlockReference whose
     # default `type` is its class name. Collect these and check they correspond
@@ -383,20 +389,23 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+            f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+            "failed to validate a "
             f"reference object {validated_ref}"
         )
         raise ValidationError(msg) from None
 
-    try:
-        validator.validate(None, schema)
+    if allows_null:
+        try:
+            validator.validate(None, schema)
 
-    except ValidationError:
-        msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
-            "'null' value"
-        )
-        raise ValidationError(msg) from None
+        except ValidationError:
+            msg = (
+                f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+                "failed to validate a "
+                "'null' value"
+            )
+            raise ValidationError(msg) from None
 
 
 def validate_neuron_set_combination(schema: dict, param: str, ref: str) -> None:
@@ -832,10 +841,30 @@ def validate_nested_block_element(schema: dict, param: str, ref: str) -> None:
         raise TypeError(msg)
 
 
+def validate_block_union(schema: dict, param: str, ref: str) -> None:
+    if schema.get("oneOf") is None:
+        msg = f"Validation error at {ref}: block_union param {param} must have 'oneOf'"
+        raise ValueError(msg)
+
+    for block_schema in schema.get("oneOf"):
+        block_ref = block_schema.get("$ref")
+        resolved_block_schema = block_schema
+
+        if block_ref:
+            resolved_block_schema = {
+                **block_schema,
+                **resolve_ref(openapi_schema, block_ref),
+            }
+
+        validate_block(resolved_block_schema, block_ref)
+
+
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, too-many-statements, complex-structure]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
-        case UIElement.BLOCK_SINGLE | UIElement.BLOCK_DICTIONARY | UIElement.BLOCK_UNION:
+        case UIElement.BLOCK_SINGLE | UIElement.BLOCK_DICTIONARY:
             validate_nested_block_element(schema, param, ref)
+        case UIElement.BLOCK_UNION:
+            validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:

@@ -28,35 +28,45 @@ def submit_circuit_validation_job(
     obi_one_repo: str = DEFAULT_OBI_ONE_REPO,
     app_version: str | None = None,
     force: bool = False,
+    generate_assets_on_success: bool = True,
 ) -> bool:
     """Submit a circuit validation job to the launch-system.
 
     The job runs on ``python_3_12_openmpi5_neuron9_neurodamus``, stages the
     circuit, compiles MOD files, runs snap validation, and updates lifecycle
-    status. On success it callbacks to the generate-assets HTTP endpoint.
+    status. When ``generate_assets_on_success`` is True, a successful run
+    callbacks to the generate-assets HTTP endpoint.
 
     Args:
         ls_client: Launch-system HTTP client (authenticated).
         circuit_id: Circuit entity ID to validate.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
-        api_url: Base URL of the obi-one API (for the generate-assets callback).
+        api_url: Base URL of the obi-one API, already including the ``/api/obi-one``
+            path prefix (e.g. ``https://staging.cell-a.openbraininstitute.org/api/obi-one``);
+            used to build the generate-assets callback URL.
         compute_cell: Compute cell for the launch-system job (from the vlab).
         obi_one_repo: Git repository URL for the launch script checkout.
         app_version: App version used to form ``tag:<version>``; defaults to ``0.0.0``.
         force: When True, validate even if the circuit is not in ``draft`` status.
+        generate_assets_on_success: When True, trigger asset generation after a
+            successful validation. Disable for standalone re-validation.
 
     Returns:
         True if the launch-system accepted the job, False otherwise.
     """
-    asset_gen_callback = {
-        "action_type": "http_request_with_token",
-        "event_type": "job_on_success",
-        "config": {
-            "url": f"{api_url}/api/obi-one/declared/circuit/{circuit_id}/generate-assets",
-            "method": "POST",
-        },
-    }
+    callbacks = []
+    if generate_assets_on_success:
+        callbacks.append(
+            {
+                "action_type": "http_request_with_token",
+                "event_type": "job_on_success",
+                "config": {
+                    "url": (f"{api_url}/declared/circuit/{circuit_id}/generate-assets"),
+                    "method": "POST",
+                },
+            }
+        )
     job_data = {
         "code": {
             "type": "python_repository",
@@ -80,7 +90,7 @@ def submit_circuit_validation_job(
             f"--force {str(force).lower()}",
         ],
         "project_id": str(project_id),
-        "callbacks": [asset_gen_callback],
+        "callbacks": callbacks,
     }
 
     response = ls_client.post(url="/job", json=job_data)

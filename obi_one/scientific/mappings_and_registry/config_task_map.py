@@ -6,6 +6,11 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
 )
+from obi_one.scientific.tasks.build_synaptome import (
+    MEModelSynapticModelPlacementScanConfig,
+    MEModelSynapticModelPlacementSingleConfig,
+    MEModelSynapticModelPlacementTask,
+)
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,
     CircuitExtractionSingleConfig,
@@ -340,6 +345,18 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         task_cls=CircuitSimulationExecutionTask,
         single_config_cls=CircuitSimulationExecutionSingleConfig,
         asset_label=None,
+    ),
+    TaskType.circuit_single_build: TaskRegistration(
+        task_cls=MEModelSynapticModelPlacementTask,
+        single_config_cls=MEModelSynapticModelPlacementSingleConfig,
+        scan_config_cls=MEModelSynapticModelPlacementScanConfig,
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.circuit_single_build__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.circuit_single_build__config_generation
+        ),
+        single_task_config_type=TaskConfigType.circuit_single_build__config,
+        single_task_activity_type=TaskActivityType.circuit_single_build__execution,
     ),
 }
 

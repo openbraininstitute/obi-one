@@ -182,19 +182,28 @@ def validate_scan_config_dependendent_block_components(block_schema, ref, form):
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
     additional_properties = schema.get("additionalProperties", {})
+    if not isinstance(additional_properties, dict):
+        msg = (
+            f"Validation error at {config_ref}: block_dictionary {key} must have an object "
+            "schema in additionalProperties"
+        )
+        raise TypeError(msg)
+
     block_schemas = additional_properties.get("oneOf")
-    direct_schema = block_schemas is None
-    if direct_schema:
-        if not isinstance(additional_properties, dict) or not (
-            additional_properties.get("$ref")
-            or isinstance(additional_properties.get("properties"), dict)
-        ):
+    direct_schema = False
+    if block_schemas is None:
+        block_ref = additional_properties.get("$ref")
+        if block_ref is not None:
+            block_schemas = [{"$ref": block_ref}]
+        elif isinstance(additional_properties.get("properties"), dict):
+            block_schemas = [additional_properties]
+            direct_schema = True
+        else:
             msg = (
-                f"Validation error at {config_ref}: block_dictionary {key} must have a block "
-                "schema in additionalProperties"
+                f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf', "
+                "'$ref', or an inline object schema in additionalProperties"
             )
             raise ValueError(msg)
-        block_schemas = [additional_properties]
 
     for block_schema in block_schemas:
         ref = block_schema.get("$ref")

@@ -352,6 +352,7 @@ def validate_circuit_endpoint(
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
         compute_cell=compute_cell,
         force=force,
+        generate_assets_on_success=False,
     )
 
     return {"circuit_id": str(circuit_id), "status": "validation_triggered"}

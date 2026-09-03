@@ -42,6 +42,7 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
+    "BuildSynaptomeResult",
     "CellMorphologyFromID",
     "Circuit",
     "CircuitExtractionScanConfig",
@@ -142,6 +143,9 @@ __all__ = [
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
     "MEModelStimulusUnion",
+    "MEModelSynapticModelPlacementScanConfig",
+    "MEModelSynapticModelPlacementSingleConfig",
+    "MEModelSynapticModelPlacementTask",
     "MEModelWithSynapsesCircuitFromID",
     "MEModelWithSynapsesCircuitSimulationScanConfig",
     "MEModelWithSynapsesCircuitSimulationSingleConfig",
@@ -153,6 +157,7 @@ __all__ = [
     "MorphologyDecontainerizationSingleConfig",
     "MorphologyDecontainerizationTask",
     "MorphologyLocationPoint",
+    "MorphologyLocationVoltageRecording",
     "MorphologyLocationsReference",
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
@@ -255,6 +260,7 @@ __all__ = [
     "WeightChangeDelayedInterNeuronSetSynapticManipulation",
     "XYZExtracellularLocations",
     "add_node_set_to_circuit",
+    "build_synaptome",
     "deserialize_obi_object_from_json_data",
     "deserialize_obi_object_from_json_file",
     "get_single_configs_task_type",
@@ -380,6 +386,9 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllVirtualNeurons,
 )
 from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.morphology_location import (
+    MorphologyLocationVoltageRecording,
+)
 from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
@@ -479,6 +488,13 @@ from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsSingleConfig,
     BasicConnectivityPlotsTask,
+)
+from obi_one.scientific.tasks.build_synaptome import (
+    BuildSynaptomeResult,
+    MEModelSynapticModelPlacementScanConfig,
+    MEModelSynapticModelPlacementSingleConfig,
+    MEModelSynapticModelPlacementTask,
+    build_synaptome,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,

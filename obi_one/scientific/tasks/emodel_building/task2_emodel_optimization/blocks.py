@@ -72,6 +72,7 @@ class DistanceDependentDistribution(Block):
             "(excluding {value} and {distance}). Used by BluePyEModel's "
             "ParameterScaler."
         ),
+        json_schema_extra={SchemaKey.UI_ENABLED: False},
     )
 
     @model_validator(mode="after")

@@ -1,8 +1,8 @@
 import io
 import logging
 import os
+import tempfile
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import ClassVar
 
 import entitysdk
@@ -20,6 +20,12 @@ from pydantic import PrivateAttr
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 
 L = logging.getLogger(__name__)
+
+_MORPHOLOGY_ASSET_FORMATS = (
+    (ContentType.application_asc, ".asc"),
+    (ContentType.application_swc, ".swc"),
+    (ContentType.application_x_hdf5, ".h5"),
+)
 
 
 class CellMorphologyFromID(EntityFromID):
@@ -181,18 +187,42 @@ class CellMorphologyFromID(EntityFromID):
         self,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> morphio.Morphology:
-        """Load the morphology's SWC asset as a MorphIO morphology."""
+        """Download a supported morphology asset and load it with MorphIO."""
         if self._morphio_morphology is None:
-            with NamedTemporaryFile(
-                mode="w",
-                encoding="utf-8",
-                suffix=".swc",
-                delete=False,
-            ) as swc_file:
-                swc_file.write(self.swc_file_content(db_client))
-                swc_path = Path(swc_file.name)
-            try:
-                self._morphio_morphology = morphio.Morphology(swc_path)
-            finally:
-                swc_path.unlink(missing_ok=True)
+            entity = self.entity(db_client=db_client)
+            for content_type, suffix in _MORPHOLOGY_ASSET_FORMATS:
+                asset = next(
+                    (
+                        asset
+                        for asset in entity.assets
+                        if asset.content_type == content_type
+                        and (
+                            content_type != ContentType.application_x_hdf5
+                            or asset.label == AssetLabel.morphology
+                        )
+                    ),
+                    None,
+                )
+                if asset is None:
+                    continue
+                if asset.id is None:
+                    msg = "Morphology asset must have an id."
+                    raise ValueError(msg)
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / f"morphology{suffix}"
+                    db_client.download_file(
+                        entity_id=entity.id,
+                        entity_type=self.entitysdk_class,
+                        asset_id=asset.id,
+                        output_path=path,
+                    )
+                    self._morphio_morphology = morphio.Morphology(
+                        path, options=morphio.Option.nrn_order
+                    )
+                break
+
+            if self._morphio_morphology is None:
+                msg = "Morphology entity has no ASC, SWC, or H5 morphology asset."
+                raise EntitySDKError(msg)
+
         return self._morphio_morphology

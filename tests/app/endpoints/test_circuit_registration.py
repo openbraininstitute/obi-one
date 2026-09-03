@@ -184,6 +184,7 @@ class TestValidateCircuitEndpoint:
             assert resp.json()["status"] == "validation_triggered"
             mock_trigger.assert_called_once()
             assert mock_trigger.call_args.kwargs["force"] is True
+            assert mock_trigger.call_args.kwargs["generate_assets_on_success"] is False
             assert mock_trigger.call_args.kwargs["compute_cell"] == "cell_a"
         finally:
             app.dependency_overrides.pop(get_client, None)
@@ -213,6 +214,7 @@ class TestValidateCircuitEndpoint:
             assert resp.status_code == 200
             mock_trigger.assert_called_once()
             assert mock_trigger.call_args.kwargs["force"] is False
+            assert mock_trigger.call_args.kwargs["generate_assets_on_success"] is False
             assert mock_trigger.call_args.kwargs["compute_cell"] == "cell_b"
         finally:
             app.dependency_overrides.pop(get_client, None)
