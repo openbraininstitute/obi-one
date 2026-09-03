@@ -4,6 +4,7 @@ import math
 from collections.abc import Mapping
 from typing import Annotated, Any, ClassVar, Literal
 
+from entitysdk.types import EntityType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -292,17 +293,17 @@ def resolve_distance_dependent_distribution(
     return custom_distributions.get(name)
 
 
-# The Figma "Mechanisms" card is a 3-step wizard. All three steps share the
-# "Mechanisms" GROUP (see BlockGroup.INPUTS in config.py); STEP/STEP_ORDER order
-# sub-steps within that one group. Distribution selection happens per parameter
-# row (see `ParameterSelection.distribution`) against the combined standard +
-# custom distribution catalog, so it is not a wizard sub-step of its own.
+# The Figma "Mechanisms" card is a 4-step wizard. Mechanism data and parameter
+# values live in the root-level ``emodel_optimisation_parameters`` field. Distribution
+# declarations remain a top-level sibling but are displayed as step 3 of this wizard.
 MECHANISM_SELECTION_STEP = "Mechanism Selection"
 REGION_ASSIGNMENT_STEP = "Region assignment"
+DISTRIBUTION_STEP = "Distribution"
 PARAMETERS_SELECTION_STEP = "Parameters selection"
 MECHANISMS_WIZARD_STEPS: tuple[str, ...] = (
     MECHANISM_SELECTION_STEP,
     REGION_ASSIGNMENT_STEP,
+    DISTRIBUTION_STEP,
     PARAMETERS_SELECTION_STEP,
 )
 
@@ -389,7 +390,10 @@ class GlobalParameterSelection(Block):
         default=None,
         title="Ion channel model",
         description="Optional source entity when the global variable belongs to a mechanism.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
+        },
     )
 
 
@@ -440,7 +444,10 @@ class MechanismRegionSelection(Block):
     ion_channel_model: IonChannelModelFromID = Field(
         title="Ion channel model",
         description="IonChannelModel entity whose mechanism is active in this region.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
+        },
     )
     parameters: dict[str, ParameterSelection] = Field(
         default_factory=dict,
@@ -462,8 +469,8 @@ class MorphologySettings(Block):
         description=(
             "BluePyEModel axon strategy. The default tapered modifier creates a myelinated "
             "section list. Legacy and BluePyOpt replacement do not create one; no replacement "
-            "leaves source myelination unknown. Select a different modifier to update the "
-            "available section-list choices."
+            "preserves the source morphology, but staged SWC preflight cannot establish a "
+            "populated myelinated section list."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
@@ -479,7 +486,7 @@ class MorphologySettings(Block):
 
     @property
     def expected_myelinated(self) -> bool | None:
-        """Expected myelination produced by the selected strategy."""
+        """Expected myelination derived from the selected modifier."""
         if self.axon_modifier in {
             AxonModifier.REPLACE_AXON_WITH_TAPER,
             AxonModifier.REPLACE_AXON_OLFACTORY_BULB,
@@ -549,14 +556,193 @@ def _default_base_parameters() -> dict[SectionListName, dict[str, ParameterSelec
     }
 
 
-class ParametersSelection(Block):
-    """Mechanisms and values selected for the optimization params compiler.
+def _duplicate_entity_ids(models: tuple[IonChannelModelFromID, ...]) -> None:
+    """Raise if ``models`` contains duplicate entity IDs."""
+    selected_ids = {model.id_str for model in models}
+    if len(selected_ids) != len(models):
+        msg = "ion_channel_models must not contain duplicate entity IDs."
+        raise ValueError(msg)
 
-    Rendered by the UI as the "Mechanisms" card, expanded into the 3-step wizard
-    listed in ``MECHANISMS_WIZARD_STEPS``: Mechanism Selection, Region assignment,
-    and Parameters selection. Distribution selection is a per-row choice (see
-    ``ParameterSelection.distribution``) against the combined standard + custom
-    catalog, not a separate wizard step.
+
+def _validate_mechanism_region_references(
+    ion_channel_models: tuple[IonChannelModelFromID, ...],
+    mechanism_regions: Mapping[SectionListName, tuple["MechanismRegionSelection", ...]],
+) -> None:
+    """Ensure every mechanism-region assignment references a catalogued model."""
+    selected_ids = {model.id_str for model in ion_channel_models}
+    for location, selections in mechanism_regions.items():
+        if location not in REGIONAL_PARAMETER_LOCATIONS:
+            msg = f"Unsupported mechanism region: {location}."
+            raise ValueError(msg)
+        for selection in selections:
+            if selection.ion_channel_model.id_str not in selected_ids:
+                msg = "Every mechanism region entity must also be listed in ion_channel_models."
+                raise ValueError(msg)
+
+
+def _validate_base_parameter_locations(
+    base_parameters: Mapping[SectionListName, Mapping[str, "ParameterSelection"]],
+) -> None:
+    """Ensure ``base_parameters`` keys are valid regional section-list locations."""
+    for location in base_parameters:
+        if location not in REGIONAL_PARAMETER_LOCATIONS:
+            msg = f"Unsupported base parameter region: {location}."
+            raise ValueError(msg)
+
+
+def _validate_global_parameter_references(
+    ion_channel_models: tuple[IonChannelModelFromID, ...],
+    global_parameters: Mapping[str, "GlobalParameterSelection"],
+) -> None:
+    """Ensure global-parameter mechanism references were also catalogued."""
+    selected_ids = {model.id_str for model in ion_channel_models}
+    for name, selection in global_parameters.items():
+        if (
+            selection.ion_channel_model is not None
+            and selection.ion_channel_model.id_str not in selected_ids
+        ):
+            msg = f"Global parameter '{name}' source must also be listed in ion_channel_models."
+            raise ValueError(msg)
+
+
+class MechanismsBySectionList(Block):
+    """Mechanism catalogue and region assignments for the GUI workflow."""
+
+    ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
+        default_factory=tuple,
+        title="Ion channel models",
+        description=(
+            "Ion channel model entities available for assignment to morphology section lists."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
+            SchemaKey.STEP: MECHANISM_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 1,
+        },
+    )
+    mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
+        default_factory=dict,
+        title="Mechanisms by section list",
+        description=(
+            "Assign selected ion channel models to BluePyEModel section lists. The same model "
+            "may be assigned to multiple section lists."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.SINGULAR_NAME: "Mechanism Section List",
+            "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
+            "availability_by_axon_modifier": (
+                DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
+            ),
+            "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
+            SchemaKey.STEP: REGION_ASSIGNMENT_STEP,
+            SchemaKey.STEP_ORDER: 2,
+        },
+    )
+
+    @model_validator(mode="after")
+    def validate_mechanism_filing(self) -> "MechanismsBySectionList":
+        """Validate mechanism filing without requiring conversion to ``ParametersSelection``."""
+        _duplicate_entity_ids(self.ion_channel_models)
+        _validate_mechanism_region_references(self.ion_channel_models, self.mechanism_regions)
+        return self
+
+
+class EModelOptimisationParameters(Block):
+    """Root-level Task 2 mechanism and optimization-parameter configuration."""
+
+    steps: ClassVar[tuple[str, ...]] = MECHANISMS_WIZARD_STEPS
+
+    mechanisms: MechanismsBySectionList = Field(
+        default_factory=MechanismsBySectionList,
+        title="Mechanisms",
+        description=(
+            "Select ion channel models, assign them to section lists, and configure their "
+            "optimization parameters."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE},
+    )
+    global_parameters: dict[str, GlobalParameterSelection] = Field(
+        default_factory=_default_global_parameters,
+        title="Global parameters",
+        description="Editable global values such as v_init and celsius.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.SINGULAR_NAME: "Global Parameter",
+            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 4,
+        },
+    )
+    base_parameters: dict[SectionListName, dict[str, ParameterSelection]] = Field(
+        default_factory=_default_base_parameters,
+        title="Base and passive parameters",
+        description="Editable built-in parameters assigned to section lists.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.SINGULAR_NAME: "Base Parameter Region",
+            "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
+            "availability_by_axon_modifier": (
+                DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
+            ),
+            "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
+            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 4,
+        },
+    )
+    distribution_parameters: dict[str, dict[str, OptimizationValue]] = Field(
+        default_factory=dict,
+        title="Distribution parameters",
+        description="Values for placeholders declared by sibling distance-dependent distributions.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.SINGULAR_NAME: "Distribution Parameter",
+            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
+            SchemaKey.STEP_ORDER: 4,
+        },
+    )
+
+    def to_parameters_selection(self) -> "ParametersSelection":
+        """Return the canonical selection consumed by validation and compilation."""
+        return ParametersSelection(
+            ion_channel_models=self.mechanisms.ion_channel_models,
+            mechanism_regions=self.mechanisms.mechanism_regions,
+            global_parameters=self.global_parameters,
+            base_parameters=self.base_parameters,
+            distribution_parameters=self.distribution_parameters,
+        )
+
+    @classmethod
+    def from_parameters_selection(
+        cls, selection: "ParametersSelection"
+    ) -> "EModelOptimisationParameters":
+        """Convert the legacy selection block to the root-level representation."""
+        return cls(
+            mechanisms=MechanismsBySectionList(
+                ion_channel_models=selection.ion_channel_models,
+                mechanism_regions=selection.mechanism_regions,
+            ),
+            global_parameters=selection.global_parameters,
+            base_parameters=selection.base_parameters,
+            distribution_parameters=selection.distribution_parameters,
+        )
+
+    @model_validator(mode="after")
+    def validate_cross_field_references(self) -> "EModelOptimisationParameters":
+        """Validate global/base parameter references without requiring conversion."""
+        _validate_base_parameter_locations(self.base_parameters)
+        _validate_global_parameter_references(
+            self.mechanisms.ion_channel_models,
+            self.global_parameters,
+        )
+        return self
+
+
+class ParametersSelection(Block):
+    """Canonical internal selection consumed by Task 2 validation and compilation.
+
+    The public GUI configuration is ``EModelOptimisationParameters``. This model is
+    retained as the normalized compatibility representation for existing runtime code.
     """
 
     steps: ClassVar[tuple[str, ...]] = MECHANISMS_WIZARD_STEPS
@@ -570,6 +756,7 @@ class ParametersSelection(Block):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
             SchemaKey.STEP: MECHANISM_SELECTION_STEP,
             SchemaKey.STEP_ORDER: 1,
         },
@@ -794,52 +981,37 @@ class ParametersSelection(Block):
     @model_validator(mode="after")
     def validate_selection_references(self) -> "ParametersSelection":
         """Validate locations and ensure regional references were selected."""
-        selected_ids = {model.id_str for model in self.ion_channel_models}
-        if len(selected_ids) != len(self.ion_channel_models):
-            msg = "ion_channel_models must not contain duplicate entity IDs."
-            raise ValueError(msg)
-        for location, selections in self.mechanism_regions.items():
-            if location not in REGIONAL_PARAMETER_LOCATIONS:
-                msg = f"Unsupported mechanism region: {location}."
-                raise ValueError(msg)
-            for selection in selections:
-                if selection.ion_channel_model.id_str not in selected_ids:
-                    msg = "Every mechanism region entity must also be listed in ion_channel_models."
-                    raise ValueError(msg)
-        for name, selection in self.global_parameters.items():
-            if (
-                selection.ion_channel_model is not None
-                and selection.ion_channel_model.id_str not in selected_ids
-            ):
-                msg = f"Global parameter '{name}' source must also be listed in ion_channel_models."
-                raise ValueError(msg)
-        for location in self.base_parameters:
-            if location not in REGIONAL_PARAMETER_LOCATIONS:
-                msg = f"Unsupported base parameter region: {location}."
-                raise ValueError(msg)
+        _duplicate_entity_ids(self.ion_channel_models)
+        _validate_mechanism_region_references(self.ion_channel_models, self.mechanism_regions)
+        _validate_global_parameter_references(self.ion_channel_models, self.global_parameters)
+        _validate_base_parameter_locations(self.base_parameters)
         return self
 
 
 class OptimizationInputs(Block):
-    """Entity inputs and mechanism selections for the Task 2 Inputs group."""
+    """Entity inputs for the Task 2 Inputs group."""
 
     target_efeatures: TaskResultFromID = Field(
         title="Target EFeatures",
         description=(
-            "TaskResult entity from the 01_efeature_extraction stage. Assets"
-            " (extracted features, recipes, targets config) are downloaded from"
-            " this entity to seed the optimisation working directory."
+            "TaskResult entity from the 01_efeature_extraction stage. Its extracted-features "
+            "asset is staged as the optimization target configuration."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.task_result},
+        },
     )
     morphology: CellMorphologyFromID = Field(
         title="Cell morphology",
         description=(
-            "Morphology entity whose SWC/ASC asset is staged into"
-            " ``./morphologies/``. The m-type, species and brain region are all"
-            " derived from this entity."
+            "CellMorphology entity whose SWC asset is staged into ``./morphologies/``. "
+            "The m-type, species, and brain region are derived from this entity."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.cell_morphology},
+        },
     )
 
 

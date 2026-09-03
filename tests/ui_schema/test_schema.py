@@ -54,10 +54,13 @@ def validate_root_element(
             validate_block_dictionary(schema, element, config_ref, form)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
+        case UIElement.EMODEL_OPTIMISATION_PARAMETERS:
+            validate_emodel_optimisation_parameters(schema, element, ref)
         case _:
             msg = (
                 f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
-                f" 'block_dictionary', or 'block_union'. Got: {ui_element}"
+                f" 'block_dictionary', 'block_union', or 'emodel_optimisation_parameters'."
+                f" Got: {ui_element}"
             )
             raise ValueError(msg)
 
@@ -231,6 +234,32 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     if not isinstance(schema.get("properties"), dict):
         msg = f"Validation error at {ref}: block_single {key} must have 'properties'"
         raise TypeError(msg)
+
+    validate_block(schema, ref)
+
+
+def validate_emodel_optimisation_parameters(schema: dict, key: str, ref: str) -> None:
+    """Validate the root-level Task 2 mechanisms/optimization-parameter workflow element.
+
+    Structurally this root element is a nested-block object (like ``block_single``),
+    but it additionally must carry a ``mechanisms`` property (the
+    ``MechanismsBySectionList`` catalogue and section-list filing) so that clients can
+    distinguish it from a generic ``block_single`` root field.
+    """
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters {key} must have "
+            "'properties'"
+        )
+        raise TypeError(msg)
+
+    if "mechanisms" not in properties:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters {key} must define a "
+            "'mechanisms' property (MechanismsBySectionList)."
+        )
+        raise ValueError(msg)
 
     validate_block(schema, ref)
 

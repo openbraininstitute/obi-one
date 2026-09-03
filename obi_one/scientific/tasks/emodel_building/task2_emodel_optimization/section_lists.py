@@ -82,7 +82,8 @@ AXON_MODIFIER_DESCRIPTIONS: dict[str, str] = {
         "Use BluePyOpt's built-in two-section axon replacement without synthesized myelin."
     ),
     AxonModifier.NONE.value: (
-        "Keep the imported morphology without an axon replacement; source myelination is unknown."
+        "Keep the imported morphology without an axon replacement. The staged SWC path cannot "
+        "establish a populated myelinated section list."
     ),
 }
 
@@ -110,7 +111,7 @@ class SectionListDefinition(BaseModel):
     requires_myelinated: bool = Field(
         default=False,
         title="Requires myelinated sections",
-        description="Whether the choice requires a synthesized or source myelinated list.",
+        description="Whether the choice requires a populated myelinated section list.",
     )
     display_order: int = Field(
         default=0,
@@ -275,14 +276,14 @@ class SectionListCatalog(BaseModel):
                 name=definition.name,
                 label=definition.label,
                 description=(
-                    f"{definition.description} The source morphology may or may not provide it; "
-                    "this first-release form does not inspect the morphology asset."
+                    f"{definition.description} The no-replacement staged SWC path does not "
+                    "establish this runtime section list."
                 ),
                 available=False,
                 availability=SectionListAvailability.UNAVAILABLE,
                 disabled_reason=(
-                    "No replacement leaves source myelination unknown, so the myelinated "
-                    "section list is unavailable without morphology preflight."
+                    "No replacement preserves the source morphology, but staged SWC preflight "
+                    "cannot establish a populated myelinated section list."
                 ),
                 display_order=definition.display_order,
             )

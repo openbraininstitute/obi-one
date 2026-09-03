@@ -2,19 +2,28 @@ import importlib.util
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from bluepyemodel.model.mechanism_configuration import MechanismConfiguration
 from bluepyemodel.model.model import define_morphology
 from bluepyemodel.model.neuron_model_configuration import NeuronModelConfiguration
 
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
+from obi_one.core.schema import UIElement
+from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.tasks.emodel_building import _shared
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import morphology_preflight
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    morphology_preflight,
+    task as task_module,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
+    EModelOptimisationParameters,
     GlobalParameterSelection,
     MechanismRegionSelection,
+    MechanismsBySectionList,
     MorphologySettings,
     OptimizationParams,
     OptimizationSettings,
@@ -26,6 +35,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
     MorphologyCapabilities,
@@ -34,7 +44,12 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.paramete
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_lists import (
     DEFAULT_SECTION_LIST_CATALOG,
+    AxonModifier,
     SectionListAvailability,
+    SectionListCatalog,
+    SectionListChoice,
+    SectionListDefinition,
+    default_section_list_catalog,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
@@ -53,12 +68,18 @@ def _scan_config_data(**overrides):
             "target_efeatures": {"id_str": "target"},
             "morphology": {"id_str": "morphology"},
         },
-        "parameters_selection": {"ion_channel_models": [{"id_str": "icm-1"}]},
+        "emodel_optimisation_parameters": {
+            "mechanisms": {"ion_channel_models": [{"id_str": "icm-1"}]}
+        },
     }
-    parameters_selection = overrides.pop("parameters_selection", None)
+    legacy = overrides.pop("parameters_selection", None)
+    canonical = overrides.pop("emodel_optimisation_parameters", None)
     config_data.update(overrides)
-    if parameters_selection is not None:
-        config_data["parameters_selection"] = parameters_selection
+    if canonical is not None:
+        config_data["emodel_optimisation_parameters"] = canonical
+    if legacy is not None:
+        config_data.pop("emodel_optimisation_parameters", None)
+        config_data["parameters_selection"] = legacy
     return config_data
 
 
@@ -215,27 +236,32 @@ def test_section_list_choices_follow_modifier_capabilities():
 
 
 def test_mechanisms_wizard_steps_are_mapped_in_figma_order():
-    assert ParametersSelection.steps == (
+    assert EModelOptimisationParameters.steps == (
         "Mechanism Selection",
         "Region assignment",
+        "Distribution",
         "Parameters selection",
     )
 
     schema = EModelOptimizationScanConfig.model_json_schema()
-    parameters_schema = schema["$defs"]["ParametersSelection"]["properties"]
+    parameter_schema = schema["$defs"]["EModelOptimisationParameters"]["properties"]
+    mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]["properties"]
 
-    assert parameters_schema["ion_channel_models"]["step"] == "Mechanism Selection"
-    assert parameters_schema["ion_channel_models"]["step_order"] == 1
-    assert parameters_schema["mechanism_regions"]["step"] == "Region assignment"
-    assert parameters_schema["mechanism_regions"]["step_order"] == 2
-    assert parameters_schema["global_parameters"]["step"] == "Parameters selection"
-    assert parameters_schema["base_parameters"]["step"] == "Parameters selection"
-    assert parameters_schema["distribution_parameters"]["step"] == "Parameters selection"
+    assert mechanisms_schema["ion_channel_models"]["step"] == "Mechanism Selection"
+    assert mechanisms_schema["ion_channel_models"]["step_order"] == 1
+    assert mechanisms_schema["mechanism_regions"]["step"] == "Region assignment"
+    assert mechanisms_schema["mechanism_regions"]["step_order"] == 2
+    assert parameter_schema["global_parameters"]["step"] == "Parameters selection"
+    assert parameter_schema["base_parameters"]["step"] == "Parameters selection"
+    assert parameter_schema["distribution_parameters"]["step"] == "Parameters selection"
 
-    # distance_dependent_distributions no longer belongs to the Mechanisms wizard: it is
-    # a standalone Inputs-group field for user-defined distributions only.
     top_level_schema = schema["properties"]
-    assert "step" not in top_level_schema["distance_dependent_distributions"]
+    assert top_level_schema["distance_dependent_distributions"]["step"] == "Distribution"
+    assert top_level_schema["distance_dependent_distributions"]["step_order"] == 3
+    assert (
+        top_level_schema["distance_dependent_distributions"]["wizard"]
+        == "emodel_optimisation_parameters"
+    )
 
 
 def test_schema_groups_match_figma_navigation():
@@ -248,9 +274,24 @@ def test_schema_groups_match_figma_navigation():
     assert properties["inputs"]["group"] == "Inputs"
     assert properties["inputs"]["title"] == "Inputs"
     assert inputs_schema["target_efeatures"]["title"] == "Target EFeatures"
+    assert inputs_schema["target_efeatures"]["entity_query"] == {"type": "task_result"}
     assert inputs_schema["morphology"]["title"] == "Cell morphology"
-    assert properties["parameters_selection"]["group"] == "Inputs"
-    assert properties["parameters_selection"]["title"] == "Mechanisms"
+    assert inputs_schema["morphology"]["entity_query"] == {"type": "cell_morphology"}
+    assert properties["emodel_optimisation_parameters"]["group"] == "Inputs"
+    assert properties["emodel_optimisation_parameters"]["title"] == "Mechanisms"
+    assert properties["emodel_optimisation_parameters"]["ui_element"] == (
+        UIElement.EMODEL_OPTIMISATION_PARAMETERS
+    )
+    mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]["properties"]
+    assert mechanisms_schema["ion_channel_models"]["entity_query"] == {"type": "ion_channel_model"}
+    mechanism_region_schema = schema["$defs"]["MechanismRegionSelection"]["properties"]
+    assert mechanism_region_schema["ion_channel_model"]["entity_query"] == {
+        "type": "ion_channel_model"
+    }
+    global_parameter_schema = schema["$defs"]["GlobalParameterSelection"]["properties"]
+    assert global_parameter_schema["ion_channel_model"]["entity_query"] == {
+        "type": "ion_channel_model"
+    }
     assert properties["distance_dependent_distributions"]["group"] == "Inputs"
     assert properties["morphology_settings"]["group"] == "Settings"
     assert properties["morphology_settings"]["title"] == "Morphology settings"
@@ -261,9 +302,10 @@ def test_schema_groups_match_figma_navigation():
 
 def test_section_list_schema_exposes_typed_choices_and_aliases():
     schema = EModelOptimizationScanConfig.model_json_schema()
-    parameters_schema = schema["$defs"]["ParametersSelection"]
-    base_schema = parameters_schema["properties"]["base_parameters"]
-    mechanism_schema = parameters_schema["properties"]["mechanism_regions"]
+    parameter_schema = schema["$defs"]["EModelOptimisationParameters"]
+    mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]
+    base_schema = parameter_schema["properties"]["base_parameters"]
+    mechanism_schema = mechanisms_schema["properties"]["mechanism_regions"]
 
     assert base_schema["propertyNames"] == {"$ref": "#/$defs/SectionListName"}
     assert schema["$defs"]["SectionListName"]["enum"] == [
@@ -319,7 +361,7 @@ def test_modifier_validation_rejects_stale_myelinated_rows_with_path():
 
     with pytest.raises(
         ValueError,
-        match=r"parameters_selection\.base_parameters\.myelinated.*unavailable",
+        match=r"emodel_optimisation_parameters\.base_parameters\.myelinated.*unavailable",
     ):
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
@@ -668,6 +710,12 @@ def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
             normalized,
             morphology_capabilities=MorphologyCapabilities(has_myelinated=False),
         )
+    with pytest.raises(ValueError, match="did not establish a myelinated section list"):
+        build_params_definition(
+            myelinated_config,
+            normalized,
+            morphology_capabilities=MorphologyCapabilities(has_myelinated=None),
+        )
 
 
 def test_registration_error_names_the_missing_entitysdk_package():
@@ -732,17 +780,9 @@ def test_local_mechanism_metadata_is_tagged_from_entitycore():
     assert configuration.mechanism_names == {"NaTg"}
 
 
-def test_stage_params_overwrites_stale_json_and_deduplicates_nested_models(tmp_path, monkeypatch):
-    config, reference, normalized = _compiler_fixture()
-    reference._entity = _model_entity()
+def test_stage_mechanisms_deduplicates_nested_models(tmp_path, monkeypatch):
+    config, _, _ = _compiler_fixture()
     task = EModelOptimizationTask.model_construct(config=config)
-    params_path = tmp_path / "config" / "params" / "params.json"
-    params_path.parent.mkdir(parents=True)
-    params_path.write_text(
-        json.dumps({"mechanisms": ["stale"], "distributions": [], "parameters": ["stale"]}),
-        encoding="utf-8",
-    )
-
     downloaded = []
 
     def download_asset(self, *, dest_dir, db_client):
@@ -750,13 +790,88 @@ def test_stage_params_overwrites_stale_json_and_deduplicates_nested_models(tmp_p
         downloaded.append(self.id_str)
 
     monkeypatch.setattr(IonChannelModelFromID, "download_asset", download_asset)
+
     task._stage_mechanisms(tmp_path, object())
-    task._stage_params(tmp_path, object())
 
     assert downloaded == ["icm-1"]
-    assert json.loads(params_path.read_text(encoding="utf-8")) == build_params_definition(
-        config, normalized
+
+
+def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(tmp_path):
+    root_payload = {
+        "mechanisms": {
+            "ion_channel_models": [{"id_str": "icm-1"}],
+            "mechanism_regions": {
+                "apical": [
+                    {
+                        "ion_channel_model": {"id_str": "icm-1"},
+                        "parameters": {
+                            "gNa": {
+                                "value": {"mode": "bounds", "bounds": [0.0, 1.0]},
+                                "distribution": "decay",
+                            }
+                        },
+                    }
+                ]
+            },
+        },
+        "global_parameters": {
+            "v_init": {"value": {"mode": "fixed", "value": -80.0}},
+            "ena": {
+                "value": {"mode": "fixed", "value": 50.0},
+                "ion_channel_model": {"id_str": "icm-1"},
+            },
+        },
+        "base_parameters": {
+            "all": {
+                "Ra": {"value": {"mode": "fixed", "value": 100.0}},
+                "g_pas": {"value": {"mode": "bounds", "bounds": [1e-5, 6e-5]}},
+                "e_pas": {"value": {"mode": "bounds", "bounds": [-95.0, -60.0]}},
+            }
+        },
+        "distribution_parameters": {
+            "decay": {
+                "constant": {"mode": "bounds", "bounds": [-0.1, 0.0]},
+            }
+        },
+    }
+    data = _scan_config_data()
+    data.pop("emodel_optimisation_parameters")
+    data["emodel_optimisation_parameters"] = root_payload
+    data["distance_dependent_distributions"] = {
+        "decay": {
+            "name": "decay",
+            "function": "math.exp({distance}*{constant})*{value}",
+            "parameters": ["constant"],
+        }
+    }
+    config = EModelOptimizationScanConfig.model_validate(data)
+    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    capabilities = MorphologyCapabilities(
+        has_myelinated=True,
+        available_physical_sections=("somatic", "basal", "apical", "axonal"),
     )
+    task = EModelOptimizationTask.model_construct(config=config)
+    artifacts = task._build_artifacts(
+        db_client=object(),
+        mtype="L5",
+        morph_filename="morphology.swc",
+        morphology_capabilities=capabilities,
+        normalized_models=normalized,
+    )
+    params_path = tmp_path / "config" / "params" / "params.json"
+    params_path.parent.mkdir(parents=True)
+    params_path.write_text(json.dumps({"parameters": ["stale"]}), encoding="utf-8")
+
+    artifacts.write(tmp_path)
+
+    assert json.loads(params_path.read_text(encoding="utf-8")) == build_params_definition(
+        config,
+        normalized,
+        morphology_capabilities=capabilities,
+    )
+    assert json.loads((tmp_path / "config" / "recipes.json").read_text(encoding="utf-8"))["test"][
+        "morphology"
+    ] == [["L5", "morphology.swc"]]
 
 
 def test_parameter_group_view_matches_figma_card_order():
@@ -904,11 +1019,6 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
         morphology_path,
         "none",
     )
-    source_myelin = morphology_preflight.preflight_morphology(
-        morphology_path,
-        "none",
-        source_has_myelinated=True,
-    )
 
     assert tapered == MorphologyCapabilities(
         has_myelinated=True,
@@ -920,7 +1030,6 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
         axonal_section_count=3,
         available_physical_sections=("somatic", "axonal"),
     )
-    assert source_myelin.has_myelinated is True
 
 
 def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path, monkeypatch):
@@ -1039,3 +1148,540 @@ def test_entitysdk_validation_status_keyword_supports_both_spellings():
 
     assert _validation_status_keyword(correct) == "validation_result_status"
     assert _validation_status_keyword(historical) == "validateion_result_status"
+
+
+def test_root_emodel_optimisation_parameters_normalizes_to_canonical_selection():
+    reference = IonChannelModelFromID(id_str="icm-1")
+    root = EModelOptimisationParameters(
+        mechanisms=MechanismsBySectionList(
+            ion_channel_models=(reference,),
+            mechanism_regions={
+                "apical": (
+                    MechanismRegionSelection(
+                        ion_channel_model=reference,
+                        parameters={
+                            "gNa": ParameterSelection(
+                                value=OptimizationValue(mode="bounds", bounds=(0.0, 1.0)),
+                            )
+                        },
+                    ),
+                )
+            },
+        ),
+        base_parameters={},
+    )
+    data = _scan_config_data()
+    data.pop("emodel_optimisation_parameters")
+    data["emodel_optimisation_parameters"] = root
+
+    config = EModelOptimizationScanConfig.model_validate(data)
+    canonical = config.parameters_selection
+
+    assert canonical.ion_channel_models == (reference,)
+    assert canonical.mechanism_regions["apical"][0].parameters["gNa"].value.bounds == (
+        0.0,
+        1.0,
+    )
+    serialized = config.model_dump(mode="json")
+    assert "emodel_optimisation_parameters" in serialized
+    assert "parameters_selection" not in serialized
+
+
+def test_single_config_asset_round_trips_plural_parameters_field(tmp_path):
+    config = EModelOptimizationSingleConfig.model_validate(_scan_config_data())
+    config.idx = 0
+    config.single_coordinate_scan_params = SingleCoordinateScanParams()
+    asset_path = tmp_path / "config.json"
+
+    config.serialize(asset_path)
+    payload = json.loads(asset_path.read_text(encoding="utf-8"))
+    restored = deserialize_obi_object_from_json_data(payload)
+
+    assert payload["emodel_optimisation_parameters"]["mechanisms"]["ion_channel_models"] == [
+        {"id_str": "icm-1", "type": "IonChannelModelFromID"}
+    ]
+    assert "parameters_selection" not in payload
+    assert isinstance(restored, EModelOptimizationSingleConfig)
+    assert restored.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
+        IonChannelModelFromID(id_str="icm-1"),
+    )
+
+
+def test_legacy_parameters_selection_input_is_migrated_to_root_field():
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            parameters_selection=ParametersSelection(
+                ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+                base_parameters={},
+            )
+        )
+    )
+
+    assert config.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
+        IonChannelModelFromID(id_str="icm-1"),
+    )
+    assert "parameters_selection" not in config.model_dump(mode="json")
+
+
+def test_supplying_both_legacy_and_root_parameter_fields_is_rejected():
+    legacy_selection = ParametersSelection(
+        ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        base_parameters={},
+    )
+    root_selection = EModelOptimisationParameters(
+        mechanisms=MechanismsBySectionList(
+            ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        ),
+        base_parameters={},
+    )
+    data = _scan_config_data(
+        parameters_selection=legacy_selection.model_dump(mode="json"),
+    )
+    data["emodel_optimisation_parameters"] = root_selection.model_dump(mode="json")
+
+    with pytest.raises(ValueError, match="Use either emodel_optimisation_parameters or"):
+        EModelOptimizationScanConfig.model_validate(data)
+
+
+def test_root_parameter_configuration_preserves_compiler_output():
+    legacy_config, _, normalized = _compiler_fixture()
+    root = EModelOptimisationParameters.from_parameters_selection(
+        legacy_config.parameters_selection
+    )
+    data = _scan_config_data()
+    data.pop("emodel_optimisation_parameters")
+    data["emodel_optimisation_parameters"] = root
+    data["distance_dependent_distributions"] = {
+        "decay": legacy_config.distance_dependent_distributions["decay"]
+    }
+
+    new_config = EModelOptimizationScanConfig.model_validate(data)
+
+    assert build_params_definition(new_config, normalized) == build_params_definition(
+        legacy_config,
+        normalized,
+    )
+
+
+def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
+    selected = IonChannelModelFromID(id_str="icm-1")
+
+    with pytest.raises(ValueError, match="must not contain duplicate entity IDs"):
+        MechanismsBySectionList(ion_channel_models=(selected, selected))
+
+    with pytest.raises(ValueError, match="must also be listed in ion_channel_models"):
+        MechanismsBySectionList(
+            ion_channel_models=(selected,),
+            mechanism_regions={
+                "somatic": (
+                    MechanismRegionSelection(
+                        ion_channel_model=IonChannelModelFromID(id_str="icm-2"),
+                    ),
+                )
+            },
+        )
+
+
+def test_root_parameter_block_validates_global_model_reference_directly():
+    selected = IonChannelModelFromID(id_str="icm-1")
+
+    with pytest.raises(ValueError, match="Global parameter 'ena' source must also be listed"):
+        EModelOptimisationParameters(
+            mechanisms=MechanismsBySectionList(ion_channel_models=(selected,)),
+            global_parameters={
+                "ena": GlobalParameterSelection(
+                    value=OptimizationValue(value=50.0),
+                    ion_channel_model=IonChannelModelFromID(id_str="icm-2"),
+                )
+            },
+            base_parameters={},
+        )
+
+
+def test_no_replacement_keeps_myelinated_choice_unavailable():
+    settings = MorphologySettings(axon_modifier=AxonModifier.NONE)
+    myelinated_choice = {choice.name: choice for choice in settings.section_list_choices()}[
+        "myelinated"
+    ]
+
+    assert settings.expected_myelinated is None
+    assert "myelinated" not in settings.available_section_list_names()
+    assert not myelinated_choice.available
+    assert myelinated_choice.availability == SectionListAvailability.UNAVAILABLE
+
+
+@pytest.mark.parametrize("field_name", ["base_parameters", "mechanism_regions"])
+def test_no_replacement_rejects_myelinated_configuration_rows(field_name):
+    reference = IonChannelModelFromID(id_str="icm-1")
+    if field_name == "base_parameters":
+        selection = ParametersSelection(
+            ion_channel_models=(reference,),
+            base_parameters={
+                "myelinated": {
+                    "cm": ParameterSelection(value=OptimizationValue(value=0.02)),
+                }
+            },
+        )
+    else:
+        selection = ParametersSelection(
+            ion_channel_models=(reference,),
+            mechanism_regions={
+                "myelinated": (MechanismRegionSelection(ion_channel_model=reference),)
+            },
+            base_parameters={},
+        )
+    data = _scan_config_data()
+    data.pop("emodel_optimisation_parameters")
+    data["morphology_settings"] = {"axon_modifier": AxonModifier.NONE.value}
+    data["emodel_optimisation_parameters"] = EModelOptimisationParameters.from_parameters_selection(
+        selection
+    ).model_dump(mode="json")
+
+    with pytest.raises(
+        ValueError,
+        match=rf"emodel_optimisation_parameters\.{field_name}\.myelinated.*unavailable",
+    ):
+        EModelOptimizationScanConfig.model_validate(data)
+
+
+def test_morphology_settings_rejects_removed_source_myelinated_override():
+    with pytest.raises(ValueError, match="source_has_myelinated"):
+        EModelOptimizationScanConfig.model_validate(
+            _scan_config_data(
+                morphology_settings={
+                    "axon_modifier": AxonModifier.NONE.value,
+                    "source_has_myelinated": True,
+                }
+            )
+        )
+
+
+def test_legacy_parameters_selection_json_payload_is_migrated():
+    legacy = ParametersSelection(
+        ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        base_parameters={},
+    ).model_dump(mode="json")
+
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(parameters_selection=legacy)
+    )
+
+    assert config.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
+        IonChannelModelFromID(id_str="icm-1"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"expanded_sections": ()}, "must expand"),
+        ({"expanded_sections": ("apical", "apical")}, "duplicate"),
+        ({"expanded_sections": ("apical",), "is_composite": True}, "multiple"),
+        (
+            {"name": "myelinated", "expanded_sections": ("apical",)},
+            "may only expand",
+        ),
+        (
+            {
+                "name": "somatic",
+                "expanded_sections": ("somatic",),
+                "requires_myelinated": True,
+            },
+            "marked as requiring",
+        ),
+        (
+            {
+                "expanded_sections": ("apical", "myelinated"),
+                "is_composite": True,
+            },
+            "must not contain myelinated",
+        ),
+    ],
+)
+def test_section_list_definition_rejects_invalid_expansions(overrides, message):
+    values = {
+        "name": "all",
+        "label": "All sections",
+        "description": "All sections",
+        "expanded_sections": ("apical", "basal"),
+    }
+    values.update(overrides)
+
+    with pytest.raises(ValueError, match=message):
+        SectionListDefinition(**values)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        (
+            {"available": True, "availability": SectionListAvailability.UNAVAILABLE},
+            "cannot have unavailable status",
+        ),
+        (
+            {"available": False, "availability": SectionListAvailability.AVAILABLE},
+            "must have unavailable status",
+        ),
+        ({"available": True, "disabled_reason": "not selectable"}, "cannot have a disabled reason"),
+        (
+            {"available": False, "availability": SectionListAvailability.UNAVAILABLE},
+            "needs a disabled reason",
+        ),
+    ],
+)
+def test_section_list_choice_rejects_inconsistent_availability(overrides, message):
+    values = {
+        "name": "somatic",
+        "label": "Somatic",
+        "description": "Somatic sections",
+    }
+    values.update(overrides)
+
+    with pytest.raises(ValueError, match=message):
+        SectionListChoice(**values)
+
+
+def test_section_list_catalog_validates_and_exposes_form_metadata():
+    catalog = DEFAULT_SECTION_LIST_CATALOG
+    definitions = catalog.definitions
+
+    assert catalog.available("somatic")
+    assert not catalog.available("myelinated", axon_modifier=AxonModifier.NONE)
+    assert catalog.schema_choices()[0]["display_order"] == 0
+    assert set(catalog.schema_availability_by_modifier()) == {
+        modifier.value for modifier in AxonModifier
+    }
+    assert catalog.to_alias_expansions()["all"] == [
+        "apical",
+        "basal",
+        "somatic",
+        "axonal",
+    ]
+
+    no_replacement = catalog.choice("myelinated", axon_modifier=AxonModifier.NONE)
+    assert "staged SWC path" in no_replacement.description
+    assert "cannot establish" in no_replacement.disabled_reason
+
+    with pytest.raises(ValueError, match="unique names"):
+        SectionListCatalog(definitions=(*definitions, definitions[0]))
+    with pytest.raises(ValueError, match="missing definitions"):
+        SectionListCatalog(definitions=definitions[:-1])
+    with pytest.raises(ValueError, match="Unsupported section-list name"):
+        catalog.definition("not-a-section-list")
+
+
+def test_input_entities_resolves_nested_root_mechanism_references(monkeypatch):
+    config = EModelOptimizationScanConfig.model_validate(_scan_config_data())
+
+    def fake_entity(self, db_client):
+        del db_client
+        return self.id_str
+
+    monkeypatch.setattr("obi_one.core.entity_from_id.EntityFromID.entity", fake_entity)
+
+    assert config.input_entities(object()) == ["target", "morphology", "icm-1"]
+
+
+def test_legacy_migration_preserves_non_mapping_input():
+    assert EModelOptimizationScanConfig.migrate_legacy_parameters_selection(None) is None
+
+
+def test_section_list_choice_exposes_enabled_alias():
+    assert DEFAULT_SECTION_LIST_CATALOG.choice("somatic").enabled
+
+
+def test_stage_traces_returns_only_derivation_trace_ids(tmp_path):
+    extraction = SimpleNamespace(
+        entity=lambda **_: SimpleNamespace(id="extraction-1"),
+    )
+    derivations = [
+        SimpleNamespace(used=SimpleNamespace(id="trace-1")),
+        SimpleNamespace(used=None),
+        SimpleNamespace(used=SimpleNamespace(id=None)),
+        SimpleNamespace(used=SimpleNamespace(id="trace-2")),
+    ]
+    search_entity = Mock(return_value=derivations)
+    db_client = SimpleNamespace(search_entity=search_entity)
+    task = EModelOptimizationTask.model_construct(config=SimpleNamespace())
+
+    assert task._stage_traces(extraction, tmp_path, db_client) == ["trace-1", "trace-2"]
+    assert search_entity.call_args.kwargs["query"] == {"generated__id": "extraction-1"}
+
+
+def test_derive_mtype_uses_first_label_and_handles_empty_mtypes():
+    morphology_entity = SimpleNamespace(mtypes=[SimpleNamespace(pref_label="L5_TTPC")])
+    morphology = SimpleNamespace(entity=lambda **_: morphology_entity)
+    task = EModelOptimizationTask.model_construct(
+        config=SimpleNamespace(inputs=SimpleNamespace(morphology=morphology))
+    )
+
+    assert task._derive_mtype(object()) == "L5_TTPC"
+
+    morphology.entity = lambda **_: SimpleNamespace(mtypes=[])
+    assert task._derive_mtype(object()) is None
+
+    morphology.entity = lambda **_: SimpleNamespace()
+    assert task._derive_mtype(object()) is None
+
+
+def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path):
+    final_path = tmp_path / "final.json"
+    defaults = {
+        "name": "test",
+        "total_score": 0.0,
+        "holding_current": None,
+        "threshold_current": None,
+        "iteration": "0",
+    }
+    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+
+    final_path.write_text("[]", encoding="utf-8")
+    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+
+    final_path.write_text(json.dumps({"other": []}), encoding="utf-8")
+    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+
+    final_path.write_text(
+        json.dumps(
+            {
+                "emodel": [
+                    {
+                        "score": 2.5,
+                        "holding_current": 0.1,
+                        "threshold_current": 0.2,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert EModelOptimizationTask._parse_final_json(final_path, "test") == {
+        "name": "test",
+        "total_score": 2.5,
+        "holding_current": 0.1,
+        "threshold_current": 0.2,
+        "iteration": "0",
+    }
+
+    final_path.write_text(
+        json.dumps({"test": {"fitness": 3.5, "iteration": 7}}),
+        encoding="utf-8",
+    )
+    assert EModelOptimizationTask._parse_final_json(final_path, "test") == {
+        "name": "test",
+        "total_score": 3.5,
+        "holding_current": None,
+        "threshold_current": None,
+        "iteration": "7",
+    }
+
+
+def test_upload_optimization_assets_uploads_existing_files_and_skips_empty_root(tmp_path):
+    recipes_path = tmp_path / "config" / "recipes.json"
+    params_path = tmp_path / "config" / "params" / "params.json"
+    recipes_path.parent.mkdir(parents=True)
+    params_path.parent.mkdir(parents=True)
+    recipes_path.write_text("{}", encoding="utf-8")
+    params_path.write_text("{}", encoding="utf-8")
+    sonata_dir = tmp_path / "export_emodels_sonata"
+    sonata_dir.mkdir()
+    sonata_file = sonata_dir / "emodel" / "morphology.hoc"
+    sonata_file.parent.mkdir()
+    sonata_file.write_text("hoc", encoding="utf-8")
+
+    db_client = SimpleNamespace(upload_file=Mock(), upload_directory=Mock())
+    EModelOptimizationTask._upload_optimization_assets(tmp_path, db_client, "task-result-1")
+
+    assert db_client.upload_file.call_count == 2
+    assert db_client.upload_directory.call_args.kwargs["paths"] == {
+        sonata_file.relative_to(sonata_dir): sonata_file
+    }
+
+    empty_root = tmp_path / "empty"
+    (empty_root / "export_emodels_sonata").mkdir(parents=True)
+    EModelOptimizationTask._upload_optimization_assets(empty_root, db_client, "task-result-2")
+    assert db_client.upload_file.call_count == 2
+    assert db_client.upload_directory.call_count == 1
+
+
+def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
+    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    unknown = MechanismConfiguration(name="Unknown", location=None)
+
+    assert _tag_local_mechanisms(None, normalized) is None
+    assert _tag_local_mechanisms([unknown], normalized) == [unknown]
+
+
+def test_validation_status_keyword_handles_variadic_unsupported_and_uninspectable_callables():
+    def variadic(**kwargs):
+        del kwargs
+
+    def unsupported(*, unrelated):
+        del unrelated
+
+    assert _validation_status_keyword(variadic) == "validation_result_status"
+    with pytest.raises(TypeError, match="does not expose"):
+        _validation_status_keyword(unsupported)
+    assert _validation_status_keyword(object()) == "validation_result_status"
+
+
+def test_download_extraction_features_keeps_already_named_target(tmp_path):
+    class AlreadyNamedExtraction:
+        def download_asset_by_label(self, asset_label, *, dest_dir, db_client):
+            del asset_label, db_client
+            path = dest_dir / "test.json"
+            path.write_text("{}", encoding="utf-8")
+            return path
+
+    config = SimpleNamespace(initialize=SimpleNamespace(emodel="test"))
+    task = EModelOptimizationTask.model_construct(config=config)
+
+    result = task._download_extraction_features(AlreadyNamedExtraction(), tmp_path, object())
+
+    assert result == tmp_path / "config" / "features" / "test.json"
+    assert result.read_text(encoding="utf-8") == "{}"
+
+
+def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
+    config, reference, normalized = _compiler_fixture()
+    task = EModelOptimizationTask.model_construct(config=config)
+    db_client = object()
+    sentinel = object()
+    resolved_calls = []
+    build_calls = []
+
+    def resolve(references, client):
+        resolved_calls.append((references, client))
+        return normalized
+
+    def build(config_arg, normalized_models, **kwargs):
+        build_calls.append((config_arg, normalized_models, kwargs))
+        return sentinel
+
+    monkeypatch.setattr(task_module, "resolve_ion_channel_models", resolve)
+    monkeypatch.setattr(task_module, "build_optimization_artifacts", build)
+
+    result = task._build_artifacts(
+        db_client=db_client,
+        mtype="L5",
+        morph_filename="morphology.swc",
+        morphology_capabilities=None,
+    )
+
+    assert result is sentinel
+    assert resolved_calls == [((reference,), db_client)]
+    assert build_calls == [
+        (
+            config,
+            normalized,
+            {
+                "mtype": "L5",
+                "morphology_filename": "morphology.swc",
+                "morphology_capabilities": None,
+            },
+        )
+    ]
+
+
+def test_default_section_list_catalog_returns_canonical_catalog():
+    assert default_section_list_catalog() is DEFAULT_SECTION_LIST_CATALOG

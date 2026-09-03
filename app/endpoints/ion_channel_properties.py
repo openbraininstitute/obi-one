@@ -55,8 +55,9 @@ def mapped_ion_channel_properties_endpoint(
         "Returns the RANGE/GLOBAL/conductance variable catalog for selected IonChannelModel "
         "entities, using the same qualified-naming and RANGE-vs-GLOBAL placement rules as the "
         "EModel Optimization (Task 2) params compiler. UI clients configuring "
-        "parameters_selection.mechanism_regions / global_parameters must use this endpoint "
-        "instead of reading neuron_block directly, so channel-name qualification (e.g. "
+        "emodel_optimisation_parameters.mechanisms.mechanism_regions / global_parameters "
+        "must use this endpoint instead of reading neuron_block directly, so channel-name "
+        "qualification (e.g. "
         "'gNa' -> 'gNa_NaTg') cannot drift between the form and the compiler."
     ),
 )

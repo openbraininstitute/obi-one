@@ -1,11 +1,10 @@
 """Runtime morphology capability checks for Task 2.
 
-Loads the staged source morphology once and reports which canonical section
-lists the *source* morphology actually provides, alongside the modifier's
-myelinated capability. This lets the params compiler reject a configured
-region (e.g. ``apical`` for an axon-only or aspiny interneuron reconstruction)
-with an actionable error instead of silently compiling a mechanism row that
-NEURON cannot place.
+Loads the staged source morphology once and reports which physical source
+sections it provides, alongside the modifier's myelinated capability. This lets
+the params compiler reject a configured region (e.g. ``apical`` for an axon-only
+or aspiny interneuron reconstruction) with an actionable error instead of
+silently compiling a mechanism row that NEURON cannot place.
 """
 
 from pathlib import Path
@@ -36,17 +35,16 @@ class MorphologyCapabilities(BaseModel):
     available_physical_sections: tuple[PhysicalSectionListName, ...] = ()
     """Physical section lists (excluding ``myelinated``) with at least one source section.
 
-    Empty by default, which means "not inspected" — callers that construct this model
-    directly (e.g. from a trusted capability field, or in tests) opt out of the
-    per-region availability check in the compiler. Only :func:`preflight_morphology`
-    populates this from a real morphology.
+    Empty by default, which means "not inspected" — callers that construct this model directly
+    (e.g. in tests) opt out of the per-region availability check in the compiler. Only
+    :func:`preflight_morphology` populates this from a real morphology.
     """
 
 
 # morphio.SectionType values that map onto our physical section-list vocabulary.
 # morphio has no "myelinated" SectionType; myelination is tracked separately via
-# ``has_myelinated`` because it is either synthesized by the axon modifier or must
-# come from a trusted, out-of-band capability (SWC/ASC cannot prove it).
+# ``has_myelinated`` because it is synthesized only by a compatible axon modifier.
+# A staged SWC/ASC asset cannot establish a populated runtime myelinated section list.
 _SECTION_TYPE_TO_PHYSICAL_NAME: dict[Any, PhysicalSectionListName] = {
     morphio.SectionType.soma: "somatic",
     morphio.SectionType.apical_dendrite: "apical",
@@ -84,8 +82,6 @@ def _available_physical_sections(morphology: Any) -> tuple[PhysicalSectionListNa
 def preflight_morphology(
     path: Path,
     axon_modifier: AxonModifier | str,
-    *,
-    source_has_myelinated: bool | None = None,
 ) -> MorphologyCapabilities:
     """Load the staged morphology and return its section-list capabilities.
 
@@ -95,9 +91,8 @@ def preflight_morphology(
     ``axonal``) are actually present in the source reconstruction, so the compiler
     can reject a configured region the morphology does not provide.
 
-    A SWC/ASC asset does not carry a reliable myelinated-section-list capability.
-    For no-replacement mode, callers may provide a trusted entity-level capability
-    via ``source_has_myelinated``; otherwise ``has_myelinated`` remains unknown and
+    A staged SWC/ASC asset cannot establish a populated runtime myelinated section
+    list. In no-replacement mode, ``has_myelinated`` therefore remains unknown and
     myelinated parameter rows are rejected.
     """
     if load_morphology_nrn_order is None:  # pragma: no cover - defensive
@@ -129,7 +124,7 @@ def preflight_morphology(
     }:
         has_myelinated = False
     else:
-        has_myelinated = source_has_myelinated
+        has_myelinated = None
 
     return MorphologyCapabilities(
         has_myelinated=has_myelinated,
