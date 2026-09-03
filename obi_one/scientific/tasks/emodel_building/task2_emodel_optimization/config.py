@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 from entitysdk import Client
 from entitysdk.types import TaskActivityType, TaskConfigType
@@ -19,6 +19,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifact
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
+    EModelOptimisationParameters,
     MorphologySettings,
     OptimizationInitialize,
     OptimizationInputs,
@@ -74,7 +75,7 @@ def _validate_section_list_availability(
             if choice.available:
                 continue
             msg = (
-                f"parameters_selection.{field_name}.{location}: section list '{location}' "
+                f"emodel_optimisation_parameters.{field_name}.{location}: section list "
                 f"is unavailable for morphology_settings.axon_modifier="
                 f"'{morphology_settings.axon_modifier.value}': {choice.disabled_reason}"
             )
@@ -172,6 +173,31 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         TaskActivityType.emodel_optimization__config_generation
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_parameters_selection(cls, data: Any) -> Any:
+        """Accept the old root field and normalize it to the new representation."""
+        if not isinstance(data, dict):
+            return data
+        values = dict(data)
+        legacy = values.pop("parameters_selection", None)
+        if legacy is None:
+            return values
+        if "emodel_optimisation_parameters" in values:
+            msg = "Use either emodel_optimisation_parameters or parameters_selection, not both."
+            raise ValueError(msg)
+        if not isinstance(legacy, ParametersSelection):
+            legacy = ParametersSelection.model_validate(legacy)
+        values["emodel_optimisation_parameters"] = (
+            EModelOptimisationParameters.from_parameters_selection(legacy)
+        )
+        return values
+
+    @property
+    def parameters_selection(self) -> ParametersSelection:
+        """Canonical selection used by existing runtime code."""
+        return self.emodel_optimisation_parameters.to_parameters_selection()
+
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
             self.inputs.target_efeatures.entity(db_client=db_client),
@@ -250,12 +276,16 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         },
     )
 
-    parameters_selection: ParametersSelection = Field(
-        default_factory=ParametersSelection,
+    emodel_optimisation_parameters: EModelOptimisationParameters = Field(
+        default_factory=EModelOptimisationParameters,
         title="Mechanisms",
-        description="Ion channel models, region assignments, and parameter values.",
+        description=(
+            "Select mechanisms, assign them to section lists, and configure optimization "
+            "parameters. Distance-dependent distribution declarations remain a top-level "
+            "sibling and are displayed as step 3 of the Mechanisms workflow."
+        ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.UI_ELEMENT: UIElement.EMODEL_OPTIMISATION_PARAMETERS,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 1,
         },
@@ -274,6 +304,9 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 3,
+            SchemaKey.STEP: "Distribution",
+            SchemaKey.STEP_ORDER: 3,
+            "wizard": "emodel_optimisation_parameters",
             SchemaKey.SINGULAR_NAME: "Custom Distance-Dependent Distribution",
         },
     )

@@ -33,7 +33,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config i
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
     NormalizedIonChannelModel,
-    build_params_definition,
     resolve_ion_channel_models,
 )
 
@@ -295,7 +294,7 @@ class EModelOptimizationTask(Task):
         morph_id = morph_entity.id_str
         morph_filename = f"{morph_id}.swc"
         (morph_dir / morph_filename).write_text(
-            swc_content,  # ty:ignore[invalid-argument-type]
+            swc_content,
             encoding="utf-8",
         )
         L.info("Staged morphology: %s", morph_filename)
@@ -330,30 +329,6 @@ class EModelOptimizationTask(Task):
             morphology_filename=morph_filename,
             morphology_capabilities=morphology_capabilities,
         )
-
-    def _stage_params(
-        self,
-        coord_root: Path,
-        db_client: entitysdk.client.Client,
-        morphology_capabilities: MorphologyCapabilities | None = None,
-    ) -> Path:
-        """Compile and stage the complete BluePyEModel params file."""
-        params_dir = coord_root / "config" / "params"
-        params_dir.mkdir(parents=True, exist_ok=True)
-        params_path = params_dir / "params.json"
-
-        references = self.config.parameters_selection.ion_channel_model_references
-        normalized_models = resolve_ion_channel_models(references, db_client)
-        capabilities = morphology_capabilities or MorphologyCapabilities(
-            has_myelinated=self.config.morphology_settings.expected_myelinated,
-        )
-        params = build_params_definition(
-            self.config,
-            normalized_models,
-            morphology_capabilities=capabilities,
-        )
-        params_path.write_text(json.dumps(params, indent=4), encoding="utf-8")
-        return params_path
 
     def _stage_traces(  # ruff: ignore[no-self-use]
         self,
