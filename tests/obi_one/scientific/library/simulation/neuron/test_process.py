@@ -184,7 +184,7 @@ def test_compile_neuron_mechanisms(mock_run_and_log, tmp_path):
 
     mechanism_build = test_module.compile_mechanisms(
         output_dir=output_dir,
-        mechanisms_dir=mech_dir,
+        mechanisms_dirs=[mech_dir],
         simulation_backend=SimulationBackend.bluecellulab,
     )
 
@@ -222,7 +222,7 @@ def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
 
     mechanism_build = test_module.compile_mechanisms(
         output_dir=output_dir,
-        mechanisms_dir=mech_dir,
+        mechanisms_dirs=[mech_dir],
         simulation_backend=SimulationBackend.neurodamus,
     )
 
@@ -230,31 +230,85 @@ def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
     assert mechanism_build.special_binary_path == special_path
     assert mechanism_build.libnrnmech_path == libnrnmech_path
     assert mechanism_build.libcorenrnmech_path == libcorenrnmech_path
-    mock_run_and_log.assert_called_once_with(
-        [
-            "neurodamus-compile-mods",
-            "--input-dir",
-            str(mech_dir),
-            "--output-dir",
-            str(output_dir),
-            "--with-internal-mods",
-            "--simulator",
-            "coreneuron",
-            "--output-type",
-            "json",
-        ],
-        cwd=output_dir,
-        env={
-            "PATH": "/opt/obi/:/code/.venv/bin:/usr/local/bin:/usr/local/sbin:"
-            "/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-        },
+    mock_run_and_log.assert_called_once()
+    call_cmd = mock_run_and_log.call_args[0][0]
+    assert call_cmd == [
+        "neurodamus-compile-mods",
+        "--input-dir",
+        str(mech_dir.absolute()),
+        "--output-dir",
+        str(output_dir),
+        "--with-internal-mods",
+        "--simulator",
+        "coreneuron",
+        "--output-type",
+        "json",
+    ]
+    assert mock_run_and_log.call_args[1]["cwd"] == output_dir
+    assert mock_run_and_log.call_args[1]["env"]["PATH"].startswith("/opt/obi/:")
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+def test_compile_neuron_mechanisms_rejects_multiple_dirs(mock_run_and_log, tmp_path):
+    with pytest.raises(RuntimeError, match="Only allowed a single mod file directory"):
+        test_module.compile_mechanisms(
+            output_dir=tmp_path,
+            mechanisms_dirs=[tmp_path / "mech_a", tmp_path / "mech_b"],
+            simulation_backend=SimulationBackend.bluecellulab,
+        )
+    mock_run_and_log.assert_not_called()
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+def test_compile_neuron_mechanisms_missing_lib(mock_run_and_log, tmp_path):
+    mech_dir = tmp_path / "mech"
+    mech_dir.mkdir()
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    mock_run_and_log.return_value.stdout = "compilation done"
+
+    with pytest.raises(RuntimeError, match=r"libnrnmech.so was not found"):
+        test_module.compile_mechanisms(
+            output_dir=output_dir,
+            mechanisms_dirs=[mech_dir],
+            simulation_backend=SimulationBackend.bluecellulab,
+        )
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+def test_compile_neurodamus_mechanisms_uses_absolute_input_paths(mock_run_and_log, tmp_path):
+    mech_dir = tmp_path / "mech"
+    mech_dir.mkdir()
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    libnrnmech_path = _touch(output_dir / "libnrnmech.so")
+    libcorenrnmech_path = _touch(output_dir / "libcorenrnmech.so")
+    special_path = _touch(output_dir / "special")
+
+    mock_run_and_log.return_value.stdout = json.dumps(
+        {
+            "NRNMECH_LIB_PATH": str(libnrnmech_path),
+            "SPECIALS_PATH": str(special_path.parent),
+            "CORENEURONLIB": str(libcorenrnmech_path),
+        }
     )
+
+    test_module.compile_mechanisms(
+        output_dir=output_dir,
+        mechanisms_dirs=[mech_dir],
+        simulation_backend=SimulationBackend.neurodamus,
+    )
+
+    call_cmd = mock_run_and_log.call_args[0][0]
+    input_dir_index = call_cmd.index("--input-dir") + 1
+    assert call_cmd[input_dir_index] == str(mech_dir.absolute())
 
 
 def test_compile_mechanisms_unsupported_backend(tmp_path):
     with pytest.raises(RuntimeError, match="Unsupported simulation backend"):
         test_module.compile_mechanisms(
             output_dir=tmp_path,
-            mechanisms_dir=tmp_path / "mech",
+            mechanisms_dirs=[tmp_path / "mech"],
             simulation_backend="unsupported",  # ty:ignore[invalid-argument-type]
         )

@@ -2451,7 +2451,7 @@ requires-dist = [
     { name = "bluepyefe", specifier = ">=2.3.57" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.43" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.6.2" },
     { name = "brainbuilder", specifier = ">=0.20.6" },
     { name = "brian2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
