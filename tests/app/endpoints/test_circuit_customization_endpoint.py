@@ -201,20 +201,25 @@ class TestTriggerValidationTask:
         mock_settings.APP_VERSION = "1.2.3-dev"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
         circuit_id = uuid4()
         project_id = uuid4()
         virtual_lab_id = uuid4()
 
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=circuit_id,
-            project_id=project_id,
-            virtual_lab_id=virtual_lab_id,
-            compute_cell="cell_a",
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=circuit_id,
+                project_id=project_id,
+                virtual_lab_id=virtual_lab_id,
+                compute_cell="cell_a",
+            )
+            == job_id
         )
 
         ls_client.post.assert_called_once()
@@ -235,17 +240,22 @@ class TestTriggerValidationTask:
         mock_settings.APP_VERSION = "1.2.3"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_b",
-            force=True,
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_b",
+                force=True,
+            )
+            == job_id
         )
 
         job_data = ls_client.post.call_args[1]["json"]
@@ -264,13 +274,16 @@ class TestTriggerValidationTask:
         response.text = "server error"
         ls_client.post.return_value = response
 
-        # Should not raise, just log a warning
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_a",
+        # Should not raise, just return None
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_a",
+            )
+            is None
         )
         ls_client.post.assert_called_once()
         assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"
