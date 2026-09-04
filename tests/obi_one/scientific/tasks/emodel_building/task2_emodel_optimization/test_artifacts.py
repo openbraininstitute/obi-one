@@ -14,11 +14,11 @@ from entitysdk.types import TaskConfigType
 
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.db_sdk import db_sdk
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
-    optimization_artifact_input_from_config,
-)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    optimization_artifact_input_from_config,
 )
 
 from .test_parameter_selection import _model_entity, _scan_config_data
