@@ -212,11 +212,11 @@ If you want those as items 12–14 in a follow-up doc, say so.
 
 ## Suggested review order
 
-1. SNAP helpers (#1) — foundation for later checks  
-2. Types + simulator (#2–3)  
-3. ID mapping + launch customization/draft (#4–6)  
-4. Customize endpoint + staging (#7–9)  
-5. Registration endpoint (#10)  
+1. SNAP helpers (#1) — foundation for later checks
+2. Types + simulator (#2–3)
+3. ID mapping + launch customization/draft (#4–6)
+4. Customize endpoint + staging (#7–9)
+5. Registration endpoint (#10)
 
 ## Quick test commands
 

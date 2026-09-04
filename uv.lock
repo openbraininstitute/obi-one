@@ -1000,7 +1000,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
+
 sdist = { url = "https://files.pythonhosted.org/packages/ae/03/9c00958b27e581740d2676bf128ebc1bcece44313f030a374e72674e3675/entitysdk-0.19.19.tar.gz", hash = "sha256:e7c75ace74e227732ef74481c1ccaea5ce06080c701fe69ce2e1f6e9e16d60c8", size = 93932, upload-time = "2026-08-28T14:28:18.879Z" }
+
 
 [[package]]
 name = "executing"

@@ -257,6 +257,18 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.emodel_optimization: TaskDefinition(
+        task_type=TaskType.emodel_optimization,
+        config_type=TaskConfigType.emodel_optimization__config,
+        activity_type=TaskActivityType.emodel_optimization__execution,
+        code=BuiltinCode(script=BuiltinScript.emodel_optimisation),
+        resources=ClusterResources(
+            instances=1,
+            instance_type="small",
+            timelimit="02:00",
+            compute_cell="cell_a",
+        ),
+    ),
     TaskType.extracellular_recording_weights_calculation: TaskDefinition(
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,

@@ -151,3 +151,89 @@ def test_morphio_morphology_uses_nrn_order_for_entity_asset(tmp_path):
         int(morphio.SectionType.axon),
         int(morphio.SectionType.basal_dendrite),
     ]
+
+
+def test_swc_file_content_downloads_and_caches_swc_asset():
+    morphology_from_id = CellMorphologyFromID(id_str="morphology-1")
+    entity = SimpleNamespace(
+        id="morphology-1",
+        assets=[SimpleNamespace(content_type="application/swc", id="asset-1")],
+    )
+    db_client = Mock()
+    db_client.download_content.return_value = b"1 1 0.0 0.0 0.0 1.0 -1\n"
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
+        expected = "1 1 0.0 0.0 0.0 1.0 -1\n"
+        assert morphology_from_id.swc_file_content(db_client) == expected
+        assert morphology_from_id.swc_file_content(db_client) == expected
+
+    db_client.download_content.assert_called_once_with(
+        entity_id="morphology-1",
+        entity_type=morphology_from_id.entitysdk_type,
+        asset_id="asset-1",
+    )
+
+
+@pytest.mark.parametrize(
+    ("asset", "message"),
+    [
+        (SimpleNamespace(content_type="application/asc", id="asset-1"), "No valid"),
+        (SimpleNamespace(content_type="application/swc", id=None), "Asset must have an id"),
+    ],
+)
+def test_swc_file_content_rejects_invalid_assets(asset, message):
+    morphology_from_id = CellMorphologyFromID(id_str="morphology-1")
+    entity = SimpleNamespace(id="morphology-1", assets=[asset])
+
+    with (
+        patch.object(CellMorphologyFromID, "entity", return_value=entity),
+        pytest.raises(ValueError, match=message),
+    ):
+        morphology_from_id.swc_file_content(Mock())
+
+
+def test_metadata_entities_returns_species_and_brain_region():
+    species = SimpleNamespace(name="Mus musculus")
+    brain_region = SimpleNamespace(name="Somatosensory cortex")
+    entity = SimpleNamespace(
+        subject=SimpleNamespace(species=species),
+        brain_region=brain_region,
+    )
+    reference = CellMorphologyFromID(id_str="morphology-id")
+    db_client = Mock()
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity) as resolve:
+        result = reference.metadata_entities(db_client)
+
+    assert result == (species, brain_region)
+    resolve.assert_called_once_with(db_client=db_client)
+
+
+@pytest.mark.parametrize(
+    ("entity", "message"),
+    [
+        (SimpleNamespace(brain_region=SimpleNamespace()), "subject relationship"),
+        (
+            SimpleNamespace(
+                subject=SimpleNamespace(species=None),
+                brain_region=SimpleNamespace(),
+            ),
+            "subject.species relationship",
+        ),
+        (
+            SimpleNamespace(
+                subject=SimpleNamespace(species=SimpleNamespace()),
+                brain_region=None,
+            ),
+            "brain_region relationship",
+        ),
+    ],
+)
+def test_metadata_entities_rejects_missing_relationships(entity, message):
+    reference = CellMorphologyFromID(id_str="morphology-id")
+
+    with (
+        patch.object(CellMorphologyFromID, "entity", return_value=entity),
+        pytest.raises(EntitySDKError, match=message),
+    ):
+        reference.metadata_entities(Mock())

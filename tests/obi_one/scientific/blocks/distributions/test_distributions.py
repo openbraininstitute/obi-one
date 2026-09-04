@@ -4,6 +4,219 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS,
+    resolve_distance_dependent_distribution,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+    EModelOptimizationScanConfig,
+)
+
+
+def _optimization_config(**overrides):
+    config_data = {
+        "info": {"campaign_name": "test", "campaign_description": "test"},
+        "initialize": {"emodel": "test", "etype": {"id_str": "etype"}},
+        "inputs": {
+            "target_efeatures": {"id_str": "target"},
+            "morphology": {"id_str": "morphology"},
+        },
+        "parameters_selection": {"ion_channel_models": [{"id_str": "icm"}]},
+    }
+    config_data.update(overrides)
+    return EModelOptimizationScanConfig.model_validate(config_data)
+
+
+class TestDistanceDependentDistributions:
+    @pytest.mark.parametrize(
+        ("distribution_class", "expected_name", "expected_function"),
+        [
+            (obi.UniformDistanceDependentDistribution, "uniform", None),
+            (
+                obi.ExponentialDistanceDependentDistribution,
+                "exp",
+                "(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
+            ),
+            (
+                obi.StepDistanceDependentDistribution,
+                "step",
+                (
+                    "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                    "({distance} < {step_end})))"
+                ),
+            ),
+            (
+                obi.ExponentialNaDendDistanceDependentDistribution,
+                "exp_na_dend",
+                "math.exp((-{distance})/50)*{value}",
+            ),
+            (
+                obi.LinearHDApicDistanceDependentDistribution,
+                "linear_hd_apic",
+                "(1. + 3./100. * {distance})*{value}",
+            ),
+            (
+                obi.SigmoidKADApicDistanceDependentDistribution,
+                "sigmoid_kad_apic",
+                "(15./(1. + math.exp((300-{distance})/50)))*{value}",
+            ),
+            (
+                obi.LinearEPasApicDistanceDependentDistribution,
+                "linear_e_pas_apic",
+                "({value}-5*{distance}/150)",
+            ),
+            (
+                obi.LinearHDPasDistanceDependentDistribution,
+                "linear_hdpas",
+                "(1. + 3./100. * {distance})*{value}",
+            ),
+            (
+                obi.SigmoidKADDistanceDependentDistribution,
+                "sigmoid_kad",
+                "(15./(1. + math.exp((150-{distance})/10)))*{value}",
+            ),
+            (
+                obi.SigmoidKDBMApicDistanceDependentDistribution,
+                "sigmoid_kdbm_apic",
+                "(15./(1. + math.exp(({distance}-50)/50)))*{value}",
+            ),
+        ],
+    )
+    def test_legacy_distributions_serialize(
+        self, distribution_class, expected_name, expected_function
+    ):
+        distribution = distribution_class()
+
+        assert distribution.to_emc_dict() == {
+            "name": expected_name,
+            "function": expected_function,
+            "soma_ref_location": 0.5,
+        }
+
+    def test_custom_distribution_is_validated_and_serialized(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="custom_profile",
+            function="({value} + {distance}) / 2",
+            soma_ref_location=0.25,
+        )
+
+        assert distribution.to_emc_dict() == {
+            "name": "custom_profile",
+            "function": "({value} + {distance}) / 2",
+            "soma_ref_location": 0.25,
+        }
+
+    def test_custom_distribution_serializes_parameters(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="decay",
+            function="math.exp({distance}*{constant})*{value}",
+            parameters=["constant"],
+        )
+
+        assert distribution.to_emc_dict() == {
+            "name": "decay",
+            "function": "math.exp({distance}*{constant})*{value}",
+            "soma_ref_location": 0.5,
+            "parameters": ["constant"],
+        }
+
+    def test_empty_distribution_parameters_are_not_serialized(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="custom_profile",
+            function="({value} + {distance}) / 2",
+            parameters=[],
+        )
+
+        assert "parameters" not in distribution.to_emc_dict()
+
+    def test_distribution_parameter_names_are_not_scan_dimensions(self):
+        distribution = obi.CustomDistanceDependentDistribution(
+            name="decay",
+            function="math.exp({distance}*{constant})*{value}",
+            parameters=["constant"],
+        )
+
+        assert distribution.parameters == ("constant",)
+        assert distribution.multiple_value_parameters(category_name="distributions") == []
+
+    def test_custom_distribution_requires_value_and_distance(self):
+        with pytest.raises(ValueError, match=r"\{value\} placeholder"):
+            obi.CustomDistanceDependentDistribution(name="custom", function="{distance}")
+
+        with pytest.raises(ValueError, match=r"\{distance\} placeholder"):
+            obi.CustomDistanceDependentDistribution(name="custom", function="{value}")
+
+    def test_custom_distribution_requires_declared_parameters(self):
+        with pytest.raises(ValueError, match=r"\{constant\} placeholder"):
+            obi.CustomDistanceDependentDistribution(
+                name="custom",
+                function="math.exp({distance})*{value}",
+                parameters=["constant"],
+            )
+
+    def test_distribution_parameters_require_a_function(self):
+        with pytest.raises(ValueError, match="must define a function"):
+            obi.DistanceDependentDistribution(parameters=["constant"])
+
+    def test_standard_distributions_are_available_without_declaration(self):
+        """The ten legacy distributions are selectable by name without being declared."""
+        assert set(STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS) == {
+            "uniform",
+            "exp",
+            "step",
+            "exp_na_dend",
+            "linear_hd_apic",
+            "sigmoid_kad_apic",
+            "linear_e_pas_apic",
+            "linear_hdpas",
+            "sigmoid_kad",
+            "sigmoid_kdbm_apic",
+        }
+        assert isinstance(
+            resolve_distance_dependent_distribution("linear_hdpas", {}),
+            obi.LinearHDPasDistanceDependentDistribution,
+        )
+
+    def test_custom_distribution_declared_on_the_config_deserializes(self):
+        config = _optimization_config(
+            distance_dependent_distributions={
+                "mouse_decay": {
+                    "type": "CustomDistanceDependentDistribution",
+                    "function": "math.exp({distance})*{value}",
+                },
+            }
+        )
+
+        assert isinstance(
+            config.distance_dependent_distributions["mouse_decay"],
+            obi.CustomDistanceDependentDistribution,
+        )
+
+    def test_optimization_parameter_selection_has_no_declared_distributions_by_default(self):
+        config = _optimization_config()
+
+        assert dict(config.distance_dependent_distributions) == {}
+
+    def test_step_distribution_preserves_morphology_derived_placeholders(self):
+        """BluePyEModel computes step_begin/step_end from the morphology hot-spot.
+
+        They must not be required as user-declared ``parameters`` and must be
+        preserved verbatim in the function string for BluePyEModel to substitute
+        at runtime via ``get_hotspot_location()``.
+        """
+        distribution = obi.StepDistanceDependentDistribution()
+
+        assert "{step_begin}" in distribution.function
+        assert "{step_end}" in distribution.function
+        assert distribution.parameters is None
+        assert distribution.to_emc_dict() == {
+            "name": "step",
+            "function": (
+                "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                "({distance} < {step_end})))"
+            ),
+            "soma_ref_location": 0.5,
+        }
 
 
 class TestFloatConstantDistribution:

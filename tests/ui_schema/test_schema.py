@@ -54,10 +54,13 @@ def validate_root_element(
             validate_block_dictionary(schema, element, config_ref, form)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
+        case UIElement.EMODEL_OPTIMISATION_PARAMETERS:
+            validate_emodel_optimisation_parameters(schema, element, ref)
         case _:
             msg = (
                 f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
-                f" 'block_dictionary', or 'block_union'. Got: {ui_element}"
+                f" 'block_dictionary', 'block_union', or 'emodel_optimisation_parameters'."
+                f" Got: {ui_element}"
             )
             raise ValueError(msg)
 
@@ -79,6 +82,8 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[c
 
         group = root_element_schema.get(SchemaKey.GROUP)
         group_order = root_element_schema.get(SchemaKey.GROUP_ORDER)
+        if not root_element_schema.get(SchemaKey.UI_ENABLED, True):
+            continue
         if not group:
             msg = f"Validation error at {form_ref}: {root_element} must have a group"
             raise ValueError(msg)
@@ -177,16 +182,28 @@ def validate_scan_config_dependendent_block_components(block_schema, ref, form):
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
     additional_properties = schema.get("additionalProperties", {})
+    if not isinstance(additional_properties, dict):
+        msg = (
+            f"Validation error at {config_ref}: block_dictionary {key} must have an object "
+            "schema in additionalProperties"
+        )
+        raise TypeError(msg)
+
     block_schemas = additional_properties.get("oneOf")
+    direct_schema = False
     if block_schemas is None:
         block_ref = additional_properties.get("$ref")
-        if block_ref is None:
+        if block_ref is not None:
+            block_schemas = [{"$ref": block_ref}]
+        elif isinstance(additional_properties.get("properties"), dict):
+            block_schemas = [additional_properties]
+            direct_schema = True
+        else:
             msg = (
-                f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
-                " or '$ref' in additionalProperties"
+                f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf', "
+                "'$ref', or an inline object schema in additionalProperties"
             )
             raise ValueError(msg)
-        block_schemas = [{"$ref": block_ref}]
 
     for block_schema in block_schemas:
         ref = block_schema.get("$ref")
@@ -196,7 +213,14 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dic
 
         validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
-        validate_block(block_schema, ref)
+        if direct_schema and not isinstance(block_schema.get("properties"), dict):
+            msg = (
+                f"Validation error at {config_ref}: block_dictionary {key} must reference an "
+                "object schema"
+            )
+            raise TypeError(msg)
+        if not direct_schema:
+            validate_block(block_schema, ref)
 
 
 def validate_block_union(schema: dict, key: str, config_ref: str, form: dict) -> None:
@@ -223,6 +247,32 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     validate_block(schema, ref)
 
 
+def validate_emodel_optimisation_parameters(schema: dict, key: str, ref: str) -> None:
+    """Validate the root-level Task 2 mechanisms/optimization-parameter workflow element.
+
+    Structurally this root element is a nested-block object (like ``block_single``),
+    but it additionally must carry a ``mechanisms`` property (the
+    ``MechanismsBySectionList`` catalogue and section-list filing) so that clients can
+    distinguish it from a generic ``block_single`` root field.
+    """
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters {key} must have "
+            "'properties'"
+        )
+        raise TypeError(msg)
+
+    if "mechanisms" not in properties:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters {key} must define a "
+            "'mechanisms' property (MechanismsBySectionList)."
+        )
+        raise ValueError(msg)
+
+    validate_block(schema, ref)
+
+
 def validate_config(form: dict, config_ref: str) -> None:
     if not form.get(SchemaKey.UI_ENABLED):
         L.info(f"Form {config_ref} is disabled, skipping validation.")
@@ -239,6 +289,8 @@ def validate_config(form: dict, config_ref: str) -> None:
     for root_element, root_element_schema in form.get("properties", {}).items():
         if root_element == "type":
             validate_type(root_element_schema, config_ref)
+            continue
+        if not root_element_schema.get(SchemaKey.UI_ENABLED, True):
             continue
 
         ref = root_element_schema.get("$ref")
