@@ -4,6 +4,15 @@ import math
 from collections.abc import Mapping
 from typing import Annotated, Any, ClassVar, Literal
 
+from bluepyemodel.preprocessing.schemas import (
+    AXON_MODIFIER_DESCRIPTIONS,
+    DEFAULT_SECTION_LIST_CATALOG,
+    REGIONAL_SECTION_LIST_NAMES,
+    AxonModifier,
+    RegionalSectionListName,
+    SectionListChoice,
+    SectionListName,
+)
 from entitysdk.types import EntityType
 from pydantic import (
     BaseModel,
@@ -23,15 +32,6 @@ from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFro
 from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_lists import (
-    AXON_MODIFIER_DESCRIPTIONS,
-    DEFAULT_SECTION_LIST_CATALOG,
-    REGIONAL_SECTION_LIST_NAMES,
-    AxonModifier,
-    RegionalSectionListName,
-    SectionListChoice,
-    SectionListName,
-)
 
 MIN_CMA_OFFSPRING_SIZE = 2
 MAX_OFFSPRING_SIZE = 200
@@ -259,39 +259,12 @@ class OptimizationInitialize(Block):
 def default_distance_dependent_distributions() -> dict[str, CustomDistanceDependentDistribution]:
     """Custom distance-dependent distributions declared by the user (empty by default).
 
-    The ten legacy distributions are always selectable by name from
-    ``STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS`` without being declared here; this
-    dict only holds user-defined distributions (see ``CustomDistanceDependentDistribution``).
+    The ten legacy distributions from
+    ``bluepyemodel.preprocessing.schemas.STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS``
+    are always selectable by name without being declared here; this dict only holds
+    user-defined distributions (see ``CustomDistanceDependentDistribution``).
     """
     return {}
-
-
-STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS: dict[str, DistanceDependentDistributionUnion] = {
-    "uniform": UniformDistanceDependentDistribution(),
-    "exp": ExponentialDistanceDependentDistribution(),
-    "step": StepDistanceDependentDistribution(),
-    "exp_na_dend": ExponentialNaDendDistanceDependentDistribution(),
-    "linear_hd_apic": LinearHDApicDistanceDependentDistribution(),
-    "sigmoid_kad_apic": SigmoidKADApicDistanceDependentDistribution(),
-    "linear_e_pas_apic": LinearEPasApicDistanceDependentDistribution(),
-    "linear_hdpas": LinearHDPasDistanceDependentDistribution(),
-    "sigmoid_kad": SigmoidKADDistanceDependentDistribution(),
-    "sigmoid_kdbm_apic": SigmoidKDBMApicDistanceDependentDistribution(),
-}
-"""Built-in legacy distance-dependent distributions, selectable by name on any parameter row
-without being declared in the config's ``distance_dependent_distributions`` field. That field
-is reserved for user-defined (``CustomDistanceDependentDistribution``) distributions only."""
-
-
-def resolve_distance_dependent_distribution(
-    name: str,
-    custom_distributions: Mapping[str, "CustomDistanceDependentDistribution"],
-) -> DistanceDependentDistributionUnion | None:
-    """Resolve a distribution name against the standard catalog, then custom declarations."""
-    standard = STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS.get(name)
-    if standard is not None:
-        return standard
-    return custom_distributions.get(name)
 
 
 # The Figma "Mechanisms" card is a 4-step wizard. Mechanism data and parameter
@@ -465,7 +438,7 @@ class MorphologySettings(Block):
     """Morphology transformation settings used by BluePyEModel."""
 
     axon_modifier: AxonModifier = Field(
-        default=AxonModifier.REPLACE_AXON_WITH_TAPER,
+        default=AxonModifier.replace_axon_with_taper,
         title="Axon replacement",
         description=(
             "BluePyEModel axon strategy. The default tapered modifier creates a myelinated "
@@ -475,13 +448,16 @@ class MorphologySettings(Block):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
-            "choices": AXON_MODIFIER_DESCRIPTIONS,
+            "choices": {
+                modifier.value: description
+                for modifier, description in AXON_MODIFIER_DESCRIPTIONS.items()
+            },
         },
     )
 
     def to_pipeline_settings(self) -> dict[str, list[str]]:
         """Return the BluePyEModel pipeline setting for the selected modifier."""
-        if self.axon_modifier == AxonModifier.NONE:
+        if self.axon_modifier == AxonModifier.none:
             return {"morph_modifiers": []}
         return {"morph_modifiers": [self.axon_modifier.value]}
 
@@ -489,13 +465,13 @@ class MorphologySettings(Block):
     def expected_myelinated(self) -> bool | None:
         """Expected myelination derived from the selected modifier."""
         if self.axon_modifier in {
-            AxonModifier.REPLACE_AXON_WITH_TAPER,
-            AxonModifier.REPLACE_AXON_OLFACTORY_BULB,
+            AxonModifier.replace_axon_with_taper,
+            AxonModifier.replace_axon_olfactory_bulb,
         }:
             return True
         if self.axon_modifier in {
-            AxonModifier.REPLACE_AXON_LEGACY,
-            AxonModifier.BLUEPYOPT_REPLACE_AXON,
+            AxonModifier.replace_axon_legacy,
+            AxonModifier.bluepyopt_replace_axon,
         }:
             return False
         return None

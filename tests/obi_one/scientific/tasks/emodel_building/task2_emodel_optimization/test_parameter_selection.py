@@ -4,18 +4,35 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import morphio
 import pytest
 from bluepyemodel.model.mechanism_configuration import MechanismConfiguration
 from bluepyemodel.model.model import define_morphology
 from bluepyemodel.model.neuron_model_configuration import NeuronModelConfiguration
+from bluepyemodel.preprocessing import (
+    MorphologyCapabilities,
+    build_optimization_recipe,
+    build_params_definition,
+    morphology_preflight,
+    normalize_ion_channel_model,
+    update_pipeline_settings,
+)
+from bluepyemodel.preprocessing.schemas import (
+    DEFAULT_SECTION_LIST_CATALOG,
+    AxonModifier,
+    SectionListAvailability,
+    SectionListCatalog,
+    SectionListChoice,
+    SectionListDefinition,
+)
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.schema import UIElement
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.tasks.emodel_building import _shared
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    morphology_preflight,
+    registration,
+    staging,
     task as task_module,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
@@ -37,27 +54,19 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config i
     EModelOptimizationScanConfig,
     EModelOptimizationSingleConfig,
 )
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
-    MorphologyCapabilities,
-    build_params_definition,
-    normalize_ion_channel_model,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_lists import (
-    DEFAULT_SECTION_LIST_CATALOG,
-    AxonModifier,
-    SectionListAvailability,
-    SectionListCatalog,
-    SectionListChoice,
-    SectionListDefinition,
-    default_section_list_catalog,
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.registration import (
+    validation_status_keyword,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
     _fresh_morph_modifiers,
     _tag_local_mechanisms,
-    _validation_status_keyword,
-    build_optimization_recipe,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    params_definition_input_from_config,
+)
+from obi_one.utils.filesystem import create_dir
+from obi_one.utils.io import write_json
 
 
 def _scan_config_data(**overrides):
@@ -219,11 +228,11 @@ def test_section_list_catalog_expands_aliases_and_emits_recipe_map():
 
 def test_section_list_choices_follow_modifier_capabilities():
     expected = {
-        "replace_axon_with_taper": (True, SectionListAvailability.AVAILABLE),
-        "replace_axon_olfactory_bulb": (True, SectionListAvailability.AVAILABLE),
-        "replace_axon_legacy": (False, SectionListAvailability.UNAVAILABLE),
-        "bluepyopt_replace_axon": (False, SectionListAvailability.UNAVAILABLE),
-        "none": (False, SectionListAvailability.UNAVAILABLE),
+        "replace_axon_with_taper": (True, SectionListAvailability.available),
+        "replace_axon_olfactory_bulb": (True, SectionListAvailability.available),
+        "replace_axon_legacy": (False, SectionListAvailability.unavailable),
+        "bluepyopt_replace_axon": (False, SectionListAvailability.unavailable),
+        "none": (False, SectionListAvailability.unavailable),
     }
 
     for modifier, (available, availability) in expected.items():
@@ -466,13 +475,14 @@ def test_config_rejects_incompatible_optimizer_fields(optimiser, optimization_pa
 def test_recipe_file_contains_artifact_paths_and_pipeline_settings(tmp_path):
     settings = OptimizationSettings(plot_currentscape=False)
     recipes = build_optimization_recipe("test", "L5", "morphology.swc", "params.json")
-    recipes = _shared.update_pipeline_settings(
+    recipes = update_pipeline_settings(
         recipes,
         emodel="test",
         overrides=settings.to_dict(OptimizationParams()),
     )
     recipe_path = tmp_path / "config" / "recipes.json"
-    _shared.write_recipes(recipes, recipe_path)
+    create_dir(recipe_path.parent)
+    write_json(recipes, recipe_path, indent=4)
 
     written = json.loads(recipe_path.read_text(encoding="utf-8"))["test"]
     assert written["features"] == "config/features/test.json"
@@ -501,14 +511,14 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
         initialize=SimpleNamespace(emodel="test"),
         inputs=SimpleNamespace(morphology=FakeMorphology()),
     )
-    task = EModelOptimizationTask.model_construct(config=config)
 
-    features_path = task._download_extraction_features(
+    features_path = staging.download_extraction_features(
+        config,
         FakeExtractionTaskResult(),
         tmp_path,
         object(),
     )
-    morphology_filename = task._stage_morphology(tmp_path, object())
+    morphology_filename = staging.stage_morphology(config, tmp_path, object())
 
     assert features_path == tmp_path / "config" / "features" / "test.json"
     assert features_path.read_text(encoding="utf-8") == '{"features": []}'
@@ -530,7 +540,7 @@ def test_overlapping_rows_warn_and_preserve_broad_to_narrow_order(caplog):
         distance_dependent_distributions={"uniform": UniformDistanceDependentDistribution()},
     )
 
-    params = build_params_definition(config, {})
+    params = build_params_definition(params_definition_input_from_config(config), {})
 
     cm_rows = [parameter for parameter in _parameter_rows(params) if parameter["name"] == "cm"]
     assert [parameter["location"] for parameter in cm_rows] == ["all", "apical"]
@@ -591,7 +601,7 @@ def test_ion_channel_metadata_normalizes_mapping_entries_and_units():
 
 def test_params_builder_emits_complete_deterministic_definition():
     config, _, normalized = _compiler_fixture()
-    params = build_params_definition(config, normalized)
+    params = build_params_definition(params_definition_input_from_config(config), normalized)
 
     assert "morphology" not in params
     assert params["mechanisms"] == {
@@ -648,7 +658,7 @@ def test_params_builder_omits_reversal_potential_without_assigned_ion():
     )
     normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
 
-    params = build_params_definition(config, normalized)
+    params = build_params_definition(params_definition_input_from_config(config), normalized)
 
     parameter_rows = _parameter_rows(params)
     regional_names = {
@@ -666,7 +676,7 @@ def test_params_builder_omits_reversal_potential_without_assigned_ion():
 
 def test_params_definition_is_accepted_by_bluepyemodel_parser():
     config, _, normalized = _compiler_fixture()
-    params = build_params_definition(config, normalized)
+    params = build_params_definition(params_definition_input_from_config(config), normalized)
 
     neuron_configuration = NeuronModelConfiguration()
     neuron_configuration.init_from_legacy_dict(params, {"name": "test-morphology"})
@@ -687,12 +697,14 @@ def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
         "all": {"Ra": ParameterSelection(value=OptimizationValue(mode="bounds"))}
     }
     with pytest.raises(ValueError, match="no bounds"):
-        build_params_definition(config, normalized, bounds_fallbacks={})
+        build_params_definition(
+            params_definition_input_from_config(config), normalized, bounds_fallbacks={}
+        )
 
     config, _, normalized = _compiler_fixture()
     config.parameters_selection.base_parameters["all"]["Ra"].distribution = "missing"
     with pytest.raises(ValueError, match="undeclared distribution"):
-        build_params_definition(config, normalized)
+        build_params_definition(params_definition_input_from_config(config), normalized)
 
     myelinated_selection = ParametersSelection(
         ion_channel_models=(reference,),
@@ -706,13 +718,13 @@ def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
     )
     with pytest.raises(ValueError, match="no myelinated section list"):
         build_params_definition(
-            myelinated_config,
+            params_definition_input_from_config(myelinated_config),
             normalized,
             morphology_capabilities=MorphologyCapabilities(has_myelinated=False),
         )
     with pytest.raises(ValueError, match="did not establish a myelinated section list"):
         build_params_definition(
-            myelinated_config,
+            params_definition_input_from_config(myelinated_config),
             normalized,
             morphology_capabilities=MorphologyCapabilities(has_myelinated=None),
         )
@@ -723,7 +735,7 @@ def test_registration_error_names_the_missing_entitysdk_package():
         pytest.skip("installed EntitySDK provides the registration helpers")
 
     with pytest.raises(RuntimeError, match=r"entitysdk\.registration"):
-        EModelOptimizationTask.register_output_entities(None, Path(), None)
+        registration.register_output_entities(None, Path(), None)
 
 
 def test_morph_modifiers_survive_repeated_evaluator_builds():
@@ -782,7 +794,6 @@ def test_local_mechanism_metadata_is_tagged_from_entitycore():
 
 def test_stage_mechanisms_deduplicates_nested_models(tmp_path, monkeypatch):
     config, _, _ = _compiler_fixture()
-    task = EModelOptimizationTask.model_construct(config=config)
     downloaded = []
 
     def download_asset(self, *, dest_dir, db_client):
@@ -791,7 +802,7 @@ def test_stage_mechanisms_deduplicates_nested_models(tmp_path, monkeypatch):
 
     monkeypatch.setattr(IonChannelModelFromID, "download_asset", download_asset)
 
-    task._stage_mechanisms(tmp_path, object())
+    staging.stage_mechanisms(config, tmp_path, object())
 
     assert downloaded == ["icm-1"]
 
@@ -850,8 +861,8 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
         has_myelinated=True,
         available_physical_sections=("somatic", "basal", "apical", "axonal"),
     )
-    task = EModelOptimizationTask.model_construct(config=config)
-    artifacts = task._build_artifacts(
+    artifacts = staging.build_artifacts(
+        config,
         db_client=object(),
         mtype="L5",
         morph_filename="morphology.swc",
@@ -865,7 +876,7 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
     artifacts.write(tmp_path)
 
     assert json.loads(params_path.read_text(encoding="utf-8")) == build_params_definition(
-        config,
+        params_definition_input_from_config(config),
         normalized,
         morphology_capabilities=capabilities,
     )
@@ -953,11 +964,11 @@ def test_build_params_definition_unchanged_by_parameter_group_view():
     """The Figma-shaped projection must never influence the compiled params."""
     config, _, normalized = _compiler_fixture()
 
-    before = build_params_definition(config, normalized)
+    before = build_params_definition(params_definition_input_from_config(config), normalized)
     # Touch the projection to ensure it has no side effects on the config.
     _ = config.parameters_selection.parameter_group_view
     _ = config.parameters_selection.parameter_rows("global")
-    after = build_params_definition(config, normalized)
+    after = build_params_definition(params_definition_input_from_config(config), normalized)
 
     assert before == after
 
@@ -972,7 +983,7 @@ def test_fallback_bounds_resolve_context_specific_parameter_names():
     )
 
     params = build_params_definition(
-        config,
+        params_definition_input_from_config(config),
         normalized,
         bounds_fallbacks={
             "g_pas": (1e-5, 6e-5),
@@ -997,7 +1008,7 @@ def _fake_section(section_type):
 
 
 def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatch):
-    morphio_type = morphology_preflight.morphio.SectionType
+    morphio_type = morphio.SectionType
     axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
 
     class FakeMorphology:
@@ -1033,7 +1044,7 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
 
 
 def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path, monkeypatch):
-    morphio_type = morphology_preflight.morphio.SectionType
+    morphio_type = morphio.SectionType
     axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
 
     class FakeMorphology:
@@ -1059,7 +1070,7 @@ def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path,
 def test_morphology_preflight_reports_available_physical_sections_in_catalog_order(
     tmp_path, monkeypatch
 ):
-    morphio_type = morphology_preflight.morphio.SectionType
+    morphio_type = morphio.SectionType
     axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
 
     class FakeMorphology:
@@ -1097,7 +1108,7 @@ def test_params_builder_rejects_region_the_morphology_does_not_provide():
 
     with pytest.raises(ValueError, match=r"no source sections for \['apical', 'basal'\]"):
         build_params_definition(
-            config,
+            params_definition_input_from_config(config),
             normalized,
             morphology_capabilities=axon_only_capabilities,
         )
@@ -1109,7 +1120,7 @@ def test_morphology_capabilities_without_preflight_skips_region_check():
 
     # available_physical_sections defaults to (): "not inspected".
     params = build_params_definition(
-        config,
+        params_definition_input_from_config(config),
         normalized,
         morphology_capabilities=MorphologyCapabilities(has_myelinated=True),
     )
@@ -1119,7 +1130,7 @@ def test_morphology_capabilities_without_preflight_skips_region_check():
 
 def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path, monkeypatch):
     class FakeSection:
-        type = morphology_preflight.morphio.SectionType.axon
+        type = morphio.SectionType.axon
 
     class FakeMorphology:
         sections = (FakeSection(), FakeSection())
@@ -1139,15 +1150,15 @@ def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path
         )
 
 
-def test_entitysdk_validation_status_keyword_supports_both_spellings():
+def test_entitysdkvalidation_status_keyword_supports_both_spellings():
     def correct(*, validation_result_status):
         del validation_result_status
 
     def historical(*, validateion_result_status):
         del validateion_result_status
 
-    assert _validation_status_keyword(correct) == "validation_result_status"
-    assert _validation_status_keyword(historical) == "validateion_result_status"
+    assert validation_status_keyword(correct) == "validation_result_status"
+    assert validation_status_keyword(historical) == "validateion_result_status"
 
 
 def test_root_emodel_optimisation_parameters_normalizes_to_canonical_selection():
@@ -1257,8 +1268,10 @@ def test_root_parameter_configuration_preserves_compiler_output():
 
     new_config = EModelOptimizationScanConfig.model_validate(data)
 
-    assert build_params_definition(new_config, normalized) == build_params_definition(
-        legacy_config,
+    assert build_params_definition(
+        params_definition_input_from_config(new_config), normalized
+    ) == build_params_definition(
+        params_definition_input_from_config(legacy_config),
         normalized,
     )
 
@@ -1299,7 +1312,7 @@ def test_root_parameter_block_validates_global_model_reference_directly():
 
 
 def test_no_replacement_keeps_myelinated_choice_unavailable():
-    settings = MorphologySettings(axon_modifier=AxonModifier.NONE)
+    settings = MorphologySettings(axon_modifier=AxonModifier.none)
     myelinated_choice = {choice.name: choice for choice in settings.section_list_choices()}[
         "myelinated"
     ]
@@ -1307,7 +1320,7 @@ def test_no_replacement_keeps_myelinated_choice_unavailable():
     assert settings.expected_myelinated is None
     assert "myelinated" not in settings.available_section_list_names()
     assert not myelinated_choice.available
-    assert myelinated_choice.availability == SectionListAvailability.UNAVAILABLE
+    assert myelinated_choice.availability == SectionListAvailability.unavailable
 
 
 @pytest.mark.parametrize("field_name", ["base_parameters", "mechanism_regions"])
@@ -1332,7 +1345,7 @@ def test_no_replacement_rejects_myelinated_configuration_rows(field_name):
         )
     data = _scan_config_data()
     data.pop("emodel_optimisation_parameters")
-    data["morphology_settings"] = {"axon_modifier": AxonModifier.NONE.value}
+    data["morphology_settings"] = {"axon_modifier": AxonModifier.none.value}
     data["emodel_optimisation_parameters"] = EModelOptimisationParameters.from_parameters_selection(
         selection
     ).model_dump(mode="json")
@@ -1349,7 +1362,7 @@ def test_morphology_settings_rejects_removed_source_myelinated_override():
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
                 morphology_settings={
-                    "axon_modifier": AxonModifier.NONE.value,
+                    "axon_modifier": AxonModifier.none.value,
                     "source_has_myelinated": True,
                 }
             )
@@ -1415,16 +1428,16 @@ def test_section_list_definition_rejects_invalid_expansions(overrides, message):
     ("overrides", "message"),
     [
         (
-            {"available": True, "availability": SectionListAvailability.UNAVAILABLE},
+            {"available": True, "availability": SectionListAvailability.unavailable},
             "cannot have unavailable status",
         ),
         (
-            {"available": False, "availability": SectionListAvailability.AVAILABLE},
+            {"available": False, "availability": SectionListAvailability.available},
             "must have unavailable status",
         ),
         ({"available": True, "disabled_reason": "not selectable"}, "cannot have a disabled reason"),
         (
-            {"available": False, "availability": SectionListAvailability.UNAVAILABLE},
+            {"available": False, "availability": SectionListAvailability.unavailable},
             "needs a disabled reason",
         ),
     ],
@@ -1446,7 +1459,7 @@ def test_section_list_catalog_validates_and_exposes_form_metadata():
     definitions = catalog.definitions
 
     assert catalog.available("somatic")
-    assert not catalog.available("myelinated", axon_modifier=AxonModifier.NONE)
+    assert not catalog.available("myelinated", axon_modifier=AxonModifier.none)
     assert catalog.schema_choices()[0]["display_order"] == 0
     assert set(catalog.schema_availability_by_modifier()) == {
         modifier.value for modifier in AxonModifier
@@ -1458,7 +1471,7 @@ def test_section_list_catalog_validates_and_exposes_form_metadata():
         "axonal",
     ]
 
-    no_replacement = catalog.choice("myelinated", axon_modifier=AxonModifier.NONE)
+    no_replacement = catalog.choice("myelinated", axon_modifier=AxonModifier.none)
     assert "staged SWC path" in no_replacement.description
     assert "cannot establish" in no_replacement.disabled_reason
 
@@ -1490,7 +1503,7 @@ def test_section_list_choice_exposes_enabled_alias():
     assert DEFAULT_SECTION_LIST_CATALOG.choice("somatic").enabled
 
 
-def test_stage_traces_returns_only_derivation_trace_ids(tmp_path):
+def test_stage_traces_returns_only_derivation_trace_ids():
     extraction = SimpleNamespace(
         entity=lambda **_: SimpleNamespace(id="extraction-1"),
     )
@@ -1502,26 +1515,23 @@ def test_stage_traces_returns_only_derivation_trace_ids(tmp_path):
     ]
     search_entity = Mock(return_value=derivations)
     db_client = SimpleNamespace(search_entity=search_entity)
-    task = EModelOptimizationTask.model_construct(config=SimpleNamespace())
 
-    assert task._stage_traces(extraction, tmp_path, db_client) == ["trace-1", "trace-2"]
+    assert staging.stage_traces(extraction, db_client) == ["trace-1", "trace-2"]
     assert search_entity.call_args.kwargs["query"] == {"generated__id": "extraction-1"}
 
 
 def test_derive_mtype_uses_first_label_and_handles_empty_mtypes():
     morphology_entity = SimpleNamespace(mtypes=[SimpleNamespace(pref_label="L5_TTPC")])
     morphology = SimpleNamespace(entity=lambda **_: morphology_entity)
-    task = EModelOptimizationTask.model_construct(
-        config=SimpleNamespace(inputs=SimpleNamespace(morphology=morphology))
-    )
+    config = SimpleNamespace(inputs=SimpleNamespace(morphology=morphology))
 
-    assert task._derive_mtype(object()) == "L5_TTPC"
+    assert staging.derive_mtype(config, object()) == "L5_TTPC"
 
     morphology.entity = lambda **_: SimpleNamespace(mtypes=[])
-    assert task._derive_mtype(object()) is None
+    assert staging.derive_mtype(config, object()) is None
 
     morphology.entity = lambda **_: SimpleNamespace()
-    assert task._derive_mtype(object()) is None
+    assert staging.derive_mtype(config, object()) is None
 
 
 def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monkeypatch):
@@ -1548,21 +1558,17 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
         "bluepyemodel.export_emodel.export_emodel.export_emodels_sonata",
         Mock(),
     )
-    monkeypatch.setattr(task_module._shared, "compile_mechanisms", Mock())
-    monkeypatch.setattr(task_module._shared, "run_plot_models", Mock())
+    monkeypatch.setattr(task_module.emodel_building_utils, "compile_mechanisms", Mock())
+    monkeypatch.setattr(task_module.emodel_building_utils, "run_plot_models", Mock())
     monkeypatch.setattr(task_module, "preflight_morphology", Mock(return_value=object()))
     monkeypatch.setattr(task_module, "resolve_ion_channel_models", Mock(return_value={}))
-    monkeypatch.setattr(EModelOptimizationTask, "_derive_mtype", Mock(return_value="L5_TTPC"))
-    monkeypatch.setattr(EModelOptimizationTask, "_download_extraction_features", Mock())
-    monkeypatch.setattr(
-        EModelOptimizationTask,
-        "_stage_morphology",
-        Mock(return_value="morphology.swc"),
-    )
-    monkeypatch.setattr(EModelOptimizationTask, "_stage_mechanisms", Mock())
-    monkeypatch.setattr(EModelOptimizationTask, "_stage_traces", Mock(return_value=["trace-1"]))
+    monkeypatch.setattr(staging, "derive_mtype", Mock(return_value="L5_TTPC"))
+    monkeypatch.setattr(staging, "download_extraction_features", Mock())
+    monkeypatch.setattr(staging, "stage_morphology", Mock(return_value="morphology.swc"))
+    monkeypatch.setattr(staging, "stage_mechanisms", Mock())
+    monkeypatch.setattr(staging, "stage_traces", Mock(return_value=["trace-1"]))
     artifacts = Mock()
-    monkeypatch.setattr(EModelOptimizationTask, "_build_artifacts", Mock(return_value=artifacts))
+    monkeypatch.setattr(staging, "build_artifacts", Mock(return_value=artifacts))
 
     species = SimpleNamespace(name="Mus musculus")
     brain_region = SimpleNamespace(name="Somatosensory cortex")
@@ -1598,13 +1604,13 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
         "threshold_current": None,
         "iteration": "0",
     }
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test") == defaults
 
     final_path.write_text("[]", encoding="utf-8")
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test") == defaults
 
     final_path.write_text(json.dumps({"other": []}), encoding="utf-8")
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test") == defaults
 
     final_path.write_text(
         json.dumps(
@@ -1620,7 +1626,7 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
         ),
         encoding="utf-8",
     )
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == {
+    assert registration.parse_final_json(final_path, "test") == {
         "name": "test",
         "total_score": 2.5,
         "holding_current": 0.1,
@@ -1632,7 +1638,7 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
         json.dumps({"test": {"fitness": 3.5, "iteration": 7}}),
         encoding="utf-8",
     )
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == {
+    assert registration.parse_final_json(final_path, "test") == {
         "name": "test",
         "total_score": 3.5,
         "holding_current": None,
@@ -1655,7 +1661,7 @@ def test_upload_optimization_assets_uploads_existing_files_and_skips_empty_root(
     sonata_file.write_text("hoc", encoding="utf-8")
 
     db_client = SimpleNamespace(upload_file=Mock(), upload_directory=Mock())
-    EModelOptimizationTask._upload_optimization_assets(tmp_path, db_client, "task-result-1")
+    registration.upload_optimization_assets(tmp_path, db_client, "task-result-1")
 
     assert db_client.upload_file.call_count == 2
     assert db_client.upload_directory.call_args.kwargs["paths"] == {
@@ -1664,7 +1670,7 @@ def test_upload_optimization_assets_uploads_existing_files_and_skips_empty_root(
 
     empty_root = tmp_path / "empty"
     (empty_root / "export_emodels_sonata").mkdir(parents=True)
-    EModelOptimizationTask._upload_optimization_assets(empty_root, db_client, "task-result-2")
+    registration.upload_optimization_assets(empty_root, db_client, "task-result-2")
     assert db_client.upload_file.call_count == 2
     assert db_client.upload_directory.call_count == 1
 
@@ -1677,17 +1683,17 @@ def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
     assert _tag_local_mechanisms([unknown], normalized) == [unknown]
 
 
-def test_validation_status_keyword_handles_variadic_unsupported_and_uninspectable_callables():
+def testvalidation_status_keyword_handles_variadic_unsupported_and_uninspectable_callables():
     def variadic(**kwargs):
         del kwargs
 
     def unsupported(*, unrelated):
         del unrelated
 
-    assert _validation_status_keyword(variadic) == "validation_result_status"
+    assert validation_status_keyword(variadic) == "validation_result_status"
     with pytest.raises(TypeError, match="does not expose"):
-        _validation_status_keyword(unsupported)
-    assert _validation_status_keyword(object()) == "validation_result_status"
+        validation_status_keyword(unsupported)
+    assert validation_status_keyword(object()) == "validation_result_status"
 
 
 def test_download_extraction_features_keeps_already_named_target(tmp_path):
@@ -1699,9 +1705,10 @@ def test_download_extraction_features_keeps_already_named_target(tmp_path):
             return path
 
     config = SimpleNamespace(initialize=SimpleNamespace(emodel="test"))
-    task = EModelOptimizationTask.model_construct(config=config)
 
-    result = task._download_extraction_features(AlreadyNamedExtraction(), tmp_path, object())
+    result = staging.download_extraction_features(
+        config, AlreadyNamedExtraction(), tmp_path, object()
+    )
 
     assert result == tmp_path / "config" / "features" / "test.json"
     assert result.read_text(encoding="utf-8") == "{}"
@@ -1709,7 +1716,6 @@ def test_download_extraction_features_keeps_already_named_target(tmp_path):
 
 def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
     config, reference, normalized = _compiler_fixture()
-    task = EModelOptimizationTask.model_construct(config=config)
     db_client = object()
     sentinel = object()
     resolved_calls = []
@@ -1719,14 +1725,23 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
         resolved_calls.append((references, client))
         return normalized
 
-    def build(config_arg, normalized_models, **kwargs):
-        build_calls.append((config_arg, normalized_models, kwargs))
+    def build(artifact_input, normalized_models):
+        build_calls.append((artifact_input, normalized_models))
         return sentinel
 
-    monkeypatch.setattr(task_module, "resolve_ion_channel_models", resolve)
-    monkeypatch.setattr(task_module, "build_optimization_artifacts", build)
+    artifact_input_calls = []
+    artifact_input = object()
 
-    result = task._build_artifacts(
+    def to_artifact_input(config_arg, **kwargs):
+        artifact_input_calls.append((config_arg, kwargs))
+        return artifact_input
+
+    monkeypatch.setattr(staging, "resolve_ion_channel_models", resolve)
+    monkeypatch.setattr(staging, "build_optimization_artifacts", build)
+    monkeypatch.setattr(staging, "optimization_artifact_input_from_config", to_artifact_input)
+
+    result = staging.build_artifacts(
+        config,
         db_client=db_client,
         mtype="L5",
         morph_filename="morphology.swc",
@@ -1735,10 +1750,9 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
 
     assert result is sentinel
     assert resolved_calls == [((reference,), db_client)]
-    assert build_calls == [
+    assert artifact_input_calls == [
         (
             config,
-            normalized,
             {
                 "mtype": "L5",
                 "morphology_filename": "morphology.swc",
@@ -1746,7 +1760,14 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
             },
         )
     ]
+    assert build_calls == [(artifact_input, normalized)]
 
 
-def test_default_section_list_catalog_returns_canonical_catalog():
-    assert default_section_list_catalog() is DEFAULT_SECTION_LIST_CATALOG
+def test_default_section_list_catalog_is_the_canonical_catalog():
+    assert DEFAULT_SECTION_LIST_CATALOG.definitions
+    assert DEFAULT_SECTION_LIST_CATALOG.expand("all") == (
+        "apical",
+        "basal",
+        "somatic",
+        "axonal",
+    )
