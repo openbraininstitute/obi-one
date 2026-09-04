@@ -5,6 +5,7 @@ from enum import StrEnum
 from typing import Any, ClassVar, Literal
 
 from bluepyemodel.preprocessing import TASK2_CONFIG_CONTRACT_VERSION
+from bluepyemodel.preprocessing.distributions import resolve_distance_dependent_distribution
 from entitysdk import Client
 from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, model_validator
@@ -25,7 +26,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     OptimizationSettings,
     ParametersSelection,
     default_distance_dependent_distributions,
-    resolve_distance_dependent_distribution,
 )
 
 

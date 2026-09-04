@@ -59,28 +59,6 @@ def seed_working_dir_from_previous(
             L.info("Seeded %s -> %s", source, target)
 
 
-def update_pipeline_settings(
-    recipes: dict,
-    emodel: str,
-    overrides: dict[str, Any],
-) -> dict:
-    """Merge ``overrides`` into ``recipes[emodel]['pipeline_settings']``.
-
-    ``None`` values in ``overrides`` are skipped so callers can pass partial
-    blocks without clobbering existing recipe settings.
-    """
-    if emodel not in recipes:
-        msg = f"emodel '{emodel}' not in recipes (got keys: {list(recipes)})"
-        raise KeyError(msg)
-
-    settings = recipes[emodel].setdefault("pipeline_settings", {})
-    for key, value in overrides.items():
-        if value is None:
-            continue
-        settings[key] = value
-    return recipes
-
-
 def _resolve_nrnivmodl() -> str:
     """Return an absolute path to ``nrnivmodl``.
 

@@ -2,12 +2,13 @@ import math
 
 import numpy as np
 import pytest
+from bluepyemodel.preprocessing.distributions import resolve_distance_dependent_distribution
+from bluepyemodel.preprocessing.schemas import (
+    STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS,
+    LinearHDPasDistanceDependentDistribution,
+)
 
 import obi_one as obi
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
-    STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS,
-    resolve_distance_dependent_distribution,
-)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
 )
@@ -174,7 +175,7 @@ class TestDistanceDependentDistributions:
         }
         assert isinstance(
             resolve_distance_dependent_distribution("linear_hdpas", {}),
-            obi.LinearHDPasDistanceDependentDistribution,
+            LinearHDPasDistanceDependentDistribution,
         )
 
     def test_custom_distribution_declared_on_the_config_deserializes(self):
