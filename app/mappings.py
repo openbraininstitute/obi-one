@@ -4,6 +4,7 @@ from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
 
 from app.config import settings
+from app.dependencies.constraints import build_obi_one_constraint_from_file
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
     BuiltinCode,
@@ -22,6 +23,25 @@ APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
+# Per-task obi-one version pin (calver, e.g. "2026.5.1"). Tasks listed here are
+# checked out and installed at the pinned obi-one version instead of the running
+# service version -- use this to keep a task on an older, known-good obi-one when
+# it has not been validated against the current release. Both the git ``ref``
+# (task code + frozen requirements) and the obi-one dependency constraint are
+# pinned together so the task runs fully at that version.
+_PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {}
+
+
+def _obi_one_deps_constraint(deps_name: str, version: str | None = None) -> list[str]:
+    """Build the dynamic obi-one constraint for a launch-script deps file.
+
+    Pins ``obi-one`` to ``version`` when given, otherwise to the running service
+    version. Extras are read from the requirements file so they stay in sync.
+    Returns an empty list when the version is a dev/unreleased build.
+    """
+    app_version = version if version is not None else settings.APP_VERSION
+    return build_obi_one_constraint_from_file(app_version, OBI_ONE_DEPS_DIR / deps_name)
+
 
 TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
     TaskType.circuit_extraction: TaskDefinition(
@@ -33,6 +53,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "circuit_extraction.txt"),
+            dependency_constraints=_obi_one_deps_constraint("circuit_extraction.txt"),
         ),
         resources=MachineResources(
             cores=1,
@@ -50,6 +71,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
         ),
         resources=MachineResources(
             cores=1,
@@ -108,6 +130,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
         ),
         resources=MachineResources(
             cores=1,
@@ -126,6 +149,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
         ),
         resources=MachineResources(
             cores=4,
@@ -158,6 +182,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
         ),
         resources=MachineResources(
             cores=4,
@@ -176,6 +201,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
         ),
         resources=MachineResources(
             cores=4,
@@ -194,6 +220,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
         ),
         resources=MachineResources(
             cores=4,
@@ -212,6 +239,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
         ),
         resources=MachineResources(
             cores=1,
@@ -229,6 +257,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+            dependency_constraints=_obi_one_deps_constraint("default.txt"),
             capabilities=Capabilities(
                 env_secrets=[obi_settings.cave_client_config.microns_api_key]
             ),
@@ -249,6 +278,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
+            dependency_constraints=_obi_one_deps_constraint("emodel_building.txt"),
         ),
         resources=MachineResources(
             cores=1,
@@ -266,6 +296,9 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
+            dependency_constraints=_obi_one_deps_constraint(
+                "extracellular_recording_weights_calculation.txt"
+            ),
         ),
         resources=MachineResources(
             cores=1,
@@ -284,6 +317,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             ref=APP_TAG,
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
+            dependency_constraints=_obi_one_deps_constraint("skeletonization.txt"),
             capabilities=Capabilities(private_packages=True),
         ),
         resources=MachineResources(
@@ -294,6 +328,33 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         ),
     ),
 }  # ty:ignore[invalid-assignment]
+
+
+def _apply_obi_one_version_pins() -> None:
+    """Pin selected tasks to a specific obi-one version (ref + constraint).
+
+    For each task in ``_PINNED_OBI_ONE_VERSIONS`` the git ``ref`` is set to
+    ``tag:<version>`` (so the task code and frozen requirements are checked out
+    at that release) and the obi-one dependency constraint is pinned to the same
+    version, keeping the code and the installed library consistent.
+    """
+    for task_type, version in _PINNED_OBI_ONE_VERSIONS.items():
+        task_def = TASK_DEFINITIONS.get(task_type)
+        code = getattr(task_def, "code", None)
+        if task_def is None or not isinstance(code, PythonRepositoryCode):
+            msg = f"Cannot pin obi-one version for unknown/non-repository task {task_type!r}"
+            raise RuntimeError(msg)
+        deps_name = Path(code.dependencies).name
+        pinned_code = code.model_copy(
+            update={
+                "ref": f"tag:{version}",
+                "dependency_constraints": _obi_one_deps_constraint(deps_name, version=version),
+            }
+        )
+        TASK_DEFINITIONS[task_type] = task_def.model_copy(update={"code": pinned_code})
+
+
+_apply_obi_one_version_pins()
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [

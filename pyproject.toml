@@ -219,6 +219,12 @@ builtins-ignorelist = ["license"]
     "unused-method-argument",
 ]
 "launch_scripts/**/*.py" = ["implicit-namespace-package"]
+"launch_scripts/_freeze_deps.py" = [
+    "implicit-namespace-package",
+    "print",                                # `print` found (this is a CLI tool)
+    "suspicious-subprocess-import",         # `subprocess` module is possibly insecure
+    "subprocess-without-shell-equals-true", # check for execution of untrusted input
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

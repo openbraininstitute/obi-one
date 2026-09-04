@@ -613,6 +613,7 @@ def test_task_launch_success__circuit_simulation(
                     "dependencies": str(OBI_ONE_DEPS_DIR / "default.txt"),
                     "capabilities": {"private_packages": False, "env_secrets": []},
                     "staged_directories": [],
+                    "dependency_constraints": task_def.code.dependency_constraints,
                 },
                 "resources": task_def.resources.model_dump(mode="json")
                 | {"compute_cell": "cell_a"},
