@@ -1,22 +1,16 @@
-"""Resolve IonChannelModel entities and re-export BluePyEModel params compilation.
+"""EntityCore-bound adapters for Task 2 preprocessing.
 
-The params compiler and the IonChannelModel normalization live in
-:mod:`bluepyemodel.preprocessing.parameters`. Only the EntityCore-bound lookups
-stay here, because they need an ``entitysdk`` client.
+Pure params compilation, morphology preflight, and the section-list catalogue live
+in :mod:`bluepyemodel.preprocessing`. Only lookups that need an ``entitysdk`` client
+stay here.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from bluepyemodel.preprocessing.morphology_preflight import MorphologyCapabilities
 from bluepyemodel.preprocessing.parameters import (
-    DEFAULT_BOUNDS_FALLBACKS,
-    DEFAULT_SOMA_REF_LOCATION,
-    REVERSAL_POTENTIAL_IONS,
-    IonChannelVariable,
     NormalizedIonChannelModel,
-    build_params_definition,
     normalize_ion_channel_model,
 )
 
@@ -67,17 +61,3 @@ def fetch_variable_catalog(
             entity_id=str(ion_channel_id),
         )
     return catalog
-
-
-__all__ = [
-    "DEFAULT_BOUNDS_FALLBACKS",
-    "DEFAULT_SOMA_REF_LOCATION",
-    "REVERSAL_POTENTIAL_IONS",
-    "IonChannelVariable",
-    "MorphologyCapabilities",
-    "NormalizedIonChannelModel",
-    "build_params_definition",
-    "fetch_variable_catalog",
-    "normalize_ion_channel_model",
-    "resolve_ion_channel_models",
-]

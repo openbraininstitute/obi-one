@@ -10,8 +10,19 @@ from bluepyemodel.model.mechanism_configuration import MechanismConfiguration
 from bluepyemodel.model.model import define_morphology
 from bluepyemodel.model.neuron_model_configuration import NeuronModelConfiguration
 from bluepyemodel.preprocessing import (
+    MorphologyCapabilities,
     build_optimization_recipe,
-    morphology_preflight as bpem_preflight,
+    build_params_definition,
+    morphology_preflight,
+    normalize_ion_channel_model,
+)
+from bluepyemodel.preprocessing.schemas import (
+    DEFAULT_SECTION_LIST_CATALOG,
+    AxonModifier,
+    SectionListAvailability,
+    SectionListCatalog,
+    SectionListChoice,
+    SectionListDefinition,
 )
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
@@ -20,7 +31,6 @@ from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.tasks.emodel_building import _shared
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    morphology_preflight,
     task as task_module,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
@@ -44,20 +54,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_inp
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
     EModelOptimizationSingleConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
-    MorphologyCapabilities,
-    build_params_definition,
-    normalize_ion_channel_model,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_lists import (
-    DEFAULT_SECTION_LIST_CATALOG,
-    AxonModifier,
-    SectionListAvailability,
-    SectionListCatalog,
-    SectionListChoice,
-    SectionListDefinition,
-    default_section_list_catalog,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
@@ -226,11 +222,11 @@ def test_section_list_catalog_expands_aliases_and_emits_recipe_map():
 
 def test_section_list_choices_follow_modifier_capabilities():
     expected = {
-        "replace_axon_with_taper": (True, SectionListAvailability.AVAILABLE),
-        "replace_axon_olfactory_bulb": (True, SectionListAvailability.AVAILABLE),
-        "replace_axon_legacy": (False, SectionListAvailability.UNAVAILABLE),
-        "bluepyopt_replace_axon": (False, SectionListAvailability.UNAVAILABLE),
-        "none": (False, SectionListAvailability.UNAVAILABLE),
+        "replace_axon_with_taper": (True, SectionListAvailability.available),
+        "replace_axon_olfactory_bulb": (True, SectionListAvailability.available),
+        "replace_axon_legacy": (False, SectionListAvailability.unavailable),
+        "bluepyopt_replace_axon": (False, SectionListAvailability.unavailable),
+        "none": (False, SectionListAvailability.unavailable),
     }
 
     for modifier, (available, availability) in expected.items():
@@ -1015,7 +1011,7 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        bpem_preflight,
+        morphology_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1052,7 +1048,7 @@ def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path,
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        bpem_preflight,
+        morphology_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1082,7 +1078,7 @@ def test_morphology_preflight_reports_available_physical_sections_in_catalog_ord
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        bpem_preflight,
+        morphology_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1136,7 +1132,7 @@ def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        bpem_preflight,
+        morphology_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1310,7 +1306,7 @@ def test_root_parameter_block_validates_global_model_reference_directly():
 
 
 def test_no_replacement_keeps_myelinated_choice_unavailable():
-    settings = MorphologySettings(axon_modifier=AxonModifier.NONE)
+    settings = MorphologySettings(axon_modifier=AxonModifier.none)
     myelinated_choice = {choice.name: choice for choice in settings.section_list_choices()}[
         "myelinated"
     ]
@@ -1318,7 +1314,7 @@ def test_no_replacement_keeps_myelinated_choice_unavailable():
     assert settings.expected_myelinated is None
     assert "myelinated" not in settings.available_section_list_names()
     assert not myelinated_choice.available
-    assert myelinated_choice.availability == SectionListAvailability.UNAVAILABLE
+    assert myelinated_choice.availability == SectionListAvailability.unavailable
 
 
 @pytest.mark.parametrize("field_name", ["base_parameters", "mechanism_regions"])
@@ -1343,7 +1339,7 @@ def test_no_replacement_rejects_myelinated_configuration_rows(field_name):
         )
     data = _scan_config_data()
     data.pop("emodel_optimisation_parameters")
-    data["morphology_settings"] = {"axon_modifier": AxonModifier.NONE.value}
+    data["morphology_settings"] = {"axon_modifier": AxonModifier.none.value}
     data["emodel_optimisation_parameters"] = EModelOptimisationParameters.from_parameters_selection(
         selection
     ).model_dump(mode="json")
@@ -1360,7 +1356,7 @@ def test_morphology_settings_rejects_removed_source_myelinated_override():
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
                 morphology_settings={
-                    "axon_modifier": AxonModifier.NONE.value,
+                    "axon_modifier": AxonModifier.none.value,
                     "source_has_myelinated": True,
                 }
             )
@@ -1426,16 +1422,16 @@ def test_section_list_definition_rejects_invalid_expansions(overrides, message):
     ("overrides", "message"),
     [
         (
-            {"available": True, "availability": SectionListAvailability.UNAVAILABLE},
+            {"available": True, "availability": SectionListAvailability.unavailable},
             "cannot have unavailable status",
         ),
         (
-            {"available": False, "availability": SectionListAvailability.AVAILABLE},
+            {"available": False, "availability": SectionListAvailability.available},
             "must have unavailable status",
         ),
         ({"available": True, "disabled_reason": "not selectable"}, "cannot have a disabled reason"),
         (
-            {"available": False, "availability": SectionListAvailability.UNAVAILABLE},
+            {"available": False, "availability": SectionListAvailability.unavailable},
             "needs a disabled reason",
         ),
     ],
@@ -1457,7 +1453,7 @@ def test_section_list_catalog_validates_and_exposes_form_metadata():
     definitions = catalog.definitions
 
     assert catalog.available("somatic")
-    assert not catalog.available("myelinated", axon_modifier=AxonModifier.NONE)
+    assert not catalog.available("myelinated", axon_modifier=AxonModifier.none)
     assert catalog.schema_choices()[0]["display_order"] == 0
     assert set(catalog.schema_availability_by_modifier()) == {
         modifier.value for modifier in AxonModifier
@@ -1469,7 +1465,7 @@ def test_section_list_catalog_validates_and_exposes_form_metadata():
         "axonal",
     ]
 
-    no_replacement = catalog.choice("myelinated", axon_modifier=AxonModifier.NONE)
+    no_replacement = catalog.choice("myelinated", axon_modifier=AxonModifier.none)
     assert "staged SWC path" in no_replacement.description
     assert "cannot establish" in no_replacement.disabled_reason
 
@@ -1767,5 +1763,11 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
     assert build_calls == [(artifact_input, normalized)]
 
 
-def test_default_section_list_catalog_returns_canonical_catalog():
-    assert default_section_list_catalog() is DEFAULT_SECTION_LIST_CATALOG
+def test_default_section_list_catalog_is_the_canonical_catalog():
+    assert DEFAULT_SECTION_LIST_CATALOG.definitions
+    assert DEFAULT_SECTION_LIST_CATALOG.expand("all") == (
+        "apical",
+        "basal",
+        "somatic",
+        "axonal",
+    )
