@@ -152,6 +152,11 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure]
                 count=1,
                 service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
             )
+        case TaskType.efeature_extraction:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
+            )
         case TaskType.ion_channel_model_simulation_execution:
             count = 1
             service_subtype = ServiceSubtype.ION_CHANNEL_SIM

@@ -2477,8 +2477,8 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.4" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.4" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.5" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.5" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2514,14 +2514,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.4"
+version = "0.6.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e3/9f/658fb3d6cebd51ee86d01e41d4f2f294d5932df0a22078e844f04ee2d8e2/obp_accounting_sdk-0.6.4.tar.gz", hash = "sha256:663558377dc70f37777727c0c77e3960624eac9d39116b4740fc3d71507a792a", size = 36756, upload-time = "2026-08-31T14:48:19.462Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/78/79f281418d475a87944672e56a5f5cb1bd542864fd8fc56a2a3199164cc4/obp_accounting_sdk-0.6.5.tar.gz", hash = "sha256:b9e8c293b8178efbe8b9f6e8b25f0ade24399809a49d73d650892221de1d6f31", size = 36785, upload-time = "2026-09-03T13:18:17.482Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/f4/84dbdc499737ea95730565286e656f4ab3219bff09e7b47a52ac3ad25a6f/obp_accounting_sdk-0.6.4-py3-none-any.whl", hash = "sha256:f5fe7304f9c934570a60ea4d0c73d7dadc9230cda9e84783c39fbfed23a6e7dc", size = 27768, upload-time = "2026-08-31T14:48:18.372Z" },
+    { url = "https://files.pythonhosted.org/packages/38/60/224e7e07cc49a143804bc19f59e5e05d5cb199d7cc497f3eb9f097bb43ed/obp_accounting_sdk-0.6.5-py3-none-any.whl", hash = "sha256:c5617ed9a4e8d56d00d96bb99c2a124297f46bec5076baad86e8568cff923587", size = 27798, upload-time = "2026-09-03T13:18:16.075Z" },
 ]
 
 [[package]]
