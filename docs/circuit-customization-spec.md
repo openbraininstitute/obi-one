@@ -120,9 +120,23 @@ circuit's storage.
 |--------|---------|
 | `draft` | Entity created, validation pending or in progress |
 | `active` | Validation passed, circuit is simulatable |
-| `disqualified` | Validation failed (errors stored in task logs) |
+| `disqualified` | Validation failed (inspect logs via returned `job_id` → `GET /declared/task/{job_id}/stream`) |
 
 Note: entitysdk v0.18.0 only has `draft` and `active`. The `disqualified` value exists in entitycore but needs to be added to the SDK.
+
+## Job logs (validation / asset generation)
+
+Register, customize, validate, and generate-assets responses include a launch-system
+`job_id` when a job was submitted. Launch-system is not reachable outside the AWS
+network; use the existing obi-one proxies (same path the GUI uses):
+
+```
+GET /declared/task/{job_id}
+GET /declared/task/{job_id}/stream
+```
+
+Standalone `POST .../validate` and `POST .../generate-assets` return HTTP 500 if
+job submission fails (no silent success without a `job_id`).
 
 ## Validation Details
 

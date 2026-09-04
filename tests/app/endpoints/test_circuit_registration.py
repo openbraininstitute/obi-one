@@ -52,21 +52,24 @@ class TestTriggerValidationTask:
         mock_settings.APP_VERSION = "1.2.3-dev"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
         circuit_id = uuid4()
         project_id = uuid4()
         virtual_lab_id = uuid4()
 
-        trigger_validation_task(
+        result = trigger_validation_task(
             ls_client=ls_client,
             circuit_id=circuit_id,
             project_id=project_id,
             virtual_lab_id=virtual_lab_id,
             compute_cell="cell_a",
         )
+        assert result == job_id
 
         ls_client.post.assert_called_once()
         call_kwargs = ls_client.post.call_args[1]
@@ -86,17 +89,22 @@ class TestTriggerValidationTask:
         mock_settings.APP_VERSION = "1.2.3"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_b",
-            force=True,
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_b",
+                force=True,
+            )
+            == job_id
         )
 
         job_data = ls_client.post.call_args[1]["json"]
@@ -104,7 +112,7 @@ class TestTriggerValidationTask:
         assert job_data["resources"]["compute_cell"] == "cell_b"
 
     @patch("app.endpoints.circuit_helpers.settings")
-    def test_failure_logs_warning(self, mock_settings):
+    def test_failure_returns_none(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
         mock_settings.APP_VERSION = None
@@ -115,12 +123,15 @@ class TestTriggerValidationTask:
         response.text = "server error"
         ls_client.post.return_value = response
 
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_a",
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_a",
+            )
+            is None
         )
         ls_client.post.assert_called_once()
         assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"
@@ -162,6 +173,8 @@ class TestValidateCircuitEndpoint:
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
     def test_force_triggers_validation(self, mock_trigger, client):
         circuit_id = uuid4()
+        job_id = uuid4()
+        mock_trigger.return_value = job_id
         mock_circuit = MagicMock()
         mock_circuit.lifecycle_status = "active"
 
@@ -181,7 +194,9 @@ class TestValidateCircuitEndpoint:
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/validate?force=true")
             assert resp.status_code == 200
-            assert resp.json()["status"] == "validation_triggered"
+            body = resp.json()
+            assert body["status"] == "validation_triggered"
+            assert body["job_id"] == str(job_id)
             mock_trigger.assert_called_once()
             assert mock_trigger.call_args.kwargs["force"] is True
             assert mock_trigger.call_args.kwargs["generate_assets_on_success"] is False
@@ -193,6 +208,8 @@ class TestValidateCircuitEndpoint:
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
     def test_draft_triggers_without_force(self, mock_trigger, client):
         circuit_id = uuid4()
+        job_id = uuid4()
+        mock_trigger.return_value = job_id
         mock_circuit = MagicMock()
         mock_circuit.lifecycle_status = "draft"
 
@@ -212,10 +229,39 @@ class TestValidateCircuitEndpoint:
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/validate")
             assert resp.status_code == 200
+            assert resp.json()["job_id"] == str(job_id)
             mock_trigger.assert_called_once()
             assert mock_trigger.call_args.kwargs["force"] is False
             assert mock_trigger.call_args.kwargs["generate_assets_on_success"] is False
             assert mock_trigger.call_args.kwargs["compute_cell"] == "cell_b"
+        finally:
+            app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
+
+    @patch("app.endpoints.circuit_registration.trigger_validation_task")
+    def test_submission_failure_returns_500(self, mock_trigger, client):
+        circuit_id = uuid4()
+        mock_trigger.return_value = None
+        mock_circuit = MagicMock()
+        mock_circuit.lifecycle_status = "draft"
+
+        from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
+        from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
+
+        mock_db = MagicMock()
+        mock_db.get_entity.return_value = mock_circuit
+        mock_db.project_context.project_id = uuid4()
+        mock_db.project_context.virtual_lab_id = uuid4()
+        app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
+
+        try:
+            resp = client.post(f"/declared/circuit/{circuit_id}/validate")
+            assert resp.status_code == 500
+            assert "launch-system" in resp.json()["detail"]
         finally:
             app.dependency_overrides.pop(get_client, None)
             app.dependency_overrides.pop(get_compute_cell, None)
@@ -228,20 +274,25 @@ class TestTriggerAssetGenerationTask:
         mock_settings.APP_VERSION = "1.2.3-dev"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
         circuit_id = uuid4()
         project_id = uuid4()
         virtual_lab_id = uuid4()
 
-        trigger_asset_generation_task(
-            ls_client=ls_client,
-            circuit_id=circuit_id,
-            project_id=project_id,
-            virtual_lab_id=virtual_lab_id,
-            compute_cell="cell_a",
+        assert (
+            trigger_asset_generation_task(
+                ls_client=ls_client,
+                circuit_id=circuit_id,
+                project_id=project_id,
+                virtual_lab_id=virtual_lab_id,
+                compute_cell="cell_a",
+            )
+            == job_id
         )
 
         ls_client.post.assert_called_once()
@@ -258,17 +309,22 @@ class TestTriggerAssetGenerationTask:
         mock_settings.APP_VERSION = "1.2.3"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
-        trigger_asset_generation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_b",
-            force=True,
+        assert (
+            trigger_asset_generation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_b",
+                force=True,
+            )
+            == job_id
         )
 
         job_data = ls_client.post.call_args[1]["json"]
@@ -281,16 +337,21 @@ class TestTriggerAssetGenerationTask:
         mock_settings.APP_VERSION = None
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
-        trigger_asset_generation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_a",
+        assert (
+            trigger_asset_generation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_a",
+            )
+            == job_id
         )
 
         call_kwargs = ls_client.post.call_args[1]
@@ -298,7 +359,7 @@ class TestTriggerAssetGenerationTask:
         assert "tag:0.0.0" in job_data["code"]["ref"]
 
     @patch("app.endpoints.circuit_helpers.settings")
-    def test_failure_logs_warning(self, mock_settings):
+    def test_failure_returns_none(self, mock_settings):
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
         mock_settings.APP_VERSION = "2.0.0"
 
@@ -308,12 +369,15 @@ class TestTriggerAssetGenerationTask:
         response.text = "internal error"
         ls_client.post.return_value = response
 
-        trigger_asset_generation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_a",
+        assert (
+            trigger_asset_generation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_a",
+            )
+            is None
         )
         ls_client.post.assert_called_once()
 
@@ -387,7 +451,9 @@ class TestGenerateAssetsEndpoint:
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
             assert resp.status_code == 200
-            assert "already exist" in resp.json()["message"]
+            body = resp.json()
+            assert "already exist" in body["message"]
+            assert body["job_id"] is None
         finally:
             app.dependency_overrides.pop(get_client, None)
             app.dependency_overrides.pop(get_compute_cell, None)
@@ -432,6 +498,7 @@ class TestRegisterCircuitEndpoint:
         mock_registered.number_connections = 2000
         mock_registered.scale = "small"
         mock_register_circuit.return_value = mock_registered
+        mock_trigger_validation.return_value = uuid4()
 
         mock_db_client, _, _ = self._mock_db_client()
 
@@ -470,6 +537,7 @@ class TestRegisterCircuitEndpoint:
 
         assert result["status"] == "draft"
         assert result["number_neurons"] == 1000
+        assert result["job_id"] == str(mock_trigger_validation.return_value)
         mock_trigger_validation.assert_called_once()
         assert mock_trigger_validation.call_args.kwargs["compute_cell"] == "cell_a"
 
@@ -516,6 +584,7 @@ class TestRegisterCircuitEndpoint:
         assert result["number_synapses"] == 100
         assert result["number_connections"] == 7
         assert result["scale"] == "pair"
+        assert result["job_id"] is None
 
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
     @patch("app.endpoints.circuit_registration.register_circuit")
