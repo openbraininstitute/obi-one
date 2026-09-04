@@ -13,6 +13,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifact
     TASK2_CONFIG_CONTRACT_VERSION,
     build_optimization_artifacts,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
+    optimization_artifact_input_from_config,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
 )
@@ -28,10 +31,12 @@ def test_artifact_bundle_has_versioned_relative_paths_and_writes_json(tmp_path):
     normalized_models = {"icm-1": normalize_ion_channel_model(_model_entity())}
 
     artifacts = build_optimization_artifacts(
-        config,
+        optimization_artifact_input_from_config(
+            config,
+            mtype="L5PC",
+            morphology_filename="morphology-1.swc",
+        ),
         normalized_models,
-        mtype="L5PC",
-        morphology_filename="morphology-1.swc",
     )
     artifacts.write(tmp_path)
 

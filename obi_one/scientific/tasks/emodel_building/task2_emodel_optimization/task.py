@@ -28,6 +28,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifact
     build_optimization_artifacts,
     build_optimization_recipe,  # ruff: ignore[unused-import]
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
+    optimization_artifact_input_from_config,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
@@ -322,11 +325,13 @@ class EModelOptimizationTask(Task):
             references = self.config.parameters_selection.ion_channel_model_references
             normalized_models = resolve_ion_channel_models(references, db_client)
         return build_optimization_artifacts(
-            self.config,
+            optimization_artifact_input_from_config(
+                self.config,
+                mtype=mtype,
+                morphology_filename=morph_filename,
+                morphology_capabilities=morphology_capabilities,
+            ),
             normalized_models,
-            mtype=mtype,
-            morphology_filename=morph_filename,
-            morphology_capabilities=morphology_capabilities,
         )
 
     def _stage_traces(  # ruff: ignore[no-self-use]
