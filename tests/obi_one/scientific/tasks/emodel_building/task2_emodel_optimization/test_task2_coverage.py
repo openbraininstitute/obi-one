@@ -3,7 +3,12 @@ import sys
 from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock
 
+import morphio
 import pytest
+from bluepyemodel.preprocessing import (
+    morphology_preflight as bpem_preflight,
+    parameters as bpem_parameters,
+)
 from entitysdk.types import EntityLifecycleStatus, ValidationStatus
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
@@ -24,6 +29,10 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     ParametersSelection,
     _validate_base_parameter_locations,
     _validate_mechanism_region_references,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
+    optimization_artifact_input_from_config,
+    params_definition_input_from_config,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
@@ -122,15 +131,15 @@ def test_resolve_and_fetch_ion_channel_models_preserve_reference_ids():
 )
 def test_parameter_builder_rejects_invalid_fallback_bounds(bounds, message):
     with pytest.raises(ValueError, match=message):
-        parameter_builder._validate_bounds("g_pas", bounds)
+        bpem_parameters._validate_bounds("g_pas", bounds)
 
 
 def test_parameter_builder_rejects_fixed_without_value_and_invalid_locations():
     value = OptimizationValue.model_construct(mode="fixed", value=None, bounds=None)
     with pytest.raises(ValueError, match="has no value"):
-        parameter_builder._resolve_value("x", value, {})
+        bpem_parameters._resolve_value("x", value, {})
     with pytest.raises(ValueError, match="Unsupported regional"):
-        parameter_builder._validate_location("not-a-region")
+        bpem_parameters._validate_location("not-a-region")
 
 
 def test_parameter_builder_rejects_invalid_fallback_before_compilation():
@@ -139,7 +148,7 @@ def test_parameter_builder_rejects_invalid_fallback_before_compilation():
     )
     with pytest.raises(ValueError, match="finite"):
         parameter_builder.build_params_definition(
-            _compiler_config(selection),
+            params_definition_input_from_config(_compiler_config(selection)),
             _normalized_models(),
             bounds_fallbacks={"g_pas": (float("nan"), 1.0)},
         )
@@ -151,11 +160,11 @@ def test_parameter_builder_rejects_missing_and_duplicate_mechanism_metadata():
     selection = _selection(mechanism_regions={"somatic": (assignment,)})
 
     with pytest.raises(ValueError, match="No normalized metadata"):
-        parameter_builder._build_mechanisms(selection, {})
+        bpem_parameters._build_mechanisms(selection, {})
 
     duplicate_selection = _selection(mechanism_regions={"somatic": (assignment, assignment)})
     with pytest.raises(ValueError, match="assigned more than once"):
-        parameter_builder._build_mechanisms(duplicate_selection, _normalized_models())
+        bpem_parameters._build_mechanisms(duplicate_selection, _normalized_models())
 
 
 def test_parameter_builder_rejects_invalid_global_parameter_sources():
@@ -171,7 +180,7 @@ def test_parameter_builder_rejects_invalid_global_parameter_sources():
             }
         )
         with pytest.raises(ValueError, match="not a GLOBAL"):
-            parameter_builder._build_global_parameters(selection, model, {})
+            bpem_parameters._build_global_parameters(selection, model, {})
 
     unknown_reference = IonChannelModelFromID(id_str="icm-2")
     selection = _selection(
@@ -184,7 +193,7 @@ def test_parameter_builder_rejects_invalid_global_parameter_sources():
         },
     )
     with pytest.raises(ValueError, match="No normalized metadata"):
-        parameter_builder._build_global_parameters(selection, model, {})
+        bpem_parameters._build_global_parameters(selection, model, {})
 
 
 def test_parameter_builder_rejects_invalid_mechanism_parameter_sources():
@@ -197,9 +206,7 @@ def test_parameter_builder_rejects_invalid_mechanism_parameter_sources():
         )
         selection = _selection(mechanism_regions={"somatic": (assignment,)})
         with pytest.raises(ValueError, match=message):
-            parameter_builder._build_mechanism_parameters(
-                selection, model, {"uniform": object()}, {}
-            )
+            bpem_parameters._build_mechanism_parameters(selection, model, {"uniform": object()}, {})
 
 
 def test_parameter_builder_rejects_invalid_distribution_rows():
@@ -209,7 +216,7 @@ def test_parameter_builder_rejects_invalid_distribution_rows():
         }
     )
     with pytest.raises(ValueError, match="not declared"):
-        parameter_builder._build_distribution_parameters(selection, {}, {})
+        bpem_parameters._build_distribution_parameters(selection, {}, {})
 
     selection = _selection(
         distribution_parameters={
@@ -218,17 +225,17 @@ def test_parameter_builder_rejects_invalid_distribution_rows():
     )
     distribution = SimpleNamespace(parameters=("constant",))
     with pytest.raises(ValueError, match="undeclared parameters"):
-        parameter_builder._build_distribution_parameters(selection, {"decay": distribution}, {})
+        bpem_parameters._build_distribution_parameters(selection, {"decay": distribution}, {})
 
 
 def test_parameter_builder_legacy_conversions_preserve_optional_fields():
-    mechanisms = parameter_builder._to_legacy_mechanisms(
+    mechanisms = bpem_parameters._to_legacy_mechanisms(
         [
             {"name": "NaTg", "location": "somatic"},
             {"name": "NaTg", "location": "somatic"},
         ]
     )
-    distributions = parameter_builder._to_legacy_distributions(
+    distributions = bpem_parameters._to_legacy_distributions(
         [
             {
                 "name": "decay",
@@ -239,7 +246,7 @@ def test_parameter_builder_legacy_conversions_preserve_optional_fields():
             {"name": "uniform", "function": None, "soma_ref_location": 0.5},
         ]
     )
-    parameters = parameter_builder._to_legacy_parameters(
+    parameters = bpem_parameters._to_legacy_parameters(
         [{"name": "gNa_NaTg", "location": "somatic", "value": [0.0, 1.0], "dist": "decay"}]
     )
 
@@ -253,7 +260,7 @@ def test_parameter_builder_rejects_wrong_capability_type():
     selection = _selection()
     with pytest.raises(TypeError, match="MorphologyCapabilities"):
         parameter_builder.build_params_definition(
-            _compiler_config(selection),
+            params_definition_input_from_config(_compiler_config(selection)),
             _normalized_models(),
             morphology_capabilities=object(),
         )
@@ -366,13 +373,15 @@ def test_recipe_rejects_nonportable_paths(morphology_filename, params_filename, 
 
 
 def test_artifact_builder_rejects_unknown_contract_before_compilation():
-    with pytest.raises(ValueError, match="Unsupported Task 2 configuration"):
-        artifacts.build_optimization_artifacts(
-            SimpleNamespace(contract_version="task2-config-v0"),
-            {},
-            mtype=None,
-            morphology_filename="morphology.swc",
-        )
+    config = EModelOptimizationScanConfig.model_validate(_scan_config_data())
+    artifact_input = optimization_artifact_input_from_config(
+        config,
+        mtype=None,
+        morphology_filename="morphology.swc",
+    ).model_copy(update={"config_contract_version": "task2-config-v0"})
+
+    with pytest.raises(ValueError, match="contract version"):
+        artifacts.build_optimization_artifacts(artifact_input, {})
 
 
 @pytest.mark.parametrize(
@@ -387,16 +396,11 @@ def test_preflight_reports_modifier_capabilities(
     tmp_path, monkeypatch, modifier, axon_count, has_myelinated
 ):
     class FakeMorphology:
-        sections = tuple(
-            SimpleNamespace(type=morphology_preflight.morphio.SectionType.axon)
-            for _ in range(axon_count)
-        )
+        sections = tuple(SimpleNamespace(type=morphio.SectionType.axon) for _ in range(axon_count))
 
     path = tmp_path / "morphology.swc"
     path.write_text("", encoding="utf-8")
-    monkeypatch.setattr(
-        morphology_preflight, "load_morphology_nrn_order", lambda _: FakeMorphology()
-    )
+    monkeypatch.setattr(bpem_preflight, "load_morphology_nrn_order", lambda _: FakeMorphology())
 
     capabilities = morphology_preflight.preflight_morphology(path, modifier)
 
@@ -404,15 +408,9 @@ def test_preflight_reports_modifier_capabilities(
     assert capabilities.axonal_section_count == axon_count
 
 
-def test_preflight_rejects_missing_asset_and_missing_loader(tmp_path, monkeypatch):
+def test_preflight_rejects_missing_asset(tmp_path):
     with pytest.raises(ValueError, match="does not exist"):
         morphology_preflight.preflight_morphology(tmp_path / "missing.swc", "none")
-
-    path = tmp_path / "morphology.swc"
-    path.write_text("", encoding="utf-8")
-    monkeypatch.setattr(morphology_preflight, "load_morphology_nrn_order", None)
-    with pytest.raises(RuntimeError, match="requires"):
-        morphology_preflight.preflight_morphology(path, "none")
 
 
 def _install_registration_modules(monkeypatch, calls):
@@ -670,13 +668,13 @@ def test_remaining_parameter_builder_paths():
     model = _normalized_models()["icm-1"]
     assert model.find_variable("gNa_NaTg").name == "gNa_NaTg"
 
-    variables = parameter_builder._normalize_variables(
+    variables = bpem_parameters._normalize_variables(
         (SimpleNamespace(name="h", units="mV"), SimpleNamespace(variable="q")),
         "NaTg",
         "RANGE",
     )
     assert [variable.name for variable in variables] == ["h_NaTg", "q_NaTg"]
-    assert parameter_builder._location_sort_key("not-a-region") == (0, "not-a-region")
+    assert bpem_parameters._location_sort_key("not-a-region") == (0, "not-a-region")
 
     pas_reference = IonChannelModelFromID(id_str="pas-model")
     pas_selection = _selection(
@@ -697,19 +695,19 @@ def test_remaining_parameter_builder_paths():
         global_variables=(),
         ion_names=frozenset(),
     )
-    mechanisms = parameter_builder._build_mechanisms(pas_selection, {"pas-model": pas_model})
+    mechanisms = bpem_parameters._build_mechanisms(pas_selection, {"pas-model": pas_model})
     assert [mechanism["name"] for mechanism in mechanisms] == ["pas"]
 
     missing_metadata_selection = _selection(
         mechanism_regions={"somatic": (MechanismRegionSelection(ion_channel_model=_reference()),)}
     )
-    assert parameter_builder._assigned_ion_names_by_section(missing_metadata_selection, {}) == {}
+    assert bpem_parameters._assigned_ion_names_by_section(missing_metadata_selection, {}) == {}
 
     no_myelinated = _selection(
         base_parameters={"somatic": {"cm": ParameterSelection(value=OptimizationValue(value=1.0))}}
     )
     params = parameter_builder.build_params_definition(
-        _compiler_config(no_myelinated),
+        params_definition_input_from_config(_compiler_config(no_myelinated)),
         _normalized_models(),
         morphology_capabilities=morphology_preflight.MorphologyCapabilities(has_myelinated=False),
     )
@@ -727,7 +725,9 @@ def test_remaining_parameter_builder_paths():
     )
     with pytest.raises(ValueError, match="Used distribution 'decay' is missing values"):
         parameter_builder.build_params_definition(
-            _compiler_config(missing_distribution_values, {"decay": _decay_distribution()}),
+            params_definition_input_from_config(
+                _compiler_config(missing_distribution_values, {"decay": _decay_distribution()})
+            ),
             _normalized_models(),
         )
 
@@ -735,7 +735,7 @@ def test_remaining_parameter_builder_paths():
 def test_morphology_preflight_ignores_unknown_section_types():
     morphology = SimpleNamespace(sections=(SimpleNamespace(type="unknown"),), soma=None)
 
-    assert morphology_preflight._available_physical_sections(morphology) == ()
+    assert bpem_preflight._available_physical_sections(morphology) == ()
 
 
 def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path, monkeypatch):

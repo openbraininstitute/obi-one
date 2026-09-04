@@ -4,10 +4,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import morphio
 import pytest
 from bluepyemodel.model.mechanism_configuration import MechanismConfiguration
 from bluepyemodel.model.model import define_morphology
 from bluepyemodel.model.neuron_model_configuration import NeuronModelConfiguration
+from bluepyemodel.preprocessing import morphology_preflight as bpem_preflight
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.schema import UIElement
@@ -32,6 +34,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     ParametersSelection,
     PhasePlotSettings,
     UniformDistanceDependentDistribution,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
+    params_definition_input_from_config,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
@@ -530,7 +535,7 @@ def test_overlapping_rows_warn_and_preserve_broad_to_narrow_order(caplog):
         distance_dependent_distributions={"uniform": UniformDistanceDependentDistribution()},
     )
 
-    params = build_params_definition(config, {})
+    params = build_params_definition(params_definition_input_from_config(config), {})
 
     cm_rows = [parameter for parameter in _parameter_rows(params) if parameter["name"] == "cm"]
     assert [parameter["location"] for parameter in cm_rows] == ["all", "apical"]
@@ -591,7 +596,7 @@ def test_ion_channel_metadata_normalizes_mapping_entries_and_units():
 
 def test_params_builder_emits_complete_deterministic_definition():
     config, _, normalized = _compiler_fixture()
-    params = build_params_definition(config, normalized)
+    params = build_params_definition(params_definition_input_from_config(config), normalized)
 
     assert "morphology" not in params
     assert params["mechanisms"] == {
@@ -648,7 +653,7 @@ def test_params_builder_omits_reversal_potential_without_assigned_ion():
     )
     normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
 
-    params = build_params_definition(config, normalized)
+    params = build_params_definition(params_definition_input_from_config(config), normalized)
 
     parameter_rows = _parameter_rows(params)
     regional_names = {
@@ -666,7 +671,7 @@ def test_params_builder_omits_reversal_potential_without_assigned_ion():
 
 def test_params_definition_is_accepted_by_bluepyemodel_parser():
     config, _, normalized = _compiler_fixture()
-    params = build_params_definition(config, normalized)
+    params = build_params_definition(params_definition_input_from_config(config), normalized)
 
     neuron_configuration = NeuronModelConfiguration()
     neuron_configuration.init_from_legacy_dict(params, {"name": "test-morphology"})
@@ -687,12 +692,14 @@ def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
         "all": {"Ra": ParameterSelection(value=OptimizationValue(mode="bounds"))}
     }
     with pytest.raises(ValueError, match="no bounds"):
-        build_params_definition(config, normalized, bounds_fallbacks={})
+        build_params_definition(
+            params_definition_input_from_config(config), normalized, bounds_fallbacks={}
+        )
 
     config, _, normalized = _compiler_fixture()
     config.parameters_selection.base_parameters["all"]["Ra"].distribution = "missing"
     with pytest.raises(ValueError, match="undeclared distribution"):
-        build_params_definition(config, normalized)
+        build_params_definition(params_definition_input_from_config(config), normalized)
 
     myelinated_selection = ParametersSelection(
         ion_channel_models=(reference,),
@@ -706,13 +713,13 @@ def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
     )
     with pytest.raises(ValueError, match="no myelinated section list"):
         build_params_definition(
-            myelinated_config,
+            params_definition_input_from_config(myelinated_config),
             normalized,
             morphology_capabilities=MorphologyCapabilities(has_myelinated=False),
         )
     with pytest.raises(ValueError, match="did not establish a myelinated section list"):
         build_params_definition(
-            myelinated_config,
+            params_definition_input_from_config(myelinated_config),
             normalized,
             morphology_capabilities=MorphologyCapabilities(has_myelinated=None),
         )
@@ -865,7 +872,7 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
     artifacts.write(tmp_path)
 
     assert json.loads(params_path.read_text(encoding="utf-8")) == build_params_definition(
-        config,
+        params_definition_input_from_config(config),
         normalized,
         morphology_capabilities=capabilities,
     )
@@ -953,11 +960,11 @@ def test_build_params_definition_unchanged_by_parameter_group_view():
     """The Figma-shaped projection must never influence the compiled params."""
     config, _, normalized = _compiler_fixture()
 
-    before = build_params_definition(config, normalized)
+    before = build_params_definition(params_definition_input_from_config(config), normalized)
     # Touch the projection to ensure it has no side effects on the config.
     _ = config.parameters_selection.parameter_group_view
     _ = config.parameters_selection.parameter_rows("global")
-    after = build_params_definition(config, normalized)
+    after = build_params_definition(params_definition_input_from_config(config), normalized)
 
     assert before == after
 
@@ -972,7 +979,7 @@ def test_fallback_bounds_resolve_context_specific_parameter_names():
     )
 
     params = build_params_definition(
-        config,
+        params_definition_input_from_config(config),
         normalized,
         bounds_fallbacks={
             "g_pas": (1e-5, 6e-5),
@@ -997,7 +1004,7 @@ def _fake_section(section_type):
 
 
 def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatch):
-    morphio_type = morphology_preflight.morphio.SectionType
+    morphio_type = morphio.SectionType
     axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
 
     class FakeMorphology:
@@ -1006,7 +1013,7 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        morphology_preflight,
+        bpem_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1033,7 +1040,7 @@ def test_morphology_preflight_applies_modifier_capabilities(tmp_path, monkeypatc
 
 
 def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path, monkeypatch):
-    morphio_type = morphology_preflight.morphio.SectionType
+    morphio_type = morphio.SectionType
     axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
 
     class FakeMorphology:
@@ -1043,7 +1050,7 @@ def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path,
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        morphology_preflight,
+        bpem_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1059,7 +1066,7 @@ def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path,
 def test_morphology_preflight_reports_available_physical_sections_in_catalog_order(
     tmp_path, monkeypatch
 ):
-    morphio_type = morphology_preflight.morphio.SectionType
+    morphio_type = morphio.SectionType
     axon_sections = [_fake_section(morphio_type.axon) for _ in range(3)]
 
     class FakeMorphology:
@@ -1073,7 +1080,7 @@ def test_morphology_preflight_reports_available_physical_sections_in_catalog_ord
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        morphology_preflight,
+        bpem_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1097,7 +1104,7 @@ def test_params_builder_rejects_region_the_morphology_does_not_provide():
 
     with pytest.raises(ValueError, match=r"no source sections for \['apical', 'basal'\]"):
         build_params_definition(
-            config,
+            params_definition_input_from_config(config),
             normalized,
             morphology_capabilities=axon_only_capabilities,
         )
@@ -1109,7 +1116,7 @@ def test_morphology_capabilities_without_preflight_skips_region_check():
 
     # available_physical_sections defaults to (): "not inspected".
     params = build_params_definition(
-        config,
+        params_definition_input_from_config(config),
         normalized,
         morphology_capabilities=MorphologyCapabilities(has_myelinated=True),
     )
@@ -1119,7 +1126,7 @@ def test_morphology_capabilities_without_preflight_skips_region_check():
 
 def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path, monkeypatch):
     class FakeSection:
-        type = morphology_preflight.morphio.SectionType.axon
+        type = morphio.SectionType.axon
 
     class FakeMorphology:
         sections = (FakeSection(), FakeSection())
@@ -1127,7 +1134,7 @@ def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path
     morphology_path = tmp_path / "morphology.swc"
     morphology_path.write_text("", encoding="utf-8")
     monkeypatch.setattr(
-        morphology_preflight,
+        bpem_preflight,
         "load_morphology_nrn_order",
         lambda _path: FakeMorphology(),
     )
@@ -1257,8 +1264,10 @@ def test_root_parameter_configuration_preserves_compiler_output():
 
     new_config = EModelOptimizationScanConfig.model_validate(data)
 
-    assert build_params_definition(new_config, normalized) == build_params_definition(
-        legacy_config,
+    assert build_params_definition(
+        params_definition_input_from_config(new_config), normalized
+    ) == build_params_definition(
+        params_definition_input_from_config(legacy_config),
         normalized,
     )
 
@@ -1719,12 +1728,20 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
         resolved_calls.append((references, client))
         return normalized
 
-    def build(config_arg, normalized_models, **kwargs):
-        build_calls.append((config_arg, normalized_models, kwargs))
+    def build(artifact_input, normalized_models):
+        build_calls.append((artifact_input, normalized_models))
         return sentinel
+
+    artifact_input_calls = []
+    artifact_input = object()
+
+    def to_artifact_input(config_arg, **kwargs):
+        artifact_input_calls.append((config_arg, kwargs))
+        return artifact_input
 
     monkeypatch.setattr(task_module, "resolve_ion_channel_models", resolve)
     monkeypatch.setattr(task_module, "build_optimization_artifacts", build)
+    monkeypatch.setattr(task_module, "optimization_artifact_input_from_config", to_artifact_input)
 
     result = task._build_artifacts(
         db_client=db_client,
@@ -1735,10 +1752,9 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
 
     assert result is sentinel
     assert resolved_calls == [((reference,), db_client)]
-    assert build_calls == [
+    assert artifact_input_calls == [
         (
             config,
-            normalized,
             {
                 "mtype": "L5",
                 "morphology_filename": "morphology.swc",
@@ -1746,6 +1762,7 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
             },
         )
     ]
+    assert build_calls == [(artifact_input, normalized)]
 
 
 def test_default_section_list_catalog_returns_canonical_catalog():
