@@ -767,9 +767,7 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
         "bluepyemodel.export_emodel.export_emodel.export_emodels_sonata",
         Mock(),
     )
-    monkeypatch.setattr(
-        "obi_one.scientific.tasks.emodel_building.utils.compile_mechanisms", Mock()
-    )
+    monkeypatch.setattr("obi_one.scientific.tasks.emodel_building.utils.compile_mechanisms", Mock())
     monkeypatch.setattr("obi_one.scientific.tasks.emodel_building.utils.run_plot_models", Mock())
     monkeypatch.setattr(
         "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task.preflight_morphology",
