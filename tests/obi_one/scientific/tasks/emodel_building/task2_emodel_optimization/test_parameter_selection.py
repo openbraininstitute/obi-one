@@ -48,9 +48,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     PhasePlotSettings,
     UniformDistanceDependentDistribution,
 )
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
-    params_definition_input_from_config,
-)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
     EModelOptimizationSingleConfig,
@@ -60,6 +57,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task imp
     _fresh_morph_modifiers,
     _tag_local_mechanisms,
     _validation_status_keyword,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    params_definition_input_from_config,
 )
 
 

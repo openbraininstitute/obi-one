@@ -31,15 +31,15 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     _validate_base_parameter_locations,
     _validate_mechanism_region_references,
 )
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
-    optimization_artifact_input_from_config,
-    params_definition_input_from_config,
-)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    optimization_artifact_input_from_config,
+    params_definition_input_from_config,
 )
 
 from .test_parameter_selection import _model_entity, _scan_config_data
