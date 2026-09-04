@@ -29,7 +29,7 @@ from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
-from obi_one.scientific.tasks.emodel_building import _shared
+from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
@@ -37,6 +37,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     optimization_artifact_input_from_config,
     resolve_ion_channel_models,
 )
+from obi_one.utils.filesystem import chdir
 
 L = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ class EModelOptimizationTask(Task):
         artifacts.write(coord_root)
 
         # --- 6. Compile mechanisms ---
-        _shared.compile_mechanisms(coord_root / "mechanisms")
+        emodel_building_utils.compile_mechanisms(coord_root / "mechanisms")
 
         # --- 7. Run optimisation + store + plot + export ---
         # Species and brain region are taken from the morphology entity.
@@ -205,7 +206,7 @@ class EModelOptimizationTask(Task):
                 configuration.morph_modifiers = _fresh_morph_modifiers(self.pipeline_settings)
                 return configuration
 
-        with _shared.chdir(coord_root):
+        with chdir(coord_root):
             access_point = EntityCoreLocalAccessPoint(
                 emodel=emodel,
                 etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
@@ -230,7 +231,7 @@ class EModelOptimizationTask(Task):
                 )
                 store_best_model(access_point=access_point, seed=seed)
 
-            _shared.run_plot_models(
+            emodel_building_utils.run_plot_models(
                 access_point=access_point,
                 mapper=mapper,
                 seeds=seeds,  # ty:ignore[invalid-argument-type]

@@ -70,8 +70,8 @@ class TestEModelEFeatureExtractionTask:
             patch.dict(sys.modules, fake_modules),
             patch.object(task, "_download_recordings", return_value=[]),
             patch.object(task, "_build_targets_configuration", return_value=(Mock(), [])),
-            patch(f"{_TASK_MODULE}._shared.write_recipes"),
-            patch(f"{_TASK_MODULE}._shared.chdir", _noop_chdir),
+            patch(f"{_TASK_MODULE}.write_json"),
+            patch(f"{_TASK_MODULE}.chdir", _noop_chdir),
             patch.object(
                 task,
                 "_get_execution_activity",
@@ -112,8 +112,8 @@ class TestEModelEFeatureExtractionTask:
             patch.dict(sys.modules, fake_modules),
             patch.object(task, "_download_recordings", return_value=[]),
             patch.object(task, "_build_targets_configuration", return_value=(Mock(), [])),
-            patch(f"{_TASK_MODULE}._shared.write_recipes"),
-            patch(f"{_TASK_MODULE}._shared.chdir", _noop_chdir),
+            patch(f"{_TASK_MODULE}.write_json"),
+            patch(f"{_TASK_MODULE}.chdir", _noop_chdir),
             patch.object(task, "_get_execution_activity", return_value=mock_activity),
             patch.object(
                 task,
@@ -139,8 +139,8 @@ class TestEModelEFeatureExtractionTask:
             patch.dict(sys.modules, fake_modules),
             patch.object(task, "_download_recordings", return_value=[]),
             patch.object(task, "_build_targets_configuration", return_value=(Mock(), [])),
-            patch(f"{_TASK_MODULE}._shared.write_recipes"),
-            patch(f"{_TASK_MODULE}._shared.chdir", _noop_chdir),
+            patch(f"{_TASK_MODULE}.write_json"),
+            patch(f"{_TASK_MODULE}.chdir", _noop_chdir),
             patch.object(task, "_update_execution_activity") as mock_update_activity,
         ):
             task.execute(db_client=None)

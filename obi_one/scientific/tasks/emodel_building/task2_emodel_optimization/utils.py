@@ -7,8 +7,6 @@ in :mod:`bluepyemodel.preprocessing`. This module only:
 - resolves IonChannelModel entities through an ``entitysdk`` client
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -81,7 +79,7 @@ def optimization_artifact_input_from_config(
     *,
     mtype: str | None,
     morphology_filename: str,
-    morphology_capabilities: MorphologyCapabilities | None = None,
+    morphology_capabilities: "MorphologyCapabilities | None" = None,
 ) -> OptimizationArtifactInput:
     """Extract the local artifact-compiler inputs from an obi-one optimization config."""
     return OptimizationArtifactInput(
@@ -102,7 +100,7 @@ def optimization_artifact_input_from_config(
 
 
 def resolve_ion_channel_models(
-    references: Iterable[IonChannelModelFromID],
+    references: Iterable["IonChannelModelFromID"],
     db_client: Any,
 ) -> dict[str, NormalizedIonChannelModel]:
     """Resolve selected IonChannelModel references and normalize their metadata."""

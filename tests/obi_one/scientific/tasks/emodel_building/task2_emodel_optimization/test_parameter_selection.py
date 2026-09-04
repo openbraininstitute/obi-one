@@ -29,7 +29,7 @@ from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.schema import UIElement
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.tasks.emodel_building import _shared
+from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     task as task_module,
 )
@@ -61,6 +61,8 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task imp
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     params_definition_input_from_config,
 )
+from obi_one.utils.filesystem import create_dir
+from obi_one.utils.io import write_json
 
 
 def _scan_config_data(**overrides):
@@ -469,13 +471,14 @@ def test_config_rejects_incompatible_optimizer_fields(optimiser, optimization_pa
 def test_recipe_file_contains_artifact_paths_and_pipeline_settings(tmp_path):
     settings = OptimizationSettings(plot_currentscape=False)
     recipes = build_optimization_recipe("test", "L5", "morphology.swc", "params.json")
-    recipes = _shared.update_pipeline_settings(
+    recipes = emodel_building_utils.update_pipeline_settings(
         recipes,
         emodel="test",
         overrides=settings.to_dict(OptimizationParams()),
     )
     recipe_path = tmp_path / "config" / "recipes.json"
-    _shared.write_recipes(recipes, recipe_path)
+    create_dir(recipe_path.parent)
+    write_json(recipes, recipe_path, indent=4)
 
     written = json.loads(recipe_path.read_text(encoding="utf-8"))["test"]
     assert written["features"] == "config/features/test.json"
@@ -1555,8 +1558,8 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
         "bluepyemodel.export_emodel.export_emodel.export_emodels_sonata",
         Mock(),
     )
-    monkeypatch.setattr(task_module._shared, "compile_mechanisms", Mock())
-    monkeypatch.setattr(task_module._shared, "run_plot_models", Mock())
+    monkeypatch.setattr(task_module.emodel_building_utils, "compile_mechanisms", Mock())
+    monkeypatch.setattr(task_module.emodel_building_utils, "run_plot_models", Mock())
     monkeypatch.setattr(task_module, "preflight_morphology", Mock(return_value=object()))
     monkeypatch.setattr(task_module, "resolve_ion_channel_models", Mock(return_value={}))
     monkeypatch.setattr(EModelOptimizationTask, "_derive_mtype", Mock(return_value="L5_TTPC"))
