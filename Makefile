@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps freeze-launch-deps check-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -65,6 +65,12 @@ upgrade-deps:  ## Create or update the lock file, using the latest version of th
 
 check-deps:  ## Check that the dependencies in the existing lock file are valid, and that entitysdk is at the latest version.
 	uv lock --locked --upgrade-package entitysdk
+
+freeze-launch-deps:  ## Freeze launch-script requirements (.in -> pinned .txt). Optional: TASK=<launch_dir>
+	uv run python launch_scripts/_freeze_deps.py $(if $(TASK),--task $(TASK))
+
+check-launch-deps:  ## Verify committed launch-script .txt files are up to date with their .in sources
+	uv run python launch_scripts/_freeze_deps.py --check --skip-unresolvable $(if $(TASK),--task $(TASK))
 
 format:  ## Run formatters
 	uv run ruff format $(FILE)
