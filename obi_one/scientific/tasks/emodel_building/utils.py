@@ -6,16 +6,15 @@ paths (its access points read ``./config/recipes.json``, write to
 ``./checkpoints/``, ``./figures/<emodel>/``, ``./final.json`` etc.).
 """
 
-import json
 import logging
 import os
 import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+
+from obi_one.utils.filesystem import copy_tree
 
 L = logging.getLogger(__name__)
 
@@ -38,26 +37,6 @@ WORKING_DIR_SUBPATHS: tuple[str, ...] = (
 )
 
 
-@contextmanager
-def chdir(path: Path) -> Iterator[None]:
-    """Temporarily change the working directory to ``path``."""
-    previous = Path.cwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(previous)
-
-
-def copy_tree(source: Path, target: Path) -> None:
-    """Copy ``source`` (file or directory) to ``target``, creating parents."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if source.is_dir():
-        shutil.copytree(source, target, dirs_exist_ok=True)
-    else:
-        shutil.copy2(source, target)
-
-
 def seed_working_dir_from_previous(
     previous_stage_output_path: Path,
     coordinate_output_root: Path,
@@ -78,19 +57,6 @@ def seed_working_dir_from_previous(
             target = coordinate_output_root / sub
             copy_tree(source, target)
             L.info("Seeded %s -> %s", source, target)
-
-
-def load_recipes(recipes_path: Path) -> dict:
-    """Read a ``recipes.json`` file and return the parsed dict."""
-    with recipes_path.open(encoding="utf-8") as f:
-        return json.load(f)
-
-
-def write_recipes(recipes: dict, recipes_path: Path) -> None:
-    """Write a ``recipes.json`` file with the standard BluePyEModel layout."""
-    recipes_path.parent.mkdir(parents=True, exist_ok=True)
-    with recipes_path.open("w", encoding="utf-8") as f:
-        json.dump(recipes, f, indent=4)
 
 
 def update_pipeline_settings(
