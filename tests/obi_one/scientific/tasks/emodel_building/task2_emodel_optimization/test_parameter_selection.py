@@ -31,6 +31,8 @@ from obi_one.core.schema import UIElement
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    registration,
+    staging,
     task as task_module,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
@@ -52,11 +54,13 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config i
     EModelOptimizationScanConfig,
     EModelOptimizationSingleConfig,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.registration import (
+    validation_status_keyword,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
     _fresh_morph_modifiers,
     _tag_local_mechanisms,
-    _validation_status_keyword,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     params_definition_input_from_config,
@@ -507,14 +511,14 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
         initialize=SimpleNamespace(emodel="test"),
         inputs=SimpleNamespace(morphology=FakeMorphology()),
     )
-    task = EModelOptimizationTask.model_construct(config=config)
 
-    features_path = task._download_extraction_features(
+    features_path = staging.download_extraction_features(
+        config,
         FakeExtractionTaskResult(),
         tmp_path,
         object(),
     )
-    morphology_filename = task._stage_morphology(tmp_path, object())
+    morphology_filename = staging.stage_morphology(config, tmp_path, object())
 
     assert features_path == tmp_path / "config" / "features" / "test.json"
     assert features_path.read_text(encoding="utf-8") == '{"features": []}'
@@ -731,7 +735,7 @@ def test_registration_error_names_the_missing_entitysdk_package():
         pytest.skip("installed EntitySDK provides the registration helpers")
 
     with pytest.raises(RuntimeError, match=r"entitysdk\.registration"):
-        EModelOptimizationTask.register_output_entities(None, Path(), None)
+        registration.register_output_entities(None, Path(), None)
 
 
 def test_morph_modifiers_survive_repeated_evaluator_builds():
@@ -790,7 +794,6 @@ def test_local_mechanism_metadata_is_tagged_from_entitycore():
 
 def test_stage_mechanisms_deduplicates_nested_models(tmp_path, monkeypatch):
     config, _, _ = _compiler_fixture()
-    task = EModelOptimizationTask.model_construct(config=config)
     downloaded = []
 
     def download_asset(self, *, dest_dir, db_client):
@@ -799,7 +802,7 @@ def test_stage_mechanisms_deduplicates_nested_models(tmp_path, monkeypatch):
 
     monkeypatch.setattr(IonChannelModelFromID, "download_asset", download_asset)
 
-    task._stage_mechanisms(tmp_path, object())
+    staging.stage_mechanisms(config, tmp_path, object())
 
     assert downloaded == ["icm-1"]
 
@@ -858,8 +861,8 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
         has_myelinated=True,
         available_physical_sections=("somatic", "basal", "apical", "axonal"),
     )
-    task = EModelOptimizationTask.model_construct(config=config)
-    artifacts = task._build_artifacts(
+    artifacts = staging.build_artifacts(
+        config,
         db_client=object(),
         mtype="L5",
         morph_filename="morphology.swc",
@@ -1147,15 +1150,15 @@ def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path
         )
 
 
-def test_entitysdk_validation_status_keyword_supports_both_spellings():
+def test_entitysdkvalidation_status_keyword_supports_both_spellings():
     def correct(*, validation_result_status):
         del validation_result_status
 
     def historical(*, validateion_result_status):
         del validateion_result_status
 
-    assert _validation_status_keyword(correct) == "validation_result_status"
-    assert _validation_status_keyword(historical) == "validateion_result_status"
+    assert validation_status_keyword(correct) == "validation_result_status"
+    assert validation_status_keyword(historical) == "validateion_result_status"
 
 
 def test_root_emodel_optimisation_parameters_normalizes_to_canonical_selection():
@@ -1500,7 +1503,7 @@ def test_section_list_choice_exposes_enabled_alias():
     assert DEFAULT_SECTION_LIST_CATALOG.choice("somatic").enabled
 
 
-def test_stage_traces_returns_only_derivation_trace_ids(tmp_path):
+def test_stage_traces_returns_only_derivation_trace_ids():
     extraction = SimpleNamespace(
         entity=lambda **_: SimpleNamespace(id="extraction-1"),
     )
@@ -1512,26 +1515,23 @@ def test_stage_traces_returns_only_derivation_trace_ids(tmp_path):
     ]
     search_entity = Mock(return_value=derivations)
     db_client = SimpleNamespace(search_entity=search_entity)
-    task = EModelOptimizationTask.model_construct(config=SimpleNamespace())
 
-    assert task._stage_traces(extraction, tmp_path, db_client) == ["trace-1", "trace-2"]
+    assert staging.stage_traces(extraction, db_client) == ["trace-1", "trace-2"]
     assert search_entity.call_args.kwargs["query"] == {"generated__id": "extraction-1"}
 
 
 def test_derive_mtype_uses_first_label_and_handles_empty_mtypes():
     morphology_entity = SimpleNamespace(mtypes=[SimpleNamespace(pref_label="L5_TTPC")])
     morphology = SimpleNamespace(entity=lambda **_: morphology_entity)
-    task = EModelOptimizationTask.model_construct(
-        config=SimpleNamespace(inputs=SimpleNamespace(morphology=morphology))
-    )
+    config = SimpleNamespace(inputs=SimpleNamespace(morphology=morphology))
 
-    assert task._derive_mtype(object()) == "L5_TTPC"
+    assert staging.derive_mtype(config, object()) == "L5_TTPC"
 
     morphology.entity = lambda **_: SimpleNamespace(mtypes=[])
-    assert task._derive_mtype(object()) is None
+    assert staging.derive_mtype(config, object()) is None
 
     morphology.entity = lambda **_: SimpleNamespace()
-    assert task._derive_mtype(object()) is None
+    assert staging.derive_mtype(config, object()) is None
 
 
 def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monkeypatch):
@@ -1562,17 +1562,13 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     monkeypatch.setattr(task_module.emodel_building_utils, "run_plot_models", Mock())
     monkeypatch.setattr(task_module, "preflight_morphology", Mock(return_value=object()))
     monkeypatch.setattr(task_module, "resolve_ion_channel_models", Mock(return_value={}))
-    monkeypatch.setattr(EModelOptimizationTask, "_derive_mtype", Mock(return_value="L5_TTPC"))
-    monkeypatch.setattr(EModelOptimizationTask, "_download_extraction_features", Mock())
-    monkeypatch.setattr(
-        EModelOptimizationTask,
-        "_stage_morphology",
-        Mock(return_value="morphology.swc"),
-    )
-    monkeypatch.setattr(EModelOptimizationTask, "_stage_mechanisms", Mock())
-    monkeypatch.setattr(EModelOptimizationTask, "_stage_traces", Mock(return_value=["trace-1"]))
+    monkeypatch.setattr(staging, "derive_mtype", Mock(return_value="L5_TTPC"))
+    monkeypatch.setattr(staging, "download_extraction_features", Mock())
+    monkeypatch.setattr(staging, "stage_morphology", Mock(return_value="morphology.swc"))
+    monkeypatch.setattr(staging, "stage_mechanisms", Mock())
+    monkeypatch.setattr(staging, "stage_traces", Mock(return_value=["trace-1"]))
     artifacts = Mock()
-    monkeypatch.setattr(EModelOptimizationTask, "_build_artifacts", Mock(return_value=artifacts))
+    monkeypatch.setattr(staging, "build_artifacts", Mock(return_value=artifacts))
 
     species = SimpleNamespace(name="Mus musculus")
     brain_region = SimpleNamespace(name="Somatosensory cortex")
@@ -1608,13 +1604,13 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
         "threshold_current": None,
         "iteration": "0",
     }
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test") == defaults
 
     final_path.write_text("[]", encoding="utf-8")
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test") == defaults
 
     final_path.write_text(json.dumps({"other": []}), encoding="utf-8")
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test") == defaults
 
     final_path.write_text(
         json.dumps(
@@ -1630,7 +1626,7 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
         ),
         encoding="utf-8",
     )
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == {
+    assert registration.parse_final_json(final_path, "test") == {
         "name": "test",
         "total_score": 2.5,
         "holding_current": 0.1,
@@ -1642,7 +1638,7 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
         json.dumps({"test": {"fitness": 3.5, "iteration": 7}}),
         encoding="utf-8",
     )
-    assert EModelOptimizationTask._parse_final_json(final_path, "test") == {
+    assert registration.parse_final_json(final_path, "test") == {
         "name": "test",
         "total_score": 3.5,
         "holding_current": None,
@@ -1665,7 +1661,7 @@ def test_upload_optimization_assets_uploads_existing_files_and_skips_empty_root(
     sonata_file.write_text("hoc", encoding="utf-8")
 
     db_client = SimpleNamespace(upload_file=Mock(), upload_directory=Mock())
-    EModelOptimizationTask._upload_optimization_assets(tmp_path, db_client, "task-result-1")
+    registration.upload_optimization_assets(tmp_path, db_client, "task-result-1")
 
     assert db_client.upload_file.call_count == 2
     assert db_client.upload_directory.call_args.kwargs["paths"] == {
@@ -1674,7 +1670,7 @@ def test_upload_optimization_assets_uploads_existing_files_and_skips_empty_root(
 
     empty_root = tmp_path / "empty"
     (empty_root / "export_emodels_sonata").mkdir(parents=True)
-    EModelOptimizationTask._upload_optimization_assets(empty_root, db_client, "task-result-2")
+    registration.upload_optimization_assets(empty_root, db_client, "task-result-2")
     assert db_client.upload_file.call_count == 2
     assert db_client.upload_directory.call_count == 1
 
@@ -1687,17 +1683,17 @@ def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
     assert _tag_local_mechanisms([unknown], normalized) == [unknown]
 
 
-def test_validation_status_keyword_handles_variadic_unsupported_and_uninspectable_callables():
+def testvalidation_status_keyword_handles_variadic_unsupported_and_uninspectable_callables():
     def variadic(**kwargs):
         del kwargs
 
     def unsupported(*, unrelated):
         del unrelated
 
-    assert _validation_status_keyword(variadic) == "validation_result_status"
+    assert validation_status_keyword(variadic) == "validation_result_status"
     with pytest.raises(TypeError, match="does not expose"):
-        _validation_status_keyword(unsupported)
-    assert _validation_status_keyword(object()) == "validation_result_status"
+        validation_status_keyword(unsupported)
+    assert validation_status_keyword(object()) == "validation_result_status"
 
 
 def test_download_extraction_features_keeps_already_named_target(tmp_path):
@@ -1709,9 +1705,10 @@ def test_download_extraction_features_keeps_already_named_target(tmp_path):
             return path
 
     config = SimpleNamespace(initialize=SimpleNamespace(emodel="test"))
-    task = EModelOptimizationTask.model_construct(config=config)
 
-    result = task._download_extraction_features(AlreadyNamedExtraction(), tmp_path, object())
+    result = staging.download_extraction_features(
+        config, AlreadyNamedExtraction(), tmp_path, object()
+    )
 
     assert result == tmp_path / "config" / "features" / "test.json"
     assert result.read_text(encoding="utf-8") == "{}"
@@ -1719,7 +1716,6 @@ def test_download_extraction_features_keeps_already_named_target(tmp_path):
 
 def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
     config, reference, normalized = _compiler_fixture()
-    task = EModelOptimizationTask.model_construct(config=config)
     db_client = object()
     sentinel = object()
     resolved_calls = []
@@ -1740,11 +1736,12 @@ def test_build_artifacts_resolves_models_when_not_supplied(monkeypatch):
         artifact_input_calls.append((config_arg, kwargs))
         return artifact_input
 
-    monkeypatch.setattr(task_module, "resolve_ion_channel_models", resolve)
-    monkeypatch.setattr(task_module, "build_optimization_artifacts", build)
-    monkeypatch.setattr(task_module, "optimization_artifact_input_from_config", to_artifact_input)
+    monkeypatch.setattr(staging, "resolve_ion_channel_models", resolve)
+    monkeypatch.setattr(staging, "build_optimization_artifacts", build)
+    monkeypatch.setattr(staging, "optimization_artifact_input_from_config", to_artifact_input)
 
-    result = task._build_artifacts(
+    result = staging.build_artifacts(
+        config,
         db_client=db_client,
         mtype="L5",
         morph_filename="morphology.swc",

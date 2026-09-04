@@ -17,7 +17,11 @@ from bluepyemodel.preprocessing.schemas import (
 from entitysdk.types import EntityLifecycleStatus, ValidationStatus
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import utils
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    registration,
+    staging,
+    utils,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     DistanceDependentDistribution,
@@ -33,6 +37,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.registration import (
+    RegisteredOptimizationOutputs,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
@@ -468,7 +475,6 @@ def _registration_fixture(tmp_path, *, complete=True):
         optimization_settings=SimpleNamespace(seed=7),
         parameters_selection=SimpleNamespace(ion_channel_model_references=(reference,)),
     )
-    task = EModelOptimizationTask.model_construct(config=config)
     license_entity = SimpleNamespace(id="license-id")
     activity = SimpleNamespace(authorized_public=True)
     db_client = SimpleNamespace(
@@ -509,15 +515,16 @@ def _registration_fixture(tmp_path, *, complete=True):
             encoding="utf-8",
         )
 
-    return task, db_client, morphology, reference, etype
+    return config, db_client, morphology, reference, etype
 
 
 def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp_path, monkeypatch):
     calls = {}
     _install_registration_modules(monkeypatch, calls)
-    task, db_client, morphology, reference, etype = _registration_fixture(tmp_path)
+    config, db_client, morphology, reference, etype = _registration_fixture(tmp_path)
 
-    task.register_output_entities(
+    outputs = registration.register_output_entities(
+        config,
         tmp_path,
         db_client,
         trace_ids=["trace-1"],
@@ -548,17 +555,17 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
             "generated_ids": ["task-result-id", "emodel-id", "memodel-id"],
         },
     )
-    assert task._registered_task_result_id == "task-result-id"
-    assert task._registered_emodel_id == "emodel-id"
-    assert task._registered_memodel_id == "memodel-id"
+    assert outputs.task_result_id == "task-result-id"
+    assert outputs.emodel_id == "emodel-id"
+    assert outputs.memodel_id == "memodel-id"
 
 
 def test_register_output_entities_handles_missing_optional_outputs(tmp_path, monkeypatch):
     calls = {}
     _install_registration_modules(monkeypatch, calls)
-    task, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
+    config, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
 
-    task.register_output_entities(tmp_path, db_client)
+    registration.register_output_entities(config, tmp_path, db_client)
 
     assert calls["result"]["authorized_public"] is False
     assert calls["result"]["hdf5_checkpoint_file"] is None
@@ -777,19 +784,21 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
         "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task.resolve_ion_channel_models",
         Mock(return_value=_normalized_models()),
     )
-    monkeypatch.setattr(EModelOptimizationTask, "_derive_mtype", Mock(return_value="L5_TTPC"))
-    monkeypatch.setattr(EModelOptimizationTask, "_download_extraction_features", Mock())
-    monkeypatch.setattr(
-        EModelOptimizationTask,
-        "_stage_morphology",
-        Mock(return_value="morphology.swc"),
-    )
-    monkeypatch.setattr(EModelOptimizationTask, "_stage_mechanisms", Mock())
-    monkeypatch.setattr(EModelOptimizationTask, "_stage_traces", Mock(return_value=["trace-1"]))
+    monkeypatch.setattr(staging, "derive_mtype", Mock(return_value="L5_TTPC"))
+    monkeypatch.setattr(staging, "download_extraction_features", Mock())
+    monkeypatch.setattr(staging, "stage_morphology", Mock(return_value="morphology.swc"))
+    monkeypatch.setattr(staging, "stage_mechanisms", Mock())
+    monkeypatch.setattr(staging, "stage_traces", Mock(return_value=["trace-1"]))
     artifacts = Mock()
-    monkeypatch.setattr(EModelOptimizationTask, "_build_artifacts", Mock(return_value=artifacts))
-    registration = Mock()
-    monkeypatch.setattr(EModelOptimizationTask, "register_output_entities", registration)
+    monkeypatch.setattr(staging, "build_artifacts", Mock(return_value=artifacts))
+    register_outputs = Mock(
+        return_value=RegisteredOptimizationOutputs(
+            task_result_id="task-result-id",
+            emodel_id="emodel-id",
+            memodel_id="memodel-id",
+        )
+    )
+    monkeypatch.setattr(registration, "register_output_entities", register_outputs)
 
     species = SimpleNamespace(name="Mus musculus")
     brain_region = SimpleNamespace(name="Somatosensory cortex")
@@ -811,11 +820,14 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     result = task.execute(db_client=db_client)
 
     assert result == tmp_path.resolve()
-    assert registration.call_args.args == (tmp_path.resolve(), db_client)
-    assert registration.call_args.kwargs == {
+    assert register_outputs.call_args.args == (config, tmp_path.resolve(), db_client)
+    assert register_outputs.call_args.kwargs == {
         "trace_ids": ["trace-1"],
         "execution_activity_id": None,
     }
+    assert task._registered_task_result_id == "task-result-id"
+    assert task._registered_emodel_id == "emodel-id"
+    assert task._registered_memodel_id == "memodel-id"
     mechanism = access_points[0].get_available_mechanisms()[0]
     assert mechanism.id == "icm-1"
     configuration = access_points[0].get_model_configuration()
@@ -827,11 +839,11 @@ def test_register_output_entities_handles_empty_checkpoint_and_nested_figure_pat
 ):
     calls = {}
     _install_registration_modules(monkeypatch, calls)
-    task, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
+    config, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
     (tmp_path / "checkpoints").mkdir()
     (tmp_path / "figures" / "nested").mkdir(parents=True)
 
-    task.register_output_entities(tmp_path, db_client)
+    registration.register_output_entities(config, tmp_path, db_client)
 
     assert calls["result"]["hdf5_checkpoint_file"] is None
     assert calls["emodel"]["validation_result_figure_files"] == []
