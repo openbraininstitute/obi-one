@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import Any, ClassVar, Literal
 
+from bluepyemodel.preprocessing import TASK2_CONFIG_CONTRACT_VERSION
 from entitysdk import Client
 from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, model_validator
@@ -13,9 +14,6 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifacts import (
-    TASK2_CONFIG_CONTRACT_VERSION,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,

@@ -2,17 +2,17 @@ import json
 from unittest.mock import Mock
 
 import pytest
-from entitysdk.types import TaskConfigType
-
-from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.db_sdk import db_sdk
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifacts import (
+from bluepyemodel.preprocessing import (
     PARAMS_ARTIFACT_PATH,
     RECIPES_ARTIFACT_PATH,
     TASK2_ARTIFACT_CONTRACT_VERSION,
     TASK2_CONFIG_CONTRACT_VERSION,
     build_optimization_artifacts,
 )
+from entitysdk.types import TaskConfigType
+
+from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
     optimization_artifact_input_from_config,
 )

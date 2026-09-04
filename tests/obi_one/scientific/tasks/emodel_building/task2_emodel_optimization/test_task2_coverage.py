@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import morphio
 import pytest
 from bluepyemodel.preprocessing import (
+    artifacts,
     morphology_preflight as bpem_preflight,
     parameters as bpem_parameters,
 )
@@ -13,7 +14,6 @@ from entitysdk.types import EntityLifecycleStatus, ValidationStatus
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    artifacts,
     morphology_preflight,
     parameter_builder,
 )

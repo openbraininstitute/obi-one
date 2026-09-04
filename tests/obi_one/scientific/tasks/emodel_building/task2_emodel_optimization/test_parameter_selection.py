@@ -9,7 +9,10 @@ import pytest
 from bluepyemodel.model.mechanism_configuration import MechanismConfiguration
 from bluepyemodel.model.model import define_morphology
 from bluepyemodel.model.neuron_model_configuration import NeuronModelConfiguration
-from bluepyemodel.preprocessing import morphology_preflight as bpem_preflight
+from bluepyemodel.preprocessing import (
+    build_optimization_recipe,
+    morphology_preflight as bpem_preflight,
+)
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.schema import UIElement
@@ -61,7 +64,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task imp
     _fresh_morph_modifiers,
     _tag_local_mechanisms,
     _validation_status_keyword,
-    build_optimization_recipe,
 )
 
 
