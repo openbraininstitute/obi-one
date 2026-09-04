@@ -1,0 +1,56 @@
+name: Check launch-script requirements
+
+# Verifies that the frozen launch-script requirements (``*.txt``) are up to date
+# with their ``*.in`` sources. If an ``.in`` (or an obi-one dependency) changed
+# without regenerating the ``.txt``, this check fails. Run ``make
+# freeze-launch-deps`` locally and commit the result to fix it.
+
+on:
+  pull_request:
+    paths:
+      - "launch_scripts/**/dependencies/*.in"
+      - "launch_scripts/**/dependencies/*.txt"
+      - "launch_scripts/_freeze_deps.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/check-launch-deps.yml"
+  push:
+    branches:
+      - main
+
+jobs:
+  check-launch-deps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "latest"
+          enable-cache: true
+      - name: Setup python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::985539765147:role/gh_codeartifact_read_all
+          aws-region: us-east-1
+      - name: Get CodeArtifact token
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+            --domain openbraininstitute \
+            --query authorizationToken \
+            --output text)
+          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
+          echo "UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
+          echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
+      - name: Install project (needed to resolve obi-one from the local checkout)
+        run: make install
+      - name: Check launch-script frozen requirements are up to date
+        run: make check-launch-deps
