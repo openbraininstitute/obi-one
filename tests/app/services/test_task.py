@@ -339,6 +339,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "dependencies": "scripts/simulate-circuits/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": ["wheels", "scripts/simulate-circuits/"],
+            "dependency_constraints": [],
         },
         "resources": {
             "type": "machine",
@@ -401,6 +402,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "dependencies": "obi_one/scientific/library/simulation/brian2/requirements.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": [],
+            "dependency_constraints": [],
         },
         "resources": {
             "type": "machine",
@@ -533,6 +535,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
                 "env_secrets": [],
             },
             "staged_directories": [],
+            "dependency_constraints": task_definition.code.dependency_constraints,
         },
         "inputs": [
             "--task-type circuit_extraction",
