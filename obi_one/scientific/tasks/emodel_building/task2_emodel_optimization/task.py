@@ -18,16 +18,15 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import entitysdk
+from bluepyemodel.preprocessing import (
+    OptimizationArtifacts,
+    build_optimization_artifacts,
+)
 from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.emodel_building import _shared
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifacts import (
-    OptimizationArtifacts,
-    build_optimization_artifacts,
-    build_optimization_recipe,  # ruff: ignore[unused-import]
-)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_input import (
     optimization_artifact_input_from_config,
 )
