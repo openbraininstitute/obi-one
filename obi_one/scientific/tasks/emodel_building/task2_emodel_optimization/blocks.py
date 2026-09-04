@@ -259,39 +259,12 @@ class OptimizationInitialize(Block):
 def default_distance_dependent_distributions() -> dict[str, CustomDistanceDependentDistribution]:
     """Custom distance-dependent distributions declared by the user (empty by default).
 
-    The ten legacy distributions are always selectable by name from
-    ``STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS`` without being declared here; this
-    dict only holds user-defined distributions (see ``CustomDistanceDependentDistribution``).
+    The ten legacy distributions from
+    ``bluepyemodel.preprocessing.schemas.STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS``
+    are always selectable by name without being declared here; this dict only holds
+    user-defined distributions (see ``CustomDistanceDependentDistribution``).
     """
     return {}
-
-
-STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS: dict[str, DistanceDependentDistributionUnion] = {
-    "uniform": UniformDistanceDependentDistribution(),
-    "exp": ExponentialDistanceDependentDistribution(),
-    "step": StepDistanceDependentDistribution(),
-    "exp_na_dend": ExponentialNaDendDistanceDependentDistribution(),
-    "linear_hd_apic": LinearHDApicDistanceDependentDistribution(),
-    "sigmoid_kad_apic": SigmoidKADApicDistanceDependentDistribution(),
-    "linear_e_pas_apic": LinearEPasApicDistanceDependentDistribution(),
-    "linear_hdpas": LinearHDPasDistanceDependentDistribution(),
-    "sigmoid_kad": SigmoidKADDistanceDependentDistribution(),
-    "sigmoid_kdbm_apic": SigmoidKDBMApicDistanceDependentDistribution(),
-}
-"""Built-in legacy distance-dependent distributions, selectable by name on any parameter row
-without being declared in the config's ``distance_dependent_distributions`` field. That field
-is reserved for user-defined (``CustomDistanceDependentDistribution``) distributions only."""
-
-
-def resolve_distance_dependent_distribution(
-    name: str,
-    custom_distributions: Mapping[str, "CustomDistanceDependentDistribution"],
-) -> DistanceDependentDistributionUnion | None:
-    """Resolve a distribution name against the standard catalog, then custom declarations."""
-    standard = STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS.get(name)
-    if standard is not None:
-        return standard
-    return custom_distributions.get(name)
 
 
 # The Figma "Mechanisms" card is a 4-step wizard. Mechanism data and parameter

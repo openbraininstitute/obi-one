@@ -15,6 +15,7 @@ from bluepyemodel.preprocessing import (
     build_params_definition,
     morphology_preflight,
     normalize_ion_channel_model,
+    update_pipeline_settings,
 )
 from bluepyemodel.preprocessing.schemas import (
     DEFAULT_SECTION_LIST_CATALOG,
@@ -29,7 +30,6 @@ from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.schema import UIElement
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     task as task_module,
 )
@@ -471,7 +471,7 @@ def test_config_rejects_incompatible_optimizer_fields(optimiser, optimization_pa
 def test_recipe_file_contains_artifact_paths_and_pipeline_settings(tmp_path):
     settings = OptimizationSettings(plot_currentscape=False)
     recipes = build_optimization_recipe("test", "L5", "morphology.swc", "params.json")
-    recipes = emodel_building_utils.update_pipeline_settings(
+    recipes = update_pipeline_settings(
         recipes,
         emodel="test",
         overrides=settings.to_dict(OptimizationParams()),
