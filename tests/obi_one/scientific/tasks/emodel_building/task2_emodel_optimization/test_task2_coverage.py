@@ -7,16 +7,17 @@ import morphio
 import pytest
 from bluepyemodel.preprocessing import (
     artifacts,
-    morphology_preflight as bpem_preflight,
+    morphology_preflight,
     parameters as bpem_parameters,
+)
+from bluepyemodel.preprocessing.schemas import (
+    MorphologyCapabilities,
+    NormalizedIonChannelModel,
 )
 from entitysdk.types import EntityLifecycleStatus, ValidationStatus
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    morphology_preflight,
-    parameter_builder,
-)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import utils
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     DistanceDependentDistribution,
@@ -67,17 +68,17 @@ def _compiler_config(selection: ParametersSelection, custom=None) -> SimpleNames
     )
 
 
-def _normalized_models() -> dict[str, parameter_builder.NormalizedIonChannelModel]:
-    return {"icm-1": parameter_builder.normalize_ion_channel_model(_model_entity())}
+def _normalized_models() -> dict[str, NormalizedIonChannelModel]:
+    return {"icm-1": bpem_parameters.normalize_ion_channel_model(_model_entity())}
 
 
 def test_normalize_model_rejects_missing_required_metadata():
     with pytest.raises(ValueError, match="nmodl_suffix"):
-        parameter_builder.normalize_ion_channel_model(SimpleNamespace())
+        bpem_parameters.normalize_ion_channel_model(SimpleNamespace())
     with pytest.raises(ValueError, match="no entity ID"):
-        parameter_builder.normalize_ion_channel_model(SimpleNamespace(nmodl_suffix="NaTg"))
+        bpem_parameters.normalize_ion_channel_model(SimpleNamespace(nmodl_suffix="NaTg"))
     with pytest.raises(ValueError, match="no neuron_block"):
-        parameter_builder.normalize_ion_channel_model(
+        bpem_parameters.normalize_ion_channel_model(
             SimpleNamespace(nmodl_suffix="NaTg", id="icm-1")
         )
 
@@ -97,7 +98,7 @@ def test_normalize_model_accepts_mapping_global_metadata_and_ignores_empty_dupli
         },
     }
 
-    normalized = parameter_builder.normalize_ion_channel_model(entity)
+    normalized = bpem_parameters.normalize_ion_channel_model(entity)
 
     assert [variable.name for variable in normalized.range_variables] == ["gNa_NaTg"]
     assert [variable.name for variable in normalized.global_variables] == ["ena_NaTg"]
@@ -108,13 +109,13 @@ def test_resolve_and_fetch_ion_channel_models_preserve_reference_ids():
     entity = _model_entity()
     reference = SimpleNamespace(id_str="icm-1", entity=Mock(return_value=entity))
     reference_entity = reference.entity
-    resolved = parameter_builder.resolve_ion_channel_models((reference,), object())
+    resolved = utils.resolve_ion_channel_models((reference,), object())
 
     assert resolved["icm-1"].entity_id == "icm-1"
     reference_entity.assert_called_once()
 
     client = SimpleNamespace(get_entity=Mock(return_value=entity))
-    catalog = parameter_builder.fetch_variable_catalog(["icm-2"], client)
+    catalog = utils.fetch_variable_catalog(["icm-2"], client)
 
     assert catalog["icm-2"].entity_id == "icm-2"
     client.get_entity.assert_called_once()
@@ -147,7 +148,7 @@ def test_parameter_builder_rejects_invalid_fallback_before_compilation():
         base_parameters={"all": {"cm": ParameterSelection(value=OptimizationValue(value=1.0))}}
     )
     with pytest.raises(ValueError, match="finite"):
-        parameter_builder.build_params_definition(
+        bpem_parameters.build_params_definition(
             params_definition_input_from_config(_compiler_config(selection)),
             _normalized_models(),
             bounds_fallbacks={"g_pas": (float("nan"), 1.0)},
@@ -259,7 +260,7 @@ def test_parameter_builder_legacy_conversions_preserve_optional_fields():
 def test_parameter_builder_rejects_wrong_capability_type():
     selection = _selection()
     with pytest.raises(TypeError, match="MorphologyCapabilities"):
-        parameter_builder.build_params_definition(
+        bpem_parameters.build_params_definition(
             params_definition_input_from_config(_compiler_config(selection)),
             _normalized_models(),
             morphology_capabilities=object(),
@@ -400,7 +401,9 @@ def test_preflight_reports_modifier_capabilities(
 
     path = tmp_path / "morphology.swc"
     path.write_text("", encoding="utf-8")
-    monkeypatch.setattr(bpem_preflight, "load_morphology_nrn_order", lambda _: FakeMorphology())
+    monkeypatch.setattr(
+        morphology_preflight, "load_morphology_nrn_order", lambda _: FakeMorphology()
+    )
 
     capabilities = morphology_preflight.preflight_morphology(path, modifier)
 
@@ -684,7 +687,7 @@ def test_remaining_parameter_builder_paths():
             "somatic": {"g_pas": ParameterSelection(value=OptimizationValue(value=0.001))}
         },
     )
-    pas_model = parameter_builder.NormalizedIonChannelModel(
+    pas_model = NormalizedIonChannelModel(
         entity_id="pas-model",
         name="Passive",
         nmodl_suffix="pas",
@@ -706,10 +709,10 @@ def test_remaining_parameter_builder_paths():
     no_myelinated = _selection(
         base_parameters={"somatic": {"cm": ParameterSelection(value=OptimizationValue(value=1.0))}}
     )
-    params = parameter_builder.build_params_definition(
+    params = bpem_parameters.build_params_definition(
         params_definition_input_from_config(_compiler_config(no_myelinated)),
         _normalized_models(),
-        morphology_capabilities=morphology_preflight.MorphologyCapabilities(has_myelinated=False),
+        morphology_capabilities=MorphologyCapabilities(has_myelinated=False),
     )
     assert params["parameters"]
 
@@ -724,7 +727,7 @@ def test_remaining_parameter_builder_paths():
         }
     )
     with pytest.raises(ValueError, match="Used distribution 'decay' is missing values"):
-        parameter_builder.build_params_definition(
+        bpem_parameters.build_params_definition(
             params_definition_input_from_config(
                 _compiler_config(missing_distribution_values, {"decay": _decay_distribution()})
             ),
@@ -735,7 +738,7 @@ def test_remaining_parameter_builder_paths():
 def test_morphology_preflight_ignores_unknown_section_types():
     morphology = SimpleNamespace(sections=(SimpleNamespace(type="unknown"),), soma=None)
 
-    assert bpem_preflight._available_physical_sections(morphology) == ()
+    assert morphology_preflight._available_physical_sections(morphology) == ()
 
 
 def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path, monkeypatch):

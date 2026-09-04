@@ -10,7 +10,7 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
 from obi_one.scientific.library.entity_property_types import IonChannelPropertyType
 from obi_one.scientific.library.ion_channel_properties import get_ion_channel_variables
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     fetch_variable_catalog,
 )
 

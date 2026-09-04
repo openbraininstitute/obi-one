@@ -19,8 +19,11 @@ from typing import Any, ClassVar
 
 import entitysdk
 from bluepyemodel.preprocessing import (
+    MorphologyCapabilities,
+    NormalizedIonChannelModel,
     OptimizationArtifacts,
     build_optimization_artifacts,
+    preflight_morphology,
 )
 from pydantic import PrivateAttr
 
@@ -33,12 +36,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_inp
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
-    NormalizedIonChannelModel,
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     resolve_ion_channel_models,
 )
-
-from .morphology_preflight import MorphologyCapabilities, preflight_morphology
 
 L = logging.getLogger(__name__)
 

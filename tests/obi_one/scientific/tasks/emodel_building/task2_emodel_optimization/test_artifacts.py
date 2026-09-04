@@ -8,6 +8,7 @@ from bluepyemodel.preprocessing import (
     TASK2_ARTIFACT_CONTRACT_VERSION,
     TASK2_CONFIG_CONTRACT_VERSION,
     build_optimization_artifacts,
+    normalize_ion_channel_model,
 )
 from entitysdk.types import TaskConfigType
 
@@ -18,9 +19,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.bpem_inp
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.parameter_builder import (
-    normalize_ion_channel_model,
 )
 
 from .test_parameter_selection import _model_entity, _scan_config_data
