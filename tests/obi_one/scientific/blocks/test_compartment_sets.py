@@ -12,6 +12,7 @@ from obi_one.scientific.library.compartment_sets import (
     build_compartment_set_for_neuron_set,
     build_compartment_set_from_locations_block,
 )
+from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_compartment_set_file,
 )
@@ -230,7 +231,7 @@ def test_materialization_handles_recording_location_targets():
         )
 
     build_compartment_set.assert_called_once()
-    config = recording.config(end_time=100.0)["recording"]
+    config = recording.config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0)["recording"]
 
     assert config["compartment_set"] == "locations"
     assert config["type"] == "compartment_set"
@@ -258,14 +259,14 @@ def test_morphology_location_recording_requires_end_time():
     recording = _morphology_location_recording()
 
     with pytest.raises(OBIONEError, match="End time must be specified"):
-        recording.config()
+        recording.config(SIMULATION_TIMESTEP_MILLISECONDS)
 
 
 def test_morphology_location_recording_requires_materialized_compartment_set():
     recording = _morphology_location_recording()
 
     with pytest.raises(OBIONEError, match="no compartment set was materialized"):
-        recording.config(end_time=100.0)
+        recording.config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0)
 
 
 def test_morphology_location_recording_requires_end_time_after_start():
@@ -273,7 +274,7 @@ def test_morphology_location_recording_requires_end_time_after_start():
     recording.set_materialized_compartment_set_target("locations")
 
     with pytest.raises(OBIONEError, match="End time must be later"):
-        recording.config(end_time=0.0)
+        recording.config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=0.0)
 
 
 def test_continuous_stimulus_without_target_uses_default_node_set():

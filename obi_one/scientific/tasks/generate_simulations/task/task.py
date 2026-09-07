@@ -151,10 +151,10 @@ class GenerateSimulationTask(Task):
         for recording in getattr(self.config, "recordings", {}).values():
             self._sonata_config["reports"].update(
                 recording.config(
-                    self.config.initialize.simulation_length,
-                    self.config.default_node_set_name,
-                    db_client,
                     simulation_timestep=self.config.timestep,
+                    end_time=self.config.initialize.simulation_length,
+                    default_node_set=self.config.default_node_set_name,
+                    db_client=db_client,
                 )
             )
 
