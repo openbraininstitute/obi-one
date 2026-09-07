@@ -504,13 +504,12 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
+# The docstring is the block's description in the UI, so it stays user-facing and matches
+# SinusoidalCurrentClampSomaticStimulus's. Why this variant exists: Brian2 plays the signal
+# through a TimedArray clocked by the integration timestep and rejects any other interval, so
+# the signal is sampled at the simulation timestep rather than at a Timestep of its own.
 class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
-    """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude.
-
-    The signal is sampled at the simulation timestep. Brian2 plays it through a ``TimedArray``
-    clocked by that timestep and rejects any other interval, so it uses this rather than
-    :class:`SinusoidalCurrentClampSomaticStimulus`.
-    """
+    """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
 

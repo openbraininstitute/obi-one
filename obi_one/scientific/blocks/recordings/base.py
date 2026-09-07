@@ -124,11 +124,7 @@ class Recording(BaseRecording, ABC):
 
 
 class SimulationDtRecording(BaseRecording, ABC):
-    """A recording sampled at the simulation timestep, with no interval of its own.
-
-    Simulators that can only report on their own integration timestep (Brian2) build on this
-    rather than on :class:`Recording`.
-    """
+    """A recording sampled at the simulation timestep, with no interval of its own."""
 
     @property
     def recording_timestep(self) -> PositiveFloat:

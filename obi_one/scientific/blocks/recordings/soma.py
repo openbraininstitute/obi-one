@@ -118,13 +118,12 @@ class TimeWindowSomaVoltageRecording(Recording):
         return _soma_voltage_report(self, self._start_time, self._end_time)
 
 
+# The docstring is the block's description in the UI, so it stays user-facing and matches
+# SomaVoltageRecording's. Why this variant exists: Brian2 samples its StateMonitor on the
+# integration timestep and rejects a report asking for any other interval, so the sampling
+# interval is the simulation timestep rather than a parameter of its own.
 class SimulationDtSomaVoltageRecording(SimulationDtRecording):
-    """Records the soma voltage of a neuron set for the full length of the experiment.
-
-    The sampling interval is the simulation timestep. Brian2 samples its ``StateMonitor`` on the
-    integration timestep and rejects a report asking for any other interval, so it uses this
-    rather than :class:`SomaVoltageRecording`.
-    """
+    """Records the soma voltage of a neuron set for the full length of the experiment."""
 
     title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
 
@@ -135,12 +134,10 @@ class SimulationDtSomaVoltageRecording(SimulationDtRecording):
         return _soma_voltage_report(self, self._start_time, self._end_time)
 
 
+# As with SimulationDtSomaVoltageRecording above: user-facing docstring, sampling interval taken
+# from the simulation rather than a parameter of its own.
 class SimulationDtTimeWindowSomaVoltageRecording(SimulationDtRecording):
-    """Records the soma voltage of a neuron set over a specified time window.
-
-    As with :class:`SimulationDtSomaVoltageRecording`, the sampling interval is the simulation
-    timestep rather than a parameter of its own.
-    """
+    """Records the soma voltage of a neuron set over a specified time window."""
 
     title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
 
