@@ -56,14 +56,13 @@ class BaseRecording(Block, ABC):
 
     def config(
         self,
+        simulation_timestep: PositiveFloat,
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
-        simulation_timestep: PositiveFloat | None = None,
     ) -> dict:
         self._default_node_set = default_node_set
-        if simulation_timestep is not None:
-            self._simulation_timestep = simulation_timestep
+        self._simulation_timestep = simulation_timestep
 
         if (self.neuron_set is not None) and (
             self.neuron_set.block.get_neuron_set_population_type()
