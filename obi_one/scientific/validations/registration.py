@@ -217,7 +217,6 @@ def register_outcome(
     *,
     out_dir: Path | None = None,
     overwrite_existing: bool = False,
-    overwrite_names: set[str] | None = None,
 ) -> RegisteredResult:
     """Register or optionally update a single TestResult.
 
@@ -228,9 +227,6 @@ def register_outcome(
         out_dir: Directory for writing temporary detail files.
         overwrite_existing: If False, skip a matching result. If True, update the
             matching result in place while preserving its platform ID.
-        overwrite_names: If given, only results whose name is in this set are
-            overwritten; all others are skipped regardless of ``overwrite_existing``.
-            Use this to update a single result while leaving the rest untouched.
 
     Returns:
         A RegisteredResult indicating whether the result was created, updated, or skipped.
@@ -238,10 +234,7 @@ def register_outcome(
     validated_entity_uuid = UUID(validated_entity_id)
     existing = _find_existing(client, test_result.name, validated_entity_uuid)
 
-    if overwrite_names is not None:
-        should_overwrite = test_result.name in overwrite_names
-    else:
-        should_overwrite = overwrite_existing
+    should_overwrite = overwrite_existing
 
     if existing is not None:
         existing_id = _result_id(existing)
@@ -306,7 +299,6 @@ def register_outcomes(
     *,
     out_dir: Path | None = None,
     overwrite_existing: bool = False,
-    overwrite_names: set[str] | None = None,
 ) -> list[RegisteredResult]:
     """Register multiple test results using one overwrite policy.
 
@@ -317,9 +309,6 @@ def register_outcomes(
         out_dir: Directory for writing temporary detail files.
         overwrite_existing: If False, skip matching results. If True, update matching
             results in place while preserving their platform IDs.
-        overwrite_names: If given, only results whose name is in this set are
-            overwritten; all others are skipped regardless of ``overwrite_existing``.
-            Use this to update a single result while leaving the rest untouched.
 
     Returns:
         List of RegisteredResult objects.
@@ -327,18 +316,6 @@ def register_outcomes(
     Raises:
         ValidationResultAlreadyExistsError: If multiple matching results are found.
     """
-    if overwrite_names:
-        available_names = {test_result.name for test_result in test_results}
-        unmatched = overwrite_names - available_names
-        if unmatched:
-            logger.warning(
-                "overwrite_names contains %d name(s) that match no test result and "
-                "will have no effect: %s. Available names: %s",
-                len(unmatched),
-                sorted(unmatched),
-                sorted(available_names),
-            )
-
     results = []
     for test_result in test_results:
         try:
@@ -348,7 +325,6 @@ def register_outcomes(
                 validated_entity_id,
                 out_dir=out_dir,
                 overwrite_existing=overwrite_existing,
-                overwrite_names=overwrite_names,
             )
             results.append(result)
         except ValidationResultAlreadyExistsError:

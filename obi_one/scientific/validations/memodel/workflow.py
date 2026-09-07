@@ -401,7 +401,6 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         client: Client,
         *,
         overwrite_existing: bool = False,
-        overwrite_names: set[str] | None = None,
     ) -> list:
         """Register all test results as ValidationResult entities.
 
@@ -411,20 +410,14 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
             client: entitysdk Client instance.
             overwrite_existing: If True, update matching results in place; otherwise
                 skip them.
-            overwrite_names: If given, only results whose name is in this set are
-                overwritten; all others are skipped regardless of ``overwrite_existing``.
-                Use this to update a single result while leaving the rest untouched.
 
         Returns:
             List of RegisteredResult objects.
         """
-        registration_kwargs = {
-            "client": client,
-            "test_results": test_results,
-            "validated_entity_id": context.entity_id,
-            "out_dir": context.out_dir,
-            "overwrite_existing": overwrite_existing,
-        }
-        if overwrite_names is not None:
-            registration_kwargs["overwrite_names"] = overwrite_names
-        return register_outcomes(**registration_kwargs)
+        return register_outcomes(
+            client=client,
+            test_results=test_results,
+            validated_entity_id=context.entity_id,
+            out_dir=context.out_dir,
+            overwrite_existing=overwrite_existing,
+        )

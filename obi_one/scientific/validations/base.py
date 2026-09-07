@@ -79,7 +79,6 @@ class ValidationWorkflow[ContextT: WorkflowContext](ABC):
         client: Client,
         *,
         overwrite_existing: bool = False,
-        overwrite_names: set[str] | None = None,
     ) -> list[Any]:
         """Register test results on the platform.
 
@@ -89,8 +88,6 @@ class ValidationWorkflow[ContextT: WorkflowContext](ABC):
             client: entitysdk Client instance.
             overwrite_existing: If True, update matching results in place; otherwise
                 skip them.
-            overwrite_names: If given, only results whose name is in this set are
-                overwritten; all others are skipped regardless of ``overwrite_existing``.
 
         Returns:
             Registered result records produced by the entity-specific workflow.
