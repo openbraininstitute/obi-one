@@ -128,6 +128,16 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
             },
         )
     )
+    morphology_locations: MorphologyLocationsReference | None = Field(
+        default=None,
+        title="Morphology Locations",
+        description="Morphology-location rule to which the stimulus is applied.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 101,
+        },
+    )
 
     _materialized_compartment_set_name: str | None = PrivateAttr(default=None)
 

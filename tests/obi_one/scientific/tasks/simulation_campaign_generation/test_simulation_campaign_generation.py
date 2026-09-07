@@ -860,13 +860,18 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     pd.testing.assert_frame_equal(actual, expected)
 
 
-def test_continuous_stimulus_exposes_single_target_field():
+def test_continuous_stimulus_exposes_morphology_location_target_field():
     fields = obi.ConstantCurrentClampSomaticStimulus.model_fields
-    reference_types = fields["neuron_set"].json_schema_extra[SchemaKey.REFERENCE_TYPES]
+    target_reference_types = fields["neuron_set"].json_schema_extra[SchemaKey.REFERENCE_TYPES]
+    morphology_locations_reference_types = fields["morphology_locations"].json_schema_extra[
+        SchemaKey.REFERENCE_TYPES
+    ]
     morphology_locations_ref_schema = MorphologyLocationsReference.model_json_schema()
 
     assert fields["neuron_set"].title == "Target"
-    assert "MorphologyLocationsReference" in reference_types
+    assert "MorphologyLocationsReference" in target_reference_types
+    assert fields["morphology_locations"].title == "Morphology Locations"
+    assert morphology_locations_reference_types == ["MorphologyLocationsReference"]
     assert "RandomMorphologyLocations" in morphology_locations_ref_schema["allowed_block_types"]
     assert (
         "RandomGroupedMorphologyLocations"

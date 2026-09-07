@@ -217,6 +217,12 @@ class GenerateSimulationTask(Task):
 
             for attr_name, attr_type in type_hints.items():
                 if accepts_optional_neuron_set_reference(attr_type):
+                    if (
+                        attr_name == "neuron_set"
+                        and getattr(block, "morphology_locations", None) is not None
+                    ):
+                        continue
+
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
                         # A Brian2 Poisson stimulus with no target drives the `sugar` node set,
