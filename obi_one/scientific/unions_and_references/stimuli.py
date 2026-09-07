@@ -82,11 +82,11 @@ _SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
 # SpikeGeneratorGroup wired through the circuit's own connectivity. Relative-to-threshold, noise,
 # electric field and voltage clamp modules have no counterpart there.
 _BRIAN2_STIMULI = (
-    Brian2DirectPoissonStimulus
-    | ConstantCurrentClampSomaticStimulus
+    ConstantCurrentClampSomaticStimulus
     | LinearCurrentClampSomaticStimulus
     | MultiPulseCurrentClampSomaticStimulus
     | SimulationDtSinusoidalCurrentClampSomaticStimulus
+    | Brian2DirectPoissonStimulus
     | _SPIKE_STIMULI
 )
 
