@@ -40,8 +40,8 @@ from obi_one.scientific.unions_and_references.timestamps import TimestampsRefere
 class Brian2DirectPoissonStimulus(Block):
     """Independent Poisson drive injected directly into the soma.
 
-    Each neuron in the target draws its own independent Poisson spike train, and
-    each spike adds the weight to that neuron's membrane potential.
+    Each target neuron receives its own spike train, and every spike steps that
+    neuron's membrane potential by the weight.
     """
 
     title: ClassVar[str] = "Direct Poisson Input"
@@ -73,8 +73,8 @@ class Brian2DirectPoissonStimulus(Block):
         default=68.75,
         title="Weight",
         description=(
-            "Amplitude of each injection, in millivolts. The default value is taken "
-            "from the original Shui et al. (2024) LIF FlyWire model simulations."
+            "How much each spike adds to the membrane potential, in millivolts (mV). "
+            "The default is the value used by Shui et al. (2024)."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -88,9 +88,11 @@ class Brian2DirectPoissonStimulus(Block):
     ) = Field(
         default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
+        # Recorded in the generated config for forward compatibility, but the runner's
+        # PoissonInput is always-on, so the value has no effect on the simulation yet.
         description=(
-            "Informational only; Brian2 PoissonInput is always-on for the whole "
-            "simulation. Recorded in the SONATA entry for forward compatibility."
+            "How long the drive lasts, in milliseconds (ms). It currently runs for the "
+            "whole simulation whatever this is set to."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
