@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 import obi_one as obi
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.scientific.library import compartment_sets
 from obi_one.scientific.library.compartment_sets import (
     CompartmentLocation,
     MaterializedCompartmentSet,
@@ -89,6 +90,75 @@ def test_build_compartment_set_rejects_neuron_set_without_selected_population():
             population="selected",
             neuron_set=neuron_set,
             locations_block=MagicMock(),
+        )
+
+
+def test_compartment_set_preflight_rejects_oversized_target_before_loading_morphologies():
+    neuron_set = MagicMock()
+    neuron_set.block.get_neuron_ids.return_value = {"pop": range(5_001)}
+    circuit = MagicMock()
+
+    with pytest.raises(
+        ConfigValidationError,
+        match="would contain 5,001 entries, which exceeds the maximum of 5,000",
+    ):
+        build_compartment_set_for_neuron_set(
+            name="target",
+            circuit=circuit,
+            node_population="pop",
+            population="pop",
+            neuron_set=neuron_set,
+            locations_block=obi.RandomMorphologyLocations(number_of_locations=1),
+        )
+
+    circuit.load_morphology.assert_not_called()
+
+
+def test_compartment_set_preflight_allows_exact_limit(monkeypatch):
+    monkeypatch.setattr(compartment_sets, "MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES", 2)
+    neuron_set = MagicMock()
+    neuron_set.block.get_neuron_ids.return_value = {"pop": [0, 1]}
+    circuit = MagicMock()
+    expected = MagicMock()
+
+    with patch(
+        "obi_one.scientific.library.compartment_sets."
+        "build_compartment_set_from_locations_block",
+        return_value=expected,
+    ) as build_compartment_set:
+        result = build_compartment_set_for_neuron_set(
+            name="target",
+            circuit=circuit,
+            node_population="pop",
+            population="pop",
+            neuron_set=neuron_set,
+            locations_block=obi.RandomMorphologyLocations(number_of_locations=1),
+        )
+
+    assert result is expected
+    assert circuit.load_morphology.call_args_list == [
+        call(0, population="pop"),
+        call(1, population="pop"),
+    ]
+    build_compartment_set.assert_called_once()
+
+
+def test_compartment_set_row_limit_rejects_unestimated_output(monkeypatch):
+    monkeypatch.setattr(compartment_sets, "MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES", 2)
+    locations_block = MagicMock()
+    locations_block.points_on.return_value = pd.DataFrame(
+        {"section_id": [1, 2, 3], "offset": [0.25, 0.5, 0.75]}
+    )
+
+    with pytest.raises(
+        ConfigValidationError,
+        match="would contain 3 entries, which exceeds the maximum of 2",
+    ):
+        build_compartment_set_from_locations_block(
+            name="target",
+            population="pop",
+            locations_block=locations_block,
+            morphologies={7: MagicMock()},
         )
 
 
