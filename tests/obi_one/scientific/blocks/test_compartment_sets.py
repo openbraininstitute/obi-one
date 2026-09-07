@@ -307,6 +307,25 @@ def test_task_injects_default_into_optional_unified_target():
     assert stimulus.neuron_set is default_ref
 
 
+def test_task_leaves_target_unset_when_the_stimulus_selects_morphology_locations():
+    locations = obi.RandomMorphologyLocations()
+    locations.set_block_name("locations")
+    locations_ref = MorphologyLocationsReference(
+        block_dict_name="morphology_locations",
+        block_name="locations",
+    )
+    locations_ref.block = locations
+    task = GenerateSimulationTask.model_construct(config=SimpleNamespace(neuron_sets={}))
+    stimulus = obi.ConstantCurrentClampSomaticStimulus(morphology_locations=locations_ref)
+
+    with patch.object(GenerateSimulationTask, "_default_neuron_set_ref") as default_neuron_set_ref:
+        task._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(stimulus)
+
+    assert stimulus.neuron_set is None
+    assert stimulus.morphology_locations is locations_ref
+    default_neuron_set_ref.assert_not_called()
+
+
 def test_task_assigns_implicit_default_to_morphology_locations():
     default_ref = MagicMock()
     locations = obi.RandomMorphologyLocations()
