@@ -206,6 +206,30 @@ class TestStimulusRewriting:
         assert result.inputs["OnSoma_0"]["node_set"] == DEFAULT_BIOPHYSICAL_NODE_SET
 
 
+class TestRecordingRewriting:
+    def test_the_recording_targets_the_compartment_set(self, morphology_circuit, tmp_path):
+        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=morphology_circuit,
+            blocks={
+                "Locations": locations,
+                "Voltage": lambda: obi.MorphologyLocationVoltageRecording(
+                    morphology_locations=locations.ref
+                ),
+            },
+        )
+
+        result = generate(config, tmp_path)
+
+        assert set(result.compartment_sets) == {"Locations"}
+        entry = result.reports["Voltage"]
+        assert entry["compartment_set"] == "Locations"
+        assert entry["type"] == "compartment_set"
+        assert "sections" not in entry
+        assert "compartments" not in entry
+
+
 class TestLocationTargeting:
     def test_locations_without_a_neuron_set_use_the_default(self, morphology_circuit, tmp_path):
         locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)

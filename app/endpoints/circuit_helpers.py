@@ -22,6 +22,7 @@ def trigger_validation_task(
     virtual_lab_id: UUID,
     compute_cell: str,
     force: bool = False,
+    generate_assets_on_success: bool = True,
 ) -> None:
     """Submit a circuit validation job to the launch-system.
 
@@ -32,6 +33,8 @@ def trigger_validation_task(
         virtual_lab_id: Virtual lab ID for the job.
         compute_cell: Compute cell for the launch-system job (from the vlab).
         force: When True, validate even if the circuit is not in ``draft`` status.
+        generate_assets_on_success: When True, trigger asset generation after a
+            successful validation. Disable for standalone re-validation.
     """
     submit_circuit_validation_job(
         ls_client=ls_client,
@@ -43,6 +46,7 @@ def trigger_validation_task(
         obi_one_repo=settings.OBI_ONE_REPO,
         app_version=settings.APP_VERSION,
         force=force,
+        generate_assets_on_success=generate_assets_on_success,
     )
 
 

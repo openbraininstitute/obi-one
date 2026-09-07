@@ -53,6 +53,12 @@ def test_convert_image_to_webp_no_overwrite(tmp_path):
         test_module.convert_image_to_webp(png_path)
 
 
+def test_compressed_archive_filename():
+    """The archive filename is "<name>.tar.<format>"."""
+    assert test_module.compressed_archive_filename("circuit", "gz") == "circuit.tar.gz"
+    assert test_module.compressed_archive_filename("data", "bz2") == "data.tar.bz2"
+
+
 def test_extract_tar_gz(tmp_path):
     """Test extracting a .tar.gz archive."""
     # Create a small tar.gz archive

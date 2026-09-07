@@ -35,6 +35,10 @@ class ElectricalCellRecordingMappedProperties(StrEnum):
     AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
 
 
+class MorphologySourceMappedProperties(StrEnum):
+    SECTION_TYPES = "SectionTypes"
+
+
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"

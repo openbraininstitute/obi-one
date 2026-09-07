@@ -120,7 +120,6 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
             " defaults are ignored."
         ),
     )
-
     protocols: tuple[ProtocolUnion, ...] = Field(
         default_factory=_default_protocols,
         title="Protocols",

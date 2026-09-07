@@ -17,6 +17,7 @@ from starlette.responses import Response
 from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
+    circuit_customization,
     circuit_properties,
     circuit_registration,
     circuit_visualization,
@@ -174,6 +175,7 @@ async def version() -> dict:
 
 app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
+app.include_router(circuit_customization.router)
 app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)

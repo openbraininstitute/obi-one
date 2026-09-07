@@ -112,6 +112,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     authorized_public: bool = False,
     skip_additional_assets: bool = False,
     skip_validation: bool = False,
+    include_compressed: bool = True,
     include_visualization: bool = True,
     lifecycle_status: types.EntityLifecycleStatus | str | None = None,
     overview_image_path: str | Path | None = None,
@@ -169,6 +170,9 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             (compressed circuit, matrices, plots, figures).
         skip_validation: If True, skip SONATA circuit validation (e.g. when validation
             runs asynchronously after registration).
+        include_compressed: When generating additional assets, also produce the
+            compressed circuit archive. Set False when the circuit folder is staged
+            as symlinks (circuit customization).
         include_visualization: When generating additional assets, also produce plots
             and overview / sim-designer images. Set False for post-validation jobs that
             only need compressed + connectivity matrices.
@@ -334,6 +338,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             sim_designer_image_path=sim_designer_image_path,
             client=client,
             circuit_entity=registered_circuit,
+            include_compressed=include_compressed,
             include_visualization=include_visualization,
         )
 

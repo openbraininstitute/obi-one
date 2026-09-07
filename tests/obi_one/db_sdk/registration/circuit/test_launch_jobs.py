@@ -68,9 +68,32 @@ class TestSubmitCircuitJobs:
         assert job["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job["inputs"]
         assert "--force true" in job["inputs"]
-        assert job["callbacks"][0]["config"]["url"].endswith(
-            f"/declared/circuit/{circuit_id}/generate-assets"
+        assert job["callbacks"][0]["config"]["url"] == (
+            f"http://localhost:8100/declared/circuit/{circuit_id}/generate-assets"
         )
+
+    def test_validation_job_without_asset_callback(self):
+        ls_client = MagicMock()
+        ls_client.post.return_value = MagicMock(is_success=True)
+        circuit_id = uuid4()
+        project_id = uuid4()
+        virtual_lab_id = uuid4()
+
+        assert (
+            submit_circuit_validation_job(
+                ls_client=ls_client,
+                circuit_id=circuit_id,
+                project_id=project_id,
+                virtual_lab_id=virtual_lab_id,
+                api_url="http://localhost:8100",
+                compute_cell="cell_a",
+                generate_assets_on_success=False,
+            )
+            is True
+        )
+
+        job = ls_client.post.call_args[1]["json"]
+        assert job["callbacks"] == []
 
     def test_asset_generation_job_payload(self):
         ls_client = MagicMock()

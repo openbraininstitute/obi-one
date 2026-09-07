@@ -17,14 +17,19 @@ def materialize_locations_to_compartment_sets(
     node_population: str | None,
     population: str,
 ) -> dict[str, MaterializedCompartmentSet]:
-    """Convert stimulus MorphologyLocations targets into internal SONATA compartment sets."""
+    """Convert MorphologyLocations targets into internal SONATA compartment sets."""
     materialized: dict[str, MaterializedCompartmentSet] = {}
 
-    if not hasattr(single_config, "stimuli"):
-        return materialized
+    target_blocks = [
+        block
+        for block_dict_name in ("stimuli", "recordings")
+        for block in getattr(single_config, block_dict_name, {}).values()
+    ]
 
-    for stimulus in single_config.stimuli.values():
-        target_ref = getattr(stimulus, "neuron_set", None)
+    for block in target_blocks:
+        target_ref = getattr(block, "morphology_locations", None) or getattr(
+            block, "neuron_set", None
+        )
         if not isinstance(target_ref, MorphologyLocationsReference):
             continue
 
@@ -37,7 +42,7 @@ def materialize_locations_to_compartment_sets(
         comp_set_name = target_ref.block_name
 
         if comp_set_name in materialized:
-            stimulus.set_materialized_compartment_set_target(comp_set_name)
+            block.set_materialized_compartment_set_target(comp_set_name)
             continue
 
         comp_set = build_compartment_set_for_neuron_set(
@@ -48,7 +53,7 @@ def materialize_locations_to_compartment_sets(
             neuron_set=neuron_set_ref,
             locations_block=locations_block,
         )
-        stimulus.set_materialized_compartment_set_target(comp_set_name)
+        block.set_materialized_compartment_set_target(comp_set_name)
 
         materialized[comp_set_name] = comp_set
 

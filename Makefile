@@ -67,19 +67,20 @@ check-deps:  ## Check that the dependencies in the existing lock file are valid,
 	uv lock --locked --upgrade-package entitysdk
 
 format:  ## Run formatters
-	uv run -m ruff format $(FILE)
-	uv run -m ruff check --fix $(FILE)
+	uv run ruff format $(FILE)
+	uv run ruff check --fix $(FILE)
+	uv run ty check --fix $(FILE)
 
 lint:  ## Run linters
-	uv run -m ruff format --check
-	uv run -m ruff check
-	uv run --with ty ty check
+	uv run ruff format --check
+	uv run ruff check
+	uv run ty check --error-on-warning
 
 format_count: ## Count the number of errors by file
-	uv run -m ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
+	uv run ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
 
 format_types: ## Count the number of errors by type
-	uv run -m ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
+	uv run ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
 build:  ## Build the Docker image
 	docker compose --profile "*" --progress=plain build app

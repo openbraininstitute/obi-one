@@ -41,6 +41,23 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.circuit_single_build: TaskDefinition(
+        task_type=TaskType.circuit_single_build,
+        config_type=TaskConfigType.circuit_single_build__config,
+        activity_type=TaskActivityType.circuit_single_build__execution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="00:30",
+            compute_cell="local",
+        ),
+    ),
     TaskType.circuit_simulation: TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,

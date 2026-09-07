@@ -8,14 +8,14 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 
 
 class FloatUniformDistribution(Distribution):
-    """Values sampled from a uniform distribution of floats."""
+    """Samples floating-point values uniformly between a lower and upper bound."""
 
     title: ClassVar[str] = "Uniform Floats"
 
     low: float | list[float] = Field(
         default=0.0,
         title="Low",
-        description="The lower bound of the uniform distribution.",
+        description="Lower endpoint of the uniform sampling interval.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
@@ -23,7 +23,7 @@ class FloatUniformDistribution(Distribution):
     high: float | list[float] = Field(
         default=1.0,
         title="High",
-        description="The upper bound of the uniform distribution.",
+        description="Upper endpoint of the uniform sampling interval.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
@@ -31,7 +31,7 @@ class FloatUniformDistribution(Distribution):
     random_seed: int | list[int] = Field(
         default=1,
         title="Random seed",
-        description="Seed for drawing random values from the uniform distribution.",
+        description="Seed for reproducible sampling.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
@@ -49,14 +49,14 @@ class FloatUniformDistribution(Distribution):
 
 
 class IntUniformDistribution(Distribution):
-    """Values sampled from a uniform distribution of integers."""
+    """Samples integer values uniformly from a lower-inclusive, upper-exclusive interval."""
 
     title: ClassVar[str] = "Uniform Integers"
 
     low: int | list[int] = Field(
         default=0,
         title="Low",
-        description="The lower bound of the uniform distribution.",
+        description="Inclusive lower endpoint of the integer sampling interval.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
@@ -64,7 +64,7 @@ class IntUniformDistribution(Distribution):
     high: int | list[int] = Field(
         default=1,
         title="High",
-        description="The upper bound of the uniform distribution.",
+        description="Exclusive upper endpoint of the integer sampling interval.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
@@ -72,7 +72,7 @@ class IntUniformDistribution(Distribution):
     random_seed: int | list[int] = Field(
         default=1,
         title="Random seed",
-        description="Seed for drawing random values from the uniform distribution.",
+        description="Seed for reproducible sampling.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },

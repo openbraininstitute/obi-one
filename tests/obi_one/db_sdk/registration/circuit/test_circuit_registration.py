@@ -32,6 +32,7 @@ from obi_one.db_sdk.registration.circuit import (
     register_publication_links,
 )
 from obi_one.db_sdk.registration.circuit.assets import (
+    COMPRESSED_CIRCUIT_FILENAME,
     _check_matrix_folder,
     _check_required_contents,
 )
@@ -104,10 +105,10 @@ def test_check_required_contents_directory_missing(tmp_path):
 
 def test_check_required_contents_file_valid(tmp_path):
     """Test that file name matches for non-directory check."""
-    f = tmp_path / "circuit.gz"
+    f = tmp_path / COMPRESSED_CIRCUIT_FILENAME
     f.write_text("data")
 
-    _check_required_contents(f, ["circuit.gz"], is_directory=False)
+    _check_required_contents(f, [COMPRESSED_CIRCUIT_FILENAME], is_directory=False)
 
 
 def test_check_required_contents_file_mismatch(tmp_path):
@@ -116,7 +117,7 @@ def test_check_required_contents_file_mismatch(tmp_path):
     f.write_text("data")
 
     with pytest.raises(ValueError, match="does not match"):
-        _check_required_contents(f, ["circuit.gz"], is_directory=False)
+        _check_required_contents(f, [COMPRESSED_CIRCUIT_FILENAME], is_directory=False)
 
 
 # --- _check_matrix_folder ---
@@ -826,7 +827,7 @@ def test_register_asset_local_directory(tmp_path):
 
 def test_register_asset_local_file(tmp_path):
     """Test uploading a local file asset."""
-    gz_file = tmp_path / "circuit.gz"
+    gz_file = tmp_path / COMPRESSED_CIRCUIT_FILENAME
     gz_file.write_text("compressed data")
 
     client = MagicMock()
@@ -887,7 +888,11 @@ def test_register_asset_missing_required_contents(tmp_path):
                 (p / "node_sets.json").write_text("{}"),
             ],
         ),
-        ("compressed_sonata_circuit", False, lambda p: (p / "circuit.gz").write_text("data")),
+        (
+            "compressed_sonata_circuit",
+            False,
+            lambda p: (p / COMPRESSED_CIRCUIT_FILENAME).write_text("data"),
+        ),
         (
             "circuit_connectivity_matrices",
             True,
@@ -1849,6 +1854,31 @@ def test_generate_additional_compresses_when_missing(tmp_path):
         )
 
     mock_compress.assert_called_once()
+
+
+def test_generate_additional_skips_compressed_when_not_requested(tmp_path):
+    """include_compressed=False skips compression even when the asset is missing."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=True,
+            include_compressed=False,
+        )
+
+    mock_compress.assert_not_called()
 
 
 def test_generate_additional_async_scope_skips_visualization(tmp_path):

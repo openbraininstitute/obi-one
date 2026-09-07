@@ -54,12 +54,12 @@ def _generate_lods(
         raise RuntimeError(msg)
 
     if mesh_format in {"obj", "glb"}:
-        mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)  # ty: ignore[unresolved-attribute]
+        mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)
     else:
         msg = f"Unsupported mesh format for LOD generation: {mesh_format}"
         raise RuntimeError(msg)
 
-    generator = ultraliser.LODGenerator(mesh)  # ty: ignore[unresolved-attribute]
+    generator = ultraliser.LODGenerator(mesh)
     generator.generate_web_lods(str(output_dir))
 
     lod_files: dict[os.PathLike, os.PathLike] = {

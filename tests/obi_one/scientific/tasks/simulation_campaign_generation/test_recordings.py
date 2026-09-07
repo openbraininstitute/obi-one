@@ -38,6 +38,7 @@ SOMA_REPORT_SHAPE = {
 class TestUnionCoverage:
     def test_every_recording_in_the_circuit_union_is_exercised(self):
         assert union_member_names(RecordingUnion) == {
+            "MorphologyLocationVoltageRecording",
             "SomaVoltageRecording",
             "TimeWindowSomaVoltageRecording",
         }

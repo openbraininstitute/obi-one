@@ -8,27 +8,27 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 
 
 class IntDiscreteDistribution(Distribution):
-    """A distribution with discrete, explicitly parameterized probabilities."""
+    """Samples explicitly listed integer values using configured probabilities."""
 
     title: ClassVar[str] = "Discrete Integer"
 
     values: tuple[int, ...] | list[tuple[int, ...]] = Field(
         default=(1,),
         title="Values",
-        description="The possible values of the distribution.",
+        description="Possible integer values to sample.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     probabilities: tuple[float, ...] | list[tuple[float, ...]] = Field(
         default=(1.0,),
         title="Probabilities",
-        description="Probabilities for the discrete values of the distribution.",
+        description="Sampling probability for each possible value.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     random_seed: int | list[int] = Field(
         default=1,
-        title="Random Seed",
-        description="Seed for drawing random values from the exponential distribution.",
+        title="Random seed",
+        description="Seed for reproducible sampling.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
