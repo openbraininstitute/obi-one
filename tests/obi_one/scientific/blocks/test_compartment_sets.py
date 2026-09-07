@@ -122,8 +122,7 @@ def test_compartment_set_preflight_allows_exact_limit(monkeypatch):
     expected = MagicMock()
 
     with patch(
-        "obi_one.scientific.library.compartment_sets."
-        "build_compartment_set_from_locations_block",
+        "obi_one.scientific.library.compartment_sets.build_compartment_set_from_locations_block",
         return_value=expected,
     ) as build_compartment_set:
         result = build_compartment_set_for_neuron_set(
