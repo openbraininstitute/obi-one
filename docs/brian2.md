@@ -107,11 +107,9 @@ falls back to the same default neuron set, `"Default: All Point Neurons"`, which
 point neuron in the circuit. The generation task injects it into `neuron_sets` the first time
 something needs it.
 
-`Brian2DirectPoissonStimulus` is the one block that cannot usually live with that default: Brian2
-instantiates one `PoissonInput` per target neuron, so the block refuses a target above
-`MAX_NEURONS` (100). On any real circuit an untargeted Direct Poisson input will exceed that and
-has to name a smaller neuron set of its own — on the FlyWire model, the 20-neuron `sugar` set is
-the natural choice.
+`Brian2DirectPoissonStimulus` is worth targeting deliberately even so: left untargeted it drives
+every point neuron in the circuit, which is rarely what a model calls for. On the FlyWire model
+the 20-neuron `sugar` set is the natural target.
 
 A Brian2 configuration also refuses, before generating anything, a circuit that does not have
 exactly one point node population, since the runner cannot build a network from it.

@@ -131,7 +131,6 @@ class GenerateSimulationTask(Task):
             elif isinstance(stimulus, Brian2DirectPoissonStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
-                        circuit=self._circuit,  # ty:ignore[invalid-argument-type]
                         default_node_set=self.config.default_node_set_name,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
                     )

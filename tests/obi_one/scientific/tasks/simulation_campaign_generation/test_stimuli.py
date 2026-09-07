@@ -450,21 +450,3 @@ class TestBrian2DirectPoissonStimulus:
         result = generate(config, tmp_path)
 
         assert result.inputs["DirectPoisson"]["node_set"] == result.sonata_config["node_set"]
-
-    def test_an_untargeted_stimulus_is_refused_when_the_default_is_too_large(
-        self, point_circuit, tmp_path, monkeypatch
-    ):
-        """One `PoissonInput` is built per target neuron, so the target has to stay small.
-
-        Inheriting the simulation-wide default puts an untargeted stimulus over that ceiling on
-        any real circuit, and it has to name its own neuron set instead.
-        """
-        monkeypatch.setattr(Brian2DirectPoissonStimulus, "MAX_NEURONS", 2)
-        config = build_config(
-            Brian2CircuitSimulationSingleConfig,
-            circuit=point_circuit,
-            blocks={"DirectPoisson": Brian2DirectPoissonStimulus()},
-        )
-
-        with pytest.raises(ValueError, match="exceeds the maximum allowed"):
-            generate(config, tmp_path)

@@ -21,7 +21,6 @@ from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
@@ -29,7 +28,6 @@ from obi_one.scientific.library.constants import (
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
-    resolve_neuron_set_ref_to_neuron_set,
     resolve_neuron_set_ref_to_node_set,
 )
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
@@ -43,9 +41,6 @@ class Brian2DirectPoissonStimulus(Block):
     """
 
     title: ClassVar[str] = "Direct Poisson Input"
-
-    # Brian2 instantiates one `PoissonInput` per target neuron, so the target has to be small.
-    MAX_NEURONS: ClassVar[int] = 100
 
     neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
@@ -103,7 +98,6 @@ class Brian2DirectPoissonStimulus(Block):
 
     def config(
         self,
-        circuit: Circuit,
         default_node_set: str = "All",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
@@ -116,22 +110,6 @@ class Brian2DirectPoissonStimulus(Block):
         """
         self._default_node_set = default_node_set
         _ = default_timestamps or SingleTimestamp(start_time=0.0)
-
-        # One PoissonInput is instantiated per target neuron, so the target has to stay small.
-        # An untargeted stimulus inherits the simulation-wide default (every point neuron), which
-        # exceeds the limit on any real circuit -- such a stimulus has to name its own neuron set.
-        neuron_set = resolve_neuron_set_ref_to_neuron_set(
-            self.neuron_set,
-            self._default_node_set,  # ty:ignore[invalid-argument-type]
-        )
-        neuron_ids = neuron_set.get_neuron_ids(circuit=circuit)  # ty:ignore[unresolved-attribute]
-        total_neurons = sum(len(ids) for ids in neuron_ids.values())
-        if total_neurons > self.MAX_NEURONS:
-            msg = (
-                f"Number of neurons used with the {self.title} exceeds the maximum "
-                f"allowed: {self.MAX_NEURONS}."
-            )
-            raise ValueError(msg)
 
         return self._generate_config()
 
