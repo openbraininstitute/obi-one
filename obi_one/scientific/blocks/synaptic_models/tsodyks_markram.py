@@ -140,7 +140,7 @@ def _validate_parameter_samples(parameter_name: str, samples: list[float]) -> li
 class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     """Tsodyks-Markram synaptic model with optional distribution references."""
 
-    _synapse_model_family = "TM_model"
+    _synapse_model_family: ClassVar[str] = "TM_model"
 
     u_hill_coefficient_distribution: AllDistributionsReference | None = Field(
         default=None,

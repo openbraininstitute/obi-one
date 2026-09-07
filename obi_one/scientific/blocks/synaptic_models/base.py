@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pandas import DataFrame
 
 from obi_one.core.block import Block
@@ -7,7 +9,10 @@ from obi_one.scientific.unions_and_references.distributions import AllDistributi
 
 
 class SynapticModelBase(Block):
-    _synapse_model_family: str | None = None
+    # ClassVar, not a bare annotation: pydantic turns an annotated underscore attribute into
+    # a ModelPrivateAttr, and `cls._synapse_model_family` then yields that wrapper rather
+    # than the string, so both the None check below and every family comparison read it wrong.
+    _synapse_model_family: ClassVar[str | None] = None
 
     @classmethod
     def synapse_model_family(cls) -> str:
