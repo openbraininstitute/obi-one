@@ -1,8 +1,12 @@
 """Brian2-specific direct-injection Poisson stimulus block.
 
 Drives each neuron in ``neuron_set`` with its own independent Poisson spike
-train, kicking the target membrane potential directly — equivalent to one
-``brian2.PoissonInput`` per target neuron.
+train, kicking the target membrane potential directly.
+
+The runner builds one ``brian2.PoissonInput`` per contiguous range of node IDs
+in the target, each with ``N=1`` so that every neuron it covers still gets an
+independent train. How many objects that is depends on how the target's IDs
+happen to fall: ``[0, 1, 2, 3, 4]`` is a single one, ``[0, 2, 4, 6]`` is four.
 
 Unlike :class:`PoissonSpikeStimulus`, which emits a SONATA ``synapse_replay``
 entry backed by a pre-generated spike file and propagates the replayed spikes
@@ -36,8 +40,8 @@ from obi_one.scientific.unions_and_references.timestamps import TimestampsRefere
 class Brian2DirectPoissonStimulus(Block):
     """Independent Poisson drive injected directly into the soma.
 
-    Each neuron receives its own Poisson Input directly into the soma
-    firing. Each spike adds a weight to the membrane potential.
+    Each neuron in the target draws its own independent Poisson spike train, and
+    each spike adds the weight to that neuron's membrane potential.
     """
 
     title: ClassVar[str] = "Direct Poisson Input"
