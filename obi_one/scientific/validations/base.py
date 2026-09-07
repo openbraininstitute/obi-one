@@ -78,7 +78,8 @@ class ValidationWorkflow[ContextT: WorkflowContext](ABC):
         context: ContextT,
         client: Client,
         *,
-        skip_if_exists: bool = True,
+        overwrite_existing: bool = False,
+        overwrite_names: set[str] | None = None,
     ) -> list[Any]:
         """Register test results on the platform.
 
@@ -86,7 +87,10 @@ class ValidationWorkflow[ContextT: WorkflowContext](ABC):
             test_results: Results produced by run().
             context: The workflow context from setup().
             client: entitysdk Client instance.
-            skip_if_exists: Whether to skip already registered results.
+            overwrite_existing: If True, update matching results in place; otherwise
+                skip them.
+            overwrite_names: If given, only results whose name is in this set are
+                overwritten; all others are skipped regardless of ``overwrite_existing``.
 
         Returns:
             Registered result records produced by the entity-specific workflow.
@@ -110,7 +114,8 @@ class ValidationSingleConfig(OBIBaseModel):
     Attributes:
         entity_id: The entity ID to validate.
         output_dir: Directory for validation output (figures, artifacts).
-        skip_if_exists: Skip registration if ValidationResult already exists.
+        overwrite_existing: Whether to update an existing ValidationResult in place
+            instead of skipping it.
     """
 
     entity_id: str = Field(description="Entity ID to validate.")
@@ -118,9 +123,11 @@ class ValidationSingleConfig(OBIBaseModel):
         default="./validation_output",
         description="Output directory for validation artifacts.",
     )
-    skip_if_exists: bool = Field(
-        default=True,
-        description="Skip registration if a ValidationResult already exists for this entity.",
+    overwrite_existing: bool = Field(
+        default=False,
+        description=(
+            "Update an existing ValidationResult in place instead of skipping it."
+        ),
     )
 
 
@@ -186,7 +193,7 @@ class ValidationTask(Task):
             test_results=test_results,
             context=context,
             client=db_client,
-            skip_if_exists=self.config.skip_if_exists,
+            overwrite_existing=self.config.overwrite_existing,
         )
 
         generated_ids = [r.entity_id for r in registered if r.entity_id]

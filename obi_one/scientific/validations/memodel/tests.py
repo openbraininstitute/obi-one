@@ -9,13 +9,53 @@ from pathlib import Path
 
 import efel
 import numpy as np
-
 from bluecellulab.analysis.analysis import BPAP, compute_plot_fi_curve, compute_plot_iv_curve
 from bluecellulab.analysis.inject_sequence import run_multirecordings_stimulus, run_stimulus
 from bluecellulab.cell.core import Cell
+from bluecellulab.simulation.neuron_globals import NeuronGlobals
 from bluecellulab.stimulus.factory import IDRestTimings, StimulusFactory
 from bluecellulab.validation.base import TestResult, ValidationTest
 from bluecellulab.validation.plotting import plot_trace, plot_traces
+
+from obi_one.scientific.validations.memodel.config import SimulatorConfig
+from obi_one.scientific.validations.memodel.names import ValidationName
+
+_DEFAULT_BPAP_SPIKE_THRESHOLD_MV = -20.0
+_MIN_BPAP_TRACE_SAMPLES = 2
+
+
+def _count_bpap_spikes(
+    time: np.ndarray,
+    voltage: np.ndarray,
+    *,
+    start: float,
+    end: float,
+    threshold: float,
+) -> int | None:
+    """Count soma spikes in a complete BPAP analysis interval with eFEL."""
+    trace = {
+        "T": time,
+        "V": voltage,
+        "stim_start": [start],
+        "stim_end": [end],
+    }
+    previous_threshold = float(efel.get_settings().Threshold)
+    try:
+        efel.set_setting("Threshold", threshold)
+        feature_results = efel.get_feature_values([trace], ["spike_count"])
+    finally:
+        # eFEL settings are process-global; do not change the following tests.
+        efel.set_setting("Threshold", previous_threshold)
+
+    if not feature_results:
+        return None
+    spike_counts = feature_results[0].get("spike_count")
+    if spike_counts is None or len(spike_counts) == 0:
+        return None
+    spike_count = float(spike_counts[0])
+    if not np.isfinite(spike_count) or not spike_count.is_integer() or spike_count < 0:
+        return None
+    return int(spike_count)
 
 
 class HyperpolarizationTest(ValidationTest):
@@ -23,7 +63,7 @@ class HyperpolarizationTest(ValidationTest):
 
     @property
     def name(self) -> str:
-        return "Simulatable Neuron Hyperpolarization Validation"
+        return ValidationName.HYPERPOLARIZATION
 
     def run(self, template_params, rheobase: float, out_dir) -> TestResult:
         out_dir = Path(out_dir)
@@ -85,7 +125,7 @@ class RinTest(ValidationTest):
 
     @property
     def name(self) -> str:
-        return "Simulatable Neuron Input Resistance Validation"
+        return ValidationName.INPUT_RESISTANCE
 
     def run(self, template_params, rheobase: float, out_dir) -> TestResult:
         passed = bool(self.rin < 1000)
@@ -106,7 +146,7 @@ class AISSpikingTest(ValidationTest):
 
     @property
     def name(self) -> str:
-        return "Simulatable Neuron AIS Spiking Validation"
+        return ValidationName.AIS_SPIKING
 
     def run(self, template_params, rheobase: float, out_dir) -> TestResult:
         out_dir = Path(out_dir)
@@ -187,7 +227,7 @@ class AISSpikingTest(ValidationTest):
 
 
 class BPAPTest(ValidationTest):
-    """Back-propagating action potential: amplitude should decay along dendrites."""
+    """Back-propagating action potential with optional full-trace spike guard."""
 
     def __init__(
         self,
@@ -195,6 +235,11 @@ class BPAPTest(ValidationTest):
         amplitude_factor: float = 10.0,
         sim_duration: float = 1500.0,
         stim_duration: float = 5.0,
+        holding_current: float | None = None,
+        expected_spike_count: int | None = None,
+        trace_diagnostics: bool = False,
+        spike_threshold: float = _DEFAULT_BPAP_SPIKE_THRESHOLD_MV,
+        simulator_config: SimulatorConfig,
     ) -> None:
         """Initialize the BPAP test.
 
@@ -202,61 +247,298 @@ class BPAPTest(ValidationTest):
             amplitude_factor: Multiplier of rheobase for stimulus amplitude.
             sim_duration: Total simulation duration in ms.
             stim_duration: Duration of the current pulse in ms.
-                The default is 5 ms. For thalamic cells that burst, try 1-2 ms
-                to trigger a single AP.
+            holding_current: Optional BPAP-specific holding current in nA. When
+                omitted, the calibrated value stored on the cell is used.
+            expected_spike_count: Optional number of soma spikes expected over
+                the complete simulation. ``None`` preserves attenuation-only
+                BPAP behavior for generic profiles.
+            trace_diagnostics: Whether to append soma trace metrics around the
+                BPAP pulse to the returned result details.
+            spike_threshold: eFEL voltage threshold used by the optional full
+                trace spike-count guard, in mV.
+            simulator_config: Shared simulator conditions applied to this test.
         """
+        if holding_current is not None:
+            try:
+                holding_current = float(holding_current)
+            except (TypeError, ValueError) as error:
+                message = "holding_current must be a finite number or None."
+                raise TypeError(message) from error
+            if not np.isfinite(holding_current):
+                message = "holding_current must be a finite number or None."
+                raise ValueError(message)
+        if expected_spike_count is not None:
+            if isinstance(expected_spike_count, bool) or not isinstance(
+                expected_spike_count, int
+            ):
+                message = "expected_spike_count must be an integer or None."
+                raise TypeError(message)
+            if expected_spike_count < 0:
+                message = "expected_spike_count must be non-negative."
+                raise ValueError(message)
+        if not isinstance(trace_diagnostics, bool):
+            message = "trace_diagnostics must be a boolean."
+            raise TypeError(message)
+        if not np.isfinite(spike_threshold):
+            message = "spike_threshold must be finite."
+            raise ValueError(message)
+
+        self.simulator_config = simulator_config
         self.amplitude_factor = amplitude_factor
         self.sim_duration = sim_duration
         self.stim_duration = stim_duration
+        self.holding_current = holding_current
+        self.expected_spike_count = expected_spike_count
+        self.trace_diagnostics = trace_diagnostics
+        self.spike_threshold = float(spike_threshold)
 
     @property
     def name(self) -> str:
-        return "Simulatable Neuron Back-propagating Action Potential Validation"
+        return ValidationName.BACK_PROPAGATING_AP
 
-    def run(self, template_params, rheobase: float, out_dir) -> TestResult:
-        out_dir = Path(out_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
+    def run(  # ruff: ignore[complex-structure,too-many-branches,too-many-locals,too-many-statements]
+        self, template_params, rheobase: float, out_dir
+    ) -> TestResult:
+        neuron_globals = NeuronGlobals.get_instance()
+        saved_params = neuron_globals.export_params()
 
-        amplitude = self.amplitude_factor * rheobase
-        bpap = BPAP(Cell.from_template_parameters(template_params), stim_duration=self.stim_duration)
-        bpap.run(duration=self.sim_duration, amplitude=amplitude)
-        soma_amp, dend_amps, dend_dist, apic_amps, apic_dist = bpap.get_amplitudes_and_distances()
+        try:
+            neuron_globals.temperature = self.simulator_config.celsius
+            neuron_globals.v_init = self.simulator_config.v_init
+            out_dir = Path(out_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
 
-        # If no AP was detected in soma, validation fails
-        if not soma_amp:
-            return TestResult(
-                name=self.name,
-                passed=False,
-                details=(
-                    f"No action potential detected in soma "
-                    f"(amplitude_factor={self.amplitude_factor}, "
-                    f"stim_duration={self.stim_duration} ms). "
-                    f"Try increasing amplitude_factor or stim_duration."
-                ),
-                figures=[],
+            amplitude = self.amplitude_factor * rheobase
+            cell = Cell.from_template_parameters(template_params)
+            if self.holding_current is not None:
+                cell.hypamp = self.holding_current
+            effective_holding_current = getattr(cell, "hypamp", None)
+            bpap = BPAP(
+                cell,
+                stim_duration=self.stim_duration,
+            )
+            # Cell construction may call model-specific initialization code that
+            # changes the process-global value; enforce this test's value at the
+            # actual simulation boundary as well.
+            neuron_globals.temperature = self.simulator_config.celsius
+            neuron_globals.v_init = self.simulator_config.v_init
+            bpap.run(duration=self.sim_duration, amplitude=amplitude)
+
+            time = np.asarray(bpap.cell.get_time(), dtype=float)
+            soma_recording, _, _ = bpap.get_recordings()
+            spike_count: int | None = None
+            if soma_recording is not None:
+                soma_voltage = np.asarray(soma_recording, dtype=float)
+                if time.ndim != 1 or soma_voltage.ndim != 1 or time.size != soma_voltage.size:
+                    return TestResult(
+                        name=self.name,
+                        passed=False,
+                        details="Could not align full-duration soma time and voltage recordings.",
+                        figures=[],
+                    )
+                if time.size < _MIN_BPAP_TRACE_SAMPLES or not np.all(np.isfinite(time)) or not np.all(
+                    np.isfinite(soma_voltage)
+                ):
+                    return TestResult(
+                        name=self.name,
+                        passed=False,
+                        details="Full-duration soma recording is empty or non-finite.",
+                        figures=[],
+                    )
+
+                simulation_start = float(time[0])
+                simulation_end = float(time[-1])
+                if self.expected_spike_count is not None:
+                    spike_count = _count_bpap_spikes(
+                        time,
+                        soma_voltage,
+                        start=simulation_start,
+                        end=simulation_end,
+                        threshold=self.spike_threshold,
+                    )
+            else:
+                return TestResult(
+                    name=self.name,
+                    passed=False,
+                    details="Could not obtain a full-duration soma voltage recording.",
+                    figures=[],
+                )
+
+            if time[-1] < bpap.stim_start + bpap.stim_duration:
+                details = (
+                    "Simulation ended before the complete BPAP pulse: "
+                    f"simulation_end={time[-1]:.3f} ms, "
+                    f"pulse_end={bpap.stim_start + bpap.stim_duration:.3f} ms."
+                )
+                return TestResult(
+                    name=self.name,
+                    passed=False,
+                    details=details,
+                    figures=[],
+                )
+
+            soma_amp, dend_amps, dend_dist, apic_amps, apic_dist = (
+                bpap.get_amplitudes_and_distances()
             )
 
-        validated, notes = bpap.validate(
-            soma_amp, dend_amps, dend_dist, apic_amps, apic_dist,
-            validate_with_fit=False,
-        )
+            bpap_parameters = (
+                f"BPAP parameters: amplitude_factor={self.amplitude_factor}, "
+                f"amplitude={amplitude:.6f} nA, "
+                f"holding_current={effective_holding_current} nA, "
+                f"stim_duration={self.stim_duration} ms, "
+                f"sim_duration={self.sim_duration} ms, "
+                f"celsius={self.simulator_config.celsius} C, "
+                f"v_init={self.simulator_config.v_init} mV"
+            )
+            trace_diagnostic_notes = ""
+            if self.trace_diagnostics:
+                pulse_start = float(bpap.stim_start)
+                pre_pulse_target = pulse_start - 1.0
+                pre_pulse_index = int(np.abs(time - pre_pulse_target).argmin())
+                pre_pulse_time = float(time[pre_pulse_index])
+                pre_pulse_voltage = float(soma_voltage[pre_pulse_index])
+                diagnostic_end = pulse_start + 30.0
+                diagnostic_mask = (time >= pulse_start) & (time <= diagnostic_end)
+                maximum_soma_voltage = (
+                    float(np.max(soma_voltage[diagnostic_mask]))
+                    if np.any(diagnostic_mask)
+                    else None
+                )
+                maximum_soma_voltage_text = (
+                    f"{maximum_soma_voltage:.6f} mV"
+                    if maximum_soma_voltage is not None
+                    else "unavailable"
+                )
+                pulse_end = pulse_start + float(bpap.stim_duration)
+                pre_pulse_spike_count = _count_bpap_spikes(
+                    time,
+                    soma_voltage,
+                    start=simulation_start,
+                    end=pulse_start,
+                    threshold=self.spike_threshold,
+                )
+                pulse_spike_count = _count_bpap_spikes(
+                    time,
+                    soma_voltage,
+                    start=pulse_start,
+                    end=pulse_end,
+                    threshold=self.spike_threshold,
+                )
+                post_pulse_spike_count = _count_bpap_spikes(
+                    time,
+                    soma_voltage,
+                    start=pulse_end,
+                    end=simulation_end,
+                    threshold=self.spike_threshold,
+                )
+                trace_diagnostic_notes = (
+                    "BPAP trace diagnostics: "
+                    f"nearest pre-pulse sample=t={pre_pulse_time:.6f} ms, "
+                    f"V={pre_pulse_voltage:.6f} mV; "
+                    f"maximum soma voltage [{pulse_start:.3f}, {diagnostic_end:.3f}] ms="
+                    f"{maximum_soma_voltage_text}; "
+                    f"spike counts [pre-pulse {simulation_start:.3f}-{pulse_start:.3f} ms, "
+                    f"pulse {pulse_start:.3f}-{pulse_end:.3f} ms, "
+                    f"post-pulse {pulse_end:.3f}-{simulation_end:.3f} ms]="
+                    f"{pre_pulse_spike_count!r}, {pulse_spike_count!r}, "
+                    f"{post_pulse_spike_count!r}; "
+                    f"holding replay={effective_holding_current!r} nA; "
+                    f"pulse step={amplitude:.6f} nA."
+                )
 
-        fig1 = bpap.plot_amp_vs_dist(
-            soma_amp, dend_amps, dend_dist, apic_amps, apic_dist,
-            show_figure=False, save_figure=True,
-            output_dir=out_dir,
-            output_fname="back-propagating_action_potential.pdf",
-            do_fit=False,
-        )
-        fig2 = bpap.plot_recordings(
-            show_figure=False, save_figure=True,
-            output_dir=out_dir,
-            output_fname="back-propagating_action_potential_recordings.pdf",
-        )
+            # If no AP was detected in soma, validation fails without creating
+            # the two standard BPAP figures because amplitude data is unavailable.
+            if not soma_amp:
+                details = (
+                    f"No action potential detected in soma ({bpap_parameters}). "
+                    f"Try increasing amplitude_factor or stim_duration."
+                )
+                if self.expected_spike_count is not None:
+                    details += f" Full-trace soma spike count={spike_count!r}."
+                if trace_diagnostic_notes:
+                    details = f"{details}\n{trace_diagnostic_notes}"
+                return TestResult(
+                    name=self.name,
+                    passed=False,
+                    details=details,
+                    figures=[],
+                )
 
-        figures = [f for f in [fig1, fig2] if f is not None]
+            validated, notes = bpap.validate(
+                soma_amp,
+                dend_amps,
+                dend_dist,
+                apic_amps,
+                apic_dist,
+                validate_with_fit=False,
+            )
 
-        return TestResult(name=self.name, passed=validated, details=notes, figures=figures)
+            spike_guard_passed = True
+            spike_notes = ""
+            if self.expected_spike_count is not None:
+                if spike_count is None:
+                    spike_guard_passed = False
+                    spike_notes = (
+                        "Full-trace soma spike count could not be determined "
+                        f"using threshold {self.spike_threshold:.1f} mV; "
+                        f"{bpap_parameters}."
+                    )
+                elif spike_count != self.expected_spike_count:
+                    spike_guard_passed = False
+                    spike_notes = (
+                        f"Full-trace soma spike count={spike_count}; "
+                        f"expected {self.expected_spike_count} "
+                        f"using threshold {self.spike_threshold:.1f} mV; "
+                        f"{bpap_parameters}."
+                    )
+                else:
+                    spike_notes = (
+                        f"Full-trace soma spike count={spike_count}; "
+                        f"expected {self.expected_spike_count}; "
+                        f"{bpap_parameters}."
+                    )
+
+            fig1 = bpap.plot_amp_vs_dist(
+                soma_amp,
+                dend_amps,
+                dend_dist,
+                apic_amps,
+                apic_dist,
+                show_figure=False,
+                save_figure=True,
+                output_dir=out_dir,
+                output_fname="back-propagating_action_potential.pdf",
+                do_fit=False,
+            )
+            fig2 = bpap.plot_recordings(
+                show_figure=False,
+                save_figure=True,
+                output_dir=out_dir,
+                output_fname="back-propagating_action_potential_recordings.pdf",
+            )
+
+            figures = [
+                figure
+                for figure in [fig1, fig2]
+                if figure is not None
+            ]
+            details = notes
+            if spike_notes:
+                details = f"{details}\n{spike_notes}" if details else spike_notes
+            if trace_diagnostic_notes:
+                details = (
+                    f"{details}\n{trace_diagnostic_notes}"
+                    if details
+                    else trace_diagnostic_notes
+                )
+            return TestResult(
+                name=self.name,
+                passed=bool(validated and spike_guard_passed),
+                details=details,
+                figures=figures,
+            )
+        finally:
+            neuron_globals.load_params(saved_params)
 
 
 class IVCurveTest(ValidationTest):
@@ -266,16 +548,15 @@ class IVCurveTest(ValidationTest):
         self,
         *,
         n_processes: int | None = None,
-        celsius: float = 34.0,
-        v_init: float = -80.0,
+        simulator_config: SimulatorConfig,
     ) -> None:
+        """Initialize the IV test with shared simulator conditions."""
+        self.simulator_config = simulator_config
         self.n_processes = n_processes
-        self.celsius = celsius
-        self.v_init = v_init
 
     @property
     def name(self) -> str:
-        return "Simulatable Neuron IV Curve Validation"
+        return ValidationName.IV_CURVE
 
     def run(self, template_params, rheobase: float, out_dir) -> TestResult:
         out_dir = Path(out_dir)
@@ -291,8 +572,8 @@ class IVCurveTest(ValidationTest):
             output_dir=out_dir,
             output_fname="iv_curve.pdf",
             n_processes=self.n_processes,
-            celsius=self.celsius,
-            v_init=self.v_init,
+            celsius=self.simulator_config.celsius,
+            v_init=self.simulator_config.v_init,
         )
 
         fig_path = out_dir / "iv_curve.pdf"
@@ -323,16 +604,15 @@ class FICurveTest(ValidationTest):
         self,
         *,
         n_processes: int | None = None,
-        celsius: float = 34.0,
-        v_init: float = -80.0,
+        simulator_config: SimulatorConfig,
     ) -> None:
+        """Initialize the FI test with shared simulator conditions."""
+        self.simulator_config = simulator_config
         self.n_processes = n_processes
-        self.celsius = celsius
-        self.v_init = v_init
 
     @property
     def name(self) -> str:
-        return "Simulatable Neuron FI Curve Validation"
+        return ValidationName.FI_CURVE
 
     def run(self, template_params, rheobase: float, out_dir) -> TestResult:
         out_dir = Path(out_dir)
@@ -349,8 +629,8 @@ class FICurveTest(ValidationTest):
             output_dir=out_dir,
             output_fname="fi_curve.pdf",
             n_processes=self.n_processes,
-            celsius=self.celsius,
-            v_init=self.v_init,
+            celsius=self.simulator_config.celsius,
+            v_init=self.simulator_config.v_init,
         )
 
         fig_path = out_dir / "fi_curve.pdf"

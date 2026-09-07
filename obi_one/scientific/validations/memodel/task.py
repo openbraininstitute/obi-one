@@ -19,6 +19,14 @@ class MEModelValidationSingleConfig(ValidationSingleConfig):
         default="./memodel_validation",
         description="Output directory for MEModel validation artifacts.",
     )
+    validation_profile: str = Field(
+        default="default",
+        description=(
+            "Name of the MEModel validation profile to use. Registered profiles "
+            "can be selected here; custom profile instances can be passed directly "
+            "to MEModelValidationWorkflow."
+        ),
+    )
 
 
 class MEModelValidationTask(ValidationTask):
@@ -29,4 +37,5 @@ class MEModelValidationTask(ValidationTask):
     def get_workflow(self) -> MEModelValidationWorkflow:
         return MEModelValidationWorkflow(
             output_dir=Path(self.config.output_dir),
+            validation_profile=self.config.validation_profile,
         )

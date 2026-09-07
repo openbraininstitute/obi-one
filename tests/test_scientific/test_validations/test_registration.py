@@ -6,6 +6,7 @@ import pytest
 from bluecellulab.validation.base import TestResult
 
 from obi_one.scientific.validations.registration import (
+    ValidationResultAlreadyExistsError,
     register_outcome,
     register_outcomes,
 )
@@ -32,7 +33,7 @@ class TestRegisterOutcome:
     def test_registers_new_result(self, mock_client, sample_test_result, tmp_path):
         # No existing result
         mock_iterator = MagicMock()
-        mock_iterator.first.return_value = None
+        mock_iterator.all.return_value = []
         mock_client.search_entity.return_value = mock_iterator
 
         # register_entity returns entity with id
@@ -55,8 +56,10 @@ class TestRegisterOutcome:
 
     def test_skips_if_already_exists(self, mock_client, sample_test_result, tmp_path):
         # Existing result found
+        existing_entity = MagicMock()
+        existing_entity.id = "existing-id"
         mock_iterator = MagicMock()
-        mock_iterator.first.return_value = MagicMock()  # non-None means exists
+        mock_iterator.all.return_value = [existing_entity]
         mock_client.search_entity.return_value = mock_iterator
 
         result = register_outcome(
@@ -64,35 +67,29 @@ class TestRegisterOutcome:
             test_result=sample_test_result,
             validated_entity_id="3f4e8f5e-2a6e-4b40-9a1d-1f4e5f6a7b8c",
             out_dir=tmp_path,
-            skip_if_exists=True,
+            overwrite_existing=False,
         )
 
         assert result.skipped is True
-        assert result.entity_id is None
+        assert result.entity_id == "existing-id"
         mock_client.register_entity.assert_not_called()
 
-    def test_registers_even_if_exists_when_skip_disabled(
-        self, mock_client, sample_test_result, tmp_path
-    ):
+    def test_errors_if_multiple_results_exist(self, mock_client, sample_test_result, tmp_path):
+        existing_entities = [MagicMock(id="existing-id-1"), MagicMock(id="existing-id-2")]
         mock_iterator = MagicMock()
-        mock_iterator.first.return_value = MagicMock()
+        mock_iterator.all.return_value = existing_entities
         mock_client.search_entity.return_value = mock_iterator
 
-        registered_entity = MagicMock()
-        registered_entity.id = "forced-id"
-        mock_client.register_entity.return_value = registered_entity
+        with pytest.raises(ValidationResultAlreadyExistsError):
+            register_outcome(
+                client=mock_client,
+                test_result=sample_test_result,
+                validated_entity_id="3f4e8f5e-2a6e-4b40-9a1d-1f4e5f6a7b8c",
+                out_dir=tmp_path,
+                overwrite_existing=True,
+            )
 
-        result = register_outcome(
-            client=mock_client,
-            test_result=sample_test_result,
-            validated_entity_id="3f4e8f5e-2a6e-4b40-9a1d-1f4e5f6a7b8c",
-            out_dir=tmp_path,
-            skip_if_exists=False,
-        )
-
-        assert result.skipped is False
-        assert result.entity_id == "forced-id"
-        mock_client.register_entity.assert_called_once()
+        mock_client.register_entity.assert_not_called()
 
     def test_uploads_pdf_figure(self, mock_client, tmp_path):
         fig = tmp_path / "plot.pdf"
@@ -100,7 +97,7 @@ class TestRegisterOutcome:
         test_result = TestResult(name="Fig Test", passed=True, details="ok", figures=[fig])
 
         mock_iterator = MagicMock()
-        mock_iterator.first.return_value = None
+        mock_iterator.all.return_value = []
         mock_client.search_entity.return_value = mock_iterator
 
         registered_entity = MagicMock()
@@ -121,7 +118,7 @@ class TestRegisterOutcome:
         test_result = TestResult(name="SVG Test", passed=True, details="ok", figures=[fig])
 
         mock_iterator = MagicMock()
-        mock_iterator.first.return_value = None
+        mock_iterator.all.return_value = []
         mock_client.search_entity.return_value = mock_iterator
 
         registered_entity = MagicMock()
@@ -145,7 +142,7 @@ class TestRegisterOutcomes:
         ]
 
         mock_iterator = MagicMock()
-        mock_iterator.first.return_value = None
+        mock_iterator.all.return_value = []
         mock_client.search_entity.return_value = mock_iterator
 
         registered_entity = MagicMock()
@@ -165,7 +162,7 @@ class TestRegisterOutcomes:
         ]
 
         mock_iterator = MagicMock()
-        mock_iterator.first.return_value = None
+        mock_iterator.all.return_value = []
         mock_client.search_entity.return_value = mock_iterator
 
         # First register fails, second succeeds
