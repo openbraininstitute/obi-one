@@ -42,7 +42,9 @@ def submit_circuit_validation_job(
         circuit_id: Circuit entity ID to validate.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
-        api_url: Base URL of the obi-one API (for the generate-assets callback).
+        api_url: Base URL of the obi-one API, already including the ``/api/obi-one``
+            path prefix (e.g. ``https://staging.cell-a.openbraininstitute.org/api/obi-one``);
+            used to build the generate-assets callback URL.
         compute_cell: Compute cell for the launch-system job (from the vlab).
         obi_one_repo: Git repository URL for the launch script checkout.
         app_version: App version used to form ``tag:<version>``; defaults to ``0.0.0``.
@@ -60,7 +62,7 @@ def submit_circuit_validation_job(
                 "action_type": "http_request_with_token",
                 "event_type": "job_on_success",
                 "config": {
-                    "url": (f"{api_url}/api/obi-one/declared/circuit/{circuit_id}/generate-assets"),
+                    "url": (f"{api_url}/declared/circuit/{circuit_id}/generate-assets"),
                     "method": "POST",
                 },
             }

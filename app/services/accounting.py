@@ -107,7 +107,7 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(
+def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure]
     *,
     db_client: Client,
     config_id: UUID,
@@ -145,6 +145,11 @@ def _evaluate_accounting_parameters(
             return AccountingParameters(
                 count=1,
                 service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
+            )
+        case TaskType.efeature_extraction:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
             )
         case TaskType.ion_channel_model_simulation_execution:
             count = 1

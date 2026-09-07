@@ -22,6 +22,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
+from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 
 if TYPE_CHECKING:
@@ -45,6 +46,9 @@ class SharedStatePartial(BaseModel):
     ion_channel_model_simulation_config: IonChannelModelSimulationScanConfig | None = None
     skeletonization_config: SkeletonizationScanConfig | None = None
     em_synapse_mapping_config: EMSynapseMappingScanConfig | None = None
+    # Build > Ion Channel. Distinct from ion_channel_model_simulation_config above, which
+    # simulates an existing model; this one fits a new model from experimental traces.
+    ion_channel_fitting_config: IonChannelFittingScanConfig | None = None
 
 
 class ConfigValidationRequest(BaseModel):
@@ -67,6 +71,10 @@ _VALIDATION_CONFIG: dict[str, bool] = {
     "ion_channel_model_simulation_config": True,
     "skeletonization_config": False,
     "em_synapse_mapping_config": False,
+    # False mirrors the generate-endpoint registration in app/endpoints/scan_config.py, so
+    # validation is no stricter than generation. Generation still resolves the input recording
+    # against the database; only the fitting task itself (NWB download, nrnivmodl) is skipped.
+    "ion_channel_fitting_config": False,
 }
 
 
