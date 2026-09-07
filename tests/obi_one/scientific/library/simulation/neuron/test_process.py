@@ -1,4 +1,5 @@
 import json
+import os
 from unittest.mock import patch
 
 import pytest
@@ -244,10 +245,7 @@ def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
             "json",
         ],
         cwd=output_dir,
-        env={
-            "PATH": "/opt/obi/:/code/.venv/bin:/usr/local/bin:/usr/local/sbin:"
-            "/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-        },
+        env={"PATH": f"/opt/obi/:{os.environ['PATH']}"},
     )
 
 

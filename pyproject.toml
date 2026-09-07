@@ -109,6 +109,7 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
+    "respx==0.22.0",
     "ruff",
     "ty>=0.0.33",
 ]
