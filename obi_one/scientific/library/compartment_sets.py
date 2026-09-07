@@ -156,11 +156,11 @@ def build_compartment_set_for_neuron_set(
         )
         raise ValueError(msg) from exc
 
-    number_of_locations = locations_block.number_of_locations
-    if isinstance(number_of_locations, int):
+    locations_per_morphology = locations_block.output_location_count()
+    if locations_per_morphology is not None:
         _validate_compartment_set_entry_count(
             name=name,
-            entry_count=len(node_ids) * number_of_locations,
+            entry_count=len(node_ids) * locations_per_morphology,
         )
 
     morphologies: dict[int, morphio.Morphology] = {}

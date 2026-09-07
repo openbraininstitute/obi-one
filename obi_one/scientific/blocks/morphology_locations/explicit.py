@@ -189,10 +189,10 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         description="Unused: explicit locations involve no random sampling.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
-    number_of_locations: PositiveInt | None = Field(
-        default=None,
+    number_of_locations: PositiveInt = Field(
+        default=1,
         title="Number of Locations",
-        description="Derived from the number of explicit locations.",
+        description="Unused: the number of locations is the length of `locations`.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     section_types: SectionTypes = Field(
@@ -201,6 +201,11 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         description="Unused: each location names its own section.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
+
+    @override
+    def output_location_count(self) -> int | None:
+        """Return the number of selected points, ignoring the unused inherited count."""
+        return len(self.locations) if self.locations is not None else None
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         if not self.locations:
@@ -228,5 +233,4 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
 
     @override
     def _check_parameter_values(self) -> None:
-        if self.locations is not None:
-            self.number_of_locations = len(self.locations)
+        return None

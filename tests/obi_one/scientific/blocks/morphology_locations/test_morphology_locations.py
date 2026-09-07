@@ -49,19 +49,19 @@ def test_random_morphology_locations_accepts_list_of_tuple_section_types_for_sca
     assert locations.section_types == [(3,), (4,), (3, 4)]
 
 
-def test_generated_morphology_locations_store_static_output_count():
+def test_generated_morphology_locations_report_configured_output_count():
     locations = obi.RandomMorphologyLocations(number_of_locations=3)
 
-    assert locations.number_of_locations == 3
+    assert locations.output_location_count() == 3
 
 
-def test_generated_morphology_locations_keep_parameter_sweeps():
+def test_generated_morphology_locations_report_no_count_for_parameter_sweeps():
     locations = obi.RandomMorphologyLocations(number_of_locations=[2, 3])
 
-    assert locations.number_of_locations == [2, 3]
+    assert locations.output_location_count() is None
 
 
-def test_explicit_morphology_locations_store_selected_point_count():
+def test_explicit_morphology_locations_report_selected_point_count():
     locations = obi.ExplicitMorphologyLocations(
         locations=(
             obi.MorphologyLocationPoint(section_id=1, offset=0.25),
@@ -69,7 +69,13 @@ def test_explicit_morphology_locations_store_selected_point_count():
         )
     )
 
-    assert locations.number_of_locations == 2
+    assert locations.output_location_count() == 2
+
+
+def test_explicit_morphology_locations_report_no_count_without_selection():
+    locations = obi.ExplicitMorphologyLocations()
+
+    assert locations.output_location_count() is None
 
 
 def test_random_morphology_locations_rejects_invalid_section_type():

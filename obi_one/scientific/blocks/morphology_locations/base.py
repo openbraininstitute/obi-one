@@ -99,6 +99,15 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         self._check_parameter_values()
         return self
 
+    def output_location_count(self) -> int | None:
+        """Return how many locations `points_on` yields for one morphology.
+
+        Returns None when the count is not resolved yet, such as a parameter sweep.
+        """
+        if isinstance(self.number_of_locations, int):
+            return self.number_of_locations
+        return None
+
     def points_on(self, morphology: morphio.Morphology) -> pd.DataFrame:
         self.enforce_no_multi_param()
         return self._make_points(morphology)
