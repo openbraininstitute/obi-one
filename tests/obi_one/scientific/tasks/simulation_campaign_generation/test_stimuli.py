@@ -450,3 +450,60 @@ class TestBrian2DirectPoissonStimulus:
         result = generate(config, tmp_path)
 
         assert result.inputs["DirectPoisson"]["node_set"] == result.sonata_config["node_set"]
+
+
+class TestSinusoidalFrequencyAgainstTimestep:
+    """A sinusoid is refused when its timestep is too coarse to represent its frequency.
+
+    The bound is not a field constraint, because the timestep the signal is sampled at is not a
+    property of the block alone: `SinusoidalCurrentClampSomaticStimulus` carries its own, while
+    `SimulationDtSinusoidalCurrentClampSomaticStimulus` takes whichever the simulation uses. So
+    the same frequency can be fine in one configuration and refused in another.
+    """
+
+    def test_a_frequency_above_the_blocks_own_timestep_allows_is_refused(self, circuit, tmp_path):
+        # dt = 1.0 ms can only carry frequencies below 500 Hz.
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=1.0, frequency=600.0)},
+        )
+
+        with pytest.raises(OBIONEError, match=r"timestep of 1\.0 ms"):
+            generate(config, tmp_path)
+
+    def test_a_frequency_the_timestep_can_carry_is_accepted(self, circuit, tmp_path):
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=1.0, frequency=100.0)},
+        )
+
+        result = generate(config, tmp_path)
+
+        assert result.inputs["Sine_0"]["frequency"] == pytest.approx(100.0)
+        assert result.inputs["Sine_0"]["dt"] == pytest.approx(1.0)
+
+    def test_the_same_frequency_is_refused_at_a_coarser_timestep(self, circuit, tmp_path):
+        """100 Hz is fine at dt = 1.0 ms and not at dt = 5.0 ms, which stops at 100 Hz."""
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=5.0, frequency=100.0)},
+        )
+
+        with pytest.raises(OBIONEError, match=r"below 100\.0 Hz"):
+            generate(config, tmp_path)
+
+    def test_the_brian2_variant_is_bounded_by_the_simulation_timestep(
+        self, brian2_config, tmp_path
+    ):
+        """It has no timestep of its own, so the simulation's 0.025 ms sets the limit."""
+        config = brian2_config(
+            blocks={
+                "Sine": obi.SimulationDtSinusoidalCurrentClampSomaticStimulus(frequency=30000.0)
+            }
+        )
+
+        with pytest.raises(OBIONEError, match=r"timestep of 0\.025 ms"):
+            generate(config, tmp_path)

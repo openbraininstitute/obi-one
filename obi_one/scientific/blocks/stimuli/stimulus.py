@@ -11,6 +11,7 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
+from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -22,6 +23,7 @@ from obi_one.scientific.library.constants import (
     MIN_NON_NEGATIVE_FLOAT_VALUE,
     MIN_TIMESTEP_MILLISECONDS,
     SIMULATION_TIMESTEP_MILLISECONDS,
+    nyquist_frequency_hz,
 )
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
@@ -542,7 +544,26 @@ class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         """Timestep at which the sinusoid is sampled, in milliseconds (ms)."""
         return self._simulation_timestep
 
+    def _check_frequency_against_timestep(self) -> None:
+        """Reject a frequency the signal timestep is too coarse to represent.
+
+        The bound cannot be a field constraint, because the timestep is not a property of the
+        block: this class takes it from the simulation, and
+        :class:`SinusoidalCurrentClampSomaticStimulus` from a parameter of its own. So it is
+        checked here, once the timestep that will actually be used is known.
+        """
+        timestep = self.signal_timestep
+        maximum_frequency = nyquist_frequency_hz(timestep)
+        if self.frequency >= maximum_frequency:  # ty:ignore[unsupported-operator]
+            msg = (
+                f"Stimulus '{self.block_name}': a frequency of {self.frequency} Hz cannot be "
+                f"represented at a timestep of {timestep} ms, which can only carry frequencies "
+                f"below {maximum_frequency} Hz. Lower the frequency, or shorten the timestep."
+            )
+            raise OBIONEError(msg)
+
     def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        self._check_frequency_against_timestep()
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,

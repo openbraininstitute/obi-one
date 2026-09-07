@@ -13,9 +13,19 @@ MAX_POISSON_SPIKE_LIMIT = 5000000
 
 SIMULATION_TIMESTEP_MILLISECONDS = 0.025
 
+
+def nyquist_frequency_hz(timestep_milliseconds: float) -> float:
+    """Highest frequency (Hz) a signal sampled every ``timestep_milliseconds`` can represent.
+
+    Above it the sampled waveform aliases: what reaches the cell is a different frequency from
+    the one asked for, rather than a coarse version of it.
+    """
+    return 1.0 / (2 * timestep_milliseconds / 1000.0)
+
+
 # 20 kHz, the Nyquist frequency of typical
 # simulations with dt=0.025 ms (i.e., 20 kHz)
-MAX_EFIELD_FREQUENCY_HZ = 1.0 / (2 * SIMULATION_TIMESTEP_MILLISECONDS / 1000.0)
+MAX_EFIELD_FREQUENCY_HZ = nyquist_frequency_hz(SIMULATION_TIMESTEP_MILLISECONDS)
 
 NEURON_PAIR_SIZE = 2
 MAX_SMALL_MICROCIRCUIT_SIZE = 20
