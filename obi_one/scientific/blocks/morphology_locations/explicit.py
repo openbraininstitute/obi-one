@@ -3,7 +3,7 @@ from typing import Annotated, ClassVar, override
 import morphio
 import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
@@ -189,12 +189,6 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         description="Unused: explicit locations involve no random sampling.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
-    number_of_locations: PositiveInt = Field(
-        default=1,
-        title="Number of Locations",
-        description="Unused: the number of locations is the length of `locations`.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
     section_types: SectionTypes = Field(
         default=None,
         title="Section Types",
@@ -204,7 +198,7 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
 
     @override
     def output_location_count(self) -> int | None:
-        """Return the number of selected points, ignoring the unused inherited count."""
+        """Return the number of selected points, or None before any are chosen."""
         return len(self.locations) if self.locations is not None else None
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:

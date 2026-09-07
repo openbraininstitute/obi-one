@@ -1,5 +1,5 @@
 import abc
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self, override
 
 import morphio
 import pandas as pd
@@ -57,20 +57,6 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
 
-    number_of_locations: (
-        Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]
-        | list[Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]]
-    ) = Field(
-        default=20,
-        title="Number of Locations",
-        description=(
-            "Total number of morphology locations to generate for each targeted neuron. "
-            f"Maximum: {MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS}."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
     section_types: SectionTypes = Field(
         default=(3, 4),
         title="Section Types",
@@ -99,15 +85,39 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         self._check_parameter_values()
         return self
 
+    @abc.abstractmethod
     def output_location_count(self) -> int | None:
         """Return how many locations `points_on` yields for one morphology.
 
         Returns None when the count is not resolved yet, such as a parameter sweep.
         """
-        if isinstance(self.number_of_locations, int):
-            return self.number_of_locations
-        return None
 
     def points_on(self, morphology: morphio.Morphology) -> pd.DataFrame:
         self.enforce_no_multi_param()
         return self._make_points(morphology)
+
+
+class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
+    """Base class for locations generated from a requested number of locations."""
+
+    number_of_locations: (
+        Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]
+        | list[Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]]
+    ) = Field(
+        default=20,
+        title="Number of Locations",
+        description=(
+            "Total number of morphology locations to generate for each targeted neuron. "
+            f"Maximum: {MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS}."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
+    )
+
+    @override
+    def output_location_count(self) -> int | None:
+        """Return the requested count, or None while it is still a parameter sweep."""
+        if isinstance(self.number_of_locations, int):
+            return self.number_of_locations
+        return None

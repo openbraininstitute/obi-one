@@ -92,7 +92,7 @@ def _generate_locations(
     group_name: str,
     group_index: int = 0,
 ) -> pd.DataFrame:
-    count = placement.number_of_locations
+    count = placement.output_location_count()
     if not isinstance(count, int) or count <= 0:
         raise BuildSynaptomeError(
             f"Synapse group '{group_name}' has invalid location count {count!r}."

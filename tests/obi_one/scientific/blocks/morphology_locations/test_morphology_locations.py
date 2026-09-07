@@ -78,6 +78,17 @@ def test_explicit_morphology_locations_report_no_count_without_selection():
     assert locations.output_location_count() is None
 
 
+def test_explicit_morphology_locations_do_not_expose_a_location_count_parameter():
+    schema_properties = obi.ExplicitMorphologyLocations.model_json_schema()["properties"]
+
+    assert "number_of_locations" not in obi.ExplicitMorphologyLocations.model_fields
+    assert "number_of_locations" not in schema_properties
+
+
+def test_generated_morphology_locations_expose_a_location_count_parameter():
+    assert "number_of_locations" in obi.RandomMorphologyLocations.model_fields
+
+
 def test_random_morphology_locations_rejects_invalid_section_type():
     with pytest.raises(ValidationError):
         obi.RandomMorphologyLocations(
