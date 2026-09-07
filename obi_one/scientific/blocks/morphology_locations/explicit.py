@@ -1,9 +1,9 @@
-from typing import Annotated, ClassVar, override
+from typing import Annotated, Any, ClassVar, override
 
 import morphio
 import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, model_validator
 
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
@@ -195,6 +195,16 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         description="Unused: each location names its own section.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
+
+    # Released versions declared `number_of_locations` here as an unused placeholder, so it was
+    # written into every serialized explicit-locations block. Blocks forbid extra keys, so stored
+    # configs would fail to load without dropping it. Safe to delete once those configs are gone.
+    @model_validator(mode="before")
+    @classmethod
+    def ignore_released_number_of_locations(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "number_of_locations" in data:
+            return {key: value for key, value in data.items() if key != "number_of_locations"}
+        return data
 
     @override
     def output_location_count(self) -> int | None:
