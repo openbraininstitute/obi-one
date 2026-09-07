@@ -189,10 +189,10 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         description="Unused: explicit locations involve no random sampling.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
-    number_of_locations: PositiveInt = Field(
-        default=1,
+    number_of_locations: PositiveInt | None = Field(
+        default=None,
         title="Number of Locations",
-        description="Unused: the number of locations is the length of `locations`.",
+        description="Derived from the number of explicit locations.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     section_types: SectionTypes = Field(
@@ -228,4 +228,5 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
 
     @override
     def _check_parameter_values(self) -> None:
-        return None
+        if self.locations is not None:
+            self.number_of_locations = len(self.locations)

@@ -168,6 +168,7 @@ def test_build_compartment_set_skips_unavailable_morphologies():
         "pop": [1, SimpleNamespace(id=2)],
     }
     locations_block = MagicMock()
+    locations_block.number_of_locations = None
     locations_block.points_on.return_value = pd.DataFrame(
         {"section_id": [3], "normalized_section_offset": [0.75]}
     )

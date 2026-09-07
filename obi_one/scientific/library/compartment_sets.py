@@ -72,19 +72,6 @@ class MaterializedCompartmentSet(BaseModel):
         return cls(name=name, population=population, compartment_entries=tuple(triplets))
 
 
-def _estimate_locations_per_neuron(locations_block: MorphologyLocationsBlock) -> int | None:
-    """Return the known number of locations each selected neuron will receive."""
-    explicit_locations = getattr(locations_block, "locations", None)
-    if explicit_locations is not None:
-        return len(explicit_locations)
-
-    number_of_locations = getattr(locations_block, "number_of_locations", None)
-    if isinstance(number_of_locations, int):
-        return number_of_locations
-
-    return None
-
-
 def _validate_compartment_set_entry_count(*, name: str, entry_count: int) -> None:
     if entry_count > MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES:
         msg = (
@@ -169,11 +156,11 @@ def build_compartment_set_for_neuron_set(
         )
         raise ValueError(msg) from exc
 
-    locations_per_neuron = _estimate_locations_per_neuron(locations_block)
-    if locations_per_neuron is not None:
+    number_of_locations = locations_block.number_of_locations
+    if isinstance(number_of_locations, int):
         _validate_compartment_set_entry_count(
             name=name,
-            entry_count=len(node_ids) * locations_per_neuron,
+            entry_count=len(node_ids) * number_of_locations,
         )
 
     morphologies: dict[int, morphio.Morphology] = {}
