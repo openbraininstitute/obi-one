@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from obi_one.core.exception import ConfigValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Iterator
 
     import morphio
 
@@ -82,16 +82,44 @@ def _validate_compartment_set_entry_count(*, name: str, entry_count: int) -> Non
         raise ConfigValidationError(msg)
 
 
+def _iter_morphologies(
+    *,
+    circuit: Circuit,
+    node_ids: Iterable[Any],
+    population: str,
+) -> Iterator[tuple[int, morphio.Morphology]]:
+    """Yield one morphology at a time, so only the morphology in use is held in memory."""
+    for node_id in node_ids:
+        node_id_int = int(getattr(node_id, "id", node_id))
+        try:
+            morph = circuit.load_morphology(node_id_int, population=population)
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            L.warning(
+                "Unable to load morphology for node %s in population '%s': %s",
+                node_id_int,
+                population,
+                exc,
+            )
+            continue
+
+        yield node_id_int, morph
+
+
 def build_compartment_set_from_locations_block(
     *,
     name: str,
     population: str,
     locations_block: MorphologyLocationsBlock,
-    morphologies: Mapping[int, morphio.Morphology],
+    morphology_items: Iterable[tuple[int, morphio.Morphology]],
 ) -> MaterializedCompartmentSet:
+    """Accumulate compartment rows from `(node_id, morphology)` pairs.
+
+    Pairs are consumed lazily so callers can release each morphology once its rows are read,
+    rather than holding every targeted morphology in memory at once.
+    """
     locations: list[CompartmentLocation] = []
 
-    for node_id, morph in morphologies.items():
+    for node_id, morph in morphology_items:
         df = locations_block.points_on(morph)
 
         if "section_id" not in df.columns:
@@ -163,24 +191,13 @@ def build_compartment_set_for_neuron_set(
             entry_count=len(node_ids) * locations_per_morphology,
         )
 
-    morphologies: dict[int, morphio.Morphology] = {}
-    for node_id in node_ids:
-        node_id_int = int(getattr(node_id, "id", node_id))
-        try:
-            morph = circuit.load_morphology(node_id_int, population=selected_population)
-        except (FileNotFoundError, KeyError, ValueError) as exc:
-            L.warning(
-                "Unable to load morphology for node %s in population '%s': %s",
-                node_id_int,
-                selected_population,
-                exc,
-            )
-            continue
-        morphologies[node_id_int] = morph
-
     return build_compartment_set_from_locations_block(
         name=name,
         population=population,
         locations_block=locations_block,
-        morphologies=morphologies,
+        morphology_items=_iter_morphologies(
+            circuit=circuit,
+            node_ids=node_ids,
+            population=selected_population,
+        ),
     )
