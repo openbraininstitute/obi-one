@@ -21,6 +21,25 @@ SectionType = Literal[3, 4]
 SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]] | None
 MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS = 20_000
 
+SectionID = Annotated[
+    int,
+    Field(
+        ge=0,
+        strict=True,
+        title="Section ID",
+        description="SONATA global section ID: 0 for soma, then nrn_order neurites.",
+    ),
+]
+NormalizedSectionOffset = Annotated[
+    float,
+    Field(
+        ge=0.0,
+        le=1.0,
+        title="Normalized section offset",
+        description="Normalized location along the section.",
+    ),
+]
+
 
 class MorphologyLocationsBlock(Block, abc.ABC):
     """Base class representing parameterized locations on morphology skeletons."""

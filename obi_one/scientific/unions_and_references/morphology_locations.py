@@ -11,6 +11,9 @@ from obi_one.scientific.blocks.morphology_locations.explicit import ExplicitMorp
 from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
 )
+from obi_one.scientific.blocks.morphology_locations.per_neuron_explicit import (
+    PerNeuronExplicitMorphologyLocations,
+)
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
@@ -20,6 +23,7 @@ MorphologyLocationUnion = Annotated[
     | ClusteredPathDistanceMorphologyLocations
     | ExplicitMorphologyLocations
     | PathDistanceMorphologyLocations
+    | PerNeuronExplicitMorphologyLocations
     | RandomMorphologyLocations,
     Discriminator("type"),
 ]

@@ -63,7 +63,14 @@ UNTARGETED_RECORDINGS = sorted(
     name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
 )
 SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
-MORPHOLOGY_LOCATIONS = sorted(union_member_names(MorphologyLocationUnion))
+# Per-neuron explicit locations name their own node ids, so they carry no neuron-set reference
+# for these tests to fill in.
+LOCATIONS_WITHOUT_A_TARGET = {"PerNeuronExplicitMorphologyLocations"}
+MORPHOLOGY_LOCATIONS = sorted(
+    name
+    for name in union_member_names(MorphologyLocationUnion)
+    if name not in LOCATIONS_WITHOUT_A_TARGET
+)
 COMBINED_NEURON_SETS = sorted(
     name for name in union_member_names(NEURONSimulationNeuronSetUnion) if "Combined" in name
 )

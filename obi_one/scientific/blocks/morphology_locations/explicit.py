@@ -9,6 +9,8 @@ from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import (
     MorphologyLocationsBlock,
+    NormalizedSectionOffset,
+    SectionID,
     SectionTypes,
 )
 from obi_one.scientific.library.entity_property_types import (
@@ -43,33 +45,14 @@ _LOCATION_COLUMNS = pandas.Index(
 
 _SOMA_SECTION_ID = 0
 
-_SectionID = Annotated[
-    int,
-    Field(
-        ge=0,
-        strict=True,
-        title="Section ID",
-        description="SONATA global section ID: 0 for soma, then nrn_order neurites.",
-    ),
-]
-_NormalizedSectionOffset = Annotated[
-    float,
-    Field(
-        ge=0.0,
-        le=1.0,
-        title="Normalized section offset",
-        description="Normalized location along the section.",
-    ),
-]
-
 
 class MorphologyLocationPoint(BaseModel):
     """A SONATA global section ID and normalized offset defining one location."""
 
     model_config = ConfigDict(extra="forbid")
 
-    section_id: _SectionID
-    offset: _NormalizedSectionOffset
+    section_id: SectionID
+    offset: NormalizedSectionOffset
 
 
 def _neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> morphio.Section:

@@ -47,6 +47,12 @@ MORPHOLOGY_LOCATIONS = {
             obi.MorphologyLocationPoint(section_id=1, offset=0.5),
         )
     ),
+    "PerNeuronExplicitMorphologyLocations": obi.PerNeuronExplicitMorphologyLocations(
+        locations=(
+            obi.NeuronMorphologyLocationPoint(node_id=0, section_id=0, offset=0.0),
+            obi.NeuronMorphologyLocationPoint(node_id=1, section_id=1, offset=0.5),
+        )
+    ),
 }
 
 
@@ -64,6 +70,56 @@ def _locations_config(circuit, locations, *, neuron_set=None, name="Locations"):
 class TestUnionCoverage:
     def test_every_selectable_morphology_location_block_is_exercised(self):
         assert union_member_names(MorphologyLocationUnion) == set(MORPHOLOGY_LOCATIONS)
+
+
+class TestPerNeuronExplicitLocations:
+    """Selected points name their own neuron, so they are written through unchanged."""
+
+    def test_the_selected_rows_are_written_exactly(self, morphology_circuit, tmp_path):
+        locations = obi.PerNeuronExplicitMorphologyLocations(
+            locations=(
+                obi.NeuronMorphologyLocationPoint(node_id=1, section_id=2, offset=0.75),
+                obi.NeuronMorphologyLocationPoint(node_id=0, section_id=1, offset=0.25),
+            )
+        )
+        config = _locations_config(morphology_circuit, locations)
+
+        result = generate(config, tmp_path)
+
+        assert result.compartment_sets["Locations"]["compartment_set"] == [
+            [0, 1, 0.25],
+            [1, 2, 0.75],
+        ]
+        assert result.compartment_sets["Locations"]["population"] == MORPHOLOGY_POPULATION
+
+    def test_no_cross_product_with_a_neuron_set(self, morphology_circuit, tmp_path):
+        """Two points on two neurons stay two rows, however many neurons the circuit holds."""
+        locations = obi.PerNeuronExplicitMorphologyLocations(
+            locations=(
+                obi.NeuronMorphologyLocationPoint(node_id=0, section_id=1, offset=0.5),
+                obi.NeuronMorphologyLocationPoint(node_id=1, section_id=1, offset=0.5),
+            )
+        )
+        config = _locations_config(morphology_circuit, locations)
+
+        result = generate(config, tmp_path)
+
+        assert len(result.compartment_sets["Locations"]["compartment_set"]) == 2
+
+    def test_it_does_not_take_a_neuron_set(self):
+        """The target neurons are the ones named by the points."""
+        assert "neuron_set" not in obi.PerNeuronExplicitMorphologyLocations.model_fields
+
+    def test_an_empty_block_referenced_by_a_stimulus_is_rejected(
+        self, morphology_circuit, tmp_path
+    ):
+        config = _locations_config(morphology_circuit, obi.PerNeuronExplicitMorphologyLocations())
+
+        with pytest.raises(
+            ConfigValidationError,
+            match="must contain at least one point before they can be used",
+        ):
+            generate(config, tmp_path)
 
 
 class TestCompartmentSetGeneration:

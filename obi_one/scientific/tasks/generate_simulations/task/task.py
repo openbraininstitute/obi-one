@@ -238,7 +238,12 @@ class GenerateSimulationTask(Task):
             return
 
         for locations_block in morphology_locations.values():
-            if getattr(locations_block, "neuron_set", None) is not None:
+            # Locations whose points name their own node ids declare no target, so there is
+            # nothing to fill in for them.
+            if "neuron_set" not in type(locations_block).model_fields:
+                continue
+
+            if locations_block.neuron_set is not None:
                 continue
 
             locations_block.neuron_set = self.config.default_neuron_set_reference

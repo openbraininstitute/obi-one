@@ -160,6 +160,7 @@ __all__ = [
     "MultiPulseCurrentClampSomaticStimulus",
     "NamedPath",
     "NamedTuple",
+    "NeuronMorphologyLocationPoint",
     "NeuronPropertyFilter",
     "NeuronSet",
     "Neuropixels1ExtracellularLocations",
@@ -177,6 +178,7 @@ __all__ = [
     "PathDistanceMorphologyLocations",
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
+    "PerNeuronExplicitMorphologyLocations",
     "PointCombinedNeuronSet",
     "PointNeuronSetReference",
     "PointPopulationIDNeuronSet",
@@ -319,6 +321,10 @@ from obi_one.scientific.blocks.morphology_locations.explicit import (
 )
 from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.per_neuron_explicit import (
+    NeuronMorphologyLocationPoint,
+    PerNeuronExplicitMorphologyLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
