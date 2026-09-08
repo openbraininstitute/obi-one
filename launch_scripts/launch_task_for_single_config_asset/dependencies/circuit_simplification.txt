@@ -1,2 +1,2 @@
-obi-one
+obi-one @ git+https://github.com/openbraininstitute/obi-one.git@feat/circuit-simplification-task
 sonata-simplify[simulation]
