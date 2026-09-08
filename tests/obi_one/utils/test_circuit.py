@@ -243,6 +243,25 @@ def test_run_validation_returns_errors_without_raising():
     assert isinstance(warnings, list)
 
 
+@patch("obi_one.utils.circuit.snap.circuit_validation.validate")
+def test_run_validation_returns_warnings_without_fatals(mock_validate, tmp_path):
+    """Warnings-only SNAP result should not raise and should be returned."""
+    from bluepysnap.circuit_validation import (  # ruff: ignore[import-outside-top-level]
+        BluepySnapValidationError,
+    )
+
+    mock_validate.return_value = {BluepySnapValidationError.warning("partial circuit warning")}
+    circuit_path = tmp_path / "circuit_config.json"
+
+    fatals, warnings = run_validation(circuit_path, raise_on_error=True)
+
+    assert fatals == []
+    assert any("partial circuit warning" in w for w in warnings)
+    mock_validate.assert_called_once()
+    assert mock_validate.call_args.kwargs["only_errors"] is False
+    assert mock_validate.call_args.kwargs["ignore_edge_properties"]
+
+
 def test_generate_overview_figure_skipped_when_no_plots_dir(tmp_path):
     """Test that None is returned when no plots directory is provided (skip overview)."""
     output_file = tmp_path / "overview.png"

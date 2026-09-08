@@ -458,6 +458,69 @@ class TestGenerateAssetsEndpoint:
             app.dependency_overrides.pop(get_client, None)
             app.dependency_overrides.pop(get_compute_cell, None)
 
+    @patch("app.endpoints.circuit_registration.trigger_asset_generation_task")
+    def test_triggers_generation_and_returns_job_id(self, mock_trigger, client):
+        circuit_id = uuid4()
+        job_id = uuid4()
+        mock_trigger.return_value = job_id
+        mock_circuit = MagicMock()
+        mock_circuit.lifecycle_status = "active"
+        mock_circuit.assets = []
+
+        from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
+        from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
+
+        mock_db = MagicMock()
+        mock_db.get_entity.return_value = mock_circuit
+        mock_db.project_context.project_id = uuid4()
+        mock_db.project_context.virtual_lab_id = uuid4()
+        app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
+
+        try:
+            resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["status"] == "generation_triggered"
+            assert body["job_id"] == str(job_id)
+            mock_trigger.assert_called_once()
+            assert mock_trigger.call_args.kwargs["force"] is False
+        finally:
+            app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
+
+    @patch("app.endpoints.circuit_registration.trigger_asset_generation_task")
+    def test_submission_failure_returns_500(self, mock_trigger, client):
+        circuit_id = uuid4()
+        mock_trigger.return_value = None
+        mock_circuit = MagicMock()
+        mock_circuit.lifecycle_status = "active"
+        mock_circuit.assets = []
+
+        from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
+        from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
+
+        mock_db = MagicMock()
+        mock_db.get_entity.return_value = mock_circuit
+        mock_db.project_context.project_id = uuid4()
+        mock_db.project_context.virtual_lab_id = uuid4()
+        app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
+
+        try:
+            resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
+            assert resp.status_code == 500
+            assert "launch-system" in resp.json()["detail"]
+        finally:
+            app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
+
 
 class TestRegisterCircuitEndpoint:
     """Test register_circuit_endpoint delegates to library register_circuit."""

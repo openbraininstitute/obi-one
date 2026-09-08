@@ -538,6 +538,67 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task.stage_circuit")
     @patch("obi_one.scientific.tasks.circuit_validation.task._update_lifecycle_status")
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
+    @patch("obi_one.scientific.tasks.circuit_validation.task._validate_emodel_paths")
+    @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")
+    @patch("obi_one.scientific.tasks.circuit_validation.task._find_mod_dir")
+    @patch("obi_one.scientific.tasks.circuit_validation.task.run_validation")
+    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
+    @patch("bluepysnap.Circuit")
+    def test_passes_with_warnings_logged(
+        self,
+        mock_snap_circuit,  # ruff: ignore[unused-method-argument]
+        mock_libsonata_cfg,
+        mock_run_validation,
+        mock_find_mod_dir,
+        mock_morph_paths,
+        mock_emodel_paths,
+        mock_hoc_loading,
+        mock_update_status,
+        mock_stage,
+        tmp_path,
+        caplog,
+    ):
+        from uuid import uuid4  # ruff: ignore[import-outside-top-level]
+
+        from obi_one.scientific.tasks.circuit_validation.task import (  # ruff: ignore[import-outside-top-level]
+            run_circuit_validation,
+        )
+
+        config_path, _circuit_dir = self._make_minimal_circuit(tmp_path)
+
+        mock_stage.return_value = config_path
+        mock_find_mod_dir.return_value = None
+        mock_morph_paths.return_value = []
+        mock_emodel_paths.return_value = []
+        mock_hoc_loading.return_value = []
+        mock_run_validation.return_value = ([], ["partial circuit warning"])
+
+        mock_cfg_obj = MagicMock()
+        mock_cfg_obj.expanded_json = config_path.read_text()
+        mock_libsonata_cfg.return_value = mock_cfg_obj
+
+        db_client = MagicMock()
+        circuit = MagicMock()
+        circuit.root_circuit_id = None
+        circuit.generated_from_derivations = None
+        db_client.get_entity.return_value = circuit
+
+        circuit_id = uuid4()
+
+        with caplog.at_level("WARNING"):
+            result = run_circuit_validation(
+                db_client=db_client,
+                circuit_id=circuit_id,
+            )
+
+        assert result["valid"] is True
+        assert result["warnings"] == ["partial circuit warning"]
+        assert any("partial circuit warning" in r.message for r in caplog.records)
+        mock_update_status.assert_called_once_with(db_client, circuit_id, "active")
+
+    @patch("obi_one.scientific.tasks.circuit_validation.task.stage_circuit")
+    @patch("obi_one.scientific.tasks.circuit_validation.task._update_lifecycle_status")
+    @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
     @patch("obi_one.scientific.tasks.circuit_validation.task.run_validation")
     @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
