@@ -6,19 +6,25 @@ assigner claims keeps the values the table was filled with. Whichever model does
 that filling therefore decides the biology of the unclaimed synapses - including
 their ``syn_type_id`` - which is too consequential to be left to whichever model
 the configuration happened to list first. Each family names its default here.
+
+`SynapseModelFamily` being a closed set is what makes this checkable: every member
+needs an entry below, and a new family that arrives without one is caught by
+`test_every_family_has_a_default` rather than partway through a parameterization.
 """
 
-from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
+from obi_one.scientific.blocks.synaptic_models.base import (
+    SynapseModelFamily,
+    SynapticModelBase,
+)
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
-    TsodyksMarkramSynapticModel,
 )
 
-DEFAULT_SYNAPTIC_MODELS: dict[str, type[SynapticModelBase]] = {
+DEFAULT_SYNAPTIC_MODELS: dict[SynapseModelFamily, type[SynapticModelBase]] = {
     # Excitatory for every Tsodyks-Markram subclass. An unclaimed synapse has to be given
     # some syn_type_id, and excitatory synapses outnumber inhibitory ones in the circuits
     # this runs on, so the excitatory model leaves the fewest of them misparameterized.
-    TsodyksMarkramSynapticModel.synapse_model_family(): ExcitatoryTsodyksMarkramSynapticModel,
+    SynapseModelFamily.TSODYKS_MARKRAM: ExcitatoryTsodyksMarkramSynapticModel,
 }
 
 
@@ -33,8 +39,8 @@ def default_synaptic_model_for(model: SynapticModelBase) -> SynapticModelBase:
     if default_class is None:
         msg = (
             f"No default synaptic model is registered for synapse model family {family!r}. "
-            "Every family MUST register one in DEFAULT_SYNAPTIC_MODELS, because the synapses "
-            "that no assigner covers are parameterized from it."
+            "Every member of SynapseModelFamily MUST have an entry in DEFAULT_SYNAPTIC_MODELS, "
+            "because the synapses that no assigner covers are parameterized from it."
         )
         raise NotImplementedError(msg)
     return default_class()

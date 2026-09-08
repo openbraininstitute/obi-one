@@ -17,7 +17,10 @@ from obi_one.scientific.blocks.distributions.defaults import (
 from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.distributions.normal import NormalDistribution
-from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
+from obi_one.scientific.blocks.synaptic_models.base import (
+    SynapseModelFamily,
+    SynapticModelBase,
+)
 from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
 )
@@ -140,7 +143,7 @@ def _validate_parameter_samples(parameter_name: str, samples: list[float]) -> li
 class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     """Tsodyks-Markram synaptic model with optional distribution references."""
 
-    _synapse_model_family: ClassVar[str] = "TM_model"
+    _synapse_model_family: ClassVar[SynapseModelFamily] = SynapseModelFamily.TSODYKS_MARKRAM
 
     u_hill_coefficient_distribution: AllDistributionsReference | None = Field(
         default=None,

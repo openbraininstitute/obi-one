@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import ClassVar
 
 from pandas import DataFrame
@@ -8,18 +9,30 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 
 
+class SynapseModelFamily(StrEnum):
+    """Families of synapse model, one per set of synapse parameters.
+
+    Membership of a family is what makes two synaptic models interchangeable: they
+    provide the same parameters, so one can stand in for the other. A closed set of
+    them rather than free strings, so that a typo cannot invent a family nobody is
+    compatible with, and so the families that need a default can be enumerated.
+    """
+
+    TSODYKS_MARKRAM = "TsodyksMarkram"
+
+
 class SynapticModelBase(Block):
     # ClassVar, not a bare annotation: pydantic turns an annotated underscore attribute into
     # a ModelPrivateAttr, and `cls._synapse_model_family` then yields that wrapper rather
-    # than the string, so both the None check below and every family comparison read it wrong.
-    _synapse_model_family: ClassVar[str | None] = None
+    # than the member, so both the None check below and every family comparison read it wrong.
+    _synapse_model_family: ClassVar[SynapseModelFamily | None] = None
 
     @classmethod
-    def synapse_model_family(cls) -> str:
+    def synapse_model_family(cls) -> SynapseModelFamily:
         if cls._synapse_model_family is None:
             msg = (
                 "Concrete subclasses of SynapticModelBase MUST set the class variable "
-                "_synapse_model_family to a string that identifies the synapse model family. "
+                "_synapse_model_family to the SynapseModelFamily member they belong to. "
                 "This is used to check compatibility of different SynapticModelBase subclasses."
             )
             raise NotImplementedError(msg)
