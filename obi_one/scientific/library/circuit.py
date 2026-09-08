@@ -284,11 +284,10 @@ class Circuit(OBIBaseModel):
                 yield self._resolve_circuit_path(raw_path), extension
 
     def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
-        """Load a node's morphology, from `morphologies_dir` or `alternate_morphologies`.
+        """Load a node's morphology from `morphologies_dir` or `alternate_morphologies`.
 
-        Containerized circuits declare no per-morphology file: `morphologies_dir` is empty and
-        `alternate_morphologies.h5v1` points at a single `.h5` container. Resolving a file path
-        therefore fails for them, and the container has to be read instead.
+        The fallback exists because containerized circuits hold every morphology in a single
+        `.h5` container, so there is no per-node file for `get_morphology_path` to resolve.
         """
         try:
             return load_morphology_nrn_order(

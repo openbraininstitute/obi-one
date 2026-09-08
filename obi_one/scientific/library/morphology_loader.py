@@ -16,8 +16,7 @@ def load_morphology_nrn_order_from_collection(
 ) -> morphio.Morphology:
     """Load a named morphology from a directory or an `.h5` container.
 
-    `morphio.Collection` accepts either as `base`, which is what makes containerized circuits
-    work: they declare no per-morphology file, only a single container.
+    `morphio.Collection` accepts either as `base`.
     """
     collection = morphio.Collection(str(base), extensions=[extension])
     return collection.load(name, morphio.Option.nrn_order)
