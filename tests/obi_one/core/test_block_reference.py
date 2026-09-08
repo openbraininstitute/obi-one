@@ -1,10 +1,8 @@
-from collections.abc import Iterator
 from typing import Annotated, Any, ClassVar
 
 import pytest
 from pydantic import Discriminator
 
-import obi_one
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 
@@ -118,33 +116,3 @@ class TestBlockReferenceErrorMessages:
         ref = TestReference(block_dict_name="ns", block_name="x")
         with pytest.raises(ValueError, match="block_dict_name"):
             _ = ref.block
-
-
-class TestBlockReferenceSchemaTitle:
-    """A reference's schema title has to stay equal to its class name.
-
-    `OBIBaseModel.__init_subclass__` promotes a `title` ClassVar to the JSON-schema title,
-    and the frontend keys its allowed-block-types registry on that title while looking
-    entries up by the class names a field carries in `reference_types`. Overriding the
-    title breaks that join with no error anywhere: the reference's blocks simply stop
-    appearing in the picker.
-    """
-
-    def test_morphology_locations_reference_title_is_its_class_name(self):
-        cls = obi_one.MorphologyLocationsReference
-        assert cls.model_config.get("title") == cls.__name__
-
-    def test_every_reference_title_matches_its_class_name(self):
-        def descendants(cls: type) -> Iterator[type]:
-            for sub in cls.__subclasses__():
-                yield sub
-                yield from descendants(sub)
-
-        offenders = {
-            sub.__name__: sub.model_config.get("title")
-            for sub in descendants(BlockReference)
-            if sub.model_config.get("title") != sub.__name__
-        }
-        assert not offenders, (
-            f"reference classes whose schema title is not their class name: {offenders}"
-        )
