@@ -60,7 +60,7 @@ def test_build_compartment_set_rejects_missing_location_columns(columns, match):
             name="target",
             population="pop",
             locations_block=locations_block,
-            morphologies={1: MagicMock()},
+            morphology_items=[(1, MagicMock())],
         )
 
 
@@ -72,7 +72,7 @@ def test_build_compartment_set_accepts_offset_column():
         name="target",
         population="pop",
         locations_block=locations_block,
-        morphologies={7: MagicMock()},
+        morphology_items=[(7, MagicMock())],
     )
 
     assert result.compartment_entries == ((7, 3, 0.25),)
@@ -135,11 +135,56 @@ def test_compartment_set_preflight_allows_exact_limit(monkeypatch):
         )
 
     assert result is expected
+    build_compartment_set.assert_called_once()
+
+    # Morphologies stream lazily, so nothing is read until the rows are consumed.
+    circuit.load_morphology.assert_not_called()
+    morphology_items = build_compartment_set.call_args.kwargs["morphology_items"]
+    assert [node_id for node_id, _ in morphology_items] == [0, 1]
     assert circuit.load_morphology.call_args_list == [
         call(0, population="pop"),
         call(1, population="pop"),
     ]
-    build_compartment_set.assert_called_once()
+
+
+def test_morphologies_are_loaded_one_at_a_time():
+    """Only the morphology being read is held, so a large target does not accumulate them."""
+    neuron_set = MagicMock()
+    neuron_set.block.get_neuron_ids.return_value = {"pop": [0, 1, 2]}
+
+    order: list[tuple[str, int]] = []
+
+    def load_morphology(node_id, population):  # ruff: ignore[unused-function-argument]
+        order.append(("load", node_id))
+        return f"morphology-{node_id}"
+
+    def points_on(morph):
+        order.append(("read", int(str(morph).removeprefix("morphology-"))))
+        return pd.DataFrame({"section_id": [1], "offset": [0.5]})
+
+    circuit = MagicMock()
+    circuit.load_morphology.side_effect = load_morphology
+    locations_block = MagicMock()
+    locations_block.output_location_count.return_value = 1
+    locations_block.points_on.side_effect = points_on
+
+    build_compartment_set_for_neuron_set(
+        name="target",
+        circuit=circuit,
+        node_population="pop",
+        population="pop",
+        neuron_set=neuron_set,
+        locations_block=locations_block,
+    )
+
+    assert order == [
+        ("load", 0),
+        ("read", 0),
+        ("load", 1),
+        ("read", 1),
+        ("load", 2),
+        ("read", 2),
+    ]
 
 
 def test_compartment_set_row_limit_rejects_unestimated_output(monkeypatch):
@@ -157,7 +202,7 @@ def test_compartment_set_row_limit_rejects_unestimated_output(monkeypatch):
             name="target",
             population="pop",
             locations_block=locations_block,
-            morphologies={7: MagicMock()},
+            morphology_items=[(7, MagicMock())],
         )
 
 
