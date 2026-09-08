@@ -26,14 +26,7 @@ MorphologyLocationUnion = Annotated[
 
 
 class MorphologyLocationsReference(BlockReference):
-    """Reference to a block that generates morphology locations.
-
-    No `title` override here. `OBIBaseModel.__init_subclass__` promotes `title` to the
-    JSON-schema title, and the frontend keys its allowed-block-types registry on that title
-    while looking entries up by the class names carried in `reference_types`. A display
-    title breaks that join, and the morphology-location options silently disappear from
-    every field that also accepts neuron sets.
-    """
+    """Reference to a block that generates morphology locations."""
 
     allowed_block_types: ClassVar[Any] = MorphologyLocationUnion
 
