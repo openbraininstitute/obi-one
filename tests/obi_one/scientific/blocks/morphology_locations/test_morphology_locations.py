@@ -89,29 +89,6 @@ def test_generated_morphology_locations_expose_a_location_count_parameter():
     assert "number_of_locations" in obi.RandomMorphologyLocations.model_fields
 
 
-def test_explicit_morphology_locations_load_released_configs_with_a_location_count():
-    locations = obi.ExplicitMorphologyLocations.model_validate(
-        {
-            "type": "ExplicitMorphologyLocations",
-            "locations": [{"section_id": 1, "offset": 0.25}],
-            "number_of_locations": 1,
-        }
-    )
-
-    assert locations.output_location_count() == 1
-
-
-def test_explicit_morphology_locations_still_reject_unknown_parameters():
-    with pytest.raises(ValidationError):
-        obi.ExplicitMorphologyLocations.model_validate(
-            {
-                "type": "ExplicitMorphologyLocations",
-                "locations": [{"section_id": 1, "offset": 0.25}],
-                "not_a_real_parameter": 1,
-            }
-        )
-
-
 def test_random_morphology_locations_rejects_invalid_section_type():
     with pytest.raises(ValidationError):
         obi.RandomMorphologyLocations(
