@@ -2,7 +2,8 @@
 
 Runs as an ECS task via the launch-system. The merged circuit is already
 uploaded as a sonata_circuit directory asset. This task stages it (from EFS),
-compiles MOD files, runs snap validation, and updates the entity status.
+compiles MOD files, runs SONATA validation via ``run_validation``, and updates
+the entity status.
 """
 
 from __future__ import annotations
@@ -13,12 +14,12 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from bluepysnap import circuit_validation
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
 
 from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_files
 from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
+from obi_one.utils.circuit import run_validation
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -39,7 +40,7 @@ def run_circuit_validation(
     """Validate a registered circuit.
 
     The circuit entity already has a sonata_circuit directory asset.
-    This task stages it, compiles any MOD files, and runs snap validation.
+    This task stages it, compiles any MOD files, and runs SONATA validation.
 
     Args:
         db_client: EntitySDK client.
@@ -98,20 +99,29 @@ def run_circuit_validation(
         )
         fatal_errors.extend(hoc_errors)
 
-        # bluepysnap structural validation
+        # SONATA structural validation (obi-one wrapper: ignore custom edge props, etc.)
         L.info("Running circuit validation on %s", circuit_config_path)
-        snap_errors = circuit_validation.validate(str(circuit_config_path), skip_slow=False)
-        fatal_errors.extend(str(e) for e in snap_errors if e.level == "FATAL")
-        warning_messages.extend(str(e) for e in snap_errors if e.level == "WARNING")
+        try:
+            run_validation(circuit_config_path)
+        except ValueError as e:
+            fatal_errors.append(str(e))
 
         if fatal_errors:
             L.warning(
-                "Circuit %s validation FAILED: %d fatal errors", circuit_id, len(fatal_errors)
+                "Circuit %s validation FAILED: %d fatal errors",
+                circuit_id,
+                len(fatal_errors),
             )
+            for err in fatal_errors:
+                L.warning("Circuit %s fatal: %s", circuit_id, err)
+            for warn in warning_messages:
+                L.warning("Circuit %s warning: %s", circuit_id, warn)
             _update_lifecycle_status(db_client, circuit_id, "disqualified")
             return {"valid": False, "errors": fatal_errors, "warnings": warning_messages}
 
         L.info("Circuit %s validation PASSED (%d warnings)", circuit_id, len(warning_messages))
+        for warn in warning_messages:
+            L.warning("Circuit %s warning: %s", circuit_id, warn)
 
         _update_lifecycle_status(db_client, circuit_id, "active")
 

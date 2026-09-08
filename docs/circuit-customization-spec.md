@@ -51,7 +51,7 @@ User uploads overrides
 │  2. Compile MOD files with nrnivmodl (if present)       │
 │  3. Validate HOC loading with bluecellulab              │
 │  4. Validate morphology/emodel paths exist              │
-│  5. Run bluepysnap circuit_validation.validate()        │
+│  5. Run obi_one.utils.circuit.run_validation()          │
 │  6. Subset checks against parent (if customization):    │
 │     • New populations must not be biophysical           │
 │     • Content subset of parent (morphologies, emodels)  │
@@ -153,7 +153,7 @@ Fast checks that reject immediately with HTTP 422:
 Full circuit validation after merge:
 - `nrnivmodl` compilation of MOD files
 - `bluecellulab.Cell` instantiation per HOC template
-- `bluepysnap.circuit_validation.validate()` structural checks
+- `obi_one.utils.circuit.run_validation()` structural checks (SNAP with OBI ignore rules)
 - Morphology/emodel path existence (respects `alternate_morphologies` H5 format)
 - Parent subset checks for customizations
 - Relative paths resolved against circuit_config.json directory
