@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from pydantic import BaseModel, Field
 
@@ -82,13 +82,43 @@ def _validate_compartment_set_entry_count(*, name: str, entry_count: int) -> Non
         raise ConfigValidationError(msg)
 
 
+def _raise_empty_compartment_set(
+    *, name: str, population: str, targeted: int, unloadable: int
+) -> NoReturn:
+    """Explain why a referenced compartment set came out empty."""
+    if unloadable == targeted:
+        detail = (
+            f"none of the {targeted:,} targeted neurons in population '{population}' had a "
+            "readable morphology. Check that the circuit's morphology files are present and in a "
+            "supported format."
+        )
+    elif unloadable:
+        detail = (
+            f"the morphology rule produced no locations on the {targeted - unloadable:,} of "
+            f"{targeted:,} targeted neurons whose morphologies could be read."
+        )
+    else:
+        detail = (
+            f"the morphology rule produced no locations on any of the {targeted:,} targeted "
+            "neurons. Check that the requested section types exist on these morphologies."
+        )
+
+    msg = f"Compartment set '{name}' is empty: {detail}"
+    raise ConfigValidationError(msg)
+
+
 def _iter_morphologies(
     *,
     circuit: Circuit,
-    node_ids: Iterable[Any],
+    node_ids: Iterable[int],
     population: str,
+    unloadable: list[int],
 ) -> Iterator[tuple[int, morphio.Morphology]]:
-    """Yield one morphology at a time, so only the morphology in use is held in memory."""
+    """Yield one morphology at a time, so only the morphology in use is held in memory.
+
+    Node ids whose morphology cannot be read are skipped and recorded in `unloadable`, so the
+    caller can tell an empty result apart from a partially skipped one.
+    """
     for node_id in node_ids:
         node_id_int = int(getattr(node_id, "id", node_id))
         try:
@@ -100,6 +130,7 @@ def _iter_morphologies(
                 population,
                 exc,
             )
+            unloadable.append(node_id_int)
             continue
 
         yield node_id_int, morph
@@ -184,6 +215,14 @@ def build_compartment_set_for_neuron_set(
         )
         raise ValueError(msg) from exc
 
+    if len(node_ids) == 0:
+        msg = (
+            f"Compartment set '{name}' would be empty: its neuron set resolves to no neurons in "
+            f"population '{selected_population}'. Target a neuron set that selects at least one "
+            "neuron."
+        )
+        raise ConfigValidationError(msg)
+
     locations_per_morphology = locations_block.output_location_count()
     if locations_per_morphology is not None:
         _validate_compartment_set_entry_count(
@@ -191,7 +230,8 @@ def build_compartment_set_for_neuron_set(
             entry_count=len(node_ids) * locations_per_morphology,
         )
 
-    return build_compartment_set_from_locations_block(
+    unloadable: list[int] = []
+    compartment_set = build_compartment_set_from_locations_block(
         name=name,
         population=population,
         locations_block=locations_block,
@@ -199,5 +239,18 @@ def build_compartment_set_for_neuron_set(
             circuit=circuit,
             node_ids=node_ids,
             population=selected_population,
+            unloadable=unloadable,
         ),
     )
+
+    # A materialized compartment set is only built when a stimulus or recording references it, so
+    # an empty one would silently target nothing at simulation time.
+    if not compartment_set.compartment_entries:
+        _raise_empty_compartment_set(
+            name=name,
+            population=selected_population,
+            targeted=len(node_ids),
+            unloadable=len(unloadable),
+        )
+
+    return compartment_set
