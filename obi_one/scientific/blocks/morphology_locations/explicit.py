@@ -24,9 +24,6 @@ from obi_one.scientific.library.morphology_locations import (
     _SOM_PAD,
     MorphologyPathDistanceCalculator,
 )
-from obi_one.scientific.unions_and_references.combined_neuron_sets import (
-    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
-)
 
 _LOCATION_COLUMNS = pandas.Index(
     [
@@ -171,16 +168,6 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_LOCATION_SELECTION,
         },
-    )
-
-    # Re-declared only to hide the parent's sampling knobs: locations are given outright, so
-    # `_make_points` never reads them. neuron_set is also hidden because explicit locations
-    # are gated to single-neuron targets where the default is always correct.
-    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
-        default=None,
-        title="Neuron Set",
-        description="Unused: explicit locations target the single neuron in the circuit.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     @override

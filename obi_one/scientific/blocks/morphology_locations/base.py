@@ -35,19 +35,6 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     }
 
-    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
-        default=None,
-        title="Neuron Set",
-        description=(
-            "Neuron set whose morphologies are used to generate locations. If omitted, "
-            "locations are generated for the default biophysical neuron set."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
-        },
-    )
-
     @abc.abstractmethod
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         """Returns a generated list of points for the morphology."""
@@ -76,6 +63,19 @@ class MorphologyLocationsBlock(Block, abc.ABC):
 
 class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
     """Base class for locations sampled across the morphologies of the targeted neurons."""
+
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        default=None,
+        title="Neuron Set",
+        description=(
+            "Neuron set whose morphologies are used to generate locations. If omitted, "
+            "locations are generated for the default biophysical neuron set."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
 
     random_seed: NonNegativeInt | list[NonNegativeInt] = Field(
         default=0,

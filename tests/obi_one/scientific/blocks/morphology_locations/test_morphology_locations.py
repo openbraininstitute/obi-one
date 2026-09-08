@@ -92,9 +92,13 @@ def test_generated_morphology_locations_expose_sampling_parameters(parameter):
     assert parameter in obi.RandomMorphologyLocations.model_fields
 
 
-def test_explicit_morphology_locations_still_target_a_neuron_set():
-    """The points still need to be placed on some neuron, so the target remains."""
-    assert "neuron_set" in obi.ExplicitMorphologyLocations.model_fields
+def test_explicit_morphology_locations_do_not_expose_a_neuron_set():
+    """The selected points already belong to the single neuron being simulated."""
+    assert "neuron_set" not in obi.ExplicitMorphologyLocations.model_fields
+
+
+def test_generated_morphology_locations_expose_a_neuron_set():
+    assert "neuron_set" in obi.RandomMorphologyLocations.model_fields
 
 
 def test_random_morphology_locations_rejects_invalid_section_type():
