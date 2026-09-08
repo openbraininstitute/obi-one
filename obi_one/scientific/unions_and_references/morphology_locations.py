@@ -15,8 +15,8 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 
-# Locations sampled across the morphologies of a targeted neuron set. Every neuron in the set
-# receives its own sampled locations, so these work on a circuit of any size.
+# Locations sampled across the morphologies of a targeted neuron set. Every neuron receives its
+# own sampled locations, so a section id always refers to the morphology it was sampled on.
 _GENERATED_MORPHOLOGY_LOCATIONS = (
     ClusteredMorphologyLocations
     | ClusteredPathDistanceMorphologyLocations
