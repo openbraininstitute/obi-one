@@ -514,7 +514,7 @@ class TestRunCircuitValidation:
         mock_cfg_obj.node_populations = ["pop_a"]
         mock_libsonata_cfg.return_value = mock_cfg_obj
 
-        mock_run_validation.return_value = None  # no errors
+        mock_run_validation.return_value = ([], [])  # no errors / warnings
         mock_hoc_loading.return_value = []  # no errors
 
         db_client = MagicMock()
@@ -532,7 +532,7 @@ class TestRunCircuitValidation:
 
         assert result["valid"] is True
         assert result["errors"] == []
-        mock_run_validation.assert_called_once_with(config_path)
+        mock_run_validation.assert_called_once_with(config_path, raise_on_error=False)
         mock_update_status.assert_called_once_with(db_client, circuit_id, "active")
 
     @patch("obi_one.scientific.tasks.circuit_validation.task.stage_circuit")
@@ -580,7 +580,7 @@ class TestRunCircuitValidation:
         mock_circuit_instance.nodes.__getitem__ = lambda _self, _k: mock_pop
         mock_bluepysnap_circuit.return_value = mock_circuit_instance
 
-        mock_run_validation.return_value = None
+        mock_run_validation.return_value = ([], [])
         mock_hoc_loading.return_value = []
 
         db_client = MagicMock()
@@ -701,8 +701,9 @@ class TestRunCircuitValidation:
         mock_morph_paths.return_value = []
         mock_emodel_paths.return_value = []
         mock_hoc_loading.return_value = []
-        mock_run_validation.side_effect = ValueError(
-            "Circuit validation error(s) found:\n[missing edge property]"
+        mock_run_validation.return_value = (
+            ["missing edge property"],
+            ["partial circuit warning"],
         )
 
         mock_cfg_obj = MagicMock()
@@ -724,8 +725,10 @@ class TestRunCircuitValidation:
             )
 
         assert result["valid"] is False
-        assert any("Circuit validation error" in e for e in result["errors"])
+        assert "missing edge property" in result["errors"]
+        assert "partial circuit warning" in result["warnings"]
         assert any("missing edge property" in r.message for r in caplog.records)
+        assert any("partial circuit warning" in r.message for r in caplog.records)
         mock_update_status.assert_called_once_with(db_client, circuit_id, "disqualified")
 
 

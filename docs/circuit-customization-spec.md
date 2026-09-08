@@ -138,6 +138,10 @@ GET /declared/task/{job_id}/stream
 Standalone `POST .../validate` and `POST .../generate-assets` return HTTP 500 if
 job submission fails (no silent success without a `job_id`).
 
+SONATA structural checks go through `obi_one.utils.circuit.run_validation()`, which
+applies OBI edge-property ignore rules and can return both FATAL errors and WARNINGs
+(`raise_on_error=False` in the async validation task).
+
 ## Validation Details
 
 ### Layer 1 (Sync, at upload time)

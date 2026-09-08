@@ -101,10 +101,9 @@ def run_circuit_validation(
 
         # SONATA structural validation (obi-one wrapper: ignore custom edge props, etc.)
         L.info("Running circuit validation on %s", circuit_config_path)
-        try:
-            run_validation(circuit_config_path)
-        except ValueError as e:
-            fatal_errors.append(str(e))
+        snap_fatals, snap_warnings = run_validation(circuit_config_path, raise_on_error=False)
+        fatal_errors.extend(snap_fatals)
+        warning_messages.extend(snap_warnings)
 
         if fatal_errors:
             L.warning(

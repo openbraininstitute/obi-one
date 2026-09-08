@@ -217,7 +217,9 @@ def test_get_circuit_size_scale_override_applied_for_microcircuit():
 def test_run_validation_valid_circuit():
     """Test that validation passes for a valid circuit."""
     circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
-    run_validation(circuit_path)  # Should not raise
+    fatals, warnings = run_validation(circuit_path)
+    assert fatals == []
+    assert isinstance(warnings, list)
 
 
 def test_run_validation_invalid_path(tmp_path):
@@ -231,6 +233,14 @@ def test_run_validation_invalid_circuit():
     circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6__config_only" / "circuit_config.json")
     with pytest.raises(ValueError, match="Circuit validation error"):
         run_validation(circuit_path)
+
+
+def test_run_validation_returns_errors_without_raising():
+    """Test raise_on_error=False returns fatals instead of raising."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6__config_only" / "circuit_config.json")
+    fatals, warnings = run_validation(circuit_path, raise_on_error=False)
+    assert fatals
+    assert isinstance(warnings, list)
 
 
 def test_generate_overview_figure_skipped_when_no_plots_dir(tmp_path):
