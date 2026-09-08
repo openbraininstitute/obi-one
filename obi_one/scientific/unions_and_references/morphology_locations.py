@@ -43,7 +43,6 @@ CircuitMorphologyLocationUnion = Annotated[
 class MorphologyLocationsReference(BlockReference):
     """Reference to a block that generates morphology locations."""
 
-    title: ClassVar[str] = "Morphology Locations Reference"
     allowed_block_types: ClassVar[Any] = MorphologyLocationUnion
 
     json_schema_extra_additions: ClassVar[dict] = {
