@@ -48,29 +48,6 @@ class MorphologyLocationsBlock(Block, abc.ABC):
         },
     )
 
-    random_seed: NonNegativeInt | list[NonNegativeInt] = Field(
-        default=0,
-        title="Random Seed",
-        description="Seed used when randomly selecting morphology locations.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
-
-    section_types: SectionTypes = Field(
-        default=(3, 4),
-        title="Section Types",
-        description=(
-            "Neurite section types where locations may be generated. Defaults to basal and "
-            "apical dendrites."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY,
-            SchemaKey.PROPERTY: MorphologyMappedProperties.SECTION_TYPES,
-        },
-    )
-
     @abc.abstractmethod
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         """Returns a generated list of points for the morphology."""
@@ -98,7 +75,30 @@ class MorphologyLocationsBlock(Block, abc.ABC):
 
 
 class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
-    """Base class for locations generated from a requested number of locations."""
+    """Base class for locations sampled across the morphologies of the targeted neurons."""
+
+    random_seed: NonNegativeInt | list[NonNegativeInt] = Field(
+        default=0,
+        title="Random Seed",
+        description="Seed used when randomly selecting morphology locations.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
+    )
+
+    section_types: SectionTypes = Field(
+        default=(3, 4),
+        title="Section Types",
+        description=(
+            "Neurite section types where locations may be generated. Defaults to basal and "
+            "apical dendrites."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY,
+            SchemaKey.PROPERTY: MorphologyMappedProperties.SECTION_TYPES,
+        },
+    )
 
     number_of_locations: (
         Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]

@@ -78,15 +78,23 @@ def test_explicit_morphology_locations_report_no_count_without_selection():
     assert locations.output_location_count() is None
 
 
-def test_explicit_morphology_locations_do_not_expose_a_location_count_parameter():
+@pytest.mark.parametrize("parameter", ["number_of_locations", "random_seed", "section_types"])
+def test_explicit_morphology_locations_do_not_expose_sampling_parameters(parameter):
+    """Hand-picked points are not sampled, so the sampling knobs must not exist at all."""
     schema_properties = obi.ExplicitMorphologyLocations.model_json_schema()["properties"]
 
-    assert "number_of_locations" not in obi.ExplicitMorphologyLocations.model_fields
-    assert "number_of_locations" not in schema_properties
+    assert parameter not in obi.ExplicitMorphologyLocations.model_fields
+    assert parameter not in schema_properties
 
 
-def test_generated_morphology_locations_expose_a_location_count_parameter():
-    assert "number_of_locations" in obi.RandomMorphologyLocations.model_fields
+@pytest.mark.parametrize("parameter", ["number_of_locations", "random_seed", "section_types"])
+def test_generated_morphology_locations_expose_sampling_parameters(parameter):
+    assert parameter in obi.RandomMorphologyLocations.model_fields
+
+
+def test_explicit_morphology_locations_still_target_a_neuron_set():
+    """The points still need to be placed on some neuron, so the target remains."""
+    assert "neuron_set" in obi.ExplicitMorphologyLocations.model_fields
 
 
 def test_random_morphology_locations_rejects_invalid_section_type():

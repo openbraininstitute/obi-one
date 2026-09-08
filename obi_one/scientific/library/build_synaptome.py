@@ -99,10 +99,11 @@ def _generate_locations(
         )
     try:
         placement_for_group = placement
-        if group_index and isinstance(placement.random_seed, int):
+        random_seed = getattr(placement, "random_seed", None)
+        if group_index and isinstance(random_seed, int):
             placement_for_group = placement.model_copy(
                 update={
-                    "random_seed": _derive_group_seed(placement.random_seed, group_index),
+                    "random_seed": _derive_group_seed(random_seed, group_index),
                 }
             )
         with _preserve_numpy_random_state():

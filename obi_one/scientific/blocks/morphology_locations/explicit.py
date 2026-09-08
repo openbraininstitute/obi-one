@@ -3,13 +3,12 @@ from typing import Annotated, ClassVar, override
 import morphio
 import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
+from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import (
     MorphologyLocationsBlock,
-    SectionTypes,
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
@@ -181,18 +180,6 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         default=None,
         title="Neuron Set",
         description="Unused: explicit locations target the single neuron in the circuit.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    random_seed: NonNegativeInt = Field(
-        default=0,
-        title="Random Seed",
-        description="Unused: explicit locations involve no random sampling.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    section_types: SectionTypes = Field(
-        default=None,
-        title="Section Types",
-        description="Unused: each location names its own section.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
