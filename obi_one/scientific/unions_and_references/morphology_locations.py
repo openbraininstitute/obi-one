@@ -15,12 +15,27 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 
-MorphologyLocationUnion = Annotated[
+# Locations sampled across the morphologies of a targeted neuron set. Every neuron in the set
+# receives its own sampled locations, so these work on a circuit of any size.
+_GENERATED_MORPHOLOGY_LOCATIONS = (
     ClusteredMorphologyLocations
     | ClusteredPathDistanceMorphologyLocations
-    | ExplicitMorphologyLocations
     | PathDistanceMorphologyLocations
-    | RandomMorphologyLocations,
+    | RandomMorphologyLocations
+)
+
+_ALL_MORPHOLOGY_LOCATIONS = _GENERATED_MORPHOLOGY_LOCATIONS | ExplicitMorphologyLocations
+
+MorphologyLocationUnion = Annotated[
+    _ALL_MORPHOLOGY_LOCATIONS,
+    Discriminator("type"),
+]
+
+# Explicit locations name a section and offset but no cell, so on a multi-neuron circuit the same
+# branch id means a different branch on every morphology. They are therefore offered only for
+# single-neuron configurations.
+CircuitMorphologyLocationUnion = Annotated[
+    _GENERATED_MORPHOLOGY_LOCATIONS,
     Discriminator("type"),
 ]
 
@@ -35,4 +50,8 @@ class MorphologyLocationsReference(BlockReference):
     }
 
 
-__all__ = ["MorphologyLocationUnion", "MorphologyLocationsReference"]
+__all__ = [
+    "CircuitMorphologyLocationUnion",
+    "MorphologyLocationUnion",
+    "MorphologyLocationsReference",
+]

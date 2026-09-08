@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from obi_one.core.exception import ConfigValidationError
+
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
@@ -18,6 +20,8 @@ if TYPE_CHECKING:
     )
 
 L = logging.getLogger(__name__)
+
+MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES = 5_000
 
 
 class CompartmentLocation(BaseModel):
@@ -68,6 +72,16 @@ class MaterializedCompartmentSet(BaseModel):
         return cls(name=name, population=population, compartment_entries=tuple(triplets))
 
 
+def _validate_compartment_set_entry_count(*, name: str, entry_count: int) -> None:
+    if entry_count > MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES:
+        msg = (
+            f"Compartment set '{name}' would contain {entry_count:,} entries, which exceeds "
+            f"the maximum of {MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES:,}. Reduce the number "
+            "of locations or target a smaller neuron set."
+        )
+        raise ConfigValidationError(msg)
+
+
 def build_compartment_set_from_locations_block(
     *,
     name: str,
@@ -98,6 +112,11 @@ def build_compartment_set_from_locations_block(
                 f"Got columns: {list(df.columns)}"
             )
             raise KeyError(msg)
+
+        _validate_compartment_set_entry_count(
+            name=name,
+            entry_count=len(locations) + len(df),
+        )
 
         for _, row in df.iterrows():
             locations.append(
@@ -136,6 +155,13 @@ def build_compartment_set_for_neuron_set(
             f"available populations: {sorted(ids_by_population)}"
         )
         raise ValueError(msg) from exc
+
+    locations_per_morphology = locations_block.output_location_count()
+    if locations_per_morphology is not None:
+        _validate_compartment_set_entry_count(
+            name=name,
+            entry_count=len(node_ids) * locations_per_morphology,
+        )
 
     morphologies: dict[int, morphio.Morphology] = {}
     for node_id in node_ids:
