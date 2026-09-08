@@ -146,7 +146,8 @@ def submit_circuit_asset_generation_job(
         },
         "resources": {
             "type": "machine",
-            "cores": 1,
+            # Launch-system valid combo for 16GB is 2 cores (1 core allows only ≤8GB).
+            "cores": 2,
             "memory": 16,
             "timelimit": "01:00",
             "compute_cell": compute_cell,

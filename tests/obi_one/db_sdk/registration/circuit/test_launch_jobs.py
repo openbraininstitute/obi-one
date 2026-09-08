@@ -148,6 +148,8 @@ class TestSubmitCircuitJobs:
         assert job["code"]["ref"] == "tag:9.9.9"
         assert "launch_circuit_asset_generation" in job["code"]["path"]
         assert job["resources"]["compute_cell"] == "cell_b"
+        assert job["resources"]["cores"] == 2
+        assert job["resources"]["memory"] == 16
         assert f"--circuit_id {circuit_id}" in job["inputs"]
         assert "--force false" in job["inputs"]
         assert job["callbacks"] == []
