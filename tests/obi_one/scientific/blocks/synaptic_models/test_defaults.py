@@ -1,8 +1,9 @@
-from typing import ClassVar
-
 import pytest
 
-from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
+from obi_one.scientific.blocks.synaptic_models.base import (
+    SynapseModelFamily,
+    SynapticModelBase,
+)
 from obi_one.scientific.blocks.synaptic_models.defaults import (
     DEFAULT_SYNAPTIC_MODELS,
     default_synaptic_model_for,
@@ -14,12 +15,18 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
 )
 
 
-def test_synapse_model_family_is_the_declared_string():
-    # Guards the ClassVar declaration: a bare `_synapse_model_family = "TM_model"` makes
-    # pydantic hand back a ModelPrivateAttr here, which silently breaks every family lookup.
-    assert TsodyksMarkramSynapticModel.synapse_model_family() == "TM_model"
-    assert ExcitatoryTsodyksMarkramSynapticModel.synapse_model_family() == "TM_model"
-    assert InhibitoryTsodyksMarkramSynapticModel.synapse_model_family() == "TM_model"
+@pytest.mark.parametrize(
+    "model_class",
+    [
+        TsodyksMarkramSynapticModel,
+        ExcitatoryTsodyksMarkramSynapticModel,
+        InhibitoryTsodyksMarkramSynapticModel,
+    ],
+)
+def test_synapse_model_family_is_the_declared_member(model_class):
+    # Guards the ClassVar declaration: declared as a bare annotated underscore attribute,
+    # pydantic hands back a ModelPrivateAttr here, which silently breaks every family lookup.
+    assert model_class.synapse_model_family() is SynapseModelFamily.TSODYKS_MARKRAM
 
 
 def test_family_without_a_declared_name_is_rejected():
@@ -53,14 +60,19 @@ def test_default_provides_the_family_parameters():
     assert default.parameter_names() == InhibitoryTsodyksMarkramSynapticModel.parameter_names()
 
 
-def test_unregistered_family_raises():
-    class OtherFamilySynapticModel(SynapticModelBase):
-        _synapse_model_family: ClassVar[str] = "not_a_registered_family"
-
-    with pytest.raises(NotImplementedError, match="not_a_registered_family"):
-        default_synaptic_model_for(OtherFamilySynapticModel())
+def test_every_family_has_a_default():
+    # What the closed enum buys: a family added without a default fails here rather than
+    # partway through parameterizing a circuit.
+    assert set(DEFAULT_SYNAPTIC_MODELS) == set(SynapseModelFamily)
 
 
 def test_every_registered_default_belongs_to_the_family_it_is_registered_for():
     for family, default_class in DEFAULT_SYNAPTIC_MODELS.items():
-        assert default_class.synapse_model_family() == family
+        assert default_class.synapse_model_family() is family
+
+
+def test_family_without_a_registered_default_raises(monkeypatch):
+    monkeypatch.delitem(DEFAULT_SYNAPTIC_MODELS, SynapseModelFamily.TSODYKS_MARKRAM)
+
+    with pytest.raises(NotImplementedError, match=SynapseModelFamily.TSODYKS_MARKRAM.value):
+        default_synaptic_model_for(ExcitatoryTsodyksMarkramSynapticModel())
