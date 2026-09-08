@@ -190,7 +190,7 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: [],
-            SchemaKey.SINGULAR_NAME: "Synaptic Model Placer",
+            SchemaKey.SINGULAR_NAME: "Synapse Group",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_GROUPS,
             SchemaKey.GROUP_ORDER: 1,
         },

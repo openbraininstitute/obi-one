@@ -74,9 +74,10 @@ def _write_staged_memodel(
     path.mkdir()
     (path / "hoc").mkdir()
     (path / "morphologies").mkdir()
+    (path / "target").mkdir()
     if include_morphology:
         (path / "morphologies" / "cell.swc").write_text(morphology_text)
-    with h5py.File(path / "nodes.h5", "w") as h5:
+    with h5py.File(path / "target" / "nodes.h5", "w") as h5:
         population = h5.create_group("nodes/target")
         population.create_dataset("node_type_id", data=[-1])
         population.create_dataset("node_group_id", data=[0])
@@ -91,7 +92,7 @@ def _write_staged_memodel(
         "networks": {
             "nodes": [
                 {
-                    "nodes_file": "$BASE_DIR/nodes.h5",
+                    "nodes_file": "$BASE_DIR/target/nodes.h5",
                     "populations": {
                         "target": {
                             "type": "biophysical",
@@ -331,10 +332,25 @@ def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):
     stage_memodel()
     result = build_synaptome(_config(), tmp_path / "artifact", db_client=object())
     circuit = bluepysnap.Circuit(result.circuit_config_path)
+    artifact = result.output_directory
+    circuit_config = json.loads(result.circuit_config_path.read_text())
+
+    assert (artifact / "target" / "nodes.h5").is_file()
+    assert not (artifact / "network").exists()
+    assert not (artifact / "synaptome").exists()
+    assert (artifact / "basal_sources" / "nodes.h5").is_file()
+    assert (artifact / "basal_sources__target__chemical" / "edges.h5").is_file()
+    assert circuit_config["networks"]["nodes"][0]["nodes_file"] == ("$BASE_DIR/target/nodes.h5")
+    assert circuit_config["networks"]["nodes"][1]["nodes_file"] == (
+        "$BASE_DIR/basal_sources/nodes.h5"
+    )
+    assert circuit_config["networks"]["edges"][0]["edges_file"] == (
+        "$BASE_DIR/basal_sources__target__chemical/edges.h5"
+    )
 
     assert circuit.nodes["target"].size == 1
-    assert circuit.nodes["synaptome_basal_sources"].size == 1
-    edge = circuit.edges["synaptome_basal__target__chemical"]
+    assert circuit.nodes["basal_sources"].size == 1
+    edge = circuit.edges["basal_sources__target__chemical"]
     assert edge.size == 4
     refs = edge.get(edge.ids(), properties=["@source_node", "@target_node"])
     np.testing.assert_array_equal(refs["@source_node"], np.zeros(4))
@@ -380,7 +396,7 @@ def test_build_densifies_sparse_source_ids(tmp_path, stage_memodel, monkeypatch)
 
     result = build_synaptome(_config(), tmp_path / "artifact", db_client=object())
     circuit = bluepysnap.Circuit(result.circuit_config_path)
-    edge = circuit.edges["synaptome_basal__target__chemical"]
+    edge = circuit.edges["basal_sources__target__chemical"]
     refs = edge.get(edge.ids(), properties=["@source_node"])
 
     assert edge.source.size == 2
@@ -417,8 +433,8 @@ def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stag
         db_client=object(),
     )
     circuit = bluepysnap.Circuit(result.circuit_config_path)
-    basal = circuit.edges["synaptome_basal__target__chemical"]
-    apical = circuit.edges["synaptome_apical__target__chemical"]
+    basal = circuit.edges["basal_sources__target__chemical"]
+    apical = circuit.edges["apical_sources__target__chemical"]
 
     assert basal.size == 3
     assert apical.size == 2
@@ -436,7 +452,7 @@ def test_build_is_deterministic_for_equal_seeds(tmp_path, stage_memodel):
     stage_memodel()
     first = build_synaptome(_config(distributed=True), tmp_path / "first", db_client=object())
     second = build_synaptome(_config(distributed=True), tmp_path / "second", db_client=object())
-    edge_name = "synaptome_basal__target__chemical"
+    edge_name = "basal_sources__target__chemical"
 
     assert _edge_frame(first, edge_name).equals(_edge_frame(second, edge_name))
 
@@ -460,7 +476,7 @@ def test_different_placement_seed_changes_locations(tmp_path, stage_memodel):
         tmp_path / "second",
         db_client=object(),
     )
-    edge_name = "synaptome_basal__target__chemical"
+    edge_name = "basal_sources__target__chemical"
     columns = ["afferent_section_id", "afferent_segment_id", "afferent_segment_offset"]
 
     assert not _edge_frame(first, edge_name)[columns].equals(
