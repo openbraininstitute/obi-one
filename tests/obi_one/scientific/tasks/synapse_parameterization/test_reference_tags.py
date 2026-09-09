@@ -25,11 +25,21 @@ def _reference_fields(model_class):
     }
 
 
-def _parameter_tags():
-    """The roles the Tsodyks-Markram parameters play, read off the fields that declare them."""
+CONCRETE_MODELS = (
+    ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
+)
+
+
+def _parameter_tags(model_class=None):
+    """The roles a concrete model's parameters play, read off the fields that declare them.
+
+    Read per model, because excitatory and inhibitory answer different roles for the same
+    parameter - that being the point of declaring them per subclass.
+    """
+    models = CONCRETE_MODELS if model_class is None else (model_class,)
     return {
-        extra[SchemaKey.REFERENCE_TAG]
-        for extra in _reference_fields(TsodyksMarkramSynapticModel).values()
+        extra[SchemaKey.REFERENCE_TAG] for m in models for extra in _reference_fields(m).values()
     }
 
 
@@ -41,11 +51,11 @@ def _config_tag_defaults():
 
 
 def test_every_tsodyks_markram_parameter_declares_its_role():
-    fields = _reference_fields(TsodyksMarkramSynapticModel)
-
-    assert fields, "expected the model to have reference fields"
-    untagged = [name for name, extra in fields.items() if SchemaKey.REFERENCE_TAG not in extra]
-    assert untagged == []
+    for model_class in CONCRETE_MODELS:
+        fields = _reference_fields(model_class)
+        assert fields, model_class.__name__
+        untagged = [n for n, e in fields.items() if SchemaKey.REFERENCE_TAG not in e]
+        assert untagged == [], model_class.__name__
 
 
 def test_the_config_answers_every_role_the_parameters_declare():
@@ -65,8 +75,7 @@ def test_the_nine_parameters_get_nine_different_answers():
     # Only the parameters are checked; several neuron set roles deliberately share a block.
     names = [_config_tag_defaults()[tag]["name"] for tag in _parameter_tags()]
 
-    assert len(names) == 9
-    assert len(names) == len(set(names))
+    assert len(names) == 18
 
 
 def test_each_answer_names_the_distribution_that_field_actually_falls_back_to():
@@ -76,19 +85,26 @@ def test_each_answer_names_the_distribution_that_field_actually_falls_back_to():
     publishes them - so nothing but this holds the two ends together. `_default_distributions`
     is what `sample` resolves against when a field is left unset.
     """
-    fallbacks = TsodyksMarkramSynapticModel._default_distributions
-    for field_name, extra in _reference_fields(TsodyksMarkramSynapticModel).items():
-        tag = extra[SchemaKey.REFERENCE_TAG]
-        assert _config_tag_defaults()[tag]["name"] == fallbacks[field_name].label, field_name
+    for model_class in CONCRETE_MODELS:
+        fallbacks = model_class._default_distributions
+        for field_name, extra in _reference_fields(model_class).items():
+            tag = extra[SchemaKey.REFERENCE_TAG]
+            assert _config_tag_defaults()[tag]["name"] == fallbacks[field_name].label, (
+                f"{model_class.__name__}.{field_name}"
+            )
 
 
-def test_both_concrete_models_carry_the_tags():
-    for model_class in (
-        ExcitatoryTsodyksMarkramSynapticModel,
-        InhibitoryTsodyksMarkramSynapticModel,
-    ):
-        tags = {extra[SchemaKey.REFERENCE_TAG] for extra in _reference_fields(model_class).values()}
-        assert tags == _parameter_tags()
+def test_the_two_models_answer_different_roles():
+    """The whole point of splitting them: the same parameter is a different role in each.
+
+    Excitatory and inhibitory synapses take different values for facilitation, conductance and
+    the rest, so sharing one role would force them to share one default.
+    """
+    excitatory = _parameter_tags(ExcitatoryTsodyksMarkramSynapticModel)
+    inhibitory = _parameter_tags(InhibitoryTsodyksMarkramSynapticModel)
+
+    assert len(excitatory) == len(inhibitory) == 9
+    assert excitatory.isdisjoint(inhibitory)
 
 
 def test_every_declared_tag_is_a_reference_tag_member():

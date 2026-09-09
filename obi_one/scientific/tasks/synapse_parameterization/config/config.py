@@ -17,7 +17,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
-    TsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
@@ -117,14 +117,20 @@ _DEFAULTS: dict[str, BlockDefault] = {
 
 
 def _distribution_defaults() -> dict[str, BlockDefault]:
-    """The nine Tsodyks-Markram parameters, in the same shape as `_DEFAULTS`."""
+    """The parameters of every concrete Tsodyks-Markram model, keyed by the role each plays.
+
+    Both models, because excitatory and inhibitory synapses take different values for the same
+    parameter and so answer different roles - eighteen between them, not nine shared.
+    """
     return {
         tag: BlockDefault(
             AllDistributionsReference, "distributions", name, lambda d=distribution: d
         )
-        for tag, (name, distribution) in (
-            TsodyksMarkramSynapticModel.default_distributions_by_role().items()
+        for model in (
+            ExcitatoryTsodyksMarkramSynapticModel,
+            InhibitoryTsodyksMarkramSynapticModel,
         )
+        for tag, (name, distribution) in model.default_distributions_by_role().items()
     }
 
 

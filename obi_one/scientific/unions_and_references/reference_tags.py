@@ -23,17 +23,31 @@ class ReferenceTag(StrEnum):
 
     # Tsodyks-Markram parameter distributions. One per parameter rather than one for all of
     # them: each falls back to a different built-in distribution, so each needs its own answer.
-    # The answers live beside those distributions, in
-    # `obi_one.scientific.blocks.synaptic_models.tsodyks_markram`.
-    U_HILL_COEFFICIENT_DISTRIBUTION = "u_hill_coefficient_distribution"
-    CONDUCTANCE_DISTRIBUTION = "conductance_distribution"
-    CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION = "conductance_scale_factor_distribution"
-    FACILITATION_TIME_DISTRIBUTION = "facilitation_time_distribution"
-    DEPRESSION_TIME_DISTRIBUTION = "depression_time_distribution"
-    N_RRP_VESICLES_DISTRIBUTION = "n_rrp_vesicles_distribution"
-    DECAY_TIME_DISTRIBUTION = "decay_time_distribution"
-    U_SYN_DISTRIBUTION = "u_syn_distribution"
-    DELAY_DISTRIBUTION = "delay_distribution"
+    # Excitatory and inhibitory synapses take different values for the same parameter, so
+    # each concrete model answers its own roles rather than sharing one set with the other.
+    EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION = "excitatory_u_hill_coefficient_distribution"
+    EXCITATORY_CONDUCTANCE_DISTRIBUTION = "excitatory_conductance_distribution"
+    EXCITATORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION = (
+        "excitatory_conductance_scale_factor_distribution"
+    )
+    EXCITATORY_FACILITATION_TIME_DISTRIBUTION = "excitatory_facilitation_time_distribution"
+    EXCITATORY_DEPRESSION_TIME_DISTRIBUTION = "excitatory_depression_time_distribution"
+    EXCITATORY_N_RRP_VESICLES_DISTRIBUTION = "excitatory_n_rrp_vesicles_distribution"
+    EXCITATORY_DECAY_TIME_DISTRIBUTION = "excitatory_decay_time_distribution"
+    EXCITATORY_U_SYN_DISTRIBUTION = "excitatory_u_syn_distribution"
+    EXCITATORY_DELAY_DISTRIBUTION = "excitatory_delay_distribution"
+
+    INHIBITORY_U_HILL_COEFFICIENT_DISTRIBUTION = "inhibitory_u_hill_coefficient_distribution"
+    INHIBITORY_CONDUCTANCE_DISTRIBUTION = "inhibitory_conductance_distribution"
+    INHIBITORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION = (
+        "inhibitory_conductance_scale_factor_distribution"
+    )
+    INHIBITORY_FACILITATION_TIME_DISTRIBUTION = "inhibitory_facilitation_time_distribution"
+    INHIBITORY_DEPRESSION_TIME_DISTRIBUTION = "inhibitory_depression_time_distribution"
+    INHIBITORY_N_RRP_VESICLES_DISTRIBUTION = "inhibitory_n_rrp_vesicles_distribution"
+    INHIBITORY_DECAY_TIME_DISTRIBUTION = "inhibitory_decay_time_distribution"
+    INHIBITORY_U_SYN_DISTRIBUTION = "inhibitory_u_syn_distribution"
+    INHIBITORY_DELAY_DISTRIBUTION = "inhibitory_delay_distribution"
 
     # The model an assigner applies. Unset means the family's own default, which is the same
     # model `get_default_for` uses for the synapses no assigner claims.
