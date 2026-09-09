@@ -14,9 +14,11 @@ from obi_one.scientific.blocks.recordings.soma import (
     TimeWindowSomaVoltageRecording,
 )
 
-_VOLTAGE_RECORDINGS = (
-    SomaVoltageRecording | TimeWindowSomaVoltageRecording | MorphologyLocationVoltageRecording
-)
+_SOMA_VOLTAGE_RECORDINGS = SomaVoltageRecording | TimeWindowSomaVoltageRecording
+
+_VOLTAGE_RECORDINGS = _SOMA_VOLTAGE_RECORDINGS | MorphologyLocationVoltageRecording
+
+_RECORDINGS = IonChannelVariableRecording | _VOLTAGE_RECORDINGS
 
 # Sampled on the simulation timestep, so these carry no Timestep parameter of their own.
 _SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS = (
@@ -28,19 +30,24 @@ RecordingUnion = Annotated[_VOLTAGE_RECORDINGS, Discriminator("type")]
 
 Brian2RecordingUnion = Annotated[_SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
 
-_RECORDINGS = IonChannelVariableRecording | _VOLTAGE_RECORDINGS
+# Morphology-location recordings are excluded: they require a `morphology_locations` block to
+# reference, and the ion channel configuration declares no such dictionary. Its circuit is built
+# from the selected channel models, so there is no morphology to place a location on either.
 IonChannelModelRecordingUnion = Annotated[
-    _RECORDINGS,
+    IonChannelVariableRecording | _SOMA_VOLTAGE_RECORDINGS,
     Discriminator("type"),
 ]
 
+# Everything a recording reference may point at, the simulation-timestep variants included.
 _ALL_RECORDINGS = _RECORDINGS | _SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS
+
+_AllRecordingsUnion = Annotated[_ALL_RECORDINGS, Discriminator("type")]
 
 
 class RecordingReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
-    allowed_block_types: ClassVar[Any] = IonChannelModelRecordingUnion
+    allowed_block_types: ClassVar[Any] = _AllRecordingsUnion
 
     json_schema_extra_additions: ClassVar[dict] = {
         "allowed_block_types": BlockReference.get_class_names(_ALL_RECORDINGS)

@@ -33,6 +33,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsUnion
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationUnion,
 )
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
@@ -62,7 +63,9 @@ UNTARGETED_RECORDINGS = sorted(
     name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
 )
 SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
-MORPHOLOGY_LOCATIONS = sorted(union_member_names(MorphologyLocationUnion))
+# Explicit locations are excluded: they name points on a single neuron, so they carry no
+# neuron-set reference and are not offered for circuit configurations.
+MORPHOLOGY_LOCATIONS = sorted(union_member_names(CircuitMorphologyLocationUnion))
 COMBINED_NEURON_SETS = sorted(
     name for name in union_member_names(NEURONSimulationNeuronSetUnion) if "Combined" in name
 )
@@ -140,10 +143,7 @@ EXPECTED_COMBINED_DEFAULTS = {
 
 def _block(name: str):
     """Construct a block by class name with every field, references included, left at default."""
-    cls = getattr(obi, name)
-    if cls is obi.ExplicitMorphologyLocations:
-        return cls(locations=(obi.MorphologyLocationPoint(section_id=1, offset=0.5),))
-    return cls()
+    return getattr(obi, name)()
 
 
 def _input_entry(result, name: str) -> dict:

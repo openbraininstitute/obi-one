@@ -8,6 +8,9 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
+from obi_one.scientific.blocks.morphology_locations.base import (
+    GeneratedMorphologyLocationsBlock,
+)
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
@@ -233,7 +236,12 @@ class GenerateSimulationTask(Task):
             return
 
         for locations_block in morphology_locations.values():
-            if getattr(locations_block, "neuron_set", None) is not None:
+            # Explicit locations carry no target: they name points on the single neuron being
+            # simulated, so there is no neuron set to fill in.
+            if not isinstance(locations_block, GeneratedMorphologyLocationsBlock):
+                continue
+
+            if locations_block.neuron_set is not None:
                 continue
 
             locations_block.neuron_set = self.config.default_neuron_set_reference
