@@ -51,13 +51,11 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         title="U Hill Coefficient Distribution",
         description=(
             "Distribution of the Hill coefficient for the steady-state utilization of synaptic "
-            "efficacy (u). Defaults to "
-            f"{_DEFAULT_U_HILL_COEFFICIENT.description}."
+            "efficacy (u)."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_HILL_COEFFICIENT.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.U_HILL_COEFFICIENT_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "u_hill_coefficient",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -69,14 +67,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     conductance_distribution: AllDistributionsReference | None = Field(
         default=None,
         title="Conductance (g_syn) Distribution",
-        description=(
-            "Distribution of synaptic conductance (g_syn). Defaults to "
-            f"{_DEFAULT_CONDUCTANCE.description}."
-        ),
+        description="Distribution of synaptic conductance (g_syn).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "conductance",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -91,13 +85,11 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description=(
             "Distribution of the conductance scale factor that multiplies the synaptic "
             "conductance (g_syn) to allow for fitting of synaptic conductance values that are "
-            "outside of the range of the conductance distribution. Defaults to "
-            f"{_DEFAULT_CONDUCTANCE_SCALE_FACTOR.description}."
+            "outside of the range of the conductance distribution."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE_SCALE_FACTOR.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "conductance_scale_factor",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -109,14 +101,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     facilitation_time: AllDistributionsReference | None = Field(
         default=None,
         title="Facilitation Time Distribution",
-        description=(
-            "Distribution of facilitation time in milliseconds. Defaults to "
-            f"{_DEFAULT_FACILITATION_TIME.description}."
-        ),
+        description="Distribution of facilitation time in milliseconds.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_FACILITATION_TIME.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.FACILITATION_TIME_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "facilitation_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -129,14 +117,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     depression_time: AllDistributionsReference | None = Field(
         default=None,
         title="Depression Time Distribution",
-        description=(
-            "Distribution of depression time in milliseconds. Defaults to "
-            f"{_DEFAULT_DEPRESSION_TIME.description}."
-        ),
+        description="Distribution of depression time in milliseconds.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DEPRESSION_TIME.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.DEPRESSION_TIME_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "depression_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -149,14 +133,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     n_rrp_vesicles_distribution: AllDistributionsReference | None = Field(
         default=None,
         title="Number of RRP Vesicles Distribution",
-        description=(
-            "Distribution of the number of readily releasable pool (RRP) vesicles. Defaults to "
-            f"{_DEFAULT_N_RRP_VESICLES.description}."
-        ),
+        description="Distribution of the number of readily releasable pool (RRP) vesicles.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_N_RRP_VESICLES.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.N_RRP_VESICLES_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "n_rrp_vesicles",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -168,14 +148,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     decay_time: AllDistributionsReference | None = Field(
         default=None,
         title="Decay Time Distribution",
-        description=(
-            "Distribution of decay time in milliseconds. Defaults to "
-            f"{_DEFAULT_DECAY_TIME.description}."
-        ),
+        description="Distribution of decay time in milliseconds.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DECAY_TIME.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.DECAY_TIME_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "decay_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -190,13 +166,11 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         title="U_syn Distribution",
         description=(
             "Distribution of the utilization of synaptic efficacy (u_syn) for the first spike "
-            "in a spike train. Defaults to "
-            f"{_DEFAULT_U_SYN.description}."
+            "in a spike train."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_SYN.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.U_SYN_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "u_syn",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
@@ -210,13 +184,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         title="Delay Distribution",
         description=(
             "Distribution for the synaptic delay from the presynaptic spike in milliseconds. "
-            "Defaults to "
-            f"{_DEFAULT_DELAY.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DELAY.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.DELAY_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "delay",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(

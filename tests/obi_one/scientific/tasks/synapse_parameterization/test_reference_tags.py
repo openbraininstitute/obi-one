@@ -64,13 +64,16 @@ def test_the_nine_parameters_get_nine_different_answers():
 
 
 def test_each_answer_names_the_distribution_that_field_actually_falls_back_to():
-    # Built from the same DistributionDefault objects `sample` resolves against, so this
-    # fails if a default is changed in one place and not the other.
-    for name, extra in _reference_fields(TsodyksMarkramSynapticModel).items():
+    """The config's answer and the block's own fallback must be the same distribution.
+
+    The block no longer describes its defaults - the config declares them and the schema
+    publishes them - so nothing but this holds the two ends together. `_default_distributions`
+    is what `sample` resolves against when a field is left unset.
+    """
+    fallbacks = TsodyksMarkramSynapticModel._default_distributions
+    for field_name, extra in _reference_fields(TsodyksMarkramSynapticModel).items():
         tag = extra[SchemaKey.REFERENCE_TAG]
-        assert (
-            _config_tag_defaults()[tag]["name"] == (extra[SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL])
-        ), name
+        assert _config_tag_defaults()[tag]["name"] == fallbacks[field_name].label, field_name
 
 
 def test_both_concrete_models_carry_the_tags():
