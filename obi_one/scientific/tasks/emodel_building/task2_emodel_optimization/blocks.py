@@ -878,7 +878,7 @@ class ParametersSelection(Block):
             return self._global_group_rows()
         if group_key == "distribution":
             return self._distribution_group_rows()
-        return self._region_group_rows(group_key)  # ty:ignore[invalid-argument-type]
+        return self._region_group_rows(group_key)
 
     @property
     def parameter_group_view(self) -> tuple[ParameterGroupView, ...]:
