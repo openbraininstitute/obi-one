@@ -14,9 +14,6 @@ class AllPairsSynapticModelAssigner(SynapseModelAssigner):
 
     title: ClassVar[str] = "All Pairs"
 
-    def validate_for_circuit(self, circuit: Circuit) -> None:
-        pass
-
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         circ = circuit.sonata_circuit
         ep = circ.edges[self.edge_population_name]
