@@ -58,7 +58,16 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 # the default construction. Required-target blocks are kept out of the untargeted sweeps below.
 CIRCUIT_STIMULI = sorted(union_member_names(CircuitStimulusUnion))
 RECORDINGS = sorted(union_member_names(RecordingUnion))
-REQUIRED_TARGET_RECORDINGS = {"MorphologyLocationVoltageRecording"}
+# A recording whose reference field has no default cannot be constructed untargeted, so it is
+# derived rather than listed: a new such block excludes itself from the sweeps below.
+REQUIRED_TARGET_RECORDINGS = {
+    name
+    for name in RECORDINGS
+    if any(
+        getattr(obi, name).model_fields[field_name].is_required()
+        for field_name in reference_field_names(getattr(obi, name))
+    )
+}
 UNTARGETED_RECORDINGS = sorted(
     name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
 )

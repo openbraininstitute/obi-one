@@ -6,6 +6,7 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
 from obi_one.scientific.blocks.recordings.morphology_location import (
     MorphologyLocationVoltageRecording,
+    TimeWindowMorphologyLocationVoltageRecording,
 )
 from obi_one.scientific.blocks.recordings.soma import (
     SimulationDtSomaVoltageRecording,
@@ -16,7 +17,11 @@ from obi_one.scientific.blocks.recordings.soma import (
 
 _SOMA_VOLTAGE_RECORDINGS = SomaVoltageRecording | TimeWindowSomaVoltageRecording
 
-_VOLTAGE_RECORDINGS = _SOMA_VOLTAGE_RECORDINGS | MorphologyLocationVoltageRecording
+_MORPHOLOGY_LOCATION_VOLTAGE_RECORDINGS = (
+    MorphologyLocationVoltageRecording | TimeWindowMorphologyLocationVoltageRecording
+)
+
+_VOLTAGE_RECORDINGS = _SOMA_VOLTAGE_RECORDINGS | _MORPHOLOGY_LOCATION_VOLTAGE_RECORDINGS
 
 _RECORDINGS = IonChannelVariableRecording | _VOLTAGE_RECORDINGS
 
