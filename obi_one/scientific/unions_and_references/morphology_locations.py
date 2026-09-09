@@ -40,6 +40,14 @@ MorphologyLocationUnion = Annotated[
     Discriminator("type"),
 ]
 
+# Blocks that sample points on a single morphology, i.e. implement `points_on`. Per-neuron
+# explicit locations are excluded: their rows already name a node id each, so there is no single
+# morphology to sample against.
+SingleMorphologySamplingLocationUnion = Annotated[
+    _GENERATED_MORPHOLOGY_LOCATIONS | ExplicitMorphologyLocations,
+    Discriminator("type"),
+]
+
 # Plain explicit locations name a section and offset but no cell, so on a multi-neuron circuit the
 # same branch id means a different branch on every morphology. They are therefore offered only for
 # single-neuron configurations.
@@ -63,4 +71,5 @@ __all__ = [
     "CircuitMorphologyLocationUnion",
     "MorphologyLocationUnion",
     "MorphologyLocationsReference",
+    "SingleMorphologySamplingLocationUnion",
 ]

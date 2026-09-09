@@ -63,6 +63,7 @@ class UIElement(StrEnum):
     MORPHOLOGY_LOCATION_SELECTION = "morphology_location_selection"
     MORPHOLOGY_SECTION_TYPE_SELECTION = "morphology_section_type_selection"
     NEURON_IDS = "neuron_ids"
+    PER_NEURON_MORPHOLOGY_LOCATION_SELECTION = "per_neuron_morphology_location_selection"
     REFERENCE = "reference"
     SELECT_EFEATURES_BY_PROTOCOL = "select_efeatures_by_protocol"
     SELECT_RECORDABLE_ION_CHANNEL_VARIABLE = "select_recordable_ion_channel_variable"

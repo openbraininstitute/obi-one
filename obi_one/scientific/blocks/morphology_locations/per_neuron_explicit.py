@@ -1,31 +1,24 @@
 from typing import Annotated, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
+from pydantic import Field, NonNegativeInt
 
 from obi_one.core.block import Block
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.morphology_locations.base import (
-    NormalizedSectionOffset,
-    SectionID,
-)
+from obi_one.scientific.blocks.morphology_locations.explicit import MorphologyLocationPoint
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
 
 
-class NeuronMorphologyLocationPoint(BaseModel):
+class NeuronMorphologyLocationPoint(MorphologyLocationPoint):
     """One location, on one named neuron: exactly a SONATA compartment-set row."""
-
-    model_config = ConfigDict(extra="forbid")
 
     node_id: NonNegativeInt = Field(
         title="Node ID",
         description="Identifier of the neuron this location belongs to.",
     )
-    section_id: SectionID
-    offset: NormalizedSectionOffset
 
 
 class PerNeuronExplicitMorphologyLocations(Block):
@@ -60,7 +53,7 @@ class PerNeuronExplicitMorphologyLocations(Block):
                 "Branch 0 is always the soma. At least one point is required."
             ),
             json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_LOCATION_SELECTION,
+                SchemaKey.UI_ELEMENT: UIElement.PER_NEURON_MORPHOLOGY_LOCATION_SELECTION,
             },
         )
     )
