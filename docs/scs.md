@@ -78,6 +78,11 @@ Various stimulus types are available for single cell simulations:
 - Current clamp stimuli (constant, linear, sinusoidal, etc.)
 - Spike-based stimuli (Poisson, synchronous, etc.)
 
+Units follow the SONATA convention and are mixed, so a stimulus that combines the two has to
+convert: **times** — `delay`, `duration`, `width`, `dt` — are milliseconds, while **frequencies**
+are hertz and **current amplitudes** are nanoamps. A `frequency` of 10 therefore means one cycle
+every 100 ms, not every 0.1 ms.
+
 ### Recordings
 
 Recordings capture electrophysiological data:
