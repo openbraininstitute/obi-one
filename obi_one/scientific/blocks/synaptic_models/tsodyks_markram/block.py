@@ -28,6 +28,8 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.distributions imp
     _DEFAULT_N_RRP_VESICLES,
     _DEFAULT_U_HILL_COEFFICIENT,
     _DEFAULT_U_SYN,
+)
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.domains import (
     _validate_parameter_samples,
 )
 from obi_one.scientific.unions_and_references.distributions import (

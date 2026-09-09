@@ -1,8 +1,8 @@
 """Each built-in default must produce values its own parameter is allowed to take.
 
-The domains and the defaults constrain and supply the same nine parameters, and now live in
-one file, so the contradiction this guards against is visible in a single place: a default
-whose draws `sample()` would reject.
+`domains.py` says what a parameter may be and `distributions.py` what it is when nobody
+chooses; nothing but this test holds the two in agreement, which is why it draws rather than
+reasons - a Gamma or Normal default is only wrong for its domain some of the time.
 """
 
 import numpy as np
@@ -12,8 +12,10 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.distributions import (
-    _TM_PARAMETER_DOMAINS,
     _TSODYKS_MARKRAM_DEFAULTS,
+)
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.domains import (
+    _TM_PARAMETER_DOMAINS,
     _is_valid_parameter_sample,
 )
 
