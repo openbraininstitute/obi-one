@@ -31,7 +31,7 @@ def test_every_sampled_parameter_declares_a_domain_and_a_default():
         ExcitatoryTsodyksMarkramSynapticModel,
         InhibitoryTsodyksMarkramSynapticModel,
     ):
-        assert set(fields) == set(model_class._default_distributions), model_class.__name__
+        assert set(fields) == set(model_class._defaults_by_field()), model_class.__name__
 
 
 def test_a_domain_says_what_it_expects():

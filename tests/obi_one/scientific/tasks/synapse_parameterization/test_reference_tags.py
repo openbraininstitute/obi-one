@@ -82,11 +82,11 @@ def test_each_answer_names_the_distribution_that_field_actually_falls_back_to():
     """The config's answer and the block's own fallback must be the same distribution.
 
     The block no longer describes its defaults - the config declares them and the schema
-    publishes them - so nothing but this holds the two ends together. `_default_distributions`
+    publishes them - so nothing but this holds the two ends together. `_parameter_defaults`
     is what `sample` resolves against when a field is left unset.
     """
     for model_class in CONCRETE_MODELS:
-        fallbacks = model_class._default_distributions
+        fallbacks = model_class._defaults_by_field()
         for field_name, extra in _reference_fields(model_class).items():
             tag = extra[SchemaKey.REFERENCE_TAG]
             assert _config_tag_defaults()[tag]["name"] == fallbacks[field_name].label, (
