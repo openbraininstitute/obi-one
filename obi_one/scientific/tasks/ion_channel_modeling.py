@@ -4,8 +4,10 @@ Fits a Hodgkin-Huxley channel model to a set of ion channel recordings: one equa
 gating variable, fitted by `ion_channel_builder`, written out as a mod file and registered
 as an IonChannelModel.
 
-The four equations are keys on one model block rather than separately referenced blocks, so
-the scan-config editor draws the whole model as a single element.
+Several recordings are fitted *together* into one model, not one model each — which is what
+`extract_all_equations` takes lists of traces and ljps for. The four equations are keys on
+one model block rather than separately referenced blocks, so the editor draws the whole model
+as a single element.
 """
 
 import json
@@ -100,7 +102,30 @@ class BlockGroup(StrEnum):
 class HodgkinHuxleyIonChannelModel(Block):
     """The channel model to fit: one equation per gating variable, plus their exponents."""
 
-    title: ClassVar[str] = "Hodgkin-Huxley type ion channel model"
+    title: ClassVar[str] = "Hodgkin-Huxley ion channel model"
+
+    m_power: int | list[int] = Field(
+        title="m exponent in channel equation",
+        default=1,
+        ge=1,
+        le=4,
+        description=(
+            r"Exponent \(p\) of \(m\) in the channel equation: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+    h_power: int | list[int] = Field(
+        title="h exponent in channel equation",
+        default=1,
+        ge=0,
+        le=4,
+        description=(
+            r"Exponent \(q\) of \(h\) in the channel equation: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
 
     minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
         title="m∞ equation",
@@ -156,39 +181,16 @@ class HodgkinHuxleyIonChannelModel(Block):
         json_schema_extra=equation_schema_extra(EquationKey.SIG_FIT_HTAU),
     )
 
-    m_power: int | list[int] = Field(
-        title="m exponent in channel equation",
-        default=1,
-        ge=1,
-        le=4,
-        description=(
-            r"Exponent \(p\) of \(m\) in the channel equation: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
-    )
-    h_power: int | list[int] = Field(
-        title="h exponent in channel equation",
-        default=1,
-        ge=0,
-        le=4,
-        description=(
-            r"Exponent \(q\) of \(h\) in the channel equation: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
-    )
-
 
 # One member, but a discriminated union rather than a bare block: the editor draws it as a
 # block_union, so a second channel formalism becomes another member and nothing else changes.
 IonChannelModelUnion = Annotated[HodgkinHuxleyIonChannelModel, Discriminator("type")]
 
 
-class IonChannelFittingBetaScanConfig(ScanConfig):
+class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
-    name: ClassVar[str] = "Ion channel build (beta)"
+    name: ClassVar[str] = "Ion channel"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
     json_schema_extra_additions: ClassVar[dict] = {
@@ -200,12 +202,13 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
     }
 
     class Initialize(Block):
-        recordings: IonChannelRecordingFromID | list[IonChannelRecordingFromID] = Field(
-            title="Ion channel recording",
+        recordings: tuple[IonChannelRecordingFromID, ...] = Field(
+            title="Ion channel recordings",
             description=(
-                "Ion channel recordings to fit. Each recording is fitted on its own, so "
-                "selecting several produces one ion channel model per recording."
+                "The recordings to fit the channel model to. Several are fitted jointly into "
+                "one model, not one model each."
             ),
+            min_length=1,
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
         )
 
@@ -245,7 +248,7 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
     )
 
     model_type: IonChannelModelUnion = Field(
-        title="Hodgkin-Huxley Model",
+        title="Ion Channel Model",
         description=(
             "The Hodgkin-Huxley channel model to fit: an equation per gating variable, and "
             "the exponents p and q of m and h in the channel equation g = gbar * m^p * h^q."
@@ -257,15 +260,9 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
         },
     )
 
-    def input_recordings(
-        self,
-        db_client: entitysdk.client.Client,
-    ) -> list:
-        """The recording entities this config fits, whether one was given or several."""
-        recordings = self.initialize.recordings
-        if not isinstance(recordings, list):
-            recordings = [recordings]
-        return [recording.entity(db_client=db_client) for recording in recordings]
+    def input_recordings(self, db_client: entitysdk.client.Client) -> list:
+        """The recording entities this config fits."""
+        return [recording.entity(db_client=db_client) for recording in self.initialize.recordings]
 
     def create_campaign_entity_with_config(
         self,
@@ -317,7 +314,7 @@ class IonChannelFittingBetaScanConfig(ScanConfig):
         )
 
 
-class IonChannelFittingBetaSingleConfig(IonChannelFittingBetaScanConfig, SingleConfigMixin):
+class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
     def create_single_entity_with_config(
@@ -357,24 +354,31 @@ class IonChannelFittingBetaSingleConfig(IonChannelFittingBetaScanConfig, SingleC
         )
 
 
-class IonChannelFittingBetaTask(Task):
-    config: IonChannelFittingBetaSingleConfig
+class IonChannelFittingTask(Task):
+    config: IonChannelFittingSingleConfig
 
     @property
-    def recording(self) -> IonChannelRecordingFromID:
-        """The single recording this task fits.
+    def recordings(self) -> tuple[IonChannelRecordingFromID, ...]:
+        """The recordings this task fits, jointly, into one model."""
+        return self.config.initialize.recordings
 
-        `recordings` is a scan dimension on the campaign, so a campaign over several of them
-        is split into one config per recording and a single config always holds exactly one.
+    def describing_recording(self, db_client: entitysdk.client.Client) -> Any:
+        """The recording whose metadata describes the fitted model.
+
+        A model carries one temperature, one subject and one brain region, and declares itself
+        temperature-independent — so fitting across recordings that disagree on temperature
+        would label the result with a number that is not true of it. The rest of the metadata
+        comes from the first recording, which that check makes representative of the set.
         """
-        recording = self.config.initialize.recordings
-        if not isinstance(recording, IonChannelRecordingFromID):
+        entities = [recording.entity(db_client=db_client) for recording in self.recordings]
+        temperatures = {entity.temperature for entity in entities}  # ty:ignore[unresolved-attribute]
+        if len(temperatures) > 1:
             msg = (
-                "IonChannelFitting expects one IonChannelRecordingFromID per config. "
-                f"Got {type(recording).__name__}"
+                "Ion channel recordings fitted together must share a temperature, because the "
+                f"fitted model records a single one. Got {sorted(temperatures)}."
             )
             raise OBIONEError(msg)
-        return recording
+        return entities[0]
 
     @property
     def conductance_name(self) -> str:
@@ -406,15 +410,21 @@ class IonChannelFittingBetaTask(Task):
         self,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> tuple[list[Path], list[float]]:
-        """Download the recording, and return its trace and ljp value.
+        """Download every recording, and return their traces and ljp values.
 
-        Returned as one-item lists because that is what `extract_all_equations` takes.
+        `extract_all_equations` fits one model from all of them together, which is why these
+        are lists rather than a single trace.
         """
-        recording = self.recording
-        trace_path = recording.download_asset(
-            dest_dir=self.config.coordinate_output_root, db_client=db_client
-        )
-        return [trace_path], [recording.entity(db_client=db_client).ljp]  # ty:ignore[unresolved-attribute]
+        trace_paths = []
+        trace_ljps = []
+        for recording in self.recordings:
+            trace_paths.append(
+                recording.download_asset(
+                    dest_dir=self.config.coordinate_output_root, db_client=db_client
+                )
+            )
+            trace_ljps.append(recording.entity(db_client=db_client).ljp)  # ty:ignore[unresolved-attribute]
+        return trace_paths, trace_ljps
 
     @staticmethod
     def register_json(
@@ -507,11 +517,11 @@ class IonChannelFittingBetaTask(Task):
         )
 
         # Get recording entity to access metadata
-        recording_entity = self.recording.entity(db_client=db_client)
+        recording_entity = self.describing_recording(db_client)
 
         # Extract subject and brain_region from recording metadata
-        subject = recording_entity.subject  # ty:ignore[unresolved-attribute]
-        brain_region = recording_entity.brain_region  # ty:ignore[unresolved-attribute]
+        subject = recording_entity.subject
+        brain_region = recording_entity.brain_region
 
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(  # ty:ignore[possibly-missing-submodule]
@@ -520,14 +530,14 @@ class IonChannelFittingBetaTask(Task):
                 description=(
                     f"Ion channel model: {self.config.initialize.ion_channel_name}.mod "
                     f"made using recording: {recording_entity.name} "
-                    f"for (temperature: {recording_entity.temperature}), "  # ty:ignore[unresolved-attribute]
+                    f"for (temperature: {recording_entity.temperature}), "
                     f"brain region: {brain_region.name}, "
                     f"and subject: {subject.name}."
                 ),
                 contributions=None,  # TODO: fix this
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=recording_entity.temperature,  # ty:ignore[unresolved-attribute]
+                temperature_celsius=recording_entity.temperature,
                 is_stochastic=False,
                 neuron_block=neuron_block,
                 brain_region=brain_region,
@@ -640,7 +650,7 @@ class IonChannelFittingBetaTask(Task):
             )
 
             # Get recording entity to access temperature
-            recording_entity = self.recording.entity(db_client=db_client)
+            recording_entity = self.describing_recording(db_client)
 
             mech_suffix = self.config.initialize.ion_channel_name
             # run ion_channel_builder mod file runner to produce plots
@@ -648,7 +658,7 @@ class IonChannelFittingBetaTask(Task):
                 mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see ion_channel_builder.io.write_output
                 mech_current="ik",  # ty:ignore[invalid-argument-type]
-                temperature=recording_entity.temperature,  # ty:ignore[unresolved-attribute]
+                temperature=recording_entity.temperature,
                 mech_conductance_name=self.conductance_name,
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,

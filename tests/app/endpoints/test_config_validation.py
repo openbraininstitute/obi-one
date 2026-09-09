@@ -11,7 +11,7 @@ from app.endpoints.config_validation import _VALIDATION_CONFIG, SharedStateParti
 VALID_FITTING_CONFIG = {
     "info": {"campaign_name": "Kv3.1 fit", "campaign_description": "From traces."},
     "initialize": {
-        "recordings": {"id_str": "00000000-0000-0000-0000-000000000000"},
+        "recordings": [{"id_str": "00000000-0000-0000-0000-000000000000"}],
         "ion_channel_name": "Kv3_1",
     },
     "model_type": {

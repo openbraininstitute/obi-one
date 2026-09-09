@@ -39,7 +39,7 @@ class TaskType(StrEnum):
     connectivity_matrix_extraction = auto()
     electrophysiology_metrics = auto()
     folder_compression = auto()
-    ion_channel_fitting_beta = auto()
+    ion_channel_fitting = auto()
     ion_channel_model_simulation = auto()
     learning_engine_circuit_simulation = auto()
     me_model_simulation = auto()
