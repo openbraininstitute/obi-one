@@ -31,14 +31,10 @@ class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         },
     )
 
-    # This doesn't seem to be called from anywhere
     def validate_for_circuit(self, circuit: Circuit) -> None:
-        circ = circuit.sonata_circuit
-        ep = circ.edges[self.edge_population_name]
-        specified_source = self.source_neuron_set.block.node_population  # ty:ignore[unresolved-attribute]
-        if ep.source.name != specified_source:
-            err_str = f"{ep.name} has source {ep.source.name} but {specified_source} is specified!"
-            raise ValueError(err_str)
+        super().validate_for_circuit(circuit)
+        ep = circuit.sonata_circuit.edges[self.edge_population_name]
+        self._validate_neuron_set_spans(circuit, self.source_neuron_set, "source", ep.source.name)
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         circ = circuit.sonata_circuit

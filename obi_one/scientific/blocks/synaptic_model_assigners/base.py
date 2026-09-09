@@ -58,13 +58,50 @@ class SynapseModelAssigner(Block):
         },
     )
 
-    # This doesn't seem to be called from anywhere
     def validate_for_circuit(self, circuit: Circuit) -> None:
-        msg = (
-            "Concrete subclasses of SynapseModelAssigner MUST implement "
-            "the .validate_for_circuit() method."
-        )
-        raise NotImplementedError(msg)
+        """Check this assigner can be applied to the circuit, before anything is written.
+
+        Called by SynapseParameterizationTask before it copies the circuit, so that a
+        configuration that cannot work says why. Without it the same mistakes surface
+        from inside `_edge_indices` as a bare KeyError, after the copy and after the
+        whole parameter table has been built.
+        """
+        edge_populations = circuit.sonata_circuit.edges.population_names
+        if self.edge_population_name not in edge_populations:
+            msg = (
+                f"Edge population {self.edge_population_name!r} is not in this circuit. "
+                f"Available edge populations: {sorted(edge_populations)}."
+            )
+            raise ValueError(msg)
+
+    def _validate_neuron_set_spans(
+        self,
+        circuit: Circuit,
+        neuron_set_reference: object | None,
+        role: str,
+        population: str,
+    ) -> None:
+        """Check a neuron set covers the population on one side of the edge population.
+
+        `_edge_indices` indexes `get_neuron_ids(circuit)` by that population name, and
+        that dict is keyed by exactly `get_populations(circuit)` for every neuron set
+        type - combined ones included, since combining unions the keys and never drops
+        one. So this predicts the KeyError rather than approximating it.
+        """
+        if neuron_set_reference is None:
+            msg = (
+                f"The {role} neuron set is required to assign a synaptic model to edge "
+                f"population {self.edge_population_name!r}."
+            )
+            raise ValueError(msg)
+        populations = neuron_set_reference.block.get_populations(circuit)  # ty:ignore[unresolved-attribute]
+        if population not in populations:
+            msg = (
+                f"Edge population {self.edge_population_name!r} has {role} population "
+                f"{population!r}, but the {role} neuron set spans {sorted(populations)}. "
+                f"No synapse in that edge population starts or ends at these neurons."
+            )
+            raise ValueError(msg)
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         msg = (

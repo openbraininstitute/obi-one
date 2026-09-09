@@ -125,18 +125,24 @@ class SynapseParameterizationTask(Task):
             cache_root=self.config.scan_output_root,
             temp_dir=self._create_temp_dir(),
         )
+        # Check the configuration against the staged circuit *before* copying it. None of
+        # these problems can be fixed later in the run, and the copy below is the expensive
+        # part - an assigner naming an edge population its neuron sets do not connect used
+        # to surface as a KeyError from inside `_edge_indices`, long after this point.
+        per_edge_population = self._assemble_per_edge_population()
+        staged = Circuit(name=staged_circuit.name, path=str(staged_circuit.path))
+        for assigners_for_ep in per_edge_population.values():
+            check_consistent_synapse_models(assigners_for_ep)
+            for assigner in assigners_for_ep:
+                assigner.validate_for_circuit(staged)
+
         output_dir = self.config.coordinate_output_root.resolve()
         shutil.copytree(Path(staged_circuit.path).parent, output_dir, dirs_exist_ok=False)
         self._circuit = Circuit(
             name=staged_circuit.name, path=str(output_dir / "circuit_config.json")
         )
 
-        # Check parameters
         circ = self._circuit.sonata_circuit
-        per_edge_population = self._assemble_per_edge_population()
-        for assigners_for_ep in per_edge_population.values():
-            check_consistent_synapse_models(assigners_for_ep)
-
         for ep_name, assigners_for_ep in per_edge_population.items():
             df = get_default_for(assigners_for_ep, ep_name, self._circuit)
             for assigner in assigners_for_ep:
