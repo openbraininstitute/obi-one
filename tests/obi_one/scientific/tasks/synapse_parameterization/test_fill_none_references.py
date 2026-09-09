@@ -1,3 +1,6 @@
+import json
+
+import obi_one as obi
 from obi_one.core.fill_none_references import fill_none_references_in_config
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
@@ -123,3 +126,52 @@ def test_a_registered_default_carries_the_name_it_is_registered_under():
     # name disagrees serializes under a name nothing refers to.
     for reference in _defaults().values():
         assert reference.block.block_name == reference.block_name
+
+
+def _notebook_shaped_config():
+    """The shape the example notebook builds: one named distribution, the rest left unset."""
+    config = SynapseParameterizationScanConfig.empty_config()
+    conductance = obi.GammaDistribution(shape=4.0, scale=0.25)
+    config.add(conductance, "Excitatory conductance distribution")
+    model = obi.ExcitatoryTsodyksMarkramSynapticModel(conductance_distribution=conductance.ref)
+    config.add(model, "Excitatory synaptic model")
+    config.add(
+        obi.AllPairsSynapticModelAssigner(edge_population_name="edges", synaptic_model=model.ref),
+        name="all_pairs",
+    )
+    config.fill_block_references_and_names()
+    return config, model
+
+
+def test_the_serialized_config_names_every_distribution_it_used():
+    # The point of filling before the scan is serialized rather than in the task: the config
+    # written to disk, and the entities registered from it, say which distribution produced
+    # the circuit instead of recording None and leaving the code version to answer.
+
+    config, _model = _notebook_shaped_config()
+
+    config.fill_none_references()
+
+    serialized = json.loads(config.model_dump_json())["synaptic_models"][
+        "Excitatory synaptic model"
+    ]
+    unset = [name for name, value in serialized.items() if value is None]
+    assert unset == []
+
+
+def test_filling_keeps_the_distribution_the_user_named():
+    config, model = _notebook_shaped_config()
+
+    config.fill_none_references()
+
+    assert model.conductance_distribution.block_name == "Excitatory conductance distribution"
+
+
+def test_a_config_with_nothing_unset_gains_no_blocks():
+    config, _ = _notebook_shaped_config()
+    config.fill_none_references()
+    after_first = dict(config.distributions)
+
+    config.fill_none_references()
+
+    assert set(config.distributions) == set(after_first)

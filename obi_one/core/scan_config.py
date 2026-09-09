@@ -18,6 +18,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.fill_none_references import fill_none_references_in_config
 from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
@@ -43,6 +44,38 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     name: ClassVar[str] = "Add a name class' name variable"
     description: ClassVar[str] = """Add a description to the class' description variable"""
+
+    @staticmethod
+    def default_block_references() -> dict[str, BlockReference]:
+        """The block reference each unset tagged field resolves to, keyed by its role.
+
+        A config that leaves nothing to be inferred returns nothing, which is the default.
+        See `obi_one.core.fill_none_references`.
+        """
+        return {}
+
+    def fill_none_references(self) -> None:
+        """Give every unset tagged reference its default, and register what was used.
+
+        Called before the scan is serialized, so the configs written to disk and the
+        entities registered from them name the blocks that actually produced the result
+        rather than recording `None` and leaving it to the code version to say.
+        """
+        defaults = self.default_block_references()
+        if not defaults:
+            return
+        for reference in fill_none_references_in_config(self, defaults):
+            block_dict = getattr(self, reference.block_dict_name)
+            existing = block_dict.get(reference.block_name)
+            if existing is None:
+                block_dict[reference.block_name] = reference.block
+            elif type(existing) is not type(reference.block):
+                msg = (
+                    f"Default block name '{reference.block_name}' already exists in "
+                    f"'{reference.block_dict_name}' but is not a "
+                    f"{type(reference.block).__name__}!"
+                )
+                raise OBIONEError(msg)
 
     _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 

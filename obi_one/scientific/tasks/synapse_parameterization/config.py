@@ -5,6 +5,7 @@ from typing import ClassVar
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.block_reference import BlockReference
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
@@ -83,7 +84,7 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
     }
 
     @staticmethod
-    def default_block_references() -> dict[str, AllDistributionsReference]:
+    def default_block_references() -> dict[str, BlockReference]:
         """The block reference each unset field resolves to, keyed by the role it plays.
 
         Consumed by `fill_none_references_in_config`. Each reference carries its block, so
