@@ -299,10 +299,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         return {}
 
     # Filled in by each concrete model, because the two take different values for the same
-    # parameter. Kept out of `json_schema_extra` because a DistributionDefault holds a factory
-    # and would not serialize into the schema; the role goes in there, per subclass, below.
-    _parameter_roles: ClassVar[dict[str, ReferenceTag]] = {}
-    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {}
+    # parameter. Keyed by the role, since that is what a config asks by and what identifies a
+    # parameter across the two models; the field is what `sample` needs, and the default cannot
+    # live in `json_schema_extra` because it holds a factory and would not serialize.
+    _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {}
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Give this model's own fields the roles it plays.
@@ -312,7 +312,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         carrying whichever subclass was defined last.
         """
         super().__init_subclass__(**kwargs)
-        for field_name, tag in cls._parameter_roles.items():
+        for tag, (field_name, _default) in cls._parameter_defaults.items():
             field = cls.model_fields[field_name]
             field.json_schema_extra = {
                 **(field.json_schema_extra or {}),
@@ -323,17 +323,18 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     def default_distributions_by_role(cls) -> dict[str, tuple[str, Distribution]]:
         """Each parameter's fallback distribution, keyed by the role its field plays.
 
-        Derived from `_default_distributions` and the tags the fields declare rather than
-        held as a second mapping of the same nine objects: a config asks by role, `sample`
-        asks by field, and both have to mean the same distribution.
+        A fresh distribution per call: the caller registers these into a config, which must
+        not share a block with another.
         """
         return {
-            cls.model_fields[field_name].json_schema_extra[SchemaKey.REFERENCE_TAG]: (
-                default.label,
-                default.create(),
-            )
-            for field_name, default in cls._default_distributions.items()
+            tag: (default.label, default.create())
+            for tag, (_field_name, default) in cls._parameter_defaults.items()
         }
+
+    @classmethod
+    def _defaults_by_field(cls) -> dict[str, DistributionDefault]:
+        """The same defaults, keyed the way `sample` looks them up."""
+        return dict(cls._parameter_defaults.values())
 
     @classmethod
     def _sampled_fields(cls) -> dict[str, tuple[str, ParameterDomain]]:
@@ -372,7 +373,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             """Draw one parameter, then hold the draw to the domain its field declares."""
             parameter, domain = self._sampled_fields()[field_name]
             distribution = resolve_distribution(
-                getattr(self, field_name), self._default_distributions[field_name]
+                getattr(self, field_name), self._defaults_by_field()[field_name]
             )
             return validate_parameter_samples(
                 parameter,
@@ -406,30 +407,43 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Excitatory Tsodyks-Markram"
 
-    _parameter_roles: ClassVar[dict[str, ReferenceTag]] = {
-        "u_hill_coefficient_distribution": ReferenceTag.EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION,
-        "conductance_distribution": ReferenceTag.EXCITATORY_CONDUCTANCE_DISTRIBUTION,
-        "conductance_scale_factor_distribution": (
-            ReferenceTag.EXCITATORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION
+    _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {
+        ReferenceTag.EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION: (
+            "u_hill_coefficient_distribution",
+            _DEFAULT_U_HILL_COEFFICIENT,
         ),
-        "facilitation_time": ReferenceTag.EXCITATORY_FACILITATION_TIME_DISTRIBUTION,
-        "depression_time": ReferenceTag.EXCITATORY_DEPRESSION_TIME_DISTRIBUTION,
-        "n_rrp_vesicles_distribution": ReferenceTag.EXCITATORY_N_RRP_VESICLES_DISTRIBUTION,
-        "decay_time": ReferenceTag.EXCITATORY_DECAY_TIME_DISTRIBUTION,
-        "u_syn": ReferenceTag.EXCITATORY_U_SYN_DISTRIBUTION,
-        "delay_distribution": ReferenceTag.EXCITATORY_DELAY_DISTRIBUTION,
-    }
-
-    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {
-        "u_hill_coefficient_distribution": _DEFAULT_U_HILL_COEFFICIENT,
-        "conductance_distribution": _DEFAULT_CONDUCTANCE,
-        "conductance_scale_factor_distribution": _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
-        "facilitation_time": _DEFAULT_FACILITATION_TIME,
-        "depression_time": _DEFAULT_DEPRESSION_TIME,
-        "n_rrp_vesicles_distribution": _DEFAULT_N_RRP_VESICLES,
-        "decay_time": _DEFAULT_DECAY_TIME,
-        "u_syn": _DEFAULT_U_SYN,
-        "delay_distribution": _DEFAULT_DELAY,
+        ReferenceTag.EXCITATORY_CONDUCTANCE_DISTRIBUTION: (
+            "conductance_distribution",
+            _DEFAULT_CONDUCTANCE,
+        ),
+        ReferenceTag.EXCITATORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: (
+            "conductance_scale_factor_distribution",
+            _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+        ),
+        ReferenceTag.EXCITATORY_FACILITATION_TIME_DISTRIBUTION: (
+            "facilitation_time",
+            _DEFAULT_FACILITATION_TIME,
+        ),
+        ReferenceTag.EXCITATORY_DEPRESSION_TIME_DISTRIBUTION: (
+            "depression_time",
+            _DEFAULT_DEPRESSION_TIME,
+        ),
+        ReferenceTag.EXCITATORY_N_RRP_VESICLES_DISTRIBUTION: (
+            "n_rrp_vesicles_distribution",
+            _DEFAULT_N_RRP_VESICLES,
+        ),
+        ReferenceTag.EXCITATORY_DECAY_TIME_DISTRIBUTION: (
+            "decay_time",
+            _DEFAULT_DECAY_TIME,
+        ),
+        ReferenceTag.EXCITATORY_U_SYN_DISTRIBUTION: (
+            "u_syn",
+            _DEFAULT_U_SYN,
+        ),
+        ReferenceTag.EXCITATORY_DELAY_DISTRIBUTION: (
+            "delay_distribution",
+            _DEFAULT_DELAY,
+        ),
     }
 
     @property
@@ -449,30 +463,43 @@ class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Inhibitory Tsodyks-Markram"
 
-    _parameter_roles: ClassVar[dict[str, ReferenceTag]] = {
-        "u_hill_coefficient_distribution": ReferenceTag.INHIBITORY_U_HILL_COEFFICIENT_DISTRIBUTION,
-        "conductance_distribution": ReferenceTag.INHIBITORY_CONDUCTANCE_DISTRIBUTION,
-        "conductance_scale_factor_distribution": (
-            ReferenceTag.INHIBITORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION
+    _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {
+        ReferenceTag.INHIBITORY_U_HILL_COEFFICIENT_DISTRIBUTION: (
+            "u_hill_coefficient_distribution",
+            _DEFAULT_U_HILL_COEFFICIENT,
         ),
-        "facilitation_time": ReferenceTag.INHIBITORY_FACILITATION_TIME_DISTRIBUTION,
-        "depression_time": ReferenceTag.INHIBITORY_DEPRESSION_TIME_DISTRIBUTION,
-        "n_rrp_vesicles_distribution": ReferenceTag.INHIBITORY_N_RRP_VESICLES_DISTRIBUTION,
-        "decay_time": ReferenceTag.INHIBITORY_DECAY_TIME_DISTRIBUTION,
-        "u_syn": ReferenceTag.INHIBITORY_U_SYN_DISTRIBUTION,
-        "delay_distribution": ReferenceTag.INHIBITORY_DELAY_DISTRIBUTION,
-    }
-
-    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {
-        "u_hill_coefficient_distribution": _DEFAULT_U_HILL_COEFFICIENT,
-        "conductance_distribution": _DEFAULT_CONDUCTANCE,
-        "conductance_scale_factor_distribution": _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
-        "facilitation_time": _DEFAULT_FACILITATION_TIME,
-        "depression_time": _DEFAULT_DEPRESSION_TIME,
-        "n_rrp_vesicles_distribution": _DEFAULT_N_RRP_VESICLES,
-        "decay_time": _DEFAULT_DECAY_TIME,
-        "u_syn": _DEFAULT_U_SYN,
-        "delay_distribution": _DEFAULT_DELAY,
+        ReferenceTag.INHIBITORY_CONDUCTANCE_DISTRIBUTION: (
+            "conductance_distribution",
+            _DEFAULT_CONDUCTANCE,
+        ),
+        ReferenceTag.INHIBITORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: (
+            "conductance_scale_factor_distribution",
+            _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+        ),
+        ReferenceTag.INHIBITORY_FACILITATION_TIME_DISTRIBUTION: (
+            "facilitation_time",
+            _DEFAULT_FACILITATION_TIME,
+        ),
+        ReferenceTag.INHIBITORY_DEPRESSION_TIME_DISTRIBUTION: (
+            "depression_time",
+            _DEFAULT_DEPRESSION_TIME,
+        ),
+        ReferenceTag.INHIBITORY_N_RRP_VESICLES_DISTRIBUTION: (
+            "n_rrp_vesicles_distribution",
+            _DEFAULT_N_RRP_VESICLES,
+        ),
+        ReferenceTag.INHIBITORY_DECAY_TIME_DISTRIBUTION: (
+            "decay_time",
+            _DEFAULT_DECAY_TIME,
+        ),
+        ReferenceTag.INHIBITORY_U_SYN_DISTRIBUTION: (
+            "u_syn",
+            _DEFAULT_U_SYN,
+        ),
+        ReferenceTag.INHIBITORY_DELAY_DISTRIBUTION: (
+            "delay_distribution",
+            _DEFAULT_DELAY,
+        ),
     }
 
     @property
