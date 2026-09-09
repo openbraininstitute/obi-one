@@ -2,7 +2,6 @@ import json
 
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
-    TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS,
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
@@ -24,6 +23,14 @@ def _reference_fields(model_class):
         for name, field in model_class.model_fields.items()
         if isinstance(field.json_schema_extra, dict)
         and SchemaKey.REFERENCE_TYPES in field.json_schema_extra
+    }
+
+
+def _parameter_tags():
+    """The roles the Tsodyks-Markram parameters play, read off the fields that declare them."""
+    return {
+        extra[SchemaKey.REFERENCE_TAG]
+        for extra in _reference_fields(TsodyksMarkramSynapticModel).values()
     }
 
 
@@ -57,7 +64,7 @@ def test_the_nine_parameters_get_nine_different_answers():
     # The point of keying by role rather than by reference type: all nine fields accept
     # AllDistributionsReference, so a type-keyed map could only ever offer them one answer.
     # Only the parameters are checked; several neuron set roles deliberately share a block.
-    names = [_config_tag_defaults()[tag]["name"] for tag in TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS]
+    names = [_config_tag_defaults()[tag]["name"] for tag in _parameter_tags()]
 
     assert len(names) == 9
     assert len(names) == len(set(names))
@@ -82,11 +89,11 @@ def test_both_concrete_models_carry_the_tags():
         InhibitoryTsodyksMarkramSynapticModel,
     ):
         tags = {extra[SchemaKey.REFERENCE_TAG] for extra in _reference_fields(model_class).values()}
-        assert tags == set(TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS)
+        assert tags == _parameter_tags()
 
 
 def test_every_declared_tag_is_a_reference_tag_member():
-    assert set(TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS) <= set(ReferenceTag)
+    assert _parameter_tags() <= set(ReferenceTag)
 
 
 def test_the_config_declares_no_type_keyed_labels():
