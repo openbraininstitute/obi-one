@@ -61,11 +61,14 @@ class MorphologyLocationVoltageRecording(Block):
 
     def config(
         self,
+        simulation_timestep: PositiveFloat,
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
     ) -> dict:
-        del default_node_set, db_client
+        # This recording samples on its own `dt`, so the simulation's timestep is not used. It is
+        # still accepted, because the generation task calls every recording the same way.
+        del simulation_timestep, default_node_set, db_client
 
         if end_time is None:
             msg = f"End time must be specified for recording '{self.block_name}'."

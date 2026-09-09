@@ -36,7 +36,7 @@ from obi_one.scientific.unions_and_references.stimuli import (
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     BIOPHYSICAL_POPULATION,
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
+    DEFAULT_POINT_NODE_SET,
     POINT_POPULATION,
     VIRTUAL_POPULATION,
     build_config,
@@ -104,8 +104,21 @@ class TestUnionCoverage:
         assert union_member_names(MEModelStimulusUnion) <= set(CONTINUOUS_STIMULI)
         assert union_member_names(LearningEngineCircuitStimulusUnion) <= set(CONTINUOUS_STIMULI)
 
-    def test_brian2_accepts_only_the_direct_poisson_stimulus(self):
-        assert union_member_names(Brian2CircuitStimulusUnion) == {"Brian2DirectPoissonStimulus"}
+    def test_brian2_accepts_the_current_injections_the_poisson_kick_and_the_spike_replays(self):
+        """The Brian2 runner turns `linear`, `pulse` and `sinusoidal` into current injections.
+
+        It also understands `poisson` and `synapse_replay`. Its sinusoidal input has to be
+        sampled on the simulation timestep, hence the dedicated block rather than
+        `SinusoidalCurrentClampSomaticStimulus`.
+        """
+        assert union_member_names(Brian2CircuitStimulusUnion) == {
+            "Brian2DirectPoissonStimulus",
+            "ConstantCurrentClampSomaticStimulus",
+            "LinearCurrentClampSomaticStimulus",
+            "MultiPulseCurrentClampSomaticStimulus",
+            "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+            *SPIKE_STIMULI,
+        }
 
     def test_ion_channel_only_adds_the_voltage_clamps(self):
         """The SE clamps are reachable only from the ion channel config, which needs a database."""
@@ -370,12 +383,12 @@ class TestSpikeStimuli:
 
 
 class TestBrian2DirectPoissonStimulus:
-    def test_untargeted_stimulus_drives_the_sugar_node_set(self, brian2_config, tmp_path):
+    def test_untargeted_stimulus_uses_the_simulation_default(self, brian2_config, tmp_path):
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.inputs["DirectPoisson"]["node_set"] == DEFAULT_BRIAN2_STIMULUS_NODE_SET
+        assert result.inputs["DirectPoisson"]["node_set"] == DEFAULT_POINT_NODE_SET
         assert result.inputs["DirectPoisson"]["input_type"] == "spikes"
         assert result.inputs["DirectPoisson"]["module"] == "poisson"
 
@@ -412,7 +425,7 @@ class TestBrian2DirectPoissonStimulus:
         assert result.inputs["DirectPoisson"] == {
             "input_type": "spikes",
             "module": "poisson",
-            "node_set": DEFAULT_BRIAN2_STIMULUS_NODE_SET,
+            "node_set": DEFAULT_POINT_NODE_SET,
             "rate": 25.0,
             "weight": 0.3,
             "delay": 0.0,
@@ -420,7 +433,7 @@ class TestBrian2DirectPoissonStimulus:
         }
 
     def test_a_circuit_without_a_point_population_is_refused(self, circuit, tmp_path):
-        """Resolving the `sugar` default needs exactly one point population to name."""
+        """`Brian2SimulationScanConfig.validate_circuit` refuses it before anything runs."""
         config = build_config(
             Brian2CircuitSimulationSingleConfig,
             circuit=circuit,
@@ -430,16 +443,67 @@ class TestBrian2DirectPoissonStimulus:
         with pytest.raises(OBIONEError, match="needs exactly one point node population"):
             generate(config, tmp_path)
 
-    def test_the_stimulus_default_is_a_strict_subset_of_the_simulation_default(
-        self, brian2_config, tmp_path
-    ):
-        """The two Brian2 defaults are separate: `sugar` for stimuli, all point neurons for the
-        simulation. Collapsing them would push the stimulus over its 100-neuron ceiling on a real
-        circuit."""
+    def test_the_stimulus_default_is_the_simulation_default(self, brian2_config, tmp_path):
+        """Brian2 has one default neuron set, shared by every untargeted block."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        stimulus_ids = result.node_sets[DEFAULT_BRIAN2_STIMULUS_NODE_SET]["node_id"]
-        simulation_ids = result.node_sets[result.sonata_config["node_set"]]["node_id"]
-        assert set(stimulus_ids) < set(simulation_ids)
+        assert result.inputs["DirectPoisson"]["node_set"] == result.sonata_config["node_set"]
+
+
+class TestSinusoidalFrequencyAgainstTimestep:
+    """A sinusoid is refused when its timestep is too coarse to represent its frequency.
+
+    The bound is not a field constraint, because the timestep the signal is sampled at is not a
+    property of the block alone: `SinusoidalCurrentClampSomaticStimulus` carries its own, while
+    `SimulationDtSinusoidalCurrentClampSomaticStimulus` takes whichever the simulation uses. So
+    the same frequency can be fine in one configuration and refused in another.
+    """
+
+    def test_a_frequency_above_the_blocks_own_timestep_allows_is_refused(self, circuit, tmp_path):
+        # dt = 1.0 ms can only carry frequencies below 500 Hz.
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=1.0, frequency=600.0)},
+        )
+
+        with pytest.raises(OBIONEError, match=r"timestep of 1\.0 ms"):
+            generate(config, tmp_path)
+
+    def test_a_frequency_the_timestep_can_carry_is_accepted(self, circuit, tmp_path):
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=1.0, frequency=100.0)},
+        )
+
+        result = generate(config, tmp_path)
+
+        assert result.inputs["Sine_0"]["frequency"] == pytest.approx(100.0)
+        assert result.inputs["Sine_0"]["dt"] == pytest.approx(1.0)
+
+    def test_the_same_frequency_is_refused_at_a_coarser_timestep(self, circuit, tmp_path):
+        """100 Hz is fine at dt = 1.0 ms and not at dt = 5.0 ms, which stops at 100 Hz."""
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=5.0, frequency=100.0)},
+        )
+
+        with pytest.raises(OBIONEError, match=r"below 100\.0 Hz"):
+            generate(config, tmp_path)
+
+    def test_the_brian2_variant_is_bounded_by_the_simulation_timestep(
+        self, brian2_config, tmp_path
+    ):
+        """It has no timestep of its own, so the simulation's 0.025 ms sets the limit."""
+        config = brian2_config(
+            blocks={
+                "Sine": obi.SimulationDtSinusoidalCurrentClampSomaticStimulus(frequency=30000.0)
+            }
+        )
+
+        with pytest.raises(OBIONEError, match=r"timestep of 0\.025 ms"):
+            generate(config, tmp_path)
