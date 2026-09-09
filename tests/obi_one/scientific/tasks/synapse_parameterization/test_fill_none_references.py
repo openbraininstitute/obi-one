@@ -55,14 +55,10 @@ def test_the_reference_points_at_the_distribution_the_field_falls_back_to():
 
     # The block name is the label the UI showed for that field, so the option a user saw and
     # the block that now exists read alike.
-    assert (
-        model.facilitation_time.block_name
-        == (
-            SynapseParameterizationScanConfig.json_schema_extra_additions["reference_tag_defaults"][
-                ReferenceTag.FACILITATION_TIME_DISTRIBUTION
-            ]
-        )
-    )
+    answer = SynapseParameterizationScanConfig.json_schema_extra_additions[
+        "reference_tag_defaults"
+    ][ReferenceTag.FACILITATION_TIME_DISTRIBUTION]
+    assert model.facilitation_time.block_name == answer["name"]
 
 
 def test_a_parameter_the_user_set_is_left_alone():
