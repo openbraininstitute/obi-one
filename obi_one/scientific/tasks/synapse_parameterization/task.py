@@ -7,6 +7,8 @@ from connectome_manipulator.model_building import model_types
 from entitysdk import Client, models, types
 from pydantic import PrivateAttr
 
+from obi_one.core.exception import OBIONEError
+from obi_one.core.fill_none_references import fill_none_references_in_config
 from obi_one.core.task import Task
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit import Circuit
@@ -98,6 +100,36 @@ class SynapseParameterizationTask(Task):
             )
         return None
 
+    def _fill_none_references(self) -> None:
+        """Give every parameter left unset the block its role resolves to.
+
+        This runs before anything samples, so no block has to reason about what an unset
+        reference means: by the time a synaptic model draws its parameters, every reference it
+        holds points at a distribution that is in the config and will be serialized with it.
+        Without it the config records `None`, and which distribution actually produced the
+        circuit is knowable only from the obi-one version that ran.
+
+        Only the defaults a block actually needed are registered, so a config whose parameters
+        are all named explicitly gains no distributions it never refers to.
+        """
+        used = fill_none_references_in_config(
+            self.config,
+            self.config.default_block_references(),
+        )
+        for reference in used:
+            existing = self.config.distributions.get(reference.block_name)
+            if existing is None:
+                # BlockReference.block is typed as the base Block; these references are
+                # built by default_block_references, which only ever puts a distribution
+                # in one - the isinstance check below is what would catch it otherwise.
+                self.config.distributions[reference.block_name] = reference.block  # ty:ignore[invalid-assignment]
+            elif not isinstance(existing, type(reference.block)):
+                msg = (
+                    f"Default distribution name '{reference.block_name}' already exists in "
+                    f"distributions but is not a {type(reference.block).__name__}!"
+                )
+                raise OBIONEError(msg)
+
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
         """Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use."""
         per_edge_population = {}
@@ -115,6 +147,10 @@ class SynapseParameterizationTask(Task):
         if db_client is None:
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)
+
+        # Every unset parameter gets its default before anything reads a reference, so the
+        # config that is serialized names what actually produced the circuit.
+        self._fill_none_references()
 
         # Resolve the circuit (local path or staging from ID), then copy it into the output
         # directory so that its synapse parameters can be modified in place.

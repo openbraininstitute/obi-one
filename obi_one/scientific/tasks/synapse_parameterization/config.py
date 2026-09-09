@@ -9,6 +9,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS,
+    tsodyks_markram_default_distributions,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
@@ -80,6 +81,23 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
     }
+
+    @staticmethod
+    def default_block_references() -> dict[str, AllDistributionsReference]:
+        """The block reference each unset field resolves to, keyed by the role it plays.
+
+        Consumed by `fill_none_references_in_config`. Each reference carries its block, so
+        the caller can register the ones actually used and leave the rest uncreated - a
+        config whose parameters are all named explicitly gains no spurious distributions.
+        """
+        references = {}
+        for tag, (block_name, distribution) in tsodyks_markram_default_distributions().items():
+            reference = AllDistributionsReference(
+                block_dict_name="distributions", block_name=block_name
+            )
+            reference.block = distribution
+            references[tag] = reference
+        return references
 
     class Initialize(Block):
         circuit: CircuitFromID = Field(
