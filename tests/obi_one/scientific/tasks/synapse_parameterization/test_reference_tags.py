@@ -8,6 +8,9 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     TsodyksMarkramSynapticModel,
     tsodyks_markram_default_distributions,
 )
+from obi_one.scientific.tasks.circuit_extraction.task import (
+    CircuitExtractionScanConfig,
+)
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationScanConfig,
 )
@@ -25,7 +28,8 @@ def _reference_fields(model_class):
 
 
 def _config_tag_defaults():
-    return SynapseParameterizationScanConfig.json_schema_extra_additions[
+    """What the config publishes: derived by the base, not written out by the config."""
+    return SynapseParameterizationScanConfig.model_config["json_schema_extra"][
         SchemaKey.REFERENCE_TAG_DEFAULTS
     ]
 
@@ -108,3 +112,27 @@ def test_each_answer_carries_the_block_behind_its_name():
 def test_the_block_matches_the_distribution_the_field_falls_back_to():
     for tag, (_name, distribution) in tsodyks_markram_default_distributions().items():
         assert _config_tag_defaults()[tag]["block"] == json.loads(distribution.model_dump_json())
+
+
+def test_the_schema_is_derived_from_the_declared_defaults():
+    """The schema the UI reads must name exactly what the fill will substitute.
+
+    These were written out separately once, and drifted: the schema named nine roles while the
+    fill answered seventeen, and nothing failed. `ScanConfig.__init_subclass__` now derives one
+    from the other, so a config declaring a default cannot forget to publish it.
+    """
+    declared = SynapseParameterizationScanConfig.default_block_references()
+    published = _config_tag_defaults()
+
+    assert set(published) == set(declared)
+    for tag, reference in declared.items():
+        assert published[tag]["name"] == reference.block_name
+        assert published[tag]["block"] == json.loads(reference.block.model_dump_json())
+
+
+def test_a_config_declaring_no_defaults_publishes_nothing():
+    assert CircuitExtractionScanConfig.default_block_references() == {}
+    assert (
+        SchemaKey.REFERENCE_TAG_DEFAULTS
+        not in CircuitExtractionScanConfig.model_config["json_schema_extra"]
+    )

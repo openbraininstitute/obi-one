@@ -107,14 +107,6 @@ def _all_defaults() -> dict[str, tuple[type, str, str, Callable[[], Block]]]:
     return {**_distribution_defaults(), **_DEFAULTS}
 
 
-def _reference_tag_defaults() -> dict[str, dict]:
-    """What the UI reads: the name each role resolves to, and the block behind that name."""
-    return {
-        tag: {"name": name, "block": factory().model_dump(mode="json")}
-        for tag, (_reference_type, _dict_name, name, factory) in _all_defaults().items()
-    }
-
-
 def _resolved(
     reference_type: type, block_dict_name: str, name: str, block: Block
 ) -> BlockReference:
