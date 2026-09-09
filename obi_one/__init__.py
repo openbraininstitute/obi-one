@@ -117,6 +117,9 @@ __all__ = [
     "InterNeuronSetSynapticManipulation",
     "InterNeuronSetSynapticModelAssigner",
     "InterSpikeIntervalDistributionSpikeStimulus",
+    "IonChannelFittingBetaScanConfig",
+    "IonChannelFittingBetaSingleConfig",
+    "IonChannelFittingBetaTask",
     "IonChannelFittingScanConfig",
     "IonChannelFittingSingleConfig",
     "IonChannelFittingTask",
@@ -556,6 +559,11 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
+)
+from obi_one.scientific.tasks.ion_channel_modeling_beta import (
+    IonChannelFittingBetaScanConfig,
+    IonChannelFittingBetaSingleConfig,
+    IonChannelFittingBetaTask,
 )
 from obi_one.scientific.tasks.morphology_containerization import (
     MorphologyContainerizationScanConfig,

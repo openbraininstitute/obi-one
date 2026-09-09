@@ -80,6 +80,11 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
 )
+from obi_one.scientific.tasks.ion_channel_modeling_beta import (
+    IonChannelFittingBetaScanConfig,
+    IonChannelFittingBetaSingleConfig,
+    IonChannelFittingBetaTask,
+)
 from obi_one.scientific.tasks.mesh_lod_generation.config import (
     MeshLodGenerationSingleConfig,
 )
@@ -272,6 +277,12 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         task_cls=IonChannelFittingTask,
         single_config_cls=IonChannelFittingSingleConfig,
         scan_config_cls=IonChannelFittingScanConfig,
+        asset_label=None,
+    ),
+    TaskType.ion_channel_fitting_beta: TaskRegistration(
+        task_cls=IonChannelFittingBetaTask,
+        single_config_cls=IonChannelFittingBetaSingleConfig,
+        scan_config_cls=IonChannelFittingBetaScanConfig,
         asset_label=None,
     ),
     TaskType.ion_channel_model_simulation: TaskRegistration(
