@@ -13,13 +13,45 @@ a default, so tags are handled as plain strings.
 """
 
 import logging
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from typing import NamedTuple
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.schema import SchemaKey
 
 L = logging.getLogger(__name__)
+
+
+class BlockDefault(NamedTuple):
+    """What a config says one role resolves to, before it is turned into a reference.
+
+    A config declares these; `ScanConfig.default_block_references` does the resolving, so no
+    config repeats the three lines that build a reference and name its block.
+    """
+
+    reference_type: type[BlockReference]
+    block_dict_name: str
+    """Which of the config's block dictionaries the block is registered in."""
+    name: str
+    """The name it takes there, and the one the UI shows for the field."""
+    factory: Callable[[], Block]
+    """Called per resolution: two configs must not share a block instance."""
+
+
+def resolve_block_default(tag_default: BlockDefault) -> BlockReference:
+    """A reference to a block the config supplies rather than the user.
+
+    The block carries the name too, or it serializes without one once it is registered under
+    that key.
+    """
+    block = tag_default.factory()
+    reference = tag_default.reference_type(
+        block_dict_name=tag_default.block_dict_name, block_name=tag_default.name
+    )
+    block.set_block_name(tag_default.name)
+    reference.block = block
+    return reference
 
 
 def _tagged_reference_fields(block: Block) -> Iterator[tuple[str, str]]:
