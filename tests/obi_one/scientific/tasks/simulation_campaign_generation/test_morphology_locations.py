@@ -17,6 +17,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 from obi_one.scientific.unions_and_references.morphology_locations import (
     CircuitMorphologyLocationUnion,
+    MorphologyLocationsReference,
     MorphologyLocationUnion,
 )
 
@@ -259,6 +260,85 @@ class TestRecordingRewriting:
         assert entry["type"] == "compartment_set"
         assert "sections" not in entry
         assert "compartments" not in entry
+
+    def test_the_recording_spans_the_whole_simulation(self, morphology_circuit, tmp_path):
+        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=morphology_circuit,
+            blocks={
+                "Locations": locations,
+                "Voltage": lambda: obi.MorphologyLocationVoltageRecording(
+                    morphology_locations=locations.ref
+                ),
+            },
+            initialize={"simulation_length": 400.0},
+        )
+
+        result = generate(config, tmp_path)
+
+        assert result.reports["Voltage"]["start_time"] == pytest.approx(0.0)
+        assert result.reports["Voltage"]["end_time"] == pytest.approx(400.0)
+
+
+class TestTimeWindowRecording:
+    """The windowed variant records the same compartment set over a narrower interval."""
+
+    @staticmethod
+    def _config(morphology_circuit, *, window, simulation_length=500.0):
+        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        return build_config(
+            CircuitSimulationSingleConfig,
+            circuit=morphology_circuit,
+            blocks={
+                "Locations": locations,
+                "Window": lambda: obi.TimeWindowMorphologyLocationVoltageRecording(
+                    morphology_locations=locations.ref, **window
+                ),
+            },
+            initialize={"simulation_length": simulation_length},
+        )
+
+    def test_the_window_bounds_are_used_verbatim(self, morphology_circuit, tmp_path):
+        config = self._config(morphology_circuit, window={"start_time": 20.0, "end_time": 60.0})
+
+        result = generate(config, tmp_path)
+
+        entry = result.reports["Window"]
+        assert entry["compartment_set"] == "Locations"
+        assert entry["type"] == "compartment_set"
+        assert entry["start_time"] == pytest.approx(20.0)
+        assert entry["end_time"] == pytest.approx(60.0)
+
+    def test_the_window_does_not_extend_to_the_simulation_length(
+        self, morphology_circuit, tmp_path
+    ):
+        """The reason for the block: a compartment-set report can be trimmed to one epoch."""
+        config = self._config(
+            morphology_circuit,
+            window={"start_time": 0.0, "end_time": 10.0},
+            simulation_length=500.0,
+        )
+
+        result = generate(config, tmp_path)
+
+        assert result.reports["Window"]["end_time"] == pytest.approx(10.0)
+
+    def test_a_window_ending_before_it_starts_is_rejected(self):
+        locations_ref = MorphologyLocationsReference(
+            block_dict_name="morphology_locations", block_name="Locations"
+        )
+
+        with pytest.raises(OBIONEError, match="End time must be later"):
+            obi.TimeWindowMorphologyLocationVoltageRecording(
+                morphology_locations=locations_ref,
+                start_time=60.0,
+                end_time=20.0,
+            )
+
+    def test_locations_are_still_required(self):
+        with pytest.raises(ValueError, match="require morphology locations"):
+            obi.TimeWindowMorphologyLocationVoltageRecording(morphology_locations=None)
 
 
 class TestLocationTargeting:

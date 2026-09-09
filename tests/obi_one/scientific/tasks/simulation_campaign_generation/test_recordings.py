@@ -54,6 +54,7 @@ class TestUnionCoverage:
         assert union_member_names(RecordingUnion) == {
             "MorphologyLocationVoltageRecording",
             "SomaVoltageRecording",
+            "TimeWindowMorphologyLocationVoltageRecording",
             "TimeWindowSomaVoltageRecording",
         }
 

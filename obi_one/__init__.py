@@ -232,6 +232,7 @@ __all__ = [
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
+    "TimeWindowMorphologyLocationVoltageRecording",
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
@@ -373,6 +374,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 from obi_one.scientific.blocks.recordings.base import Recording
 from obi_one.scientific.blocks.recordings.morphology_location import (
     MorphologyLocationVoltageRecording,
+    TimeWindowMorphologyLocationVoltageRecording,
 )
 from obi_one.scientific.blocks.recordings.soma import (
     SomaVoltageRecording,
