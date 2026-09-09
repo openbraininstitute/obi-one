@@ -64,17 +64,19 @@ class TimeWindowSomaVoltageRecording(SomaVoltageRecording):
     def check_start_end_time(self) -> Self:
         """Check that end time is later than start time."""
         if self.end_time <= self.start_time:  # ty:ignore[unsupported-operator]
-            recording_name = f" '{self.block_name}'" if self.has_name() else ""  # ty:ignore[unresolved-attribute]
+            recording_name = f" '{self.block_name}'" if self.has_block_name() else ""
 
-            if self.neuron_set.has_block() and self.neuron_set.block.has_name():  # ty:ignore[unresolved-attribute]
-                neuron_set_name = f" '{self.neuron_set.block.block_name}'"  # ty:ignore[unresolved-attribute]
+            if (
+                self.neuron_set is not None
+                and self.neuron_set.has_block()
+                and self.neuron_set.block.has_block_name()
+            ):
+                neuron_set_name = f" '{self.neuron_set.block.block_name}'"
             else:
                 neuron_set_name = ""
 
-            msg = (
-                f"Recording{recording_name} for Neuron Set{neuron_set_name}: "
-                "End time must be later than start time!"
-            )
+            target = f" for Neuron Set{neuron_set_name}" if neuron_set_name else ""
+            msg = f"Recording{recording_name}{target}: End time must be later than start time!"
             raise OBIONEError(msg)
         return self
 

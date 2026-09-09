@@ -158,6 +158,11 @@ class TestTimeWindowSomaVoltageRecording:
         assert result.reports["Window"]["start_time"] == pytest.approx(20.0)
         assert result.reports["Window"]["end_time"] == pytest.approx(60.0)
 
+    def test_a_window_ending_before_it_starts_is_rejected(self):
+        """The block is validated before it is named, so the check cannot rely on a block name."""
+        with pytest.raises(OBIONEError, match="End time must be later than start time"):
+            obi.TimeWindowSomaVoltageRecording(start_time=60.0, end_time=20.0)
+
     def test_window_does_not_extend_to_the_simulation_length(self, circuit, tmp_path):
         config = build_config(
             CircuitSimulationSingleConfig,
