@@ -1,3 +1,5 @@
+import logging
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +14,12 @@ from obi_one.scientific.library.circuit_metrics import (
     TYPES_OF_POINT_NODES,
     TYPES_OF_VIRTUAL_NODES,
 )
-from obi_one.scientific.library.morphology_loader import load_morphology_nrn_order
+from obi_one.scientific.library.morphology_loader import (
+    load_morphology_nrn_order,
+    load_morphology_nrn_order_from_collection,
+)
+
+L = logging.getLogger(__name__)
 
 CIRCUIT_MOD_DIR = "mod"
 
@@ -267,8 +274,44 @@ class Circuit(OBIBaseModel):
         )
         raise FileNotFoundError(msg)
 
+    def _alternate_morphology_bases(self, population: str | None) -> Iterator[tuple[Path, str]]:
+        """Yield `alternate_morphologies` bases, which may be directories or `.h5` containers."""
+        alternates = self._population_config(population).get("alternate_morphologies") or {}
+
+        for key, extension in (("h5v1", ".h5"), ("neurolucida-asc", ".asc")):
+            raw_path = alternates.get(key)
+            if raw_path:
+                yield self._resolve_circuit_path(raw_path), extension
+
     def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
-        return load_morphology_nrn_order(self.get_morphology_path(node_id, population=population))
+        """Load a node's morphology from `morphologies_dir` or `alternate_morphologies`.
+
+        The fallback exists because containerized circuits hold every morphology in a single
+        `.h5` container, so there is no per-node file for `get_morphology_path` to resolve.
+        """
+        try:
+            return load_morphology_nrn_order(
+                self.get_morphology_path(node_id, population=population)
+            )
+        except (FileNotFoundError, KeyError):
+            pass
+
+        morph_name = self.get_morphology_name(node_id, population=population)
+        attempted: list[str] = []
+
+        for base, extension in self._alternate_morphology_bases(population):
+            attempted.append(f"{base} ({extension})")
+            try:
+                return load_morphology_nrn_order_from_collection(base, morph_name, extension)
+            except (morphio.MorphioError, OSError, RuntimeError) as exc:
+                L.debug("Could not load '%s' from %s: %s", morph_name, base, exc)
+
+        msg = (
+            f"Could not load morphology '{morph_name}' for node_id={node_id}, "
+            f"population={population!r}. No file was found under 'morphologies_dir' and "
+            f"'alternate_morphologies' did not provide it either (tried: {attempted or 'none'})."
+        )
+        raise FileNotFoundError(msg)
 
     @property
     def mechanisms_dir(self) -> Path:
