@@ -59,6 +59,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_HILL_COEFFICIENT.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.U_HILL_COEFFICIENT_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "u_hill_coefficient",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive finite value"
             )._asdict(),
@@ -77,6 +78,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "conductance",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, description="a non-negative finite value"
             )._asdict(),
@@ -97,6 +99,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE_SCALE_FACTOR.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "conductance_scale_factor",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive finite value"
             )._asdict(),
@@ -115,6 +118,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_FACILITATION_TIME.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.FACILITATION_TIME_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "facilitation_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive time in milliseconds"
             )._asdict(),
@@ -134,6 +138,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DEPRESSION_TIME.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.DEPRESSION_TIME_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "depression_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive time in milliseconds"
             )._asdict(),
@@ -153,6 +158,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_N_RRP_VESICLES.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.N_RRP_VESICLES_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "n_rrp_vesicles",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=1.0, integer=True, description="an integer value greater than or equal to 1"
             )._asdict(),
@@ -171,6 +177,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DECAY_TIME.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.DECAY_TIME_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "decay_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive time in milliseconds"
             )._asdict(),
@@ -191,6 +198,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_SYN.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.U_SYN_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "u_syn",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, maximum=1.0, description="a finite value between 0 and 1"
             )._asdict(),
@@ -210,6 +218,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DELAY.label,
             SchemaKey.REFERENCE_TAG: ReferenceTag.DELAY_DISTRIBUTION,
+            SchemaKey.SAMPLED_PARAMETER: "delay",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, description="a non-negative time in milliseconds"
             )._asdict(),
@@ -326,19 +335,43 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     def cov_dict(self) -> dict:
         return {}
 
+    # The distribution each field falls back to when unset. Keyed by field rather than by
+    # parameter so it lines up with `model_fields`, and kept out of `json_schema_extra`
+    # because a DistributionDefault holds a factory and would not serialize into the schema.
+    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {
+        "u_hill_coefficient_distribution": _DEFAULT_U_HILL_COEFFICIENT,
+        "conductance_distribution": _DEFAULT_CONDUCTANCE,
+        "conductance_scale_factor_distribution": _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+        "facilitation_time": _DEFAULT_FACILITATION_TIME,
+        "depression_time": _DEFAULT_DEPRESSION_TIME,
+        "n_rrp_vesicles_distribution": _DEFAULT_N_RRP_VESICLES,
+        "decay_time": _DEFAULT_DECAY_TIME,
+        "u_syn": _DEFAULT_U_SYN,
+        "delay_distribution": _DEFAULT_DELAY,
+    }
+
+    @classmethod
+    def _sampled_fields(cls) -> dict[str, tuple[str, ParameterDomain]]:
+        """Each field that supplies a sampled parameter, in declaration order.
+
+        The one place the field-to-parameter mapping is read. Declaration order is the column
+        order, so `parameter_names` and `sample` cannot disagree about either.
+        """
+        return {
+            name: (
+                field.json_schema_extra[SchemaKey.SAMPLED_PARAMETER],
+                ParameterDomain(**field.json_schema_extra[SchemaKey.PARAMETER_DOMAIN]),
+            )
+            for name, field in cls.model_fields.items()
+            if isinstance(field.json_schema_extra, dict)
+            and SchemaKey.SAMPLED_PARAMETER in field.json_schema_extra
+        }
+
     @classmethod
     def parameter_names(cls) -> list[str]:
-        return [
-            "u_hill_coefficient",
-            "conductance",
-            "conductance_scale_factor",
-            "facilitation_time",
-            "depression_time",
-            "n_rrp_vesicles",
-            "decay_time",
-            "u_syn",
-            "delay",
-            "syn_type_id",
+        """The columns `sample` produces, in the order it produces them."""
+        return [parameter for parameter, _domain in cls._sampled_fields().values()] + [
+            "syn_type_id"
         ]
 
     @property
@@ -350,68 +383,23 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
         n = len(indices)
 
-        def sample_from(
-            parameter_name: str,
-            default: DistributionDefault,
-            field_name: str | None = None,
-        ) -> list[float]:
-            """Draw a parameter, then hold the draw to the domain its field declares.
-
-            `field_name` only when it differs from the parameter it supplies, which it does
-            for the five fields whose names carry a `_distribution` suffix.
-            """
-            field_name = field_name or parameter_name
-            extra = type(self).model_fields[field_name].json_schema_extra
-            domain = ParameterDomain(**extra[SchemaKey.PARAMETER_DOMAIN])
-            samples = resolve_distribution(
-                getattr(self, field_name), default
-            ).sample_with_constraints(n, rng=rng)
-            return validate_parameter_samples(parameter_name, domain, samples)
+        def sample_from(field_name: str) -> list[float]:
+            """Draw one parameter, then hold the draw to the domain its field declares."""
+            parameter, domain = self._sampled_fields()[field_name]
+            distribution = resolve_distribution(
+                getattr(self, field_name), self._default_distributions[field_name]
+            )
+            return validate_parameter_samples(
+                parameter, domain, distribution.sample_with_constraints(n, rng=rng)
+            )
 
         # TODO: 'shared_within' is currently ignored
         return DataFrame(
             {
-                "u_hill_coefficient": sample_from(
-                    "u_hill_coefficient",
-                    _DEFAULT_U_HILL_COEFFICIENT,
-                    field_name="u_hill_coefficient_distribution",
-                ),
-                "conductance": sample_from(
-                    "conductance",
-                    _DEFAULT_CONDUCTANCE,
-                    field_name="conductance_distribution",
-                ),
-                "conductance_scale_factor": sample_from(
-                    "conductance_scale_factor",
-                    _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
-                    field_name="conductance_scale_factor_distribution",
-                ),
-                "facilitation_time": sample_from(
-                    "facilitation_time",
-                    _DEFAULT_FACILITATION_TIME,
-                ),
-                "depression_time": sample_from(
-                    "depression_time",
-                    _DEFAULT_DEPRESSION_TIME,
-                ),
-                "n_rrp_vesicles": sample_from(
-                    "n_rrp_vesicles",
-                    _DEFAULT_N_RRP_VESICLES,
-                    field_name="n_rrp_vesicles_distribution",
-                ),
-                "decay_time": sample_from(
-                    "decay_time",
-                    _DEFAULT_DECAY_TIME,
-                ),
-                "u_syn": sample_from(
-                    "u_syn",
-                    _DEFAULT_U_SYN,
-                ),
-                "delay": sample_from(
-                    "delay",
-                    _DEFAULT_DELAY,
-                    field_name="delay_distribution",
-                ),
+                **{
+                    parameter: sample_from(field_name)
+                    for field_name, (parameter, _domain) in self._sampled_fields().items()
+                },
                 "syn_type_id": [self.syn_type_id] * n,
             },
             index=indices.index,

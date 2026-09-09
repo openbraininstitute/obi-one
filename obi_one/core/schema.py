@@ -19,6 +19,10 @@ class SchemaKey(StrEnum):
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
     LATEX_EQUATION = "latex_equation"
+    SAMPLED_PARAMETER = "sampled_parameter"
+    # Note: SAMPLED_PARAMETER is the name of the value a field supplies when the block is
+    # sampled - the column it becomes. It is declared because a field's own name need not match
+    # it: `delay_distribution` supplies `delay`.
     PARAMETER_DOMAIN = "parameter_domain"
     # Note: PARAMETER_DOMAIN is the range a sampled value for this field is allowed to take,
     # whatever distribution is chosen for it. It is checked against the values a distribution
