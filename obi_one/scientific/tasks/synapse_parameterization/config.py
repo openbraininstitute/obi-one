@@ -89,13 +89,13 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
         },
     )
 
-    synapse_model_assigners: dict[str, SynapticModelAssignerUnion] = Field(
+    distributions: dict[str, AllDistributionsUnion] = Field(
         default_factory=dict,
-        description="Parameterizations...",
+        description="Distributions for synapse parameterization.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [SynapticModelAssignerReference.__name__],
-            SchemaKey.SINGULAR_NAME: "Synaptic Parameterization",
+            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 0,
         },
@@ -113,13 +113,13 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
         },
     )
 
-    distributions: dict[str, AllDistributionsUnion] = Field(
+    synapse_model_assigners: dict[str, SynapticModelAssignerUnion] = Field(
         default_factory=dict,
-        description="Distributions for synapse parameterization.",
+        description="Parameterizations...",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.SINGULAR_NAME: "Synaptic Parameterization Distribution",
+            SchemaKey.REFERENCE_TYPES: [SynapticModelAssignerReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Synaptic Parameterization",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_PARAMETERS,
             SchemaKey.GROUP_ORDER: 2,
         },
