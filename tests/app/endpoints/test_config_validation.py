@@ -14,11 +14,15 @@ VALID_FITTING_CONFIG = {
         "recordings": {"id_str": "00000000-0000-0000-0000-000000000000"},
         "ion_channel_name": "Kv3_1",
     },
-    "minf_eq": {"type": "SigFitMInf"},
-    "mtau_eq": {"type": "SigFitMTau"},
-    "hinf_eq": {"type": "SigFitHInf"},
-    "htau_eq": {"type": "SigFitHTau"},
-    "gate_exponents": {"m_power": 1, "h_power": 1},
+    "model_type": {
+        "type": "HodgkinHuxleyIonChannelModel",
+        "minf_eq": "sig_fit_minf",
+        "mtau_eq": "sig_fit_mtau",
+        "hinf_eq": "sig_fit_hinf",
+        "htau_eq": "sig_fit_htau",
+        "m_power": 1,
+        "h_power": 1,
+    },
 }
 
 
@@ -39,8 +43,11 @@ def test_invalid_fitting_config_is_rejected():
 
 
 def test_invented_equation_variant_is_rejected():
-    """Guards against the model making up a plausible-sounding equation name."""
-    bad = {**VALID_FITTING_CONFIG, "mtau_eq": {"type": "SigmoidalFitMTau"}}
+    """Guards against the model making up a plausible-sounding equation key."""
+    bad = {
+        **VALID_FITTING_CONFIG,
+        "model_type": {**VALID_FITTING_CONFIG["model_type"], "mtau_eq": "sigmoidal_fit_mtau"},
+    }
 
     with pytest.raises(ValidationError):
         SharedStatePartial(ion_channel_fitting_config=bad)

@@ -76,11 +76,6 @@ from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
-    IonChannelFittingScanConfig,
-    IonChannelFittingSingleConfig,
-    IonChannelFittingTask,
-)
-from obi_one.scientific.tasks.ion_channel_modeling_beta import (
     IonChannelFittingBetaScanConfig,
     IonChannelFittingBetaSingleConfig,
     IonChannelFittingBetaTask,
@@ -271,12 +266,6 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         task_cls=FolderCompressionTask,
         single_config_cls=FolderCompressionSingleConfig,
         scan_config_cls=FolderCompressionScanConfig,
-        asset_label=None,
-    ),
-    TaskType.ion_channel_fitting: TaskRegistration(
-        task_cls=IonChannelFittingTask,
-        single_config_cls=IonChannelFittingSingleConfig,
-        scan_config_cls=IonChannelFittingScanConfig,
         asset_label=None,
     ),
     TaskType.ion_channel_fitting_beta: TaskRegistration(

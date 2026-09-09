@@ -22,7 +22,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
-from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingBetaScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 
 if TYPE_CHECKING:
@@ -48,7 +48,7 @@ class SharedStatePartial(BaseModel):
     em_synapse_mapping_config: EMSynapseMappingScanConfig | None = None
     # Build > Ion Channel. Distinct from ion_channel_model_simulation_config above, which
     # simulates an existing model; this one fits a new model from experimental traces.
-    ion_channel_fitting_config: IonChannelFittingScanConfig | None = None
+    ion_channel_fitting_config: IonChannelFittingBetaScanConfig | None = None
 
 
 class ConfigValidationRequest(BaseModel):

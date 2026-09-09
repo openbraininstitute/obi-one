@@ -36,7 +36,7 @@ class SigFitMInf(IonChannelEquation):
 class SigFitMTau(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_mtau"
     title: ClassVar[str] = r"Sigmoid equation combination for \tau_m"
-    display_title: ClassVar[str] = "Sigmoid equation combination for τm"
+    display_title: ClassVar[str] = "Sigmoid equation combination for τₘ"
     latex: ClassVar[str] = (
         r"\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
         r"\frac{A_1}{1. + e^{ \frac{v - v_1}{-k_1}} }+ "
@@ -50,7 +50,7 @@ class SigFitMTau(IonChannelEquation):
 class ThermoFitMTau(IonChannelEquation):
     equation_key: ClassVar[str] = "thermo_fit_mtau"
     title: ClassVar[str] = r"Double exponential denominator equation for \tau_m"
-    display_title: ClassVar[str] = "Double exponential denominator equation for τm"
+    display_title: ClassVar[str] = "Double exponential denominator equation for τₘ"
     latex: ClassVar[str] = (
         r"\frac{1.}{ e^{ \frac{ -(v - v_1) }{k_1} } + e^{ \frac{v - v_2}{k_2} } }"
     )
@@ -64,7 +64,7 @@ class ThermoFitMTauV2(IonChannelEquation):
         r"Double exponential denominator equation with slope constraint for \tau_m"
     )
     display_title: ClassVar[str] = (
-        "Double exponential denominator equation with slope constraint for τm"
+        "Double exponential denominator equation with slope constraint for τₘ"
     )
     latex: ClassVar[str] = (
         r"\frac{1.}{ e^{ \frac{-(v - v_1)}{ k / \delta } }"
@@ -77,7 +77,7 @@ class ThermoFitMTauV2(IonChannelEquation):
 class BellFitMTau(IonChannelEquation):
     equation_key: ClassVar[str] = "bell_fit_mtau"
     title: ClassVar[str] = r"Bell equation for \tau_m"
-    display_title: ClassVar[str] = "Bell equation for τm"
+    display_title: ClassVar[str] = "Bell equation for τₘ"
     latex: ClassVar[str] = r"\frac{A}{e^{ \frac{ (v - v_{half}) ^ 2 }{k} }}"
 
     model_config = ConfigDict(json_schema_extra={SchemaKey.LATEX_EQUATION: latex})
@@ -95,7 +95,7 @@ class SigFitHInf(IonChannelEquation):
 class SigFitHTau(IonChannelEquation):
     equation_key: ClassVar[str] = "sig_fit_htau"
     title: ClassVar[str] = r"Sigmoid equation for \tau_h"
-    display_title: ClassVar[str] = "Sigmoid equation for τh"
+    display_title: ClassVar[str] = "Sigmoid equation for τₕ"
     latex: ClassVar[str] = r"A_1 + \frac{A_2}{1 + e^{ \frac{v - v_{half}}{k} }}"
 
     model_config = ConfigDict(json_schema_extra={SchemaKey.LATEX_EQUATION: latex})

@@ -120,9 +120,6 @@ __all__ = [
     "IonChannelFittingBetaScanConfig",
     "IonChannelFittingBetaSingleConfig",
     "IonChannelFittingBetaTask",
-    "IonChannelFittingScanConfig",
-    "IonChannelFittingSingleConfig",
-    "IonChannelFittingTask",
     "IonChannelModelSimulationScanConfig",
     "IonChannelModelSimulationSingleConfig",
     "LearningEngineCircuitSimulationScanConfig",
@@ -556,11 +553,6 @@ from obi_one.scientific.tasks.generate_simulations.task.task import (
     GenerateSimulationTask,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import (
-    IonChannelFittingScanConfig,
-    IonChannelFittingSingleConfig,
-    IonChannelFittingTask,
-)
-from obi_one.scientific.tasks.ion_channel_modeling_beta import (
     IonChannelFittingBetaScanConfig,
     IonChannelFittingBetaSingleConfig,
     IonChannelFittingBetaTask,
