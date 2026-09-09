@@ -588,7 +588,7 @@ def test_target_population_rejects_invalid_circuits(population_names, population
 
 @pytest.mark.parametrize("count", [0, -1])
 def test_generate_locations_rejects_invalid_count(count):
-    placement = SimpleNamespace(number_of_locations=count)
+    placement = SimpleNamespace(output_location_count=Mock(return_value=count))
 
     with pytest.raises(BuildSynaptomeError, match=r"basal.*invalid location count"):
         _generate_locations(object(), placement, group_name="basal")
@@ -596,7 +596,7 @@ def test_generate_locations_rejects_invalid_count(count):
 
 def test_generate_locations_rejects_wrong_result_size():
     placement = SimpleNamespace(
-        number_of_locations=2,
+        output_location_count=Mock(return_value=2),
         points_on=Mock(return_value=pd.DataFrame({"location": [1]})),
     )
 

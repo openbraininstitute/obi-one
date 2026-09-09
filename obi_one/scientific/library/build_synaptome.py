@@ -92,17 +92,18 @@ def _generate_locations(
     group_name: str,
     group_index: int = 0,
 ) -> pd.DataFrame:
-    count = placement.number_of_locations
+    count = placement.output_location_count()
     if not isinstance(count, int) or count <= 0:
         raise BuildSynaptomeError(
             f"Synapse group '{group_name}' has invalid location count {count!r}."
         )
     try:
         placement_for_group = placement
-        if group_index and isinstance(placement.random_seed, int):
+        random_seed = getattr(placement, "random_seed", None)
+        if group_index and isinstance(random_seed, int):
             placement_for_group = placement.model_copy(
                 update={
-                    "random_seed": _derive_group_seed(placement.random_seed, group_index),
+                    "random_seed": _derive_group_seed(random_seed, group_index),
                 }
             )
         with _preserve_numpy_random_state():

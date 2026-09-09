@@ -10,11 +10,102 @@ import numpy as np
 from fastapi import UploadFile
 
 from app.endpoints.circuit_customization import (
+    CircuitCustomizationResponse,
     _run_validations,
     _save_uploads,
     _validate_file_groups,
 )
 from app.endpoints.circuit_helpers import trigger_validation_task
+
+# ---------------------------------------------------------------------------
+# CircuitCustomizationResponse
+# ---------------------------------------------------------------------------
+
+
+class TestCircuitCustomizationResponse:
+    def test_includes_optional_job_id(self):
+        job_id = uuid4()
+        circuit_id = uuid4()
+        response = CircuitCustomizationResponse(
+            circuit_id=circuit_id,
+            status="draft",
+            message="Validation pending.",
+            job_id=job_id,
+        )
+        assert response.job_id == job_id
+        assert response.model_dump()["job_id"] == job_id
+
+    def test_job_id_defaults_to_none(self):
+        response = CircuitCustomizationResponse(
+            circuit_id=uuid4(),
+            status="draft",
+            message="Validation pending.",
+        )
+        assert response.job_id is None
+
+
+class TestCustomizeCircuitEndpointJobId:
+    @patch("app.endpoints.circuit_customization.trigger_validation_task")
+    @patch("app.endpoints.circuit_customization._stage_and_register")
+    @patch("app.endpoints.circuit_customization._run_cross_validations")
+    @patch("app.endpoints.circuit_customization._run_validations")
+    def test_returns_validation_job_id(
+        self,
+        mock_run_validations,
+        mock_cross,
+        mock_stage_register,
+        mock_trigger,
+        client,
+    ):
+        from entitysdk.types import EntityLifecycleStatus  # ruff: ignore[import-outside-top-level]
+
+        from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
+        from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
+
+        parent_id = uuid4()
+        circuit_id = uuid4()
+        job_id = uuid4()
+
+        mock_parent = MagicMock()
+        mock_parent.lifecycle_status = EntityLifecycleStatus.active
+
+        mock_db = MagicMock()
+        mock_db.get_entity.return_value = mock_parent
+        mock_db.project_context.project_id = uuid4()
+        mock_db.project_context.virtual_lab_id = uuid4()
+
+        mock_run_validations.return_value = ([], [], [], [], None, [])
+        mock_cross.return_value = []
+        mock_registered = MagicMock()
+        mock_registered.id = circuit_id
+        mock_stage_register.return_value = mock_registered
+        mock_trigger.return_value = job_id
+
+        app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
+
+        try:
+            resp = client.post(
+                "/declared/circuit/customize",
+                data={
+                    "parent_circuit_id": str(parent_id),
+                    "name": "custom-circuit",
+                    "description": "test",
+                },
+                files={"emodel_files": ("Cell.hoc", b"begintemplate Cell\nendtemplate Cell\n")},
+            )
+            assert resp.status_code == 200, resp.text
+            body = resp.json()
+            assert body["circuit_id"] == str(circuit_id)
+            assert body["job_id"] == str(job_id)
+            mock_trigger.assert_called_once()
+        finally:
+            app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
+
 
 # ---------------------------------------------------------------------------
 # _save_uploads
@@ -201,20 +292,25 @@ class TestTriggerValidationTask:
         mock_settings.APP_VERSION = "1.2.3-dev"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
         circuit_id = uuid4()
         project_id = uuid4()
         virtual_lab_id = uuid4()
 
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=circuit_id,
-            project_id=project_id,
-            virtual_lab_id=virtual_lab_id,
-            compute_cell="cell_a",
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=circuit_id,
+                project_id=project_id,
+                virtual_lab_id=virtual_lab_id,
+                compute_cell="cell_a",
+            )
+            == job_id
         )
 
         ls_client.post.assert_called_once()
@@ -235,17 +331,22 @@ class TestTriggerValidationTask:
         mock_settings.APP_VERSION = "1.2.3"
 
         ls_client = MagicMock()
+        job_id = uuid4()
         response = MagicMock()
         response.is_success = True
+        response.json.return_value = {"id": str(job_id)}
         ls_client.post.return_value = response
 
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_b",
-            force=True,
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_b",
+                force=True,
+            )
+            == job_id
         )
 
         job_data = ls_client.post.call_args[1]["json"]
@@ -264,13 +365,16 @@ class TestTriggerValidationTask:
         response.text = "server error"
         ls_client.post.return_value = response
 
-        # Should not raise, just log a warning
-        trigger_validation_task(
-            ls_client=ls_client,
-            circuit_id=uuid4(),
-            project_id=uuid4(),
-            virtual_lab_id=uuid4(),
-            compute_cell="cell_a",
+        # Should not raise, just return None
+        assert (
+            trigger_validation_task(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                compute_cell="cell_a",
+            )
+            is None
         )
         ls_client.post.assert_called_once()
         assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"

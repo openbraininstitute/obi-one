@@ -1,5 +1,7 @@
 """How recording blocks become the ``reports`` section of the generated SONATA config."""
 
+from typing import get_args
+
 import pytest
 
 import obi_one as obi
@@ -12,8 +14,12 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
     CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.unions_and_references.recordings import (
+    Brian2RecordingUnion,
     IonChannelModelRecordingUnion,
     RecordingUnion,
+)
+from obi_one.scientific.unions_and_references.simulations import (
+    SIMULATION_GENERATION_SINGLE_CONFIGS,
 )
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
@@ -23,6 +29,16 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     build_config,
     generate,
     union_member_names,
+)
+
+# Brian2 and learning-engine configs expose no recordings at all, so they are out of scope here.
+CONFIGS_WITH_RECORDINGS = sorted(
+    (
+        config_class
+        for config_class in get_args(SIMULATION_GENERATION_SINGLE_CONFIGS)
+        if "recordings" in config_class.model_fields
+    ),
+    key=lambda config_class: config_class.__name__,
 )
 
 SOMA_REPORT_SHAPE = {
@@ -44,9 +60,36 @@ class TestUnionCoverage:
 
     def test_ion_channel_configs_add_a_variable_recording(self):
         """``IonChannelVariableRecording`` is reachable only from the database-backed config."""
-        assert union_member_names(IonChannelModelRecordingUnion) - union_member_names(
-            RecordingUnion
-        ) == {"IonChannelVariableRecording"}
+        assert union_member_names(IonChannelModelRecordingUnion) == {
+            "IonChannelVariableRecording",
+            "SomaVoltageRecording",
+            "TimeWindowSomaVoltageRecording",
+        }
+
+    @pytest.mark.parametrize("config_class", CONFIGS_WITH_RECORDINGS, ids=lambda cls: cls.__name__)
+    def test_morphology_location_recordings_need_a_morphology_locations_dictionary(
+        self, config_class
+    ):
+        """A config may only offer the recording if it has locations for it to reference.
+
+        The reference is mandatory, so a config without a ``morphology_locations`` dictionary
+        leaves the user no way to fill it. The ion channel configuration is the case this
+        guards: it builds its circuit from the selected channel models, so it declares no
+        morphology locations to record from.
+        """
+        recordings_union = get_args(config_class.model_fields["recordings"].annotation)[1]
+        offers_morphology_locations = "MorphologyLocationVoltageRecording" in union_member_names(
+            recordings_union
+        )
+
+        assert offers_morphology_locations == ("morphology_locations" in config_class.model_fields)
+
+    def test_brian2_uses_the_simulation_timestep_recordings(self):
+        """Brian2 rejects a report whose dt differs from the simulation's, so it gets its own."""
+        assert union_member_names(Brian2RecordingUnion) == {
+            "SimulationDtSomaVoltageRecording",
+            "SimulationDtTimeWindowSomaVoltageRecording",
+        }
 
 
 class TestSomaVoltageRecording:
@@ -157,10 +200,10 @@ class TestReportsSection:
         assert result.reports == {}
 
     def test_a_config_without_a_recordings_field_still_gets_an_empty_section(
-        self, brian2_config, tmp_path
+        self, learning_engine_config, tmp_path
     ):
-        """Brian2 configs expose no recordings, but the SONATA key is still emitted."""
-        config = brian2_config()
+        """Learning Engine configs expose no recordings, but the SONATA key is still emitted."""
+        config = learning_engine_config()
         assert not hasattr(config, "recordings")
 
         result = generate(config, tmp_path)

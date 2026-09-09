@@ -33,6 +33,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsUnion
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationUnion,
 )
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
@@ -43,7 +44,6 @@ from obi_one.scientific.unions_and_references.stimuli import CircuitStimulusUnio
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
     POINT_POPULATION,
@@ -68,7 +68,7 @@ SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
 LOCATIONS_WITHOUT_A_TARGET = {"PerNeuronExplicitMorphologyLocations"}
 MORPHOLOGY_LOCATIONS = sorted(
     name
-    for name in union_member_names(MorphologyLocationUnion)
+    for name in union_member_names(CircuitMorphologyLocationUnion)
     if name not in LOCATIONS_WITHOUT_A_TARGET
 )
 COMBINED_NEURON_SETS = sorted(
@@ -148,10 +148,7 @@ EXPECTED_COMBINED_DEFAULTS = {
 
 def _block(name: str):
     """Construct a block by class name with every field, references included, left at default."""
-    cls = getattr(obi, name)
-    if cls is obi.ExplicitMorphologyLocations:
-        return cls(locations=(obi.MorphologyLocationPoint(section_id=1, offset=0.5),))
-    return cls()
+    return getattr(obi, name)()
 
 
 def _input_entry(result, name: str) -> dict:
@@ -439,15 +436,12 @@ class TestNoDanglingNodeSetReferences:
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_brian2_stimulus_leaves_nothing_dangling(self, brian2_config, tmp_path):
-        """Brian2 resolves two different defaults, and both node sets have to be written."""
+        """Brian2 resolves one default, shared by the simulation and the stimulus."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.referenced_node_sets() == {
-            DEFAULT_POINT_NODE_SET,
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET,
-        }
+        assert result.referenced_node_sets() == {DEFAULT_POINT_NODE_SET}
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_learning_engine_stimulus_leaves_nothing_dangling(

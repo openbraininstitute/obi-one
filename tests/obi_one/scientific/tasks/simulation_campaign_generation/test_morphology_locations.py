@@ -16,6 +16,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 )
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationUnion,
 )
 
@@ -41,12 +42,6 @@ MORPHOLOGY_LOCATIONS = {
     "ClusteredPathDistanceMorphologyLocations": obi.ClusteredPathDistanceMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2
     ),
-    "ExplicitMorphologyLocations": obi.ExplicitMorphologyLocations(
-        locations=(
-            obi.MorphologyLocationPoint(section_id=0, offset=0.0),
-            obi.MorphologyLocationPoint(section_id=1, offset=0.5),
-        )
-    ),
     "PerNeuronExplicitMorphologyLocations": obi.PerNeuronExplicitMorphologyLocations(
         locations=(
             obi.NeuronMorphologyLocationPoint(node_id=0, section_id=0, offset=0.0),
@@ -54,6 +49,25 @@ MORPHOLOGY_LOCATIONS = {
         )
     ),
 }
+
+EXPLICIT_LOCATIONS = obi.ExplicitMorphologyLocations(
+    locations=(
+        obi.MorphologyLocationPoint(section_id=0, offset=0.0),
+        obi.MorphologyLocationPoint(section_id=1, offset=0.5),
+    )
+)
+
+
+def _me_model_locations_config(me_model_config, locations, *, name="Locations"):
+    """Explicit locations are only offered for single-neuron configurations."""
+    return me_model_config(
+        blocks={
+            name: locations,
+            "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                neuron_set=locations.ref, amplitude=0.2, duration=50.0
+            ),
+        }
+    )
 
 
 def _locations_config(circuit, locations, *, neuron_set=None, name="Locations"):
@@ -68,8 +82,15 @@ def _locations_config(circuit, locations, *, neuron_set=None, name="Locations"):
 
 
 class TestUnionCoverage:
-    def test_every_selectable_morphology_location_block_is_exercised(self):
-        assert union_member_names(MorphologyLocationUnion) == set(MORPHOLOGY_LOCATIONS)
+    def test_every_circuit_selectable_morphology_location_block_is_exercised(self):
+        assert union_member_names(CircuitMorphologyLocationUnion) == set(MORPHOLOGY_LOCATIONS)
+
+    def test_explicit_locations_are_not_offered_for_circuits(self):
+        """A section id names a different branch on every morphology in a multi-neuron circuit."""
+        assert "ExplicitMorphologyLocations" not in union_member_names(
+            CircuitMorphologyLocationUnion
+        )
+        assert "ExplicitMorphologyLocations" in union_member_names(MorphologyLocationUnion)
 
 
 class TestPerNeuronExplicitLocations:
@@ -178,16 +199,26 @@ class TestCompartmentSetGeneration:
         assert "compartment_sets_file" not in result.sonata_config
 
     def test_empty_explicit_location_block_referenced_by_stimulus_is_rejected(
-        self, morphology_circuit, tmp_path
+        self, me_model_config, tmp_path
     ):
-        locations = obi.ExplicitMorphologyLocations()
-        config = _locations_config(morphology_circuit, locations)
+        config = _me_model_locations_config(me_model_config, obi.ExplicitMorphologyLocations())
 
         with pytest.raises(
             ConfigValidationError,
             match="must contain at least one point before they can be used",
         ):
             generate(config, tmp_path)
+
+    def test_explicit_locations_materialise_for_a_single_neuron(self, me_model_config, tmp_path):
+        """Explicit points need no neuron set: they name the single neuron being simulated."""
+        locations = EXPLICIT_LOCATIONS.model_copy(deep=True)
+        config = _me_model_locations_config(me_model_config, locations)
+
+        result = generate(config, tmp_path)
+
+        assert len(result.compartment_sets["Locations"]["compartment_set"]) == len(
+            locations.locations
+        )
 
     def test_an_unreferenced_location_block_is_not_materialised(self, morphology_circuit, tmp_path):
         """Only locations a stimulus actually targets become compartment sets."""

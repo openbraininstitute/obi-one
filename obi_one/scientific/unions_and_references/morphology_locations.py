@@ -18,13 +18,33 @@ from obi_one.scientific.blocks.morphology_locations.random import (
     RandomMorphologyLocations,
 )
 
-MorphologyLocationUnion = Annotated[
+# Locations sampled across the morphologies of a targeted neuron set. Every neuron receives its
+# own sampled locations, so a section id always refers to the morphology it was sampled on.
+_GENERATED_MORPHOLOGY_LOCATIONS = (
     ClusteredMorphologyLocations
     | ClusteredPathDistanceMorphologyLocations
-    | ExplicitMorphologyLocations
     | PathDistanceMorphologyLocations
-    | PerNeuronExplicitMorphologyLocations
-    | RandomMorphologyLocations,
+    | RandomMorphologyLocations
+)
+
+# Per-neuron explicit locations each name their own neuron, so unlike plain explicit locations
+# they are unambiguous on a multi-neuron circuit and can join the sampled blocks here.
+_CIRCUIT_SAFE_MORPHOLOGY_LOCATIONS = (
+    _GENERATED_MORPHOLOGY_LOCATIONS | PerNeuronExplicitMorphologyLocations
+)
+
+_ALL_MORPHOLOGY_LOCATIONS = _CIRCUIT_SAFE_MORPHOLOGY_LOCATIONS | ExplicitMorphologyLocations
+
+MorphologyLocationUnion = Annotated[
+    _ALL_MORPHOLOGY_LOCATIONS,
+    Discriminator("type"),
+]
+
+# Plain explicit locations name a section and offset but no cell, so on a multi-neuron circuit the
+# same branch id means a different branch on every morphology. They are therefore offered only for
+# single-neuron configurations.
+CircuitMorphologyLocationUnion = Annotated[
+    _CIRCUIT_SAFE_MORPHOLOGY_LOCATIONS,
     Discriminator("type"),
 ]
 
@@ -39,4 +59,8 @@ class MorphologyLocationsReference(BlockReference):
     }
 
 
-__all__ = ["MorphologyLocationUnion", "MorphologyLocationsReference"]
+__all__ = [
+    "CircuitMorphologyLocationUnion",
+    "MorphologyLocationUnion",
+    "MorphologyLocationsReference",
+]
