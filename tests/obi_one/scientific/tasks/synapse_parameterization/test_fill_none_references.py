@@ -116,3 +116,10 @@ def test_the_defaults_cover_every_tagged_parameter():
     }
 
     assert model_tags <= tags
+
+
+def test_a_registered_default_carries_the_name_it_is_registered_under():
+    # The task puts these into config.distributions keyed by block_name; a block whose own
+    # name disagrees serializes under a name nothing refers to.
+    for reference in _defaults().values():
+        assert reference.block.block_name == reference.block_name
