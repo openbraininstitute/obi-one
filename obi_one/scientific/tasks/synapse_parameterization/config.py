@@ -95,6 +95,9 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
             reference = AllDistributionsReference(
                 block_dict_name="distributions", block_name=block_name
             )
+            # The block has to carry the name too, or it serializes without one once the
+            # task registers it into config.distributions.
+            distribution.set_block_name(block_name)
             reference.block = distribution
             references[tag] = reference
         return references
