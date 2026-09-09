@@ -9,13 +9,9 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
 )
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.distributions import (
-    tsodyks_markram_default_distributions,
-)
 
 __all__ = [
     "ExcitatoryTsodyksMarkramSynapticModel",
     "InhibitoryTsodyksMarkramSynapticModel",
     "TsodyksMarkramSynapticModel",
-    "tsodyks_markram_default_distributions",
 ]

@@ -10,6 +10,7 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.distributions.base import Distribution
 from obi_one.scientific.blocks.distributions.defaults import (
     DistributionDefault,
     resolve_distribution,
@@ -320,6 +321,22 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         "u_syn": _DEFAULT_U_SYN,
         "delay_distribution": _DEFAULT_DELAY,
     }
+
+    @classmethod
+    def default_distributions_by_role(cls) -> dict[str, tuple[str, Distribution]]:
+        """Each parameter's fallback distribution, keyed by the role its field plays.
+
+        Derived from `_default_distributions` and the tags the fields declare rather than
+        held as a second mapping of the same nine objects: a config asks by role, `sample`
+        asks by field, and both have to mean the same distribution.
+        """
+        return {
+            cls.model_fields[field_name].json_schema_extra[SchemaKey.REFERENCE_TAG]: (
+                default.label,
+                default.create(),
+            )
+            for field_name, default in cls._default_distributions.items()
+        }
 
     @classmethod
     def _sampled_fields(cls) -> dict[str, tuple[str, ParameterDomain]]:
