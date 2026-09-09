@@ -191,8 +191,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         title="U Hill Coefficient Distribution",
         description=(
             "Distribution of the Hill coefficient for the steady-state utilization of synaptic "
-            "efficacy (u). If omitted, "
-            f"{_DEFAULT_U_HILL_COEFFICIENT.description} is used."
+            "efficacy (u). Defaults to "
+            f"{_DEFAULT_U_HILL_COEFFICIENT.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -206,8 +206,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         default=None,
         title="Conductance (g_syn) Distribution",
         description=(
-            "Distribution of synaptic conductance (g_syn). If omitted, "
-            f"{_DEFAULT_CONDUCTANCE.description} is used."
+            "Distribution of synaptic conductance (g_syn). Defaults to "
+            f"{_DEFAULT_CONDUCTANCE.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -223,8 +223,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         description=(
             "Distribution of the conductance scale factor that multiplies the synaptic "
             "conductance (g_syn) to allow for fitting of synaptic conductance values that are "
-            "outside of the range of the conductance distribution. If omitted, "
-            f"{_DEFAULT_CONDUCTANCE_SCALE_FACTOR.description} is used."
+            "outside of the range of the conductance distribution. Defaults to "
+            f"{_DEFAULT_CONDUCTANCE_SCALE_FACTOR.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -238,8 +238,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         default=None,
         title="Facilitation Time Distribution",
         description=(
-            "Distribution of facilitation time in milliseconds. If omitted, "
-            f"{_DEFAULT_FACILITATION_TIME.description} is used."
+            "Distribution of facilitation time in milliseconds. Defaults to "
+            f"{_DEFAULT_FACILITATION_TIME.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -254,8 +254,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         default=None,
         title="Depression Time Distribution",
         description=(
-            "Distribution of depression time in milliseconds. If omitted, "
-            f"{_DEFAULT_DEPRESSION_TIME.description} is used."
+            "Distribution of depression time in milliseconds. Defaults to "
+            f"{_DEFAULT_DEPRESSION_TIME.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -270,8 +270,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         default=None,
         title="Number of RRP Vesicles Distribution",
         description=(
-            "Distribution of the number of readily releasable pool (RRP) vesicles. If omitted, "
-            f"{_DEFAULT_N_RRP_VESICLES.description} is used."
+            "Distribution of the number of readily releasable pool (RRP) vesicles. Defaults to "
+            f"{_DEFAULT_N_RRP_VESICLES.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -285,8 +285,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         default=None,
         title="Decay Time Distribution",
         description=(
-            "Distribution of decay time in milliseconds. If omitted, "
-            f"{_DEFAULT_DECAY_TIME.description} is used."
+            "Distribution of decay time in milliseconds. Defaults to "
+            f"{_DEFAULT_DECAY_TIME.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -302,8 +302,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         title="U_syn Distribution",
         description=(
             "Distribution of the utilization of synaptic efficacy (u_syn) for the first spike "
-            "in a spike train. If omitted, "
-            f"{_DEFAULT_U_SYN.description} is used."
+            "in a spike train. Defaults to "
+            f"{_DEFAULT_U_SYN.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -318,8 +318,8 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         title="Delay Distribution",
         description=(
             "Distribution for the synaptic delay from the presynaptic spike in milliseconds. "
-            "If omitted, "
-            f"{_DEFAULT_DELAY.description} is used."
+            "Defaults to "
+            f"{_DEFAULT_DELAY.description}."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
