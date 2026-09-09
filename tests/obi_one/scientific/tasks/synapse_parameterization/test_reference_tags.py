@@ -52,8 +52,10 @@ def test_the_config_answers_every_role_the_parameters_declare():
 def test_the_nine_parameters_get_nine_different_answers():
     # The point of keying by role rather than by reference type: all nine fields accept
     # AllDistributionsReference, so a type-keyed map could only ever offer them one answer.
-    names = [answer["name"] for answer in _config_tag_defaults().values()]
+    # Only the parameters are checked; several neuron set roles deliberately share a block.
+    names = [_config_tag_defaults()[tag]["name"] for tag in TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS]
 
+    assert len(names) == 9
     assert len(names) == len(set(names))
 
 

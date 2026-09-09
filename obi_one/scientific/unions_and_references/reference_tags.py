@@ -11,9 +11,8 @@ type, so every field accepting ``AllDistributionsReference`` is forced to show t
 which for the Tsodyks-Markram parameters means nine fields with nine different built-in defaults
 all reading alike.
 
-Only fields with a real default belong here. An unset reference that has no answer - a synaptic
-model an assigner cannot do without, say - keeps its type-keyed label, which reads as the prompt
-it is rather than promising a default that does not exist.
+Every reference field reachable from a config that declares these should carry one, so that no
+field is left showing a type-keyed label that says the same thing as eight others.
 """
 
 from enum import StrEnum
@@ -35,3 +34,23 @@ class ReferenceTag(StrEnum):
     DECAY_TIME_DISTRIBUTION = "decay_time_distribution"
     U_SYN_DISTRIBUTION = "u_syn_distribution"
     DELAY_DISTRIBUTION = "delay_distribution"
+
+    # The model an assigner applies. Unset means the family's own default, which is the same
+    # model `get_default_for` uses for the synapses no assigner claims.
+    SYNAPTIC_MODEL = "synaptic_model"
+
+    # The ends of a synapse an assigner restricts itself to. Unset means "no restriction", which
+    # makes such an assigner equivalent to the all-pairs one - deliberately, since that is what
+    # placing no restriction means.
+    SYNAPSE_ASSIGNMENT_SOURCE = "synapse_assignment_source"
+    SYNAPSE_ASSIGNMENT_TARGET = "synapse_assignment_target"
+
+    # Operands of a combined neuron set. There is one tag per population type because each
+    # combined subclass redeclares base_neuron_set and combined_with with its own reference
+    # union, and an unset operand means "every neuron of the combined set's own type".
+    # Named as in #947, which introduces the same tags, so the two merge without conflict.
+    ANY_NEURON_SET_OPERAND = "any_neuron_set_operand"
+    BIOPHYSICAL_NEURON_SET_OPERAND = "biophysical_neuron_set_operand"
+    POINT_NEURON_SET_OPERAND = "point_neuron_set_operand"
+    VIRTUAL_NEURON_SET_OPERAND = "virtual_neuron_set_operand"
+    NON_VIRTUAL_NEURON_SET_OPERAND = "non_virtual_neuron_set_operand"

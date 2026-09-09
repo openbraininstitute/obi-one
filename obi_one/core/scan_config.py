@@ -26,6 +26,9 @@ from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
 
+# A default block can introduce references of its own; this bounds that chain.
+_MAX_FILL_PASSES = 10
+
 
 def get_all_annotations(cls: type) -> dict[str, type]:
     """Collect annotations from a class and all its parent classes."""
@@ -60,15 +63,38 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         Called before the scan is serialized, so the configs written to disk and the
         entities registered from them name the blocks that actually produced the result
         rather than recording `None` and leaving it to the code version to say.
+
+        Repeats until nothing new is registered, because a default is itself a block and can
+        leave references of its own unset: substituting a synaptic model nobody named adds a
+        block whose nine parameters are then unset, and a single pass would leave them so.
         """
         defaults = self.default_block_references()
         if not defaults:
             return
-        for reference in fill_none_references_in_config(self, defaults):
+
+        for _ in range(_MAX_FILL_PASSES):
+            used = fill_none_references_in_config(self, defaults)
+            if not self._register_used_defaults(used):
+                return
+
+        msg = (
+            "Filling unset block references did not settle: a default block appears to keep "
+            "introducing references that are themselves unset."
+        )
+        raise OBIONEError(msg)
+
+    def _register_used_defaults(self, used: list[BlockReference]) -> bool:
+        """Put each default that was needed into its block dictionary.
+
+        Returns whether any of them was new, which is what tells the caller to look again.
+        """
+        registered_any = False
+        for reference in used:
             block_dict = getattr(self, reference.block_dict_name)
             existing = block_dict.get(reference.block_name)
             if existing is None:
                 block_dict[reference.block_name] = reference.block
+                registered_any = True
             elif type(existing) is not type(reference.block):
                 msg = (
                     f"Default block name '{reference.block_name}' already exists in "
@@ -76,6 +102,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                     f"{type(reference.block).__name__}!"
                 )
                 raise OBIONEError(msg)
+        return registered_any
 
     _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 

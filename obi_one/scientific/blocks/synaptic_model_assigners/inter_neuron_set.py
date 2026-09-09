@@ -7,6 +7,7 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_model_assigners.base import SynapseModelAssigner
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     ALL_NEURON_SETS_REFERENCE_TYPES,
@@ -29,6 +30,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.SYNAPSE_ASSIGNMENT_SOURCE,
             SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
@@ -40,6 +42,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.SYNAPSE_ASSIGNMENT_TARGET,
             SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
         },
     )
