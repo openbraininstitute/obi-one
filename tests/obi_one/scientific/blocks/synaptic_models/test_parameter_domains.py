@@ -13,18 +13,25 @@ from obi_one.scientific.blocks.synaptic_models.domains import (
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
 )
 
 
 def test_every_sampled_parameter_declares_a_domain_and_a_default():
+    # The domains are shared - a parameter's range does not depend on the synapse being
+    # excitatory or inhibitory - while the defaults are per model, since the values do.
     fields = TsodyksMarkramSynapticModel._sampled_fields()
 
     # syn_type_id is the model's identity rather than a draw, so it declares neither.
     assert [p for p, _d in fields.values()] + ["syn_type_id"] == (
         ExcitatoryTsodyksMarkramSynapticModel.parameter_names()
     )
-    assert set(fields) == set(TsodyksMarkramSynapticModel._default_distributions)
+    for model_class in (
+        ExcitatoryTsodyksMarkramSynapticModel,
+        InhibitoryTsodyksMarkramSynapticModel,
+    ):
+        assert set(fields) == set(model_class._default_distributions), model_class.__name__
 
 
 def test_a_domain_says_what_it_expects():

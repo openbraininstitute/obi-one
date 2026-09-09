@@ -57,7 +57,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.U_HILL_COEFFICIENT_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "u_hill_coefficient",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive finite value"
@@ -72,7 +71,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "conductance",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, description="a non-negative finite value"
@@ -91,7 +89,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "conductance_scale_factor",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive finite value"
@@ -106,7 +103,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.FACILITATION_TIME_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "facilitation_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive time in milliseconds"
@@ -122,7 +118,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.DEPRESSION_TIME_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "depression_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive time in milliseconds"
@@ -138,7 +133,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.N_RRP_VESICLES_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "n_rrp_vesicles",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=1.0, integer=True, description="an integer value greater than or equal to 1"
@@ -153,7 +147,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.DECAY_TIME_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "decay_time",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, minimum_inclusive=False, description="a positive time in milliseconds"
@@ -172,7 +165,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.U_SYN_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "u_syn",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, maximum=1.0, description="a finite value between 0 and 1"
@@ -189,7 +181,6 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
-            SchemaKey.REFERENCE_TAG: ReferenceTag.DELAY_DISTRIBUTION,
             SchemaKey.SAMPLED_PARAMETER: "delay",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
                 minimum=0.0, description="a non-negative time in milliseconds"
@@ -307,20 +298,26 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     def cov_dict(self) -> dict:
         return {}
 
-    # The distribution each field falls back to when unset. Keyed by field rather than by
-    # parameter so it lines up with `model_fields`, and kept out of `json_schema_extra`
-    # because a DistributionDefault holds a factory and would not serialize into the schema.
-    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {
-        "u_hill_coefficient_distribution": _DEFAULT_U_HILL_COEFFICIENT,
-        "conductance_distribution": _DEFAULT_CONDUCTANCE,
-        "conductance_scale_factor_distribution": _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
-        "facilitation_time": _DEFAULT_FACILITATION_TIME,
-        "depression_time": _DEFAULT_DEPRESSION_TIME,
-        "n_rrp_vesicles_distribution": _DEFAULT_N_RRP_VESICLES,
-        "decay_time": _DEFAULT_DECAY_TIME,
-        "u_syn": _DEFAULT_U_SYN,
-        "delay_distribution": _DEFAULT_DELAY,
-    }
+    # Filled in by each concrete model, because the two take different values for the same
+    # parameter. Kept out of `json_schema_extra` because a DistributionDefault holds a factory
+    # and would not serialize into the schema; the role goes in there, per subclass, below.
+    _parameter_roles: ClassVar[dict[str, ReferenceTag]] = {}
+    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Give this model's own fields the roles it plays.
+
+        Subclasses share one `json_schema_extra` dict with the parent, so each field gets a
+        fresh one rather than being mutated in place - otherwise every model would end up
+        carrying whichever subclass was defined last.
+        """
+        super().__init_subclass__(**kwargs)
+        for field_name, tag in cls._parameter_roles.items():
+            field = cls.model_fields[field_name]
+            field.json_schema_extra = {
+                **(field.json_schema_extra or {}),
+                SchemaKey.REFERENCE_TAG: tag,
+            }
 
     @classmethod
     def default_distributions_by_role(cls) -> dict[str, tuple[str, Distribution]]:
@@ -409,6 +406,32 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Excitatory Tsodyks-Markram"
 
+    _parameter_roles: ClassVar[dict[str, ReferenceTag]] = {
+        "u_hill_coefficient_distribution": ReferenceTag.EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION,
+        "conductance_distribution": ReferenceTag.EXCITATORY_CONDUCTANCE_DISTRIBUTION,
+        "conductance_scale_factor_distribution": (
+            ReferenceTag.EXCITATORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION
+        ),
+        "facilitation_time": ReferenceTag.EXCITATORY_FACILITATION_TIME_DISTRIBUTION,
+        "depression_time": ReferenceTag.EXCITATORY_DEPRESSION_TIME_DISTRIBUTION,
+        "n_rrp_vesicles_distribution": ReferenceTag.EXCITATORY_N_RRP_VESICLES_DISTRIBUTION,
+        "decay_time": ReferenceTag.EXCITATORY_DECAY_TIME_DISTRIBUTION,
+        "u_syn": ReferenceTag.EXCITATORY_U_SYN_DISTRIBUTION,
+        "delay_distribution": ReferenceTag.EXCITATORY_DELAY_DISTRIBUTION,
+    }
+
+    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {
+        "u_hill_coefficient_distribution": _DEFAULT_U_HILL_COEFFICIENT,
+        "conductance_distribution": _DEFAULT_CONDUCTANCE,
+        "conductance_scale_factor_distribution": _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+        "facilitation_time": _DEFAULT_FACILITATION_TIME,
+        "depression_time": _DEFAULT_DEPRESSION_TIME,
+        "n_rrp_vesicles_distribution": _DEFAULT_N_RRP_VESICLES,
+        "decay_time": _DEFAULT_DECAY_TIME,
+        "u_syn": _DEFAULT_U_SYN,
+        "delay_distribution": _DEFAULT_DELAY,
+    }
+
     @property
     def syn_type_id(self) -> int:
         return 113  # 128, 130, 114, 123 are other values in edges files
@@ -425,6 +448,32 @@ class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     """
 
     title: ClassVar[str] = "Inhibitory Tsodyks-Markram"
+
+    _parameter_roles: ClassVar[dict[str, ReferenceTag]] = {
+        "u_hill_coefficient_distribution": ReferenceTag.INHIBITORY_U_HILL_COEFFICIENT_DISTRIBUTION,
+        "conductance_distribution": ReferenceTag.INHIBITORY_CONDUCTANCE_DISTRIBUTION,
+        "conductance_scale_factor_distribution": (
+            ReferenceTag.INHIBITORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION
+        ),
+        "facilitation_time": ReferenceTag.INHIBITORY_FACILITATION_TIME_DISTRIBUTION,
+        "depression_time": ReferenceTag.INHIBITORY_DEPRESSION_TIME_DISTRIBUTION,
+        "n_rrp_vesicles_distribution": ReferenceTag.INHIBITORY_N_RRP_VESICLES_DISTRIBUTION,
+        "decay_time": ReferenceTag.INHIBITORY_DECAY_TIME_DISTRIBUTION,
+        "u_syn": ReferenceTag.INHIBITORY_U_SYN_DISTRIBUTION,
+        "delay_distribution": ReferenceTag.INHIBITORY_DELAY_DISTRIBUTION,
+    }
+
+    _default_distributions: ClassVar[dict[str, DistributionDefault]] = {
+        "u_hill_coefficient_distribution": _DEFAULT_U_HILL_COEFFICIENT,
+        "conductance_distribution": _DEFAULT_CONDUCTANCE,
+        "conductance_scale_factor_distribution": _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+        "facilitation_time": _DEFAULT_FACILITATION_TIME,
+        "depression_time": _DEFAULT_DEPRESSION_TIME,
+        "n_rrp_vesicles_distribution": _DEFAULT_N_RRP_VESICLES,
+        "decay_time": _DEFAULT_DECAY_TIME,
+        "u_syn": _DEFAULT_U_SYN,
+        "delay_distribution": _DEFAULT_DELAY,
+    }
 
     @property
     def syn_type_id(self) -> int:
