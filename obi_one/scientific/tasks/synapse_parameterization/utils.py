@@ -1,4 +1,5 @@
 import h5py
+import numpy as np
 import pandas as pd
 from bluepysnap.edges import EdgePopulation
 from pandas import DataFrame
@@ -75,7 +76,12 @@ def get_default_for(
     to_be_filled = [prop_ for prop_ in parameter_names if prop_ not in already_parameterized]
     df = ep.get(ep.ids(), properties=already_parameterized)  # Confirmed to work for empty list
     indices = ep.get(ep.ids(), properties=["@source_node", "@target_node"])
-    to_fill = default_model.sample(indices)
+    # Seeded from the same assigner the family came from. The synapses filled here are the ones
+    # no assigner claims, so none of them owns this draw; taking the seed from the group that
+    # was checked consistent keeps it reproducible and moves with a sweep over that seed.
+    to_fill = default_model.sample(
+        indices, rng=np.random.default_rng(lst_model_assigners[0].random_seed)
+    )
     return pd.concat([df, to_fill[to_be_filled]], axis=1)
 
 

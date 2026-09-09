@@ -38,8 +38,9 @@ def _circuit_with(edge_population, name="default"):
     return SimpleNamespace(sonata_circuit=SimpleNamespace(edges={name: edge_population}))
 
 
-def _assigner_for(model):
-    return SimpleNamespace(synaptic_model=SimpleNamespace(block=model))
+def _assigner_for(model, random_seed=1):
+    # get_default_for seeds the fill from the assigner group it was handed.
+    return SimpleNamespace(synaptic_model=SimpleNamespace(block=model), random_seed=random_seed)
 
 
 @pytest.mark.parametrize(

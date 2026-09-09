@@ -4,6 +4,7 @@ from functools import partial
 from math import isfinite
 from typing import ClassVar, NamedTuple
 
+import numpy as np
 from pandas import DataFrame
 from pydantic import Field
 
@@ -435,7 +436,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
     def syn_type_id(self) -> int:
         """SONATA ``syn_type_id`` assigned to these synapses (distinguishes E/I models)."""
 
-    def sample(self, indices: DataFrame) -> DataFrame:
+    def sample(self, indices: DataFrame, rng: np.random.Generator | None = None) -> DataFrame:
 
         n = len(indices)
 
@@ -444,7 +445,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             attr: AllDistributionsReference | None,
             default: DistributionDefault,
         ) -> list[float]:
-            samples = resolve_distribution(attr, default).sample_with_constraints(n)
+            samples = resolve_distribution(attr, default).sample_with_constraints(n, rng=rng)
             return _validate_parameter_samples(parameter_name, samples)
 
         # TODO: 'shared_within' is currently ignored
