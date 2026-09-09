@@ -1,6 +1,7 @@
 from enum import StrEnum
 from typing import ClassVar
 
+import numpy as np
 from pandas import DataFrame
 
 from obi_one.core.block import Block
@@ -74,12 +75,18 @@ class SynapticModelBase(Block):
             distr_ref_dict[param_name].block = distr_obj_dict[param_name]
         return cls(**distr_ref_dict), distr_obj_dict
 
-    def sample(self, indices: DataFrame) -> DataFrame:
+    def sample(self, indices: DataFrame, rng: np.random.Generator | None = None) -> DataFrame:
         """The main functionality of this class. Returns synapse parameters as
         specified. The input is a DataFrame with two columns: @source_node
         and @target_node. Its index is the edge index as used in SONATA.
         Returns DataFrame with one named column per parameter and the same index
         as the input.
+
+        `rng` is the source of randomness for every parameter drawn, so that one
+        generator is shared across them: each distribution otherwise seeds itself from
+        its own `random_seed`, and two parameters given the same distribution then draw
+        the same values for every synapse. Callers that leave it unset keep that
+        per-distribution behaviour.
         """
         msg = (
             "Concrete subclasses of SynapticModelBase MUST implement the .sample() method to "

@@ -127,7 +127,11 @@ class SynapseModelAssigner(Block):
     ) -> DataFrame:
         indices_df = self.edge_indices(circuit, min_edge_id=min_edge_id, max_edge_id=max_edge_id)
         param_model = self.synaptic_model.block  # ty:ignore[unresolved-attribute]
-        new_params = param_model.sample(indices_df)
+        # `random_seed` is what the user is offered as "the seed for drawing random values from
+        # physiological parameter distributions", and it can be swept. It only means that if it
+        # reaches the sampling: without it every distribution seeds itself from its own
+        # `random_seed`, which defaults to 1, so every seed in a sweep produced the same circuit.
+        new_params = param_model.sample(indices_df, rng=np.random.default_rng(self.random_seed))
         return new_params
 
     def assign_parameters(
