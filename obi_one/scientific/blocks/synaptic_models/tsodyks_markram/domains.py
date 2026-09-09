@@ -1,8 +1,10 @@
-"""The range each Tsodyks-Markram parameter is allowed to take, and the check against it.
+"""The range a sampled parameter is allowed to take, and the check against it.
 
-Separate from the distributions that supply the values: this file says what a parameter may
-be, `distributions.py` what it is when nobody chooses. The two are held in agreement by
-`test_parameter_domains`, which draws from every built-in default and checks it here.
+The ranges themselves are declared on the fields they constrain, under
+`SchemaKey.PARAMETER_DOMAIN`; this module holds only the shape they take and the check. That
+check runs on the values a distribution drew - the field holds a reference to a distribution,
+so pydantic never sees them - and `test_parameter_domains` is what holds every built-in default
+inside the domain of the parameter it supplies.
 """
 
 import logging
@@ -12,7 +14,7 @@ from typing import NamedTuple
 L = logging.getLogger(__name__)
 
 
-class _ParameterDomain(NamedTuple):
+class ParameterDomain(NamedTuple):
     minimum: float | None = None
     maximum: float | None = None
     minimum_inclusive: bool = True
@@ -21,54 +23,7 @@ class _ParameterDomain(NamedTuple):
     description: str = ""
 
 
-_TM_PARAMETER_DOMAINS: dict[str, _ParameterDomain] = {
-    "u_hill_coefficient": _ParameterDomain(
-        minimum=0.0,
-        minimum_inclusive=False,
-        description="a positive finite value",
-    ),
-    "conductance": _ParameterDomain(
-        minimum=0.0,
-        description="a non-negative finite value",
-    ),
-    "conductance_scale_factor": _ParameterDomain(
-        minimum=0.0,
-        minimum_inclusive=False,
-        description="a positive finite value",
-    ),
-    "facilitation_time": _ParameterDomain(
-        minimum=0.0,
-        minimum_inclusive=False,
-        description="a positive time in milliseconds",
-    ),
-    "depression_time": _ParameterDomain(
-        minimum=0.0,
-        minimum_inclusive=False,
-        description="a positive time in milliseconds",
-    ),
-    "n_rrp_vesicles": _ParameterDomain(
-        minimum=1.0,
-        integer=True,
-        description="an integer value greater than or equal to 1",
-    ),
-    "decay_time": _ParameterDomain(
-        minimum=0.0,
-        minimum_inclusive=False,
-        description="a positive time in milliseconds",
-    ),
-    "u_syn": _ParameterDomain(
-        minimum=0.0,
-        maximum=1.0,
-        description="a finite value between 0 and 1",
-    ),
-    "delay": _ParameterDomain(
-        minimum=0.0,
-        description="a non-negative time in milliseconds",
-    ),
-}
-
-
-def _is_valid_parameter_sample(sample: float, domain: _ParameterDomain) -> bool:
+def is_valid_parameter_sample(sample: float, domain: ParameterDomain) -> bool:
     value = float(sample)
     valid = isfinite(value)
     if valid and domain.integer:
@@ -80,10 +35,16 @@ def _is_valid_parameter_sample(sample: float, domain: _ParameterDomain) -> bool:
     return valid
 
 
-def _validate_parameter_samples(parameter_name: str, samples: list[float]) -> list[float]:
-    domain = _TM_PARAMETER_DOMAINS[parameter_name]
+def validate_parameter_samples(
+    parameter_name: str, domain: ParameterDomain, samples: list[float]
+) -> list[float]:
+    """Reject any drawn value outside the range that parameter is allowed to take.
+
+    Applied to what a distribution produced, not to what the user configured: the field holds a
+    reference to a distribution, so pydantic never sees these numbers.
+    """
     invalid_samples = [
-        sample for sample in samples if not _is_valid_parameter_sample(sample, domain)
+        sample for sample in samples if not is_valid_parameter_sample(sample, domain)
     ]
 
     if invalid_samples:
