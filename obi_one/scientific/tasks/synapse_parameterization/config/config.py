@@ -52,7 +52,7 @@ L = logging.getLogger(__name__)
 
 DEFAULT_SYNAPTIC_MODEL_NAME = "Default: Excitatory Tsodyks-Markram"
 
-# One entry per role a reference field can play in this config: the reference type to build
+# One entry per tag a reference field can carry in this config: the reference type to build
 # (which has to match the field's own union), the dictionary the block is registered in, the
 # name it takes there, and a factory for the block itself. Both the schema the UI reads and the
 # references the fill pass substitutes are derived from this, so they cannot disagree.
@@ -63,7 +63,7 @@ _DEFAULTS: dict[str, BlockDefault] = {
         DEFAULT_SYNAPTIC_MODEL_NAME,
         ExcitatoryTsodyksMarkramSynapticModel,
     ),
-    # "No restriction" for the assigner roles: an inter- or presynaptic assigner naming neither
+    # "No restriction" for the assigner tags: an inter- or presynaptic assigner naming neither
     # end then behaves like the all-pairs one, which is what placing no restriction means.
     # Biophysical because that is what a chemical edge population connects in the normal case,
     # and because there is no atomic non-virtual reference type to carry a broader default. An
@@ -117,10 +117,10 @@ _DEFAULTS: dict[str, BlockDefault] = {
 
 
 def _distribution_defaults() -> dict[str, BlockDefault]:
-    """The parameters of every concrete Tsodyks-Markram model, keyed by the role each plays.
+    """The parameters of every concrete Tsodyks-Markram model, keyed by the tag naming each.
 
     Both models, because excitatory and inhibitory synapses take different values for the same
-    parameter and so answer different roles - eighteen between them, not nine shared.
+    parameter and so carry different tags - eighteen between them, not nine shared.
     """
     return {
         tag: BlockDefault(
@@ -130,7 +130,7 @@ def _distribution_defaults() -> dict[str, BlockDefault]:
             ExcitatoryTsodyksMarkramSynapticModel,
             InhibitoryTsodyksMarkramSynapticModel,
         )
-        for tag, (name, distribution) in model.default_distributions_by_role().items()
+        for tag, (name, distribution) in model.default_distributions_by_tag().items()
     }
 
 
@@ -165,7 +165,7 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
 
     @staticmethod
     def default_blocks() -> dict[str, BlockDefault]:
-        """What each unset reference resolves to, keyed by the role the field plays.
+        """What each unset reference resolves to, keyed by the tag the field carries.
 
         The only thing this config says about its defaults: the base resolves them into
         references and publishes them to the schema.

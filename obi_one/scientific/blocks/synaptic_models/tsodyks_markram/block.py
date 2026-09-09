@@ -300,7 +300,7 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Excitatory Tsodyks-Markram"
 
-    # The distribution each parameter falls back to, and the role it answers. Declared here
+    # The distribution each parameter falls back to, and the tag naming it. Declared here
     # rather than shared with the inhibitory model because the two take different values.
     _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {
         ReferenceTag.EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION: (

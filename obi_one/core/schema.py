@@ -40,7 +40,7 @@ class SchemaKey(StrEnum):
     PROPERTY_GROUP = "property_group"
     PROPERTY_SOURCE_FIELD = "property_source_field"
     REFERENCE_TAG = "reference_tag"
-    # Note: REFERENCE_TAG names the role a block reference field plays, so a task can say what the
+    # Note: REFERENCE_TAG names what a block reference field is for, so a task can say what the
     # field means when it is left unset. See ReferenceTag.
     REFERENCE_TAG_DEFAULTS = "reference_tag_defaults"
     # Note: REFERENCE_TAG_DEFAULTS sits on a ScanConfig and gives, for each reference tag, what a
@@ -48,7 +48,7 @@ class SchemaKey(StrEnum):
     # the block is registered under once the config is filled, and the serialized block itself,
     # so the UI can both label the field and read the values behind that label. Unlike
     # DEFAULT_BLOCK_REFERENCE_LABELS, which is keyed by reference type and also decides whether a
-    # field is shown at all, this is keyed by role, so two fields of the same type that mean
+    # field is shown at all, this is keyed by tag, so two fields of the same type that mean
     # different things get their own answer.
     # NOTE ON MERGING #947: that branch defines this value as a bare name string. Here it is the
     # object above, so the two definitions have to be reconciled rather than one taking the

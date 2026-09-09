@@ -80,7 +80,7 @@ class SynapseModelAssigner(Block):
         self,
         circuit: Circuit,
         neuron_set_reference: object | None,
-        role: str,
+        side: str,
         population: str,
     ) -> None:
         """Check a neuron set covers the population on one side of the edge population.
@@ -92,15 +92,15 @@ class SynapseModelAssigner(Block):
         """
         if neuron_set_reference is None:
             msg = (
-                f"The {role} neuron set is required to assign a synaptic model to edge "
+                f"The {side} neuron set is required to assign a synaptic model to edge "
                 f"population {self.edge_population_name!r}."
             )
             raise ValueError(msg)
         populations = neuron_set_reference.block.get_populations(circuit)  # ty:ignore[unresolved-attribute]
         if population not in populations:
             msg = (
-                f"Edge population {self.edge_population_name!r} has {role} population "
-                f"{population!r}, but the {role} neuron set spans {sorted(populations)}. "
+                f"Edge population {self.edge_population_name!r} has {side} population "
+                f"{population!r}, but the {side} neuron set spans {sorted(populations)}. "
                 f"No synapse in that edge population starts or ends at these neurons."
             )
             raise ValueError(msg)
