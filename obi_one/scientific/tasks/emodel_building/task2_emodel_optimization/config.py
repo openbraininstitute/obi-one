@@ -27,6 +27,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     ParametersSelection,
     default_distance_dependent_distributions,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    to_bpem_custom_distributions,
+)
 
 
 class BlockGroup(StrEnum):
@@ -84,10 +87,11 @@ def _validate_distribution_declarations(
     selection: ParametersSelection,
     custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
 ) -> None:
+    bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
     for distribution_name, configured_parameters in selection.distribution_parameters.items():
         distribution = resolve_distance_dependent_distribution(
             distribution_name,
-            custom_distributions,
+            bpem_custom_distributions,
         )
         if distribution is None:
             msg = (
@@ -107,9 +111,10 @@ def _validate_used_distributions(
     selection: ParametersSelection,
     custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
 ) -> None:
+    bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
     used_distributions = _used_distribution_names(selection)
     resolved = {
-        name: resolve_distance_dependent_distribution(name, custom_distributions)
+        name: resolve_distance_dependent_distribution(name, bpem_custom_distributions)
         for name in used_distributions
     }
     missing_distributions = {

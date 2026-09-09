@@ -10,6 +10,7 @@ from bluepyemodel.preprocessing.schemas import (
     DEFAULT_SECTION_LIST_CATALOG,
     REGIONAL_SECTION_LIST_NAMES,
     AxonModifier,
+    PhysicalSectionListName,
     RegionalSectionListName,
     SectionListChoice,
     SectionListName,
@@ -425,7 +426,7 @@ class ParameterGroupView(BaseModel):
     order: int
     item_count: int
     count_label: str
-    section_lists: tuple[SectionListName, ...] | None = None
+    section_lists: tuple[PhysicalSectionListName, ...] | None = None
 
 
 class MechanismRegionSelection(Block):
@@ -521,15 +522,15 @@ def _default_global_parameters() -> dict[str, GlobalParameterSelection]:
 def _default_base_parameters() -> dict[SectionListName, dict[str, ParameterSelection]]:
     """Generic passive-cable bootstrap values, not a validated fit for any cell type."""
     return {
-        "all": {
+        SectionListName.all: {
             "Ra": _fixed_parameter(100.0),
             "g_pas": _bounded_parameter(1e-5, 6e-5),
             "e_pas": _bounded_parameter(-95.0, -60.0),
         },
-        "axonal": {"cm": _fixed_parameter(1.0)},
-        "somatic": {"cm": _fixed_parameter(1.0)},
-        "apical": {"cm": _fixed_parameter(2.0)},
-        "basal": {"cm": _fixed_parameter(2.0)},
+        SectionListName.axonal: {"cm": _fixed_parameter(1.0)},
+        SectionListName.somatic: {"cm": _fixed_parameter(1.0)},
+        SectionListName.apical: {"cm": _fixed_parameter(2.0)},
+        SectionListName.basal: {"cm": _fixed_parameter(2.0)},
     }
 
 
@@ -878,7 +879,7 @@ class ParametersSelection(Block):
             return self._global_group_rows()
         if group_key == "distribution":
             return self._distribution_group_rows()
-        return self._region_group_rows(group_key)
+        return self._region_group_rows(SectionListName(group_key))
 
     @property
     def parameter_group_view(self) -> tuple[ParameterGroupView, ...]:

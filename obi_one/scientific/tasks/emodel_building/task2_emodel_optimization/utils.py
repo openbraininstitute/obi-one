@@ -15,6 +15,7 @@ from bluepyemodel.preprocessing.parameters import (
     normalize_ion_channel_model,
 )
 from bluepyemodel.preprocessing.schemas import (
+    CustomDistanceDependentDistribution as BpemCustomDistanceDependentDistribution,
     DistanceDependentDistribution,
     OptimizationArtifactInput,
     ParametersSelection,
@@ -60,6 +61,18 @@ def to_bpem_distributions(
     """Convert obi-one distance-dependent distribution declarations."""
     return {
         name: DistanceDependentDistribution.model_validate(_dump_bpem_payload(distribution))
+        for name, distribution in distributions.items()
+    }
+
+
+def to_bpem_custom_distributions(
+    distributions: Mapping[str, Any],
+) -> dict[str, BpemCustomDistanceDependentDistribution]:
+    """Convert obi-one custom distribution blocks to bluepyemodel schemas."""
+    return {
+        name: BpemCustomDistanceDependentDistribution.model_validate(
+            _dump_bpem_payload(distribution),
+        )
         for name, distribution in distributions.items()
     }
 
