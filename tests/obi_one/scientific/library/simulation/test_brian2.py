@@ -39,6 +39,13 @@ def test_get_close_spikes(ids, times, expected):
     )
 
 
+# `models/drosophila.json` is a normalised LIF: it resets at 0 V and fires at 1 V, so its
+# neurons start halfway between rather than at a membrane potential in millivolts. `v_init`
+# now takes precedence over the template, so the tests that expect spiking state that same
+# 0.5 V starting point themselves -- expressed in mV, as the SONATA field is.
+NORMALISED_MODEL_V_INIT_MV = 500.0
+
+
 def _run_simulation(
     tmp_path, config, *, plot_voltage: bool = False
 ) -> tuple[bluepysnap.Simulation, test_module.Brian2Network]:
@@ -88,6 +95,28 @@ def test_no_stim_or_report(tmp_path):
         assert not spikes[i].any()
 
 
+def test_v_init_overrides_the_template_initial_voltage(tmp_path):
+    """The simulation config's `v_init` wins over a template that specifies its own `v`.
+
+    `models/drosophila.json` sets `initial.v` to 0.5 volt, so applying the template's initial
+    values after `v_init` would leave the config's Initial Voltage with no effect.
+    """
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "conditions": {"v_init": -80.0},
+    }
+    path = tmp_path / "simulation_config.json"
+    with path.open("w") as fd:
+        json.dump(config, fd)
+
+    simulation = bluepysnap.Simulation(path)
+    neurons = test_module._create_neurons(simulation, test_module.Inputs(simulation))
+
+    npt.assert_allclose(neurons.v / brian2.units.mV, -80.0)
+
+
 def test_spike_replay(tmp_path):
     timestamps = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1])
     node_ids = np.array([0] * len(timestamps))
@@ -99,6 +128,7 @@ def test_spike_replay(tmp_path):
     )
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -155,6 +185,7 @@ def test_spike_replay(tmp_path):
 def test_poisson(tmp_path):
     config = {
         "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -212,6 +243,7 @@ def test_poisson_compartment_set_unsupported(tmp_path):
 def test_current_stim(tmp_path):
     config = {
         "run": {"tstop": 2, "dt": 0.01, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -237,6 +269,7 @@ def test_current_stim_groupby(tmp_path):
     # this assumes the dt is constant, but this is true since they are compared to the simulation dt
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -255,6 +288,7 @@ def test_current_stim_groupby(tmp_path):
 
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -385,6 +419,7 @@ def test_sinusoidal_current_stim(delay, frequency, duration, expected):
 def test_current_stim_report(tmp_path):
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -517,6 +552,7 @@ def test_connection_override_mid_simulation(tmp_path):
     delay = 1.5
     config = {
         "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {

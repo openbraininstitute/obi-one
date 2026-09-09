@@ -65,7 +65,9 @@ config = MEModelSimulationSingleConfig(
 
 - **circuit**: MEModel to simulate (can be `MEModelCircuit` or `MEModelFromID`)
 - **simulation_length**: Duration in milliseconds (default: 1000.0 ms)
-- **v_init**: Initial membrane potential in millivolts (default: -80.0 mV)
+- **v_init**: Initial membrane potential in millivolts (default: -80.0 mV). It takes precedence
+  over any initial `v` the neuron model template sets, so a point neuron model that starts at its
+  own resting potential still begins the simulation at this value.
 - **extracellular_calcium_concentration**: Extracellular calcium concentration in mM (default: 1.1 mM)
 - **random_seed**: Random seed for reproducibility
 - **timestep**: Simulation time step in ms (default: 0.025 ms)

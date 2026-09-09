@@ -612,12 +612,12 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
         namespace={**{k: v.get() for k, v in template.namespace.items()}, **stims},
     )
 
-    # Override the initial membrane potential with `v_init` (mV) from the simulation config,
-    # taking precedence over the value set by the neuron template.
-    n0.v = simulation.conditions.v_init * brian2.units.mV
-
     for name, value in template.initial.items():
         setattr(n0, name, value.get())
+
+    # After the template's own initial values, not before: a template that specifies `v` would
+    # otherwise overwrite this, leaving the simulation config's Initial Voltage with no effect.
+    n0.v = simulation.conditions.v_init * brian2.units.mV
 
     for name, value in indicators.items():
         setattr(n0, name, value)
