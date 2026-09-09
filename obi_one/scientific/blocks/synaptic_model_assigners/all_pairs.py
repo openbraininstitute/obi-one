@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 import numpy as np
 
@@ -10,6 +11,8 @@ L = logging.getLogger(__name__)
 
 class AllPairsSynapticModelAssigner(SynapseModelAssigner):
     """Assign a synaptic model to all synapses in the edge population."""
+
+    title: ClassVar[str] = "All Pairs"
 
     def validate_for_circuit(self, circuit: Circuit) -> None:
         pass

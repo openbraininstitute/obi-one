@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 import numpy as np
 from pydantic import Field
@@ -18,6 +19,8 @@ L = logging.getLogger(__name__)
 
 class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
     """Assign a synaptic model to synapses between a source and target neuron set."""
+
+    title: ClassVar[str] = "Inter Neuron Set"
 
     source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
