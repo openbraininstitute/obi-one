@@ -2,6 +2,7 @@
 
 import abc
 import logging
+from functools import partial
 from typing import ClassVar
 
 import numpy as np
@@ -11,10 +12,14 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.distributions.base import Distribution
+from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
 from obi_one.scientific.blocks.distributions.defaults import (
     DistributionDefault,
     resolve_distribution,
 )
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
 from obi_one.scientific.blocks.synaptic_models.base import (
     SynapseModelFamily,
     SynapticModelBase,
@@ -22,17 +27,6 @@ from obi_one.scientific.blocks.synaptic_models.base import (
 from obi_one.scientific.blocks.synaptic_models.domains import (
     ParameterDomain,
     validate_parameter_samples,
-)
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.distributions import (
-    _DEFAULT_CONDUCTANCE,
-    _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
-    _DEFAULT_DECAY_TIME,
-    _DEFAULT_DELAY,
-    _DEFAULT_DEPRESSION_TIME,
-    _DEFAULT_FACILITATION_TIME,
-    _DEFAULT_N_RRP_VESICLES,
-    _DEFAULT_U_HILL_COEFFICIENT,
-    _DEFAULT_U_SYN,
 )
 from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
@@ -407,42 +401,56 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Excitatory Tsodyks-Markram"
 
+    # The distribution each parameter falls back to, and the role it answers. Declared here
+    # rather than shared with the inhibitory model because the two take different values.
     _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {
         ReferenceTag.EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION: (
             "u_hill_coefficient_distribution",
-            _DEFAULT_U_HILL_COEFFICIENT,
+            DistributionDefault(partial(FloatConstantDistribution, value=1.94)),
         ),
         ReferenceTag.EXCITATORY_CONDUCTANCE_DISTRIBUTION: (
             "conductance_distribution",
-            _DEFAULT_CONDUCTANCE,
+            DistributionDefault(partial(GammaDistribution, shape=4.0, scale=0.25)),
         ),
         ReferenceTag.EXCITATORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: (
             "conductance_scale_factor_distribution",
-            _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+            DistributionDefault(partial(FloatConstantDistribution, value=0.7)),
         ),
         ReferenceTag.EXCITATORY_FACILITATION_TIME_DISTRIBUTION: (
             "facilitation_time",
-            _DEFAULT_FACILITATION_TIME,
+            DistributionDefault(partial(GammaDistribution, shape=11.56, scale=1.4706)),
         ),
         ReferenceTag.EXCITATORY_DEPRESSION_TIME_DISTRIBUTION: (
             "depression_time",
-            _DEFAULT_DEPRESSION_TIME,
+            DistributionDefault(partial(GammaDistribution, shape=1995.11, scale=0.3358)),
         ),
         ReferenceTag.EXCITATORY_N_RRP_VESICLES_DISTRIBUTION: (
             "n_rrp_vesicles_distribution",
-            _DEFAULT_N_RRP_VESICLES,
+            DistributionDefault(
+                partial(
+                    IntDiscreteDistribution,
+                    values=(1, 2, 3, 4, 5),
+                    probabilities=(0.3, 0.3, 0.2, 0.1, 0.1),
+                )
+            ),
         ),
         ReferenceTag.EXCITATORY_DECAY_TIME_DISTRIBUTION: (
             "decay_time",
-            _DEFAULT_DECAY_TIME,
+            DistributionDefault(
+                partial(NormalDistribution, min=1.7, max=1.9, mean=1.7, standard_deviation=0.1)
+            ),
         ),
         ReferenceTag.EXCITATORY_U_SYN_DISTRIBUTION: (
             "u_syn",
-            _DEFAULT_U_SYN,
+            DistributionDefault(
+                partial(NormalDistribution, min=0.2, max=0.7, mean=0.5, standard_deviation=0.25)
+            ),
         ),
         ReferenceTag.EXCITATORY_DELAY_DISTRIBUTION: (
             "delay_distribution",
-            _DEFAULT_DELAY,
+            DistributionDefault(
+                partial(NormalDistribution, min=0.1, max=5.0, mean=2.0, standard_deviation=1.0)
+            ),
         ),
     }
 
@@ -463,42 +471,57 @@ class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Inhibitory Tsodyks-Markram"
 
+    # As above, for inhibitory synapses. Only the conductance differs so far - the figure
+    # the example notebook uses for inhibitory connections. The other eight still carry
+    # the excitatory values and want replacing with measured ones.
     _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {
         ReferenceTag.INHIBITORY_U_HILL_COEFFICIENT_DISTRIBUTION: (
             "u_hill_coefficient_distribution",
-            _DEFAULT_U_HILL_COEFFICIENT,
+            DistributionDefault(partial(FloatConstantDistribution, value=1.94)),
         ),
         ReferenceTag.INHIBITORY_CONDUCTANCE_DISTRIBUTION: (
             "conductance_distribution",
-            _DEFAULT_CONDUCTANCE,
+            DistributionDefault(partial(GammaDistribution, shape=8.0, scale=0.25)),
         ),
         ReferenceTag.INHIBITORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: (
             "conductance_scale_factor_distribution",
-            _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+            DistributionDefault(partial(FloatConstantDistribution, value=0.7)),
         ),
         ReferenceTag.INHIBITORY_FACILITATION_TIME_DISTRIBUTION: (
             "facilitation_time",
-            _DEFAULT_FACILITATION_TIME,
+            DistributionDefault(partial(GammaDistribution, shape=11.56, scale=1.4706)),
         ),
         ReferenceTag.INHIBITORY_DEPRESSION_TIME_DISTRIBUTION: (
             "depression_time",
-            _DEFAULT_DEPRESSION_TIME,
+            DistributionDefault(partial(GammaDistribution, shape=1995.11, scale=0.3358)),
         ),
         ReferenceTag.INHIBITORY_N_RRP_VESICLES_DISTRIBUTION: (
             "n_rrp_vesicles_distribution",
-            _DEFAULT_N_RRP_VESICLES,
+            DistributionDefault(
+                partial(
+                    IntDiscreteDistribution,
+                    values=(1, 2, 3, 4, 5),
+                    probabilities=(0.3, 0.3, 0.2, 0.1, 0.1),
+                )
+            ),
         ),
         ReferenceTag.INHIBITORY_DECAY_TIME_DISTRIBUTION: (
             "decay_time",
-            _DEFAULT_DECAY_TIME,
+            DistributionDefault(
+                partial(NormalDistribution, min=1.7, max=1.9, mean=1.7, standard_deviation=0.1)
+            ),
         ),
         ReferenceTag.INHIBITORY_U_SYN_DISTRIBUTION: (
             "u_syn",
-            _DEFAULT_U_SYN,
+            DistributionDefault(
+                partial(NormalDistribution, min=0.2, max=0.7, mean=0.5, standard_deviation=0.25)
+            ),
         ),
         ReferenceTag.INHIBITORY_DELAY_DISTRIBUTION: (
             "delay_distribution",
-            _DEFAULT_DELAY,
+            DistributionDefault(
+                partial(NormalDistribution, min=0.1, max=5.0, mean=2.0, standard_deviation=1.0)
+            ),
         ),
     }
 

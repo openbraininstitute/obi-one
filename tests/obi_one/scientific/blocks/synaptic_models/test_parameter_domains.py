@@ -50,3 +50,17 @@ def test_the_built_in_defaults_stay_inside_their_own_domains():
     for parameter, domain in TsodyksMarkramSynapticModel._sampled_fields().values():
         offending = [v for v in samples[parameter] if not is_valid_parameter_sample(v, domain)]
         assert offending == [], f"{parameter}: {offending[:3]} outside {domain.description}"
+
+
+def test_the_two_models_can_differ_and_do():
+    """Excitatory and inhibitory declare their own values, and at least one already differs.
+
+    If this ever passes trivially - because every inhibitory value was copied from the
+    excitatory one - the split has stopped earning its keep.
+    """
+    excitatory = ExcitatoryTsodyksMarkramSynapticModel._defaults_by_field()
+    inhibitory = InhibitoryTsodyksMarkramSynapticModel._defaults_by_field()
+
+    assert set(excitatory) == set(inhibitory)
+    differing = [f for f in excitatory if excitatory[f].label != inhibitory[f].label]
+    assert differing, "the two models declare identical defaults for every parameter"
