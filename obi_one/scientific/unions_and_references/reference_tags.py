@@ -1,11 +1,12 @@
-"""Roles a block reference field can play, used to say what an unset reference means.
+"""Tags naming what a block reference field is for, used to say what an unset reference means.
 
 A block reference field that may be left unset carries one of these under
 ``SchemaKey.REFERENCE_TAG`` in its ``json_schema_extra``, and the ScanConfig holding it answers
-per role under ``SchemaKey.REFERENCE_TAG_DEFAULTS``. The UI shows that answer as the field's
+per tag under ``SchemaKey.REFERENCE_TAG_DEFAULTS``. The UI shows that answer as the field's
 default option.
 
-The tag names the *role*, not the field, so fields that mean the same thing share a tag and an
+The tag names what the field is *for*, not the field itself, so fields that mean the same thing
+share a tag and an
 answer. That is what ``DEFAULT_BLOCK_REFERENCE_LABELS`` cannot express: it is keyed by reference
 type, so every field accepting ``AllDistributionsReference`` is forced to show the same text -
 which for the Tsodyks-Markram parameters means nine fields with nine different built-in defaults
@@ -19,12 +20,12 @@ from enum import StrEnum
 
 
 class ReferenceTag(StrEnum):
-    """The role a block reference field plays within a task."""
+    """What a block reference field is for within a task."""
 
     # Tsodyks-Markram parameter distributions. One per parameter rather than one for all of
     # them: each falls back to a different built-in distribution, so each needs its own answer.
     # Excitatory and inhibitory synapses take different values for the same parameter, so
-    # each concrete model answers its own roles rather than sharing one set with the other.
+    # each concrete model carries its own tags rather than sharing one set with the other.
     EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION = "excitatory_u_hill_coefficient_distribution"
     EXCITATORY_CONDUCTANCE_DISTRIBUTION = "excitatory_conductance_distribution"
     EXCITATORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION = (

@@ -47,30 +47,48 @@ class SynapticModelBase(Block):
             raise NotImplementedError(msg)
         return cls._synapse_model_family
 
-    # Filled in by each concrete model. Keyed by the role, since that is what a config asks
+    # Filled in by each concrete model. Keyed by the tag, since that is what a config answers
     # by and what identifies a parameter across models that declare the same field; the field
     # is what `sample` needs, and the default cannot live in `json_schema_extra` because it
     # holds a factory and would not serialize.
     _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {}
 
-    def __init_subclass__(cls, **kwargs) -> None:
-        """Give this model's own fields the roles it plays.
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs) -> None:  # ruff: ignore[bad-dunder-method-name]
+        """Stamp each field this model declares a default for with the tag that names it.
 
-        Subclasses share one `json_schema_extra` dict with the parent, so each field gets a
-        fresh one rather than being mutated in place - otherwise every model would end up
-        carrying whichever subclass was defined last.
+        The parameter fields are declared once, on a shared parent, but two models can need
+        different tags for the same field - excitatory and inhibitory facilitation time are
+        different things with different defaults. So the tag cannot be written into the
+        declaration; it has to be applied per subclass, once the subclass exists.
+
+        Three details make that work, and none of them is optional:
+
+        - `__pydantic_init_subclass__`, not `__init_subclass__`. Pydantic has not built the
+          subclass's `model_fields` when the latter runs, so `cls.model_fields` is still the
+          *parent's* and the stamp lands on the parent's own field objects, leaving it
+          carrying whichever subclass was defined last.
+        - a fresh `json_schema_extra` rather than a mutated one. Subclasses get their own
+          `FieldInfo` but it holds the *same* extra dict by reference, so writing into it in
+          place gives every sibling whichever subclass was defined last.
+        - `model_rebuild`, because this hook runs *after* the JSON schema has been built. The
+          UI reads the tag out of the published schema, so a stamp that never reaches it is
+          the same as no stamp at all - the fields go back to sharing one type-keyed label.
         """
-        super().__init_subclass__(**kwargs)
+        super().__pydantic_init_subclass__(**kwargs)
+        if not cls._parameter_defaults:
+            return
         for tag, (field_name, _default) in cls._parameter_defaults.items():
             field = cls.model_fields[field_name]
             field.json_schema_extra = {
                 **(field.json_schema_extra or {}),
                 SchemaKey.REFERENCE_TAG: tag,
             }
+        cls.model_rebuild(force=True)
 
     @classmethod
-    def default_distributions_by_role(cls) -> dict[ReferenceTag, tuple[str, Distribution]]:
-        """Each parameter's fallback distribution, keyed by the role its field plays.
+    def default_distributions_by_tag(cls) -> dict[ReferenceTag, tuple[str, Distribution]]:
+        """Each parameter's fallback distribution, keyed by the tag naming its field.
 
         A fresh distribution per call: the caller registers these into a config, which must
         not share a block with another.

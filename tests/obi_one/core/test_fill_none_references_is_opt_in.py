@@ -56,7 +56,7 @@ def test_every_other_config_declares_nothing():
 def test_the_blocks_carrying_tags_are_the_expected_ones():
     # The second gate is weaker than the first, because the combined neuron sets are shared
     # with every config. It still holds: a tagged field is only filled when the config being
-    # filled answers that role, and only the synapse parameterization config answers any.
+    # filled answers that tag, and only the synapse parameterization config answers any.
     # Listed explicitly so that tagging something new is a deliberate change, not a surprise.
     tagged = {
         block_class.__name__
@@ -67,7 +67,8 @@ def test_the_blocks_carrying_tags_are_the_expected_ones():
     }
 
     assert tagged == {
-        "TsodyksMarkramSynapticModel",
+        # Not the shared TsodyksMarkramSynapticModel parent: it declares the fields, but only
+        # its concrete subclasses say what they are for.
         "ExcitatoryTsodyksMarkramSynapticModel",
         "InhibitoryTsodyksMarkramSynapticModel",
         "SynapseModelAssigner",

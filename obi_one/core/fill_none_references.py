@@ -1,14 +1,14 @@
 """One pass that gives every unset block reference in a config a default.
 
 A block reference field left as ``None`` means "whatever the task considers the obvious choice".
-Which choice that is depends on the field's role rather than on the block holding it, so each field
-declares its role once via ``SchemaKey.REFERENCE_TAG`` and the task supplies one reference per role.
+Which choice that is depends on what the field is for rather than on the block holding it, so each
+field is tagged once via ``SchemaKey.REFERENCE_TAG`` and the task supplies one reference per tag.
 Filling then needs no knowledge of any particular block type: walk the config, and wherever a tagged
 field is ``None``, substitute the reference its tag maps to.
 
-Roles are named by the task that resolves them -- see
+Tags are named by the task that resolves them -- see
 ``obi_one.scientific.unions_and_references.reference_tags.ReferenceTag`` for the simulation
-generation set. Nothing here needs to know what a role means, only that fields sharing a tag share
+generation set. Nothing here needs to know what a tag means, only that fields sharing a tag share
 a default, so tags are handled as plain strings.
 """
 
@@ -24,7 +24,7 @@ L = logging.getLogger(__name__)
 
 
 class BlockDefault(NamedTuple):
-    """What a config says one role resolves to, before it is turned into a reference.
+    """What a config says one tag resolves to, before it is turned into a reference.
 
     A config declares these; `ScanConfig.default_block_references` does the resolving, so no
     config repeats the three lines that build a reference and name its block.
@@ -74,18 +74,18 @@ def _blocks_of(config: object) -> Iterator[Block]:
 def fill_none_references_in_config(
     config: object, defaults: Mapping[str, BlockReference]
 ) -> list[BlockReference]:
-    """Replace every unset tagged block reference with the default for its role.
+    """Replace every unset tagged block reference with the default for its tag.
 
     A tag missing from ``defaults`` is left alone, which is how a block keeps a default only it can
     compute -- a spike time distribution spanning the stimulus's own duration, for instance.
 
     Args:
         config: The config whose blocks should be filled.
-        defaults: The block reference to substitute for each role, keyed by reference tag.
+        defaults: The block reference to substitute for each tag.
 
     Returns:
         The defaults that were actually used, in the order they were first needed. Nothing is
-        returned for a role no block left unset, so a caller registering these does not create
+        returned for a tag no block left unset, so a caller registering these does not create
         blocks the config never refers to.
     """
     used: list[BlockReference] = []

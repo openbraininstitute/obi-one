@@ -54,7 +54,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @staticmethod
     def default_blocks() -> dict[str, BlockDefault]:
-        """What each unset tagged field resolves to, keyed by the role it plays.
+        """What each unset tagged field resolves to, keyed by the tag it carries.
 
         The one thing a config declares about its defaults. Turning these into references and
         publishing them to the schema is done below, so a config says what its defaults are and
@@ -76,7 +76,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
         `REFERENCE_TAG_DEFAULTS` is derived from `default_block_references` rather than written
         out beside it, because the two were declared separately and drifted: the schema named
-        nine roles while the fill answered seventeen, and nothing said so. Deriving it means a
+        nine tags while the fill answered seventeen, and nothing said so. Deriving it means a
         config declares its defaults once and the schema cannot disagree with them.
         """
         super().__init_subclass__(**kwargs)
