@@ -29,11 +29,11 @@ _GENERATED_MORPHOLOGY_LOCATIONS = (
 
 # Per-neuron explicit locations each name their own neuron, so unlike plain explicit locations
 # they are unambiguous on a multi-neuron circuit and can join the sampled blocks here.
-_CIRCUIT_SAFE_MORPHOLOGY_LOCATIONS = (
+_CIRCUIT_MORPHOLOGY_LOCATIONS = (
     _GENERATED_MORPHOLOGY_LOCATIONS | PerNeuronExplicitMorphologyLocations
 )
 
-_ALL_MORPHOLOGY_LOCATIONS = _CIRCUIT_SAFE_MORPHOLOGY_LOCATIONS | ExplicitMorphologyLocations
+_ALL_MORPHOLOGY_LOCATIONS = _CIRCUIT_MORPHOLOGY_LOCATIONS | ExplicitMorphologyLocations
 
 MorphologyLocationUnion = Annotated[
     _ALL_MORPHOLOGY_LOCATIONS,
@@ -52,7 +52,7 @@ SingleMorphologySamplingLocationUnion = Annotated[
 # same branch id means a different branch on every morphology. They are therefore offered only for
 # single-neuron configurations.
 CircuitMorphologyLocationUnion = Annotated[
-    _CIRCUIT_SAFE_MORPHOLOGY_LOCATIONS,
+    _CIRCUIT_MORPHOLOGY_LOCATIONS,
     Discriminator("type"),
 ]
 
