@@ -19,6 +19,10 @@ class SchemaKey(StrEnum):
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
     LATEX_EQUATION = "latex_equation"
+    PARAMETER_DOMAIN = "parameter_domain"
+    # Note: PARAMETER_DOMAIN is the range a sampled value for this field is allowed to take,
+    # whatever distribution is chosen for it. It is checked against the values a distribution
+    # actually draws - not by pydantic, which only ever sees the reference to the distribution.
     PARAMETER_ORDER_PRIORITY = "parameter_order_priority"
     # Note: PARAMETER_ORDER_PRIORITY is not used by the UI,
     # rather the Block class uses this to order the properties in the generated openapi.json schema,
