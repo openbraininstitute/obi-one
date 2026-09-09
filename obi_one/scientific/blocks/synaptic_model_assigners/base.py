@@ -5,6 +5,10 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
 )
@@ -30,10 +34,16 @@ class SynapseModelAssigner(Block):
     )
 
     edge_population_name: str = Field(
-        title="EdgePopulation name",
-        description="Name of an EdgePopulation of the SONATA circuit that is to be parameterized",
+        min_length=1,
+        title="Edge Population",
+        description="Edge population of the SONATA circuit that is to be parameterized.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+            # Chemical rather than every edge population: these assigners carry
+            # Tsodyks-Markram models, which describe chemical synaptic transmission, so
+            # offering an electrical population here would offer a nonsensical assignment.
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitMappedProperties.CHEMICAL_EDGE_POPULATION,
         },
     )
 

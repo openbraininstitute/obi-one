@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 import numpy as np
 from pydantic import Field
@@ -16,6 +17,8 @@ L = logging.getLogger(__name__)
 
 class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
     """Assign a synaptic model to the efferent synapses of a presynaptic neuron set."""
+
+    title: ClassVar[str] = "Presynaptic Neuron Set"
 
     source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
