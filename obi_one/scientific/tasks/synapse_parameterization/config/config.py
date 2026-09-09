@@ -64,22 +64,10 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
             BlockGroup.SYNAPSE_PARAMETERS,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
-        # The UI renders a `reference` field only for a reference type named here, so a type
-        # left out hides every field that points at it - not just its dropdown's options.
-        # Keyed off ALL_NEURON_SETS_REFERENCE_TYPES rather than spelled out, so the neuron set
-        # entries cannot drift from the union the `neuron_sets` field below accepts.
-        #
-        # These read as prompts rather than defaults because, for the fields they cover, there
-        # is no default: an assigner without a synaptic model or a neuron set cannot run, and
-        # says so. The fields that do have a default are tagged instead, below.
-        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
-            AllDistributionsReference.__name__: "Default",
-            SynapticModelReference.__name__: "Select a synaptic model",
-            **dict.fromkeys(ALL_NEURON_SETS_REFERENCE_TYPES, "Select a neuron set"),
-        },
-        # Keyed by the role a field plays rather than by its reference type, which is the only
-        # way to give the nine Tsodyks-Markram parameters nine different answers - they all
-        # accept AllDistributionsReference, so the map above can offer them only one.
+        # Keyed by the role a field plays rather than by its reference type. Every reference
+        # field reachable from this config is tagged and answered here, which is why there is no
+        # DEFAULT_BLOCK_REFERENCE_LABELS beside it: that map is keyed by type, so it could only
+        # ever give every field accepting AllDistributionsReference the same answer.
         SchemaKey.REFERENCE_TAG_DEFAULTS: _reference_tag_defaults(),
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",

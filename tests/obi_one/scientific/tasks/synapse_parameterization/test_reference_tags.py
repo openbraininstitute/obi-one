@@ -82,14 +82,18 @@ def test_every_declared_tag_is_a_reference_tag_member():
     assert set(TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS) <= set(ReferenceTag)
 
 
-def test_fields_without_a_default_are_left_untagged():
-    # An assigner cannot run without a synaptic model or a neuron set, so those fields keep
-    # their type-keyed label, which reads as the prompt it is rather than promising a default.
-    labels = SynapseParameterizationScanConfig.json_schema_extra_additions[
-        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS
-    ]
+def test_the_config_declares_no_type_keyed_labels():
+    """Every reference field here is tagged and answered, so the type-keyed map is dead weight.
 
-    assert "Select" in labels["SynapticModelReference"]
+    It is keyed by reference type, so it could only ever give every field accepting
+    AllDistributionsReference the same answer - which is what it did, for nine parameters with
+    nine different defaults. Dropping it is safe only because the UI now shows a field once its
+    role is answered, rather than only when its type is labelled.
+    """
+    assert (
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS
+        not in SynapseParameterizationScanConfig.json_schema_extra_additions
+    )
 
 
 def test_each_answer_carries_the_block_behind_its_name():
