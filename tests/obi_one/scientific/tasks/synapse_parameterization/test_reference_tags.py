@@ -5,7 +5,6 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
-    tsodyks_markram_default_distributions,
 )
 from obi_one.scientific.tasks.circuit_extraction.task import (
     CircuitExtractionScanConfig,
@@ -120,7 +119,10 @@ def test_each_answer_carries_the_block_behind_its_name():
 
 
 def test_the_block_matches_the_distribution_the_field_falls_back_to():
-    for tag, (_name, distribution) in tsodyks_markram_default_distributions().items():
+    for tag, (
+        _name,
+        distribution,
+    ) in TsodyksMarkramSynapticModel.default_distributions_by_role().items():
         assert _config_tag_defaults()[tag]["block"] == json.loads(distribution.model_dump_json())
 
 

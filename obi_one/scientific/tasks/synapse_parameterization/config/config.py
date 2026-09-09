@@ -17,7 +17,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
-    tsodyks_markram_default_distributions,
+    TsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
@@ -122,7 +122,9 @@ def _distribution_defaults() -> dict[str, BlockDefault]:
         tag: BlockDefault(
             AllDistributionsReference, "distributions", name, lambda d=distribution: d
         )
-        for tag, (name, distribution) in tsodyks_markram_default_distributions().items()
+        for tag, (name, distribution) in (
+            TsodyksMarkramSynapticModel.default_distributions_by_role().items()
+        )
     }
 
 
