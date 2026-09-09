@@ -56,6 +56,15 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
             BlockGroup.SYNAPSE_PARAMETERS,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
+        # The UI renders a `reference` field only for a reference type named here, so a type
+        # left out hides every field that points at it - not just its dropdown's options.
+        # Keyed off ALL_NEURON_SETS_REFERENCE_TYPES rather than spelled out, so the neuron set
+        # entries cannot drift from the union the `neuron_sets` field below accepts.
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
+            AllDistributionsReference.__name__: "Default",
+            SynapticModelReference.__name__: "Default",
+            **dict.fromkeys(ALL_NEURON_SETS_REFERENCE_TYPES, "Default"),
+        },
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
