@@ -10,6 +10,7 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.distributions.base import Distribution
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
 from obi_one.scientific.blocks.distributions.defaults import (
     DistributionDefault,
@@ -61,17 +62,35 @@ _DEFAULT_DELAY = DistributionDefault(
 # What each parameter's reference field shows when left unset, keyed by the role the
 # field plays. Built from the same DistributionDefault objects `sample` falls back to, so
 # the label and the distribution it names cannot drift apart.
-TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS: dict[str, str] = {
-    ReferenceTag.U_HILL_COEFFICIENT_DISTRIBUTION: _DEFAULT_U_HILL_COEFFICIENT.label,
-    ReferenceTag.CONDUCTANCE_DISTRIBUTION: _DEFAULT_CONDUCTANCE.label,
-    ReferenceTag.CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: _DEFAULT_CONDUCTANCE_SCALE_FACTOR.label,
-    ReferenceTag.FACILITATION_TIME_DISTRIBUTION: _DEFAULT_FACILITATION_TIME.label,
-    ReferenceTag.DEPRESSION_TIME_DISTRIBUTION: _DEFAULT_DEPRESSION_TIME.label,
-    ReferenceTag.N_RRP_VESICLES_DISTRIBUTION: _DEFAULT_N_RRP_VESICLES.label,
-    ReferenceTag.DECAY_TIME_DISTRIBUTION: _DEFAULT_DECAY_TIME.label,
-    ReferenceTag.U_SYN_DISTRIBUTION: _DEFAULT_U_SYN.label,
-    ReferenceTag.DELAY_DISTRIBUTION: _DEFAULT_DELAY.label,
+_TSODYKS_MARKRAM_DEFAULTS: dict[str, DistributionDefault] = {
+    ReferenceTag.U_HILL_COEFFICIENT_DISTRIBUTION: _DEFAULT_U_HILL_COEFFICIENT,
+    ReferenceTag.CONDUCTANCE_DISTRIBUTION: _DEFAULT_CONDUCTANCE,
+    ReferenceTag.CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
+    ReferenceTag.FACILITATION_TIME_DISTRIBUTION: _DEFAULT_FACILITATION_TIME,
+    ReferenceTag.DEPRESSION_TIME_DISTRIBUTION: _DEFAULT_DEPRESSION_TIME,
+    ReferenceTag.N_RRP_VESICLES_DISTRIBUTION: _DEFAULT_N_RRP_VESICLES,
+    ReferenceTag.DECAY_TIME_DISTRIBUTION: _DEFAULT_DECAY_TIME,
+    ReferenceTag.U_SYN_DISTRIBUTION: _DEFAULT_U_SYN,
+    ReferenceTag.DELAY_DISTRIBUTION: _DEFAULT_DELAY,
 }
+
+# What each parameter's reference field shows when left unset, keyed by role.
+TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS: dict[str, str] = {
+    tag: default.label for tag, default in _TSODYKS_MARKRAM_DEFAULTS.items()
+}
+
+
+def tsodyks_markram_default_distributions() -> dict[str, tuple[str, Distribution]]:
+    """The block each parameter's reference resolves to when left unset, keyed by role.
+
+    Returns one (block name, distribution) pair per tag. The name is the label the UI already
+    shows for that field, so the option a user picked and the block that appears in the config
+    once it is filled carry the same text. Fresh instances every call: they are registered into
+    a config, which must not share blocks with another.
+    """
+    return {
+        tag: (default.label, default.create()) for tag, default in _TSODYKS_MARKRAM_DEFAULTS.items()
+    }
 
 
 class _ParameterDomain(NamedTuple):
