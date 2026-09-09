@@ -7,7 +7,7 @@ from typing import ClassVar
 from pydantic import Field
 
 from obi_one.core.block import Block
-from obi_one.core.block_reference import BlockReference
+from obi_one.core.fill_none_references import BlockDefault
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -16,8 +16,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.synapse_parameterization.config.default import (
-    _all_defaults,
-    _resolved,
+    default_blocks as synapse_parameterization_defaults,
 )
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
@@ -69,17 +68,9 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
     }
 
     @staticmethod
-    def default_block_references() -> dict[str, BlockReference]:
-        """The block reference each unset field resolves to, keyed by the role it plays.
-
-        Consumed by `fill_none_references_in_config`. Each reference carries its block, so the
-        caller can register the ones actually used and leave the rest uncreated - a config whose
-        fields are all named explicitly gains no blocks it never refers to.
-        """
-        return {
-            tag: _resolved(reference_type, dict_name, name, factory())
-            for tag, (reference_type, dict_name, name, factory) in _all_defaults().items()
-        }
+    def default_blocks() -> dict[str, BlockDefault]:
+        """Declared in `default.py`; the base turns these into references and publishes them."""
+        return synapse_parameterization_defaults()
 
     class Initialize(Block):
         circuit: CircuitFromID = Field(

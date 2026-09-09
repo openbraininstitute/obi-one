@@ -136,3 +136,30 @@ def test_a_config_declaring_no_defaults_publishes_nothing():
         SchemaKey.REFERENCE_TAG_DEFAULTS
         not in CircuitExtractionScanConfig.model_config["json_schema_extra"]
     )
+
+
+def test_a_config_declares_the_spec_and_the_base_resolves_it():
+    """A config says what its defaults are; it says nothing about how they are used.
+
+    `default_block_references` and the schema entry are both derived from `default_blocks`, so
+    adopting this pattern is one method returning one mapping - not three that can disagree.
+    """
+    declared = SynapseParameterizationScanConfig.default_blocks()
+    resolved = SynapseParameterizationScanConfig.default_block_references()
+
+    assert set(resolved) == set(declared)
+    for tag, block_default in declared.items():
+        reference = resolved[tag]
+        assert isinstance(reference, block_default.reference_type)
+        assert reference.block_dict_name == block_default.block_dict_name
+        assert reference.block_name == block_default.name
+        assert reference.block.block_name == block_default.name
+
+
+def test_each_resolution_builds_a_fresh_block():
+    # Two configs must not share a block instance; the spec holds a factory for this reason.
+    first = SynapseParameterizationScanConfig.default_block_references()
+    second = SynapseParameterizationScanConfig.default_block_references()
+
+    for tag, reference in first.items():
+        assert reference.block is not second[tag].block

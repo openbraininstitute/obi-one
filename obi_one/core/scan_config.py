@@ -18,7 +18,11 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
-from obi_one.core.fill_none_references import fill_none_references_in_config
+from obi_one.core.fill_none_references import (
+    BlockDefault,
+    fill_none_references_in_config,
+    resolve_block_default,
+)
 from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
@@ -49,13 +53,23 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     description: ClassVar[str] = """Add a description to the class' description variable"""
 
     @staticmethod
-    def default_block_references() -> dict[str, BlockReference]:
-        """The block reference each unset tagged field resolves to, keyed by its role.
+    def default_blocks() -> dict[str, BlockDefault]:
+        """What each unset tagged field resolves to, keyed by the role it plays.
 
-        A config that leaves nothing to be inferred returns nothing, which is the default.
-        See `obi_one.core.fill_none_references`.
+        The one thing a config declares about its defaults. Turning these into references and
+        publishing them to the schema is done below, so a config says what its defaults are and
+        nothing about how they are used. A config that leaves nothing to be inferred returns
+        nothing, which is the default. See `obi_one.core.fill_none_references`.
         """
         return {}
+
+    @classmethod
+    def default_block_references(cls) -> dict[str, BlockReference]:
+        """The declared defaults, resolved into references the fill pass can substitute."""
+        return {
+            tag: resolve_block_default(block_default)
+            for tag, block_default in cls.default_blocks().items()
+        }
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Publish the defaults a config declares, so the UI reads what the fill will do.
