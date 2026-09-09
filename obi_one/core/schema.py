@@ -35,11 +35,16 @@ class SchemaKey(StrEnum):
     # Note: REFERENCE_TAG names the role a block reference field plays, so a task can say what the
     # field means when it is left unset. See ReferenceTag.
     REFERENCE_TAG_DEFAULTS = "reference_tag_defaults"
-    # Note: REFERENCE_TAG_DEFAULTS sits on a ScanConfig and gives, for each reference tag, the
-    # name of the block a field carrying that tag resolves to when left unset. The UI shows it as
-    # the placeholder for the field. Unlike DEFAULT_BLOCK_REFERENCE_LABELS, which is keyed by
-    # reference type and also decides whether a field is shown at all, this is keyed by role, so
-    # two fields of the same type that mean different things get their own answer.
+    # Note: REFERENCE_TAG_DEFAULTS sits on a ScanConfig and gives, for each reference tag, what a
+    # field carrying that tag resolves to when left unset: {"name": ..., "block": ...} - the name
+    # the block is registered under once the config is filled, and the serialized block itself,
+    # so the UI can both label the field and read the values behind that label. Unlike
+    # DEFAULT_BLOCK_REFERENCE_LABELS, which is keyed by reference type and also decides whether a
+    # field is shown at all, this is keyed by role, so two fields of the same type that mean
+    # different things get their own answer.
+    # NOTE ON MERGING #947: that branch defines this value as a bare name string. Here it is the
+    # object above, so the two definitions have to be reconciled rather than one taking the
+    # other - core-web-app reads `.name` off it.
     REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
     TITLE_BY_KEY = "title_by_key"

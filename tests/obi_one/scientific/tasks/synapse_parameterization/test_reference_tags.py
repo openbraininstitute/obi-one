@@ -1,9 +1,12 @@
+import json
+
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS,
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
+    tsodyks_markram_default_distributions,
 )
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationScanConfig,
@@ -49,9 +52,9 @@ def test_the_config_answers_every_role_the_parameters_declare():
 def test_the_nine_parameters_get_nine_different_answers():
     # The point of keying by role rather than by reference type: all nine fields accept
     # AllDistributionsReference, so a type-keyed map could only ever offer them one answer.
-    answers = list(_config_tag_defaults().values())
+    names = [answer["name"] for answer in _config_tag_defaults().values()]
 
-    assert len(answers) == len(set(answers))
+    assert len(names) == len(set(names))
 
 
 def test_each_answer_names_the_distribution_that_field_actually_falls_back_to():
@@ -59,7 +62,9 @@ def test_each_answer_names_the_distribution_that_field_actually_falls_back_to():
     # fails if a default is changed in one place and not the other.
     for name, extra in _reference_fields(TsodyksMarkramSynapticModel).items():
         tag = extra[SchemaKey.REFERENCE_TAG]
-        assert _config_tag_defaults()[tag] == extra[SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL], name
+        assert (
+            _config_tag_defaults()[tag]["name"] == (extra[SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL])
+        ), name
 
 
 def test_both_concrete_models_carry_the_tags():
@@ -83,3 +88,17 @@ def test_fields_without_a_default_are_left_untagged():
     ]
 
     assert "Select" in labels["SynapticModelReference"]
+
+
+def test_each_answer_carries_the_block_behind_its_name():
+    # The name and the block travel together so the UI can label the field and also read the
+    # values behind that label - offering them in a tooltip, or materialising the default.
+    for answer in _config_tag_defaults().values():
+        assert set(answer) == {"name", "block"}
+        assert isinstance(answer["name"], str)
+        assert "type" in answer["block"]
+
+
+def test_the_block_matches_the_distribution_the_field_falls_back_to():
+    for tag, (_name, distribution) in tsodyks_markram_default_distributions().items():
+        assert _config_tag_defaults()[tag]["block"] == json.loads(distribution.model_dump_json())

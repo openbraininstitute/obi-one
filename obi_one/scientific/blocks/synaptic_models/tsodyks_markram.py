@@ -74,9 +74,13 @@ _TSODYKS_MARKRAM_DEFAULTS: dict[str, DistributionDefault] = {
     ReferenceTag.DELAY_DISTRIBUTION: _DEFAULT_DELAY,
 }
 
-# What each parameter's reference field shows when left unset, keyed by role.
-TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS: dict[str, str] = {
-    tag: default.label for tag, default in _TSODYKS_MARKRAM_DEFAULTS.items()
+# What each parameter's reference field resolves to when left unset, keyed by role: the name
+# the block is registered under once a config is filled, and the block itself. Both together so
+# the UI can show the name and read the distribution behind it - offering the parameters in a
+# tooltip, or materialising it when someone wants to edit the default rather than accept it.
+TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS: dict[str, dict] = {
+    tag: {"name": default.label, "block": default.create().model_dump(mode="json")}
+    for tag, default in _TSODYKS_MARKRAM_DEFAULTS.items()
 }
 
 
