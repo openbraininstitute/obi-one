@@ -17,7 +17,6 @@ from obi_one.scientific.library.entity_property_types import (
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.synapse_parameterization.config.default import (
     _all_defaults,
-    _reference_tag_defaults,
     _resolved,
 )
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
@@ -64,11 +63,6 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
             BlockGroup.SYNAPSE_PARAMETERS,
             BlockGroup.CIRCUIT_COMPONENTS_BLOCK_GROUP,
         ],
-        # Keyed by the role a field plays rather than by its reference type. Every reference
-        # field reachable from this config is tagged and answered here, which is why there is no
-        # DEFAULT_BLOCK_REFERENCE_LABELS beside it: that map is keyed by type, so it could only
-        # ever give every field accepting AllDistributionsReference the same answer.
-        SchemaKey.REFERENCE_TAG_DEFAULTS: _reference_tag_defaults(),
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },

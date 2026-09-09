@@ -57,6 +57,29 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         """
         return {}
 
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Publish the defaults a config declares, so the UI reads what the fill will do.
+
+        `REFERENCE_TAG_DEFAULTS` is derived from `default_block_references` rather than written
+        out beside it, because the two were declared separately and drifted: the schema named
+        nine roles while the fill answered seventeen, and nothing said so. Deriving it means a
+        config declares its defaults once and the schema cannot disagree with them.
+        """
+        super().__init_subclass__(**kwargs)
+
+        defaults = cls.default_block_references()
+        if not defaults:
+            return
+        # `json_schema_extra` is typed as a dict, a callable or None; only the dict case can
+        # carry this, and OBIBaseModel's model_config always sets one.
+        extra = cls.model_config.get("json_schema_extra")
+        if not isinstance(extra, dict):
+            return
+        extra[SchemaKey.REFERENCE_TAG_DEFAULTS] = {  # ty:ignore[invalid-assignment]
+            tag: {"name": reference.block_name, "block": reference.block.model_dump(mode="json")}
+            for tag, reference in defaults.items()
+        }
+
     def fill_none_references(self) -> None:
         """Give every unset tagged reference its default, and register what was used.
 
