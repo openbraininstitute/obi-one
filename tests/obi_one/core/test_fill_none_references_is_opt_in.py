@@ -53,9 +53,11 @@ def test_every_other_config_declares_nothing():
         assert config_class.default_block_references() == {}, config_class.__name__
 
 
-def test_only_the_tsodyks_markram_blocks_carry_tags():
-    # The second gate: even if the pass ran on another config, it only touches fields that
-    # declare a role, and nothing outside these blocks does.
+def test_the_blocks_carrying_tags_are_the_expected_ones():
+    # The second gate is weaker than the first, because the combined neuron sets are shared
+    # with every config. It still holds: a tagged field is only filled when the config being
+    # filled answers that role, and only the synapse parameterization config answers any.
+    # Listed explicitly so that tagging something new is a deliberate change, not a surprise.
     tagged = {
         block_class.__name__
         for block_class in _subclasses(Block)
@@ -68,6 +70,15 @@ def test_only_the_tsodyks_markram_blocks_carry_tags():
         "TsodyksMarkramSynapticModel",
         "ExcitatoryTsodyksMarkramSynapticModel",
         "InhibitoryTsodyksMarkramSynapticModel",
+        "SynapseModelAssigner",
+        "AllPairsSynapticModelAssigner",
+        "InterNeuronSetSynapticModelAssigner",
+        "PresynapticNeuronSetSynapticModelAssigner",
+        "CombinedNeuronSet",
+        "BiophysicalCombinedNeuronSet",
+        "PointCombinedNeuronSet",
+        "VirtualCombinedNeuronSet",
+        "NonVirtualCombinedNeuronSet",
     }
 
 

@@ -9,6 +9,7 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
 )
@@ -55,6 +56,7 @@ class SynapseModelAssigner(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
+            SchemaKey.REFERENCE_TAG: ReferenceTag.SYNAPTIC_MODEL,
         },
     )
 
