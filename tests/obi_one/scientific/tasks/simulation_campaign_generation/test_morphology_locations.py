@@ -336,6 +336,28 @@ class TestTimeWindowRecording:
                 end_time=20.0,
             )
 
+    @pytest.mark.parametrize(
+        ("start_time", "end_time"),
+        [
+            pytest.param([60.0], 20.0, id="start-time-sweep"),
+            pytest.param(60.0, [20.0], id="end-time-sweep"),
+        ],
+    )
+    def test_time_sweeps_defer_window_order_validation(self, start_time, end_time):
+        """A sweep is resolved later, so its bounds cannot yet be compared."""
+        locations_ref = MorphologyLocationsReference(
+            block_dict_name="morphology_locations", block_name="Locations"
+        )
+
+        recording = obi.TimeWindowMorphologyLocationVoltageRecording(
+            morphology_locations=locations_ref,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        assert recording.start_time == start_time
+        assert recording.end_time == end_time
+
     def test_locations_are_still_required(self):
         with pytest.raises(ValueError, match="require morphology locations"):
             obi.TimeWindowMorphologyLocationVoltageRecording(morphology_locations=None)
