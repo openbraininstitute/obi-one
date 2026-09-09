@@ -314,15 +314,18 @@ def test_linear_current_stim():
     npt.assert_array_equal(res, [0.0, 0.0, 1.0, 2.0, 3.0, 4.0])
 
 
+# `frequency` is in hertz while `dt`, `delay`, `width` and `duration` are in milliseconds, so a
+# pulse every 0.5 ms is 2000 Hz, not 2 Hz. See `test_pulse_frequency_is_in_hertz` for a case at a
+# rate a caller would actually ask for.
 @pytest.mark.parametrize(
     ("delay", "width", "frequency", "duration", "expected"),
     [
-        (0, 0.2, 2, 2, [1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1]),
-        (0.1, 0.2, 2, 2, [0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0]),
-        (0.4, 0.2, 2, 2, [0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1]),
-        (0.3, 0.2, 0.5, 2, [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]),
-        (0, 0.1, 2, 2, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
-        (0, 0.1, 2, 0.5, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+        (0, 0.2, 2000, 2, [1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1]),
+        (0.1, 0.2, 2000, 2, [0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0]),
+        (0.4, 0.2, 2000, 2, [0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1]),
+        (0.3, 0.2, 500, 2, [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]),
+        (0, 0.1, 2000, 2, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
+        (0, 0.1, 2000, 0.5, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     ],
 )
 def test_pulse_current_stim(delay, width, frequency, duration, expected):
@@ -349,13 +352,14 @@ def test_pulse_current_stim(delay, width, frequency, duration, expected):
     npt.assert_array_equal(res, expected)
 
 
+# As above: one cycle per millisecond is 1000 Hz. See `test_sinusoidal_frequency_is_in_hertz`.
 @pytest.mark.parametrize(
     ("delay", "frequency", "duration", "expected"),
     [
-        (0, 1, 2, [0, 1, 0, -1, 0, 1, 0, -1, 0]),
-        (0.25, 1, 2, [0, 0, 1, 0, -1, 0, 1, 0, -1]),
-        (0, 1, 1, [0, 1, 0, -1, 0, 0, 0, 0, 0]),
-        (0.25, 1, 0.5, [0, 0, 1, 0, 0, 0, 0, 0, 0]),
+        (0, 1000, 2, [0, 1, 0, -1, 0, 1, 0, -1, 0]),
+        (0.25, 1000, 2, [0, 0, 1, 0, -1, 0, 1, 0, -1]),
+        (0, 1000, 1, [0, 1, 0, -1, 0, 0, 0, 0, 0]),
+        (0.25, 1000, 0.5, [0, 0, 1, 0, 0, 0, 0, 0, 0]),
     ],
 )
 def test_sinusoidal_current_stim(delay, frequency, duration, expected):
@@ -380,6 +384,71 @@ def test_sinusoidal_current_stim(delay, frequency, duration, expected):
     t = test_module._create_input(sc.input("sinusoidal"))
     res = t._get_currents(dt=config["run"]["dt"], simulation_length=config["run"]["tstop"])
     npt.assert_almost_equal(res, expected)
+
+
+def test_sinusoidal_frequency_is_in_hertz():
+    """A 10 Hz sinusoid completes 2 cycles in 200 ms, not 2000."""
+    config = {
+        "run": {"tstop": 200, "dt": 0.25, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "sinusoidal": {
+                "input_type": "current_clamp",
+                "module": "sinusoidal",
+                "frequency": 10,
+                "amp_start": 1,
+                "dt": 0.25,
+                "delay": 0,
+                "duration": 200,
+                "node_set": "Mosaic",
+            },
+        },
+    }
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    res = test_module._create_input(sc.input("sinusoidal"))._get_currents(
+        dt=0.25, simulation_length=200
+    )
+
+    # Two full cycles over 200 ms means four sign changes back to zero, so count the upward
+    # zero crossings rather than comparing against a hand-written array of 800 samples.
+    upward_crossings = np.sum((res[:-1] <= 0) & (res[1:] > 0))
+    assert upward_crossings == 2
+
+    # Peak a quarter of a cycle (25 ms) in, trough three quarters (75 ms) in.
+    npt.assert_almost_equal(res[int(25 / 0.25)], 1.0, decimal=5)
+    npt.assert_almost_equal(res[int(75 / 0.25)], -1.0, decimal=5)
+
+
+def test_pulse_frequency_is_in_hertz():
+    """A 10 Hz pulse train fires every 100 ms, not every 0.1 ms."""
+    config = {
+        "run": {"tstop": 200, "dt": 0.25, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "pulse": {
+                "input_type": "current_clamp",
+                "module": "pulse",
+                "frequency": 10,
+                "amp_start": 1,
+                "width": 5,
+                "delay": 0,
+                "duration": 200,
+                "node_set": "sugar",
+            },
+        },
+    }
+    sc = libsonata.SimulationConfig(json.dumps(config), ".")
+    res = test_module._create_input(sc.input("pulse"))._get_currents(dt=0.25, simulation_length=200)
+
+    pulse_starts = np.flatnonzero((res[1:] > 0) & (res[:-1] == 0)) + 1
+    # Pulses begin at 0 and 100 ms. The one at t=0 has no preceding zero to rise from, and the
+    # third would land on the exclusive end of the 200 ms window.
+    npt.assert_array_equal(pulse_starts * 0.25, [100.0])
+    npt.assert_almost_equal(res[0], 1.0)
+    # 5 ms wide at 0.25 ms per sample.
+    assert np.sum(res > 0) == 2 * int(5 / 0.25)
 
 
 def test_current_stim_report(tmp_path):
