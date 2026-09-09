@@ -3,9 +3,12 @@
 import re
 
 import pytest
+from entitysdk.types import AssetLabel
 from pydantic import ValidationError
 
+from obi_one.core.registry import task_registry
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.types import TaskType
 
 ION_CHANNEL_NAME_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
 
@@ -35,3 +38,12 @@ def test_recordings_are_kept_together_rather_than_scanned():
     annotation = IonChannelFittingScanConfig.Initialize.model_fields["recordings"].annotation
 
     assert getattr(annotation, "__origin__", None) is tuple
+
+
+def test_registration_names_the_asset_the_single_config_uploads():
+    """`run_task_type` finds the config on the launched entity by this label, and the single
+    config uploads it under the same one. A mismatch fails only on the executor.
+    """
+    label = task_registry.get_task_type_config_asset_label(TaskType.ion_channel_fitting)
+
+    assert label == AssetLabel.ion_channel_modeling_generation_config

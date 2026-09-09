@@ -92,6 +92,27 @@ except ImportError:
         pass
 
 
+# `ion_channel_builder` fitting inputs that are the same for every fit. They are not exposed
+# on the config, so they live here rather than being rebuilt inside execute() each run.
+_VOLTAGE_EXCLUSION = {
+    "activation": {"above": None, "below": None},
+    "inactivation": {"above": None, "below": None},
+}
+
+# None means "read the timing from the trace"; the corrections shift those read timings, in ms.
+_STIM_TIMINGS = {
+    "activation": {"start": None, "end": None},
+    "inactivation_iv": {"start": None, "end": None},
+    "inactivation_tc": {"start": None, "end": None},
+}
+
+_STIM_TIMINGS_CORRECTIONS = {
+    "activation": {"start": 0.0, "end": -1.0},
+    "inactivation_iv": {"start": 5.0, "end": -1.0},
+    "inactivation_tc": {"start": 0.0, "end": -1.0},
+}
+
+
 class BlockGroup(StrEnum):
     """Block Groups."""
 
@@ -564,9 +585,15 @@ class IonChannelFittingTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
+        # None when the task is run locally rather than launched; the update below is then a
+        # no-op, so the same execute() serves both.
+        execution_activity = self._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
+
         try:  # ruff: ignore[too-many-statements-in-try-clause]
             # download traces asset and metadata given id.
             # Get ljp (liquid junction potential) voltage corection from metadata
@@ -574,52 +601,14 @@ class IonChannelFittingTask(Task):
 
             # prepare data to feed
             eq_names = self.equation_keys
-            voltage_exclusion = {
-                "activation": {
-                    "above": None,
-                    "below": None,
-                },
-                "inactivation": {
-                    "above": None,
-                    "below": None,
-                },
-            }
-            stim_timings = {
-                "activation": {
-                    "start": None,
-                    "end": None,
-                },
-                "inactivation_iv": {
-                    "start": None,
-                    "end": None,
-                },
-                "inactivation_tc": {
-                    "start": None,
-                    "end": None,
-                },
-            }
-            stim_timings_corrections = {
-                "activation": {
-                    "start": 0.0,
-                    "end": -1.0,
-                },
-                "inactivation_iv": {
-                    "start": 5.0,
-                    "end": -1.0,
-                },
-                "inactivation_tc": {
-                    "start": 0.0,
-                    "end": -1.0,
-                },
-            }
             # run ion_channel_builder main function to get optimised parameters
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
                 ljps=trace_ljps,
                 eq_names=eq_names,  # ty:ignore[invalid-argument-type]
-                voltage_exclusion=voltage_exclusion,
-                stim_timings=stim_timings,
-                stim_timings_corrections=stim_timings_corrections,
+                voltage_exclusion=_VOLTAGE_EXCLUSION,
+                stim_timings=_STIM_TIMINGS,
+                stim_timings_corrections=_STIM_TIMINGS_CORRECTIONS,
                 output_folder=self.config.coordinate_output_root,
             )
 
@@ -683,6 +672,13 @@ class IonChannelFittingTask(Task):
                 figure_filepaths=figure_paths_dict,  # ty:ignore[invalid-argument-type]
                 db_client=db_client,
                 range_vars=range_vars,  # ty:ignore[invalid-argument-type]
+            )
+
+            # what the run produced, so the platform can link the model back to the execution
+            self._update_execution_activity(
+                db_client=db_client,
+                execution_activity=execution_activity,
+                generated=[str(model_id)],
             )
 
         except Exception as e:
