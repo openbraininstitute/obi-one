@@ -7,6 +7,9 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+    TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS,
+)
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
@@ -60,11 +63,19 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
         # left out hides every field that points at it - not just its dropdown's options.
         # Keyed off ALL_NEURON_SETS_REFERENCE_TYPES rather than spelled out, so the neuron set
         # entries cannot drift from the union the `neuron_sets` field below accepts.
+        #
+        # These read as prompts rather than defaults because, for the fields they cover, there
+        # is no default: an assigner without a synaptic model or a neuron set cannot run, and
+        # says so. The fields that do have a default are tagged instead, below.
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             AllDistributionsReference.__name__: "Default",
-            SynapticModelReference.__name__: "Default",
-            **dict.fromkeys(ALL_NEURON_SETS_REFERENCE_TYPES, "Default"),
+            SynapticModelReference.__name__: "Select a synaptic model",
+            **dict.fromkeys(ALL_NEURON_SETS_REFERENCE_TYPES, "Select a neuron set"),
         },
+        # Keyed by the role a field plays rather than by its reference type, which is the only
+        # way to give the nine Tsodyks-Markram parameters nine different answers - they all
+        # accept AllDistributionsReference, so the map above can offer them only one.
+        SchemaKey.REFERENCE_TAG_DEFAULTS: dict(TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS),
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },

@@ -24,6 +24,7 @@ from obi_one.scientific.blocks.synaptic_models.base import (
 from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 L = logging.getLogger(__name__)
 
@@ -54,6 +55,22 @@ _DEFAULT_U_SYN = DistributionDefault(
 _DEFAULT_DELAY = DistributionDefault(
     partial(NormalDistribution, min=0.1, max=5.0, mean=2.0, standard_deviation=1.0)
 )
+
+
+# What each parameter's reference field shows when left unset, keyed by the role the
+# field plays. Built from the same DistributionDefault objects `sample` falls back to, so
+# the label and the distribution it names cannot drift apart.
+TSODYKS_MARKRAM_REFERENCE_TAG_DEFAULTS: dict[str, str] = {
+    ReferenceTag.U_HILL_COEFFICIENT_DISTRIBUTION: _DEFAULT_U_HILL_COEFFICIENT.label,
+    ReferenceTag.CONDUCTANCE_DISTRIBUTION: _DEFAULT_CONDUCTANCE.label,
+    ReferenceTag.CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: _DEFAULT_CONDUCTANCE_SCALE_FACTOR.label,
+    ReferenceTag.FACILITATION_TIME_DISTRIBUTION: _DEFAULT_FACILITATION_TIME.label,
+    ReferenceTag.DEPRESSION_TIME_DISTRIBUTION: _DEFAULT_DEPRESSION_TIME.label,
+    ReferenceTag.N_RRP_VESICLES_DISTRIBUTION: _DEFAULT_N_RRP_VESICLES.label,
+    ReferenceTag.DECAY_TIME_DISTRIBUTION: _DEFAULT_DECAY_TIME.label,
+    ReferenceTag.U_SYN_DISTRIBUTION: _DEFAULT_U_SYN.label,
+    ReferenceTag.DELAY_DISTRIBUTION: _DEFAULT_DELAY.label,
+}
 
 
 class _ParameterDomain(NamedTuple):
@@ -157,6 +174,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_HILL_COEFFICIENT.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.U_HILL_COEFFICIENT_DISTRIBUTION,
         },
     )
 
@@ -171,6 +189,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_DISTRIBUTION,
         },
     )
 
@@ -187,6 +206,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_CONDUCTANCE_SCALE_FACTOR.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION,
         },
     )
 
@@ -201,6 +221,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_FACILITATION_TIME.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.FACILITATION_TIME_DISTRIBUTION,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -216,6 +237,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DEPRESSION_TIME.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.DEPRESSION_TIME_DISTRIBUTION,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -231,6 +253,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_N_RRP_VESICLES.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.N_RRP_VESICLES_DISTRIBUTION,
         },
     )
 
@@ -245,6 +268,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DECAY_TIME.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.DECAY_TIME_DISTRIBUTION,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
@@ -261,6 +285,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_U_SYN.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.U_SYN_DISTRIBUTION,
         },
     )
 
@@ -276,6 +301,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.DEFAULT_BLOCK_REFERENCE_LABEL: _DEFAULT_DELAY.label,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.DELAY_DISTRIBUTION,
             SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
