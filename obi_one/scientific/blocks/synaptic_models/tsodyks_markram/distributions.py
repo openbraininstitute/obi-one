@@ -43,8 +43,3 @@ _DEFAULT_U_SYN = DistributionDefault(
 _DEFAULT_DELAY = DistributionDefault(
     partial(NormalDistribution, min=0.1, max=5.0, mean=2.0, standard_deviation=1.0)
 )
-
-
-# What each parameter's reference field shows when left unset, keyed by the role the
-# field plays. Built from the same DistributionDefault objects `sample` falls back to, so
-# the label and the distribution it names cannot drift apart.
