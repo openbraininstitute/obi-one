@@ -11,6 +11,7 @@ from bluepyemodel.preprocessing import (
     parameters as bpem_parameters,
 )
 from bluepyemodel.preprocessing.schemas import (
+    AxonModifier,
     MorphologyCapabilities,
     NormalizedIonChannelModel,
 )
@@ -745,7 +746,7 @@ def test_remaining_parameter_builder_paths():
 def test_morphology_preflight_ignores_unknown_section_types():
     morphology = SimpleNamespace(sections=(SimpleNamespace(type="unknown"),), soma=None)
 
-    assert morphology_preflight._available_physical_sections(morphology) == ()
+    assert morphology_preflight._available_physical_sections(morphology, AxonModifier.none) == ()
 
 
 def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path, monkeypatch):

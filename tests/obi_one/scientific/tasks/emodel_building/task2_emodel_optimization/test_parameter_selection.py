@@ -563,6 +563,14 @@ def test_optimization_value_validates_fixed_and_bounds_modes():
         OptimizationValue(mode="bounds", value=1.0)
 
 
+def test_distance_dependent_distribution_rejects_undeclared_placeholders():
+    with pytest.raises(ValueError, match="undeclared placeholders"):
+        CustomDistanceDependentDistribution(
+            name="custom",
+            function="{value}+{distance}+{typo}",
+        )
+
+
 def test_legacy_base_defaults_are_prepopulated_but_editable():
     selection = ParametersSelection()
 
@@ -571,7 +579,13 @@ def test_legacy_base_defaults_are_prepopulated_but_editable():
     assert selection.base_parameters["all"]["Ra"].value.value == pytest.approx(100.0)
     assert selection.base_parameters["all"]["g_pas"].value.bounds == (1e-5, 6e-5)
     assert selection.base_parameters["all"]["e_pas"].value.bounds == (-95.0, -60.0)
-    assert selection.base_parameters["myelinated"]["cm"].value.value == pytest.approx(0.02)
+    assert set(selection.base_parameters) == {"all", "axonal", "somatic", "apical", "basal"}
+    assert "myelinated" not in selection.base_parameters
+    assert all(
+        parameter not in region
+        for region in selection.base_parameters.values()
+        for parameter in ("ena", "ek")
+    )
 
     edited = selection.model_copy(
         update={
@@ -669,8 +683,8 @@ def test_params_builder_omits_reversal_potential_without_assigned_ion():
     ena_locations = {
         parameter["location"] for parameter in parameter_rows if parameter["name"] == "ena"
     }
-    assert "ena" in regional_names
-    assert ena_locations == {"apical"}
+    assert "ena" not in regional_names
+    assert ena_locations == set()
     assert "ek" not in regional_names
 
 
@@ -946,13 +960,12 @@ def test_parameter_group_view_omits_unconfigured_regions():
 
     groups = selection.parameter_group_view
 
-    # Defaults configure base parameters under all, myelinated, somatic, axonal,
-    # apical, and basal; region order follows the catalog's display order.
+    # Defaults configure base parameters under all, somatic, axonal, apical, and basal;
+    # region order follows the catalog's display order.
     assert [group.key for group in groups] == [
         "global",
         "distribution",
         "all",
-        "myelinated",
         "somatic",
         "axonal",
         "apical",
@@ -1067,6 +1080,31 @@ def test_morphology_preflight_detects_soma_points_without_soma_section(tmp_path,
     assert capabilities.available_physical_sections == ("somatic", "axonal")
 
 
+def test_morphology_preflight_synthesizes_axon_availability_without_source_axon(
+    tmp_path, monkeypatch
+):
+    morphio_type = morphio.SectionType
+
+    class FakeMorphology:
+        sections = (_fake_section(morphio_type.soma),)
+
+    morphology_path = tmp_path / "morphology.swc"
+    morphology_path.write_text("", encoding="utf-8")
+    monkeypatch.setattr(
+        morphology_preflight,
+        "load_morphology_nrn_order",
+        lambda _path: FakeMorphology(),
+    )
+
+    capabilities = morphology_preflight.preflight_morphology(
+        morphology_path,
+        "replace_axon_olfactory_bulb",
+    )
+
+    assert capabilities.axonal_section_count == 0
+    assert capabilities.available_physical_sections == ("somatic", "axonal")
+
+
 def test_morphology_preflight_reports_available_physical_sections_in_catalog_order(
     tmp_path, monkeypatch
 ):
@@ -1097,7 +1135,27 @@ def test_morphology_preflight_reports_available_physical_sections_in_catalog_ord
     assert capabilities.available_physical_sections == ("somatic", "basal", "apical", "axonal")
 
 
-def test_params_builder_rejects_region_the_morphology_does_not_provide():
+def test_params_builder_accepts_composite_region_with_partial_morphology():
+    config, _, normalized = _compiler_fixture()
+    config.parameters_selection = config.parameters_selection.model_copy(
+        update={"mechanism_regions": {}, "base_parameters": {"all": {}}}
+    )
+    capabilities = MorphologyCapabilities(
+        has_myelinated=True,
+        axonal_section_count=3,
+        available_physical_sections=("somatic", "axonal"),
+    )
+
+    params = build_params_definition(
+        params_definition_input_from_config(config),
+        normalized,
+        morphology_capabilities=capabilities,
+    )
+
+    assert params["parameters"]
+
+
+def test_params_builder_rejects_missing_primitive_region():
     config, _, normalized = _compiler_fixture()
 
     axon_only_capabilities = MorphologyCapabilities(
@@ -1106,7 +1164,7 @@ def test_params_builder_rejects_region_the_morphology_does_not_provide():
         available_physical_sections=("somatic", "axonal"),
     )
 
-    with pytest.raises(ValueError, match=r"no source sections for \['apical', 'basal'\]"):
+    with pytest.raises(ValueError, match=r"no source sections for \['apical'\]"):
         build_params_definition(
             params_definition_input_from_config(config),
             normalized,

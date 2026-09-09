@@ -1,6 +1,7 @@
 """Blocks for the 02_emodel_optimization stage."""
 
 import math
+import re
 from collections.abc import Mapping
 from typing import Annotated, Any, ClassVar, Literal
 
@@ -37,8 +38,13 @@ MIN_CMA_OFFSPRING_SIZE = 2
 MAX_OFFSPRING_SIZE = 200
 
 
+_PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
+
+
 class DistanceDependentDistribution(Block):
     """A BluePyEModel distance-dependent parameter transformation."""
+
+    _runtime_placeholders: ClassVar[frozenset[str]] = frozenset()
 
     name: str | None = Field(
         default=None,
@@ -101,6 +107,14 @@ class DistanceDependentDistribution(Block):
                         f"Distance-dependent functions must contain the {placeholder} placeholder."
                     )
                     raise ValueError(msg)
+            declared = {"value", "distance", *(self.parameters or []), *self._runtime_placeholders}
+            undeclared = set(_PLACEHOLDER_PATTERN.findall(self.function)) - declared
+            if undeclared:
+                msg = (
+                    "Distance-dependent function contains undeclared placeholders: "
+                    f"{sorted(undeclared)}. Add them to 'parameters' or remove them."
+                )
+                raise ValueError(msg)
         return self
 
     def to_emc_dict(self, name: str | None = None) -> dict[str, Any]:
@@ -141,6 +155,8 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
     ``get_hotspot_location()`` (Larkum & Zhu, 2002). Do not add them to
     ``parameters``; they must remain in the function string verbatim.
     """
+
+    _runtime_placeholders: ClassVar[frozenset[str]] = frozenset({"step_begin", "step_end"})
 
     name: str = Field(default="step", frozen=True)
     function: str = Field(
@@ -503,33 +519,17 @@ def _default_global_parameters() -> dict[str, GlobalParameterSelection]:
 
 
 def _default_base_parameters() -> dict[SectionListName, dict[str, ParameterSelection]]:
+    """Generic passive-cable bootstrap values, not a validated fit for any cell type."""
     return {
         "all": {
             "Ra": _fixed_parameter(100.0),
             "g_pas": _bounded_parameter(1e-5, 6e-5),
             "e_pas": _bounded_parameter(-95.0, -60.0),
         },
-        "myelinated": {"cm": _fixed_parameter(0.02)},
-        "axonal": {
-            "cm": _fixed_parameter(1.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
-        "somatic": {
-            "cm": _fixed_parameter(1.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
-        "apical": {
-            "cm": _fixed_parameter(2.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
-        "basal": {
-            "cm": _fixed_parameter(2.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
+        "axonal": {"cm": _fixed_parameter(1.0)},
+        "somatic": {"cm": _fixed_parameter(1.0)},
+        "apical": {"cm": _fixed_parameter(2.0)},
+        "basal": {"cm": _fixed_parameter(2.0)},
     }
 
 
