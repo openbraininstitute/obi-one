@@ -6,7 +6,6 @@ from pandas import DataFrame
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey
-from obi_one.scientific.blocks import distributions
 from obi_one.scientific.blocks.distributions.base import Distribution
 from obi_one.scientific.blocks.distributions.defaults import (
     DistributionDefault,
@@ -16,7 +15,6 @@ from obi_one.scientific.blocks.synaptic_models.domains import (
     ParameterDomain,
     validate_parameter_samples,
 )
-from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 
@@ -49,30 +47,6 @@ class SynapticModelBase(Block):
             raise NotImplementedError(msg)
         return cls._synapse_model_family
 
-    @classmethod
-    def from_dict(
-        cls, serialized_dict: dict
-    ) -> tuple["SynapticModelBase", dict[str, Distribution]]:
-
-        def dist_ref(name: str) -> AllDistributionsReference:
-            """Helper to create a distribution reference."""
-            return AllDistributionsReference(block_dict_name="distributions", block_name=name)
-
-        if serialized_dict["class"] != cls.__name__:
-            msg = (
-                f"Expected class name {cls.__name__!r} in serialized dict",
-                f"got {serialized_dict['class']!r}",
-            )
-            raise ValueError(msg)
-        distr_obj_dict = {}
-        distr_ref_dict = {}
-        for param_name, distr_dict in serialized_dict["distributions"].items():
-            distr_cls = distr_dict.pop("type")
-            distr_obj_dict[param_name] = distributions.__dict__[distr_cls](**distr_dict)
-            distr_ref_dict[param_name] = dist_ref(param_name)
-            distr_ref_dict[param_name].block = distr_obj_dict[param_name]
-        return cls(**distr_ref_dict), distr_obj_dict
-
     # Filled in by each concrete model. Keyed by the role, since that is what a config asks
     # by and what identifies a parameter across models that declare the same field; the field
     # is what `sample` needs, and the default cannot live in `json_schema_extra` because it
@@ -95,7 +69,7 @@ class SynapticModelBase(Block):
             }
 
     @classmethod
-    def default_distributions_by_role(cls) -> dict[str, tuple[str, Distribution]]:
+    def default_distributions_by_role(cls) -> dict[ReferenceTag, tuple[str, Distribution]]:
         """Each parameter's fallback distribution, keyed by the role its field plays.
 
         A fresh distribution per call: the caller registers these into a config, which must
@@ -156,28 +130,17 @@ class SynapticModelBase(Block):
         synapse. Callers that leave it unset keep that per-distribution behaviour.
         """
         n = len(indices)
+        defaults = self._defaults_by_field()
 
-        def sample_from(field_name: str) -> list[float]:
-            """Draw one parameter, then hold the draw to the domain its field declares."""
-            parameter, domain = self._sampled_fields()[field_name]
-            distribution = resolve_distribution(
-                getattr(self, field_name), self._defaults_by_field()[field_name]
-            )
-            return validate_parameter_samples(
+        # TODO: 'shared_within' is currently ignored
+        columns: dict[str, list] = {}
+        for field_name, (parameter, domain) in self._sampled_fields().items():
+            distribution = resolve_distribution(getattr(self, field_name), defaults[field_name])
+            columns[parameter] = validate_parameter_samples(
                 parameter,
                 domain,
                 distribution.sample_with_constraints(n, rng=rng),
                 sampled_by=type(self).__name__,
             )
-
-        # TODO: 'shared_within' is currently ignored
-        return DataFrame(
-            {
-                **{
-                    parameter: sample_from(field_name)
-                    for field_name, (parameter, _domain) in self._sampled_fields().items()
-                },
-                "syn_type_id": [self.syn_type_id] * n,
-            },
-            index=indices.index,
-        )
+        columns["syn_type_id"] = [self.syn_type_id] * n
+        return DataFrame(columns, index=indices.index)
