@@ -237,6 +237,12 @@ class ScanGenerationTask(Task, abc.ABC):
     ) -> None:
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 
+        # Resolve unset references before anything is written. The single configs are derived
+        # from this one, so filling here is what puts the defaults into the serialized scan,
+        # every coordinate config, and the entities registered from them - do it in the task
+        # that runs later and the provenance records `None` for everything left unset.
+        self.form.fill_none_references()
+
         # Serialize the scan
         self.serialize(self.output_root / SCAN_CONFIG_FILENAME)
 
