@@ -18,6 +18,10 @@ from obi_one.scientific.blocks.synaptic_models.base import (
     SynapseModelFamily,
     SynapticModelBase,
 )
+from obi_one.scientific.blocks.synaptic_models.domains import (
+    ParameterDomain,
+    validate_parameter_samples,
+)
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.distributions import (
     _DEFAULT_CONDUCTANCE,
     _DEFAULT_CONDUCTANCE_SCALE_FACTOR,
@@ -28,10 +32,6 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.distributions imp
     _DEFAULT_N_RRP_VESICLES,
     _DEFAULT_U_HILL_COEFFICIENT,
     _DEFAULT_U_SYN,
-)
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.domains import (
-    ParameterDomain,
-    validate_parameter_samples,
 )
 from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
@@ -390,7 +390,10 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
                 getattr(self, field_name), self._default_distributions[field_name]
             )
             return validate_parameter_samples(
-                parameter, domain, distribution.sample_with_constraints(n, rng=rng)
+                parameter,
+                domain,
+                distribution.sample_with_constraints(n, rng=rng),
+                sampled_by=type(self).__name__,
             )
 
         # TODO: 'shared_within' is currently ignored
