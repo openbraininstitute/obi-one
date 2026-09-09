@@ -1,0 +1,10 @@
+# Unused alternative: slim pip set if full ``obi-one`` install is too heavy.
+# Prefer dependencies/default.txt (``obi-one``) with image
+# ``python_3_12_openmpi5_neuron9_neurodamus``, matching circuit simulation jobs.
+entitysdk>=0.18.0
+obi-auth
+bluepysnap
+bluecellulab
+libsonata
+h5py
+numpy
