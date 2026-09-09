@@ -42,6 +42,8 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
+    "Brian2DirectPoissonStimulus",
+    "Brian2RecordingUnion",
     "BuildSynaptomeResult",
     "CellMorphologyFromID",
     "Circuit",
@@ -207,6 +209,9 @@ __all__ = [
     "ScanConfigsUnion",
     "ScanGenerationTask",
     "Simulation",
+    "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+    "SimulationDtSomaVoltageRecording",
+    "SimulationDtTimeWindowSomaVoltageRecording",
     "SimulationsForm",
     "SingleConfigMixin",
     "SingleTimestamp",
@@ -375,9 +380,12 @@ from obi_one.scientific.blocks.recordings.morphology_location import (
     MorphologyLocationVoltageRecording,
 )
 from obi_one.scientific.blocks.recordings.soma import (
+    SimulationDtSomaVoltageRecording,
+    SimulationDtTimeWindowSomaVoltageRecording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
+from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.electric_field import (
     SpatiallyUniformElectricFieldStimulus,
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
@@ -408,6 +416,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SimulationDtSinusoidalCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
@@ -602,7 +611,11 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
-from obi_one.scientific.unions_and_references.recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions_and_references.recordings import (
+    Brian2RecordingUnion,
+    RecordingReference,
+    RecordingUnion,
+)
 from obi_one.scientific.unions_and_references.scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,

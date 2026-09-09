@@ -66,7 +66,6 @@ POINT_POPULATION = "drosophila"
 DEFAULT_BIOPHYSICAL_NODE_SET = "Default: All Biophysical Neurons"
 DEFAULT_VIRTUAL_NODE_SET = "Default: All Virtual Neurons"
 DEFAULT_POINT_NODE_SET = "Default: All Point Neurons"
-DEFAULT_BRIAN2_STIMULUS_NODE_SET = "Default: Sugar gustatory receptor neurons"
 
 
 def union_member_names(union: Any) -> set[str]:
