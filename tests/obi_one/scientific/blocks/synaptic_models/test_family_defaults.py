@@ -4,7 +4,7 @@ from obi_one.scientific.blocks.synaptic_models.base import (
     SynapseModelFamily,
     SynapticModelBase,
 )
-from obi_one.scientific.blocks.synaptic_models.defaults import (
+from obi_one.scientific.blocks.synaptic_models.family_defaults import (
     DEFAULT_SYNAPTIC_MODELS,
     default_synaptic_model_for,
 )

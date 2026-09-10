@@ -5,6 +5,7 @@ from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
 )
+from obi_one.scientific.blocks.synaptic_models.domains import is_valid_parameter_sample
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
@@ -94,17 +95,41 @@ def test_sampling_uses_explicit_distributions_and_preserves_values():
         ("decay_time", "decay_time", 0.0),
         ("u_syn", "u_syn", 1.1),
         ("delay_distribution", "delay", -0.1),
-        ("conductance_distribution", "conductance", float("nan")),
     ],
 )
-def test_sampling_rejects_invalid_explicit_distribution_values(
+def test_sampling_clips_values_outside_a_parameter_domain(
     distribution_field, parameter_name, sample
 ):
+    """A distribution the user chose can draw outside what the model can represent.
+
+    That is the distribution being ill-suited to the parameter rather than broken, so the value
+    is pulled onto the domain and the run goes on. This used to raise, which made a Normal
+    unusable for any parameter whose tail crosses zero.
+    """
     model = ExcitatoryTsodyksMarkramSynapticModel(
         **{distribution_field: _distribution_reference(FloatConstantDistribution(value=sample))}
     )
+    _parameter, domain = model._sampled_fields()[distribution_field]
 
-    with pytest.raises(ValueError, match=parameter_name):
+    (drawn,) = model.sample(pd.DataFrame(index=[0]))[parameter_name]
+
+    assert not is_valid_parameter_sample(sample, domain), "the case no longer tests anything"
+    assert is_valid_parameter_sample(drawn, domain)
+
+
+def test_sampling_still_rejects_a_value_with_nowhere_to_be_clipped_to():
+    """NaN has no position on the line, so there is no edge of the domain to pull it to.
+
+    That means the distribution is broken rather than ill-suited, and inventing a number for it
+    would put a made-up value into the circuit with nothing recording it.
+    """
+    model = ExcitatoryTsodyksMarkramSynapticModel(
+        conductance_distribution=_distribution_reference(
+            FloatConstantDistribution(value=float("nan"))
+        )
+    )
+
+    with pytest.raises(ValueError, match="conductance"):
         model.sample(pd.DataFrame(index=[0]))
 
 
