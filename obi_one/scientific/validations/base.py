@@ -122,9 +122,7 @@ class ValidationSingleConfig(OBIBaseModel):
     )
     overwrite_existing: bool = Field(
         default=False,
-        description=(
-            "Update an existing ValidationResult in place instead of skipping it."
-        ),
+        description=("Update an existing ValidationResult in place instead of skipping it."),
     )
 
 

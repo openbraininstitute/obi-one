@@ -88,10 +88,7 @@ def rebound_burst_preset(
     except (TypeError, ValueError) as error:
         message = "hyperpolarization_duration_ms must be a positive finite number."
         raise TypeError(message) from error
-    if (
-        not math.isfinite(hyperpolarization_duration_ms)
-        or hyperpolarization_duration_ms <= 0.0
-    ):
+    if not math.isfinite(hyperpolarization_duration_ms) or hyperpolarization_duration_ms <= 0.0:
         message = "hyperpolarization_duration_ms must be a positive finite number."
         raise ValueError(message)
 
