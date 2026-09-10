@@ -1,9 +1,20 @@
 """Blocks for the 02_emodel_optimization stage."""
 
 import math
+import re
 from collections.abc import Mapping
 from typing import Annotated, Any, ClassVar, Literal
 
+from bluepyemodel.preprocessing.schemas import (
+    AXON_MODIFIER_DESCRIPTIONS,
+    DEFAULT_SECTION_LIST_CATALOG,
+    REGIONAL_SECTION_LIST_NAMES,
+    AxonModifier,
+    PhysicalSectionListName,
+    RegionalSectionListName,
+    SectionListChoice,
+    SectionListName,
+)
 from entitysdk.types import EntityType
 from pydantic import (
     BaseModel,
@@ -23,22 +34,18 @@ from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFro
 from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.section_lists import (
-    AXON_MODIFIER_DESCRIPTIONS,
-    DEFAULT_SECTION_LIST_CATALOG,
-    REGIONAL_SECTION_LIST_NAMES,
-    AxonModifier,
-    RegionalSectionListName,
-    SectionListChoice,
-    SectionListName,
-)
 
 MIN_CMA_OFFSPRING_SIZE = 2
 MAX_OFFSPRING_SIZE = 200
 
 
+_PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
+
+
 class DistanceDependentDistribution(Block):
     """A BluePyEModel distance-dependent parameter transformation."""
+
+    _runtime_placeholders: ClassVar[frozenset[str]] = frozenset()
 
     name: str | None = Field(
         default=None,
@@ -101,6 +108,14 @@ class DistanceDependentDistribution(Block):
                         f"Distance-dependent functions must contain the {placeholder} placeholder."
                     )
                     raise ValueError(msg)
+            declared = {"value", "distance", *(self.parameters or []), *self._runtime_placeholders}
+            undeclared = set(_PLACEHOLDER_PATTERN.findall(self.function)) - declared
+            if undeclared:
+                msg = (
+                    "Distance-dependent function contains undeclared placeholders: "
+                    f"{sorted(undeclared)}. Add them to 'parameters' or remove them."
+                )
+                raise ValueError(msg)
         return self
 
     def to_emc_dict(self, name: str | None = None) -> dict[str, Any]:
@@ -141,6 +156,8 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
     ``get_hotspot_location()`` (Larkum & Zhu, 2002). Do not add them to
     ``parameters``; they must remain in the function string verbatim.
     """
+
+    _runtime_placeholders: ClassVar[frozenset[str]] = frozenset({"step_begin", "step_end"})
 
     name: str = Field(default="step", frozen=True)
     function: str = Field(
@@ -259,39 +276,12 @@ class OptimizationInitialize(Block):
 def default_distance_dependent_distributions() -> dict[str, CustomDistanceDependentDistribution]:
     """Custom distance-dependent distributions declared by the user (empty by default).
 
-    The ten legacy distributions are always selectable by name from
-    ``STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS`` without being declared here; this
-    dict only holds user-defined distributions (see ``CustomDistanceDependentDistribution``).
+    The ten legacy distributions from
+    ``bluepyemodel.preprocessing.schemas.STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS``
+    are always selectable by name without being declared here; this dict only holds
+    user-defined distributions (see ``CustomDistanceDependentDistribution``).
     """
     return {}
-
-
-STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS: dict[str, DistanceDependentDistributionUnion] = {
-    "uniform": UniformDistanceDependentDistribution(),
-    "exp": ExponentialDistanceDependentDistribution(),
-    "step": StepDistanceDependentDistribution(),
-    "exp_na_dend": ExponentialNaDendDistanceDependentDistribution(),
-    "linear_hd_apic": LinearHDApicDistanceDependentDistribution(),
-    "sigmoid_kad_apic": SigmoidKADApicDistanceDependentDistribution(),
-    "linear_e_pas_apic": LinearEPasApicDistanceDependentDistribution(),
-    "linear_hdpas": LinearHDPasDistanceDependentDistribution(),
-    "sigmoid_kad": SigmoidKADDistanceDependentDistribution(),
-    "sigmoid_kdbm_apic": SigmoidKDBMApicDistanceDependentDistribution(),
-}
-"""Built-in legacy distance-dependent distributions, selectable by name on any parameter row
-without being declared in the config's ``distance_dependent_distributions`` field. That field
-is reserved for user-defined (``CustomDistanceDependentDistribution``) distributions only."""
-
-
-def resolve_distance_dependent_distribution(
-    name: str,
-    custom_distributions: Mapping[str, "CustomDistanceDependentDistribution"],
-) -> DistanceDependentDistributionUnion | None:
-    """Resolve a distribution name against the standard catalog, then custom declarations."""
-    standard = STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS.get(name)
-    if standard is not None:
-        return standard
-    return custom_distributions.get(name)
 
 
 # The Figma "Mechanisms" card is a 4-step wizard. Mechanism data and parameter
@@ -436,7 +426,7 @@ class ParameterGroupView(BaseModel):
     order: int
     item_count: int
     count_label: str
-    section_lists: tuple[SectionListName, ...] | None = None
+    section_lists: tuple[PhysicalSectionListName, ...] | None = None
 
 
 class MechanismRegionSelection(Block):
@@ -465,7 +455,7 @@ class MorphologySettings(Block):
     """Morphology transformation settings used by BluePyEModel."""
 
     axon_modifier: AxonModifier = Field(
-        default=AxonModifier.REPLACE_AXON_WITH_TAPER,
+        default=AxonModifier.replace_axon_with_taper,
         title="Axon replacement",
         description=(
             "BluePyEModel axon strategy. The default tapered modifier creates a myelinated "
@@ -475,13 +465,16 @@ class MorphologySettings(Block):
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
-            "choices": AXON_MODIFIER_DESCRIPTIONS,
+            "choices": {
+                modifier.value: description
+                for modifier, description in AXON_MODIFIER_DESCRIPTIONS.items()
+            },
         },
     )
 
     def to_pipeline_settings(self) -> dict[str, list[str]]:
         """Return the BluePyEModel pipeline setting for the selected modifier."""
-        if self.axon_modifier == AxonModifier.NONE:
+        if self.axon_modifier == AxonModifier.none:
             return {"morph_modifiers": []}
         return {"morph_modifiers": [self.axon_modifier.value]}
 
@@ -489,13 +482,13 @@ class MorphologySettings(Block):
     def expected_myelinated(self) -> bool | None:
         """Expected myelination derived from the selected modifier."""
         if self.axon_modifier in {
-            AxonModifier.REPLACE_AXON_WITH_TAPER,
-            AxonModifier.REPLACE_AXON_OLFACTORY_BULB,
+            AxonModifier.replace_axon_with_taper,
+            AxonModifier.replace_axon_olfactory_bulb,
         }:
             return True
         if self.axon_modifier in {
-            AxonModifier.REPLACE_AXON_LEGACY,
-            AxonModifier.BLUEPYOPT_REPLACE_AXON,
+            AxonModifier.replace_axon_legacy,
+            AxonModifier.bluepyopt_replace_axon,
         }:
             return False
         return None
@@ -527,33 +520,17 @@ def _default_global_parameters() -> dict[str, GlobalParameterSelection]:
 
 
 def _default_base_parameters() -> dict[SectionListName, dict[str, ParameterSelection]]:
+    """Generic passive-cable bootstrap values, not a validated fit for any cell type."""
     return {
-        "all": {
+        SectionListName.all: {
             "Ra": _fixed_parameter(100.0),
             "g_pas": _bounded_parameter(1e-5, 6e-5),
             "e_pas": _bounded_parameter(-95.0, -60.0),
         },
-        "myelinated": {"cm": _fixed_parameter(0.02)},
-        "axonal": {
-            "cm": _fixed_parameter(1.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
-        "somatic": {
-            "cm": _fixed_parameter(1.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
-        "apical": {
-            "cm": _fixed_parameter(2.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
-        "basal": {
-            "cm": _fixed_parameter(2.0),
-            "ena": _fixed_parameter(50.0),
-            "ek": _fixed_parameter(-90.0),
-        },
+        SectionListName.axonal: {"cm": _fixed_parameter(1.0)},
+        SectionListName.somatic: {"cm": _fixed_parameter(1.0)},
+        SectionListName.apical: {"cm": _fixed_parameter(2.0)},
+        SectionListName.basal: {"cm": _fixed_parameter(2.0)},
     }
 
 
@@ -902,7 +879,7 @@ class ParametersSelection(Block):
             return self._global_group_rows()
         if group_key == "distribution":
             return self._distribution_group_rows()
-        return self._region_group_rows(group_key)  # ty:ignore[invalid-argument-type]
+        return self._region_group_rows(SectionListName(group_key))
 
     @property
     def parameter_group_view(self) -> tuple[ParameterGroupView, ...]:

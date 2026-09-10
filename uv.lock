@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "bluepyemodel"
-version = "1.0.44"
+version = "1.0.47"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepyefe" },
@@ -315,13 +315,14 @@ dependencies = [
     { name = "neuron" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pydantic" },
     { name = "pyyaml" },
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/26/e1f3f31540f35febbfcb3c7b26abe9d80f32192a4c2a78b0abfe0ef1ae06/bluepyemodel-1.0.44.tar.gz", hash = "sha256:89305afc4d7da3bbe6af4f8fa54db73ca7bfce49bbc574a9c1040646dc44a9bc", size = 13033798, upload-time = "2026-07-15T20:20:06.334Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/4b/1e3950262a387ba52ed1734cf7da82ad908d687a4fae3df4ccfc8efae81e/bluepyemodel-1.0.47.tar.gz", hash = "sha256:5cf2b69797db1479baba75108203615004e0a4a8290506697744369029490f3c", size = 13052710, upload-time = "2026-09-09T13:11:58.07Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/35/9dedd20e47cd5913d3c27e4598f993358402a1330300238664e22d78d67e/bluepyemodel-1.0.44-py3-none-any.whl", hash = "sha256:c77af2999f500f9265698cb628deb920d4c0f86395cc95ddde718aa95ed7e9aa", size = 13409872, upload-time = "2026-07-15T20:20:03.364Z" },
+    { url = "https://files.pythonhosted.org/packages/58/f1/86cd12188a3d14a3a90b354a78089eaca98350977f17af85617328a5cc35/bluepyemodel-1.0.47-py3-none-any.whl", hash = "sha256:47966b2fddcf97141a9109cc80db6ce0745f4dd6554b3042c611ae46e19d2f96", size = 13427499, upload-time = "2026-09-09T13:11:52.885Z" },
 ]
 
 [[package]]
@@ -2489,7 +2490,7 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.99" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.43" },
+    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.47" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
     { name = "brainbuilder", specifier = ">=0.20.6" },

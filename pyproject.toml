@@ -61,7 +61,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
-emodel = ["bluepyemodel>=1.0.43"]
+emodel = ["bluepyemodel>=1.0.47"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]

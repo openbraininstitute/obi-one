@@ -4,6 +4,8 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import Any, ClassVar, Literal
 
+from bluepyemodel.preprocessing import TASK2_CONFIG_CONTRACT_VERSION
+from bluepyemodel.preprocessing.distributions import resolve_distance_dependent_distribution
 from entitysdk import Client
 from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, model_validator
@@ -13,9 +15,6 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.artifacts import (
-    TASK2_CONFIG_CONTRACT_VERSION,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
@@ -27,7 +26,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     OptimizationSettings,
     ParametersSelection,
     default_distance_dependent_distributions,
-    resolve_distance_dependent_distribution,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    to_bpem_custom_distributions,
 )
 
 
@@ -86,10 +87,11 @@ def _validate_distribution_declarations(
     selection: ParametersSelection,
     custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
 ) -> None:
+    bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
     for distribution_name, configured_parameters in selection.distribution_parameters.items():
         distribution = resolve_distance_dependent_distribution(
             distribution_name,
-            custom_distributions,
+            bpem_custom_distributions,
         )
         if distribution is None:
             msg = (
@@ -109,9 +111,10 @@ def _validate_used_distributions(
     selection: ParametersSelection,
     custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
 ) -> None:
+    bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
     used_distributions = _used_distribution_names(selection)
     resolved = {
-        name: resolve_distance_dependent_distribution(name, custom_distributions)
+        name: resolve_distance_dependent_distribution(name, bpem_custom_distributions)
         for name in used_distributions
     }
     missing_distributions = {
