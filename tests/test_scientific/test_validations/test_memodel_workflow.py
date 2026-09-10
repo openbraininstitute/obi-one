@@ -107,7 +107,7 @@ class TestMEModelValidationWorkflow:
         assert tonic_spiking.protocol.phases[0][0] == pytest.approx(500.0)
         assert tonic_spiking.protocol.phases[0][1] == pytest.approx(0.05)
         assert tonic_spiking.protocol.phases[1][0] == pytest.approx(1350.0)
-        assert tonic_spiking.protocol.phases[1][1] == pytest.approx(0.13)
+        assert tonic_spiking.protocol.phases[1][1] == pytest.approx(0.20)
 
         depolarization_block = tests[1]
         assert isinstance(depolarization_block.protocol, StepProtocol)

@@ -183,7 +183,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             tonic_firing_preset(
                 rin=rin,
                 holding_voltage=-65.0,
-                step_current=0.08,
+                step_current=0.15,
                 simulator_config=simulator_config,
                 add_hypamp=True,
             ),
