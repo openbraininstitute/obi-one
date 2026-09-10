@@ -125,14 +125,12 @@ def _resolve_holding_current(
         resolved_holding_current = float(holding_current)
     except (TypeError, ValueError) as error:
         message = (
-            f"Calibration result holding_current must be a finite number; "
-            f"got {holding_current!r}."
+            f"Calibration result holding_current must be a finite number; got {holding_current!r}."
         )
         raise InvalidValidationContextError(message) from error
     if not math.isfinite(resolved_holding_current):
         message = (
-            "Calibration result holding_current must be a finite number; "
-            f"got {holding_current!r}."
+            f"Calibration result holding_current must be a finite number; got {holding_current!r}."
         )
         raise InvalidValidationContextError(message)
     return resolved_holding_current
@@ -233,12 +231,10 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
             optional Rin, and the output directory.
         """
         logger.info("Setting up MEModel validation for entity %s", entity_id)
-
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Fetch metadata
         memodel = client.get_entity(entity_type=MEModel, entity_id=UUID(entity_id))
-
         # Download assets into absolute output_dir
         downloaded = download_memodel(client, memodel=memodel, output_dir=str(self.output_dir))
         hoc_config = extract_simulator_config_from_hoc(downloaded.hoc_path)

@@ -6,6 +6,7 @@ custom analysis pipelines, or multiple measurements from the same trace).
 """
 
 from pathlib import Path
+from typing import Any
 
 import efel
 import numpy as np
@@ -22,6 +23,8 @@ from obi_one.scientific.validations.memodel.names import ValidationName
 
 _DEFAULT_BPAP_SPIKE_THRESHOLD_MV = -20.0
 _MIN_BPAP_TRACE_SAMPLES = 2
+_MAX_INPUT_RESISTANCE_MOHM = 1_000
+_MIN_CURVE_POINTS = 2
 
 
 def _count_bpap_spikes(
@@ -65,18 +68,23 @@ class HyperpolarizationTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.HYPERPOLARIZATION
 
-    def run(self, template_params, rheobase: float, out_dir) -> TestResult:
+    def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
         stim_factory = StimulusFactory(dt=1.0)
         step_stimulus = stim_factory.iv(threshold_current=rheobase, threshold_percentage=-40)
         recording = run_stimulus(
-            template_params, step_stimulus, "soma[0]", 0.5, add_hypamp=True,
+            template_params,
+            step_stimulus,
+            "soma[0]",
+            0.5,
+            add_hypamp=True,
         )
 
         fig_path = plot_trace(
-            recording, out_dir,
+            recording,
+            out_dir,
             fname="hyperpolarization_validation.pdf",
             title="Hyperpolarization Validation - Step at -40% of Rheobase",
         )
@@ -87,7 +95,9 @@ class HyperpolarizationTest(ValidationTest):
             "stim_start": [IDRestTimings.PRE_DELAY.value],
             "stim_end": [IDRestTimings.PRE_DELAY.value + IDRestTimings.DURATION.value],
         }
-        features = efel.get_feature_values([trace], ["voltage_base", "steady_state_voltage_stimend"])
+        features = efel.get_feature_values(
+            [trace], ["voltage_base", "steady_state_voltage_stimend"]
+        )
         rmp = features[0]["voltage_base"]
         ss_voltage = features[0]["steady_state_voltage_stimend"]
 
@@ -104,10 +114,7 @@ class HyperpolarizationTest(ValidationTest):
         passed = bool(ss_val < rmp_val)
 
         if passed:
-            details = (
-                f"Hyperpolarized voltage ({ss_val:.2f} mV) is lower than "
-                f"RMP ({rmp_val:.2f} mV)."
-            )
+            details = f"Hyperpolarized voltage ({ss_val:.2f} mV) is below RMP ({rmp_val:.2f} mV)."
         else:
             details = (
                 f"Hyperpolarized voltage ({ss_val:.2f} mV) is not lower than "
@@ -121,21 +128,25 @@ class RinTest(ValidationTest):
     """Input resistance should be within a biologically realistic range (< 1000 MOhm)."""
 
     def __init__(self, rin: float) -> None:
+        """Initialize the test with the measured input resistance in MOhm."""
         self.rin = rin
 
     @property
     def name(self) -> str:
         return ValidationName.INPUT_RESISTANCE
 
-    def run(self, template_params, rheobase: float, out_dir) -> TestResult:
-        passed = bool(self.rin < 1000)
+    def run(self, _template_params: Any, _rheobase: float, _out_dir: Path) -> TestResult:
+        passed = bool(self.rin < _MAX_INPUT_RESISTANCE_MOHM)
 
         if passed:
-            details = f"Input resistance (Rin) = {self.rin:.2f} MOhm is less than 1000 MOhm."
+            details = (
+                f"Input resistance (Rin) = {self.rin:.2f} MOhm is less than "
+                f"{_MAX_INPUT_RESISTANCE_MOHM} MOhm."
+            )
         else:
             details = (
-                f"Input resistance (Rin) = {self.rin:.2f} MOhm exceeds 1000 MOhm, "
-                f"which is not biologically realistic."
+                f"Input resistance (Rin) = {self.rin:.2f} MOhm exceeds "
+                f"{_MAX_INPUT_RESISTANCE_MOHM} MOhm, which is not biologically realistic."
             )
 
         return TestResult(name=self.name, passed=passed, details=details, figures=[])
@@ -148,7 +159,7 @@ class AISSpikingTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.AIS_SPIKING
 
-    def run(self, template_params, rheobase: float, out_dir) -> TestResult:
+    def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -164,23 +175,29 @@ class AISSpikingTest(ValidationTest):
 
         stim_factory = StimulusFactory(dt=1.0)
         step_stimulus = stim_factory.idrest(
-            threshold_current=rheobase, threshold_percentage=200,
+            threshold_current=rheobase,
+            threshold_percentage=200,
         )
         recordings = run_multirecordings_stimulus(
-            template_params, step_stimulus, "soma[0]", 0.5,
+            template_params,
+            step_stimulus,
+            "soma[0]",
+            0.5,
             add_hypamp=True,
             recording_locations=[("axon[0]", 0.5), ("soma[0]", 0.5)],
         )
         axon_recording, soma_recording = recordings
 
         fig1 = plot_traces(
-            recordings, out_dir,
+            recordings,
+            out_dir,
             fname="ais_spiking_validation.pdf",
             title="AIS Spiking Validation - Step at 200% of Rheobase",
             labels=["axon[0]", "soma[0]"],
         )
         fig2 = plot_traces(
-            recordings, out_dir,
+            recordings,
+            out_dir,
             fname="ais_spiking_validation_zoomed.pdf",
             title="AIS Spiking Validation - Step at 200% of Rheobase (zoomed)",
             labels=["axon[0]", "soma[0]"],
@@ -207,8 +224,10 @@ class AISSpikingTest(ValidationTest):
         soma_spike_time = features[1]["peak_time"]
 
         if (
-            axon_spike_time is None or soma_spike_time is None
-            or len(axon_spike_time) == 0 or len(soma_spike_time) == 0
+            axon_spike_time is None
+            or soma_spike_time is None
+            or len(axon_spike_time) == 0
+            or len(soma_spike_time) == 0
         ):
             return TestResult(
                 name=self.name,
@@ -218,10 +237,7 @@ class AISSpikingTest(ValidationTest):
             )
 
         passed = bool(axon_spike_time[0] <= soma_spike_time[0])
-        if passed:
-            details = "Axon spikes before soma."
-        else:
-            details = "Axon does not spike before soma."
+        details = "Axon spikes before soma." if passed else "Axon does not spike before soma."
 
         return TestResult(name=self.name, passed=passed, details=details, figures=[fig1, fig2])
 
@@ -268,9 +284,7 @@ class BPAPTest(ValidationTest):
                 message = "holding_current must be a finite number or None."
                 raise ValueError(message)
         if expected_spike_count is not None:
-            if isinstance(expected_spike_count, bool) or not isinstance(
-                expected_spike_count, int
-            ):
+            if isinstance(expected_spike_count, bool) or not isinstance(expected_spike_count, int):
                 message = "expected_spike_count must be an integer or None."
                 raise TypeError(message)
             if expected_spike_count < 0:
@@ -297,7 +311,7 @@ class BPAPTest(ValidationTest):
         return ValidationName.BACK_PROPAGATING_AP
 
     def run(  # ruff: ignore[complex-structure,too-many-branches,too-many-locals,too-many-statements]
-        self, template_params, rheobase: float, out_dir
+        self, template_params: Any, rheobase: float, out_dir: Path
     ) -> TestResult:
         neuron_globals = NeuronGlobals.get_instance()
         saved_params = neuron_globals.export_params()
@@ -336,8 +350,10 @@ class BPAPTest(ValidationTest):
                         details="Could not align full-duration soma time and voltage recordings.",
                         figures=[],
                     )
-                if time.size < _MIN_BPAP_TRACE_SAMPLES or not np.all(np.isfinite(time)) or not np.all(
-                    np.isfinite(soma_voltage)
+                if (
+                    time.size < _MIN_BPAP_TRACE_SAMPLES
+                    or not np.all(np.isfinite(time))
+                    or not np.all(np.isfinite(soma_voltage))
                 ):
                     return TestResult(
                         name=self.name,
@@ -517,19 +533,13 @@ class BPAPTest(ValidationTest):
                 output_fname="back-propagating_action_potential_recordings.pdf",
             )
 
-            figures = [
-                figure
-                for figure in [fig1, fig2]
-                if figure is not None
-            ]
+            figures = [figure for figure in [fig1, fig2] if figure is not None]
             details = notes
             if spike_notes:
                 details = f"{details}\n{spike_notes}" if details else spike_notes
             if trace_diagnostic_notes:
                 details = (
-                    f"{details}\n{trace_diagnostic_notes}"
-                    if details
-                    else trace_diagnostic_notes
+                    f"{details}\n{trace_diagnostic_notes}" if details else trace_diagnostic_notes
                 )
             return TestResult(
                 name=self.name,
@@ -558,7 +568,7 @@ class IVCurveTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.IV_CURVE
 
-    def run(self, template_params, rheobase: float, out_dir) -> TestResult:
+    def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -578,7 +588,7 @@ class IVCurveTest(ValidationTest):
 
         fig_path = out_dir / "iv_curve.pdf"
 
-        if len(amps) < 2 or len(steady_states) < 2:
+        if len(amps) < _MIN_CURVE_POINTS or len(steady_states) < _MIN_CURVE_POINTS:
             return TestResult(
                 name=self.name,
                 passed=False,
@@ -614,7 +624,7 @@ class FICurveTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.FI_CURVE
 
-    def run(self, template_params, rheobase: float, out_dir) -> TestResult:
+    def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -635,7 +645,7 @@ class FICurveTest(ValidationTest):
 
         fig_path = out_dir / "fi_curve.pdf"
 
-        if len(amps) < 2 or len(spike_counts) < 2:
+        if len(amps) < _MIN_CURVE_POINTS or len(spike_counts) < _MIN_CURVE_POINTS:
             return TestResult(
                 name=self.name,
                 passed=False,
