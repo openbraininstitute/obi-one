@@ -100,7 +100,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         self,
         *,
         bpap_holding_current: float | None = None,
-        bpap_amplitude_factor: float = 14.6,
+        bpap_amplitude_factor: float = 30.0,
         bpap_trace_diagnostics: bool = False,
         rebound_hyperpolarization_duration_ms: float = 500.0,
     ) -> None:
@@ -113,8 +113,8 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         trial or 0.040 nA for Spp variants.
 
         ``bpap_amplitude_factor`` scales rheobase for the BPAP pulse. It
-        defaults to the established thalamic value of 14.6; model-specific
-        experimental overrides must be explicitly configured and verified.
+        defaults to the tested thalamic value of 30.0; model-specific
+        overrides must be explicitly configured and verified.
 
         ``bpap_trace_diagnostics`` appends pulse-adjacent soma-voltage metrics
         to the BPAP result details without changing the protocol or outcome.
@@ -147,9 +147,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             message = "rebound_hyperpolarization_duration_ms must be a positive finite number."
             raise TypeError(message)
         try:
-            rebound_hyperpolarization_duration_ms = float(
-                rebound_hyperpolarization_duration_ms
-            )
+            rebound_hyperpolarization_duration_ms = float(rebound_hyperpolarization_duration_ms)
         except (TypeError, ValueError) as error:
             message = "rebound_hyperpolarization_duration_ms must be a positive finite number."
             raise TypeError(message) from error
@@ -162,9 +160,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         self.bpap_holding_current = bpap_holding_current
         self.bpap_amplitude_factor = bpap_amplitude_factor
         self.bpap_trace_diagnostics = bpap_trace_diagnostics
-        self.rebound_hyperpolarization_duration_ms = (
-            rebound_hyperpolarization_duration_ms
-        )
+        self.rebound_hyperpolarization_duration_ms = rebound_hyperpolarization_duration_ms
 
     @property
     def requires_rin(self) -> bool:
@@ -183,8 +179,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             raise InvalidValidationContextError(message)
         simulator_config = context.simulator_config or self.simulator_config_fallback
         return [
-            # Shared thalamic protocol: use a slightly depolarized hold and
-            # the deeper hyperpolarization suggested for rebound bursting.
+            # Tonic firing uses a depolarized hold to inactivate T-type Ca.
             tonic_firing_preset(
                 rin=rin,
                 holding_voltage=-65.0,
@@ -195,11 +190,9 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             depolarization_block_preset(),
             rebound_burst_preset(
                 rin=rin,
-                holding_voltage=-60.0,
-                target_voltage=-110.0,
-                hyperpolarization_duration_ms=(
-                    self.rebound_hyperpolarization_duration_ms
-                ),
+                holding_voltage=-65.0,
+                target_voltage=-100.0,
+                hyperpolarization_duration_ms=(self.rebound_hyperpolarization_duration_ms),
                 simulator_config=simulator_config,
                 expect_spikes=True,
             ),

@@ -116,14 +116,14 @@ class TestMEModelValidationWorkflow:
         assert isinstance(tests[2].protocol, SequenceProtocol)
         assert tests[2].protocol.measurement_phase == 2
         assert tests[2].protocol.phases[0][0] == pytest.approx(250.0)
-        assert tests[2].protocol.phases[0][1] == pytest.approx(0.10)
+        assert tests[2].protocol.phases[0][1] == pytest.approx(0.05)
         assert tests[2].protocol.phases[1][0] == pytest.approx(500.0)
-        assert tests[2].protocol.phases[1][1] == pytest.approx(-0.40)
+        assert tests[2].protocol.phases[1][1] == pytest.approx(-0.30)
         assert tests[2].protocol.phases[2][0] == pytest.approx(1000.0)
-        assert tests[2].protocol.phases[2][1] == pytest.approx(0.10)
+        assert tests[2].protocol.phases[2][1] == pytest.approx(0.05)
         bpap = tests[3]
         assert isinstance(bpap, BPAPTest)
-        assert bpap.amplitude_factor == pytest.approx(14.6)
+        assert bpap.amplitude_factor == pytest.approx(30.0)
         assert bpap.expected_spike_count == 1
         assert bpap.sim_duration == pytest.approx(1500.0)
         assert bpap.stim_duration == pytest.approx(2.0)
@@ -214,7 +214,7 @@ class TestMEModelValidationWorkflow:
         tests = workflow.get_tests(context)
 
         assert tests[0].protocol.phases[0][1] == pytest.approx(-0.025)
-        assert tests[2].protocol.phases[0][1] == pytest.approx(0.025)
+        assert tests[2].protocol.phases[0][1] == pytest.approx(-0.025)
         assert tests[3].simulator_config == simulator_config
         assert tests[7].simulator_config == simulator_config
         assert tests[8].simulator_config == simulator_config
@@ -255,9 +255,11 @@ class TestMEModelValidationWorkflow:
 
     def test_bpap_requires_shared_simulator_configuration(self):
         with pytest.raises(TypeError, match="simulator_config"):
-            BPAPTest()
+            BPAPTest()  # ty: ignore[missing-argument]  # Intentional runtime contract check.
         with pytest.raises(TypeError, match="unexpected keyword argument 'v_init'"):
-            BPAPTest(v_init=65.0)
+            BPAPTest(  # ty: ignore[missing-argument]  # Intentional contract check.
+                v_init=65.0,  # ty: ignore[unknown-argument]  # Intentional contract check.
+            )
 
     def test_bpap_applies_explicit_holding_current(self, tmp_path):
         bpap = _make_mock_bpap()
@@ -282,7 +284,9 @@ class TestMEModelValidationWorkflow:
     def test_bpap_counts_late_spikes_over_full_recording(self, tmp_path):
         bpap = _make_mock_bpap()
         bpap.plot_amp_vs_dist.return_value = tmp_path / "back-propagating_action_potential.pdf"
-        bpap.plot_recordings.return_value = tmp_path / "back-propagating_action_potential_recordings.pdf"
+        bpap.plot_recordings.return_value = (
+            tmp_path / "back-propagating_action_potential_recordings.pdf"
+        )
         with (
             patch("obi_one.scientific.validations.memodel.tests.BPAP", return_value=bpap),
             patch(
@@ -302,9 +306,7 @@ class TestMEModelValidationWorkflow:
         assert result.passed is False
         assert "Full-trace soma spike count=2" in result.details
         assert len(result.figures) == 2
-        assert {
-            figure.name for figure in result.figures
-        } == {
+        assert {figure.name for figure in result.figures} == {
             "back-propagating_action_potential.pdf",
             "back-propagating_action_potential_recordings.pdf",
         }
@@ -375,13 +377,16 @@ class TestMEModelValidationWorkflow:
             falling = (relative_time >= 0.0) & (relative_time < 0.5)
             voltage[falling] = 40.0 - 110.0 * relative_time[falling] / 0.5
 
-        assert _count_bpap_spikes(
-            time,
-            voltage,
-            start=0.0,
-            end=1500.0,
-            threshold=-20.0,
-        ) == 2
+        assert (
+            _count_bpap_spikes(
+                time,
+                voltage,
+                start=0.0,
+                end=1500.0,
+                threshold=-20.0,
+            )
+            == 2
+        )
 
     def test_accepts_custom_profile(self, tmp_path):
         custom = MagicMock()
