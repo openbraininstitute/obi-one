@@ -67,6 +67,7 @@ class UIElement(StrEnum):
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
+    DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
     ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
     FLOAT_OPTIONAL = "float_optional"
