@@ -13,7 +13,7 @@ from obi_one.scientific.blocks.distributions.defaults import (
 )
 from obi_one.scientific.blocks.synaptic_models.domains import (
     ParameterDomain,
-    validate_parameter_samples,
+    clip_parameter_samples,
 )
 from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
@@ -154,7 +154,7 @@ class SynapticModelBase(Block):
         columns: dict[str, list] = {}
         for field_name, (parameter, domain) in self._sampled_fields().items():
             distribution = resolve_distribution(getattr(self, field_name), defaults[field_name])
-            columns[parameter] = validate_parameter_samples(
+            columns[parameter] = clip_parameter_samples(
                 parameter,
                 domain,
                 distribution.sample_with_constraints(n, rng=rng),

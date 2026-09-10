@@ -5,7 +5,7 @@ from bluepysnap.edges import EdgePopulation
 from pandas import DataFrame
 
 from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
-from obi_one.scientific.blocks.synaptic_models.defaults import default_synaptic_model_for
+from obi_one.scientific.blocks.synaptic_models.family_defaults import default_synaptic_model_for
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerUnion,
