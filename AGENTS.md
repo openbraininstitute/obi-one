@@ -104,6 +104,7 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - **100 char line length**
 - **Google-style docstrings** (`pydocstyle convention = "google"`)
 - **Pydantic v2** for all data models
+- Avoid protected (`_`-prefixed) constants and classes. Do not import protected functions from other modules; rename them to public names first (drop the leading `_`).
 - Tests are less strict on linting (annotations, docstrings, magic values, assert, private access, class-based test methods all allowed)
 - Use `Field(default=[...])` for mutable defaults on Pydantic model fields in tests to avoid RUF012
 - Coverage minimum: 30%, measured on both `app/` and `obi_one/`
