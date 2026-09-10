@@ -8,7 +8,7 @@ from entitysdk.types import AssetLabel
 from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
-from obi_one.utils.db_sdk import fetch_asset_by_label
+from obi_one.db_sdk.db_sdk import fetch_asset_by_label
 
 
 class TaskConfigFromID(EntityFromID):

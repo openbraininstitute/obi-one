@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import shutil
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -153,7 +153,7 @@ def compile_mechanisms(mechanisms_dir: Path) -> None:
 
     nrnivmodl = _resolve_nrnivmodl()
     L.info("Compiling NEURON mechanisms in %s with %s ...", mechanisms_dir, nrnivmodl)
-    subprocess.run(  # noqa: S603
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
         [nrnivmodl, mechanisms_dir.name],
         cwd=parent,
         check=True,
@@ -174,7 +174,7 @@ def run_plot_models(
     reading them from ``access_point.pipeline_settings``. Only
     ``only_validated`` differs between task2 (False) and task3 (True/user-set).
     """
-    from bluepyemodel.emodel_pipeline import plotting  # noqa: PLC0415
+    from bluepyemodel.emodel_pipeline import plotting  # ruff: ignore[import-outside-top-level]
 
     pp = access_point.pipeline_settings
     plotting.plot_models(

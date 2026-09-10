@@ -190,12 +190,14 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dic
         raise TypeError(msg)
 
     block_schemas = additional_properties.get("oneOf")
+    direct_schema = False
     if block_schemas is None:
         block_ref = additional_properties.get("$ref")
         if block_ref is not None:
             block_schemas = [{"$ref": block_ref}]
         elif isinstance(additional_properties.get("properties"), dict):
             block_schemas = [additional_properties]
+            direct_schema = True
         else:
             msg = (
                 f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf', "
