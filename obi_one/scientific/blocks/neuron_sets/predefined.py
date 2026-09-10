@@ -15,6 +15,7 @@ from obi_one.scientific.blocks.neuron_sets.constants import (
     VIRTUAL_NEURON_SET_TITLE_SUFFIX,
 )
 from obi_one.scientific.blocks.neuron_sets.population import (
+    MAX_SAMPLE_PERCENTAGE,
     BiophysicalPopulationNeuronSetMixin,
     PointPopulationNeuronSetMixin,
     PopulationBaseNeuronSet,
@@ -30,6 +31,54 @@ L = logging.getLogger(__name__)
 
 CircuitNode = Annotated[str, Field(min_length=1)]
 NodeSetType = CircuitNode | list[CircuitNode]
+
+# Compound node sets may reference other compound node sets; libsonata bounds the recursion
+# too (MAX_COMPOUND_RECURSION), so a cycle in a malformed file cannot hang the flattening.
+_MAX_FLATTEN_DEPTH = 10
+
+
+def _flatten_node_set(node_sets: dict, name: str, depth: int = 0) -> list[dict] | None:
+    """Flattens a node set into the union of basic clause objects it stands for.
+
+    A SONATA compound node set is a list of node set names whose selections are unioned, so a
+    definition flattens into a list of basic clause objects. Returns ``None`` when the
+    definition cannot be flattened, in which case the caller has to fall back to neuron IDs.
+    """
+    if depth > _MAX_FLATTEN_DEPTH or name not in node_sets:
+        return None
+
+    definition = node_sets[name]
+
+    if isinstance(definition, dict):
+        return [definition]
+
+    if not isinstance(definition, list):
+        return None
+
+    clause_objects: list[dict] = []
+    for member in definition:
+        if not isinstance(member, str):
+            return None
+        member_clauses = _flatten_node_set(node_sets, member, depth + 1)
+        if member_clauses is None:
+            return None
+        clause_objects.extend(member_clauses)
+    return clause_objects
+
+
+def _pin_to_population(clause_object: dict, population: str) -> dict | None:
+    """Adds a ``population`` clause to a basic node set object.
+
+    Returns ``None`` when the object already names a different population, because the
+    intersection of two populations is then empty.
+    """
+    existing = clause_object.get("population")
+    if existing is not None:
+        existing_names = [existing] if isinstance(existing, str) else list(existing)
+        if population not in existing_names:
+            return None
+
+    return {**clause_object, "population": population}
 
 
 class PredefinedBaseNeuronSet(NeuronSet, abc.ABC):
@@ -201,21 +250,83 @@ class PredefinedPopulationBaseNeuronSet(PredefinedBaseNeuronSet, PopulationBaseN
     def _get_expression(self, circuit: Circuit) -> dict | list:
         """Returns the SONATA node set resolved in one population (w/o subsampling).
 
-        If the node set only resolves in self.population, keeps it symbolic.
-        Otherwise resolves IDs since snap doesn't support compound
-        population + node_set expressions.
+        Kept consistent with the rest of the hierarchy, but nothing in this class calls it:
+        ``_resolve_ids`` is overridden here, and ``get_node_set_definition`` needs the
+        ``(expression, combined)`` pair that a bare expression cannot carry, because pinning a
+        compound node set to a population produces a compound definition of its own.
         """
-        nset_populations = PredefinedBaseNeuronSet.get_node_set_populations(
+        return self._restricted_node_set_definition(circuit)[0]
+
+    def _restricted_node_set_definition(self, circuit: Circuit) -> tuple[dict | list, dict]:
+        """Returns the referenced node set pinned to ``self.population``, symbolically.
+
+        The referenced node set is flattened into the union of basic clause objects it stands
+        for, and a ``population`` clause is added to each one. libsonata intersects the clauses
+        of a multi-key node set object, so no neuron IDs need to be materialized. Falls back to
+        explicit IDs only when the definition cannot be flattened.
+        """
+        self.check_node_set(circuit)
+        self.check_populations_in_circuit(circuit)
+
+        clause_objects = _flatten_node_set(
+            circuit.sonata_circuit.node_sets.content,
             self.node_set,  # ty:ignore[invalid-argument-type]
-            circuit,
         )
-        if nset_populations == [self.population]:
-            # Node set only resolves in this population — keep symbolic
-            self.check_populations_in_circuit(circuit)
-            return [self.node_set]
-        # Resolves in multiple (or none) populations — must resolve IDs for this population
-        node_ids = self._resolve_ids(circuit)
-        return {"population": self.population, "node_id": node_ids}
+        if clause_objects is None:
+            return ({"population": self.population, "node_id": self._resolve_ids(circuit)}, {})
+
+        restricted = [
+            pinned
+            for pinned in (
+                _pin_to_population(clause_object, self.population)
+                for clause_object in clause_objects
+            )
+            if pinned is not None
+        ]
+
+        if not restricted:
+            # Every branch named a different population, so the intersection is empty.
+            return ({"population": self.population, "node_id": []}, {})
+
+        if len(restricted) == 1:
+            return (restricted[0], {})
+
+        if not self.has_block_name():
+            msg = "Block name must be set."
+            raise ValueError(msg)
+
+        prefix = f"__{self.__class__.__name__}__{self.block_name}"
+        expression = []
+        combined = {}
+        for idx, clause_object in enumerate(restricted):
+            key = f"{prefix}__{idx}__"
+            combined[key] = clause_object
+            expression.append(key)
+        return (expression, combined)
+
+    def get_node_set_definition(
+        self, circuit: Circuit, *, force_resolve_ids: bool = False
+    ) -> tuple[dict | list, dict]:
+        """Returns the SONATA node set definition, optionally forcing to resolve individual IDs.
+
+        Sub-sampling has no SONATA equivalent, so it is the one case that still resolves to
+        explicit neuron IDs. Everything else stays symbolic.
+
+        Args:
+            circuit: The circuit to resolve the node set in.
+            force_resolve_ids: If True, always resolve to explicit neuron IDs
+                instead of preserving symbolic expressions.
+        """
+        if force_resolve_ids or self.sample_percentage < MAX_SAMPLE_PERCENTAGE:  # ty:ignore[unsupported-operator]
+            return (
+                {
+                    "population": self.population,
+                    "node_id": self.get_neuron_ids(circuit)[self.population],
+                },
+                {},
+            )
+
+        return self._restricted_node_set_definition(circuit)
 
 
 class BiophysicalPopulationPredefinedNeuronSet(

@@ -9,6 +9,9 @@ against that split coming back, and against the one default being written more t
 import json
 from pathlib import Path
 
+import libsonata
+from bluepysnap import Circuit as SnapCircuit
+
 import obi_one as obi
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 
@@ -18,6 +21,7 @@ CIRCUIT_CONFIG = (
     Path(__file__).parents[2] / "library" / "simulation" / "data" / "circuit_config.json"
 )
 
+POINT_POPULATION = "drosophila"
 DEFAULT = "Default: All Point Neurons"
 
 
@@ -49,12 +53,23 @@ def _generate(tmp_path: Path) -> tuple[dict, dict]:
 
     out = tmp_path / "scan" / "0"
     sim_config = json.loads((out / "simulation_config.json").read_text())
-    node_sets = json.loads((out / "node_sets.json").read_text())
-    return sim_config, node_sets
+    node_sets_path = out / "node_sets.json"
+    node_sets = json.loads(node_sets_path.read_text())
+    return sim_config, node_sets, node_sets_path
+
+
+def _resolve(node_sets_path: Path, name: str) -> list[int]:
+    """The neuron IDs a written node set selects, resolved the way neurodamus does.
+
+    Node sets are written symbolically wherever SONATA can express them, so the IDs are not in
+    the file: they come from materializing the definition against the node population.
+    """
+    nodes = SnapCircuit(str(CIRCUIT_CONFIG)).nodes[POINT_POPULATION].to_libsonata
+    return libsonata.NodeSets.from_file(str(node_sets_path)).materialize(name, nodes).flatten()
 
 
 def test_every_untargeted_block_resolves_to_the_one_default(tmp_path):
-    sim_config, node_sets = _generate(tmp_path)
+    sim_config, node_sets, node_sets_path = _generate(tmp_path)
 
     # The simulation, both stimuli, the recording and the manipulation all name the same set.
     assert sim_config["node_set"] == DEFAULT
@@ -65,5 +80,5 @@ def test_every_untargeted_block_resolves_to_the_one_default(tmp_path):
     assert override["source"] == override["target"] == DEFAULT
 
     # And it is the whole point population, injected exactly once.
-    assert node_sets[DEFAULT]["node_id"] == [0, 1, 2]
+    assert list(_resolve(node_sets_path, DEFAULT)) == [0, 1, 2]
     assert sum(name.startswith("Default:") for name in node_sets) == 1
