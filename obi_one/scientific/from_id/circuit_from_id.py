@@ -53,7 +53,7 @@ class CircuitFromID(EntityFromID):
                             db_client,
                             entity_id=entity.id,
                             asset=db_client.select_assets(
-                                entity,  # ty:ignore[invalid-argument-type]
+                                entity,
                                 selection=SONATA_CIRCUIT_ASSET_SELECTION,
                             ).one(),
                             dest_dir=dest_dir.resolve(),
