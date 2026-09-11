@@ -62,6 +62,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     DEFAULT_BIOPHYSICAL_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
+    MULTI_POPULATION_CIRCUIT_PATH,
     POINT_POPULATION,
     VIRTUAL_POPULATION,
     build_config,
@@ -334,7 +335,12 @@ class TestCombinedNeuronSets:
 
         result = generate(config, tmp_path)
 
-        assert result.node_sets["Combined"]["node_id"] == [0, 1, 2, 3]
+        # A union is written as a SONATA compound node set, which libsonata resolves as the
+        # union of the sets it names -- no need to materialize the combined ID list here.
+        assert isinstance(result.node_sets["Combined"], list)
+        assert result.resolved_node_set_ids(
+            "Combined", MULTI_POPULATION_CIRCUIT_PATH, BIOPHYSICAL_POPULATION
+        ) == [0, 1, 2, 3]
 
     def test_intersection_and_difference(self, circuit, tmp_path):
         first = BiophysicalPopulationIDNeuronSet(
@@ -481,9 +487,10 @@ class TestDefaultNeuronSetInjection:
         result = generate(config, tmp_path)
 
         assert isinstance(config.neuron_sets[DEFAULT_BIOPHYSICAL_NODE_SET], AllBiophysicalNeurons)
+        # Written symbolically: the simulator resolves it against the circuit it stages itself,
+        # so generation never has to read node properties for this.
         assert result.node_sets[DEFAULT_BIOPHYSICAL_NODE_SET] == {
             "population": BIOPHYSICAL_POPULATION,
-            "node_id": list(range(10)),
         }
 
     def test_untargeted_stimulus_and_recording_get_the_default(self, circuit, tmp_path):
