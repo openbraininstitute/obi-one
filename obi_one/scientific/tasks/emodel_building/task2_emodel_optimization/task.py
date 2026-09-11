@@ -39,7 +39,7 @@ from obi_one.utils.filesystem import chdir
 L = logging.getLogger(__name__)
 
 
-def _tag_local_mechanisms(
+def tag_local_mechanisms(
     available_mechanisms: list[Any] | None,
     normalized_models: dict[str, NormalizedIonChannelModel],
 ) -> list[Any] | None:
@@ -58,7 +58,7 @@ def _tag_local_mechanisms(
     return available_mechanisms
 
 
-def _fresh_morph_modifiers(pipeline_settings: Any) -> list[str] | None:
+def fresh_morph_modifiers(pipeline_settings: Any) -> list[str] | None:
     """Return a new morphology-modifier list for a single evaluator build.
 
     ``bluepyemodel.model.model.define_morphology`` rewrites the list it receives in
@@ -177,12 +177,12 @@ class EModelOptimizationTask(Task):
 
             def get_available_mechanisms(self) -> list[Any] | None:
                 mechanisms = super().get_available_mechanisms()
-                return _tag_local_mechanisms(mechanisms, normalized_models)
+                return tag_local_mechanisms(mechanisms, normalized_models)
 
             def get_model_configuration(self, *args: Any, **kwargs: Any) -> Any:
                 """Hand every evaluator build its own morphology-modifier list."""
                 configuration = super().get_model_configuration(*args, **kwargs)
-                configuration.morph_modifiers = _fresh_morph_modifiers(self.pipeline_settings)
+                configuration.morph_modifiers = fresh_morph_modifiers(self.pipeline_settings)
                 return configuration
 
         with chdir(coord_root):

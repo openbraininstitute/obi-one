@@ -59,8 +59,8 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.registra
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
-    _fresh_morph_modifiers,
-    _tag_local_mechanisms,
+    fresh_morph_modifiers,
+    tag_local_mechanisms,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     params_definition_input_from_config,
@@ -769,7 +769,7 @@ def test_morph_modifiers_survive_repeated_evaluator_builds():
     builds = [
         define_morphology(
             model_configuration,
-            morph_modifiers=_fresh_morph_modifiers(pipeline_settings),
+            morph_modifiers=fresh_morph_modifiers(pipeline_settings),
         )
         for _ in range(3)
     ]
@@ -780,16 +780,16 @@ def test_morph_modifiers_survive_repeated_evaluator_builds():
 def test_fresh_morph_modifiers_preserves_empty_and_default_selections():
     without_replacement = MorphologySettings(axon_modifier="none").to_pipeline_settings()
 
-    assert _fresh_morph_modifiers(SimpleNamespace(**without_replacement)) == []
+    assert fresh_morph_modifiers(SimpleNamespace(**without_replacement)) == []
     # None must stay None so BluePyEModel keeps applying its own default modifier.
-    assert _fresh_morph_modifiers(SimpleNamespace(morph_modifiers=None)) is None
+    assert fresh_morph_modifiers(SimpleNamespace(morph_modifiers=None)) is None
 
 
 def test_local_mechanism_metadata_is_tagged_from_entitycore():
     normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
     mechanism = MechanismConfiguration(name="NaTg", location=None)
 
-    tagged = _tag_local_mechanisms([mechanism], normalized)
+    tagged = tag_local_mechanisms([mechanism], normalized)
     configuration = NeuronModelConfiguration(available_mechanisms=tagged)
     configuration.add_mechanism(
         "NaTg",
@@ -1737,8 +1737,8 @@ def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
     normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
     unknown = MechanismConfiguration(name="Unknown", location=None)
 
-    assert _tag_local_mechanisms(None, normalized) is None
-    assert _tag_local_mechanisms([unknown], normalized) == [unknown]
+    assert tag_local_mechanisms(None, normalized) is None
+    assert tag_local_mechanisms([unknown], normalized) == [unknown]
 
 
 def testvalidation_status_keyword_handles_variadic_unsupported_and_uninspectable_callables():
