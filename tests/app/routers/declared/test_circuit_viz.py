@@ -530,15 +530,7 @@ def _make_single_population_config(tmp_path, population_config: dict) -> libsona
 
 
 def test_resolve_morph_path_does_not_assume_swc_for_asc_only_circuit(tmp_path):
-    """Regression test: an ME-model staged with only '.asc' must resolve to 'asc', not 'swc'.
-
-    Before the staging fix, `create_circuit_config` unconditionally declared both
-    `morphologies_dir` (implying '.swc') and `alternate_morphologies["neurolucida-asc"]`, even
-    when only the '.asc' file was ever downloaded and copied. `resolve_morph_path` picked
-    `morphologies_dir` first, producing a request for a '.swc' file that did not exist. A
-    correctly staged config (as produced after the fix) declares only 'alternate_morphologies'
-    when 'swc' was never staged.
-    """
+    """A circuit with only 'alternate_morphologies["neurolucida-asc"]' resolves to 'asc'."""
     config = _make_single_population_config(
         tmp_path,
         {"alternate_morphologies": {"neurolucida-asc": "$BASE_DIR/morphologies"}},

@@ -141,9 +141,8 @@ def get_population_nodes(  # ruff: ignore[too-many-locals]
     return nodes_list
 
 
-# SONATA alternate-format keys, in the same priority order used for staging: 'asc' preferred,
-# then 'h5'. 'swc' is not looked up here since it is signaled by `morphologies_dir`, not by
-# `alternate_morphology_formats`.
+# SONATA alternate-format keys for 'asc' and 'h5'. 'swc' is signaled by `morphologies_dir`
+# instead, so it is checked separately below.
 _ALTERNATE_MORPHOLOGY_FORMAT_PRIORITY = (
     ("neurolucida-asc", "asc"),
     ("h5v1", "h5"),
@@ -154,12 +153,9 @@ def resolve_morph_path(
     population_name: str,
     config: libsonata.CircuitConfig,
 ) -> MorphPath:
-    """Resolve the morphology directory and format actually declared for a population.
+    """Resolve the morphology format actually declared for a population.
 
-    A staged circuit declares only the formats it actually has on disk (`morphologies_dir` for
-    '.swc', `alternate_morphology_formats` for 'asc'/'h5'), so this never guesses a format that
-    was not staged. When multiple formats are declared, 'swc' wins, then 'asc', then 'h5' --
-    the same priority used when a circuit is staged with more than one format.
+    Only declared formats are considered, in priority order: 'swc', then 'asc', then 'h5'.
     """
     pop_properties = config.node_population_properties(population_name)
     if pop_properties.morphologies_dir:
