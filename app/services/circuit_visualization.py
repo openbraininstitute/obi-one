@@ -141,21 +141,34 @@ def get_population_nodes(  # ruff: ignore[too-many-locals]
     return nodes_list
 
 
+# SONATA alternate-format keys, in the same priority order used for staging: 'asc' preferred,
+# then 'h5'. 'swc' is not looked up here since it is signaled by `morphologies_dir`, not by
+# `alternate_morphology_formats`.
+_ALTERNATE_MORPHOLOGY_FORMAT_PRIORITY = (
+    ("neurolucida-asc", "asc"),
+    ("h5v1", "h5"),
+)
+
+
 def resolve_morph_path(
     population_name: str,
     config: libsonata.CircuitConfig,
 ) -> MorphPath:
+    """Resolve the morphology directory and format actually declared for a population.
+
+    A staged circuit declares only the formats it actually has on disk (`morphologies_dir` for
+    '.swc', `alternate_morphology_formats` for 'asc'/'h5'), so this never guesses a format that
+    was not staged. When multiple formats are declared, 'swc' wins, then 'asc', then 'h5' --
+    the same priority used when a circuit is staged with more than one format.
+    """
     pop_properties = config.node_population_properties(population_name)
     if pop_properties.morphologies_dir:
         return MorphPath(path=Path(pop_properties.morphologies_dir), format="swc")
 
     alternate_morphologies: dict = pop_properties.alternate_morphology_formats
-
-    path_item = next(iter(alternate_morphologies.items()), None)
-
-    if path_item:
-        format_ = "asc" if path_item[0] == "neurolucida-asc" else "h5"
-        return MorphPath(path=Path(path_item[1]), format=format_)
+    for sonata_key, format_ in _ALTERNATE_MORPHOLOGY_FORMAT_PRIORITY:
+        if sonata_key in alternate_morphologies:
+            return MorphPath(path=Path(alternate_morphologies[sonata_key]), format=format_)
 
     m = "No morphologies found"
     raise ValueError(m)
