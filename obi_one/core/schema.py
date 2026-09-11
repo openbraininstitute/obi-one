@@ -19,6 +19,14 @@ class SchemaKey(StrEnum):
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
     LATEX_EQUATION = "latex_equation"
+    SAMPLED_PARAMETER = "sampled_parameter"
+    # Note: SAMPLED_PARAMETER is the name of the value a field supplies when the block is
+    # sampled - the column it becomes. It is declared because a field's own name need not match
+    # it: `delay_distribution` supplies `delay`.
+    PARAMETER_DOMAIN = "parameter_domain"
+    # Note: PARAMETER_DOMAIN is the range a sampled value for this field is allowed to take,
+    # whatever distribution is chosen for it. It is checked against the values a distribution
+    # actually draws - not by pydantic, which only ever sees the reference to the distribution.
     PARAMETER_ORDER_PRIORITY = "parameter_order_priority"
     # Note: PARAMETER_ORDER_PRIORITY is not used by the UI,
     # rather the Block class uses this to order the properties in the generated openapi.json schema,
@@ -31,6 +39,20 @@ class SchemaKey(StrEnum):
     PROPERTY_ENDPOINTS = "property_endpoints"
     PROPERTY_GROUP = "property_group"
     PROPERTY_SOURCE_FIELD = "property_source_field"
+    REFERENCE_TAG = "reference_tag"
+    # Note: REFERENCE_TAG names what a block reference field is for, so a task can say what the
+    # field means when it is left unset. See ReferenceTag.
+    REFERENCE_TAG_DEFAULTS = "reference_tag_defaults"
+    # Note: REFERENCE_TAG_DEFAULTS sits on a ScanConfig and gives, for each reference tag, what a
+    # field carrying that tag resolves to when left unset: {"name": ..., "block": ...} - the name
+    # the block is registered under once the config is filled, and the serialized block itself,
+    # so the UI can both label the field and read the values behind that label. Unlike
+    # DEFAULT_BLOCK_REFERENCE_LABELS, which is keyed by reference type and also decides whether a
+    # field is shown at all, this is keyed by tag, so two fields of the same type that mean
+    # different things get their own answer.
+    # NOTE ON MERGING #947: that branch defines this value as a bare name string. Here it is the
+    # object above, so the two definitions have to be reconciled rather than one taking the
+    # other - core-web-app reads `.name` off it.
     REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
     TITLE_BY_KEY = "title_by_key"
@@ -45,6 +67,7 @@ class UIElement(StrEnum):
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
+    DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
     ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
     FLOAT_OPTIONAL = "float_optional"

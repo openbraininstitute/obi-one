@@ -200,6 +200,19 @@ def mapped_circuit_properties_endpoint(
             + circuit_metrics.names_of_point_node_populations
             + circuit_metrics.names_of_virtual_node_populations
         )
+        # Edge population *names* come from the circuit config, so they cost nothing extra
+        # even though level_of_detail_edges is `none` above - that only skips the per-edge
+        # statistics, not the names.
+        mapped_circuit_properties[CircuitMappedProperties.CHEMICAL_EDGE_POPULATION] = (
+            circuit_metrics.names_of_chemical_edge_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.ELECTRICAL_EDGE_POPULATION] = (
+            circuit_metrics.names_of_electrical_edge_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.EDGE_POPULATION] = (
+            circuit_metrics.names_of_chemical_edge_populations
+            + circuit_metrics.names_of_electrical_edge_populations
+        )
         mapped_circuit_properties[
             CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION
         ] = {

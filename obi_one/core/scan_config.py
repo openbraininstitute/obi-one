@@ -18,12 +18,20 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.fill_none_references import (
+    BlockDefault,
+    fill_none_references_in_config,
+    resolve_block_default,
+)
 from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
+
+# A default block can introduce references of its own; this bounds that chain.
+_MAX_FILL_PASSES = 10
 
 
 def get_all_annotations(cls: type) -> dict[str, type]:
@@ -43,6 +51,95 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     name: ClassVar[str] = "Add a name class' name variable"
     description: ClassVar[str] = """Add a description to the class' description variable"""
+
+    @staticmethod
+    def default_blocks() -> dict[str, BlockDefault]:
+        """What each unset tagged field resolves to, keyed by the tag it carries.
+
+        The one thing a config declares about its defaults. Turning these into references and
+        publishing them to the schema is done below, so a config says what its defaults are and
+        nothing about how they are used. A config that leaves nothing to be inferred returns
+        nothing, which is the default. See `obi_one.core.fill_none_references`.
+        """
+        return {}
+
+    @classmethod
+    def default_block_references(cls) -> dict[str, BlockReference]:
+        """The declared defaults, resolved into references the fill pass can substitute."""
+        return {
+            tag: resolve_block_default(block_default)
+            for tag, block_default in cls.default_blocks().items()
+        }
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Publish the defaults a config declares, so the UI reads what the fill will do.
+
+        `REFERENCE_TAG_DEFAULTS` is derived from `default_block_references` rather than written
+        out beside it, because the two were declared separately and drifted: the schema named
+        nine tags while the fill answered seventeen, and nothing said so. Deriving it means a
+        config declares its defaults once and the schema cannot disagree with them.
+        """
+        super().__init_subclass__(**kwargs)
+
+        defaults = cls.default_block_references()
+        if not defaults:
+            return
+        # `json_schema_extra` is typed as a dict, a callable or None; only the dict case can
+        # carry this, and OBIBaseModel's model_config always sets one.
+        extra = cls.model_config.get("json_schema_extra")
+        if not isinstance(extra, dict):
+            return
+        extra[SchemaKey.REFERENCE_TAG_DEFAULTS] = {  # ty:ignore[invalid-assignment]
+            tag: {"name": reference.block_name, "block": reference.block.model_dump(mode="json")}
+            for tag, reference in defaults.items()
+        }
+
+    def fill_none_references(self) -> None:
+        """Give every unset tagged reference its default, and register what was used.
+
+        Called before the scan is serialized, so the configs written to disk and the
+        entities registered from them name the blocks that actually produced the result
+        rather than recording `None` and leaving it to the code version to say.
+
+        Repeats until nothing new is registered, because a default is itself a block and can
+        leave references of its own unset: substituting a synaptic model nobody named adds a
+        block whose nine parameters are then unset, and a single pass would leave them so.
+        """
+        defaults = self.default_block_references()
+        if not defaults:
+            return
+
+        for _ in range(_MAX_FILL_PASSES):
+            used = fill_none_references_in_config(self, defaults)
+            if not self._register_used_defaults(used):
+                return
+
+        msg = (
+            "Filling unset block references did not settle: a default block appears to keep "
+            "introducing references that are themselves unset."
+        )
+        raise OBIONEError(msg)
+
+    def _register_used_defaults(self, used: list[BlockReference]) -> bool:
+        """Put each default that was needed into its block dictionary.
+
+        Returns whether any of them was new, which is what tells the caller to look again.
+        """
+        registered_any = False
+        for reference in used:
+            block_dict = getattr(self, reference.block_dict_name)
+            existing = block_dict.get(reference.block_name)
+            if existing is None:
+                block_dict[reference.block_name] = reference.block
+                registered_any = True
+            elif type(existing) is not type(reference.block):
+                msg = (
+                    f"Default block name '{reference.block_name}' already exists in "
+                    f"'{reference.block_dict_name}' but is not a "
+                    f"{type(reference.block).__name__}!"
+                )
+                raise OBIONEError(msg)
+        return registered_any
 
     _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 

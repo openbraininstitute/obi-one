@@ -9,6 +9,7 @@ from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
@@ -52,51 +53,27 @@ class SynapseParameterizationTask(Task):
     def _register_parameterized_circuit(
         self, *, db_client: Client, circuit_path: Path
     ) -> models.Circuit | None:
-        """Register the parameterized circuit as a derivation of the original (dry run).
-
-        Metadata is inherited from the original circuit so that all entity references
-        (subject, species, brain region, hierarchy, parent) resolve cleanly.
-        """
-        # Deferred import: pulls in heavy circuit/asset tooling only when registering.
-        from obi_one.db_sdk.registration.circuit.register import (  # ruff: ignore[import-outside-top-level]
-            register_circuit_from_metadata,
-        )
-
+        """Register the parameterized circuit as a derivation of the original."""
         parent = self._circuit_entity
-        if parent is not None:
-            parent_brain_region = parent.brain_region.hierarchy_id if parent.brain_region else None
-            if parent_brain_region is not None:
-                hierarchy = db_client.get_entity(
-                    entity_id=parent_brain_region,
-                    entity_type=models.BrainRegionHierarchy,
-                )
-            subject_name = parent.subject.name if parent.subject else None
-            brain_region_name = parent.brain_region.name if parent.brain_region else None
-            hierarchy_name = hierarchy.name if hierarchy else None
-            species_name = (
-                parent.subject.species.name if parent.subject and parent.subject.species else None
-            )
-            circuit_metadata = {
-                "name": f"{parent.name} (synapse-parameterized)",
-                "description": (
-                    f"Synapse-parameterized derivation of circuit '{parent.name}' ({parent.id})."
-                ),
-                "build_category": parent.build_category,
-                "species": species_name,
-                "subject": subject_name,
-                "brain_region": brain_region_name,
-                "brain_region_hierarchy": hierarchy_name,
-                "target_simulator": parent.target_simulator or types.TargetSimulator.NEURON,
-                "parent": parent.name,
-                "derivation_type": types.DerivationType.circuit_rewiring,
-            }
-            return register_circuit_from_metadata(
-                client=db_client,
-                circuit_metadata=circuit_metadata,
-                circuit_path=circuit_path,
-                dry_run=True,
-            )
-        return None
+        if parent is None:
+            return None
+
+        return circuit_registration.register_circuit(
+            client=db_client,
+            circuit_path=circuit_path,
+            name=f"{parent.name} (synapse-parameterized)",
+            description=f"Synapse-parameterized derivation of circuit '{parent.name}'.",
+            build_category=parent.build_category,
+            brain_region=parent.brain_region,  # ty:ignore[invalid-argument-type]
+            subject=parent.subject,  # ty:ignore[invalid-argument-type]
+            target_simulator=parent.target_simulator or types.TargetSimulator.NEURON,
+            experiment_date=parent.experiment_date,
+            license=parent.license,
+            atlas=None,
+            root=parent.root_circuit_id or parent.id,
+            parent=parent,
+            derivation_type=types.DerivationType.circuit_rewiring,
+        )
 
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
         """Splits all SynapticModelAssigners parameterized up by the EdgePopulation they use."""
@@ -125,24 +102,30 @@ class SynapseParameterizationTask(Task):
             cache_root=self.config.scan_output_root,
             temp_dir=self._create_temp_dir(),
         )
+        # Check the configuration against the staged circuit *before* copying it. None of
+        # these problems can be fixed later in the run, and the copy below is the expensive
+        # part - an assigner naming an edge population its neuron sets do not connect used
+        # to surface as a KeyError from inside `_edge_indices`, long after this point.
+        per_edge_population = self._assemble_per_edge_population()
+        staged = Circuit(name=staged_circuit.name, path=str(staged_circuit.path))
+        for assigners_for_ep in per_edge_population.values():
+            check_consistent_synapse_models(assigners_for_ep)
+            for assigner in assigners_for_ep:
+                assigner.validate_for_circuit(staged)
+
         output_dir = self.config.coordinate_output_root.resolve()
         shutil.copytree(Path(staged_circuit.path).parent, output_dir, dirs_exist_ok=False)
         self._circuit = Circuit(
             name=staged_circuit.name, path=str(output_dir / "circuit_config.json")
         )
 
-        # Check parameters
         circ = self._circuit.sonata_circuit
-        per_edge_population = self._assemble_per_edge_population()
-        for assigners_for_ep in per_edge_population.values():
-            check_consistent_synapse_models(assigners_for_ep)
-
         for ep_name, assigners_for_ep in per_edge_population.items():
             df = get_default_for(assigners_for_ep, ep_name, self._circuit)
             for assigner in assigners_for_ep:
                 assigner.assign_parameters(self._circuit, df)
             write_back_to_edge_file(df, circ.edges[ep_name])
 
-        # Register the (re-)parameterized circuit as a derivation of the original (dry run)
+        # Register the (re-)parameterized circuit as a derivation of the original
         L.info("Registering the output...")
         self._register_parameterized_circuit(db_client=db_client, circuit_path=output_dir)
