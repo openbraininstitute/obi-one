@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import bluepysnap as snap
 import morphio
@@ -22,6 +22,13 @@ from obi_one.scientific.library.morphology_loader import (
 L = logging.getLogger(__name__)
 
 CIRCUIT_MOD_DIR = "mod"
+
+# SONATA `alternate_morphologies` keys, mapped to their file extension. Order matters: it is
+# also the format-resolution priority used by app.services.circuit_visualization.resolve_morph_path.
+ALTERNATE_MORPHOLOGY_FORMATS: dict[str, Literal["asc", "h5"]] = {
+    "neurolucida-asc": "asc",
+    "h5v1": "h5",
+}
 
 
 class Circuit(OBIBaseModel):
@@ -278,10 +285,10 @@ class Circuit(OBIBaseModel):
         """Yield `alternate_morphologies` bases, which may be directories or `.h5` containers."""
         alternates = self._population_config(population).get("alternate_morphologies") or {}
 
-        for key, extension in (("h5v1", ".h5"), ("neurolucida-asc", ".asc")):
+        for key in ("h5v1", "neurolucida-asc"):
             raw_path = alternates.get(key)
             if raw_path:
-                yield self._resolve_circuit_path(raw_path), extension
+                yield self._resolve_circuit_path(raw_path), f".{ALTERNATE_MORPHOLOGY_FORMATS[key]}"
 
     def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
         """Load a node's morphology from `morphologies_dir` or `alternate_morphologies`.
