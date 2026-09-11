@@ -449,6 +449,84 @@ def load_memodel_morphology(client: Client, memodel: MEModel) -> morphio.Morphol
     return load_cell_morphology(client, memodel_cell_morphology(client, memodel))
 
 
+def sonata_circuit_asset_id(client: Client, circuit: Circuit) -> UUID:
+    """Return the id of a circuit's ``sonata_circuit`` asset.
+
+    Unlike :func:`circuit_asset_id`, this takes an already-fetched circuit and raises
+    ``ValueError`` rather than ``HTTPException``, so it is usable outside a request.
+
+    Args:
+        client: entitycore client used to select the asset.
+        circuit: The circuit whose asset to resolve.
+
+    Returns:
+        The asset id.
+
+    Raises:
+        ValueError: If the circuit carries no such asset, or the asset has no id.
+    """
+    try:
+        asset = client.select_assets(
+            entity=circuit,
+            selection={"label": AssetLabel.sonata_circuit},
+        ).one()
+    except EntitySDKError as exc:
+        msg = "Circuit is missing a SONATA circuit asset."
+        raise ValueError(msg) from exc
+
+    if asset.id is None:
+        msg = "SONATA circuit asset is missing an id."
+        raise ValueError(msg)
+    return asset.id
+
+
+def load_single_neuron_circuit_morphology(client: Client, circuit: Circuit) -> morphio.Morphology:
+    """Load the morphology of the one neuron in a single-neuron circuit.
+
+    The morphology is parsed into memory before the downloaded files are cleaned up, so the
+    returned object outlives the temporary directory.
+
+    Args:
+        client: entitycore client used to download the circuit's assets.
+        circuit: The circuit to read. Must hold exactly one biophysical neuron with a morphology.
+
+    Returns:
+        The morphology, sections ordered as NEURON orders them.
+
+    Raises:
+        ValueError: If the circuit is not a single-neuron circuit, has no morphologies, is
+            missing an id, or does not resolve to exactly one biophysical node.
+    """
+    if circuit.scale != CircuitScale.single or circuit.number_neurons != 1:
+        msg = "Circuit must be a single-neuron circuit."
+        raise ValueError(msg)
+    if circuit.id is None:
+        msg = "Circuit is missing an id."
+        raise ValueError(msg)
+    if not circuit.has_morphologies:
+        msg = "Circuit has no morphologies."
+        raise ValueError(msg)
+
+    asset_id = sonata_circuit_asset_id(client, circuit)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        parent_dir = Path(tmp_dir)
+        config = download_circuit_config(client, circuit.id, asset_id, parent_dir)
+        nodes = get_nodes(config, parent_dir, client, circuit.id, asset_id)
+        if len(nodes) != 1:
+            msg = "Circuit must contain one biophysical neuron."
+            raise ValueError(msg)
+
+        node = nodes[0]
+        return get_morphology(
+            parent_dir,
+            client,
+            circuit.id,
+            asset_id,
+            Path(node.morphology_file),
+            node.morphology_name,
+        )
+
+
 _AFFERENT_SURFACE_ATTRIBUTES = (
     "afferent_surface_x",
     "afferent_surface_y",
