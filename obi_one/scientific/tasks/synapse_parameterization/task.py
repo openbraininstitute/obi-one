@@ -64,8 +64,8 @@ class SynapseParameterizationTask(Task):
             name=f"{parent.name} (synapse-parameterized)",
             description=f"Synapse-parameterized derivation of circuit '{parent.name}'.",
             build_category=parent.build_category,
-            brain_region=parent.brain_region,
-            subject=parent.subject,
+            brain_region=parent.brain_region,  # ty:ignore[invalid-argument-type]
+            subject=parent.subject,  # ty:ignore[invalid-argument-type]
             target_simulator=parent.target_simulator or types.TargetSimulator.NEURON,
             experiment_date=parent.experiment_date,
             license=parent.license,
