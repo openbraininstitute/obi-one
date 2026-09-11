@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import bluepysnap as snap
 import morphio
@@ -24,7 +24,7 @@ L = logging.getLogger(__name__)
 CIRCUIT_MOD_DIR = "mod"
 
 # SONATA `alternate_morphologies` keys, mapped to their file extension.
-ALTERNATE_MORPHOLOGY_FORMATS: dict[str, str] = {
+ALTERNATE_MORPHOLOGY_FORMATS: dict[str, Literal["asc", "h5"]] = {
     "neurolucida-asc": "asc",
     "h5v1": "h5",
 }
