@@ -715,57 +715,83 @@ def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) ->
     # `features` union in the schema, so there is no catalogue extra to check.
 
 
-def validate_morphology_location_selection(schema: dict, param: str, ref: str) -> None:
+def _resolve_location_row_properties(schema: dict, param: str, ref: str, element: str) -> dict:
+    """Unwrap a nullable array field and return the properties of its referenced row schema."""
     # The field may be nullable (anyOf: [array-schema, null]), so unwrap to the array branch.
     if "anyOf" in schema:
         array_schemas = [s for s in schema["anyOf"] if s.get("type") == "array"]
         assert len(array_schemas) == 1, (
-            f"Validation error at {ref}: morphology_location_selection param {param} should "
-            "have exactly one array member in anyOf"
+            f"Validation error at {ref}: {element} param {param} should have exactly one array "
+            "member in anyOf"
         )
         array_schema = array_schemas[0]
     else:
         array_schema = schema
 
     assert array_schema.get("type") == "array", (
-        f"Validation error at {ref}: morphology_location_selection param {param} should be of "
-        "type 'array'"
+        f"Validation error at {ref}: {element} param {param} should be of type 'array'"
     )
 
     resolved_ref = resolve_ref(openapi_schema, array_schema.get("items").get("$ref"))
-    properties = resolved_ref.get("properties", {})
+    return resolved_ref.get("properties", {})
 
-    # The widget edits one row per location, so the referenced object must carry exactly the
-    # pair the row is made of — anything else and the row would silently drop a field.
-    assert set(properties) == {"section_id", "offset"}, (
-        f"Validation error at {ref}: morphology_location_selection param {param} should "
-        f"reference a schema with exactly 'section_id' and 'offset'. Got: {sorted(properties)}"
-    )
 
-    location = f"{param} at {ref}"
-
+def _validate_section_id_and_offset(properties: dict, location: str, element: str) -> None:
+    """Check the shared `section_id`/`offset` pair every location-picker row carries."""
     section_id = properties["section_id"]
     assert section_id.get("type") == "integer", (
-        f"Validation error at {location}: morphology_location_selection 'section_id' should be "
-        "of type 'integer'"
+        f"Validation error at {location}: {element} 'section_id' should be of type 'integer'"
     )
     assert section_id.get("minimum") == 0, (
-        f"Validation error at {location}: morphology_location_selection 'section_id' should "
-        "have minimum 0 (SONATA reserves 0 for the soma)"
+        f"Validation error at {location}: {element} 'section_id' should have minimum 0 (SONATA "
+        "reserves 0 for the soma)"
     )
 
     offset = properties["offset"]
     assert offset.get("type") == "number", (
-        f"Validation error at {location}: morphology_location_selection 'offset' should be of "
-        "type 'number'"
+        f"Validation error at {location}: {element} 'offset' should be of type 'number'"
     )
     assert math.isclose(offset.get("minimum"), 0.0), (
-        f"Validation error at {location}: morphology_location_selection 'offset' should have "
-        "minimum 0.0"
+        f"Validation error at {location}: {element} 'offset' should have minimum 0.0"
     )
     assert math.isclose(offset.get("maximum"), 1.0), (
-        f"Validation error at {location}: morphology_location_selection 'offset' should have "
-        "maximum 1.0"
+        f"Validation error at {location}: {element} 'offset' should have maximum 1.0"
+    )
+
+
+def validate_morphology_location_selection(schema: dict, param: str, ref: str) -> None:
+    element = "morphology_location_selection"
+    properties = _resolve_location_row_properties(schema, param, ref, element)
+
+    # The widget edits one row per location, so the referenced object must carry exactly the
+    # pair the row is made of — anything else and the row would silently drop a field.
+    assert set(properties) == {"section_id", "offset"}, (
+        f"Validation error at {ref}: {element} param {param} should reference a schema with "
+        f"exactly 'section_id' and 'offset'. Got: {sorted(properties)}"
+    )
+
+    _validate_section_id_and_offset(properties, f"{param} at {ref}", element)
+
+
+def validate_per_neuron_morphology_location_selection(schema: dict, param: str, ref: str) -> None:
+    element = "per_neuron_morphology_location_selection"
+    properties = _resolve_location_row_properties(schema, param, ref, element)
+
+    # Each row also names the neuron it was picked on, unlike the single-neuron widget above.
+    assert set(properties) == {"node_id", "section_id", "offset"}, (
+        f"Validation error at {ref}: {element} param {param} should reference a schema with "
+        f"exactly 'node_id', 'section_id' and 'offset'. Got: {sorted(properties)}"
+    )
+
+    location = f"{param} at {ref}"
+    _validate_section_id_and_offset(properties, location, element)
+
+    node_id = properties["node_id"]
+    assert node_id.get("type") == "integer", (
+        f"Validation error at {location}: {element} 'node_id' should be of type 'integer'"
+    )
+    assert node_id.get("minimum") == 0, (
+        f"Validation error at {location}: {element} 'node_id' should have minimum 0"
     )
 
 
@@ -868,6 +894,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_model_selector_single(schema, param, ref)
         case UIElement.MORPHOLOGY_LOCATION_SELECTION:
             validate_morphology_location_selection(schema, param, ref)
+        case UIElement.PER_NEURON_MORPHOLOGY_LOCATION_SELECTION:
+            validate_per_neuron_morphology_location_selection(schema, param, ref)
         case UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION:
             validate_morphology_section_type_selection(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:

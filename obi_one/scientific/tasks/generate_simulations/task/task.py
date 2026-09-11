@@ -236,8 +236,9 @@ class GenerateSimulationTask(Task):
             return
 
         for locations_block in morphology_locations.values():
-            # Explicit locations carry no target: they name points on the single neuron being
-            # simulated, so there is no neuron set to fill in.
+            # Explicit and per-neuron-explicit locations carry no target: they name points on the
+            # single neuron being simulated, or on their own named neurons, so there is no neuron
+            # set to fill in.
             if not isinstance(locations_block, GeneratedMorphologyLocationsBlock):
                 continue
 

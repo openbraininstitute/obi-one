@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     import morphio
 
     from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+    from obi_one.scientific.blocks.morphology_locations.per_neuron_explicit import (
+        PerNeuronExplicitMorphologyLocations,
+    )
     from obi_one.scientific.library.circuit import Circuit
     from obi_one.scientific.unions_and_references.combined_neuron_sets import (
         BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
@@ -70,6 +73,23 @@ class MaterializedCompartmentSet(BaseModel):
     ) -> MaterializedCompartmentSet:
         triplets = [(loc.node_id, loc.section_id, loc.offset) for loc in locations]
         return cls(name=name, population=population, compartment_entries=tuple(triplets))
+
+
+def build_compartment_set_from_selected_rows(
+    *,
+    name: str,
+    population: str,
+    locations_block: PerNeuronExplicitMorphologyLocations,
+) -> MaterializedCompartmentSet:
+    """Create a compartment set from points that already name their own neuron.
+
+    No morphologies are loaded and no neuron set is expanded: the selected points are the rows.
+    """
+    return MaterializedCompartmentSet(
+        name=name,
+        population=population,
+        compartment_entries=locations_block.compartment_rows(),
+    )
 
 
 def _validate_compartment_set_entry_count(*, name: str, entry_count: int) -> None:

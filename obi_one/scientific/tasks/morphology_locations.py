@@ -26,7 +26,9 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_ID,
     _SEG_OFF,
 )
-from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    SingleMorphologySamplingLocationUnion,
+)
 
 L = logging.getLogger(__name__)
 
@@ -50,7 +52,7 @@ class MorphologyLocationsScanConfig(ScanConfig):
         )
 
     initialize: Initialize
-    morph_locations: MorphologyLocationUnion = Field(
+    morph_locations: SingleMorphologySamplingLocationUnion = Field(
         title="Morphology locations",
         description="Parameterization of locations on the neurites of the morphology",
     )
