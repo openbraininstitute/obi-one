@@ -22,6 +22,7 @@ from app.schemas.circuit_visualization import (
     SectionDict,
     SynapseGroup,
 )
+from obi_one.scientific.library.circuit import ALTERNATE_MORPHOLOGY_FORMATS
 
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
@@ -141,11 +142,11 @@ def get_population_nodes(  # ruff: ignore[too-many-locals]
     return nodes_list
 
 
-# SONATA alternate-format keys for 'asc' and 'h5'. 'swc' is signaled by `morphologies_dir`
+# Priority order for `alternate_morphologies`. 'swc' is signaled by `morphologies_dir`
 # instead, so it is checked separately below.
 _ALTERNATE_MORPHOLOGY_FORMAT_PRIORITY = (
-    ("neurolucida-asc", "asc"),
-    ("h5v1", "h5"),
+    ("neurolucida-asc", ALTERNATE_MORPHOLOGY_FORMATS["neurolucida-asc"]),
+    ("h5v1", ALTERNATE_MORPHOLOGY_FORMATS["h5v1"]),
 )
 
 

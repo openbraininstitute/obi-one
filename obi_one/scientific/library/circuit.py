@@ -23,6 +23,12 @@ L = logging.getLogger(__name__)
 
 CIRCUIT_MOD_DIR = "mod"
 
+# SONATA `alternate_morphologies` keys, mapped to their file extension.
+ALTERNATE_MORPHOLOGY_FORMATS: dict[str, str] = {
+    "neurolucida-asc": "asc",
+    "h5v1": "h5",
+}
+
 
 class Circuit(OBIBaseModel):
     """Class representing a circuit.
@@ -278,10 +284,10 @@ class Circuit(OBIBaseModel):
         """Yield `alternate_morphologies` bases, which may be directories or `.h5` containers."""
         alternates = self._population_config(population).get("alternate_morphologies") or {}
 
-        for key, extension in (("h5v1", ".h5"), ("neurolucida-asc", ".asc")):
+        for key in ("h5v1", "neurolucida-asc"):
             raw_path = alternates.get(key)
             if raw_path:
-                yield self._resolve_circuit_path(raw_path), extension
+                yield self._resolve_circuit_path(raw_path), f".{ALTERNATE_MORPHOLOGY_FORMATS[key]}"
 
     def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
         """Load a node's morphology from `morphologies_dir` or `alternate_morphologies`.
