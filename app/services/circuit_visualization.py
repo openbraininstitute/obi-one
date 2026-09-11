@@ -142,14 +142,6 @@ def get_population_nodes(  # ruff: ignore[too-many-locals]
     return nodes_list
 
 
-# Priority order for `alternate_morphologies`. 'swc' is signaled by `morphologies_dir`
-# instead, so it is checked separately below.
-_ALTERNATE_MORPHOLOGY_FORMAT_PRIORITY = (
-    ("neurolucida-asc", ALTERNATE_MORPHOLOGY_FORMATS["neurolucida-asc"]),
-    ("h5v1", ALTERNATE_MORPHOLOGY_FORMATS["h5v1"]),
-)
-
-
 def resolve_morph_path(
     population_name: str,
     config: libsonata.CircuitConfig,
@@ -163,7 +155,7 @@ def resolve_morph_path(
         return MorphPath(path=Path(pop_properties.morphologies_dir), format="swc")
 
     alternate_morphologies: dict = pop_properties.alternate_morphology_formats
-    for sonata_key, format_ in _ALTERNATE_MORPHOLOGY_FORMAT_PRIORITY:
+    for sonata_key, format_ in ALTERNATE_MORPHOLOGY_FORMATS.items():
         if sonata_key in alternate_morphologies:
             return MorphPath(path=Path(alternate_morphologies[sonata_key]), format=format_)
 

@@ -23,7 +23,8 @@ L = logging.getLogger(__name__)
 
 CIRCUIT_MOD_DIR = "mod"
 
-# SONATA `alternate_morphologies` keys, mapped to their file extension.
+# SONATA `alternate_morphologies` keys, mapped to their file extension. Order matters: it is
+# also the format-resolution priority used by app.services.circuit_visualization.resolve_morph_path.
 ALTERNATE_MORPHOLOGY_FORMATS: dict[str, Literal["asc", "h5"]] = {
     "neurolucida-asc": "asc",
     "h5v1": "h5",
