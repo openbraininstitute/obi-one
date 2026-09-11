@@ -1,0 +1,151 @@
+{
+  "title": "EModel optimisation parameters",
+  "description": "Reference schema for the root-level Task 2 optimisation parameters form.",
+  "type": "object",
+  "ui_element": "emodel_optimisation_parameters",
+  "group": "Inputs",
+  "group_order": 1,
+  "properties": {
+    "mechanisms": {
+      "type": "object",
+      "ui_element": "block_single",
+      "properties": {
+        "ion_channel_models": {
+          "type": "array",
+          "ui_element": "model_identifier_multiple",
+          "step": "Mechanism Selection",
+          "step_order": 1,
+          "items": {"$ref": "#/$defs/model_identifier"}
+        },
+        "mechanism_regions": {
+          "type": "object",
+          "ui_element": "block_dictionary",
+          "singular_name": "Mechanism Section List",
+          "step": "Region assignment",
+          "step_order": 2,
+          "additionalProperties": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/mechanism_region"}
+          }
+        }
+      },
+      "required": ["ion_channel_models", "mechanism_regions"],
+      "additionalProperties": false
+    },
+    "global_parameters": {
+      "type": "object",
+      "ui_element": "block_dictionary",
+      "singular_name": "Global Parameter",
+      "step": "Parameters selection",
+      "step_order": 4,
+      "additionalProperties": {"$ref": "#/$defs/global_parameter"}
+    },
+    "base_parameters": {
+      "type": "object",
+      "ui_element": "block_dictionary",
+      "singular_name": "Base Parameter Region",
+      "step": "Parameters selection",
+      "step_order": 4,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {"$ref": "#/$defs/parameter_selection"}
+      }
+    },
+    "distribution_parameters": {
+      "type": "object",
+      "ui_element": "block_dictionary",
+      "singular_name": "Distribution Parameter",
+      "step": "Parameters selection",
+      "step_order": 4,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {"$ref": "#/$defs/optimization_value"}
+      }
+    }
+  },
+  "required": ["mechanisms", "global_parameters", "base_parameters", "distribution_parameters"],
+  "additionalProperties": false,
+  "$defs": {
+    "model_identifier": {
+      "type": "object",
+      "properties": {"id_str": {"type": "string"}},
+      "required": ["id_str"],
+      "additionalProperties": true
+    },
+    "optimization_value": {
+      "type": "object",
+      "properties": {
+        "mode": {"type": "string", "enum": ["fixed", "bounds"]},
+        "value": {"type": "number"},
+        "bounds": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": ["mode"],
+      "additionalProperties": false
+    },
+    "parameter_selection": {
+      "type": "object",
+      "properties": {
+        "value": {"$ref": "#/$defs/optimization_value"},
+        "distribution": {"type": "string", "default": "uniform"}
+      },
+      "required": ["value", "distribution"],
+      "additionalProperties": false
+    },
+    "global_parameter": {
+      "type": "object",
+      "properties": {
+        "value": {"$ref": "#/$defs/optimization_value"},
+        "ion_channel_model": {"$ref": "#/$defs/model_identifier"}
+      },
+      "required": ["value"],
+      "additionalProperties": false
+    },
+    "mechanism_region": {
+      "type": "object",
+      "properties": {
+        "ion_channel_model": {"$ref": "#/$defs/model_identifier"},
+        "parameters": {
+          "type": "object",
+          "ui_element": "block_dictionary",
+          "additionalProperties": {"$ref": "#/$defs/parameter_selection"}
+        }
+      },
+      "required": ["ion_channel_model", "parameters"],
+      "additionalProperties": false
+    },
+    "custom_distribution": {
+      "type": "object",
+      "properties": {
+        "name": {"type": ["string", "null"]},
+        "function": {"type": "string", "minLength": 1},
+        "soma_ref_location": {"type": "number", "minimum": 0, "maximum": 1},
+        "parameters": {"type": ["array", "null"], "items": {"type": "string"}}
+      },
+      "required": ["function"],
+      "additionalProperties": false
+    }
+  },
+  "external_siblings": {
+    "distance_dependent_distributions": {
+      "type": "object",
+      "ui_element": "block_dictionary",
+      "step": "Distribution",
+      "step_order": 3,
+      "wizard": "emodel_optimisation_parameters",
+      "additionalProperties": {"$ref": "#/$defs/custom_distribution"}
+    }
+  },
+  "related_root_fields": {
+    "morphology_settings": {
+      "description": "Controls section-list availability for this workflow. With axon_modifier 'none', staged SWC preflight cannot establish a populated runtime myelinated section list, so myelinated rows remain unavailable.",
+      "properties": {
+        "axon_modifier": {"type": "string"}
+      }
+    }
+  }
+}

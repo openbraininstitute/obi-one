@@ -79,12 +79,16 @@ def validate_type(schema: dict, ref: str) -> None:
 
 
 def validate_string_param(schema: dict, param: str, ref: str) -> None:
-    try:
-        validate("a", schema)
+    for value in ("a", ["a"]):
+        try:
+            validate(value, schema)
+        except ValidationError:
+            continue
+        else:
+            return
 
-    except ValidationError:
-        msg = f"Validation error at {ref}: string_input param {param} failedto validate a string"
-        raise ValidationError(msg) from None
+    msg = f"Validation error at {ref}: string_input param {param} failed to validate a string"
+    raise ValidationError(msg) from None
 
 
 def determine_minimum_valid_numeric_value(schema: dict) -> float | int:
@@ -129,6 +133,9 @@ def determine_minimum_valid_numeric_value(schema: dict) -> float | int:
 def validate_numeric_single_and_list_types(
     schema: dict, param: str, ref: str, data_type: str, ui_element: str
 ) -> None:
+    if schema.get("type") == data_type:
+        return
+
     if schema.get("anyOf", [{}])[0].get("type") != data_type:
         msg = (
             f"Validation error at {ref}: {ui_element} param {param} should "
@@ -152,6 +159,9 @@ def validate_numeric_single_and_list_types(
 
 
 def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
+    if schema.get("type") == "number":
+        return
+
     validate_numeric_single_and_list_types(
         schema, param, ref, "number", UIElement.FLOAT_PARAMETER_SWEEP
     )
@@ -179,6 +189,9 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
+    if schema.get("type") == "integer":
+        return
+
     validate_numeric_single_and_list_types(
         schema, param, ref, "integer", UIElement.INT_PARAMETER_SWEEP
     )
@@ -205,18 +218,18 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_float_optional(schema: dict, param: str, ref: str) -> None:
-    any_of = schema.get("anyOf", [{}, {}])
-    if any_of[0].get("type") != "number":
+    any_of = schema.get("anyOf", [])
+    numeric_schema = next((branch for branch in any_of if branch.get("type") == "number"), None)
+    if numeric_schema is None:
         msg = (
             f"Validation error at {ref}: float_optional param {param} should "
-            "be a union with a 'number' as first element"
+            "include a 'number' branch"
         )
         raise ValidationError(msg) from None
 
-    if any_of[1].get("type") != "null":
+    if not any(branch.get("type") == "null" for branch in any_of):
         msg = (
-            f"Validation error at {ref}: float_optional param {param} should "
-            "be a union with 'null' as second element"
+            f"Validation error at {ref}: float_optional param {param} should include a null branch"
         )
         raise ValidationError(msg) from None
 
@@ -452,6 +465,10 @@ def validate_neuron_set_combination(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_string_selection(schema: dict, param: str, ref: str) -> None:
+    if schema.get("$ref"):
+        schema = {**resolve_ref(openapi_schema, schema["$ref"]), **schema}
+        schema.pop("$ref", None)
+
     # Make sure type
     if schema.get("type") != "string":
         msg = (
@@ -657,24 +674,18 @@ def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
-    if schema.get("type") != "boolean":
-        msg = f"Validation error at {ref}: boolean_input param {param} should have type 'boolean'"
-        raise ValidationError(msg)
+    if schema.get("type") == "boolean":
+        return
 
-    test_true = True
-    test_false = False
+    boolean_branch = next(
+        (branch for branch in schema.get("anyOf", []) if branch.get("type") == "boolean"),
+        None,
+    )
+    if boolean_branch is not None:
+        return
 
-    try:
-        validate(test_true, schema)
-    except ValidationError:
-        msg = f"Validation error at {ref}: boolean_input param {param} failed to validate True"
-        raise ValidationError(msg) from None
-
-    try:
-        validate(test_false, schema)
-    except ValidationError:
-        msg = f"Validation error at {ref}: boolean_input param {param} failed to validate False"
-        raise ValidationError(msg) from None
+    msg = f"Validation error at {ref}: boolean_input param {param} should include a boolean type"
+    raise ValidationError(msg)
 
 
 def validate_ion_channel_variable_modification_by_section_list(
@@ -812,6 +823,24 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
+def validate_nested_block_element(schema: dict, param: str, ref: str) -> None:
+    """Validate the structural shape of a block nested inside another block."""
+    if schema.get("$ref"):
+        schema = resolve_ref(openapi_schema, schema["$ref"])
+
+    is_block_schema = any(
+        isinstance(schema.get(key), expected_type)
+        for key, expected_type in (
+            ("properties", dict),
+            ("additionalProperties", dict),
+            ("oneOf", list),
+        )
+    )
+    if not is_block_schema:
+        msg = f"Validation error at {ref}, param {param}: nested block has no object schema"
+        raise TypeError(msg)
+
+
 def validate_block_union(schema: dict, param: str, ref: str) -> None:
     if schema.get("oneOf") is None:
         msg = f"Validation error at {ref}: block_union param {param} must have 'oneOf'"
@@ -832,6 +861,8 @@ def validate_block_union(schema: dict, param: str, ref: str) -> None:
 
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, too-many-statements, complex-structure]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
+        case UIElement.BLOCK_SINGLE | UIElement.BLOCK_DICTIONARY:
+            validate_nested_block_element(schema, param, ref)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
@@ -897,7 +928,9 @@ def validate_block(schema: dict, ref: str) -> None:
     validate_string(schema, "description", ref)
 
     for param, param_schema in schema.get("properties", {}).items():
-        if param_schema.get(SchemaKey.UI_HIDDEN):
+        if param_schema.get(SchemaKey.UI_HIDDEN) or not param_schema.get(
+            SchemaKey.UI_ENABLED, True
+        ):
             continue
 
         if param == "type":

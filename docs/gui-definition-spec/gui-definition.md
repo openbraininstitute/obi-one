@@ -50,13 +50,15 @@ There are two major types of such UI elements:
 
 1. `Root UI elements` appear in the left hand column of the configuration interface. 
     
-    - There are currently three supported types:
+    - There are currently four supported types:
 
         - [block_single](components/block_single/block_single.md)
 
         - [block_union](components/block_union/block_union.md)
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
+
+        - [emodel_optimisation_parameters](components/emodel_optimisation_parameters/emodel_optimisation_parameters.md)
         
     - Root elements must have the following properties:
         - `title`

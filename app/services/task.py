@@ -104,6 +104,15 @@ def submit_task_job(
                 callbacks=all_callbacks,
                 task_definition=task_definition,
             )
+        case TaskType.emodel_optimization:
+            executor_type = ExecutorType.distributed_job
+            job_data = _emodel_optimization_job_data(
+                config_id=config_id,
+                execution_activity_id=activity_id,
+                project_id=project_context.project_id,
+                callbacks=all_callbacks,
+                task_definition=task_definition,
+            )
         case _:
             executor_type = ExecutorType.single_node_job
             job_data = _generic_job_data(
@@ -164,6 +173,29 @@ def _circuit_simulation_job_data(
             str(simulation_id),
             "--simulation-execution-id",
             str(simulation_execution_id),
+        ],
+        "project_id": str(project_id),
+        "callbacks": [c.model_dump(mode="json") for c in callbacks],
+    }
+
+
+def _emodel_optimization_job_data(
+    *,
+    config_id: UUID,
+    execution_activity_id: UUID,
+    project_id: UUID,
+    callbacks: list[CallBack],
+    task_definition: TaskDefinition,
+) -> dict:
+    resources = task_definition.resources.model_dump(mode="json")
+    return {
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": resources,
+        "inputs": [
+            "--config-id",
+            str(config_id),
+            "--execution-id",
+            str(execution_activity_id),
         ],
         "project_id": str(project_id),
         "callbacks": [c.model_dump(mode="json") for c in callbacks],
