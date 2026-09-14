@@ -30,7 +30,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=TaskActivityType.circuit_extraction__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            # ref=APP_TAG,
+            ref="commit:ba1442d83a9a3db4e5e204097cc31c8883ecd66b",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "circuit_extraction.txt"),
         ),
