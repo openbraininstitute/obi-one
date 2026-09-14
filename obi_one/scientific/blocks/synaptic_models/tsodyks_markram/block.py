@@ -364,7 +364,8 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     @property
     def syn_type_id(self) -> int:
-        return 113  # 128, 130, 114, 123 are other values in edges files
+        # Canonical SONATA value for excitatory synapses (no recipe rule offset).
+        return 100
 
 
 class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
@@ -439,4 +440,5 @@ class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     @property
     def syn_type_id(self) -> int:
-        return 7  # smaller than 100
+        # Canonical SONATA value for inhibitory synapses (no recipe rule offset).
+        return 0

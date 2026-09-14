@@ -49,8 +49,8 @@ def _assigner_for(model, random_seed=1):
 )
 def test_unclaimed_synapses_are_filled_from_the_excitatory_default(configured_model):
     # The regression this exists for: the fill used to come from the first assigner's own
-    # class, so a configuration whose first assigner was inhibitory stamped syn_type_id 7
-    # on every synapse no assigner went on to claim.
+    # class, so a configuration whose first assigner was inhibitory stamped the inhibitory
+    # syn_type_id on every synapse no assigner went on to claim.
     ep = _FakeEdgePopulation(n_edges=4)
 
     df = get_default_for([_assigner_for(configured_model)], "default", _circuit_with(ep))
