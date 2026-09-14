@@ -30,7 +30,17 @@ def estimate_task_resources(
     )
 
     # Resolve the parent circuit referenced by the config and check its scale.
-    circuit_id = config.inputs[0].id  # ty:ignore[not-subscriptable]
+    if not config.inputs:
+        msg = (
+            "Synapse parameterization config has no input circuit registered; cannot "
+            "check the circuit scale."
+        )
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
+    circuit_id = config.inputs[0].id
     circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
 
     if circuit.scale not in SUPPORTED_CIRCUIT_SCALES:
