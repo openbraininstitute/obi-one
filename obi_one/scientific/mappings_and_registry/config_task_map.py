@@ -203,6 +203,15 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
             TaskActivityType.extracellular_recording_weights_calculation__execution
         ),
     ),
+    TaskType.ion_channel_fitting: TaskRegistration(
+        task_cls=IonChannelFittingTask,
+        single_config_cls=IonChannelFittingSingleConfig,
+        scan_config_cls=IonChannelFittingScanConfig,
+        # The campaign and its configs are IonChannelModeling* entities rather than generic
+        # TaskConfigs, so this is the label the single config uploads its own JSON under and
+        # the one `run_task_type` reads back to rehydrate it on the executor.
+        asset_label=AssetLabel.ion_channel_modeling_generation_config,
+    ),
     TaskType.ion_channel_model_simulation_execution: TaskRegistration(
         task_cls=IonChannelModelSimulationExecutionTask,
         single_config_cls=IonChannelModelSimulationExecutionSingleConfig,
@@ -266,12 +275,6 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         task_cls=FolderCompressionTask,
         single_config_cls=FolderCompressionSingleConfig,
         scan_config_cls=FolderCompressionScanConfig,
-        asset_label=None,
-    ),
-    TaskType.ion_channel_fitting: TaskRegistration(
-        task_cls=IonChannelFittingTask,
-        single_config_cls=IonChannelFittingSingleConfig,
-        scan_config_cls=IonChannelFittingScanConfig,
         asset_label=None,
     ),
     TaskType.ion_channel_model_simulation: TaskRegistration(

@@ -149,6 +149,28 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
+    TaskType.ion_channel_fitting: TaskDefinitionLegacy(
+        task_type=TaskType.ion_channel_fitting,
+        config_type=models.IonChannelModelingConfig,
+        activity_type=models.IonChannelModelingExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=APP_TAG,
+            path=OBI_ONE_CODE_PATH,
+            # ion_channel_builder is not a dependency of obi-one itself — the fitting task
+            # imports it behind a try/except and stubs it out when absent — so the executor
+            # installs it here.
+            dependencies=str(OBI_ONE_DEPS_DIR / "ion_channel_fitting.txt"),
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            # The fit compiles the generated mod file with nrnivmodl and then runs it.
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
     TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
