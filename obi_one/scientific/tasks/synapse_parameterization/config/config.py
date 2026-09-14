@@ -4,6 +4,7 @@ import logging
 from enum import StrEnum
 from typing import ClassVar
 
+from entitysdk import Client, models
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -19,6 +20,7 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
@@ -173,6 +175,15 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
         references and publishes them to the schema.
         """
         return {**_distribution_defaults(), **_DEFAULTS}
+
+    def input_entities(self, db_client: Client) -> list[models.Entity]:
+        """The circuit being parameterized, registered as the config's input.
+
+        Only a CircuitFromID resolves to an entity; a local Circuit (e.g. in tests) has none.
+        """
+        if isinstance(self.initialize.circuit, CircuitFromID):
+            return [self.initialize.circuit.entity(db_client=db_client)]
+        return []
 
     class Initialize(Block):
         circuit: CircuitDiscriminator = Field(

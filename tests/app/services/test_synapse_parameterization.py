@@ -96,3 +96,21 @@ def test_error_message_lists_supported_scales_from_the_constant(json_model, task
 
     for scale in test_module.SUPPORTED_CIRCUIT_SCALES:
         assert f"'{scale.value}'" in exc_info.value.message
+
+
+def test_missing_input_circuit_is_rejected(json_model, task_definition):
+    """A config with no registered input circuit fails cleanly rather than IndexError-ing."""
+    config = SimpleNamespace(inputs=[])
+    db_client = Mock()
+    db_client.get_entity.side_effect = [config]
+
+    with pytest.raises(ApiError) as exc_info:
+        test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_b",
+        )
+
+    assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
+    assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
