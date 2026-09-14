@@ -88,7 +88,7 @@ class SynapseParameterizationTask(Task):
         db_client: Client | None = None,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
-    ) -> None:
+    ) -> str | None:  # Returns the ID of the parameterized circuit
         if db_client is None:
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)
@@ -144,3 +144,5 @@ class SynapseParameterizationTask(Task):
                 execution_activity=execution_activity,
                 generated=[str(new_circuit_entity.id)],
             )
+            return str(new_circuit_entity.id)
+        return None
