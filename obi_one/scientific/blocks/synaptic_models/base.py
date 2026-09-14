@@ -136,6 +136,27 @@ class SynapticModelBase(Block):
         )
         raise NotImplementedError(msg)
 
+    def _reject_unimplemented_shared_within(self) -> None:
+        """Fail loudly if any ``*_shared_within`` flag is set.
+
+        Per-connection sharing is declared on the model but not yet implemented in `sample`
+        (the fields are hidden in the UI so it cannot be reached from there). Guard the one
+        code path that would otherwise honour them, so a config that sets one programmatically
+        fails rather than silently drawing every value independently. Discovered by name so a
+        future field is covered without touching this check.
+        """
+        enabled = [
+            name
+            for name in type(self).model_fields
+            if name.endswith("_shared_within") and getattr(self, name)
+        ]
+        if enabled:
+            msg = (
+                "'shared_within' (per-connection parameter sharing) is not implemented yet; "
+                f"cannot honour {enabled}. Leave these unset until it is supported."
+            )
+            raise NotImplementedError(msg)
+
     def sample(self, indices: DataFrame, rng: np.random.Generator | None = None) -> DataFrame:
         """Draw every parameter this model declares, one column each.
 
@@ -147,10 +168,11 @@ class SynapticModelBase(Block):
         and two parameters given the same distribution then draw the same values for every
         synapse. Callers that leave it unset keep that per-distribution behaviour.
         """
+        self._reject_unimplemented_shared_within()
+
         n = len(indices)
         defaults = self._defaults_by_field()
 
-        # TODO: 'shared_within' is currently ignored
         columns: dict[str, list] = {}
         for field_name, (parameter, domain) in self._sampled_fields().items():
             distribution = resolve_distribution(getattr(self, field_name), defaults[field_name])
