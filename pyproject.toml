@@ -128,7 +128,7 @@ where = ["."]
 include = ["obi_one*"]
 
 [tool.setuptools.package-data]
-"obi_one.scientific.library" = ["*.json"]
+"obi_one.scientific.library" = ["*.json", "*.jinja2", "*.png"]
 
 [tool.setuptools_scm]
 tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
