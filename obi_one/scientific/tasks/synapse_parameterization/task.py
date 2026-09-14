@@ -3,7 +3,6 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from connectome_manipulator.model_building import model_types
 from entitysdk import Client, models, types
 from pydantic import PrivateAttr
 
@@ -38,7 +37,6 @@ class SynapseParameterizationTask(Task):
 
     _circuit: Circuit | None = PrivateAttr(default=None)
     _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
-    _pathway_model: model_types.ConnPropsModel | None = PrivateAttr(default=None)
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
 
     def __del__(self) -> None:
