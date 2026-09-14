@@ -152,3 +152,36 @@ def test_sampling_accepts_valid_parameter_boundaries(distribution_field, paramet
     samples = model.sample(pd.DataFrame(index=[0]))
 
     assert samples[parameter_name].tolist() == [sample]
+
+
+def test_shared_within_is_ignored_by_default():
+    """With no sharing flag set, sampling runs normally."""
+    model = ExcitatoryTsodyksMarkramSynapticModel()
+
+    samples = model.sample(pd.DataFrame(index=[0, 1]))
+
+    assert len(samples) == 2
+
+
+@pytest.mark.parametrize(
+    "shared_within_field",
+    ["u_syn_shared_within", "conductance_distribution_shared_within", "delay_shared_within"],
+)
+def test_sampling_rejects_unimplemented_shared_within(shared_within_field):
+    """Setting a `*_shared_within` flag fails loudly rather than being silently ignored."""
+    model = ExcitatoryTsodyksMarkramSynapticModel(**{shared_within_field: True})
+
+    with pytest.raises(NotImplementedError, match="shared_within"):
+        model.sample(pd.DataFrame(index=[0]))
+
+
+def test_shared_within_error_names_every_enabled_flag():
+    model = ExcitatoryTsodyksMarkramSynapticModel(
+        u_syn_shared_within=True, delay_shared_within=True
+    )
+
+    with pytest.raises(NotImplementedError) as exc_info:
+        model.sample(pd.DataFrame(index=[0]))
+
+    assert "u_syn_shared_within" in str(exc_info.value)
+    assert "delay_shared_within" in str(exc_info.value)
