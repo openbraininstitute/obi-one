@@ -19,11 +19,13 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitDiscriminator,
+)
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONSynapseParameterizationNeuronSetUnion,
@@ -173,7 +175,7 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
         return {**_distribution_defaults(), **_DEFAULTS}
 
     class Initialize(Block):
-        circuit: CircuitFromID = Field(
+        circuit: CircuitDiscriminator = Field(
             title="Circuit",
             description="Circuit to (re-)parameterize.",
             json_schema_extra={
