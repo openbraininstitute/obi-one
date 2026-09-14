@@ -80,7 +80,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
             SchemaKey.SAMPLED_PARAMETER: "conductance_scale_factor",
             SchemaKey.PARAMETER_DOMAIN: ParameterDomain(
-                minimum=0.0, minimum_inclusive=False, description="a positive finite value"
+                minimum=0.0, description="a non-negative finite value"
             )._asdict(),
         },
     )
@@ -302,13 +302,20 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     # The distribution each parameter falls back to, and the tag naming it. Declared here
     # rather than shared with the inhibitory model because the two take different values.
+    #
+    # Values are the excitatory example distributions from connectome-manipulator's
+    # WireConnectomeExample notebook, translated into these blocks. Gamma parameters are
+    # moment-matched from the notebook's mean/std (scale = std**2 / mean, shape = mean / scale);
+    # truncated normals map onto NormalDistribution's mean/std/min/max.
+    # https://github.com/openbraininstitute/connectome-manipulator/blob/main/examples/wire_connectome/WireConnectomeExample.ipynb
     _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {
         ReferenceTag.EXCITATORY_U_HILL_COEFFICIENT_DISTRIBUTION: (
             "u_hill_coefficient_distribution",
-            DistributionDefault(partial(FloatConstantDistribution, value=1.94)),
+            DistributionDefault(partial(FloatConstantDistribution, value=2.79)),
         ),
         ReferenceTag.EXCITATORY_CONDUCTANCE_DISTRIBUTION: (
             "conductance_distribution",
+            # mean=1.0, std=0.5
             DistributionDefault(partial(GammaDistribution, shape=4.0, scale=0.25)),
         ),
         ReferenceTag.EXCITATORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: (
@@ -317,11 +324,13 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
         ),
         ReferenceTag.EXCITATORY_FACILITATION_TIME_DISTRIBUTION: (
             "facilitation_time",
+            # mean=17.0, std=5.0
             DistributionDefault(partial(GammaDistribution, shape=11.56, scale=1.4706)),
         ),
         ReferenceTag.EXCITATORY_DEPRESSION_TIME_DISTRIBUTION: (
             "depression_time",
-            DistributionDefault(partial(GammaDistribution, shape=1995.11, scale=0.3358)),
+            # mean=670.0, std=15.0
+            DistributionDefault(partial(GammaDistribution, shape=1995.1111, scale=0.3358)),
         ),
         ReferenceTag.EXCITATORY_N_RRP_VESICLES_DISTRIBUTION: (
             "n_rrp_vesicles_distribution",
@@ -370,9 +379,10 @@ class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Inhibitory Tsodyks-Markram"
 
-    # As above, for inhibitory synapses. Only the conductance differs so far - the figure
-    # the example notebook uses for inhibitory connections. The other eight still carry
-    # the excitatory values and want replacing with measured ones.
+    # As above, for inhibitory synapses: the inhibitory example distributions from
+    # connectome-manipulator's WireConnectomeExample notebook, translated the same way (gamma
+    # moment-matched from mean/std, truncated normals mapped onto NormalDistribution).
+    # https://github.com/openbraininstitute/connectome-manipulator/blob/main/examples/wire_connectome/WireConnectomeExample.ipynb
     _parameter_defaults: ClassVar[dict[ReferenceTag, tuple[str, DistributionDefault]]] = {
         ReferenceTag.INHIBITORY_U_HILL_COEFFICIENT_DISTRIBUTION: (
             "u_hill_coefficient_distribution",
@@ -380,40 +390,43 @@ class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
         ),
         ReferenceTag.INHIBITORY_CONDUCTANCE_DISTRIBUTION: (
             "conductance_distribution",
-            DistributionDefault(partial(GammaDistribution, shape=8.0, scale=0.25)),
+            # mean=2.0, std=0.5
+            DistributionDefault(partial(GammaDistribution, shape=16.0, scale=0.125)),
         ),
         ReferenceTag.INHIBITORY_CONDUCTANCE_SCALE_FACTOR_DISTRIBUTION: (
             "conductance_scale_factor_distribution",
-            DistributionDefault(partial(FloatConstantDistribution, value=0.7)),
+            DistributionDefault(partial(FloatConstantDistribution, value=0.0)),
         ),
         ReferenceTag.INHIBITORY_FACILITATION_TIME_DISTRIBUTION: (
             "facilitation_time",
-            DistributionDefault(partial(GammaDistribution, shape=11.56, scale=1.4706)),
+            # mean=20.0, std=8.0
+            DistributionDefault(partial(GammaDistribution, shape=6.25, scale=3.2)),
         ),
         ReferenceTag.INHIBITORY_DEPRESSION_TIME_DISTRIBUTION: (
             "depression_time",
-            DistributionDefault(partial(GammaDistribution, shape=1995.11, scale=0.3358)),
+            # mean=700.0, std=300.0
+            DistributionDefault(partial(GammaDistribution, shape=5.4444, scale=128.5714)),
         ),
         ReferenceTag.INHIBITORY_N_RRP_VESICLES_DISTRIBUTION: (
             "n_rrp_vesicles_distribution",
             DistributionDefault(
                 partial(
                     IntDiscreteDistribution,
-                    values=(1, 2, 3, 4, 5),
-                    probabilities=(0.3, 0.3, 0.2, 0.1, 0.1),
+                    values=(1,),
+                    probabilities=(1.0,),
                 )
             ),
         ),
         ReferenceTag.INHIBITORY_DECAY_TIME_DISTRIBUTION: (
             "decay_time",
             DistributionDefault(
-                partial(NormalDistribution, min=1.7, max=1.9, mean=1.7, standard_deviation=0.1)
+                partial(NormalDistribution, min=6.0, max=10.0, mean=8.0, standard_deviation=1.0)
             ),
         ),
         ReferenceTag.INHIBITORY_U_SYN_DISTRIBUTION: (
             "u_syn",
             DistributionDefault(
-                partial(NormalDistribution, min=0.2, max=0.7, mean=0.5, standard_deviation=0.25)
+                partial(NormalDistribution, min=0.1, max=0.4, mean=0.25, standard_deviation=0.1)
             ),
         ),
         ReferenceTag.INHIBITORY_DELAY_DISTRIBUTION: (

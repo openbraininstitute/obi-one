@@ -88,7 +88,7 @@ def test_sampling_uses_explicit_distributions_and_preserves_values():
     [
         ("u_hill_coefficient_distribution", "u_hill_coefficient", 0.0),
         ("conductance_distribution", "conductance", -0.1),
-        ("conductance_scale_factor_distribution", "conductance_scale_factor", 0.0),
+        ("conductance_scale_factor_distribution", "conductance_scale_factor", -0.1),
         ("facilitation_time", "facilitation_time", 0.0),
         ("depression_time", "depression_time", 0.0),
         ("n_rrp_vesicles_distribution", "n_rrp_vesicles", 1.5),
@@ -138,6 +138,7 @@ def test_sampling_still_rejects_a_value_with_nowhere_to_be_clipped_to():
     [
         ("u_hill_coefficient_distribution", "u_hill_coefficient", 1.0),
         ("conductance_distribution", "conductance", 0.0),
+        ("conductance_scale_factor_distribution", "conductance_scale_factor", 0.0),
         ("n_rrp_vesicles_distribution", "n_rrp_vesicles", 1.0),
         ("u_syn", "u_syn", 0.0),
         ("u_syn", "u_syn", 1.0),
