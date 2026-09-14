@@ -99,10 +99,6 @@ class SynapseParameterizationTask(Task):
         # Start benchmark tracking
         BenchmarkTracker.start_tracking()
 
-        if db_client is None:
-            msg = "The synapse parameterization task requires a working db_client!"
-            raise ValueError(msg)
-
         # Get execution activity (expected to be created and managed externally)
         execution_activity = SynapseParameterizationTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
@@ -113,7 +109,7 @@ class SynapseParameterizationTask(Task):
         with BenchmarkTracker.section("resolve_circuit"):
             staged_circuit, self._circuit_entity = db_sdk.resolve_circuit(
                 self.config.initialize.circuit,
-                db_client=db_client,
+                db_client=db_client,  # ty:ignore[invalid-argument-type]
                 entity_cache=entity_cache,
                 cache_root=self.config.scan_output_root,
                 temp_dir=self._create_temp_dir(),
@@ -146,20 +142,23 @@ class SynapseParameterizationTask(Task):
                     assigner.assign_parameters(self._circuit, df)
                 write_back_to_edge_file(df, circ.edges[ep_name])
 
-        # Register the (re-)parameterized circuit as a derivation of the original
-        L.info("Registering the output...")
-        with BenchmarkTracker.section("register_circuit"):
-            new_circuit_entity = self._register_parameterized_circuit(
-                db_client=db_client, circuit_path=output_dir
-            )
+        # Register the (re-)parameterized circuit as a derivation of the original.
+        # Skipped for local circuits (no parent entity) or when no db_client is available.
+        new_circuit_entity = None
+        if db_client and self._circuit_entity:
+            L.info("Registering the output...")
+            with BenchmarkTracker.section("register_circuit"):
+                new_circuit_entity = self._register_parameterized_circuit(
+                    db_client=db_client, circuit_path=output_dir
+                )
 
-        # Update execution activity (if any) with the registered circuit
-        if new_circuit_entity is not None:
-            SynapseParameterizationTask._update_execution_activity(
-                db_client=db_client,
-                execution_activity=execution_activity,
-                generated=[str(new_circuit_entity.id)],
-            )
+            # Update execution activity (if any) with the registered circuit
+            if new_circuit_entity is not None:
+                SynapseParameterizationTask._update_execution_activity(
+                    db_client=db_client,
+                    execution_activity=execution_activity,
+                    generated=[str(new_circuit_entity.id)],
+                )
 
         # Clean-up
         with BenchmarkTracker.section("cleanup"):
