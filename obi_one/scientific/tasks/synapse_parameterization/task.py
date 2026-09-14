@@ -87,11 +87,16 @@ class SynapseParameterizationTask(Task):
         *,
         db_client: Client | None = None,
         entity_cache: bool = False,
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> None:
         if db_client is None:
             msg = "The synapse parameterization task requires a working db_client!"
             raise ValueError(msg)
+
+        # Get execution activity (expected to be created and managed externally)
+        execution_activity = SynapseParameterizationTask._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
 
         # Resolve the circuit (local path or staging from ID), then copy it into the output
         # directory so that its synapse parameters can be modified in place.
@@ -128,4 +133,14 @@ class SynapseParameterizationTask(Task):
 
         # Register the (re-)parameterized circuit as a derivation of the original
         L.info("Registering the output...")
-        self._register_parameterized_circuit(db_client=db_client, circuit_path=output_dir)
+        new_circuit_entity = self._register_parameterized_circuit(
+            db_client=db_client, circuit_path=output_dir
+        )
+
+        # Update execution activity (if any) with the registered circuit
+        if new_circuit_entity is not None:
+            SynapseParameterizationTask._update_execution_activity(
+                db_client=db_client,
+                execution_activity=execution_activity,
+                generated=[str(new_circuit_entity.id)],
+            )
