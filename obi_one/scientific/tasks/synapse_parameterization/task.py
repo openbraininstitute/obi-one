@@ -78,6 +78,7 @@ class SynapseParameterizationTask(Task):
             root=parent.root_circuit_id or parent.id,
             parent=parent,
             derivation_type=types.DerivationType.circuit_rewiring,
+            skip_validation=True,
         )
 
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
