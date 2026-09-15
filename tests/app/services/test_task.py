@@ -899,7 +899,7 @@ def test_emodel_optimization_definition_uses_builtin_cluster_profile():
     assert task_definition.resources.model_dump(mode="json") == {
         "type": "cluster",
         "instances": 1,
-        "instance_type": "small",
+        "instance_type": "large",
         "timelimit": "02:00",
         "compute_cell": "cell_a",
     }
@@ -923,7 +923,7 @@ def test_emodel_optimization_job_data(config_id, activity_id, callbacks):
     assert result["resources"] == {
         "type": "cluster",
         "instances": 1,
-        "instance_type": "small",
+        "instance_type": "large",
         "timelimit": "02:00",
         "compute_cell": "cell_a",
     }
