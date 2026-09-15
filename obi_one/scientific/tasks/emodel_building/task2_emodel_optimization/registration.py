@@ -168,7 +168,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     # Fetch license (CC-BY-4.0)
     license_entity = db_client.search_entity(
         entity_type=License,
-        query={"name": "CC-BY-4.0"},
+        query={"label": "CC BY 4.0"},
     ).one()
 
     # ETypeClass entity from user selection
