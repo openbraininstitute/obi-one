@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "bluepyemodel"
-version = "1.0.44"
+version = "1.0.47"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepyefe" },
@@ -315,13 +315,14 @@ dependencies = [
     { name = "neuron" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pydantic" },
     { name = "pyyaml" },
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/26/e1f3f31540f35febbfcb3c7b26abe9d80f32192a4c2a78b0abfe0ef1ae06/bluepyemodel-1.0.44.tar.gz", hash = "sha256:89305afc4d7da3bbe6af4f8fa54db73ca7bfce49bbc574a9c1040646dc44a9bc", size = 13033798, upload-time = "2026-07-15T20:20:06.334Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/4b/1e3950262a387ba52ed1734cf7da82ad908d687a4fae3df4ccfc8efae81e/bluepyemodel-1.0.47.tar.gz", hash = "sha256:5cf2b69797db1479baba75108203615004e0a4a8290506697744369029490f3c", size = 13052710, upload-time = "2026-09-09T13:11:58.07Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/35/9dedd20e47cd5913d3c27e4598f993358402a1330300238664e22d78d67e/bluepyemodel-1.0.44-py3-none-any.whl", hash = "sha256:c77af2999f500f9265698cb628deb920d4c0f86395cc95ddde718aa95ed7e9aa", size = 13409872, upload-time = "2026-07-15T20:20:03.364Z" },
+    { url = "https://files.pythonhosted.org/packages/58/f1/86cd12188a3d14a3a90b354a78089eaca98350977f17af85617328a5cc35/bluepyemodel-1.0.47-py3-none-any.whl", hash = "sha256:47966b2fddcf97141a9109cc80db6ce0745f4dd6554b3042c611ae46e19d2f96", size = 13427499, upload-time = "2026-09-09T13:11:52.885Z" },
 ]
 
 [[package]]
@@ -993,14 +994,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.20"
+version = "0.19.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/ff/d04f848eee3b34878f5db5d0ba7c6e71f79ce9562f045173933b7405aa31/entitysdk-0.19.20.tar.gz", hash = "sha256:250ac377f660fc4a56773d88eab9c24a2900197fb9044a9bdfe8959168ce5e89", size = 94339, upload-time = "2026-09-07T08:07:04.895Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/32/f1197b776204fda42ddd4cbcdf8022d6729ada98688a00b0fc45d8f4c467/entitysdk-0.19.22.tar.gz", hash = "sha256:4e3118fa39ff627909bf3ce3bfbf2bbc6d736231882c32979bf837d1c5f25cf9", size = 96679, upload-time = "2026-09-15T13:50:58.346Z" }
 
 [[package]]
 name = "executing"
@@ -2489,7 +2490,7 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.99" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.43" },
+    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.47" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
     { name = "brainbuilder", specifier = ">=0.20.6" },
@@ -2499,7 +2500,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.19.0" },
+    { name = "entitysdk", specifier = ">=0.19.22" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },
