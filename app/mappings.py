@@ -264,7 +264,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         code=BuiltinCode(script=BuiltinScript.emodel_optimisation),
         resources=ClusterResources(
             instances=1,
-            instance_type="small",
+            instance_type="large",
             timelimit="02:00",
             compute_cell="cell_a",
         ),
