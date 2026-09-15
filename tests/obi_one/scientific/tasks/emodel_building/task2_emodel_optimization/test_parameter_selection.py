@@ -1,6 +1,4 @@
-import importlib.util
 import json
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -53,9 +51,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
     EModelOptimizationSingleConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.registration import (
-    validation_status_keyword,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     EModelOptimizationTask,
@@ -744,14 +739,6 @@ def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
         )
 
 
-def test_registration_error_names_the_missing_entitysdk_package():
-    if importlib.util.find_spec("entitysdk.registration") is not None:
-        pytest.skip("installed EntitySDK provides the registration helpers")
-
-    with pytest.raises(RuntimeError, match=r"entitysdk\.registration"):
-        registration.register_output_entities(None, Path(), None)
-
-
 def test_morph_modifiers_survive_repeated_evaluator_builds():
     model_configuration = SimpleNamespace(morphology=SimpleNamespace(path="cell.swc"))
 
@@ -1206,17 +1193,6 @@ def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path
             morphology_path,
             "replace_axon_with_taper",
         )
-
-
-def test_entitysdkvalidation_status_keyword_supports_both_spellings():
-    def correct(*, validation_result_status):
-        del validation_result_status
-
-    def historical(*, validateion_result_status):
-        del validateion_result_status
-
-    assert validation_status_keyword(correct) == "validation_result_status"
-    assert validation_status_keyword(historical) == "validateion_result_status"
 
 
 def test_root_emodel_optimisation_parameters_normalizes_to_canonical_selection():
@@ -1739,19 +1715,6 @@ def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
 
     assert tag_local_mechanisms(None, normalized) is None
     assert tag_local_mechanisms([unknown], normalized) == [unknown]
-
-
-def testvalidation_status_keyword_handles_variadic_unsupported_and_uninspectable_callables():
-    def variadic(**kwargs):
-        del kwargs
-
-    def unsupported(*, unrelated):
-        del unrelated
-
-    assert validation_status_keyword(variadic) == "validation_result_status"
-    with pytest.raises(TypeError, match="does not expose"):
-        validation_status_keyword(unsupported)
-    assert validation_status_keyword(object()) == "validation_result_status"
 
 
 def test_download_extraction_features_keeps_already_named_target(tmp_path):

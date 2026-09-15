@@ -4,14 +4,24 @@ Registers the TaskResult, draft EModel, and draft MEModel after BluePyEModel
 has written checkpoints, figures, and ``final.json`` into the working directory.
 """
 
-import inspect
 import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import entitysdk
+from entitysdk.models import License, TaskActivity, TaskResult
+from entitysdk.registration.emodel import register_emodel
+from entitysdk.registration.memodel import register_memodel
+from entitysdk.registration.task_result.emodel_optimization import (
+    register_emodel_optimization_result,
+)
+from entitysdk.types import (
+    AssetLabel,
+    ContentType,
+    EntityLifecycleStatus,
+    ValidationStatus,
+)
 
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
@@ -27,25 +37,6 @@ class RegisteredOptimizationOutputs:
     task_result_id: str
     emodel_id: str
     memodel_id: str
-
-
-def validation_status_keyword(register_emodel: Any) -> str:
-    """Select the validation-status keyword supported by an EntitySDK helper."""
-    try:
-        parameters = inspect.signature(register_emodel).parameters
-    except (TypeError, ValueError):
-        return "validation_result_status"
-    if "validation_result_status" in parameters:
-        return "validation_result_status"
-    if "validateion_result_status" in parameters:
-        return "validateion_result_status"
-    if any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()):
-        return "validation_result_status"
-    msg = (
-        "EntitySDK register_emodel does not expose validation_result_status or "
-        "validateion_result_status."
-    )
-    raise TypeError(msg)
 
 
 def parse_final_json(final_path: Path, emodel_name: str) -> dict:
@@ -104,12 +95,6 @@ def upload_optimization_assets(
     task_result_id: str,
 ) -> None:
     """Upload recipes, params, and the SONATA export to the TaskResult."""
-    from entitysdk.models import TaskResult  # ruff: ignore[import-outside-top-level]
-    from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
-        AssetLabel,
-        ContentType,
-    )
-
     # Recipes.json — needed by task3 to reconstruct pipeline settings
     recipes_path = coord_root / "config" / "recipes.json"
     if recipes_path.exists():
@@ -158,36 +143,8 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     """Register TaskResult, draft EModel, draft MEModel using entitysdk helpers.
 
     Uses the shared ``entitysdk.registration`` helper package so this local path and
-    the remote launch-system worker register output entities identically. Raises
-    ``RuntimeError`` if the installed EntitySDK release does not provide that package.
+    the remote launch-system worker register output entities identically.
     """
-    from entitysdk.models import (  # ruff: ignore[import-outside-top-level]
-        License,
-        TaskActivity,
-    )
-
-    try:
-        from entitysdk.registration.emodel import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
-            register_emodel,
-        )
-        from entitysdk.registration.memodel import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
-            register_memodel,
-        )
-        from entitysdk.registration.task_result.emodel_optimization import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
-            register_emodel_optimization_result,
-        )
-    except ModuleNotFoundError as exc:
-        msg = (
-            "Task 2 output registration requires an EntitySDK release that provides "
-            "entitysdk.registration.emodel, entitysdk.registration.memodel, and "
-            "entitysdk.registration.task_result.emodel_optimization."
-        )
-        raise RuntimeError(msg) from exc
-    from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
-        EntityLifecycleStatus,
-        ValidationStatus,
-    )
-
     init = config.initialize
     emodel_name = init.emodel
     seed = int(config.optimization_settings.seed)  # ty:ignore[invalid-argument-type]
@@ -271,7 +228,6 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
 
     # --- Register draft EModel via helper ---
     hoc_file = None
-    status_keyword = validation_status_keyword(register_emodel)
     emodel_entity = register_emodel(
         client=db_client,
         name=f"{emodel_name} (draft)",
@@ -291,7 +247,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         emodel_summary_file=emodel_summary_file,
         electrical_cell_recording_ids=trace_ids or [],
         validation_result_figure_files=validation_figures,
-        **{status_keyword: False},
+        validation_result_status=False,
     )
     L.info("Draft EModel registered: %s", emodel_entity.id)
 
