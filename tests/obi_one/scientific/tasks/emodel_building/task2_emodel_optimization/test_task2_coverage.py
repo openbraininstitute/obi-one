@@ -438,9 +438,7 @@ def _install_registration_helpers(monkeypatch, calls):
 
     monkeypatch.setattr(registration, "register_emodel", register_emodel)
     monkeypatch.setattr(registration, "register_memodel", register_memodel)
-    monkeypatch.setattr(
-        registration, "register_emodel_optimization_result", register_result
-    )
+    monkeypatch.setattr(registration, "register_emodel_optimization_result", register_result)
 
 
 def _registration_fixture(tmp_path, *, complete=True):
