@@ -8,9 +8,17 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import entitysdk
-from entitysdk.models import License, TaskActivity, TaskResult
+from entitysdk.models import (
+    CellMorphology,
+    ETypeClass,
+    IonChannelModel,
+    License,
+    TaskActivity,
+    TaskResult,
+)
 from entitysdk.registration.emodel import register_emodel
 from entitysdk.registration.memodel import register_memodel
 from entitysdk.registration.task_result.emodel_optimization import (
@@ -152,7 +160,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     # --- Gather metadata ---
     # Species and brain region come from the morphology entity, so the
     # registered emodel/me-model inherit the morphology's provenance.
-    morph_entity = config.inputs.morphology.entity(db_client=db_client)
+    morph_entity = cast("CellMorphology", config.inputs.morphology.entity(db_client=db_client))
     species_entity, brain_region_entity = config.inputs.morphology.metadata_entities(
         db_client=db_client
     )
@@ -164,7 +172,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     ).one()
 
     # ETypeClass entity from user selection
-    etype_class = init.etype.entity(db_client=db_client)
+    etype_class = cast("ETypeClass", init.etype.entity(db_client=db_client))
 
     # Determine authorized_public from execution activity if available
     authorized_public = False
@@ -208,14 +216,16 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         ]
 
     # --- Register TaskResult via helper ---
+    # EntitySDK currently types these asset paths as required ``Path``; they may be
+    # absent when registration runs without a completed optimisation output tree.
     task_result = register_emodel_optimization_result(
         client=db_client,
         name=f"EModel Optimization Result — {emodel_name}",
         description=f"Optimisation + analysis + export for emodel '{emodel_name}'.",
         authorized_public=authorized_public,
-        hdf5_checkpoint_file=checkpoint_file,
+        hdf5_checkpoint_file=checkpoint_file,  # ty:ignore[invalid-argument-type]
         analysis_figures_dir=figures_dir,
-        summary_file=emodel_summary_file,
+        summary_file=emodel_summary_file,  # ty:ignore[invalid-argument-type]
     )
     L.info("TaskResult registered: %s", task_result.id)
 
@@ -224,10 +234,14 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
 
     # --- Collect ion channel model entities ---
     references = config.parameters_selection.ion_channel_model_references
-    ion_channel_models = [reference.entity(db_client=db_client) for reference in references]
+    ion_channel_models = [
+        cast("IonChannelModel", reference.entity(db_client=db_client)) for reference in references
+    ]
 
     # --- Register draft EModel via helper ---
-    hoc_file = None
+    # Standalone HOC export is not produced; SONATA may still contain a HOC asset.
+    sonata_dir = coord_root / "export_emodels_sonata"
+    hoc_file = next(sonata_dir.rglob("*.hoc"), None) if sonata_dir.exists() else None
     emodel_entity = register_emodel(
         client=db_client,
         name=f"{emodel_name} (draft)",
@@ -243,8 +257,8 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         ion_channel_models=ion_channel_models,
         lifecycle_status=EntityLifecycleStatus.draft,
         etype_class=etype_class,
-        hoc_file=hoc_file,
-        emodel_summary_file=emodel_summary_file,
+        hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
+        emodel_summary_file=emodel_summary_file,  # ty:ignore[invalid-argument-type]
         electrical_cell_recording_ids=trace_ids or [],
         validation_result_figure_files=validation_figures,
         validation_result_status=False,
