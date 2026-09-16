@@ -1,1 +1,1 @@
-obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@synaptic_parameterization_changes
+obi-one[connectivity]
