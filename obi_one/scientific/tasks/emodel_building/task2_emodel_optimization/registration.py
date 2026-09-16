@@ -23,6 +23,7 @@ from entitysdk.models import (
 from entitysdk.registration.emodel import register_emodel
 from entitysdk.registration.memodel import register_memodel
 from entitysdk.types import (
+    ID,
     AssetLabel,
     ContentType,
     EntityLifecycleStatus,
@@ -98,8 +99,7 @@ def parse_final_json(final_path: Path, emodel_name: str) -> dict:
 
 def upload_optimization_assets(
     coord_root: Path,
-    _db_client: entitysdk.Client,
-    task_result_id: str,
+    task_result_id: ID,
 ) -> None:
     """Upload recipes, params, and the SONATA export to the TaskResult.
 
@@ -180,29 +180,47 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     # --- Collect file paths for helpers ---
     # Checkpoints: BluePyOpt writes .pkl files; task.py converts them to .h5
     # via bluepyemodel.tools.checkpoint_hdf5.convert_checkpoint before registration.
+    # A missing checkpoint/summary/figures set means optimisation, storage, or
+    # plotting did not actually succeed (BluePyEModel can fail some of these steps
+    # without raising — see plot_models/export_emodels_sonata), so we fail loudly
+    # here rather than silently registering an incomplete TaskResult.
     checkpoint_dir = coord_root / "checkpoints"
-    checkpoint_file = None
-    if checkpoint_dir.exists():
-        for ckpt in checkpoint_dir.rglob("*.h5"):
-            checkpoint_file = ckpt
-            break
+    checkpoint_file = next(checkpoint_dir.rglob("*.h5"), None) if checkpoint_dir.exists() else None
+    if checkpoint_file is None:
+        msg = (
+            f"No .h5 checkpoint found under {checkpoint_dir}. Optimisation did not "
+            "produce a valid checkpoint; refusing to register an incomplete TaskResult."
+        )
+        raise RuntimeError(msg)
 
-    # Figures directory (ensure it exists for the helper)
     figures_dir = coord_root / "figures"
-    figures_dir.mkdir(parents=True, exist_ok=True)
+    figure_files: dict[Path, Path] = {}
+    if figures_dir.exists():
+        figure_files = {
+            p.relative_to(figures_dir): p for p in sorted(figures_dir.rglob("*")) if p.is_file()
+        }
+    if not figure_files:
+        msg = (
+            f"No analysis figures found under {figures_dir}. Plotting did not produce "
+            "any output; refusing to register an incomplete TaskResult."
+        )
+        raise RuntimeError(msg)
 
     # Summary file: use final.json (written by store_best_model)
-    final_path = coord_root / "final.json"
-    emodel_summary_file = final_path if final_path.exists() else None
+    emodel_summary_file = final_path
+    if not emodel_summary_file.exists():
+        msg = (
+            f"final.json not found at {emodel_summary_file}. store_best_model did not "
+            "produce a summary; refusing to register an incomplete TaskResult."
+        )
+        raise RuntimeError(msg)
 
     # Collect validation result figure files
-    validation_figures: list[Path] = []
-    if figures_dir.exists():
-        validation_figures = [
-            fp
-            for fp in sorted(figures_dir.rglob("*"))
-            if fp.is_file() and fp.suffix in {".pdf", ".png"}
-        ]
+    validation_figures: list[Path] = [
+        fp
+        for fp in sorted(figures_dir.rglob("*"))
+        if fp.is_file() and fp.suffix in {".pdf", ".png"}
+    ]
 
     # --- Register TaskResult ---
     # entitysdk's register_emodel_optimization_result uses iterdir() on
@@ -217,38 +235,32 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
             task_result_type=TaskResultType.emodel_optimization__result,
         )
     )
-    if checkpoint_file is not None:
-        db_client.upload_file(
-            entity_id=task_result.id,
-            entity_type=TaskResult,
-            file_path=checkpoint_file,
-            file_content_type=ContentType.application_x_hdf5,
-            asset_label=AssetLabel.emodel_optimisation_checkpoint,
-        )
-    figure_files = {
-        p.relative_to(figures_dir): p for p in sorted(figures_dir.rglob("*")) if p.is_file()
-    }
-    if figure_files:
-        db_client.upload_directory(
-            entity_id=task_result.id,
-            entity_type=TaskResult,
-            paths=figure_files,
-            name="analysis_figures",
-            label=AssetLabel.emodel_analysis_figures,
-            transfer_config=MultipartDirectoryUploadTransferConfig(),
-        )
-    if emodel_summary_file is not None:
-        db_client.upload_file(
-            entity_id=task_result.id,
-            entity_type=TaskResult,
-            file_path=emodel_summary_file,
-            file_content_type=ContentType.application_json,
-            asset_label=AssetLabel.emodel_analysis_summary,
-        )
+    db_client.upload_file(
+        entity_id=task_result.id,
+        entity_type=TaskResult,
+        file_path=checkpoint_file,
+        file_content_type=ContentType.application_x_hdf5,
+        asset_label=AssetLabel.emodel_optimisation_checkpoint,
+    )
+    db_client.upload_directory(
+        entity_id=task_result.id,
+        entity_type=TaskResult,
+        paths=dict(figure_files),
+        name="analysis_figures",
+        label=AssetLabel.emodel_analysis_figures,
+        transfer_config=MultipartDirectoryUploadTransferConfig(),
+    )
+    db_client.upload_file(
+        entity_id=task_result.id,
+        entity_type=TaskResult,
+        file_path=emodel_summary_file,
+        file_content_type=ContentType.application_json,
+        asset_label=AssetLabel.emodel_analysis_summary,
+    )
     L.info("TaskResult registered: %s", task_result.id)
 
     # --- Upload additional assets needed by task3 (export + validation) ---
-    upload_optimization_assets(coord_root, db_client, task_result.id)
+    upload_optimization_assets(coord_root, task_result.id)
 
     # --- Collect ion channel model entities ---
     references = config.parameters_selection.ion_channel_model_references
@@ -276,7 +288,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         lifecycle_status=EntityLifecycleStatus.draft,
         etype_class=etype_class,
         hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
-        emodel_summary_file=emodel_summary_file,  # ty:ignore[invalid-argument-type]
+        emodel_summary_file=emodel_summary_file,
         electrical_cell_recording_ids=trace_ids or [],
         validation_result_figure_files=validation_figures,
         validation_result_status=False,

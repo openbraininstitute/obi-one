@@ -153,6 +153,29 @@ def run_plot_models(
     )
 
 
+def convert_checkpoints_to_hdf5(checkpoint_dir: Path) -> None:
+    """Convert every BluePyOpt ``.pkl`` checkpoint under ``checkpoint_dir`` to ``.h5``.
+
+    BluePyOpt always writes ``.pkl`` checkpoints; entitycore only accepts ``.h5``
+    for the ``emodel_optimisation_checkpoint`` asset label. Call this once after
+    the optimisation loop (idempotent: skips a ``.pkl`` if its ``.h5`` sibling
+    already exists), so ``.h5`` files are present for registration regardless of
+    which caller runs the optimisation loop.
+    """
+    from bluepyemodel.tools.checkpoint_hdf5 import (  # ruff: ignore[import-outside-top-level]
+        convert_checkpoint,
+    )
+
+    if not checkpoint_dir.exists():
+        return
+
+    for pkl_path in sorted(checkpoint_dir.rglob("*.pkl")):
+        h5_path = pkl_path.with_suffix(".h5")
+        if not h5_path.exists():
+            L.info("Converting checkpoint %s -> %s", pkl_path.name, h5_path.name)
+            convert_checkpoint(str(pkl_path), str(h5_path))
+
+
 def determine_core_count(
     offspring_size: int,
     max_ngen: int,

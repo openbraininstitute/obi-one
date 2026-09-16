@@ -258,7 +258,7 @@ class EModelOptimizationTask(Task):
 
         # --- 7. Run optimisation / plot / export ---
         etype_entity = init.etype.entity(db_client=db_client)
-        species_entity, brain_region_entity = self.config.inputs.morphology.metadata_entities(
+        species_entity, brain_region_entity = self.config.initialize.morphology.metadata_entities(
             db_client=db_client
         )
         run_optimization_pipeline(

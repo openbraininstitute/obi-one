@@ -1681,7 +1681,13 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
     }
 
 
-def test_upload_optimization_assets_uploads_existing_files_and_skips_empty_root(tmp_path):
+def test_upload_optimization_assets_is_a_no_op_regardless_of_present_files(tmp_path, caplog):
+    """entitycore has no allowed asset label for recipes/params/SONATA on TaskResult.
+
+    See ``registration.upload_optimization_assets`` docstring: uploads used to happen
+    here but always failed with a 422 ``ASSET_INVALID_SCHEMA``, so this is now a no-op
+    that only logs a warning when there would have been something to upload.
+    """
     recipes_path = tmp_path / "config" / "recipes.json"
     params_path = tmp_path / "config" / "params" / "params.json"
     recipes_path.parent.mkdir(parents=True)
@@ -1694,19 +1700,14 @@ def test_upload_optimization_assets_uploads_existing_files_and_skips_empty_root(
     sonata_file.parent.mkdir()
     sonata_file.write_text("hoc", encoding="utf-8")
 
-    db_client = SimpleNamespace(upload_file=Mock(), upload_directory=Mock())
-    registration.upload_optimization_assets(tmp_path, db_client, "task-result-1")
+    registration.upload_optimization_assets(tmp_path, "task-result-1")
+    assert "Skipping upload" in caplog.text
 
-    assert db_client.upload_file.call_count == 2
-    assert db_client.upload_directory.call_args.kwargs["paths"] == {
-        sonata_file.relative_to(sonata_dir): sonata_file
-    }
-
+    caplog.clear()
     empty_root = tmp_path / "empty"
     (empty_root / "export_emodels_sonata").mkdir(parents=True)
-    registration.upload_optimization_assets(empty_root, db_client, "task-result-2")
-    assert db_client.upload_file.call_count == 2
-    assert db_client.upload_directory.call_count == 1
+    registration.upload_optimization_assets(empty_root, "task-result-2")
+    assert "Skipping upload" not in caplog.text
 
 
 def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -432,13 +433,8 @@ def _install_registration_helpers(monkeypatch, calls):
         calls["memodel"] = kwargs
         return SimpleNamespace(id="memodel-id")
 
-    def register_result(**kwargs):
-        calls["result"] = kwargs
-        return SimpleNamespace(id="task-result-id")
-
     monkeypatch.setattr(registration, "register_emodel", register_emodel)
     monkeypatch.setattr(registration, "register_memodel", register_memodel)
-    monkeypatch.setattr(registration, "register_emodel_optimization_result", register_result)
 
 
 def _registration_fixture(tmp_path, *, complete=True):
@@ -461,9 +457,16 @@ def _registration_fixture(tmp_path, *, complete=True):
     )
     license_entity = SimpleNamespace(id="license-id")
     activity = SimpleNamespace(authorized_public=True)
+    calls = {}
+
+    def register_entity(entity):
+        calls["result"] = entity
+        return SimpleNamespace(id="task-result-id")
+
     db_client = SimpleNamespace(
         search_entity=Mock(return_value=SimpleNamespace(one=Mock(return_value=license_entity))),
         get_entity=Mock(return_value=activity),
+        register_entity=Mock(side_effect=register_entity),
         upload_file=Mock(),
         upload_directory=Mock(),
         update_entity=Mock(),
@@ -474,7 +477,7 @@ def _registration_fixture(tmp_path, *, complete=True):
         (tmp_path / "config" / "recipes.json").write_text("{}", encoding="utf-8")
         (tmp_path / "config" / "params" / "params.json").write_text("{}", encoding="utf-8")
         (tmp_path / "checkpoints").mkdir()
-        (tmp_path / "checkpoints" / "model.pkl").write_text("checkpoint", encoding="utf-8")
+        (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
         (tmp_path / "figures").mkdir()
         (tmp_path / "figures" / "validation.pdf").write_text("pdf", encoding="utf-8")
         (tmp_path / "figures" / "validation.png").write_text("png", encoding="utf-8")
@@ -499,13 +502,13 @@ def _registration_fixture(tmp_path, *, complete=True):
             encoding="utf-8",
         )
 
-    return config, db_client, morphology, reference, etype
+    return config, db_client, morphology, reference, etype, calls
 
 
 def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp_path, monkeypatch):
     calls = {}
     _install_registration_helpers(monkeypatch, calls)
-    config, db_client, morphology, reference, etype = _registration_fixture(tmp_path)
+    config, db_client, morphology, reference, etype, result_calls = _registration_fixture(tmp_path)
 
     outputs = registration.register_output_entities(
         config,
@@ -515,9 +518,7 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
         execution_activity_id="activity-id",
     )
 
-    assert calls["result"]["authorized_public"] is True
-    assert calls["result"]["hdf5_checkpoint_file"].name == "model.pkl"
-    assert calls["result"]["summary_file"].name == "final.json"
+    assert result_calls["result"].authorized_public is True
     assert calls["emodel"]["species"].name == "Mus musculus"
     assert calls["emodel"]["brain_region"].name == "Somatosensory cortex"
     assert calls["emodel"]["score"] == pytest.approx(2.5)
@@ -531,6 +532,10 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
     assert reference.entity.call_count == 1
     assert etype.entity.call_count == 1
     assert db_client.upload_file.call_count == 2
+    checkpoint_upload = db_client.upload_file.call_args_list[0].kwargs
+    assert checkpoint_upload["file_path"].name == "model.h5"
+    summary_upload = db_client.upload_file.call_args_list[1].kwargs
+    assert summary_upload["file_path"].name == "final.json"
     assert db_client.upload_directory.call_count == 1
     db_client.update_entity.assert_called_once_with(
         entity_id="activity-id",
@@ -544,19 +549,63 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
     assert outputs.memodel_id == "memodel-id"
 
 
-def test_register_output_entities_handles_missing_optional_outputs(tmp_path, monkeypatch):
+def test_register_output_entities_raises_when_checkpoint_missing(tmp_path, monkeypatch):
     calls = {}
     _install_registration_helpers(monkeypatch, calls)
-    config, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
+    config, db_client, _, _, _, _ = _registration_fixture(tmp_path, complete=False)
+
+    with pytest.raises(RuntimeError, match=r"No \.h5 checkpoint found"):
+        registration.register_output_entities(config, tmp_path, db_client)
+
+    db_client.register_entity.assert_not_called()
+    db_client.update_entity.assert_not_called()
+
+
+def test_register_output_entities_raises_when_figures_missing(tmp_path, monkeypatch):
+    calls = {}
+    _install_registration_helpers(monkeypatch, calls)
+    config, db_client, _, _, _, _ = _registration_fixture(tmp_path, complete=False)
+    (tmp_path / "checkpoints").mkdir()
+    (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="No analysis figures found"):
+        registration.register_output_entities(config, tmp_path, db_client)
+
+    db_client.register_entity.assert_not_called()
+
+
+def test_register_output_entities_raises_when_summary_missing(tmp_path, monkeypatch):
+    calls = {}
+    _install_registration_helpers(monkeypatch, calls)
+    config, db_client, _, _, _, _ = _registration_fixture(tmp_path, complete=False)
+    (tmp_path / "checkpoints").mkdir()
+    (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
+    (tmp_path / "figures" / "nested").mkdir(parents=True)
+    (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match=r"final\.json not found"):
+        registration.register_output_entities(config, tmp_path, db_client)
+
+    db_client.register_entity.assert_not_called()
+
+
+def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeypatch):
+    calls = {}
+    _install_registration_helpers(monkeypatch, calls)
+    config, db_client, _, _, _, _ = _registration_fixture(tmp_path, complete=False)
+    (tmp_path / "checkpoints").mkdir()
+    (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
+    (tmp_path / "figures" / "nested").mkdir(parents=True)
+    (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
+    (tmp_path / "final.json").write_text(json.dumps({"test": [{"fitness": 1.0}]}), encoding="utf-8")
 
     registration.register_output_entities(config, tmp_path, db_client)
 
-    assert calls["result"]["authorized_public"] is False
-    assert calls["result"]["hdf5_checkpoint_file"] is None
-    assert calls["result"]["summary_file"] is None
-    assert calls["emodel"]["electrical_cell_recording_ids"] == []
-    assert calls["emodel"]["validation_result_figure_files"] == []
-    db_client.update_entity.assert_not_called()
+    figure_paths = db_client.upload_directory.call_args.kwargs["paths"]
+    assert Path("nested/validation.pdf") in figure_paths
+    assert calls["emodel"]["validation_result_figure_files"] == [
+        tmp_path / "figures" / "nested" / "validation.pdf"
+    ]
 
 
 def _config_data_for_selection(selection, distributions=None, **overrides):
@@ -816,18 +865,3 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     assert mechanism.id == "icm-1"
     configuration = access_points[0].get_model_configuration()
     assert configuration.morph_modifiers == ["none"]
-
-
-def test_register_output_entities_handles_empty_checkpoint_and_nested_figure_paths(
-    tmp_path, monkeypatch
-):
-    calls = {}
-    _install_registration_helpers(monkeypatch, calls)
-    config, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
-    (tmp_path / "checkpoints").mkdir()
-    (tmp_path / "figures" / "nested").mkdir(parents=True)
-
-    registration.register_output_entities(config, tmp_path, db_client)
-
-    assert calls["result"]["hdf5_checkpoint_file"] is None
-    assert calls["emodel"]["validation_result_figure_files"] == []
