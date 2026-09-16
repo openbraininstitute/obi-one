@@ -51,7 +51,7 @@ User uploads overrides
 │  2. Compile MOD files with nrnivmodl (if present)       │
 │  3. Validate HOC loading with bluecellulab              │
 │  4. Validate morphology/emodel paths exist              │
-│  5. Run bluepysnap circuit_validation.validate()        │
+│  5. Run obi_one.utils.circuit.run_validation()          │
 │  6. Subset checks against parent (if customization):    │
 │     • New populations must not be biophysical           │
 │     • Content subset of parent (morphologies, emodels)  │
@@ -120,9 +120,27 @@ circuit's storage.
 |--------|---------|
 | `draft` | Entity created, validation pending or in progress |
 | `active` | Validation passed, circuit is simulatable |
-| `disqualified` | Validation failed (errors stored in task logs) |
+| `disqualified` | Validation failed (inspect logs via returned `job_id` → `GET /declared/task/{job_id}/stream`) |
 
 Note: entitysdk v0.18.0 only has `draft` and `active`. The `disqualified` value exists in entitycore but needs to be added to the SDK.
+
+## Job logs (validation / asset generation)
+
+Register, customize, validate, and generate-assets responses include a launch-system
+`job_id` when a job was submitted. Launch-system is not reachable outside the AWS
+network; use the existing obi-one proxies (same path the GUI uses):
+
+```
+GET /declared/task/{job_id}
+GET /declared/task/{job_id}/stream
+```
+
+Standalone `POST .../validate` and `POST .../generate-assets` return HTTP 500 if
+job submission fails (no silent success without a `job_id`).
+
+SONATA structural checks go through `obi_one.utils.circuit.run_validation()`, which
+applies OBI edge-property ignore rules and can return both FATAL errors and WARNINGs
+(`raise_on_error=False` in the async validation task).
 
 ## Validation Details
 
@@ -139,7 +157,7 @@ Fast checks that reject immediately with HTTP 422:
 Full circuit validation after merge:
 - `nrnivmodl` compilation of MOD files
 - `bluecellulab.Cell` instantiation per HOC template
-- `bluepysnap.circuit_validation.validate()` structural checks
+- `obi_one.utils.circuit.run_validation()` structural checks (SNAP with OBI ignore rules)
 - Morphology/emodel path existence (respects `alternate_morphologies` H5 format)
 - Parent subset checks for customizations
 - Relative paths resolved against circuit_config.json directory

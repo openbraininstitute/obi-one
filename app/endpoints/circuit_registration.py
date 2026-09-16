@@ -304,8 +304,9 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
             dry_run=dry_run,
         )
 
+    job_id = None
     if not dry_run:
-        trigger_validation_task(
+        job_id = trigger_validation_task(
             ls_client=ls_client,
             circuit_id=registered.id,
             project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
@@ -321,6 +322,7 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
         "number_synapses": int(registered.number_synapses),
         "number_connections": int(number_connections) if number_connections is not None else None,
         "scale": str(registered.scale),
+        "job_id": str(job_id) if job_id is not None else None,
     }
 
 
@@ -336,6 +338,10 @@ def validate_circuit_endpoint(
 
     By default only ``draft`` circuits are validated. Pass ``force=true`` to
     re-validate an active or disqualified circuit.
+
+    Returns ``job_id`` so clients can follow progress and logs via
+    ``GET /declared/task/{job_id}`` and ``GET /declared/task/{job_id}/stream``
+    (same proxy the GUI uses; launch-system itself is not exposed publicly).
     """
     circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
     status = getattr(circuit, "lifecycle_status", None)
@@ -345,7 +351,7 @@ def validate_circuit_endpoint(
             detail=validation_blocked_detail(status),
         )
 
-    trigger_validation_task(
+    job_id = trigger_validation_task(
         ls_client=ls_client,
         circuit_id=circuit_id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
@@ -354,8 +360,17 @@ def validate_circuit_endpoint(
         force=force,
         generate_assets_on_success=False,
     )
+    if job_id is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to submit circuit validation job to the launch-system.",
+        )
 
-    return {"circuit_id": str(circuit_id), "status": "validation_triggered"}
+    return {
+        "circuit_id": str(circuit_id),
+        "status": "validation_triggered",
+        "job_id": str(job_id),
+    }
 
 
 @router.post("/circuit/{circuit_id}/generate-assets")
@@ -371,6 +386,9 @@ def generate_assets_endpoint(
     Re-launchable: generates compressed circuit and connectivity matrices.
     Visualization assets are created at register/customize time and are not
     regenerated here. Does not affect readiness_status.
+
+    Returns ``job_id`` so clients can follow progress and logs via
+    ``GET /declared/task/{job_id}`` and ``GET /declared/task/{job_id}/stream``.
     """
     circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)
 
@@ -388,9 +406,13 @@ def generate_assets_endpoint(
         existing_labels = {a.label for a in (circuit.assets or [])}
         needed = {"compressed_sonata_circuit", "circuit_connectivity_matrices"}
         if needed.issubset(existing_labels):
-            return {"circuit_id": str(circuit_id), "message": "all assets already exist"}
+            return {
+                "circuit_id": str(circuit_id),
+                "message": "all assets already exist",
+                "job_id": None,
+            }
 
-    trigger_asset_generation_task(
+    job_id = trigger_asset_generation_task(
         ls_client=ls_client,
         circuit_id=circuit_id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
@@ -398,5 +420,14 @@ def generate_assets_endpoint(
         compute_cell=compute_cell,
         force=force,
     )
+    if job_id is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to submit circuit asset-generation job to the launch-system.",
+        )
 
-    return {"circuit_id": str(circuit_id), "status": "generation_triggered"}
+    return {
+        "circuit_id": str(circuit_id),
+        "status": "generation_triggered",
+        "job_id": str(job_id),
+    }
