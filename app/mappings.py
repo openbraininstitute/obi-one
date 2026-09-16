@@ -210,7 +210,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
             # ref=APP_TAG,
-            ref="commit:bbaf70872797ff776e0ad24d5d778c49155a9654",  # TESTING
+            ref="commit:10805314ba5ff324c6cc7dbb2c8a023e861ba67e",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "synapse_parameterization.txt"),
         ),
