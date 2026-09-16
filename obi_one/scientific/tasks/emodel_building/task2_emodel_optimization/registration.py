@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import cast
 
 import entitysdk
+from entitysdk import MultipartDirectoryUploadTransferConfig
 from entitysdk.models import (
     CellMorphology,
     ETypeClass,
@@ -21,13 +22,11 @@ from entitysdk.models import (
 )
 from entitysdk.registration.emodel import register_emodel
 from entitysdk.registration.memodel import register_memodel
-from entitysdk.registration.task_result.emodel_optimization import (
-    register_emodel_optimization_result,
-)
 from entitysdk.types import (
     AssetLabel,
     ContentType,
     EntityLifecycleStatus,
+    TaskResultType,
     ValidationStatus,
 )
 
@@ -99,45 +98,34 @@ def parse_final_json(final_path: Path, emodel_name: str) -> dict:
 
 def upload_optimization_assets(
     coord_root: Path,
-    db_client: entitysdk.Client,
+    _db_client: entitysdk.Client,
     task_result_id: str,
 ) -> None:
-    """Upload recipes, params, and the SONATA export to the TaskResult."""
-    # Recipes.json — needed by task3 to reconstruct pipeline settings
+    """Upload recipes, params, and the SONATA export to the TaskResult.
+
+    Currently a no-op: entitycore's ``ALLOWED_ASSET_LABELS_PER_TASK_RESULT`` for
+    ``TaskResultType.emodel_optimization__result`` only allows
+    ``emodel_optimisation_checkpoint``, ``emodel_analysis_figures``, and
+    ``emodel_analysis_summary`` (see entitycore ``app/db/types.py``). The labels this
+    function used to pass — ``AssetLabel.task_result``, ``AssetLabel.neuron_mechanisms``,
+    and ``AssetLabel.emodel_optimization_output`` — are not in that allow-list (the last
+    one is reserved for the ``EModel`` entity, where ``register_emodel`` already uploads
+    ``final.json`` under it) and every upload here raised a 422 ``ASSET_INVALID_SCHEMA``
+    error. Re-enable once entitycore adds asset labels for recipes/params/SONATA on
+    ``TaskResult``.
+    """
     recipes_path = coord_root / "config" / "recipes.json"
-    if recipes_path.exists():
-        db_client.upload_file(
-            entity_id=task_result_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskResult,
-            file_path=recipes_path,
-            file_content_type=ContentType.application_json,
-            asset_label=AssetLabel.task_result,
-        )
-        L.info("Uploaded recipes.json to TaskResult.")
-
-    # Params file — needed by task3 for mechanism parameters
     params_path = coord_root / "config" / "params" / "params.json"
-    if params_path.exists():
-        db_client.upload_file(
-            entity_id=task_result_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskResult,
-            file_path=params_path,
-            file_content_type=ContentType.application_json,
-            asset_label=AssetLabel.neuron_mechanisms,
-        )
-        L.info("Uploaded params.json to TaskResult.")
-
-    # SONATA directory — needed by task3 for final export
     sonata_dir = coord_root / "export_emodels_sonata"
-    if sonata_dir.exists() and any(sonata_dir.rglob("*")):
-        db_client.upload_directory(
-            entity_id=task_result_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskResult,
-            paths={p.relative_to(sonata_dir): p for p in sonata_dir.rglob("*") if p.is_file()},
-            name=AssetLabel.emodel_optimization_output,
-            label=AssetLabel.emodel_optimization_output,
+    if recipes_path.exists() or params_path.exists() or (
+        sonata_dir.exists() and any(sonata_dir.rglob("*"))
+    ):
+        L.warning(
+            "Skipping upload of recipes.json/params.json/SONATA export to TaskResult(id=%s): "
+            "entitycore has no allowed asset label for these on task_result_type "
+            "'emodel_optimization__result'.",
+            task_result_id,
         )
-        L.info("Uploaded SONATA to TaskResult.")
 
 
 def register_output_entities(  # ruff: ignore[too-many-locals]
@@ -188,13 +176,12 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     em_metrics = parse_final_json(final_path, emodel_name)
 
     # --- Collect file paths for helpers ---
-    # Checkpoints: BluePyEModel writes .pkl files by default (not HDF5).
-    # The entitysdk helper parameter is named hdf5_checkpoint_file but accepts
-    # any checkpoint format.
+    # Checkpoints: BluePyOpt writes .pkl files; task.py converts them to .h5
+    # via bluepyemodel.tools.checkpoint_hdf5.convert_checkpoint before registration.
     checkpoint_dir = coord_root / "checkpoints"
     checkpoint_file = None
     if checkpoint_dir.exists():
-        for ckpt in checkpoint_dir.rglob("*.pkl"):
+        for ckpt in checkpoint_dir.rglob("*.h5"):
             checkpoint_file = ckpt
             break
 
@@ -215,18 +202,49 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
             if fp.is_file() and fp.suffix in {".pdf", ".png"}
         ]
 
-    # --- Register TaskResult via helper ---
-    # EntitySDK currently types these asset paths as required ``Path``; they may be
-    # absent when registration runs without a completed optimisation output tree.
-    task_result = register_emodel_optimization_result(
-        client=db_client,
-        name=f"EModel Optimization Result — {emodel_name}",
-        description=f"Optimisation + analysis + export for emodel '{emodel_name}'.",
-        authorized_public=authorized_public,
-        hdf5_checkpoint_file=checkpoint_file,  # ty:ignore[invalid-argument-type]
-        analysis_figures_dir=figures_dir,
-        summary_file=emodel_summary_file,  # ty:ignore[invalid-argument-type]
+    # --- Register TaskResult ---
+    # entitysdk's register_emodel_optimization_result uses iterdir() on
+    # analysis_figures_dir, which only finds top-level files. BluePyEModel writes
+    # figures into nested subdirectories (e.g. figures/L5PC/scores/all/), so we
+    # inline the registration here and collect figure files recursively with rglob.
+    task_result = db_client.register_entity(
+        TaskResult(
+            name=f"EModel Optimization Result — {emodel_name}",
+            description=f"Optimisation + analysis + export for emodel '{emodel_name}'.",
+            authorized_public=authorized_public,
+            task_result_type=TaskResultType.emodel_optimization__result,
+        )
     )
+    if checkpoint_file is not None:
+        db_client.upload_file(
+            entity_id=task_result.id,
+            entity_type=TaskResult,
+            file_path=checkpoint_file,
+            file_content_type=ContentType.application_x_hdf5,
+            asset_label=AssetLabel.emodel_optimisation_checkpoint,
+        )
+    figure_files = {
+        p.relative_to(figures_dir): p
+        for p in sorted(figures_dir.rglob("*"))
+        if p.is_file()
+    }
+    if figure_files:
+        db_client.upload_directory(
+            entity_id=task_result.id,
+            entity_type=TaskResult,
+            paths=figure_files,
+            name="analysis_figures",
+            label=AssetLabel.emodel_analysis_figures,
+            transfer_config=MultipartDirectoryUploadTransferConfig(),
+        )
+    if emodel_summary_file is not None:
+        db_client.upload_file(
+            entity_id=task_result.id,
+            entity_type=TaskResult,
+            file_path=emodel_summary_file,
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.emodel_analysis_summary,
+        )
     L.info("TaskResult registered: %s", task_result.id)
 
     # --- Upload additional assets needed by task3 (export + validation) ---
