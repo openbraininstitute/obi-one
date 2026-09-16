@@ -95,3 +95,75 @@ def test_execute_rejects_output_dir_that_already_exists(tmp_path):
     # A second run against the same output directory fails rather than clobbering it.
     with pytest.raises(FileExistsError):
         obi.SynapseParameterizationTask(config=config).execute(db_client=None)
+
+
+def _unset_config(tmp_path):
+    """A config that names no synaptic model or distributions: everything relies on defaults.
+
+    The assigner's synaptic_model is left unset, so nothing but the edge population and the
+    circuit is specified. This is the shape a config takes when the user accepts every default.
+    """
+    config = obi.SynapseParameterizationSingleConfig.empty_config()
+    config.set(
+        obi.Info(campaign_name="Test", campaign_description="Test defaults"),
+        name="info",
+    )
+    config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
+    config.add(
+        obi.AllPairsSynapticModelAssigner(edge_population_name=EDGE_POPULATION_NAME),
+        name="all_pairs",
+    )
+    config.fill_block_references_and_names()
+    config.scan_output_root = tmp_path / "scan"
+    config.coordinate_output_root = tmp_path / "scan" / "parameterized"
+    return config
+
+
+def test_unset_defaults_stay_implicit_through_serialization():
+    """Defaults are not materialized into the stored config; they remain None/empty on reload.
+
+    Round-tripped at the scan-config level (a single config also carries scan-coordinate
+    fields that a bare-built instance lacks). This is what keeps a reloaded config free of
+    default blocks the user never added: the assigner's synaptic_model stays None and the
+    block dictionaries stay empty.
+    """
+    config = obi.SynapseParameterizationScanConfig.empty_config()
+    config.set(
+        obi.Info(campaign_name="Test", campaign_description="Test defaults"),
+        name="info",
+    )
+    config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
+    config.add(
+        obi.AllPairsSynapticModelAssigner(edge_population_name=EDGE_POPULATION_NAME),
+        name="all_pairs",
+    )
+    config.fill_block_references_and_names()
+
+    reloaded = obi.SynapseParameterizationScanConfig.model_validate(config.model_dump(mode="json"))
+
+    assert reloaded.synapse_model_assigners["all_pairs"].synaptic_model is None
+    assert reloaded.synaptic_models == {}
+    assert reloaded.distributions == {}
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_execute_resolves_defaults_from_an_unset_config(tmp_path):
+    """execute() fills unset references at run time, so a defaults-only config parameterizes.
+
+    The config names no synaptic model; execute must resolve the family default and its
+    distributions before sampling, or `assigner.synaptic_model.block` would be None.
+    """
+    config = _unset_config(tmp_path)
+
+    obi.SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    output_config = config.coordinate_output_root / "circuit_config.json"
+    edges = snap.Circuit(str(output_config)).edges[EDGE_POPULATION_NAME]
+
+    # All parameters were written, from the resolved default model.
+    for parameter in ExcitatoryTsodyksMarkramSynapticModel.parameter_names():
+        assert parameter in edges.property_names
+
+    expected_syn_type_id = ExcitatoryTsodyksMarkramSynapticModel().syn_type_id
+    syn_type_ids = set(edges.get(edges.ids(), properties=["syn_type_id"])["syn_type_id"])
+    assert syn_type_ids == {expected_syn_type_id}
