@@ -105,6 +105,18 @@ class SynapseParameterizationTask(Task):
         # to the sampling below. Idempotent, so a config that already names them is unchanged.
         self.config.fill_none_references()
 
+        # A config with no assigners parameterizes nothing: the loops below iterate over the
+        # edge populations the assigners name, so an empty set would produce an unmodified copy
+        # of the circuit and report success. Reject it here, before the expensive staging/copy,
+        # rather than silently doing nothing.
+        if not self.config.synapse_model_assigners:
+            msg = (
+                "No synaptic model assigners are configured, so there is nothing to "
+                "parameterize. Add at least one assigner naming the edge population and "
+                "synaptic model to apply."
+            )
+            raise ValueError(msg)
+
         # Get execution activity (expected to be created and managed externally)
         execution_activity = SynapseParameterizationTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id

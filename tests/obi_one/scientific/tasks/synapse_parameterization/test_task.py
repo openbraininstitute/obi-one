@@ -146,6 +146,22 @@ def test_unset_defaults_stay_implicit_through_serialization():
     assert reloaded.distributions == {}
 
 
+def test_execute_rejects_a_config_with_no_assigners(tmp_path):
+    """A config with no assigners parameterizes nothing and must be rejected, not run silently."""
+    config = obi.SynapseParameterizationSingleConfig.empty_config()
+    config.set(
+        obi.Info(campaign_name="Test", campaign_description="Test empty"),
+        name="info",
+    )
+    config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
+    config.fill_block_references_and_names()
+    config.scan_output_root = tmp_path / "scan"
+    config.coordinate_output_root = tmp_path / "scan" / "parameterized"
+
+    with pytest.raises(ValueError, match="No synaptic model assigners"):
+        obi.SynapseParameterizationTask(config=config).execute(db_client=None)
+
+
 @pytest.mark.filterwarnings("ignore::FutureWarning")
 def test_execute_resolves_defaults_from_an_unset_config(tmp_path):
     """execute() fills unset references at run time, so a defaults-only config parameterizes.
