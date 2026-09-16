@@ -9,8 +9,9 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import CellMorphologyProtocol
+from entitysdk.models import CellMorphology, CellMorphologyProtocol
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
+from entitysdk.types import EntityLifecycleStatus
 from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
@@ -675,3 +676,134 @@ def test_converted_asc_is_uploaded_for_swc_input(client, monkeypatch):
         f"converted .asc was not uploaded; uploaded: {uploaded_suffixes}"
     )
     assert {".swc", ".h5", ".asc"} <= set(uploaded_suffixes)
+
+
+class TestStoreInvalidMorphology:
+    """Morphologies whose file fails validation are registered as disqualified on opt-in."""
+
+    VALIDATION_DETAIL = "Morphology validation failed: bad parent id"
+
+    @pytest.fixture
+    def failing_validation(self, monkeypatch):
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": self.VALIDATION_DETAIL,
+                },
+            )
+
+        monkeypatch.setattr(
+            "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
+            _fail,
+        )
+
+    @pytest.fixture
+    def spies(self, monkeypatch):
+        recorded = {
+            "register": MagicMock(return_value=MagicMock(id=str(uuid.uuid4()))),
+            "metrics": MagicMock(return_value=MagicMock(id=str(uuid.uuid4()))),
+            "mesh": MagicMock(return_value=None),
+            "content": MagicMock(return_value=MagicMock()),
+        }
+        target = "app.endpoints.morphology_metrics_calculation."
+        monkeypatch.setattr(target + "register_morphology", recorded["register"])
+        monkeypatch.setattr(target + "register_morphometrics", recorded["metrics"])
+        monkeypatch.setattr(target + "try_generate_and_upload_mesh", recorded["mesh"])
+        monkeypatch.setattr(target + "upload_morphology_content", recorded["content"])
+        monkeypatch.setattr(target + "run_morphology_analysis", lambda _: [])
+        return recorded
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_rejected_by_default(self, client, spies):
+        """Without the opt-in the request still fails and nothing is registered."""
+        response = client.post(
+            ROUTE, data={"metadata": "{}"}, files={"file": ("bad.swc", b"garbage")}
+        )
+
+        assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, response.json()
+        spies["register"].assert_not_called()
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_stored_as_disqualified_when_opted_in(self, client, spies):
+        """With the opt-in the morphology is registered as disqualified, file kept."""
+        metadata = json.dumps({"name": "Raw cell", "store_if_invalid": True})
+
+        response = client.post(
+            ROUTE, data={"metadata": metadata}, files={"file": ("bad.swc", b"garbage")}
+        )
+
+        assert response.status_code == 200, response.json()
+        body = response.json()
+        assert body["lifecycle_status"] == "disqualified"
+        assert body["validation_error"] == self.VALIDATION_DETAIL
+        assert body["measurement_entity_id"] is None
+        assert body["mesh_asset_id"] is None
+
+        # Registered as disqualified, with the metadata the user supplied.
+        spies["register"].assert_called_once()
+        assert (
+            spies["register"].call_args.kwargs["lifecycle_status"]
+            == EntityLifecycleStatus.disqualified
+        )
+        assert spies["register"].call_args.args[1]["name"] == "Raw cell"
+
+        # Original upload is kept, but nothing that needs a parseable file runs.
+        spies["content"].assert_called_once()
+        spies["metrics"].assert_not_called()
+        spies["mesh"].assert_not_called()
+
+    def test_opt_in_does_not_affect_valid_files(self, client, spies):
+        """A valid file is unaffected by the flag: no lifecycle_status is forced."""
+        metadata = json.dumps({"name": "Good cell", "store_if_invalid": True})
+
+        response = client.post(
+            ROUTE, data={"metadata": metadata}, files={"file": ("good.swc", b"content")}
+        )
+
+        assert response.status_code == 200, response.json()
+        body = response.json()
+        assert body["lifecycle_status"] == "active"
+        assert body["validation_error"] is None
+        assert body["measurement_entity_id"] is not None
+
+        # Whether passed explicitly or left to the default, the entity must end up active.
+        spies["register"].assert_called_once()
+        passed = spies["register"].call_args.kwargs.get(
+            "lifecycle_status", EntityLifecycleStatus.active
+        )
+        assert passed == EntityLifecycleStatus.active
+        spies["metrics"].assert_called_once()
+
+    def test_opt_in_is_not_persisted_as_entity_metadata(self):
+        """The opt-in is a request control, not something stored on the entity."""
+        payload = _prepare_entity_payload(
+            MorphologyMetadata(name="Raw cell", store_if_invalid=True), "bad.swc"
+        )
+        assert "store_if_invalid" not in payload
+
+    def test_disqualified_status_reaches_the_registered_entity(self):
+        """The real CellMorphology is built with the disqualified status, not just passed along."""
+        client = MagicMock()
+        client.register_entity.side_effect = lambda entity: entity
+        client.search_entity.return_value.one.return_value = PlaceholderCellMorphologyProtocol(
+            generation_type="placeholder"
+        )
+
+        payload = _prepare_entity_payload(
+            MorphologyMetadata(name="Raw cell", cell_morphology_protocol_id=str(uuid.uuid4())),
+            "bad.swc",
+        )
+        morphology = register_morphology(
+            client, payload, lifecycle_status=EntityLifecycleStatus.disqualified
+        )
+
+        assert morphology.lifecycle_status == EntityLifecycleStatus.disqualified
+        assert morphology.name == "Raw cell"
+
+
+def test_disqualified_status_available_in_entitysdk():
+    """Guard the contract this feature depends on across entitysdk upgrades."""
+    assert EntityLifecycleStatus.disqualified.value == "disqualified"
+    assert "lifecycle_status" in CellMorphology.model_fields
