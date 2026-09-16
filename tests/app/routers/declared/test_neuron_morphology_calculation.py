@@ -1,3 +1,4 @@
+import inspect
 import json
 import pathlib
 import sys
@@ -21,6 +22,7 @@ from app.endpoints.morphology_metrics_calculation import (
     _prepare_entity_payload,
     _resolve_swc_bytes_for_mesh,
     _validate_file_extension,
+    _validation_error_detail,
     register_morphology,
     run_morphology_analysis,
 )
@@ -215,6 +217,24 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
     response = client.post(
         ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
     )
+    assert response.status_code == 500
+    assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
+
+
+def test_morphometrics_registration_failure(client, monkeypatch, mock_entity_payload):
+    """A failure registering morphometrics is reported, not swallowed."""
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_morphometrics",
+        MagicMock(side_effect=EntitySDKError("morphometrics fail")),
+    )
+
+    response = client.post(
+        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
+    )
+
     assert response.status_code == 500
     assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
 
@@ -768,12 +788,15 @@ class TestStoreInvalidMorphology:
         assert body["validation_error"] is None
         assert body["measurement_entity_id"] is not None
 
-        # Whether passed explicitly or left to the default, the entity must end up active.
+        # The status the entity is actually registered with must resolve to active, whether
+        # passed explicitly or left to register_morphology's default.
         spies["register"].assert_called_once()
-        passed = spies["register"].call_args.kwargs.get(
-            "lifecycle_status", EntityLifecycleStatus.active
-        )
-        assert passed == EntityLifecycleStatus.active
+        kwargs = spies["register"].call_args.kwargs
+        if "lifecycle_status" in kwargs:
+            assert kwargs["lifecycle_status"] == EntityLifecycleStatus.active
+        else:
+            default = inspect.signature(register_morphology).parameters["lifecycle_status"].default
+            assert default == EntityLifecycleStatus.active
         spies["metrics"].assert_called_once()
 
     def test_opt_in_is_not_persisted_as_entity_metadata(self):
@@ -782,6 +805,91 @@ class TestStoreInvalidMorphology:
             MorphologyMetadata(name="Raw cell", store_if_invalid=True), "bad.swc"
         )
         assert "store_if_invalid" not in payload
+
+    @pytest.mark.parametrize("status_code", [400, 500])
+    def test_non_validation_failures_are_not_disqualified(self, client, spies, status_code):
+        """Only 422 means "not a morphology". A conversion or infra failure must stay an error.
+
+        convert_morphology wraps any exception from morph_tool, including environmental ones,
+        in a 400. Recording those as disqualified would blame the user's file for a server
+        problem, and would return 200 for a request that actually failed.
+        """
+
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=status_code,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": "Failed to convert the file: no space",
+                },
+            )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
+                _fail,
+            )
+            response = client.post(
+                ROUTE,
+                data={"metadata": json.dumps({"store_if_invalid": True})},
+                files={"file": ("bad.swc", b"garbage")},
+            )
+
+        assert response.status_code == status_code, response.json()
+        spies["register"].assert_not_called()
+
+    def _post_with_failing_upload(self, client, spies, *, delete_fails: bool):
+        entity_id = str(uuid.uuid4())
+        spies["register"].return_value = MagicMock(id=entity_id)
+        spies["content"].side_effect = EntitySDKError("upload failed")
+
+        db_client = MagicMock()
+        if delete_fails:
+            db_client.delete_entity.side_effect = EntitySDKError("delete failed")
+        client.app.dependency_overrides[get_client] = lambda: db_client
+
+        response = client.post(
+            ROUTE,
+            data={"metadata": json.dumps({"store_if_invalid": True})},
+            files={"file": ("bad.swc", b"garbage")},
+        )
+        return entity_id, db_client, response
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_upload_failure_leaves_no_entity_behind(self, client, spies):
+        """An entity without its file is a failed operation, so it must be removed."""
+        entity_id, db_client, response = self._post_with_failing_upload(
+            client, spies, delete_fails=False
+        )
+
+        assert response.status_code == 500
+        detail = response.json()["detail"]
+        assert detail["code"] == "ENTITYSDK_API_FAILURE"
+        db_client.delete_entity.assert_called_once()
+        assert str(db_client.delete_entity.call_args.kwargs["entity_id"]) == entity_id
+        # Cleanup succeeded, so there is no orphan for the caller to deal with.
+        assert "entity_id" not in detail
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_entity_id_reported_when_cleanup_also_fails(self, client, spies):
+        """If the entity cannot be removed either, the caller needs its id."""
+        entity_id, _db_client, response = self._post_with_failing_upload(
+            client, spies, delete_fails=True
+        )
+
+        assert response.status_code == 500
+        assert response.json()["detail"]["entity_id"] == entity_id
+
+    def test_validation_error_detail_handles_a_plain_string(self):
+        """HTTPException.detail is not always a dict."""
+        assert (
+            _validation_error_detail(HTTPException(status_code=422, detail="plain message"))
+            == "plain message"
+        )
+
+    def test_validation_error_detail_handles_a_dict_without_detail_key(self):
+        exc = HTTPException(status_code=422, detail={"code": "INVALID_REQUEST"})
+        assert "INVALID_REQUEST" in _validation_error_detail(exc)
 
     def test_disqualified_status_reaches_the_registered_entity(self):
         """The real CellMorphology is built with the disqualified status, not just passed along."""

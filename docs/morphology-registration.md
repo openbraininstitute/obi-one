@@ -39,5 +39,12 @@ The flag is a request control only; it is not stored on the entity.
 Note that with the opt-in a failed morphology returns **200**, not 422. Callers must read
 `lifecycle_status` rather than treating any 2xx as a valid morphology.
 
-Empty uploads and unsupported file extensions are still rejected with 400 regardless of the
-flag — those are bad requests rather than unprocessable morphologies.
+The flag only applies when the file itself is not a usable morphology (422). Everything else is
+still an error regardless of the flag:
+
+- empty uploads and unsupported file extensions → 400, bad requests rather than bad morphologies
+- format conversion failures → 400, since these can be environmental (a full disk, for example)
+  rather than a property of the uploaded file
+
+If the entity is registered but the file cannot be attached, the response is a 500 whose detail
+includes the `entity_id`, so the upload can be retried or the entity removed.

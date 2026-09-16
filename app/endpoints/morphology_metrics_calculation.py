@@ -71,7 +71,7 @@ class MorphologyRegistrationResponse(BaseModel):
     status: str
     morphology_name: str
     lifecycle_status: str
-    validation_error: str | None = None
+    validation_error: str | None
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -338,7 +338,18 @@ def _register_disqualified_morphology(
     try:
         upload_morphology_content(client, entity_uuid, morphology_name, content)
     except EntitySDKError as err:
-        _raise_entitysdk_failure("registration", err)
+        # An entity with no file is unusable, so roll the registration back.
+        detail: dict[str, Any] = {
+            "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+            "detail": f"Could not attach the original file to the morphology: {err}",
+        }
+        try:
+            client.delete_entity(entity_id=entity_uuid, entity_type=CellMorphology)
+        except EntitySDKError:
+            L.exception("Could not remove morphology %s after a failed upload", entity_uuid)
+            detail["entity_id"] = str(entity_uuid)
+
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=detail) from err
 
     return MorphologyRegistrationResponse(
         entity_id=str(entity_uuid),
@@ -370,16 +381,24 @@ async def _run_pipeline(
         temp_file_obj.close()
         stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
+        # Registered before conversion: it raises mid-loop, so partial output needs cleanup too.
+        output_stem = Path(morphology_name).stem
+        output_dir = pathlib.Path(temp_file_path).parent
+        for ext in ALLOWED_EXTENSIONS:
+            stack.callback((output_dir / f"{output_stem}{ext}").unlink, missing_ok=True)
+
         try:
             converted_files: MorphologyFiles = await run_in_threadpool(
                 validate_and_convert_morphology,
                 input_file=pathlib.Path(temp_file_path),
-                output_dir=pathlib.Path(temp_file_path).parent,
-                output_stem=Path(morphology_name).stem,
+                output_dir=output_dir,
+                output_stem=output_stem,
                 single_point_soma_by_ext=single_point_soma_by_ext,
             )
         except HTTPException as exc:
-            if not store_if_invalid:
+            # convert_morphology also raises 400 for environmental failures, so only a 422
+            # means the file itself is unusable.
+            if not store_if_invalid or exc.status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
                 raise
             return _register_disqualified_morphology(
                 client=client,
@@ -388,13 +407,6 @@ async def _run_pipeline(
                 entity_payload=entity_payload,
                 validation_error=_validation_error_detail(exc),
             )
-
-        if converted_files.swc:
-            stack.callback(converted_files.swc.unlink, missing_ok=True)
-        if converted_files.hdf5:
-            stack.callback(converted_files.hdf5.unlink, missing_ok=True)
-        if converted_files.asc:
-            stack.callback(converted_files.asc.unlink, missing_ok=True)
 
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
@@ -430,6 +442,7 @@ async def _run_pipeline(
             status="success",
             morphology_name=morphology_name,
             lifecycle_status=EntityLifecycleStatus.active.value,
+            validation_error=None,
         )
 
 
