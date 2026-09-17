@@ -1,4 +1,5 @@
 import json
+import logging
 import pathlib
 import tempfile
 import traceback
@@ -20,6 +21,7 @@ from entitysdk.models import (
     Subject,
 )
 from entitysdk.models.core import Identifiable
+from entitysdk.types import EntityLifecycleStatus
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -45,6 +47,9 @@ if TYPE_CHECKING:
     from entitysdk.models.cell_morphology_protocol import CellMorphologyProtocolUnion
 
 
+L = logging.getLogger(__name__)
+
+
 class ApiErrorCode:
     BAD_REQUEST = "BAD_REQUEST"
     ENTITYSDK_API_FAILURE = "ENTITYSDK_API_FAILURE"
@@ -61,10 +66,12 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 class MorphologyRegistrationResponse(BaseModel):
     entity_id: str
-    measurement_entity_id: str
+    measurement_entity_id: str | None
     mesh_asset_id: str | None
     status: str
     morphology_name: str
+    lifecycle_status: str
+    validation_error: str | None
 
 
 def _handle_empty_file(file: UploadFile) -> None:
@@ -157,6 +164,7 @@ class MorphologyMetadata(BaseModel):
     authorized_public: bool = False
     published_in: str | None = None
     single_point_soma_by_ext: dict[str, bool] | None = None
+    store_if_invalid: bool = False
 
 
 async def _parse_file_and_metadata(
@@ -187,7 +195,12 @@ async def _parse_file_and_metadata(
 T = TypeVar("T", bound=Identifiable)
 
 
-def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
+def register_morphology(
+    client: Client,
+    new_item: dict[str, Any],
+    *,
+    lifecycle_status: EntityLifecycleStatus = EntityLifecycleStatus.active,
+) -> Any:
     def _get_entity(key_suffix: str, entity_class: type[T]) -> T | None:
         entity_id_key = f"{key_suffix}_id"
         entity_id = new_item.get(entity_id_key)
@@ -234,6 +247,7 @@ def register_morphology(client: Client, new_item: dict[str, Any]) -> Any:
         legacy_id=None,
         authorized_public=authorized_public,
         published_in=new_item.get("published_in"),
+        lifecycle_status=lifecycle_status,
     )
     registered = client.register_entity(entity=morphology)
     return registered
@@ -253,7 +267,7 @@ def _prepare_entity_payload(
     metadata_obj: MorphologyMetadata, original_filename: str
 ) -> dict[str, Any]:
     entity_payload = NEW_ENTITY_DEFAULTS.copy()
-    update_map = metadata_obj.model_dump(exclude_none=True)
+    update_map = metadata_obj.model_dump(exclude_none=True, exclude={"store_if_invalid"})
     entity_payload.update(update_map)
 
     if entity_payload.get("name") in {"test", None}:
@@ -292,6 +306,57 @@ def _upload_converted_morphology_assets(
             upload_morphology_file(client, entity_uuid, file_path)
 
 
+def _register_disqualified_morphology(
+    client: Client,
+    morphology_name: str,
+    content: bytes,
+    entity_payload: dict[str, Any],
+    validation_error: str,
+) -> MorphologyRegistrationResponse:
+    """Register a morphology whose file could not be read, keeping the original upload.
+
+    Conversion, morphometrics and meshing cannot run on a file morphio could not load.
+    """
+    L.warning(
+        "Morphology '%s' failed validation, registering as disqualified: %s",
+        morphology_name,
+        validation_error,
+    )
+    data = register_morphology(
+        client, entity_payload, lifecycle_status=EntityLifecycleStatus.disqualified
+    )
+    entity_uuid = UUID(str(data.id))
+    try:
+        upload_morphology_content(client, entity_uuid, morphology_name, content)
+    except EntitySDKError as err:
+        # An entity with no file is unusable, so roll the registration back.
+        orphan_id = None
+        try:
+            client.delete_entity(entity_id=entity_uuid, entity_type=CellMorphology)
+        except EntitySDKError:
+            L.exception("Could not remove morphology %s after a failed upload", entity_uuid)
+            orphan_id = str(entity_uuid)
+
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+                "detail": f"Could not attach the original file to the morphology: {err}",
+                "entity_id": orphan_id,
+            },
+        ) from err
+
+    return MorphologyRegistrationResponse(
+        entity_id=str(entity_uuid),
+        measurement_entity_id=None,
+        mesh_asset_id=None,
+        status="success",
+        morphology_name=morphology_name,
+        lifecycle_status=EntityLifecycleStatus.disqualified.value,
+        validation_error=validation_error,
+    )
+
+
 async def _run_pipeline(
     client: Client,
     morphology_name: str,
@@ -299,7 +364,9 @@ async def _run_pipeline(
     content: bytes,
     entity_payload: dict[str, Any],
     single_point_soma_by_ext: dict[str, bool],
-) -> tuple[str, str, str | None]:
+    *,
+    store_if_invalid: bool = False,
+) -> MorphologyRegistrationResponse:
     with ExitStack() as stack:
         temp_file_obj = stack.enter_context(
             tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
@@ -309,20 +376,33 @@ async def _run_pipeline(
         temp_file_obj.close()
         stack.callback(pathlib.Path(temp_file_path).unlink, missing_ok=True)
 
-        converted_files: MorphologyFiles = await run_in_threadpool(
-            validate_and_convert_morphology,
-            input_file=pathlib.Path(temp_file_path),
-            output_dir=pathlib.Path(temp_file_path).parent,
-            output_stem=Path(morphology_name).stem,
-            single_point_soma_by_ext=single_point_soma_by_ext,
-        )
+        # Registered before conversion: it raises mid-loop, so partial output needs cleanup too.
+        output_stem = Path(morphology_name).stem
+        output_dir = pathlib.Path(temp_file_path).parent
+        for ext in ALLOWED_EXTENSIONS:
+            stack.callback((output_dir / f"{output_stem}{ext}").unlink, missing_ok=True)
 
-        if converted_files.swc:
-            stack.callback(converted_files.swc.unlink, missing_ok=True)
-        if converted_files.hdf5:
-            stack.callback(converted_files.hdf5.unlink, missing_ok=True)
-        if converted_files.asc:
-            stack.callback(converted_files.asc.unlink, missing_ok=True)
+        try:
+            converted_files: MorphologyFiles = await run_in_threadpool(
+                validate_and_convert_morphology,
+                input_file=pathlib.Path(temp_file_path),
+                output_dir=output_dir,
+                output_stem=output_stem,
+                single_point_soma_by_ext=single_point_soma_by_ext,
+            )
+        except HTTPException as exc:
+            # convert_morphology also raises 400 for environmental failures, so only a 422
+            # means the file itself is unusable.
+            if not store_if_invalid or exc.status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
+                raise
+            detail = exc.detail
+            return _register_disqualified_morphology(
+                client=client,
+                morphology_name=morphology_name,
+                content=content,
+                entity_payload=entity_payload,
+                validation_error=detail["detail"] if isinstance(detail, dict) else str(detail),
+            )
 
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
@@ -351,7 +431,15 @@ async def _run_pipeline(
             )
             mesh_asset_id = str(mesh_asset.id) if mesh_asset else None
 
-        return str(entity_uuid), str(measurement_annotation.id), mesh_asset_id
+        return MorphologyRegistrationResponse(
+            entity_id=str(entity_uuid),
+            measurement_entity_id=str(measurement_annotation.id),
+            mesh_asset_id=mesh_asset_id,
+            status="success",
+            morphology_name=morphology_name,
+            lifecycle_status=EntityLifecycleStatus.active.value,
+            validation_error=None,
+        )
 
 
 @router.post(
@@ -380,13 +468,14 @@ async def morphology_metrics_calculation(
         or DEFAULT_SINGLE_POINT_SOMA_BY_EXT
     )
     try:
-        entity_id, measurement_entity_id, mesh_asset_id = await _run_pipeline(
+        return await _run_pipeline(
             client=client,
             morphology_name=morphology_name,
             file_extension=file_extension,
             content=content,
             entity_payload=entity_payload,
             single_point_soma_by_ext=single_point_soma_by_ext,
+            store_if_invalid=metadata_obj.store_if_invalid,
         )
     except HTTPException:
         raise
@@ -399,11 +488,3 @@ async def morphology_metrics_calculation(
                 "detail": f"Pipeline failed: {type(e).__name__} - {e!s}",
             },
         ) from e
-
-    return MorphologyRegistrationResponse(
-        entity_id=entity_id,
-        measurement_entity_id=measurement_entity_id,
-        mesh_asset_id=mesh_asset_id,
-        status="success",
-        morphology_name=morphology_name,
-    )
