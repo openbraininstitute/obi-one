@@ -867,7 +867,7 @@ class TestStoreInvalidMorphology:
         db_client.delete_entity.assert_called_once()
         assert str(db_client.delete_entity.call_args.kwargs["entity_id"]) == entity_id
         # Cleanup succeeded, so there is no orphan for the caller to deal with.
-        assert "entity_id" not in detail
+        assert detail["entity_id"] is None
 
     @pytest.mark.usefixtures("failing_validation")
     def test_entity_id_reported_when_cleanup_also_fails(self, client, spies):

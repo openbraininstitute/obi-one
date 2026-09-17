@@ -315,8 +315,7 @@ def _register_disqualified_morphology(
 ) -> MorphologyRegistrationResponse:
     """Register a morphology whose file could not be read, keeping the original upload.
 
-    Conversion, morphometrics and meshing are skipped because none of them can run on a
-    file that morphio could not load.
+    Conversion, morphometrics and meshing cannot run on a file morphio could not load.
     """
     L.warning(
         "Morphology '%s' failed validation, registering as disqualified: %s",
@@ -331,17 +330,21 @@ def _register_disqualified_morphology(
         upload_morphology_content(client, entity_uuid, morphology_name, content)
     except EntitySDKError as err:
         # An entity with no file is unusable, so roll the registration back.
-        detail: dict[str, Any] = {
-            "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
-            "detail": f"Could not attach the original file to the morphology: {err}",
-        }
+        orphan_id = None
         try:
             client.delete_entity(entity_id=entity_uuid, entity_type=CellMorphology)
         except EntitySDKError:
             L.exception("Could not remove morphology %s after a failed upload", entity_uuid)
-            detail["entity_id"] = str(entity_uuid)
+            orphan_id = str(entity_uuid)
 
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=detail) from err
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={
+                "code": ApiErrorCode.ENTITYSDK_API_FAILURE,
+                "detail": f"Could not attach the original file to the morphology: {err}",
+                "entity_id": orphan_id,
+            },
+        ) from err
 
     return MorphologyRegistrationResponse(
         entity_id=str(entity_uuid),
