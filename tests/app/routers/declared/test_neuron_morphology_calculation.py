@@ -747,7 +747,7 @@ class TestStoreInvalidMorphology:
     @pytest.mark.usefixtures("failing_validation")
     def test_stored_as_disqualified_when_opted_in(self, client, spies):
         """With the opt-in the morphology is registered as disqualified, file kept."""
-        metadata = json.dumps({"name": "Raw cell", "store_if_invalid": True})
+        metadata = json.dumps({"name": "My morphology", "store_if_invalid": True})
 
         response = client.post(
             ROUTE, data={"metadata": metadata}, files={"file": ("bad.swc", b"garbage")}
@@ -766,7 +766,7 @@ class TestStoreInvalidMorphology:
             spies["register"].call_args.kwargs["lifecycle_status"]
             == EntityLifecycleStatus.disqualified
         )
-        assert spies["register"].call_args.args[1]["name"] == "Raw cell"
+        assert spies["register"].call_args.args[1]["name"] == "My morphology"
 
         # Original upload is kept, but nothing that needs a parseable file runs.
         spies["content"].assert_called_once()
@@ -801,7 +801,7 @@ class TestStoreInvalidMorphology:
     def test_opt_in_is_not_persisted_as_entity_metadata(self):
         """The opt-in is a request control, not something stored on the entity."""
         payload = _prepare_entity_payload(
-            MorphologyMetadata(name="Raw cell", store_if_invalid=True), "bad.swc"
+            MorphologyMetadata(name="My morphology", store_if_invalid=True), "bad.swc"
         )
         assert "store_if_invalid" not in payload
 
@@ -888,7 +888,7 @@ class TestStoreInvalidMorphology:
         )
 
         payload = _prepare_entity_payload(
-            MorphologyMetadata(name="Raw cell", cell_morphology_protocol_id=str(uuid.uuid4())),
+            MorphologyMetadata(name="My morphology", cell_morphology_protocol_id=str(uuid.uuid4())),
             "bad.swc",
         )
         morphology = register_morphology(
@@ -896,7 +896,7 @@ class TestStoreInvalidMorphology:
         )
 
         assert morphology.lifecycle_status == EntityLifecycleStatus.disqualified
-        assert morphology.name == "Raw cell"
+        assert morphology.name == "My morphology"
 
 
 def test_disqualified_status_available_in_entitysdk():

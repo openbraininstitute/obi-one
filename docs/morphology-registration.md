@@ -11,13 +11,13 @@ registers a `CellMorphology` entity with its assets.
 
 ## Storing morphologies that fail validation
 
-Some morphologies — raw reconstructions in particular — cannot be parsed or converted. By default
-these are rejected outright, so there is no way to store them.
+Some morphology files cannot be parsed or converted. By default these are rejected outright, so
+there is no way to store them.
 
 Send `store_if_invalid: true` in the `metadata` form field to register them anyway:
 
 ```json
-{"name": "Raw cell", "store_if_invalid": true}
+{"name": "My morphology", "store_if_invalid": true}
 ```
 
 With the opt-in, a file that fails validation is registered with
