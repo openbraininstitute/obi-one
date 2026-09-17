@@ -59,7 +59,7 @@ def resolve_neuron(  # ruff: ignore[too-many-locals]
     db_client: Client,
     out_root: Path,
     spiny_morph_out_root: Path,
-) -> ResolvedNeuron:
+) -> tuple[ResolvedNeuron, str | None]:
     """Resolve a neuron reference into morphology files, provenance, and ME model properties.
 
     Args:
@@ -71,7 +71,9 @@ def resolve_neuron(  # ruff: ignore[too-many-locals]
 
     Returns:
         A ResolvedNeuron with all resolved information.
+        A string that is the local (relative) path to a directory with emodel .mod files.
     """
+    mechanisms_placed = None
     use_me_model = isinstance(neuron_ref, MEModelFromID)
     if use_me_model:
         me_model_entity = neuron_ref.entity(db_client)
@@ -106,7 +108,9 @@ def resolve_neuron(  # ruff: ignore[too-many-locals]
         L.info("Placing mechanisms and .hoc file...")
         tmp_staging = out_root / f"temp_staging_{morph_entity.name}"
         memdl_paths = download_memodel(db_client, me_model_entity, tmp_staging)  # ty:ignore[invalid-argument-type]
-        shutil.move(memdl_paths.mechanisms_dir, out_root / "mechanisms")
+        mechanisms_placed = "mod"
+        # TODO: If there's multiple me_models, each replaces the previous. Should merge contents instead.
+        shutil.move(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
         hoc_dir = out_root / "hoc"
         hoc_dir.mkdir(parents=True)
         shutil.move(memdl_paths.hoc_path, hoc_dir)
@@ -115,11 +119,11 @@ def resolve_neuron(  # ruff: ignore[too-many-locals]
         phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
         phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
         if me_model_entity.calibration_result is not None:  # ty:ignore[unresolved-attribute]
-            phys_node_props["threshold_current"] = numpy.array(
+            phys_node_props["@dynamics:threshold_current"] = numpy.array(
                 [me_model_entity.calibration_result.threshold_current],  # ty:ignore[unresolved-attribute]
                 dtype=numpy.float32,
             )
-            phys_node_props["holding_current"] = numpy.array(
+            phys_node_props["@dynamics:holding_current"] = numpy.array(
                 [me_model_entity.calibration_result.holding_current],  # ty:ignore[unresolved-attribute]
                 dtype=numpy.float32,
             )
@@ -141,4 +145,4 @@ def resolve_neuron(  # ruff: ignore[too-many-locals]
         phys_node_props=phys_node_props,
         fn_morph_h5=fn_spiny_morph,
         fn_morph_swc=fn_morphology_out_swc,
-    )
+    ), mechanisms_placed

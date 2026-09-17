@@ -69,6 +69,7 @@ def sonata_config_for(
     virtual_population: str | None = None,
     morphologies_dir: str = "morphologies",
     alternate_morphologies_h5: str | None = None,
+    mechanisms_dir: str | None = None
 ) -> dict:
     """Build a SONATA circuit_config.json.
 
@@ -84,9 +85,13 @@ def sonata_config_for(
         morphologies_dir: Directory containing morphology files
         alternate_morphologies_h5: [Optional] Adds an 'alternate_morphologies'
             entry pointing to this H5 path (mostly for single-neuron spiny case).
+        mechanisms_dir: [Optional] Changes the entry of components/mechanisms_dir
+            from "" to this (prepending $BASE_DIR).
     """
     cfg = deepcopy(SYNAPTOME_SONATA_CONFIG)
 
+    if mechanisms_dir is not None:
+        cfg["components"]["mechanisms_dir"] = "$BASE_DIR/" + mechanisms_dir
     # Edge populations
     if edge_populations:
         cfg["networks"]["edges"].append(  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
