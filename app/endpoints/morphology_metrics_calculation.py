@@ -321,10 +321,10 @@ def _register_disqualified_morphology(
     entity_payload: dict[str, Any],
     validation_error: str,
 ) -> MorphologyRegistrationResponse:
-    """Register a morphology whose file failed validation, keeping the original upload.
+    """Register a morphology whose file could not be read, keeping the original upload.
 
     Conversion, morphometrics and meshing are skipped because none of them can run on a
-    file that could not be loaded or converted.
+    file that morphio could not load.
     """
     L.warning(
         "Morphology '%s' failed validation, registering as disqualified: %s",
