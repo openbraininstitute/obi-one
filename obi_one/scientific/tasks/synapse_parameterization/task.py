@@ -98,13 +98,6 @@ class SynapseParameterizationTask(Task):
         # Start benchmark tracking
         BenchmarkTracker.start_tracking()
 
-        # Resolve unset tagged references (the synaptic model, its distributions, and neuron
-        # sets) to their defaults now, at execution time. Configs are stored with these left
-        # `None` so defaults stay implicit on disk and in the UI; materializing them here is
-        # what makes `assigner.synaptic_model.block` and the parameter distributions available
-        # to the sampling below. Idempotent, so a config that already names them is unchanged.
-        self.config.fill_none_references()
-
         # A config with no assigners parameterizes nothing: the loops below iterate over the
         # edge populations the assigners name, so an empty set would produce an unmodified copy
         # of the circuit and report success. Reject it here, before the expensive staging/copy,
