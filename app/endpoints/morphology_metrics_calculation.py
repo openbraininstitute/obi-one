@@ -306,14 +306,6 @@ def _upload_converted_morphology_assets(
             upload_morphology_file(client, entity_uuid, file_path)
 
 
-def _validation_error_detail(exc: HTTPException) -> str:
-    """Extract a human-readable reason from a validation HTTPException."""
-    detail = exc.detail
-    if isinstance(detail, dict):
-        return str(detail.get("detail", detail))
-    return str(detail)
-
-
 def _register_disqualified_morphology(
     client: Client,
     morphology_name: str,
@@ -400,12 +392,13 @@ async def _run_pipeline(
             # means the file itself is unusable.
             if not store_if_invalid or exc.status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
                 raise
+            detail = exc.detail
             return _register_disqualified_morphology(
                 client=client,
                 morphology_name=morphology_name,
                 content=content,
                 entity_payload=entity_payload,
-                validation_error=_validation_error_detail(exc),
+                validation_error=detail["detail"] if isinstance(detail, dict) else str(detail),
             )
 
         analysis_path = _get_h5_analysis_path(

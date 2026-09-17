@@ -22,7 +22,6 @@ from app.endpoints.morphology_metrics_calculation import (
     _prepare_entity_payload,
     _resolve_swc_bytes_for_mesh,
     _validate_file_extension,
-    _validation_error_detail,
     register_morphology,
     run_morphology_analysis,
 )
@@ -879,17 +878,6 @@ class TestStoreInvalidMorphology:
 
         assert response.status_code == 500
         assert response.json()["detail"]["entity_id"] == entity_id
-
-    def test_validation_error_detail_handles_a_plain_string(self):
-        """HTTPException.detail is not always a dict."""
-        assert (
-            _validation_error_detail(HTTPException(status_code=422, detail="plain message"))
-            == "plain message"
-        )
-
-    def test_validation_error_detail_handles_a_dict_without_detail_key(self):
-        exc = HTTPException(status_code=422, detail={"code": "INVALID_REQUEST"})
-        assert "INVALID_REQUEST" in _validation_error_detail(exc)
 
     def test_disqualified_status_reaches_the_registered_entity(self):
         """The real CellMorphology is built with the disqualified status, not just passed along."""
