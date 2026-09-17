@@ -209,7 +209,8 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
         activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            # ref=APP_TAG,
+            ref="commit:90f34ba1b130405d44185a50836f5ff62e2899d9",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "synapse_parameterization.txt"),
         ),
