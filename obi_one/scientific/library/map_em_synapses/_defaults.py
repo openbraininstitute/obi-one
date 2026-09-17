@@ -69,7 +69,7 @@ def sonata_config_for(
     virtual_population: str | None = None,
     morphologies_dir: str = "morphologies",
     alternate_morphologies_h5: str | None = None,
-    mechanisms_dir: str | None = None
+    mechanisms_dir: str | None = None,
 ) -> dict:
     """Build a SONATA circuit_config.json.
 

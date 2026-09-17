@@ -109,7 +109,8 @@ def resolve_neuron(  # ruff: ignore[too-many-locals]
         tmp_staging = out_root / f"temp_staging_{morph_entity.name}"
         memdl_paths = download_memodel(db_client, me_model_entity, tmp_staging)  # ty:ignore[invalid-argument-type]
         mechanisms_placed = "mod"
-        # TODO: If there's multiple me_models, each replaces the previous. Should merge contents instead.
+        # TODO: If there's multiple me_models, each replaces the previous.
+        # Should merge contents instead.
         shutil.move(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
         hoc_dir = out_root / "hoc"
         hoc_dir.mkdir(parents=True)
