@@ -39,6 +39,9 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BaseNeuronSetReference,
     NeuronSetReference,
@@ -66,6 +69,22 @@ class GenerateSimulationTask(Task):
     _materialized_compartment_sets: dict[str, MaterializedCompartmentSet] = PrivateAttr(
         default_factory=dict
     )
+
+    def _needs_circuit_morphologies(self) -> bool:
+        """Whether generation has to read morphologies out of the circuit.
+
+        Only MorphologyLocations targets do: they are turned into compartment sets by
+        ``_materialize_location_targets``, which walks the morphology of each selected neuron.
+        Mirrors the block discovery in ``materialize_locations_to_compartment_sets``.
+        """
+        return any(
+            isinstance(
+                getattr(block, "morphology_locations", None) or getattr(block, "neuron_set", None),
+                MorphologyLocationsReference,
+            )
+            for block_dict_name in ("stimuli", "recordings")
+            for block in getattr(self.config, block_dict_name, {}).values()
+        )
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -103,8 +122,18 @@ class GenerateSimulationTask(Task):
                     / self._circuit_id
                 )
 
+            stage_kwargs = {}
+            if isinstance(circuit, CircuitFromID) and not self._needs_circuit_morphologies():
+                # Generation reads node properties and node sets; nothing here opens the edge
+                # files, which are the bulk of a large circuit. Staging them would be a wasted
+                # download for a private-project circuit, which cannot be symlinked.
+                stage_kwargs["nodes_only"] = True
+
             self._circuit = circuit.stage_circuit(
-                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=self._entity_cache
+                db_client=db_client,
+                dest_dir=circuit_dest_dir,
+                entity_cache=self._entity_cache,
+                **stage_kwargs,
             )
 
             self._sonata_config["network"] = str(
@@ -451,6 +480,12 @@ class GenerateSimulationTask(Task):
         predefined neuron set, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
+
+        Node set definitions are kept symbolic wherever SONATA can express them, so that the
+        simulator resolves them against the circuit it already has staged. Only sub-sampling and
+        the combined set operations SONATA has no construct for (intersection, difference) fall
+        back to explicit neuron IDs. This keeps the written file small and, more importantly,
+        means generation does not have to read node properties for the common cases.
         """
         sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
 
@@ -467,9 +502,7 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                neuron_set_.add_node_set_definition_to_sonata_circuit(
-                    self._circuit, sonata_circuit, force_resolve_ids=True
-                )
+                neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
         else:
             neuron_set = self.config.default_neuron_set_type()
@@ -477,7 +510,6 @@ class GenerateSimulationTask(Task):
             neuron_set.add_node_set_definition_to_sonata_circuit(
                 self._circuit,  # ty:ignore[invalid-argument-type]
                 sonata_circuit,
-                force_resolve_ids=True,
             )
 
         # 3. Write node sets from SONATA circuit object to .json file
