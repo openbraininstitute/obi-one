@@ -26,6 +26,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 L = logging.getLogger("obi-one")
 
@@ -230,6 +231,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.ANY_NEURON_SET_OPERAND,
         },
     )
 
@@ -246,6 +248,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: ATOMIC_ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.ANY_NEURON_SET_OPERAND,
         },
     )
 
@@ -278,6 +281,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.BIOPHYSICAL_NEURON_SET_OPERAND,
         },
     )
 
@@ -294,6 +298,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.BIOPHYSICAL_NEURON_SET_OPERAND,
         },
     )
 
@@ -324,6 +329,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.VIRTUAL_NEURON_SET_OPERAND,
         },
     )
 
@@ -340,6 +346,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.VIRTUAL_NEURON_SET_OPERAND,
         },
     )
 
@@ -372,6 +379,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.NON_VIRTUAL_NEURON_SET_OPERAND,
         },
     )
 
@@ -388,6 +396,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.NON_VIRTUAL_NEURON_SET_OPERAND,
         },
     )
 
@@ -418,6 +427,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.POINT_NEURON_SET_OPERAND,
         },
     )
 
@@ -434,5 +444,6 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
             SchemaKey.REFERENCE_TYPES: ATOMIC_POINT_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.POINT_NEURON_SET_OPERAND,
         },
     )

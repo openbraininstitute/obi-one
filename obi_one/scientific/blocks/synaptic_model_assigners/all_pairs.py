@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 import numpy as np
 
@@ -11,8 +12,7 @@ L = logging.getLogger(__name__)
 class AllPairsSynapticModelAssigner(SynapseModelAssigner):
     """Assign a synaptic model to all synapses in the edge population."""
 
-    def validate_for_circuit(self, circuit: Circuit) -> None:
-        pass
+    title: ClassVar[str] = "All Pairs"
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         circ = circuit.sonata_circuit
