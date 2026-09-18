@@ -78,6 +78,8 @@ class UIElement(StrEnum):
     STRING_CONSTANT = "string_constant"
     STRING_CONSTANT_ENHANCED = "string_constant_enhanced"
     STRING_INPUT = "string_input"
+    STRING_LIST_INPUT = "string_list_input"
+    STRING_LIST_OPTIONAL = "string_list_optional"
     STRING_SELECTION = "string_selection"
     STRING_SELECTION_ENHANCED = "string_selection_enhanced"
     VOLTAGE_DURATION = "voltage_duration"

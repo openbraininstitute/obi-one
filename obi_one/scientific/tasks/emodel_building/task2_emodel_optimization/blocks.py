@@ -79,7 +79,7 @@ class DistanceDependentDistribution(Block):
             "(excluding {value} and {distance}). Used by BluePyEModel's "
             "ParameterScaler."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_OPTIONAL},
     )
 
     @model_validator(mode="after")
@@ -1425,7 +1425,7 @@ class OptimizationSettings(Block):
         default_factory=tuple,
         title="Validation protocols",
         description="Protocol names held out from optimization and used only for validation.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_INPUT},
     )
     name_rin_protocol: str | None = Field(
         default=None,

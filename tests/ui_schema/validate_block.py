@@ -79,16 +79,46 @@ def validate_type(schema: dict, ref: str) -> None:
 
 
 def validate_string_param(schema: dict, param: str, ref: str) -> None:
-    for value in ("a", ["a"]):
-        try:
-            validate(value, schema)
-        except ValidationError:
-            continue
-        else:
-            return
+    try:
+        validate("a", schema)
 
-    msg = f"Validation error at {ref}: string_input param {param} failed to validate a string"
-    raise ValidationError(msg) from None
+    except ValidationError:
+        msg = f"Validation error at {ref}: string_input param {param} failed to validate a string"
+        raise ValidationError(msg) from None
+
+
+def accepts(schema: dict, value: object) -> bool:
+    try:
+        validate(value, schema)
+    except ValidationError:
+        return False
+    return True
+
+
+def validate_string_list_param(schema: dict, param: str, ref: str) -> None:
+    # Must accept a list of strings and reject anything else.
+    if not accepts(schema, ["a"]) or any(
+        accepts(schema, rejected) for rejected in ("a", None, [1])
+    ):
+        msg = (
+            f"Validation error at {ref}: string_list_input param {param} should validate a "
+            f"list of strings and nothing else"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_string_list_optional(schema: dict, param: str, ref: str) -> None:
+    # Must accept a list of strings and null, and reject anything else.
+    if (
+        not accepts(schema, ["a"])
+        or not accepts(schema, None)
+        or any(accepts(schema, rejected) for rejected in ("a", [1]))
+    ):
+        msg = (
+            f"Validation error at {ref}: string_list_optional param {param} should validate a "
+            f"list of strings or null and nothing else"
+        )
+        raise ValidationError(msg) from None
 
 
 def determine_minimum_valid_numeric_value(schema: dict) -> float | int:
@@ -883,6 +913,10 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
+        case UIElement.STRING_LIST_INPUT:
+            validate_string_list_param(schema, param, ref)
+        case UIElement.STRING_LIST_OPTIONAL:
+            validate_string_list_optional(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:
             validate_boolean_input(schema, param, ref)
         case UIElement.FLOAT_PARAMETER_SWEEP:
