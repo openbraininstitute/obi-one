@@ -55,6 +55,7 @@ class UIElement(StrEnum):
     EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
     ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
+    ETYPE_SELECTOR = "etype_selector"
     FLOAT_OPTIONAL = "float_optional"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"

@@ -133,17 +133,41 @@ class DistanceDependentDistribution(Block):
 class UniformDistanceDependentDistribution(DistanceDependentDistribution):
     """Default uniform distance distribution used by EMC files."""
 
-    name: str = Field(default="uniform", frozen=True)
-    function: None = Field(default=None, frozen=True)
+    name: str = Field(
+        default="uniform",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    function: None = Field(
+        default=None,
+        frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+            SchemaKey.UI_HIDDEN: True,
+        },
+    )
 
 
 class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
     """Standard exponential distance distribution used by SSCX and thalamus EMC files."""
 
-    name: str = Field(default="exp", frozen=True)
+    name: str = Field(
+        default="exp",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
     function: str = Field(
         default="(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
         frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
 
@@ -159,69 +183,153 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
 
     _runtime_placeholders: ClassVar[frozenset[str]] = frozenset({"step_begin", "step_end"})
 
-    name: str = Field(default="step", frozen=True)
+    name: str = Field(
+        default="step",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
     function: str = Field(
         default="{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
         "({distance} < {step_end})))",
         frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
 
 class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistribution):
     """Exponential dendritic sodium distance distribution used by hippocampus models."""
 
-    name: str = Field(default="exp_na_dend", frozen=True)
-    function: str = Field(default="math.exp((-{distance})/50)*{value}", frozen=True)
+    name: str = Field(
+        default="exp_na_dend",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    function: str = Field(
+        default="math.exp((-{distance})/50)*{value}",
+        frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
 
 
 class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Linear h-current apical distance distribution used by hippocampus models."""
 
-    name: str = Field(default="linear_hd_apic", frozen=True)
-    function: str = Field(default="(1. + 3./100. * {distance})*{value}", frozen=True)
+    name: str = Field(
+        default="linear_hd_apic",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    function: str = Field(
+        default="(1. + 3./100. * {distance})*{value}",
+        frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
 
 
 class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Sigmoid potassium A-current apical distance distribution."""
 
-    name: str = Field(default="sigmoid_kad_apic", frozen=True)
+    name: str = Field(
+        default="sigmoid_kad_apic",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
     function: str = Field(
         default="(15./(1. + math.exp((300-{distance})/50)))*{value}",
         frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
 
 class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Linear passive reversal-potential apical distance distribution."""
 
-    name: str = Field(default="linear_e_pas_apic", frozen=True)
-    function: str = Field(default="({value}-5*{distance}/150)", frozen=True)
+    name: str = Field(
+        default="linear_e_pas_apic",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    function: str = Field(
+        default="({value}-5*{distance}/150)",
+        frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
 
 
 class LinearHDPasDistanceDependentDistribution(DistanceDependentDistribution):
     """Linear h-current passive distance distribution used by mouse models."""
 
-    name: str = Field(default="linear_hdpas", frozen=True)
-    function: str = Field(default="(1. + 3./100. * {distance})*{value}", frozen=True)
+    name: str = Field(
+        default="linear_hdpas",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
+    function: str = Field(
+        default="(1. + 3./100. * {distance})*{value}",
+        frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
 
 
 class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
     """Sigmoid potassium A-current distance distribution used by mouse models."""
 
-    name: str = Field(default="sigmoid_kad", frozen=True)
+    name: str = Field(
+        default="sigmoid_kad",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
     function: str = Field(
         default="(15./(1. + math.exp((150-{distance})/10)))*{value}",
         frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
 
 class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Sigmoid potassium D-type apical distance distribution used by mouse models."""
 
-    name: str = Field(default="sigmoid_kdbm_apic", frozen=True)
+    name: str = Field(
+        default="sigmoid_kdbm_apic",
+        frozen=True,
+        title="Distribution name",
+        description="Optional name used by BluePyEModel parameter definitions.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+    )
     function: str = Field(
         default="(15./(1. + math.exp(({distance}-50)/50)))*{value}",
         frozen=True,
+        title="Distance function",
+        description="Expression using {value} and {distance}.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
 
@@ -265,15 +373,40 @@ class OptimizationInitialize(Block):
         title="E-type",
         description="Electrical type entity selected from the database.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            # ETypeClass is an Identifiable, not an Entity, so model_selector_single
+            # (which requires entity_query semantics) does not apply here (per Gil's
+            # review). etype_selector is a new, dedicated ui_element for this case.
+            SchemaKey.UI_ELEMENT: UIElement.ETYPE_SELECTOR,
             SchemaKey.ENTITY_QUERY: {
                 "type": "etype",
             },
         },
     )
+    target_efeatures: TaskResultFromID = Field(
+        title="Target EFeatures",
+        description=(
+            "TaskResult entity from the 01_efeature_extraction stage. Its extracted-features "
+            "asset is staged as the optimization target configuration."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.task_result},
+        },
+    )
+    morphology: CellMorphologyFromID = Field(
+        title="Cell morphology",
+        description=(
+            "CellMorphology entity whose SWC asset is staged into ``./morphologies/``. "
+            "The m-type, species, and brain region are derived from this entity."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
+            SchemaKey.ENTITY_QUERY: {"type": EntityType.cell_morphology},
+        },
+    )
 
 
-def default_distance_dependent_distributions() -> dict[str, CustomDistanceDependentDistribution]:
+def default_distance_dependent_distributions() -> dict[str, DistanceDependentDistributionUnion]:
     """Custom distance-dependent distributions declared by the user (empty by default).
 
     The ten legacy distributions from
@@ -388,6 +521,14 @@ class GlobalParameterSelection(Block):
     )
 
 
+# block_dictionary additionalProperties must expose a discriminated ``oneOf`` even when
+# there is currently only one concrete block type (see docs/gui-definition-spec), matching
+# the pattern used elsewhere in the codebase (e.g. build_synaptome.SynapticModelPlacerUnion).
+ParameterSelectionUnion = Annotated[ParameterSelection, Discriminator("type")]
+GlobalParameterSelectionUnion = Annotated[GlobalParameterSelection, Discriminator("type")]
+OptimizationValueUnion = Annotated[OptimizationValue, Discriminator("type")]
+
+
 ParameterGroupKind = Literal["global", "distribution", "region"]
 
 
@@ -440,7 +581,7 @@ class MechanismRegionSelection(Block):
             SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
         },
     )
-    parameters: dict[str, ParameterSelection] = Field(
+    parameters: dict[str, ParameterSelectionUnion] = Field(
         default_factory=dict,
         title="Mechanism parameters",
         description="All selected NMODL variables and their values for this region.",
@@ -641,7 +782,7 @@ class EModelOptimisationParameters(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE},
     )
-    global_parameters: dict[str, GlobalParameterSelection] = Field(
+    global_parameters: dict[str, GlobalParameterSelectionUnion] = Field(
         default_factory=_default_global_parameters,
         title="Global parameters",
         description="Editable global values such as v_init and celsius.",
@@ -652,7 +793,7 @@ class EModelOptimisationParameters(Block):
             SchemaKey.STEP_ORDER: 4,
         },
     )
-    base_parameters: dict[SectionListName, dict[str, ParameterSelection]] = Field(
+    base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(
         default_factory=_default_base_parameters,
         title="Base and passive parameters",
         description="Editable built-in parameters assigned to section lists.",
@@ -668,7 +809,7 @@ class EModelOptimisationParameters(Block):
             SchemaKey.STEP_ORDER: 4,
         },
     )
-    distribution_parameters: dict[str, dict[str, OptimizationValue]] = Field(
+    distribution_parameters: dict[str, dict[str, OptimizationValueUnion]] = Field(
         default_factory=dict,
         title="Distribution parameters",
         description="Values for placeholders declared by sibling distance-dependent distributions.",
@@ -759,7 +900,7 @@ class ParametersSelection(Block):
             SchemaKey.STEP_ORDER: 2,
         },
     )
-    global_parameters: dict[str, GlobalParameterSelection] = Field(
+    global_parameters: dict[str, GlobalParameterSelectionUnion] = Field(
         default_factory=_default_global_parameters,
         title="Global parameters",
         description=(
@@ -775,7 +916,7 @@ class ParametersSelection(Block):
             SchemaKey.STEP_ORDER: 4,
         },
     )
-    base_parameters: dict[SectionListName, dict[str, ParameterSelection]] = Field(
+    base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(
         default_factory=_default_base_parameters,
         title="Base and passive parameters",
         description=(
@@ -796,7 +937,7 @@ class ParametersSelection(Block):
             SchemaKey.STEP_ORDER: 4,
         },
     )
-    distribution_parameters: dict[str, dict[str, OptimizationValue]] = Field(
+    distribution_parameters: dict[str, dict[str, OptimizationValueUnion]] = Field(
         default_factory=dict,
         title="Distribution parameters",
         description=(
@@ -964,33 +1105,6 @@ class ParametersSelection(Block):
         _validate_global_parameter_references(self.ion_channel_models, self.global_parameters)
         _validate_base_parameter_locations(self.base_parameters)
         return self
-
-
-class OptimizationInputs(Block):
-    """Entity inputs for the Task 2 Inputs group."""
-
-    target_efeatures: TaskResultFromID = Field(
-        title="Target EFeatures",
-        description=(
-            "TaskResult entity from the 01_efeature_extraction stage. Its extracted-features "
-            "asset is staged as the optimization target configuration."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-            SchemaKey.ENTITY_QUERY: {"type": EntityType.task_result},
-        },
-    )
-    morphology: CellMorphologyFromID = Field(
-        title="Cell morphology",
-        description=(
-            "CellMorphology entity whose SWC asset is staged into ``./morphologies/``. "
-            "The m-type, species, and brain region are derived from this entity."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-            SchemaKey.ENTITY_QUERY: {"type": EntityType.cell_morphology},
-        },
-    )
 
 
 Probability = Annotated[float, Field(ge=0.0, le=1.0)]

@@ -673,6 +673,22 @@ def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
     """To do"""
 
 
+def validate_etype_selector(schema: dict, param: str, ref: str) -> None:
+    """Validate an ETypeClass (Identifiable, not Entity) single-selector field."""
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+
+    obj = {"id_str": "etype_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: 'etype_selector' param {param} failed to validate "
+            f"an etype identifier object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
     if schema.get("type") == "boolean":
         return
@@ -897,6 +913,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
+        case UIElement.ETYPE_SELECTOR:
+            validate_etype_selector(schema, param, ref)
         case UIElement.MORPHOLOGY_LOCATION_SELECTION:
             validate_morphology_location_selection(schema, param, ref)
         case UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION:

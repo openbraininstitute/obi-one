@@ -59,7 +59,7 @@ def stage_morphology(
     """Download morphology SWC and return the filename."""
     morph_dir = coord_root / "morphologies"
     morph_dir.mkdir(parents=True, exist_ok=True)
-    morph_entity = config.inputs.morphology
+    morph_entity = config.initialize.morphology
     swc_content = morph_entity.swc_file_content(db_client=db_client)
     # Use entity ID as filename base
     morph_id = morph_entity.id_str
@@ -144,7 +144,7 @@ def derive_mtype(
     Uses the first m-type if multiple are available. Returns None when
     the morphology has no m-types, which is acceptable for optimisation.
     """
-    morph_entity = config.inputs.morphology
+    morph_entity = config.initialize.morphology
     entity = morph_entity.entity(db_client=db_client)
     if hasattr(entity, "mtypes") and entity.mtypes:
         return str(entity.mtypes[0].pref_label)  # ty:ignore[not-subscriptable]

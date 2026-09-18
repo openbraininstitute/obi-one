@@ -150,8 +150,8 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     # --- Gather metadata ---
     # Species and brain region come from the morphology entity, so the
     # registered emodel/me-model inherit the morphology's provenance.
-    morph_entity = cast("CellMorphology", config.inputs.morphology.entity(db_client=db_client))
-    species_entity, brain_region_entity = config.inputs.morphology.metadata_entities(
+    morph_entity = cast("CellMorphology", config.initialize.morphology.entity(db_client=db_client))
+    species_entity, brain_region_entity = config.initialize.morphology.metadata_entities(
         db_client=db_client
     )
 

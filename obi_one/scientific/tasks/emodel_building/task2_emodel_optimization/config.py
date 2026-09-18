@@ -17,11 +17,10 @@ from obi_one.scientific.library.info_scan_config.config import (
     InfoScanConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
-    CustomDistanceDependentDistribution,
+    DistanceDependentDistributionUnion,
     EModelOptimisationParameters,
     MorphologySettings,
     OptimizationInitialize,
-    OptimizationInputs,
     OptimizationParams,
     OptimizationSettings,
     ParametersSelection,
@@ -85,7 +84,7 @@ def _validate_section_list_availability(
 
 def _validate_distribution_declarations(
     selection: ParametersSelection,
-    custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
+    custom_distributions: Mapping[str, DistanceDependentDistributionUnion],
 ) -> None:
     bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
     for distribution_name, configured_parameters in selection.distribution_parameters.items():
@@ -109,7 +108,7 @@ def _validate_distribution_declarations(
 
 def _validate_used_distributions(
     selection: ParametersSelection,
-    custom_distributions: Mapping[str, CustomDistanceDependentDistribution],
+    custom_distributions: Mapping[str, DistanceDependentDistributionUnion],
 ) -> None:
     bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
     used_distributions = _used_distribution_names(selection)
@@ -203,8 +202,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
-            self.inputs.target_efeatures.entity(db_client=db_client),
-            self.inputs.morphology.entity(db_client=db_client),
+            self.initialize.target_efeatures.entity(db_client=db_client),
+            self.initialize.morphology.entity(db_client=db_client),
         ]
         entities.extend(
             reference.entity(db_client=db_client)
@@ -268,17 +267,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     # --- Inputs ---
 
-    inputs: OptimizationInputs = Field(
-        default_factory=OptimizationInputs,
-        title="Inputs",
-        description="Extraction result and morphology entity.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.INPUTS,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
     emodel_optimisation_parameters: EModelOptimisationParameters = Field(
         default_factory=EModelOptimisationParameters,
         title="Mechanisms",
@@ -294,7 +282,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         },
     )
 
-    distance_dependent_distributions: dict[str, CustomDistanceDependentDistribution] = Field(
+    distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion] = Field(
         default_factory=default_distance_dependent_distributions,
         title="Custom distance-dependent distributions",
         description=(

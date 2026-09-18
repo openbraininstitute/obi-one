@@ -222,7 +222,7 @@ class EModelOptimizationTask(Task):
         mtype = staging.derive_mtype(self.config, db_client)
 
         # --- 1. Download extracted features ---
-        extraction_tr = self.config.inputs.target_efeatures
+        extraction_tr = self.config.initialize.target_efeatures
         staging.download_extraction_features(self.config, extraction_tr, coord_root, db_client)
 
         # --- 2. Download and preflight morphology ---

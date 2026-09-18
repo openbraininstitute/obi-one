@@ -17,8 +17,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config i
 def _optimization_config(**overrides):
     config_data = {
         "info": {"campaign_name": "test", "campaign_description": "test"},
-        "initialize": {"emodel": "test", "etype": {"id_str": "etype"}},
-        "inputs": {
+        "initialize": {
+            "emodel": "test",
+            "etype": {"id_str": "etype"},
             "target_efeatures": {"id_str": "target"},
             "morphology": {"id_str": "morphology"},
         },

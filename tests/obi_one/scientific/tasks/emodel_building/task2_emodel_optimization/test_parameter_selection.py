@@ -67,8 +67,9 @@ from obi_one.utils.io import write_json
 def _scan_config_data(**overrides):
     config_data = {
         "info": {"campaign_name": "test", "campaign_description": "test"},
-        "initialize": {"emodel": "test", "etype": {"id_str": "etype"}},
-        "inputs": {
+        "initialize": {
+            "emodel": "test",
+            "etype": {"id_str": "etype"},
             "target_efeatures": {"id_str": "target"},
             "morphology": {"id_str": "morphology"},
         },
@@ -271,16 +272,14 @@ def test_mechanisms_wizard_steps_are_mapped_in_figma_order():
 def test_schema_groups_match_figma_navigation():
     schema = EModelOptimizationScanConfig.model_json_schema()
     properties = schema["properties"]
-    inputs_schema = schema["$defs"]["OptimizationInputs"]["properties"]
+    initialize_schema = schema["$defs"]["OptimizationInitialize"]["properties"]
 
     assert properties["info"]["group"] == "Setup"
     assert properties["initialize"]["group"] == "Setup"
-    assert properties["inputs"]["group"] == "Inputs"
-    assert properties["inputs"]["title"] == "Inputs"
-    assert inputs_schema["target_efeatures"]["title"] == "Target EFeatures"
-    assert inputs_schema["target_efeatures"]["entity_query"] == {"type": "task_result"}
-    assert inputs_schema["morphology"]["title"] == "Cell morphology"
-    assert inputs_schema["morphology"]["entity_query"] == {"type": "cell_morphology"}
+    assert initialize_schema["target_efeatures"]["title"] == "Target EFeatures"
+    assert initialize_schema["target_efeatures"]["entity_query"] == {"type": "task_result"}
+    assert initialize_schema["morphology"]["title"] == "Cell morphology"
+    assert initialize_schema["morphology"]["entity_query"] == {"type": "cell_morphology"}
     assert properties["emodel_optimisation_parameters"]["group"] == "Inputs"
     assert properties["emodel_optimisation_parameters"]["title"] == "Mechanisms"
     assert properties["emodel_optimisation_parameters"]["ui_element"] == (
@@ -503,8 +502,7 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
             return "1  soma  0 0 0 1 -1\\n"
 
     config = SimpleNamespace(
-        initialize=SimpleNamespace(emodel="test"),
-        inputs=SimpleNamespace(morphology=FakeMorphology()),
+        initialize=SimpleNamespace(emodel="test", morphology=FakeMorphology()),
     )
 
     features_path = staging.download_extraction_features(
@@ -818,6 +816,7 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
                         "ion_channel_model": {"id_str": "icm-1"},
                         "parameters": {
                             "gNa": {
+                                "type": "ParameterSelection",
                                 "value": {"mode": "bounds", "bounds": [0.0, 1.0]},
                                 "distribution": "decay",
                             }
@@ -827,22 +826,36 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
             },
         },
         "global_parameters": {
-            "v_init": {"value": {"mode": "fixed", "value": -80.0}},
+            "v_init": {
+                "type": "GlobalParameterSelection",
+                "value": {"mode": "fixed", "value": -80.0},
+            },
             "ena": {
+                "type": "GlobalParameterSelection",
                 "value": {"mode": "fixed", "value": 50.0},
                 "ion_channel_model": {"id_str": "icm-1"},
             },
         },
         "base_parameters": {
             "all": {
-                "Ra": {"value": {"mode": "fixed", "value": 100.0}},
-                "g_pas": {"value": {"mode": "bounds", "bounds": [1e-5, 6e-5]}},
-                "e_pas": {"value": {"mode": "bounds", "bounds": [-95.0, -60.0]}},
+                "Ra": {"type": "ParameterSelection", "value": {"mode": "fixed", "value": 100.0}},
+                "g_pas": {
+                    "type": "ParameterSelection",
+                    "value": {"mode": "bounds", "bounds": [1e-5, 6e-5]},
+                },
+                "e_pas": {
+                    "type": "ParameterSelection",
+                    "value": {"mode": "bounds", "bounds": [-95.0, -60.0]},
+                },
             }
         },
         "distribution_parameters": {
             "decay": {
-                "constant": {"mode": "bounds", "bounds": [-0.1, 0.0]},
+                "constant": {
+                    "type": "OptimizationValue",
+                    "mode": "bounds",
+                    "bounds": [-0.1, 0.0],
+                },
             }
         },
     }
@@ -851,6 +864,7 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
     data["emodel_optimisation_parameters"] = root_payload
     data["distance_dependent_distributions"] = {
         "decay": {
+            "type": "CustomDistanceDependentDistribution",
             "name": "decay",
             "function": "math.exp({distance}*{constant})*{value}",
             "parameters": ["constant"],
@@ -1557,7 +1571,7 @@ def test_stage_traces_returns_only_derivation_trace_ids():
 def test_derive_mtype_uses_first_label_and_handles_empty_mtypes():
     morphology_entity = SimpleNamespace(mtypes=[SimpleNamespace(pref_label="L5_TTPC")])
     morphology = SimpleNamespace(entity=lambda **_: morphology_entity)
-    config = SimpleNamespace(inputs=SimpleNamespace(morphology=morphology))
+    config = SimpleNamespace(initialize=SimpleNamespace(morphology=morphology))
 
     assert staging.derive_mtype(config, object()) == "L5_TTPC"
 
@@ -1611,8 +1625,9 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(pref_label="cADpyr")))
     config = SimpleNamespace(
         coordinate_output_root=tmp_path,
-        initialize=SimpleNamespace(emodel="test", etype=etype),
-        inputs=SimpleNamespace(target_efeatures=object(), morphology=morphology),
+        initialize=SimpleNamespace(
+            emodel="test", etype=etype, target_efeatures=object(), morphology=morphology
+        ),
         morphology_settings=SimpleNamespace(axon_modifier="none"),
         parameters_selection=SimpleNamespace(ion_channel_model_references=()),
         optimization_settings=SimpleNamespace(seed=7),
