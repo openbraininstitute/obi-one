@@ -96,6 +96,8 @@ There are two major types of such UI elements:
 
         - [axon_modifier](components/axon_modifier/axon_modifier.md) (one-off)
 
+        - [object](components/object/object.md)
+
         - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 
         - [boolean_input](components/boolean_input/boolean_input.md)

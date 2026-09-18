@@ -1121,24 +1121,62 @@ Probability = Annotated[float, Field(ge=0.0, le=1.0)]
 ProbabilityValue = Probability | list[Probability]
 
 
-class EfelSettings(BaseModel):
+class EfelSettings(Block):
     """Validated common eFEL settings forwarded through the pipeline recipe."""
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
-    strict_stiminterval: bool = True
-    interp_step: PositiveFloat = 0.025
+    strict_stiminterval: bool = Field(
+        default=True,
+        title="Strict stim interval",
+        description="Enforce strict stimulus-interval checks in eFEL feature extraction.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    interp_step: PositiveFloat = Field(
+        default=0.025,
+        title="Interpolation step",
+        description="Interpolation step (ms) used by eFEL when resampling traces.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
+    )
+
+    def to_recipe_dict(self) -> dict[str, Any]:
+        """Serialize as the eFEL settings object expected by BluePyEModel.
+
+        The model is closed (``extra="forbid"``): only the declared fields are serialized, so
+        every key has a schema and can be validated.
+        """
+        return self.model_dump(mode="json")
 
 
-class PhasePlotSettings(BaseModel):
+class PhasePlotSettings(Block):
     """Settings for BluePyEModel phase-plot analysis."""
 
     model_config = ConfigDict(extra="forbid")
 
-    prot_names: tuple[str, ...] = ("idrest",)
-    amplitude: float = 150.0
-    amp_window: PositiveFloat = 1.5
-    relative_amp: bool = True
+    prot_names: tuple[str, ...] = Field(
+        default=("idrest",),
+        title="Protocol names",
+        description="Protocol names used for phase-plot analysis.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_INPUT},
+    )
+    amplitude: float = Field(
+        default=150.0,
+        title="Amplitude",
+        description="Stimulus amplitude used for phase-plot analysis.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
+    )
+    amp_window: PositiveFloat = Field(
+        default=1.5,
+        title="Amplitude window",
+        description="Time window (ms) around the amplitude used for phase-plot analysis.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
+    )
+    relative_amp: bool = Field(
+        default=True,
+        title="Relative amplitude",
+        description="Interpret the amplitude as relative to threshold rather than absolute.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
 
     def to_recipe_dict(self) -> dict[str, Any]:
         """Serialize tuple-based form metadata as the recipe list expected by BluePyEModel."""
@@ -1150,13 +1188,27 @@ class PhasePlotSettings(BaseModel):
         }
 
 
-class SineSpecSettings(BaseModel):
+class SineSpecSettings(Block):
     """Settings for optional BluePyEModel SineSpec analysis."""
 
     model_config = ConfigDict(extra="forbid")
 
-    amp: PositiveFloat = 0.05
-    threshold_based: bool = False
+    amp: PositiveFloat = Field(
+        default=0.05,
+        title="Amplitude",
+        description="Stimulus amplitude used for optional SineSpec analysis.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
+    )
+    threshold_based: bool = Field(
+        default=False,
+        title="Threshold based",
+        description="Interpret the amplitude as threshold-based rather than absolute.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+
+    def to_recipe_dict(self) -> dict[str, Any]:
+        """Serialize as the SineSpec settings object expected by BluePyEModel."""
+        return self.model_dump(mode="json")
 
 
 class OptimizationParams(Block):
@@ -1428,8 +1480,8 @@ class OptimizationSettings(Block):
     efel_settings: EfelSettings = Field(
         default_factory=EfelSettings,
         title="eFEL settings",
-        description="Validated common eFEL settings forwarded to optimization evaluations.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE},
+        description="Common eFEL settings forwarded to optimization evaluations.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     validation_protocols: tuple[str, ...] = Field(
         default_factory=tuple,
@@ -1558,13 +1610,13 @@ class OptimizationSettings(Block):
         default_factory=PhasePlotSettings,
         title="Phase plot settings",
         description="Protocol and amplitude settings for phase-plot analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     sinespec_settings: SineSpecSettings = Field(
         default_factory=SineSpecSettings,
         title="SineSpec settings",
         description="Amplitude settings for optional SineSpec analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     custom_bluepyefe_cells_pklpath: str | None = Field(
         default=None,
@@ -1596,7 +1648,7 @@ class OptimizationSettings(Block):
             "validation_function": self.validation_function,
             "validation_threshold": self.validation_threshold,
             "default_std_value": self.default_std_value,
-            "efel_settings": self.efel_settings.model_dump(mode="json"),
+            "efel_settings": self.efel_settings.to_recipe_dict(),
             "validation_protocols": list(self.validation_protocols),
             "optimisation_checkpoint_period": self.optimisation_checkpoint_period,
             "use_stagnation_criterion": self.use_stagnation_criterion,
@@ -1634,7 +1686,7 @@ class OptimizationSettings(Block):
             "FI_curve_prot_name": self.FI_curve_prot_name,
             "plot_phase_plot": self.plot_phase_plot,
             "phase_plot_settings": self.phase_plot_settings.to_recipe_dict(),
-            "sinespec_settings": self.sinespec_settings.model_dump(mode="json"),
+            "sinespec_settings": self.sinespec_settings.to_recipe_dict(),
             "save_recordings": self.save_recordings,
         }
         if self.name_rin_protocol is not None:

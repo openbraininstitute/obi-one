@@ -623,6 +623,64 @@ def validate_axon_modifier(schema: dict, param: str, ref: str) -> None:
     validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
 
 
+# Nested block-element ui_elements allowed inside an `object`. Restricted to the types used by
+# the eFEL / phase-plot / SineSpec settings objects.
+OBJECT_PROPERTY_UI_ELEMENTS = frozenset(
+    {
+        UIElement.BOOLEAN_INPUT,
+        UIElement.FLOAT_INPUT,
+        UIElement.STRING_INPUT,
+        UIElement.STRING_LIST_INPUT,
+    }
+)
+
+
+def validate_object(schema: dict, param: str, ref: str) -> None:
+    # An `object` is a fixed-shape mapping that becomes a plain dict in Python. Its type is a
+    # referenced model, so Pydantic emits it as a `$ref`; resolve it to read the properties.
+    if schema.get("$ref"):
+        schema = {**resolve_ref(openapi_schema, schema["$ref"]), **schema}
+        schema.pop("$ref", None)
+
+    if schema.get("type") != "object":
+        msg = f"Validation error at {ref}: object param {param} should be of type 'object'"
+        raise ValidationError(msg) from None
+
+    # Additional properties must be forbidden: undeclared keys have no schema to validate against.
+    if schema.get("additionalProperties") is not False:
+        msg = (
+            f"Validation error at {ref}: object param {param} must set "
+            "'additionalProperties' to false so every key is schema-validated"
+        )
+        raise ValidationError(msg) from None
+
+    properties = schema.get("properties", {})
+    if not properties:
+        msg = (
+            f"Validation error at {ref}: object param {param} should declare at least one property"
+        )
+        raise ValidationError(msg) from None
+
+    for prop, prop_schema in properties.items():
+        if prop == "type":
+            validate_type(prop_schema, ref)
+            continue
+
+        validate_string(prop_schema, "title", f"{prop} at {ref}")
+        validate_string(prop_schema, "description", f"{prop} at {ref}")
+
+        prop_ui_element = prop_schema.get(SchemaKey.UI_ELEMENT)
+        if prop_ui_element not in OBJECT_PROPERTY_UI_ELEMENTS:
+            msg = (
+                f"Validation error at {ref}: object param {param} property {prop} has an "
+                f"unsupported 'ui_element' {prop_ui_element}. Allowed: "
+                f"{sorted(OBJECT_PROPERTY_UI_ELEMENTS)}"
+            )
+            raise ValidationError(msg) from None
+
+        validate_block_elements(prop, prop_schema, ref)
+
+
 def validate_string_constant(schema: dict, param: str, ref: str) -> None:
     # Make sure type
     if schema.get("type") != "string":
@@ -883,24 +941,6 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
-def validate_nested_block_element(schema: dict, param: str, ref: str) -> None:
-    """Validate the structural shape of a block nested inside another block."""
-    if schema.get("$ref"):
-        schema = resolve_ref(openapi_schema, schema["$ref"])
-
-    is_block_schema = any(
-        isinstance(schema.get(key), expected_type)
-        for key, expected_type in (
-            ("properties", dict),
-            ("additionalProperties", dict),
-            ("oneOf", list),
-        )
-    )
-    if not is_block_schema:
-        msg = f"Validation error at {ref}, param {param}: nested block has no object schema"
-        raise TypeError(msg)
-
-
 def validate_block_union(schema: dict, param: str, ref: str) -> None:
     if schema.get("oneOf") is None:
         msg = f"Validation error at {ref}: block_union param {param} must have 'oneOf'"
@@ -921,8 +961,6 @@ def validate_block_union(schema: dict, param: str, ref: str) -> None:
 
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, too-many-statements, complex-structure]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
-        case UIElement.BLOCK_SINGLE | UIElement.BLOCK_DICTIONARY:
-            validate_nested_block_element(schema, param, ref)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
@@ -953,6 +991,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_string_selection_enhanced(schema, param, ref)
         case UIElement.AXON_MODIFIER:
             validate_axon_modifier(schema, param, ref)
+        case UIElement.OBJECT:
+            validate_object(schema, param, ref)
         case UIElement.STRING_CONSTANT:
             validate_string_constant(schema, param, ref)
         case UIElement.STRING_CONSTANT_ENHANCED:
