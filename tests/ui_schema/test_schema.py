@@ -181,31 +181,14 @@ def validate_scan_config_dependendent_block_components(block_schema, ref, form):
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
-    additional_properties = schema.get("additionalProperties", {})
-    if not isinstance(additional_properties, dict):
+    if schema.get("additionalProperties", {}).get("oneOf") is None:
         msg = (
-            f"Validation error at {config_ref}: block_dictionary {key} must have an object "
-            "schema in additionalProperties"
+            f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
+            "in additionalProperties"
         )
-        raise TypeError(msg)
+        raise ValueError(msg)
 
-    block_schemas = additional_properties.get("oneOf")
-    direct_schema = False
-    if block_schemas is None:
-        block_ref = additional_properties.get("$ref")
-        if block_ref is not None:
-            block_schemas = [{"$ref": block_ref}]
-        elif isinstance(additional_properties.get("properties"), dict):
-            block_schemas = [additional_properties]
-            direct_schema = True
-        else:
-            msg = (
-                f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf', "
-                "'$ref', or an inline object schema in additionalProperties"
-            )
-            raise ValueError(msg)
-
-    for block_schema in block_schemas:
+    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
         ref = block_schema.get("$ref")
 
         if ref:
@@ -213,14 +196,7 @@ def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dic
 
         validate_scan_config_dependendent_block_components(block_schema, ref, form)
 
-        if direct_schema and not isinstance(block_schema.get("properties"), dict):
-            msg = (
-                f"Validation error at {config_ref}: block_dictionary {key} must reference an "
-                "object schema"
-            )
-            raise TypeError(msg)
-        if not direct_schema:
-            validate_block(block_schema, ref)
+        validate_block(block_schema, ref)
 
 
 def validate_block_union(schema: dict, key: str, config_ref: str, form: dict) -> None:
