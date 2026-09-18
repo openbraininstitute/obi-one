@@ -210,6 +210,20 @@ class EModelOptimizationTask(Task):
                 )
                 store_best_model(access_point=access_point, seed=seed)
 
+            # Convert pkl checkpoints to HDF5 for storage and registration.
+            # BluePyOpt always writes .pkl; we convert after each seed so that
+            # the .h5 files are present even if a later seed fails.
+            from bluepyemodel.tools.checkpoint_hdf5 import (  # ruff: ignore[import-outside-top-level]
+                convert_checkpoint,
+            )
+
+            checkpoint_dir = coord_root / "checkpoints"
+            for pkl_path in sorted(checkpoint_dir.rglob("*.pkl")):
+                h5_path = pkl_path.with_suffix(".h5")
+                if not h5_path.exists():
+                    L.info("Converting checkpoint %s → %s", pkl_path.name, h5_path.name)
+                    convert_checkpoint(str(pkl_path), str(h5_path))
+
             emodel_building_utils.run_plot_models(
                 access_point=access_point,
                 mapper=mapper,

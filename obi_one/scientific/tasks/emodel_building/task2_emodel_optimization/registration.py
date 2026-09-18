@@ -4,14 +4,31 @@ Registers the TaskResult, draft EModel, and draft MEModel after BluePyEModel
 has written checkpoints, figures, and ``final.json`` into the working directory.
 """
 
-import inspect
 import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import cast
 
 import entitysdk
+from entitysdk import MultipartDirectoryUploadTransferConfig
+from entitysdk.models import (
+    CellMorphology,
+    ETypeClass,
+    IonChannelModel,
+    License,
+    TaskActivity,
+    TaskResult,
+)
+from entitysdk.registration.emodel import register_emodel
+from entitysdk.registration.memodel import register_memodel
+from entitysdk.types import (
+    AssetLabel,
+    ContentType,
+    EntityLifecycleStatus,
+    TaskResultType,
+    ValidationStatus,
+)
 
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
@@ -27,25 +44,6 @@ class RegisteredOptimizationOutputs:
     task_result_id: str
     emodel_id: str
     memodel_id: str
-
-
-def validation_status_keyword(register_emodel: Any) -> str:
-    """Select the validation-status keyword supported by an EntitySDK helper."""
-    try:
-        parameters = inspect.signature(register_emodel).parameters
-    except (TypeError, ValueError):
-        return "validation_result_status"
-    if "validation_result_status" in parameters:
-        return "validation_result_status"
-    if "validateion_result_status" in parameters:
-        return "validateion_result_status"
-    if any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()):
-        return "validation_result_status"
-    msg = (
-        "EntitySDK register_emodel does not expose validation_result_status or "
-        "validateion_result_status."
-    )
-    raise TypeError(msg)
 
 
 def parse_final_json(final_path: Path, emodel_name: str) -> dict:
@@ -100,51 +98,34 @@ def parse_final_json(final_path: Path, emodel_name: str) -> dict:
 
 def upload_optimization_assets(
     coord_root: Path,
-    db_client: entitysdk.Client,
+    _db_client: entitysdk.Client,
     task_result_id: str,
 ) -> None:
-    """Upload recipes, params, and the SONATA export to the TaskResult."""
-    from entitysdk.models import TaskResult  # ruff: ignore[import-outside-top-level]
-    from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
-        AssetLabel,
-        ContentType,
-    )
+    """Upload recipes, params, and the SONATA export to the TaskResult.
 
-    # Recipes.json — needed by task3 to reconstruct pipeline settings
+    Currently a no-op: entitycore's ``ALLOWED_ASSET_LABELS_PER_TASK_RESULT`` for
+    ``TaskResultType.emodel_optimization__result`` only allows
+    ``emodel_optimisation_checkpoint``, ``emodel_analysis_figures``, and
+    ``emodel_analysis_summary`` (see entitycore ``app/db/types.py``). The labels this
+    function used to pass — ``AssetLabel.task_result``, ``AssetLabel.neuron_mechanisms``,
+    and ``AssetLabel.emodel_optimization_output`` — are not in that allow-list (the last
+    one is reserved for the ``EModel`` entity, where ``register_emodel`` already uploads
+    ``final.json`` under it) and every upload here raised a 422 ``ASSET_INVALID_SCHEMA``
+    error. Re-enable once entitycore adds asset labels for recipes/params/SONATA on
+    ``TaskResult``.
+    """
     recipes_path = coord_root / "config" / "recipes.json"
-    if recipes_path.exists():
-        db_client.upload_file(
-            entity_id=task_result_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskResult,
-            file_path=recipes_path,
-            file_content_type=ContentType.application_json,
-            asset_label=AssetLabel.task_result,
-        )
-        L.info("Uploaded recipes.json to TaskResult.")
-
-    # Params file — needed by task3 for mechanism parameters
     params_path = coord_root / "config" / "params" / "params.json"
-    if params_path.exists():
-        db_client.upload_file(
-            entity_id=task_result_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskResult,
-            file_path=params_path,
-            file_content_type=ContentType.application_json,
-            asset_label=AssetLabel.neuron_mechanisms,
-        )
-        L.info("Uploaded params.json to TaskResult.")
-
-    # SONATA directory — needed by task3 for final export
     sonata_dir = coord_root / "export_emodels_sonata"
-    if sonata_dir.exists() and any(sonata_dir.rglob("*")):
-        db_client.upload_directory(
-            entity_id=task_result_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskResult,
-            paths={p.relative_to(sonata_dir): p for p in sonata_dir.rglob("*") if p.is_file()},
-            name=AssetLabel.emodel_optimization_output,
-            label=AssetLabel.emodel_optimization_output,
+    if recipes_path.exists() or params_path.exists() or (
+        sonata_dir.exists() and any(sonata_dir.rglob("*"))
+    ):
+        L.warning(
+            "Skipping upload of recipes.json/params.json/SONATA export to TaskResult(id=%s): "
+            "entitycore has no allowed asset label for these on task_result_type "
+            "'emodel_optimization__result'.",
+            task_result_id,
         )
-        L.info("Uploaded SONATA to TaskResult.")
 
 
 def register_output_entities(  # ruff: ignore[too-many-locals]
@@ -158,36 +139,8 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     """Register TaskResult, draft EModel, draft MEModel using entitysdk helpers.
 
     Uses the shared ``entitysdk.registration`` helper package so this local path and
-    the remote launch-system worker register output entities identically. Raises
-    ``RuntimeError`` if the installed EntitySDK release does not provide that package.
+    the remote launch-system worker register output entities identically.
     """
-    from entitysdk.models import (  # ruff: ignore[import-outside-top-level]
-        License,
-        TaskActivity,
-    )
-
-    try:
-        from entitysdk.registration.emodel import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
-            register_emodel,
-        )
-        from entitysdk.registration.memodel import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
-            register_memodel,
-        )
-        from entitysdk.registration.task_result.emodel_optimization import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
-            register_emodel_optimization_result,
-        )
-    except ModuleNotFoundError as exc:
-        msg = (
-            "Task 2 output registration requires an EntitySDK release that provides "
-            "entitysdk.registration.emodel, entitysdk.registration.memodel, and "
-            "entitysdk.registration.task_result.emodel_optimization."
-        )
-        raise RuntimeError(msg) from exc
-    from entitysdk.types import (  # ruff: ignore[import-outside-top-level]
-        EntityLifecycleStatus,
-        ValidationStatus,
-    )
-
     init = config.initialize
     emodel_name = init.emodel
     seed = int(config.optimization_settings.seed)  # ty:ignore[invalid-argument-type]
@@ -195,7 +148,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     # --- Gather metadata ---
     # Species and brain region come from the morphology entity, so the
     # registered emodel/me-model inherit the morphology's provenance.
-    morph_entity = config.inputs.morphology.entity(db_client=db_client)
+    morph_entity = cast("CellMorphology", config.inputs.morphology.entity(db_client=db_client))
     species_entity, brain_region_entity = config.inputs.morphology.metadata_entities(
         db_client=db_client
     )
@@ -203,11 +156,11 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     # Fetch license (CC-BY-4.0)
     license_entity = db_client.search_entity(
         entity_type=License,
-        query={"name": "CC-BY-4.0"},
+        query={"label": "CC BY 4.0"},
     ).one()
 
     # ETypeClass entity from user selection
-    etype_class = init.etype.entity(db_client=db_client)
+    etype_class = cast("ETypeClass", init.etype.entity(db_client=db_client))
 
     # Determine authorized_public from execution activity if available
     authorized_public = False
@@ -223,13 +176,12 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     em_metrics = parse_final_json(final_path, emodel_name)
 
     # --- Collect file paths for helpers ---
-    # Checkpoints: BluePyEModel writes .pkl files by default (not HDF5).
-    # The entitysdk helper parameter is named hdf5_checkpoint_file but accepts
-    # any checkpoint format.
+    # Checkpoints: BluePyOpt writes .pkl files; task.py converts them to .h5
+    # via bluepyemodel.tools.checkpoint_hdf5.convert_checkpoint before registration.
     checkpoint_dir = coord_root / "checkpoints"
     checkpoint_file = None
     if checkpoint_dir.exists():
-        for ckpt in checkpoint_dir.rglob("*.pkl"):
+        for ckpt in checkpoint_dir.rglob("*.h5"):
             checkpoint_file = ckpt
             break
 
@@ -250,16 +202,49 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
             if fp.is_file() and fp.suffix in {".pdf", ".png"}
         ]
 
-    # --- Register TaskResult via helper ---
-    task_result = register_emodel_optimization_result(
-        client=db_client,
-        name=f"EModel Optimization Result — {emodel_name}",
-        description=f"Optimisation + analysis + export for emodel '{emodel_name}'.",
-        authorized_public=authorized_public,
-        hdf5_checkpoint_file=checkpoint_file,
-        analysis_figures_dir=figures_dir,
-        summary_file=emodel_summary_file,
+    # --- Register TaskResult ---
+    # entitysdk's register_emodel_optimization_result uses iterdir() on
+    # analysis_figures_dir, which only finds top-level files. BluePyEModel writes
+    # figures into nested subdirectories (e.g. figures/L5PC/scores/all/), so we
+    # inline the registration here and collect figure files recursively with rglob.
+    task_result = db_client.register_entity(
+        TaskResult(
+            name=f"EModel Optimization Result — {emodel_name}",
+            description=f"Optimisation + analysis + export for emodel '{emodel_name}'.",
+            authorized_public=authorized_public,
+            task_result_type=TaskResultType.emodel_optimization__result,
+        )
     )
+    if checkpoint_file is not None:
+        db_client.upload_file(
+            entity_id=task_result.id,
+            entity_type=TaskResult,
+            file_path=checkpoint_file,
+            file_content_type=ContentType.application_x_hdf5,
+            asset_label=AssetLabel.emodel_optimisation_checkpoint,
+        )
+    figure_files = {
+        p.relative_to(figures_dir): p
+        for p in sorted(figures_dir.rglob("*"))
+        if p.is_file()
+    }
+    if figure_files:
+        db_client.upload_directory(
+            entity_id=task_result.id,
+            entity_type=TaskResult,
+            paths=figure_files,
+            name="analysis_figures",
+            label=AssetLabel.emodel_analysis_figures,
+            transfer_config=MultipartDirectoryUploadTransferConfig(),
+        )
+    if emodel_summary_file is not None:
+        db_client.upload_file(
+            entity_id=task_result.id,
+            entity_type=TaskResult,
+            file_path=emodel_summary_file,
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.emodel_analysis_summary,
+        )
     L.info("TaskResult registered: %s", task_result.id)
 
     # --- Upload additional assets needed by task3 (export + validation) ---
@@ -267,11 +252,14 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
 
     # --- Collect ion channel model entities ---
     references = config.parameters_selection.ion_channel_model_references
-    ion_channel_models = [reference.entity(db_client=db_client) for reference in references]
+    ion_channel_models = [
+        cast("IonChannelModel", reference.entity(db_client=db_client)) for reference in references
+    ]
 
     # --- Register draft EModel via helper ---
-    hoc_file = None
-    status_keyword = validation_status_keyword(register_emodel)
+    # Standalone HOC export is not produced; SONATA may still contain a HOC asset.
+    sonata_dir = coord_root / "export_emodels_sonata"
+    hoc_file = next(sonata_dir.rglob("*.hoc"), None) if sonata_dir.exists() else None
     emodel_entity = register_emodel(
         client=db_client,
         name=f"{emodel_name} (draft)",
@@ -287,11 +275,11 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         ion_channel_models=ion_channel_models,
         lifecycle_status=EntityLifecycleStatus.draft,
         etype_class=etype_class,
-        hoc_file=hoc_file,
-        emodel_summary_file=emodel_summary_file,
+        hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
+        emodel_summary_file=emodel_summary_file,  # ty:ignore[invalid-argument-type]
         electrical_cell_recording_ids=trace_ids or [],
         validation_result_figure_files=validation_figures,
-        **{status_keyword: False},
+        validation_result_status=False,
     )
     L.info("Draft EModel registered: %s", emodel_entity.id)
 

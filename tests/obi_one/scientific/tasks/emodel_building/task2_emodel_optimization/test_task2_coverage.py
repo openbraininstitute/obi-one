@@ -1,6 +1,5 @@
 import json
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import morphio
@@ -424,15 +423,7 @@ def test_preflight_rejects_missing_asset(tmp_path):
         morphology_preflight.preflight_morphology(tmp_path / "missing.swc", "none")
 
 
-def _install_registration_modules(monkeypatch, calls):
-    registration = ModuleType("entitysdk.registration")
-    registration.__path__ = []
-    task_result_package = ModuleType("entitysdk.registration.task_result")
-    task_result_package.__path__ = []
-    emodel_module = ModuleType("entitysdk.registration.emodel")
-    memodel_module = ModuleType("entitysdk.registration.memodel")
-    result_module = ModuleType("entitysdk.registration.task_result.emodel_optimization")
-
+def _install_registration_helpers(monkeypatch, calls):
     def register_emodel(**kwargs):
         calls["emodel"] = kwargs
         return SimpleNamespace(id="emodel-id")
@@ -445,17 +436,9 @@ def _install_registration_modules(monkeypatch, calls):
         calls["result"] = kwargs
         return SimpleNamespace(id="task-result-id")
 
-    emodel_module.register_emodel = register_emodel
-    memodel_module.register_memodel = register_memodel
-    result_module.register_emodel_optimization_result = register_result
-    for name, module in (
-        ("entitysdk.registration", registration),
-        ("entitysdk.registration.task_result", task_result_package),
-        ("entitysdk.registration.emodel", emodel_module),
-        ("entitysdk.registration.memodel", memodel_module),
-        ("entitysdk.registration.task_result.emodel_optimization", result_module),
-    ):
-        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(registration, "register_emodel", register_emodel)
+    monkeypatch.setattr(registration, "register_memodel", register_memodel)
+    monkeypatch.setattr(registration, "register_emodel_optimization_result", register_result)
 
 
 def _registration_fixture(tmp_path, *, complete=True):
@@ -521,7 +504,7 @@ def _registration_fixture(tmp_path, *, complete=True):
 
 def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp_path, monkeypatch):
     calls = {}
-    _install_registration_modules(monkeypatch, calls)
+    _install_registration_helpers(monkeypatch, calls)
     config, db_client, morphology, reference, etype = _registration_fixture(tmp_path)
 
     outputs = registration.register_output_entities(
@@ -563,7 +546,7 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
 
 def test_register_output_entities_handles_missing_optional_outputs(tmp_path, monkeypatch):
     calls = {}
-    _install_registration_modules(monkeypatch, calls)
+    _install_registration_helpers(monkeypatch, calls)
     config, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
 
     registration.register_output_entities(config, tmp_path, db_client)
@@ -839,7 +822,7 @@ def test_register_output_entities_handles_empty_checkpoint_and_nested_figure_pat
     tmp_path, monkeypatch
 ):
     calls = {}
-    _install_registration_modules(monkeypatch, calls)
+    _install_registration_helpers(monkeypatch, calls)
     config, db_client, _, _, _ = _registration_fixture(tmp_path, complete=False)
     (tmp_path / "checkpoints").mkdir()
     (tmp_path / "figures" / "nested").mkdir(parents=True)
