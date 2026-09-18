@@ -2,6 +2,9 @@ name: Run tests
 
 on:
   pull_request:
+    # `labeled`/`unlabeled` are included so toggling the `change-validators` label re-runs CI
+    # with the updated label set (the guard-validators job reads the label from the event).
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches:
       - main
@@ -25,7 +28,8 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'tests/ui_schema/validators/')
+          # Three-dot: compare against the merge-base so only files this PR changed are counted.
+          CHANGED=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA" -- 'tests/ui_schema/validators/')
           if [ -n "$CHANGED" ]; then
             echo "::error::UI-element validators are locked. These files may not change in a PR:"
             echo "$CHANGED"
