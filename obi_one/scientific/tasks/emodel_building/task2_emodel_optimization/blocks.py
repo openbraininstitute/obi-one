@@ -592,6 +592,15 @@ class MechanismRegionSelection(Block):
     )
 
 
+AXON_MODIFIER_TITLES: dict[str, str] = {
+    AxonModifier.replace_axon_with_taper.value: "Replace axon with taper",
+    AxonModifier.replace_axon_legacy.value: "Replace axon (legacy)",
+    AxonModifier.replace_axon_olfactory_bulb.value: "Replace axon (olfactory bulb)",
+    AxonModifier.bluepyopt_replace_axon.value: "BluePyOpt replace axon",
+    AxonModifier.none.value: "No replacement",
+}
+
+
 class MorphologySettings(Block):
     """Morphology transformation settings used by BluePyEModel."""
 
@@ -605,8 +614,9 @@ class MorphologySettings(Block):
             "populated myelinated section list."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION,
-            "choices": {
+            SchemaKey.UI_ELEMENT: UIElement.AXON_MODIFIER,
+            SchemaKey.TITLE_BY_KEY: AXON_MODIFIER_TITLES,
+            SchemaKey.DESCRIPTION_BY_KEY: {
                 modifier.value: description
                 for modifier, description in AXON_MODIFIER_DESCRIPTIONS.items()
             },

@@ -498,10 +498,6 @@ def validate_neuron_set_combination(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_string_selection(schema: dict, param: str, ref: str) -> None:
-    if schema.get("$ref"):
-        schema = {**resolve_ref(openapi_schema, schema["$ref"]), **schema}
-        schema.pop("$ref", None)
-
     # Make sure type
     if schema.get("type") != "string":
         msg = (
@@ -606,6 +602,21 @@ def validate_enhanced_string_fields(schema: dict, param: str, ref: str, enum_lis
 
 
 def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> None:
+    validate_string_selection(schema=schema, param=param, ref=ref)
+
+    enum_list = schema.get("enum")
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
+
+
+def validate_axon_modifier(schema: dict, param: str, ref: str) -> None:
+    # One-off element for the `axon_modifier` field, whose type is the `AxonModifier` enum
+    # class. Pydantic emits enum-class fields as a `$ref` to a shared definition (unlike inline
+    # `Literal` selections), so resolve the reference before applying the enhanced-selection
+    # checks (enum + title_by_key + description_by_key keyed to the enum values).
+    if schema.get("$ref"):
+        schema = {**resolve_ref(openapi_schema, schema["$ref"]), **schema}
+        schema.pop("$ref", None)
+
     validate_string_selection(schema=schema, param=param, ref=ref)
 
     enum_list = schema.get("enum")
@@ -940,6 +951,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_string_selection(schema, param, ref)
         case UIElement.STRING_SELECTION_ENHANCED:
             validate_string_selection_enhanced(schema, param, ref)
+        case UIElement.AXON_MODIFIER:
+            validate_axon_modifier(schema, param, ref)
         case UIElement.STRING_CONSTANT:
             validate_string_constant(schema, param, ref)
         case UIElement.STRING_CONSTANT_ENHANCED:
