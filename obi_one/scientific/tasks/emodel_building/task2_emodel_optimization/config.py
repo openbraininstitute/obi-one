@@ -250,7 +250,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         frozen=True,
         title="Task 2 configuration contract version",
         description="Compatibility version consumed by the launch-system optimization runner.",
-        json_schema_extra={SchemaKey.UI_ENABLED: False},
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     # --- Setup ---

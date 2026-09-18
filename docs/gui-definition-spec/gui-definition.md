@@ -67,6 +67,8 @@ There are two major types of such UI elements:
             - `group` string that points to a string in its parent config's `group_order` array.
             - `group_order` integer (unique within the group) which determines the order in which the root element appears within its specified `group`.
 
+    - A root element can instead be marked as hidden by setting `ui_hidden = true` in its `json_schema_extra`. A hidden root element is not rendered in the UI, so it is exempt from the requirements above (`ui_element`, `group`, `group_order`, `title`, and `description` are not required). Because it is never shown or edited, a hidden root element must have a `default`. See [ui_hidden](components/ui_hidden/ui_hidden.md).
+
     - These properties are added to the root element in the Field definition of the parameter, with the `ui_element` string specifying the type, e.g.:
         ```py
         info: Info = Field(

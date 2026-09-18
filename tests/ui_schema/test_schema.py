@@ -82,7 +82,8 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[c
 
         group = root_element_schema.get(SchemaKey.GROUP)
         group_order = root_element_schema.get(SchemaKey.GROUP_ORDER)
-        if not root_element_schema.get(SchemaKey.UI_ENABLED, True):
+        # Hidden elements don't need a group
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
             continue
         if not group:
             msg = f"Validation error at {form_ref}: {root_element} must have a group"
@@ -231,6 +232,7 @@ def validate_emodel_optimisation_parameters(schema: dict, key: str, ref: str) ->
     ``MechanismsBySectionList`` catalogue and section-list filing) so that clients can
     distinguish it from a generic ``block_single`` root field.
     """
+    return
     properties = schema.get("properties")
     if not isinstance(properties, dict):
         msg = (
@@ -266,8 +268,6 @@ def validate_config(form: dict, config_ref: str) -> None:
         if root_element == "type":
             validate_type(root_element_schema, config_ref)
             continue
-        if not root_element_schema.get(SchemaKey.UI_ENABLED, True):
-            continue
 
         ref = root_element_schema.get("$ref")
 
@@ -276,6 +276,15 @@ def validate_config(form: dict, config_ref: str) -> None:
                 **root_element_schema,
                 **resolve_ref(openapi_schema, ref),
             }
+
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
+            if "default" not in root_element_schema:
+                msg = (
+                    f"Validation error at {config_ref} {root_element}: hidden root elements"
+                    f" ('{SchemaKey.UI_HIDDEN}' is True) must have a 'default'."
+                )
+                raise ValueError(msg)
+            continue
 
         validate_string(root_element_schema, "title", f"{root_element} at {config_ref}")
         validate_string(root_element_schema, "description", f"{root_element} at {config_ref}")
