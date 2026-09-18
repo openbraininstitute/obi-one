@@ -69,7 +69,7 @@ class DistanceDependentDistribution(Block):
         le=1.0,
         title="Soma reference location",
         description="Reference location of the soma along the morphology.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
     )
     parameters: tuple[str, ...] | None = Field(
         default=None,

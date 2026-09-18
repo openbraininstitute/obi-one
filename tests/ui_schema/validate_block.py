@@ -183,10 +183,21 @@ def validate_numeric_single_and_list_types(
         raise ValidationError(msg) from None
 
 
-def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
-    if schema.get("type") == "number":
-        return
+def validate_float_input(schema: dict, param: str, ref: str) -> None:
+    # Must accept a single number and reject anything else (null, string, list).
+    # Use the schema's own default as the "valid number" sample so bounds are respected.
+    valid_number = schema.get("default", schema.get("minimum", 0.0))
+    if not accepts(schema, valid_number) or any(
+        accepts(schema, rejected) for rejected in (None, "a", [1.0])
+    ):
+        msg = (
+            f"Validation error at {ref}: float_input param {param} should validate a "
+            f"single number and nothing else"
+        )
+        raise ValidationError(msg) from None
 
+
+def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
     validate_numeric_single_and_list_types(
         schema, param, ref, "number", UIElement.FLOAT_PARAMETER_SWEEP
     )
@@ -914,6 +925,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_string_list_optional(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:
             validate_boolean_input(schema, param, ref)
+        case UIElement.FLOAT_INPUT:
+            validate_float_input(schema, param, ref)
         case UIElement.FLOAT_PARAMETER_SWEEP:
             validate_float_param_sweep(schema, param, ref)
         case UIElement.INT_PARAMETER_SWEEP:
