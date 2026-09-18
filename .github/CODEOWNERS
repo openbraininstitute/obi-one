@@ -1,0 +1,6 @@
+# Code owners for obi-one.
+#
+# The locked UI-element validators enforce the block UI spec. Changes here mean the spec
+# itself is changing, so they require an explicit review from the owners below (in addition
+# to the `guard-validators` CI check, which requires the `change-validators` PR label).
+/tests/ui_schema/validators/    @g-bar @james-isbister

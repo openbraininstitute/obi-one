@@ -7,6 +7,33 @@ on:
       - main
 
 jobs:
+  guard-validators:
+    # Block UI-element validators live in tests/ui_schema/validators/ and are locked: configs
+    # must be fixed to match the spec, not the validators weakened to admit a bad config. A PR
+    # may only change them when it carries the 'change-validators' label (a conscious, reviewed
+    # decision). Direct pushes to main are not gated here.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Block edits to locked UI-element validators
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'change-validators') }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'tests/ui_schema/validators/')
+          if [ -n "$CHANGED" ]; then
+            echo "::error::UI-element validators are locked. These files may not change in a PR:"
+            echo "$CHANGED"
+            echo "Fix your config to match the spec these validators enforce. If the spec itself"
+            echo "must change, add the 'change-validators' label so a reviewer signs off."
+            exit 1
+          fi
+
   tests:
     runs-on: ubuntu-latest
     permissions:

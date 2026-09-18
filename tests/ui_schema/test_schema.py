@@ -17,15 +17,17 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocol
 )
 
 from .validate_block import (
+    validate_block,
+    validate_hidden_refs_not_required,
+    validate_type,
+)
+from .validators import (
     openapi_schema,
     resolve_ref,
-    validate_block,
     validate_float_optional,
-    validate_hidden_refs_not_required,
     validate_neuron_set_combination,
     validate_select_efeatures_by_protocol,
     validate_string,
-    validate_type,
 )
 
 L = logging.getLogger()
