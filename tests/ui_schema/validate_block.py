@@ -163,23 +163,18 @@ def determine_minimum_valid_numeric_value(schema: dict) -> float | int:
 def validate_numeric_single_and_list_types(
     schema: dict, param: str, ref: str, data_type: str, ui_element: str
 ) -> None:
-    if schema.get("type") == data_type:
-        return
-
     if schema.get("anyOf", [{}])[0].get("type") != data_type:
         msg = (
             f"Validation error at {ref}: {ui_element} param {param} should "
             f"be a union with a '{data_type}' as first element"
         )
         raise ValidationError(msg) from None
-
     if schema.get("anyOf", [{}])[1].get("type") != "array":
         msg = (
             f"Validation error at {ref}: {ui_element} param {param} should "
             "be a union with an 'array' as second element"
         )
         raise ValidationError(msg) from None
-
     if schema.get("anyOf", [{}])[0] != schema.get("anyOf", [{}])[1].get("items"):
         msg = (
             f"Validation error at {ref}: {ui_element} param {param} should "
