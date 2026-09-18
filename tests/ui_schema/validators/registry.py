@@ -1,15 +1,20 @@
-"""Registry mapping each block `UIElement` to its validator.
+"""Registries mapping each `UIElement` to its validator.
 
-This is the single source of truth the dispatcher in `tests/ui_schema/validate_block.py`
-uses to route a block field to its validator. Adding a new block UI element means adding a
-module in this package and a single entry here.
+Two dicts, one per dispatch context:
+
+- `VALIDATOR_BY_UI_ELEMENT` — block elements (a field inside a block). Used by
+  `validate_block_elements` in `tests/ui_schema/validate_block.py`.
+- `ROOT_VALIDATOR_BY_UI_ELEMENT` — root elements (a top-level slot that renders a whole
+  block). Used by `validate_root_element` in `tests/ui_schema/validators/root/config.py`.
+
+These are the single source of truth for validator dispatch. Adding a new UI element means
+adding a module in the relevant package and a single entry in the matching dict here.
 """
 
 from collections.abc import Callable
 
 from obi_one.core.schema import UIElement
 
-from .block_union import validate_block_union
 from .boolean_input import validate_boolean_input
 from .entity_property_dropdown import validate_entity_property_dropdown
 from .float_optional import validate_float_optional
@@ -30,6 +35,9 @@ from .neuron_ids import validate_neuron_ids
 from .neuron_property_filter import validate_neuron_property_filter
 from .neuron_set_combination import validate_neuron_set_combination
 from .reference import validate_reference
+from .root.block_dictionary import validate_block_dictionary
+from .root.block_single import validate_block_single
+from .root.block_union import validate_root_block_union
 from .select_efeatures_by_protocol import validate_select_efeatures_by_protocol
 from .select_recordable_ion_channel_variable import (
     validate_select_recordable_ion_channel_variable,
@@ -47,7 +55,10 @@ BlockElementValidator = Callable[[dict, str, str], None]
 # The single source of truth mapping each block UI element to its validator. Adding a new
 # UI element means adding a module in this package and an entry here — nothing else.
 VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
-    UIElement.BLOCK_UNION: validate_block_union,
+    # NB: block_union is intentionally absent. It is a ROOT UI element only (a top-level slot
+    # that renders a whole block chosen from a union). A field *inside* a block must never be a
+    # block_union, so if one appears the dispatcher raises "not a valid ui_element". The root
+    # validator lives in tests/ui_schema/validators/root/block_union.py.
     UIElement.STRING_INPUT: validate_string_input,
     UIElement.BOOLEAN_INPUT: validate_boolean_input,
     UIElement.FLOAT_PARAMETER_SWEEP: validate_float_param_sweep,
@@ -78,4 +89,16 @@ VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
     ),
     UIElement.VOLTAGE_DURATION: validate_voltage_duration,
     UIElement.NEURON_PROPERTY_FILTER: validate_neuron_property_filter,
+}
+
+
+# A root-element validator takes (schema, element, ref, config_ref, form) and raises on failure.
+RootElementValidator = Callable[[dict, str, str, str, dict], None]
+
+# The single source of truth mapping each root UI element to its validator. Adding a new root
+# UI element means adding a module in the root package and an entry here — nothing else.
+ROOT_VALIDATOR_BY_UI_ELEMENT: dict[UIElement, RootElementValidator] = {
+    UIElement.BLOCK_SINGLE: validate_block_single,
+    UIElement.BLOCK_DICTIONARY: validate_block_dictionary,
+    UIElement.BLOCK_UNION: validate_root_block_union,
 }

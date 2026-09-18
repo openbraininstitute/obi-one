@@ -11,15 +11,15 @@ Individual validators are intentionally NOT defined here: they are locked so tha
 get fixed to match the spec rather than the spec being weakened to admit a bad config. See
 `tests/ui_schema/validators/__init__.py` for how to add a new UI element.
 
-`validators.block_union` imports `validate_block` from here lazily (function-local) to
-avoid a circular import, so this module can import the validators package at the top level.
+The root-element validators (`tests.ui_schema.validators.root`) import `validate_block` from
+here at the top level; that is safe because this module imports only the block-element
+registry and shared helpers, never the root package, so there is no import cycle.
 """
 
 import logging
 
 from obi_one.core.schema import SchemaKey
 
-from tests.ui_schema.validators import VALIDATOR_BY_UI_ELEMENT
 from tests.ui_schema.validators.shared import validate_string
 
 L = logging.getLogger()
@@ -48,10 +48,16 @@ def validate_type(schema: dict, ref: str) -> None:
 def validate_block_elements(param: str, schema: dict, ref: str) -> None:
     """Dispatch a block field to the validator registered for its UI element.
 
-    The mapping lives in `tests.ui_schema.validators.VALIDATOR_BY_UI_ELEMENT`; an
+    The mapping lives in `tests.ui_schema.validators.registry.VALIDATOR_BY_UI_ELEMENT`; an
     unregistered `ui_element` is a hard error so new elements cannot be added without a
     validator.
     """
+    # Imported lazily to break an import cycle: the registry imports the root validators, which
+    # import `validate_block` from this module.
+    from tests.ui_schema.validators.registry import (  # ruff: ignore[import-outside-top-level]
+        VALIDATOR_BY_UI_ELEMENT,
+    )
+
     ui_element = schema.get(SchemaKey.UI_ELEMENT)
     validator = VALIDATOR_BY_UI_ELEMENT.get(ui_element)
     if validator is None:

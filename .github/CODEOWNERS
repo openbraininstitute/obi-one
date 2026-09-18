@@ -1,6 +1,8 @@
 # Code owners for obi-one.
 #
-# The locked UI-element validators enforce the block UI spec. Changes here mean the spec
-# itself is changing, so they require an explicit review from the owners below (in addition
-# to the `guard-validators` CI check, which requires the `change-validators` PR label).
+# The locked UI-element validators (block elements and root elements under root/) enforce the
+# UI spec. Changes here mean the spec itself is changing, so they require an explicit review
+# from the owners below (in addition to the `guard-validators` CI check, which requires the
+# `change-validators` PR label). This also covers edits to the registry.py / __init__.py wiring
+# files, which the CI guard exempts but which still warrant owner review.
 /tests/ui_schema/validators/    @g-bar @james-isbister

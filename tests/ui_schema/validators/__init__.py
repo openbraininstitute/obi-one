@@ -19,7 +19,6 @@ To add a new block UI element:
    reviewer signs off.
 """
 
-from .block_union import validate_block_union
 from .boolean_input import validate_boolean_input
 from .entity_property_dropdown import validate_entity_property_dropdown
 from .float_optional import validate_float_optional
@@ -40,7 +39,6 @@ from .neuron_ids import validate_neuron_ids
 from .neuron_property_filter import validate_neuron_property_filter
 from .neuron_set_combination import validate_neuron_set_combination
 from .reference import validate_reference
-from .registry import VALIDATOR_BY_UI_ELEMENT, BlockElementValidator
 from .select_efeatures_by_protocol import validate_select_efeatures_by_protocol
 from .select_recordable_ion_channel_variable import (
     validate_select_recordable_ion_channel_variable,
@@ -66,13 +64,10 @@ from .string_selection_enhanced import validate_string_selection_enhanced
 from .voltage_duration import validate_voltage_duration
 
 __all__ = [
-    "VALIDATOR_BY_UI_ELEMENT",
-    "BlockElementValidator",
     "determine_minimum_valid_numeric_value",
     "openapi_schema",
     "resolve_ref",
     "resolve_union_reference_types",
-    "validate_block_union",
     "validate_boolean_input",
     "validate_dictionary_by_enum_key",
     "validate_enhanced_string_fields",
