@@ -225,9 +225,6 @@ def validate_float_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
-    if schema.get("type") == "integer":
-        return
-
     validate_numeric_single_and_list_types(
         schema, param, ref, "integer", UIElement.INT_PARAMETER_SWEEP
     )
