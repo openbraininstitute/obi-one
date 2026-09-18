@@ -117,8 +117,10 @@ def upload_optimization_assets(
     recipes_path = coord_root / "config" / "recipes.json"
     params_path = coord_root / "config" / "params" / "params.json"
     sonata_dir = coord_root / "export_emodels_sonata"
-    if recipes_path.exists() or params_path.exists() or (
-        sonata_dir.exists() and any(sonata_dir.rglob("*"))
+    if (
+        recipes_path.exists()
+        or params_path.exists()
+        or (sonata_dir.exists() and any(sonata_dir.rglob("*")))
     ):
         L.warning(
             "Skipping upload of recipes.json/params.json/SONATA export to TaskResult(id=%s): "
@@ -224,9 +226,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
             asset_label=AssetLabel.emodel_optimisation_checkpoint,
         )
     figure_files = {
-        p.relative_to(figures_dir): p
-        for p in sorted(figures_dir.rglob("*"))
-        if p.is_file()
+        p.relative_to(figures_dir): p for p in sorted(figures_dir.rglob("*")) if p.is_file()
     }
     if figure_files:
         db_client.upload_directory(

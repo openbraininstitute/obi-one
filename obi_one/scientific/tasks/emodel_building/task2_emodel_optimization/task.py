@@ -9,6 +9,10 @@ diagnostic (see the Task 2 living plan) and performs the full local pipeline:
 downloads extraction features and entity assets, builds and stages the
 params/recipe artifact bundle, compiles mechanisms, runs the full BluePyEModel
 pipeline, and registers output entities.
+
+The BluePyEModel optimisation/plot/export steps live in
+:func:`run_optimization_pipeline` so remote workers can reuse them after their own
+staging without going through :class:`EModelOptimizationTask`.
 """
 
 import logging
@@ -79,6 +83,105 @@ def fresh_morph_modifiers(pipeline_settings: Any) -> list[str] | None:
     return list(configured)
 
 
+def run_optimization_pipeline(
+    *,
+    config: EModelOptimizationSingleConfig,
+    coord_root: Path,
+    normalized_models: dict[str, NormalizedIonChannelModel],
+    mtype: str | None,
+    etype: str,
+    species: str,
+    brain_region: str,
+) -> None:
+    """Run BluePyEModel optimisation, plot, and SONATA export.
+
+    Expects ``coord_root`` to already contain staged features, morphology, compiled
+    mechanisms, and the params/recipe artifact bundle. Does not compile mechanisms,
+    stage assets, or register entities.
+    """
+    from bluepyemodel.access_point.local import (  # ruff: ignore[import-outside-top-level]
+        LocalAccessPoint,
+    )
+    from bluepyemodel.export_emodel.export_emodel import (  # ruff: ignore[import-outside-top-level]
+        export_emodels_sonata,
+    )
+    from bluepyemodel.optimisation import (  # ruff: ignore[import-outside-top-level]
+        setup_and_run_optimisation,
+        store_best_model,
+    )
+    from bluepyemodel.tools.checkpoint_hdf5 import (  # ruff: ignore[import-outside-top-level]
+        convert_checkpoint,
+    )
+
+    emodel = config.initialize.emodel
+
+    class EntityCoreLocalAccessPoint(LocalAccessPoint):
+        """Use downloaded mechanisms and EntityCore metadata without Nexus lookup."""
+
+        def get_available_mechanisms(self) -> list[Any] | None:
+            mechanisms = super().get_available_mechanisms()
+            return tag_local_mechanisms(mechanisms, normalized_models)
+
+        def get_model_configuration(self, *args: Any, **kwargs: Any) -> Any:
+            """Hand every evaluator build its own morphology-modifier list."""
+            configuration = super().get_model_configuration(*args, **kwargs)
+            configuration.morph_modifiers = fresh_morph_modifiers(self.pipeline_settings)
+            return configuration
+
+    with chdir(coord_root):
+        access_point = EntityCoreLocalAccessPoint(
+            emodel=emodel,
+            etype=etype,
+            mtype=mtype,
+            ttype=None,
+            species=species,
+            brain_region=brain_region,
+            iteration_tag=None,
+            recipes_path="./config/recipes.json",
+        )
+
+        mapper = map
+        seeds = [config.optimization_settings.seed]
+        for seed in seeds:
+            setup_and_run_optimisation(
+                access_point,
+                seed=seed,
+                mapper=mapper,
+                terminator=None,
+            )
+            store_best_model(access_point=access_point, seed=seed)
+
+        # Convert pkl checkpoints to HDF5 for storage and registration.
+        # BluePyOpt always writes .pkl; we convert after each seed so that
+        # the .h5 files are present even if a later seed fails.
+        checkpoint_dir = coord_root / "checkpoints"
+        if checkpoint_dir.exists():
+            for pkl_path in sorted(checkpoint_dir.rglob("*.pkl")):
+                h5_path = pkl_path.with_suffix(".h5")
+                if not h5_path.exists():
+                    L.info("Converting checkpoint %s → %s", pkl_path.name, h5_path.name)
+                    convert_checkpoint(str(pkl_path), str(h5_path))
+
+        emodel_building_utils.run_plot_models(
+            access_point=access_point,
+            mapper=mapper,
+            seeds=seeds,  # ty:ignore[invalid-argument-type]
+            figures_dir=Path("./figures") / emodel,
+            only_validated=False,
+        )
+
+        # Export the SONATA package. It contains the model HOC required by SONATA,
+        # but no standalone export_emodels_hoc output is produced.
+        export_emodels_sonata(
+            access_point=access_point,
+            only_best=False,
+            seeds=seeds,
+            map_function=mapper,
+        )
+
+    L.info("Completed optimisation pipeline for emodel=%s.", emodel)
+
+
 class EModelOptimizationTask(Task):
     """Run optimisation + analysis + export in a fresh working directory.
 
@@ -90,9 +193,7 @@ class EModelOptimizationTask(Task):
     4. Fetch trace IDs via the derivation chain without downloading raw traces.
     5. Reconstruct the optimisation recipe and merge optimisation settings.
     6. Compile mechanisms via ``nrnivmodl``.
-    7. Run ``setup_and_run_optimisation()`` → ``store_best_model()`` →
-       ``plot_models()`` → ``export_emodels_sonata()`` using a ``LocalAccessPoint``
-       with metadata (emodel, etype, mtype, etc.).
+    7. Run optimisation / plot / SONATA export via :func:`run_optimization_pipeline`.
     8. Register ``TaskResult`` + draft ``EModel`` + draft ``MEModel`` +
        ``Derivation`` links.
     """
@@ -109,27 +210,15 @@ class EModelOptimizationTask(Task):
     _registered_emodel_id: str | None = PrivateAttr(default=None)
     _registered_memodel_id: str | None = PrivateAttr(default=None)
 
-    def execute(  # ruff: ignore[too-many-locals]
+    def execute(
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> Path:
-        from bluepyemodel.access_point.local import (  # ruff: ignore[import-outside-top-level]
-            LocalAccessPoint,
-        )
-        from bluepyemodel.export_emodel.export_emodel import (  # ruff: ignore[import-outside-top-level]
-            export_emodels_sonata,
-        )
-        from bluepyemodel.optimisation import (  # ruff: ignore[import-outside-top-level]
-            setup_and_run_optimisation,
-            store_best_model,
-        )
-
         init = self.config.initialize
         coord_root = Path(self.config.coordinate_output_root).resolve()
-        emodel = init.emodel
         mtype = staging.derive_mtype(self.config, db_client)
 
         # --- 1. Download extracted features ---
@@ -167,79 +256,20 @@ class EModelOptimizationTask(Task):
         # --- 6. Compile mechanisms ---
         emodel_building_utils.compile_mechanisms(coord_root / "mechanisms")
 
-        # --- 7. Run optimisation + store + plot + export ---
-        # Species and brain region are taken from the morphology entity.
+        # --- 7. Run optimisation / plot / export ---
         etype_entity = init.etype.entity(db_client=db_client)
-        morphology_metadata = self.config.inputs.morphology.metadata_entities(db_client=db_client)
-
-        class EntityCoreLocalAccessPoint(LocalAccessPoint):
-            """Use downloaded mechanisms and EntityCore metadata without Nexus lookup."""
-
-            def get_available_mechanisms(self) -> list[Any] | None:
-                mechanisms = super().get_available_mechanisms()
-                return tag_local_mechanisms(mechanisms, normalized_models)
-
-            def get_model_configuration(self, *args: Any, **kwargs: Any) -> Any:
-                """Hand every evaluator build its own morphology-modifier list."""
-                configuration = super().get_model_configuration(*args, **kwargs)
-                configuration.morph_modifiers = fresh_morph_modifiers(self.pipeline_settings)
-                return configuration
-
-        with chdir(coord_root):
-            access_point = EntityCoreLocalAccessPoint(
-                emodel=emodel,
-                etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
-                mtype=mtype,
-                ttype=None,
-                species=morphology_metadata[0].name,
-                brain_region=morphology_metadata[1].name,
-                iteration_tag=None,
-                recipes_path="./config/recipes.json",
-            )
-
-            mapper = map
-
-            # Optimise
-            seeds = [self.config.optimization_settings.seed]
-            for seed in seeds:
-                setup_and_run_optimisation(
-                    access_point,
-                    seed=seed,
-                    mapper=mapper,
-                    terminator=None,
-                )
-                store_best_model(access_point=access_point, seed=seed)
-
-            # Convert pkl checkpoints to HDF5 for storage and registration.
-            # BluePyOpt always writes .pkl; we convert after each seed so that
-            # the .h5 files are present even if a later seed fails.
-            from bluepyemodel.tools.checkpoint_hdf5 import (  # ruff: ignore[import-outside-top-level]
-                convert_checkpoint,
-            )
-
-            checkpoint_dir = coord_root / "checkpoints"
-            for pkl_path in sorted(checkpoint_dir.rglob("*.pkl")):
-                h5_path = pkl_path.with_suffix(".h5")
-                if not h5_path.exists():
-                    L.info("Converting checkpoint %s → %s", pkl_path.name, h5_path.name)
-                    convert_checkpoint(str(pkl_path), str(h5_path))
-
-            emodel_building_utils.run_plot_models(
-                access_point=access_point,
-                mapper=mapper,
-                seeds=seeds,  # ty:ignore[invalid-argument-type]
-                figures_dir=Path("./figures") / emodel,
-                only_validated=False,
-            )
-
-            # Export the SONATA package. It contains the model HOC required by SONATA,
-            # but no standalone export_emodels_hoc output is produced.
-            export_emodels_sonata(
-                access_point=access_point,
-                only_best=False,
-                seeds=seeds,
-                map_function=mapper,
-            )
+        species_entity, brain_region_entity = self.config.inputs.morphology.metadata_entities(
+            db_client=db_client
+        )
+        run_optimization_pipeline(
+            config=self.config,
+            coord_root=coord_root,
+            normalized_models=normalized_models,
+            mtype=mtype,
+            etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
+            species=species_entity.name,
+            brain_region=brain_region_entity.name,
+        )
 
         # --- 8. Register output entities ---
         if db_client is not None:
