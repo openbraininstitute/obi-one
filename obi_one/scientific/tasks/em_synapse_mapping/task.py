@@ -281,8 +281,8 @@ class EMSynapseMappingTask(Task):
                 int_edges_df,
                 pop_bio,
                 pop_bio,
-                n_src=len(pop_bio),
-                n_tgt=len(pop_bio),
+                n_src=len(coll_bio),
+                n_tgt=len(coll_bio),
             )
 
         if all_external_edges:
@@ -295,8 +295,8 @@ class EMSynapseMappingTask(Task):
                 ext_edges_df,
                 pop_virt,
                 pop_bio,
-                n_src=len(pop_virt),
-                n_tgt=len(pop_bio),
+                n_src=len(coll_virtual),
+                n_tgt=len(coll_bio),
             )
 
         # Write circuit config
