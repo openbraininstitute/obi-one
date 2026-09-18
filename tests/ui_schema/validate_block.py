@@ -95,6 +95,20 @@ def accepts(schema: dict, value: object) -> bool:
     return True
 
 
+def accepts_null(schema: dict) -> bool:
+    """Return whether the schema permits ``null`` (a nullable field, implicitly None-defaulted).
+
+    Detected structurally (without resolving ``$ref`` or validating an instance): the schema is
+    nullable if it is ``type: null`` or has a ``null`` branch in ``anyOf``/``oneOf``.
+    """
+    if schema.get("type") == "null":
+        return True
+    for branch in (*schema.get("anyOf", []), *schema.get("oneOf", [])):
+        if isinstance(branch, dict) and branch.get("type") == "null":
+            return True
+    return False
+
+
 def validate_string_list_param(schema: dict, param: str, ref: str) -> None:
     # Must accept a list of strings and reject anything else.
     if not accepts(schema, ["a"]) or any(
@@ -1062,9 +1076,16 @@ def validate_block(schema: dict, ref: str) -> None:
     validate_string(schema, "description", ref)
 
     for param, param_schema in schema.get("properties", {}).items():
-        if param_schema.get(SchemaKey.UI_HIDDEN) or not param_schema.get(
-            SchemaKey.UI_ENABLED, True
-        ):
+        if param_schema.get(SchemaKey.UI_HIDDEN):
+            # Hidden elements are never shown or edited, so they must carry a default.
+            # Pydantic omits an explicit ``default: null`` for nullable fields, so a schema
+            # that accepts ``null`` (an implicit ``None`` default) counts as defaulted.
+            if "default" not in param_schema and not accepts_null(param_schema):
+                msg = (
+                    f"Validation error at {ref}: hidden element {param} "
+                    f"('{SchemaKey.UI_HIDDEN}' is True) must have a 'default'."
+                )
+                raise ValidationError(msg)
             continue
 
         if param == "type":
