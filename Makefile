@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps freeze-launch-deps check-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export

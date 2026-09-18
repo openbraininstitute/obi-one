@@ -30,6 +30,7 @@ class PythonRepositoryCode(Schema):
     dependencies: str
     capabilities: Capabilities = Capabilities()
     staged_directories: list[str] = []  # ruff: ignore[mutable-class-default]
+    dependency_constraints: list[str] = []  # ruff: ignore[mutable-class-default]
 
 
 class BuiltinCode(Schema):
