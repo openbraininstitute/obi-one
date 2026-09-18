@@ -85,6 +85,7 @@ class UIElement(StrEnum):
     STRING_LIST_OPTIONAL = "string_list_optional"
     STRING_SELECTION = "string_selection"
     STRING_SELECTION_ENHANCED = "string_selection_enhanced"
+    STOCHASTICITY = "stochasticity"
     VOLTAGE_DURATION = "voltage_duration"
 
 

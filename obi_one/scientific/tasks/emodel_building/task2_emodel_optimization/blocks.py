@@ -1392,7 +1392,7 @@ class OptimizationSettings(Block):
         default=False,
         title="Stochasticity",
         description="Enable stochastic mechanisms globally or only for the listed protocol names.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STOCHASTICITY},
     )
     validation_function: Literal["max_score", "mean_score"] = Field(
         default="max_score",

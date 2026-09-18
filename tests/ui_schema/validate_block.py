@@ -792,18 +792,40 @@ def validate_etype_selector(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
-    if schema.get("type") == "boolean":
-        return
+    if schema.get("type") != "boolean":
+        msg = f"Validation error at {ref}: boolean_input param {param} should have type 'boolean'"
+        raise ValidationError(msg)
 
-    boolean_branch = next(
-        (branch for branch in schema.get("anyOf", []) if branch.get("type") == "boolean"),
-        None,
-    )
-    if boolean_branch is not None:
-        return
+    test_true = True
+    test_false = False
+    try:
+        validate(test_true, schema)
+    except ValidationError:
+        msg = f"Validation error at {ref}: boolean_input param {param} failed to validate True"
+        raise ValidationError(msg) from None
+    try:
+        validate(test_false, schema)
+    except ValidationError:
+        msg = f"Validation error at {ref}: boolean_input param {param} failed to validate False"
+        raise ValidationError(msg) from None
 
-    msg = f"Validation error at {ref}: boolean_input param {param} should include a boolean type"
-    raise ValidationError(msg)
+
+def validate_stochasticity(schema: dict, param: str, ref: str) -> None:
+    # One-off element for the `stochasticity` field (``bool | tuple[str, ...]``). The value is
+    # either a boolean (enable/disable globally) or a list of protocol names (enable only for
+    # those protocols). The protocol names are matched downstream by BluePyEModel; rendering them
+    # from the selected extraction result is deferred to a future dynamic-dropdown element, so the
+    # list is validated only by shape here (a list of strings).
+    accepted = (True, False, ["a"])
+    rejected = ("a", [1])
+    if not all(accepts(schema, value) for value in accepted) or any(
+        accepts(schema, value) for value in rejected
+    ):
+        msg = (
+            f"Validation error at {ref}: stochasticity param {param} should validate a boolean "
+            f"or a list of strings and nothing else"
+        )
+        raise ValidationError(msg) from None
 
 
 def validate_ion_channel_variable_modification_by_section_list(
@@ -971,6 +993,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_string_list_optional(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:
             validate_boolean_input(schema, param, ref)
+        case UIElement.STOCHASTICITY:
+            validate_stochasticity(schema, param, ref)
         case UIElement.FLOAT_INPUT:
             validate_float_input(schema, param, ref)
         case UIElement.FLOAT_PARAMETER_SWEEP:
