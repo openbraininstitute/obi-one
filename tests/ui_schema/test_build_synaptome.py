@@ -93,3 +93,9 @@ def test_placement_strategy_reference_is_resolved():
 
     reference = config.synapse_groups["basal"].placement_strategy
     assert reference.block is config.morphology_locations["basal_locations"]
+
+
+def test_synapse_groups_use_synapse_group_singular_name():
+    schema = MEModelSynapticModelPlacementScanConfig.model_json_schema()
+
+    assert schema["properties"]["synapse_groups"]["singular_name"] == "Synapse Group"

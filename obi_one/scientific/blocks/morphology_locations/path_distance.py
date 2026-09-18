@@ -6,7 +6,9 @@ from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+from obi_one.scientific.blocks.morphology_locations.base import (
+    GeneratedMorphologyLocationsBlock,
+)
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
     generate_neurite_locations_on,
@@ -15,7 +17,7 @@ from obi_one.scientific.library.morphology_locations import (
 PathDistanceToleranceParameter = Annotated[float, Field(ge=1.0)]
 
 
-class PathDistanceMorphologyLocations(MorphologyLocationsBlock):
+class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Locations uniformly sampled near a specified soma path distance."""
 
     title: ClassVar[str] = "Path Distance Morphology Locations"

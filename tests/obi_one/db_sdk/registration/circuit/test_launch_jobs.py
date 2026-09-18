@@ -43,7 +43,11 @@ class TestIsValidationAllowed:
 class TestSubmitCircuitJobs:
     def test_validation_job_payload(self):
         ls_client = MagicMock()
-        ls_client.post.return_value = MagicMock(is_success=True)
+        job_id = uuid4()
+        ls_client.post.return_value = MagicMock(
+            is_success=True,
+            json=MagicMock(return_value={"id": str(job_id)}),
+        )
         circuit_id = uuid4()
         project_id = uuid4()
         virtual_lab_id = uuid4()
@@ -60,7 +64,7 @@ class TestSubmitCircuitJobs:
                 app_version="2026.8.12",
                 force=True,
             )
-            is True
+            == job_id
         )
 
         job = ls_client.post.call_args[1]["json"]
@@ -77,7 +81,11 @@ class TestSubmitCircuitJobs:
 
     def test_validation_job_without_asset_callback(self):
         ls_client = MagicMock()
-        ls_client.post.return_value = MagicMock(is_success=True)
+        job_id = uuid4()
+        ls_client.post.return_value = MagicMock(
+            is_success=True,
+            json=MagicMock(return_value={"id": str(job_id)}),
+        )
         circuit_id = uuid4()
         project_id = uuid4()
         virtual_lab_id = uuid4()
@@ -92,15 +100,35 @@ class TestSubmitCircuitJobs:
                 compute_cell="cell_a",
                 generate_assets_on_success=False,
             )
-            is True
+            == job_id
         )
 
         job = ls_client.post.call_args[1]["json"]
         assert job["callbacks"] == []
 
+    def test_validation_job_submission_failure_returns_none(self):
+        ls_client = MagicMock()
+        ls_client.post.return_value = MagicMock(is_success=False, text="boom")
+
+        assert (
+            submit_circuit_validation_job(
+                ls_client=ls_client,
+                circuit_id=uuid4(),
+                project_id=uuid4(),
+                virtual_lab_id=uuid4(),
+                api_url="http://localhost:8100",
+                compute_cell="cell_a",
+            )
+            is None
+        )
+
     def test_asset_generation_job_payload(self):
         ls_client = MagicMock()
-        ls_client.post.return_value = MagicMock(is_success=True)
+        job_id = uuid4()
+        ls_client.post.return_value = MagicMock(
+            is_success=True,
+            json=MagicMock(return_value={"id": str(job_id)}),
+        )
         circuit_id = uuid4()
         project_id = uuid4()
         virtual_lab_id = uuid4()
@@ -116,7 +144,7 @@ class TestSubmitCircuitJobs:
                 app_version="2026.9.1",
                 force=False,
             )
-            is True
+            == job_id
         )
 
         job = ls_client.post.call_args[1]["json"]
@@ -125,6 +153,8 @@ class TestSubmitCircuitJobs:
         assert job["code"]["dependency_constraints"] == ["obi-one[connectivity]==2026.9.1"]
         assert "launch_circuit_asset_generation" in job["code"]["path"]
         assert job["resources"]["compute_cell"] == "cell_b"
+        assert job["resources"]["cores"] == 2
+        assert job["resources"]["memory"] == 16
         assert f"--circuit_id {circuit_id}" in job["inputs"]
         assert "--force false" in job["inputs"]
         assert job["callbacks"] == []

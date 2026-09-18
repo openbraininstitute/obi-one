@@ -23,7 +23,7 @@ def trigger_validation_task(
     compute_cell: str,
     force: bool = False,
     generate_assets_on_success: bool = True,
-) -> None:
+) -> UUID | None:
     """Submit a circuit validation job to the launch-system.
 
     Args:
@@ -35,8 +35,11 @@ def trigger_validation_task(
         force: When True, validate even if the circuit is not in ``draft`` status.
         generate_assets_on_success: When True, trigger asset generation after a
             successful validation. Disable for standalone re-validation.
+
+    Returns:
+        Launch-system job ID if accepted, otherwise ``None``.
     """
-    submit_circuit_validation_job(
+    return submit_circuit_validation_job(
         ls_client=ls_client,
         circuit_id=circuit_id,
         project_id=project_id,
@@ -58,7 +61,7 @@ def trigger_asset_generation_task(
     virtual_lab_id: UUID,
     compute_cell: str,
     force: bool = False,
-) -> None:
+) -> UUID | None:
     """Submit an asset generation job to the launch-system.
 
     Args:
@@ -68,8 +71,11 @@ def trigger_asset_generation_task(
         virtual_lab_id: Virtual lab ID for the job.
         compute_cell: Compute cell for the launch-system job (from the vlab).
         force: When True, regenerate compressed archive even if it already exists.
+
+    Returns:
+        Launch-system job ID if accepted, otherwise ``None``.
     """
-    submit_circuit_asset_generation_job(
+    return submit_circuit_asset_generation_job(
         ls_client=ls_client,
         circuit_id=circuit_id,
         project_id=project_id,

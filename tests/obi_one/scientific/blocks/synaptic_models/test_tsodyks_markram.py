@@ -44,7 +44,7 @@ def test_sampling_uses_explicit_distributions_and_preserves_values():
         conductance_scale_factor_distribution=_distribution_reference(
             FloatConstantDistribution(value=0.5)
         ),
-        fascilitation_time=_distribution_reference(FloatConstantDistribution(value=10.0)),
+        facilitation_time=_distribution_reference(FloatConstantDistribution(value=10.0)),
         depression_time=_distribution_reference(FloatConstantDistribution(value=20.0)),
         n_rrp_vesicles_distribution=_distribution_reference(IntConstantDistribution(value=4)),
         decay_time=_distribution_reference(FloatConstantDistribution(value=1.8)),
@@ -88,7 +88,7 @@ def test_sampling_uses_explicit_distributions_and_preserves_values():
         ("u_hill_coefficient_distribution", "u_hill_coefficient", 0.0),
         ("conductance_distribution", "conductance", -0.1),
         ("conductance_scale_factor_distribution", "conductance_scale_factor", 0.0),
-        ("fascilitation_time", "facilitation_time", 0.0),
+        ("facilitation_time", "facilitation_time", 0.0),
         ("depression_time", "depression_time", 0.0),
         ("n_rrp_vesicles_distribution", "n_rrp_vesicles", 1.5),
         ("decay_time", "decay_time", 0.0),

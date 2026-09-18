@@ -20,6 +20,10 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONMEModelWithSynapsesNeuronSetUnion,
 )
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+    MorphologyLocationUnion,
+)
 
 L = logging.getLogger(__name__)
 
@@ -83,6 +87,24 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    # Widened back after the circuit narrowing: this configuration simulates a single neuron, so
+    # hand-picked section/offset points are unambiguous here.
+    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology Locations",
+        description=(
+            "Reusable rules for selecting precise locations on neuronal morphologies. "
+            "Stimuli can reference these locations to target compartments instead of whole cells."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Morphology Location",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

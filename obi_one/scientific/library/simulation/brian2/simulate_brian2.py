@@ -41,6 +41,10 @@ REQUIRED_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_p
 L = logging.getLogger(__name__)
 KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 
+# SONATA expresses times (`dt`, `delay`, `duration`) in milliseconds but frequencies in hertz,
+# so anything combining the two has to convert first.
+MILLISECONDS_PER_SECOND = 1000.0
+
 
 class NetworkOperation(BaseModel):
     """Operations to apply to the brian2.Network after an event fires."""
@@ -143,7 +147,8 @@ class Pulse(CurrentStimulator):
         n_delay = math.ceil(self.config.delay / dt)
         n_end = min(math.ceil((self.config.delay + self.config.duration) / dt), n_total)
         pulse_samples = math.ceil(self.config.width / dt)
-        period_samples = math.ceil(1.0 / (self.config.frequency * dt))
+        # `frequency` is in hertz, so a pulse train repeats every 1000 / frequency milliseconds.
+        period_samples = math.ceil(MILLISECONDS_PER_SECOND / (self.config.frequency * dt))
 
         for start in range(n_delay, n_end, period_samples):
             end = min(start + pulse_samples, n_end)
@@ -164,8 +169,11 @@ class Sinusoidal(CurrentStimulator):
         n_delay = math.ceil(self.config.delay / dt)
         n_end = min(math.ceil((self.config.delay + self.config.duration) / dt), n_total)
 
-        t = np.arange(n_end - n_delay) * dt
-        ret[n_delay:n_end] = self.config.amp_start * np.sin(2 * np.pi * self.config.frequency * t)
+        # `frequency` is in hertz, so the time axis has to be seconds rather than milliseconds.
+        t_seconds = np.arange(n_end - n_delay) * dt / MILLISECONDS_PER_SECOND
+        ret[n_delay:n_end] = self.config.amp_start * np.sin(
+            2 * np.pi * self.config.frequency * t_seconds
+        )
 
         return ret
 
@@ -612,12 +620,12 @@ def _create_neurons(simulation: bluepysnap.Simulation, inputs: Inputs) -> brian2
         namespace={**{k: v.get() for k, v in template.namespace.items()}, **stims},
     )
 
-    # Override the initial membrane potential with `v_init` (mV) from the simulation config,
-    # taking precedence over the value set by the neuron template.
-    n0.v = simulation.conditions.v_init * brian2.units.mV
-
     for name, value in template.initial.items():
         setattr(n0, name, value.get())
+
+    # After the template's own initial values, not before: a template that specifies `v` would
+    # otherwise overwrite this, leaving the simulation config's Initial Voltage with no effect.
+    n0.v = simulation.conditions.v_init * brian2.units.mV
 
     for name, value in indicators.items():
         setattr(n0, name, value)

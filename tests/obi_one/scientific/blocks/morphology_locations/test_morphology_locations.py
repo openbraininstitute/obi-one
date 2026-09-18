@@ -49,6 +49,58 @@ def test_random_morphology_locations_accepts_list_of_tuple_section_types_for_sca
     assert locations.section_types == [(3,), (4,), (3, 4)]
 
 
+def test_generated_morphology_locations_report_configured_output_count():
+    locations = obi.RandomMorphologyLocations(number_of_locations=3)
+
+    assert locations.output_location_count() == 3
+
+
+def test_generated_morphology_locations_report_no_count_for_parameter_sweeps():
+    locations = obi.RandomMorphologyLocations(number_of_locations=[2, 3])
+
+    assert locations.output_location_count() is None
+
+
+def test_explicit_morphology_locations_report_selected_point_count():
+    locations = obi.ExplicitMorphologyLocations(
+        locations=(
+            obi.MorphologyLocationPoint(section_id=1, offset=0.25),
+            obi.MorphologyLocationPoint(section_id=2, offset=0.75),
+        )
+    )
+
+    assert locations.output_location_count() == 2
+
+
+def test_explicit_morphology_locations_report_no_count_without_selection():
+    locations = obi.ExplicitMorphologyLocations()
+
+    assert locations.output_location_count() is None
+
+
+@pytest.mark.parametrize("parameter", ["number_of_locations", "random_seed", "section_types"])
+def test_explicit_morphology_locations_do_not_expose_sampling_parameters(parameter):
+    """Hand-picked points are not sampled, so the sampling knobs must not exist at all."""
+    schema_properties = obi.ExplicitMorphologyLocations.model_json_schema()["properties"]
+
+    assert parameter not in obi.ExplicitMorphologyLocations.model_fields
+    assert parameter not in schema_properties
+
+
+@pytest.mark.parametrize("parameter", ["number_of_locations", "random_seed", "section_types"])
+def test_generated_morphology_locations_expose_sampling_parameters(parameter):
+    assert parameter in obi.RandomMorphologyLocations.model_fields
+
+
+def test_explicit_morphology_locations_do_not_expose_a_neuron_set():
+    """The selected points already belong to the single neuron being simulated."""
+    assert "neuron_set" not in obi.ExplicitMorphologyLocations.model_fields
+
+
+def test_generated_morphology_locations_expose_a_neuron_set():
+    assert "neuron_set" in obi.RandomMorphologyLocations.model_fields
+
+
 def test_random_morphology_locations_rejects_invalid_section_type():
     with pytest.raises(ValidationError):
         obi.RandomMorphologyLocations(

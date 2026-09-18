@@ -187,7 +187,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    fascilitation_time: AllDistributionsReference | None = Field(
+    facilitation_time: AllDistributionsReference | None = Field(
         default=None,
         title="Facilitation Time Distribution",
         description=(
@@ -311,7 +311,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
         },
     )
 
-    fascilitation_time_shared_within: bool = Field(
+    facilitation_time_shared_within: bool = Field(
         default=False,
         title="Facilitation Time Distribution Shared Within",
         description="Whether the facilitation time is shared within the synapses"
@@ -438,7 +438,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
                 ),
                 "facilitation_time": sample_from(
                     "facilitation_time",
-                    self.fascilitation_time,
+                    self.facilitation_time,
                     _DEFAULT_FACILITATION_TIME,
                 ),
                 "depression_time": sample_from(

@@ -92,17 +92,18 @@ def _generate_locations(
     group_name: str,
     group_index: int = 0,
 ) -> pd.DataFrame:
-    count = placement.number_of_locations
+    count = placement.output_location_count()
     if not isinstance(count, int) or count <= 0:
         raise BuildSynaptomeError(
             f"Synapse group '{group_name}' has invalid location count {count!r}."
         )
     try:
         placement_for_group = placement
-        if group_index and isinstance(placement.random_seed, int):
+        random_seed = getattr(placement, "random_seed", None)
+        if group_index and isinstance(random_seed, int):
             placement_for_group = placement.model_copy(
                 update={
-                    "random_seed": _derive_group_seed(placement.random_seed, group_index),
+                    "random_seed": _derive_group_seed(random_seed, group_index),
                 }
             )
         with _preserve_numpy_random_state():
@@ -285,7 +286,9 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
         raise BuildSynaptomeError("Build Synaptome requires a db_client to resolve the ME-model.")
     try:
         staged = config.initialize.me_model.stage_circuit(
-            db_client=db_client, dest_dir=output_directory, entity_cache=False
+            db_client=db_client,
+            dest_dir=output_directory,
+            entity_cache=False,
         )
     except Exception as exc:
         msg = f"Unable to resolve or stage ME-model '{config.initialize.me_model.id_str}': {exc}"
@@ -322,8 +325,8 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
         used_names: set[str] = set(circuit.nodes.population_names)
         for group_index, (group_key, group) in enumerate(config.synapse_groups.items()):
             base = _safe_name(group_key)
-            source_population = f"synaptome_{base}_sources"
-            edge_population = f"synaptome_{base}__{_safe_name(target_name)}__chemical"
+            source_population = f"{base}_sources"
+            edge_population = f"{source_population}__{_safe_name(target_name)}__chemical"
             if source_population in used_names or edge_population in expected_groups:
                 raise BuildSynaptomeError(
                     f"Synapse group '{group_key}' produces a duplicate SONATA population name."
@@ -374,12 +377,13 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
                 axis=1,
             )
             edge_data["afferent_group_id"] = np.full(count, group_index, dtype=np.int32)
-            group_dir = Path("synaptome") / base
-            nodes_relative = group_dir / "nodes.h5"
-            edges_relative = group_dir / "edges.h5"
+            nodes_relative = Path(source_population) / "nodes.h5"
+            edges_relative = Path(edge_population) / "edges.h5"
             write_virtual_nodes(output_directory / nodes_relative, source_population, source_count)
+            edges_path = output_directory / edges_relative
+            edges_path.parent.mkdir(parents=True, exist_ok=True)
             write_edges(
-                output_directory / edges_relative,
+                edges_path,
                 edge_population,
                 source_target,
                 edge_data,

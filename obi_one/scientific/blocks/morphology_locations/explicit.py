@@ -3,13 +3,12 @@ from typing import Annotated, ClassVar, override
 import morphio
 import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field
 
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import (
     MorphologyLocationsBlock,
-    SectionTypes,
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
@@ -24,9 +23,6 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_OFF,
     _SOM_PAD,
     MorphologyPathDistanceCalculator,
-)
-from obi_one.scientific.unions_and_references.combined_neuron_sets import (
-    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
 )
 
 _LOCATION_COLUMNS = pandas.Index(
@@ -174,33 +170,10 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
         },
     )
 
-    # Re-declared only to hide the parent's sampling knobs: locations are given outright, so
-    # `_make_points` never reads them. neuron_set is also hidden because explicit locations
-    # are gated to single-neuron targets where the default is always correct.
-    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
-        default=None,
-        title="Neuron Set",
-        description="Unused: explicit locations target the single neuron in the circuit.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    random_seed: NonNegativeInt = Field(
-        default=0,
-        title="Random Seed",
-        description="Unused: explicit locations involve no random sampling.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    number_of_locations: PositiveInt = Field(
-        default=1,
-        title="Number of Locations",
-        description="Unused: the number of locations is the length of `locations`.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
-    section_types: SectionTypes = Field(
-        default=None,
-        title="Section Types",
-        description="Unused: each location names its own section.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
-    )
+    @override
+    def output_location_count(self) -> int | None:
+        """Return the number of selected points, or None before any are chosen."""
+        return len(self.locations) if self.locations is not None else None
 
     def _make_points(self, morphology: morphio.Morphology) -> pandas.DataFrame:
         if not self.locations:

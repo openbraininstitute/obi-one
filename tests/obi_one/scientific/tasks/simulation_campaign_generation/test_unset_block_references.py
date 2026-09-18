@@ -33,6 +33,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsUnion
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationUnion,
 )
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
@@ -43,7 +44,6 @@ from obi_one.scientific.unions_and_references.stimuli import CircuitStimulusUnio
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
     POINT_POPULATION,
@@ -58,12 +58,23 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 # the default construction. Required-target blocks are kept out of the untargeted sweeps below.
 CIRCUIT_STIMULI = sorted(union_member_names(CircuitStimulusUnion))
 RECORDINGS = sorted(union_member_names(RecordingUnion))
-REQUIRED_TARGET_RECORDINGS = {"MorphologyLocationVoltageRecording"}
+# A recording whose reference field has no default cannot be constructed untargeted, so it is
+# derived rather than listed: a new such block excludes itself from the sweeps below.
+REQUIRED_TARGET_RECORDINGS = {
+    name
+    for name in RECORDINGS
+    if any(
+        getattr(obi, name).model_fields[field_name].is_required()
+        for field_name in reference_field_names(getattr(obi, name))
+    )
+}
 UNTARGETED_RECORDINGS = sorted(
     name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
 )
 SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
-MORPHOLOGY_LOCATIONS = sorted(union_member_names(MorphologyLocationUnion))
+# Explicit locations are excluded: they name points on a single neuron, so they carry no
+# neuron-set reference and are not offered for circuit configurations.
+MORPHOLOGY_LOCATIONS = sorted(union_member_names(CircuitMorphologyLocationUnion))
 COMBINED_NEURON_SETS = sorted(
     name for name in union_member_names(NEURONSimulationNeuronSetUnion) if "Combined" in name
 )
@@ -141,10 +152,7 @@ EXPECTED_COMBINED_DEFAULTS = {
 
 def _block(name: str):
     """Construct a block by class name with every field, references included, left at default."""
-    cls = getattr(obi, name)
-    if cls is obi.ExplicitMorphologyLocations:
-        return cls(locations=(obi.MorphologyLocationPoint(section_id=1, offset=0.5),))
-    return cls()
+    return getattr(obi, name)()
 
 
 def _input_entry(result, name: str) -> dict:
@@ -432,15 +440,12 @@ class TestNoDanglingNodeSetReferences:
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_brian2_stimulus_leaves_nothing_dangling(self, brian2_config, tmp_path):
-        """Brian2 resolves two different defaults, and both node sets have to be written."""
+        """Brian2 resolves one default, shared by the simulation and the stimulus."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.referenced_node_sets() == {
-            DEFAULT_POINT_NODE_SET,
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET,
-        }
+        assert result.referenced_node_sets() == {DEFAULT_POINT_NODE_SET}
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_learning_engine_stimulus_leaves_nothing_dangling(

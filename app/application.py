@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 from entitysdk.exception import EntitySDKError
+from entitysdk.utils.http import HTTPClient as EntitySDKHTTPClient
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -58,14 +59,17 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         settings.ENVIRONMENT,
     )
     http_client = httpx.Client()
+    entitysdk_http_client = EntitySDKHTTPClient()
     try:
         yield {
             "http_client": http_client,
+            "entitysdk_http_client": entitysdk_http_client,
         }
     except asyncio.CancelledError as err:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
+        entitysdk_http_client.close()
         http_client.close()  # ruff: ignore[blocking-http-call-httpx-in-async-function]
         L.info("Stopping application")
 
