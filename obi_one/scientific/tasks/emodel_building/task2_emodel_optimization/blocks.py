@@ -15,7 +15,7 @@ from bluepyemodel.preprocessing.schemas import (
     SectionListChoice,
     SectionListName,
 )
-from entitysdk.types import EntityType
+from entitysdk.types import EntityType, TaskResultType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -389,8 +389,9 @@ class OptimizationInitialize(Block):
             "asset is staged as the optimization target configuration."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
-            SchemaKey.ENTITY_QUERY: {"type": EntityType.task_result},
+            SchemaKey.UI_ELEMENT: UIElement.TASK_RESULT_SELECTOR,
+            # Concrete TaskResult subtype the frontend resolves and filters on.
+            SchemaKey.TASK_RESULT_TYPE: TaskResultType.efeature_extraction__result,
         },
     )
     morphology: CellMorphologyFromID = Field(
@@ -446,13 +447,11 @@ class OptimizationValue(Block):
         default="fixed",
         title="Value mode",
         description="Choose a fixed value or an optimizable interval.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
     value: float | None = Field(
         default=None,
         title="Fixed value",
         description="Value used when the mode is fixed.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     bounds: tuple[float, float] | None = Field(
         default=None,
@@ -461,7 +460,6 @@ class OptimizationValue(Block):
             "Lower and upper bounds used when the mode is bounds. If omitted, "
             "the compiler may use an approved type-specific fallback."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
 
     @model_validator(mode="after")
@@ -502,7 +500,6 @@ class ParameterSelection(Block):
             "Reusable distance-dependent distribution applied to this regional parameter. "
             "Uniform is the default."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
 
 
@@ -515,7 +512,6 @@ class GlobalParameterSelection(Block):
         title="Ion channel model",
         description="Optional source entity when the global variable belongs to a mechanism.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
             SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
         },
     )
@@ -577,7 +573,6 @@ class MechanismRegionSelection(Block):
         title="Ion channel model",
         description="IonChannelModel entity whose mechanism is active in this region.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_SELECTOR_SINGLE,
             SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
         },
     )
@@ -586,7 +581,6 @@ class MechanismRegionSelection(Block):
         title="Mechanism parameters",
         description="All selected NMODL variables and their values for this region.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Mechanism Parameter",
         },
     )
@@ -744,7 +738,6 @@ class MechanismsBySectionList(Block):
             "Ion channel model entities available for assignment to morphology section lists."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
             SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
             SchemaKey.STEP: MECHANISM_SELECTION_STEP,
             SchemaKey.STEP_ORDER: 1,
@@ -758,7 +751,6 @@ class MechanismsBySectionList(Block):
             "may be assigned to multiple section lists."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Mechanism Section List",
             "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
             "availability_by_axon_modifier": (
@@ -790,17 +782,15 @@ class EModelOptimisationParameters(Block):
             "Select ion channel models, assign them to section lists, and configure their "
             "optimization parameters."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE},
+        json_schema_extra={SchemaKey.ORDER: 0},
     )
     global_parameters: dict[str, GlobalParameterSelectionUnion] = Field(
         default_factory=_default_global_parameters,
         title="Global parameters",
         description="Editable global values such as v_init and celsius.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Global Parameter",
-            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 4,
+            SchemaKey.ORDER: 1,
         },
     )
     base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(
@@ -808,15 +798,13 @@ class EModelOptimisationParameters(Block):
         title="Base and passive parameters",
         description="Editable built-in parameters assigned to section lists.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Base Parameter Region",
             "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
             "availability_by_axon_modifier": (
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
-            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 4,
+            SchemaKey.ORDER: 2,
         },
     )
     distribution_parameters: dict[str, dict[str, OptimizationValueUnion]] = Field(
@@ -824,10 +812,8 @@ class EModelOptimisationParameters(Block):
         title="Distribution parameters",
         description="Values for placeholders declared by sibling distance-dependent distributions.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Distribution Parameter",
-            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 4,
+            SchemaKey.ORDER: 3,
         },
     )
 
@@ -884,7 +870,6 @@ class ParametersSelection(Block):
             "The same entity may be assigned to multiple regions."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
             SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
             SchemaKey.STEP: MECHANISM_SELECTION_STEP,
             SchemaKey.STEP_ORDER: 1,
@@ -899,7 +884,6 @@ class ParametersSelection(Block):
             "Overlapping rows are preserved and compiled from broad to narrow locations."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Mechanism Region",
             "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
             "availability_by_axon_modifier": (
@@ -919,7 +903,6 @@ class ParametersSelection(Block):
             "constants on their own 'Distribution parameters' card."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Global Parameter",
             "derived_view": "parameter_group_view",
             SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
@@ -936,7 +919,6 @@ class ParametersSelection(Block):
             "to narrow locations."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Base Parameter Region",
             "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
             "availability_by_axon_modifier": (
@@ -954,7 +936,6 @@ class ParametersSelection(Block):
             "Values for placeholders declared by reusable distance-dependent distributions."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Distribution Parameter",
             SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
             SchemaKey.STEP_ORDER: 4,
@@ -1264,7 +1245,7 @@ class OptimizationParams(Block):
         default=None,
         title="CMA centroids",
         description="Optional fixed initial CMA centroid vector; valid for SO-CMA and MO-CMA.",
-        json_schema_extra={SchemaKey.UI_ENABLED: False},
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     @model_validator(mode="after")

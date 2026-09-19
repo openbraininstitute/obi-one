@@ -256,17 +256,14 @@ def test_mechanisms_wizard_steps_are_mapped_in_figma_order():
     assert mechanisms_schema["ion_channel_models"]["step_order"] == 1
     assert mechanisms_schema["mechanism_regions"]["step"] == "Region assignment"
     assert mechanisms_schema["mechanism_regions"]["step_order"] == 2
-    assert parameter_schema["global_parameters"]["step"] == "Parameters selection"
-    assert parameter_schema["base_parameters"]["step"] == "Parameters selection"
-    assert parameter_schema["distribution_parameters"]["step"] == "Parameters selection"
+    assert parameter_schema["mechanisms"]["order"] == 0
+    assert parameter_schema["global_parameters"]["order"] == 1
+    assert parameter_schema["base_parameters"]["order"] == 2
+    assert parameter_schema["distribution_parameters"]["order"] == 3
 
     top_level_schema = schema["properties"]
     assert top_level_schema["distance_dependent_distributions"]["step"] == "Distribution"
     assert top_level_schema["distance_dependent_distributions"]["step_order"] == 3
-    assert (
-        top_level_schema["distance_dependent_distributions"]["wizard"]
-        == "emodel_optimisation_parameters"
-    )
 
 
 def test_schema_groups_match_figma_navigation():
@@ -277,14 +274,16 @@ def test_schema_groups_match_figma_navigation():
     assert properties["info"]["group"] == "Setup"
     assert properties["initialize"]["group"] == "Setup"
     assert initialize_schema["target_efeatures"]["title"] == "Target EFeatures"
-    assert initialize_schema["target_efeatures"]["entity_query"] == {"type": "task_result"}
+    assert initialize_schema["target_efeatures"]["ui_element"] == UIElement.TASK_RESULT_SELECTOR
+    assert (
+        initialize_schema["target_efeatures"]["task_result_type"] == "efeature_extraction__result"
+    )
+    assert "entity_query" not in initialize_schema["target_efeatures"]
     assert initialize_schema["morphology"]["title"] == "Cell morphology"
     assert initialize_schema["morphology"]["entity_query"] == {"type": "cell_morphology"}
     assert properties["emodel_optimisation_parameters"]["group"] == "Inputs"
     assert properties["emodel_optimisation_parameters"]["title"] == "Mechanisms"
-    assert properties["emodel_optimisation_parameters"]["ui_element"] == (
-        UIElement.EMODEL_OPTIMISATION_PARAMETERS
-    )
+    assert properties["emodel_optimisation_parameters"]["ui_element"] == UIElement.BLOCK_ORDERED
     mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]["properties"]
     assert mechanisms_schema["ion_channel_models"]["entity_query"] == {"type": "ion_channel_model"}
     mechanism_region_schema = schema["$defs"]["MechanismRegionSelection"]["properties"]

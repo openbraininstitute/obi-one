@@ -17,6 +17,7 @@ class SchemaKey(StrEnum):
     FILTERS = "filters"
     GROUP = "group"
     GROUP_ORDER = "group_order"
+    ORDER = "order"
     STEP = "step"
     STEP_ORDER = "step_order"
     # STEP/STEP_ORDER express a wizard sub-step *within* a single GROUP, for forms
@@ -40,6 +41,7 @@ class SchemaKey(StrEnum):
     PROPERTY_SOURCE_FIELD = "property_source_field"
     REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
+    TASK_RESULT_TYPE = "task_result_type"
     TITLE_BY_KEY = "title_by_key"
     UI_ELEMENT = "ui_element"
     UI_ENABLED = "ui_enabled"
@@ -50,10 +52,10 @@ class SchemaKey(StrEnum):
 class UIElement(StrEnum):
     AXON_MODIFIER = "axon_modifier"
     BLOCK_DICTIONARY = "block_dictionary"
+    BLOCK_ORDERED = "block_ordered"
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
-    EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
     ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
     ETYPE_SELECTOR = "etype_selector"
@@ -86,6 +88,7 @@ class UIElement(StrEnum):
     STRING_SELECTION = "string_selection"
     STRING_SELECTION_ENHANCED = "string_selection_enhanced"
     STOCHASTICITY = "stochasticity"
+    TASK_RESULT_SELECTOR = "task_result_selector"
     VOLTAGE_DURATION = "voltage_duration"
 
 

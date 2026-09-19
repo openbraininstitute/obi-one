@@ -54,12 +54,12 @@ def validate_root_element(
             validate_block_dictionary(schema, element, config_ref, form)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
-        case UIElement.EMODEL_OPTIMISATION_PARAMETERS:
-            validate_emodel_optimisation_parameters(schema, element, ref)
+        case UIElement.BLOCK_ORDERED:
+            validate_block_ordered(schema, element, config_ref)
         case _:
             msg = (
                 f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
-                f" 'block_dictionary', 'block_union', or 'emodel_optimisation_parameters'."
+                f" 'block_dictionary', 'block_union', or 'block_ordered'."
                 f" Got: {ui_element}"
             )
             raise ValueError(msg)
@@ -224,31 +224,45 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     validate_block(schema, ref)
 
 
-def validate_emodel_optimisation_parameters(schema: dict, key: str, ref: str) -> None:
-    """Validate the root-level Task 2 mechanisms/optimization-parameter workflow element.
+def validate_block_ordered(schema: dict, key: str, config_ref: str) -> None:
+    """Validate a `block_ordered` root element.
 
-    Structurally this root element is a nested-block object (like ``block_single``),
-    but it additionally must carry a ``mechanisms`` property (the
-    ``MechanismsBySectionList`` catalogue and section-list filing) so that clients can
-    distinguish it from a generic ``block_single`` root field.
+    A block whose properties are themselves blocks, each carrying a unique integer `order`.
     """
-    return
     properties = schema.get("properties")
     if not isinstance(properties, dict):
-        msg = (
-            f"Validation error at {ref}: emodel_optimisation_parameters {key} must have "
-            "'properties'"
-        )
+        msg = f"Validation error at {config_ref}: block_ordered {key} must have 'properties'"
         raise TypeError(msg)
 
-    if "mechanisms" not in properties:
+    orders: list[int] = []
+    for prop, prop_schema in properties.items():
+        if prop == "type":
+            validate_type(prop_schema, config_ref)
+            continue
+
+        validate_string(prop_schema, "title", f"{prop} at {config_ref}")
+        validate_string(prop_schema, "description", f"{prop} at {config_ref}")
+
+        order = prop_schema.get(SchemaKey.ORDER)
+        if not isinstance(order, int) or isinstance(order, bool):
+            msg = (
+                f"Validation error at {config_ref}: block_ordered {key} property {prop} must "
+                f"have an integer '{SchemaKey.ORDER}'"
+            )
+            raise TypeError(msg)
+        orders.append(order)
+
+        # TODO: each contained block should be validated as a nested block via
+        # validate_block(prop_schema, ...). Skipped for now because these blocks' inner
+        # fields have had their ui_elements stripped (custom UI); restore them and enable
+        # this recursion once they carry the required ui_element metadata again.
+
+    if len(orders) != len(set(orders)):
         msg = (
-            f"Validation error at {ref}: emodel_optimisation_parameters {key} must define a "
-            "'mechanisms' property (MechanismsBySectionList)."
+            f"Validation error at {config_ref}: block_ordered {key} has duplicate "
+            f"'{SchemaKey.ORDER}' values: {sorted(orders)}"
         )
         raise ValueError(msg)
-
-    validate_block(schema, ref)
 
 
 def validate_config(form: dict, config_ref: str) -> None:

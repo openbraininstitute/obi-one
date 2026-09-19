@@ -3,6 +3,7 @@ import math
 import sys
 from enum import StrEnum
 
+from entitysdk.types import TaskResultType
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
@@ -789,8 +790,51 @@ def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
     """To do"""
 
 
+def validate_task_result_selector(schema: dict, param: str, ref: str) -> None:
+    """Validate a TaskResult selector field.
+
+    The field is a ``TaskResultFromID`` entity reference (an ``{"id_str": ...}`` object). It does
+    not carry an ``entity_query`` (the frontend resolves the eligible results); instead it declares
+    the concrete TaskResult subtype as data via ``task_result_type``, which the frontend uses to
+    filter the selectable results.
+    """
+    task_result_type = schema.get(SchemaKey.TASK_RESULT_TYPE)
+    valid_task_result_types = {member.value for member in TaskResultType}
+    if task_result_type not in valid_task_result_types:
+        msg = (
+            f"Validation error at {ref}: task_result_selector param {param} must declare a "
+            f"'{SchemaKey.TASK_RESULT_TYPE}' that is a valid TaskResultType. "
+            f"Got: {task_result_type!r}"
+        )
+        raise ValidationError(msg) from None
+
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+    obj = {"id_str": "task_result_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: task_result_selector param {param} failed to "
+            f"validate an entity-reference object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_etype_selector(schema: dict, param: str, ref: str) -> None:
-    """Validate an ETypeClass (Identifiable, not Entity) single-selector field."""
+    """Validate an ETypeClass (Identifiable, not Entity) single-selector field.
+
+    The field is an identifier reference (an ``{"id_str": ...}`` object) and must declare an
+    ``entity_query`` of ``{"type": "etype"}``.
+    """
+    entity_query = schema.get(SchemaKey.ENTITY_QUERY)
+    if not isinstance(entity_query, dict) or entity_query.get("type") != "etype":
+        msg = (
+            f"Validation error at {ref}: etype_selector param {param} must declare an "
+            f"'{SchemaKey.ENTITY_QUERY}' of {{'type': 'etype'}}. Got: {entity_query!r}"
+        )
+        raise ValidationError(msg) from None
+
     resolver = RefResolver.from_schema(openapi_schema)
     validator = Draft7Validator(schema, resolver=resolver)
 
@@ -1043,6 +1087,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_model_identifier_multiple(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
+        case UIElement.TASK_RESULT_SELECTOR:
+            validate_task_result_selector(schema, param, ref)
         case UIElement.ETYPE_SELECTOR:
             validate_etype_selector(schema, param, ref)
         case UIElement.MORPHOLOGY_LOCATION_SELECTION:
