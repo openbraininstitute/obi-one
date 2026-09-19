@@ -45,26 +45,6 @@ EModelOptimizationScanConfig
 root-element contract (`title`, `description`, `group`, `group_order`) as `block_single`.
 `distance_dependent_distributions` remains a separate root field.
 
-## Runtime mapping
-
-```text
-emodel_optimisation_parameters
-        ↓
-MechanismsBySectionList / EModelOptimisationParameters self-validation
-        ↓
-ParametersSelection (canonical compatibility view)
-        ↓
-EModelOptimizationScanConfig sibling validation
-(section-list availability and distribution declarations)
-        ↓
-parameter_builder.build_params_definition()
-        ↓
-legacy BluePyEModel params.json
-```
-
-The compiler continues to consume `ParametersSelection`. Legacy payloads using
-`parameters_selection` are accepted and normalized to the new root field. New serialization emits
-only `emodel_optimisation_parameters`.
 
 ## Validation
 
