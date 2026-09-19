@@ -268,7 +268,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     # --- Inputs ---
 
     emodel_optimisation_parameters: EModelOptimisationParameters = Field(
-        default_factory=EModelOptimisationParameters,
         title="Mechanisms",
         description=(
             "Select mechanisms, assign them to section lists, and configure optimization "
