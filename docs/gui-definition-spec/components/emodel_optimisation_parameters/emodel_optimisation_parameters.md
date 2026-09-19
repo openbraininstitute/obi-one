@@ -16,10 +16,13 @@ As a consequence:
 
 - The frontend hardcodes how to render this element from its `ui_element` alone; the backend does
   not describe the form via the schema.
-- The nested fields (`mechanisms`, `global_parameters`, `base_parameters`,
-  `distribution_parameters`, and everything under them) carry **no `ui_element`** and no other
-  schema-driven UI metadata (no `step`/`step_order`, `entity_query`, `singular_name`, etc.). The
-  frontend already knows what each key maps to.
+- Most nested fields (`global_parameters`, `base_parameters`, `distribution_parameters`, and
+  everything under them) carry **no `ui_element`** and no other schema-driven UI metadata (no
+  `step`/`step_order`, `entity_query`, `singular_name`, etc.). The frontend already knows what
+  each key maps to.
+- The one exception is `mechanisms.ion_channel_models`, which is a normal
+  [`model_identifier_multiple`](../multiple_entities/multiple_entities.md) selector and carries
+  that `ui_element`. It is validated as such (see Validation below).
 - Some non-UI structural data may still be present where the frontend needs it (for example the
   section-list `choices` / `availability_by_axon_modifier` / `alias_expansions` on the
   region-keyed fields), but this is data, not a UI contract.
@@ -47,6 +50,18 @@ root-element contract (`title`, `description`, `group`, `group_order`) as `block
 
 
 ## Validation
+
+The schema validator enforces the one schema-rendered nested field. All of the following are
+required (each raises a validation error if not met):
+
+- The element must have a `mechanisms` property.
+- `mechanisms` must have an `ion_channel_models` property.
+- `mechanisms.ion_channel_models` must declare `ui_element: model_identifier_multiple`.
+- `mechanisms.ion_channel_models` must be a valid `model_identifier_multiple` element (an array
+  whose items validate as entity-reference `{"id_str": ...}` objects).
+
+No other nested field of this element is validated by the schema validator (they are FE-custom
+and carry no `ui_element`).
 
 The self-validation performed by the Python models (not the UI schema) still applies:
 

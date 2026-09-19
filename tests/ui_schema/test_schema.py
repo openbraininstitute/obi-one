@@ -20,6 +20,7 @@ from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
+    validate_block_elements,
     validate_float_optional,
     validate_hidden_refs_not_required,
     validate_neuron_set_combination,
@@ -224,15 +225,43 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     validate_block(schema, ref)
 
 
-def validate_emodel_optimisation_parameters(schema: dict, key: str, ref: str) -> None:
+def validate_emodel_optimisation_parameters(schema: dict, _key: str, ref: str) -> None:
     """Validate the root-level Task 2 mechanisms/optimization-parameter workflow element.
 
     This root element's UI is built entirely custom on the frontend and is NOT rendered from the
-    schema (its tabs do not even correspond to the schema's nested structure). Consequently its
-    nested fields carry no `ui_element` or other schema-driven UI metadata, and there is nothing
-    to validate here.
+    schema (its tabs do not even correspond to the schema's nested structure), so most of its
+    nested fields carry no schema-driven UI metadata.
+
+    The one exception is ``mechanisms.ion_channel_models``, which is a normal
+    ``model_identifier_multiple`` selector; its ui_element is validated here.
     """
-    del schema, key, ref
+
+    def resolve(node: dict) -> dict:
+        node_ref = node.get("$ref")
+        return {**node, **resolve_ref(openapi_schema, node_ref)} if node_ref else node
+
+    mechanisms = schema.get("properties", {}).get("mechanisms")
+    if mechanisms is None:
+        msg = f"Validation error at {ref}: emodel_optimisation_parameters must have a 'mechanisms'"
+        raise ValueError(msg)
+    mechanisms = resolve(mechanisms)
+
+    ion_channel_models = mechanisms.get("properties", {}).get("ion_channel_models")
+    if ion_channel_models is None:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters mechanisms must have an "
+            "'ion_channel_models' property"
+        )
+        raise ValueError(msg)
+
+    if ion_channel_models.get(SchemaKey.UI_ELEMENT) != UIElement.MODEL_IDENTIFIER_MULTIPLE:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters "
+            f"mechanisms.ion_channel_models must be a '{UIElement.MODEL_IDENTIFIER_MULTIPLE}'"
+        )
+        raise ValueError(msg)
+
+    validate_block_elements("ion_channel_models", ion_channel_models, ref)
 
 
 def validate_config(form: dict, config_ref: str) -> None:

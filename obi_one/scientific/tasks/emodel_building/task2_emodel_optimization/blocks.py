@@ -722,6 +722,7 @@ class MechanismsBySectionList(Block):
         description=(
             "Ion channel model entities available for assignment to morphology section lists."
         ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
     )
     mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
         default_factory=dict,
