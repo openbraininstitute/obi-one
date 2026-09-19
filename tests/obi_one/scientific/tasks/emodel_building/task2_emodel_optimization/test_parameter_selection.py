@@ -241,13 +241,6 @@ def test_section_list_choices_follow_modifier_capabilities():
 
 
 def test_mechanisms_wizard_steps_are_mapped_in_figma_order():
-    assert EModelOptimisationParameters.steps == (
-        "Mechanism Selection",
-        "Region assignment",
-        "Distribution",
-        "Parameters selection",
-    )
-
     schema = EModelOptimizationScanConfig.model_json_schema()
     parameter_schema = schema["$defs"]["EModelOptimisationParameters"]["properties"]
     mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]["properties"]
@@ -285,7 +278,7 @@ def test_schema_groups_match_figma_navigation():
     assert properties["emodel_optimisation_parameters"]["title"] == "Mechanisms"
     assert properties["emodel_optimisation_parameters"]["ui_element"] == UIElement.BLOCK_ORDERED
     mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]["properties"]
-    assert mechanisms_schema["ion_channel_models"]["entity_query"] == {"type": "ion_channel_model"}
+    assert "entity_query" not in mechanisms_schema["ion_channel_models"]
     mechanism_region_schema = schema["$defs"]["MechanismRegionSelection"]["properties"]
     assert mechanism_region_schema["ion_channel_model"]["entity_query"] == {
         "type": "ion_channel_model"

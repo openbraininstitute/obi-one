@@ -418,19 +418,9 @@ def default_distance_dependent_distributions() -> dict[str, DistanceDependentDis
     return {}
 
 
-# The Figma "Mechanisms" card is a 4-step wizard. Mechanism data and parameter
-# values live in the root-level ``emodel_optimisation_parameters`` field. Distribution
-# declarations remain a top-level sibling but are displayed as step 3 of this wizard.
 MECHANISM_SELECTION_STEP = "Mechanism Selection"
 REGION_ASSIGNMENT_STEP = "Region assignment"
-DISTRIBUTION_STEP = "Distribution"
 PARAMETERS_SELECTION_STEP = "Parameters selection"
-MECHANISMS_WIZARD_STEPS: tuple[str, ...] = (
-    MECHANISM_SELECTION_STEP,
-    REGION_ASSIGNMENT_STEP,
-    DISTRIBUTION_STEP,
-    PARAMETERS_SELECTION_STEP,
-)
 
 
 ParameterLocation = Literal["global"] | SectionListName
@@ -732,13 +722,12 @@ class MechanismsBySectionList(Block):
     """Mechanism catalogue and region assignments for the GUI workflow."""
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
-        default_factory=tuple,
         title="Ion channel models",
         description=(
             "Ion channel model entities available for assignment to morphology section lists."
         ),
         json_schema_extra={
-            SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
+            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
             SchemaKey.STEP: MECHANISM_SELECTION_STEP,
             SchemaKey.STEP_ORDER: 1,
         },
@@ -773,10 +762,7 @@ class MechanismsBySectionList(Block):
 class EModelOptimisationParameters(Block):
     """Root-level Task 2 mechanism and optimization-parameter configuration."""
 
-    steps: ClassVar[tuple[str, ...]] = MECHANISMS_WIZARD_STEPS
-
     mechanisms: MechanismsBySectionList = Field(
-        default_factory=MechanismsBySectionList,
         title="Mechanisms",
         description=(
             "Select ion channel models, assign them to section lists, and configure their "
@@ -859,8 +845,6 @@ class ParametersSelection(Block):
     The public GUI configuration is ``EModelOptimisationParameters``. This model is
     retained as the normalized compatibility representation for existing runtime code.
     """
-
-    steps: ClassVar[tuple[str, ...]] = MECHANISMS_WIZARD_STEPS
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
         default_factory=tuple,

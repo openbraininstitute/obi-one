@@ -252,10 +252,13 @@ def validate_block_ordered(schema: dict, key: str, config_ref: str) -> None:
             raise TypeError(msg)
         orders.append(order)
 
-        # TODO: each contained block should be validated as a nested block via
-        # validate_block(prop_schema, ...). Skipped for now because these blocks' inner
-        # fields have had their ui_elements stripped (custom UI); restore them and enable
-        # this recursion once they carry the required ui_element metadata again.
+        ref = prop_schema.get("$ref")
+        if ref:
+            prop_schema = {  # ruff: ignore[redefined-loop-name]
+                **prop_schema,
+                **resolve_ref(openapi_schema, ref),
+            }
+        validate_block(prop_schema, ref)
 
     if len(orders) != len(set(orders)):
         msg = (
