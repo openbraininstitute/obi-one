@@ -276,7 +276,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             "sibling and are displayed as step 3 of the Mechanisms workflow."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_ORDERED,
+            SchemaKey.UI_ELEMENT: UIElement.EMODEL_OPTIMISATION_PARAMETERS,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 1,
         },
@@ -295,8 +295,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 3,
-            SchemaKey.STEP: "Distribution",
-            SchemaKey.STEP_ORDER: 3,
             SchemaKey.SINGULAR_NAME: "Custom Distance-Dependent Distribution",
         },
     )

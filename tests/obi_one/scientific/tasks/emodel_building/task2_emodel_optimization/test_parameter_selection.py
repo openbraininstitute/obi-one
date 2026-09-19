@@ -240,25 +240,6 @@ def test_section_list_choices_follow_modifier_capabilities():
         assert choices["myelinated"].availability == availability
 
 
-def test_mechanisms_wizard_steps_are_mapped_in_figma_order():
-    schema = EModelOptimizationScanConfig.model_json_schema()
-    parameter_schema = schema["$defs"]["EModelOptimisationParameters"]["properties"]
-    mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]["properties"]
-
-    assert mechanisms_schema["ion_channel_models"]["step"] == "Mechanism Selection"
-    assert mechanisms_schema["ion_channel_models"]["step_order"] == 1
-    assert mechanisms_schema["mechanism_regions"]["step"] == "Region assignment"
-    assert mechanisms_schema["mechanism_regions"]["step_order"] == 2
-    assert parameter_schema["mechanisms"]["order"] == 0
-    assert parameter_schema["global_parameters"]["order"] == 1
-    assert parameter_schema["base_parameters"]["order"] == 2
-    assert parameter_schema["distribution_parameters"]["order"] == 3
-
-    top_level_schema = schema["properties"]
-    assert top_level_schema["distance_dependent_distributions"]["step"] == "Distribution"
-    assert top_level_schema["distance_dependent_distributions"]["step_order"] == 3
-
-
 def test_schema_groups_match_figma_navigation():
     schema = EModelOptimizationScanConfig.model_json_schema()
     properties = schema["properties"]
@@ -276,7 +257,9 @@ def test_schema_groups_match_figma_navigation():
     assert initialize_schema["morphology"]["entity_query"] == {"type": "cell_morphology"}
     assert properties["emodel_optimisation_parameters"]["group"] == "Inputs"
     assert properties["emodel_optimisation_parameters"]["title"] == "Mechanisms"
-    assert properties["emodel_optimisation_parameters"]["ui_element"] == UIElement.BLOCK_ORDERED
+    assert properties["emodel_optimisation_parameters"]["ui_element"] == (
+        UIElement.EMODEL_OPTIMISATION_PARAMETERS
+    )
     mechanisms_schema = schema["$defs"]["MechanismsBySectionList"]["properties"]
     assert "entity_query" not in mechanisms_schema["ion_channel_models"]
     mechanism_region_schema = schema["$defs"]["MechanismRegionSelection"]["properties"]

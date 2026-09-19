@@ -418,11 +418,6 @@ def default_distance_dependent_distributions() -> dict[str, DistanceDependentDis
     return {}
 
 
-MECHANISM_SELECTION_STEP = "Mechanism Selection"
-REGION_ASSIGNMENT_STEP = "Region assignment"
-PARAMETERS_SELECTION_STEP = "Parameters selection"
-
-
 ParameterLocation = Literal["global"] | SectionListName
 
 REGIONAL_PARAMETER_LOCATIONS: frozenset[RegionalSectionListName] = frozenset(
@@ -722,15 +717,11 @@ class MechanismsBySectionList(Block):
     """Mechanism catalogue and region assignments for the GUI workflow."""
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
+        default_factory=tuple,
         title="Ion channel models",
         description=(
             "Ion channel model entities available for assignment to morphology section lists."
         ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
-            SchemaKey.STEP: MECHANISM_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 1,
-        },
     )
     mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
         default_factory=dict,
@@ -740,14 +731,11 @@ class MechanismsBySectionList(Block):
             "may be assigned to multiple section lists."
         ),
         json_schema_extra={
-            SchemaKey.SINGULAR_NAME: "Mechanism Section List",
             "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
             "availability_by_axon_modifier": (
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
-            SchemaKey.STEP: REGION_ASSIGNMENT_STEP,
-            SchemaKey.STEP_ORDER: 2,
         },
     )
 
@@ -763,44 +751,34 @@ class EModelOptimisationParameters(Block):
     """Root-level Task 2 mechanism and optimization-parameter configuration."""
 
     mechanisms: MechanismsBySectionList = Field(
+        default_factory=MechanismsBySectionList,
         title="Mechanisms",
         description=(
             "Select ion channel models, assign them to section lists, and configure their "
             "optimization parameters."
         ),
-        json_schema_extra={SchemaKey.ORDER: 0},
     )
     global_parameters: dict[str, GlobalParameterSelectionUnion] = Field(
         default_factory=_default_global_parameters,
         title="Global parameters",
         description="Editable global values such as v_init and celsius.",
-        json_schema_extra={
-            SchemaKey.SINGULAR_NAME: "Global Parameter",
-            SchemaKey.ORDER: 1,
-        },
     )
     base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(
         default_factory=_default_base_parameters,
         title="Base and passive parameters",
         description="Editable built-in parameters assigned to section lists.",
         json_schema_extra={
-            SchemaKey.SINGULAR_NAME: "Base Parameter Region",
             "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
             "availability_by_axon_modifier": (
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
-            SchemaKey.ORDER: 2,
         },
     )
     distribution_parameters: dict[str, dict[str, OptimizationValueUnion]] = Field(
         default_factory=dict,
         title="Distribution parameters",
         description="Values for placeholders declared by sibling distance-dependent distributions.",
-        json_schema_extra={
-            SchemaKey.SINGULAR_NAME: "Distribution Parameter",
-            SchemaKey.ORDER: 3,
-        },
     )
 
     def to_parameters_selection(self) -> "ParametersSelection":
@@ -855,8 +833,6 @@ class ParametersSelection(Block):
         ),
         json_schema_extra={
             SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
-            SchemaKey.STEP: MECHANISM_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 1,
         },
     )
     mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
@@ -874,8 +850,6 @@ class ParametersSelection(Block):
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
-            SchemaKey.STEP: REGION_ASSIGNMENT_STEP,
-            SchemaKey.STEP_ORDER: 2,
         },
     )
     global_parameters: dict[str, GlobalParameterSelectionUnion] = Field(
@@ -889,8 +863,6 @@ class ParametersSelection(Block):
         json_schema_extra={
             SchemaKey.SINGULAR_NAME: "Global Parameter",
             "derived_view": "parameter_group_view",
-            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 4,
         },
     )
     base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(
@@ -909,8 +881,6 @@ class ParametersSelection(Block):
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
             ),
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
-            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 4,
         },
     )
     distribution_parameters: dict[str, dict[str, OptimizationValueUnion]] = Field(
@@ -921,8 +891,6 @@ class ParametersSelection(Block):
         ),
         json_schema_extra={
             SchemaKey.SINGULAR_NAME: "Distribution Parameter",
-            SchemaKey.STEP: PARAMETERS_SELECTION_STEP,
-            SchemaKey.STEP_ORDER: 4,
         },
     )
 

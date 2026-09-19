@@ -58,7 +58,7 @@ There are two major types of such UI elements:
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
 
-        - [block_ordered](components/block_ordered/block_ordered.md)
+        - [emodel_optimisation_parameters](components/emodel_optimisation_parameters/emodel_optimisation_parameters.md)
         
     - Root elements must have the following properties:
         - `title`

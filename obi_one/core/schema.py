@@ -17,14 +17,6 @@ class SchemaKey(StrEnum):
     FILTERS = "filters"
     GROUP = "group"
     GROUP_ORDER = "group_order"
-    ORDER = "order"
-    STEP = "step"
-    STEP_ORDER = "step_order"
-    # STEP/STEP_ORDER express a wizard sub-step *within* a single GROUP, for forms
-    # like the Task 2 "Mechanisms" card that Figma renders as four ordered
-    # sub-steps (Mechanism Selection, Region assignment, Distribution, Parameters
-    # selection) sharing one GROUP. Distinct from GROUP_ORDER, which orders
-    # top-level groups against each other.
     LATEX_BY_KEY = "latex_by_key"
     LATEX_EQUATION = "latex_equation"
     PARAMETER_ORDER_PRIORITY = "parameter_order_priority"
@@ -52,10 +44,10 @@ class SchemaKey(StrEnum):
 class UIElement(StrEnum):
     AXON_MODIFIER = "axon_modifier"
     BLOCK_DICTIONARY = "block_dictionary"
-    BLOCK_ORDERED = "block_ordered"
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
+    EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
     ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
     ETYPE_SELECTOR = "etype_selector"

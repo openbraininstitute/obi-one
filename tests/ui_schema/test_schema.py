@@ -54,12 +54,12 @@ def validate_root_element(
             validate_block_dictionary(schema, element, config_ref, form)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
-        case UIElement.BLOCK_ORDERED:
-            validate_block_ordered(schema, element, config_ref)
+        case UIElement.EMODEL_OPTIMISATION_PARAMETERS:
+            validate_emodel_optimisation_parameters(schema, element, ref)
         case _:
             msg = (
                 f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
-                f" 'block_dictionary', 'block_union', or 'block_ordered'."
+                f" 'block_dictionary', 'block_union', or 'emodel_optimisation_parameters'."
                 f" Got: {ui_element}"
             )
             raise ValueError(msg)
@@ -224,48 +224,15 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     validate_block(schema, ref)
 
 
-def validate_block_ordered(schema: dict, key: str, config_ref: str) -> None:
-    """Validate a `block_ordered` root element.
+def validate_emodel_optimisation_parameters(schema: dict, key: str, ref: str) -> None:
+    """Validate the root-level Task 2 mechanisms/optimization-parameter workflow element.
 
-    A block whose properties are themselves blocks, each carrying a unique integer `order`.
+    This root element's UI is built entirely custom on the frontend and is NOT rendered from the
+    schema (its tabs do not even correspond to the schema's nested structure). Consequently its
+    nested fields carry no `ui_element` or other schema-driven UI metadata, and there is nothing
+    to validate here.
     """
-    properties = schema.get("properties")
-    if not isinstance(properties, dict):
-        msg = f"Validation error at {config_ref}: block_ordered {key} must have 'properties'"
-        raise TypeError(msg)
-
-    orders: list[int] = []
-    for prop, prop_schema in properties.items():
-        if prop == "type":
-            validate_type(prop_schema, config_ref)
-            continue
-
-        validate_string(prop_schema, "title", f"{prop} at {config_ref}")
-        validate_string(prop_schema, "description", f"{prop} at {config_ref}")
-
-        order = prop_schema.get(SchemaKey.ORDER)
-        if not isinstance(order, int) or isinstance(order, bool):
-            msg = (
-                f"Validation error at {config_ref}: block_ordered {key} property {prop} must "
-                f"have an integer '{SchemaKey.ORDER}'"
-            )
-            raise TypeError(msg)
-        orders.append(order)
-
-        ref = prop_schema.get("$ref")
-        if ref:
-            prop_schema = {  # ruff: ignore[redefined-loop-name]
-                **prop_schema,
-                **resolve_ref(openapi_schema, ref),
-            }
-        validate_block(prop_schema, ref)
-
-    if len(orders) != len(set(orders)):
-        msg = (
-            f"Validation error at {config_ref}: block_ordered {key} has duplicate "
-            f"'{SchemaKey.ORDER}' values: {sorted(orders)}"
-        )
-        raise ValueError(msg)
+    del schema, key, ref
 
 
 def validate_config(form: dict, config_ref: str) -> None:
