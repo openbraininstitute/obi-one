@@ -50,13 +50,15 @@ There are two major types of such UI elements:
 
 1. `Root UI elements` appear in the left hand column of the configuration interface. 
     
-    - There are currently three supported types:
+    - There are currently four supported types:
 
         - [block_single](components/block_single/block_single.md)
 
         - [block_union](components/block_union/block_union.md)
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
+
+        - [emodel_optimisation_parameters](components/emodel_optimisation_parameters/emodel_optimisation_parameters.md)
         
     - Root elements must have the following properties:
         - `title`
@@ -64,6 +66,8 @@ There are two major types of such UI elements:
         - A dictionary called `json_schema_extra` (the standard name for adding extra information to the schema in Pydantic). Within the `json_schema_extra` dictionary, the following properties must be specified:
             - `group` string that points to a string in its parent config's `group_order` array.
             - `group_order` integer (unique within the group) which determines the order in which the root element appears within its specified `group`.
+
+    - A root element can instead be marked as hidden by setting `ui_hidden = true` in its `json_schema_extra`. A hidden root element is not rendered in the UI, so it is exempt from the requirements above (`ui_element`, `group`, `group_order`, `title`, and `description` are not required). Because it is never shown or edited, a hidden root element must have a `default`. See [ui_hidden](components/ui_hidden/ui_hidden.md).
 
     - These properties are added to the root element in the Field definition of the parameter, with the `ui_element` string specifying the type, e.g.:
         ```py
@@ -84,7 +88,17 @@ There are two major types of such UI elements:
 
         - [string_input](components/string/string_input.md)
 
+        - [string_list_input](components/string/string_input.md#string-list-input)
+
+        - [string_list_optional](components/string/string_input.md#string-list-optional)
+
         - [string_selection](components/string/string_selection.md) and [string_selection_enhanced](components/string/string_selection.md#string-selection-enhanced)
+
+        - [axon_modifier](components/axon_modifier/axon_modifier.md) (one-off)
+
+        - [object](components/object/object.md)
+
+        - [stochasticity](components/stochasticity/stochasticity.md) (one-off)
 
         - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 
@@ -93,6 +107,8 @@ There are two major types of such UI elements:
         - [model_identifier](components/model_identifier/model_identifier.md)
 
         - [model_identifier_multiple](components/multiple_entities/multiple_entities.md)
+
+        - [task_result_selector](components/task_result_selector/task_result_selector.md)
 
         - [numeric](components/numeric/numeric.md)
 

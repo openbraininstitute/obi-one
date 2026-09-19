@@ -20,6 +20,7 @@ from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
+    validate_block_elements,
     validate_float_optional,
     validate_hidden_refs_not_required,
     validate_neuron_set_combination,
@@ -54,10 +55,13 @@ def validate_root_element(
             validate_block_dictionary(schema, element, config_ref, form)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
+        case UIElement.EMODEL_OPTIMISATION_PARAMETERS:
+            validate_emodel_optimisation_parameters(schema, element, ref)
         case _:
             msg = (
                 f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
-                f" 'block_dictionary', or 'block_union'. Got: {ui_element}"
+                f" 'block_dictionary', 'block_union', or 'emodel_optimisation_parameters'."
+                f" Got: {ui_element}"
             )
             raise ValueError(msg)
 
@@ -79,6 +83,9 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[c
 
         group = root_element_schema.get(SchemaKey.GROUP)
         group_order = root_element_schema.get(SchemaKey.GROUP_ORDER)
+        # Hidden elements don't need a group
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
+            continue
         if not group:
             msg = f"Validation error at {form_ref}: {root_element} must have a group"
             raise ValueError(msg)
@@ -176,19 +183,14 @@ def validate_scan_config_dependendent_block_components(block_schema, ref, form):
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
-    additional_properties = schema.get("additionalProperties", {})
-    block_schemas = additional_properties.get("oneOf")
-    if block_schemas is None:
-        block_ref = additional_properties.get("$ref")
-        if block_ref is None:
-            msg = (
-                f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
-                " or '$ref' in additionalProperties"
-            )
-            raise ValueError(msg)
-        block_schemas = [{"$ref": block_ref}]
+    if schema.get("additionalProperties", {}).get("oneOf") is None:
+        msg = (
+            f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
+            "in additionalProperties"
+        )
+        raise ValueError(msg)
 
-    for block_schema in block_schemas:
+    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
         ref = block_schema.get("$ref")
 
         if ref:
@@ -223,6 +225,45 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     validate_block(schema, ref)
 
 
+def validate_emodel_optimisation_parameters(schema: dict, _key: str, ref: str) -> None:
+    """Validate the root-level Task 2 mechanisms/optimization-parameter workflow element.
+
+    This root element's UI is built entirely custom on the frontend and is NOT rendered from the
+    schema (its tabs do not even correspond to the schema's nested structure), so most of its
+    nested fields carry no schema-driven UI metadata.
+
+    The one exception is ``mechanisms.ion_channel_models``, which is a normal
+    ``model_identifier_multiple`` selector; its ui_element is validated here.
+    """
+
+    def resolve(node: dict) -> dict:
+        node_ref = node.get("$ref")
+        return {**node, **resolve_ref(openapi_schema, node_ref)} if node_ref else node
+
+    mechanisms = schema.get("properties", {}).get("mechanisms")
+    if mechanisms is None:
+        msg = f"Validation error at {ref}: emodel_optimisation_parameters must have a 'mechanisms'"
+        raise ValueError(msg)
+    mechanisms = resolve(mechanisms)
+
+    ion_channel_models = mechanisms.get("properties", {}).get("ion_channel_models")
+    if ion_channel_models is None:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters mechanisms must have an "
+            "'ion_channel_models' property"
+        )
+        raise ValueError(msg)
+
+    if ion_channel_models.get(SchemaKey.UI_ELEMENT) != UIElement.MODEL_IDENTIFIER_MULTIPLE:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters "
+            f"mechanisms.ion_channel_models must be a '{UIElement.MODEL_IDENTIFIER_MULTIPLE}'"
+        )
+        raise ValueError(msg)
+
+    validate_block_elements("ion_channel_models", ion_channel_models, ref)
+
+
 def validate_config(form: dict, config_ref: str) -> None:
     if not form.get(SchemaKey.UI_ENABLED):
         L.info(f"Form {config_ref} is disabled, skipping validation.")
@@ -248,6 +289,15 @@ def validate_config(form: dict, config_ref: str) -> None:
                 **root_element_schema,
                 **resolve_ref(openapi_schema, ref),
             }
+
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
+            if "default" not in root_element_schema:
+                msg = (
+                    f"Validation error at {config_ref} {root_element}: hidden root elements"
+                    f" ('{SchemaKey.UI_HIDDEN}' is True) must have a 'default'."
+                )
+                raise ValueError(msg)
+            continue
 
         validate_string(root_element_schema, "title", f"{root_element} at {config_ref}")
         validate_string(root_element_schema, "description", f"{root_element} at {config_ref}")

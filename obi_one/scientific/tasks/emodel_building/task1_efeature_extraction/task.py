@@ -12,7 +12,6 @@ from obi_one.core.task import Task
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
-from obi_one.scientific.tasks.emodel_building import _shared
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.protocol_and_feature_selection import (  # ruff: ignore[line-too-long]
     SelectEFeaturesByProtocol,
 )
@@ -22,6 +21,8 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.s
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
     EModelEFeatureExtractionSingleConfig,
 )
+from obi_one.utils.filesystem import chdir, create_dir
+from obi_one.utils.io import write_json
 
 L = logging.getLogger(__name__)
 
@@ -237,18 +238,21 @@ class EModelEFeatureExtractionTask(Task):
 
         # 3. Write a minimal BluePyEModel recipe so extraction runs through the
         #    local access point rather than calling bluepyefe directly.
-        _shared.write_recipes(
+        recipes_path = coord_root / RECIPES_RELPATH
+        create_dir(recipes_path.parent)
+        write_json(
             _build_extraction_recipes(
                 self.config.settings,
                 validation_protocol_names=validation_names,
             ),
-            coord_root / RECIPES_RELPATH,
+            recipes_path,
+            indent=4,
         )
 
         # 4. Run BluePyEModel's extraction. chdir so the local access point anchors
         #    its relative paths (recipes, targets config, figures, extracted
         #    features) to the coordinate working directory.
-        with _shared.chdir(coord_root):
+        with chdir(coord_root):
             access_point = get_access_point(
                 access_point="local",
                 emodel=EMODEL_NAME,
