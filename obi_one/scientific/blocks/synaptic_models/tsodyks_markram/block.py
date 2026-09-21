@@ -36,6 +36,12 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     _synapse_model_family: ClassVar[SynapseModelFamily] = SynapseModelFamily.TSODYKS_MARKRAM
 
+    # Tsodyks-Markram parameters (Use, Dep, Fac, ...) are only meaningful on "chemical"
+    # SONATA edge populations; "Exp2Syn_synapse" and "point_process" populations use
+    # mechanisms with entirely different parameter sets, and electrical populations have
+    # no synaptic mechanism at all.
+    _compatible_edge_population_types: ClassVar[tuple[str, ...]] = ("chemical",)
+
     u_hill_coefficient_distribution: AllDistributionsReference | None = Field(
         default=None,
         title="U Hill Coefficient Distribution",

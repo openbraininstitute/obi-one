@@ -76,6 +76,38 @@ class SynapseModelAssigner(Block):
             )
             raise ValueError(msg)
 
+        # `synaptic_model` is None only before `fill_none_references` has run - by the time a
+        # SingleConfig reaches this task, every assigner's tagged reference has already been
+        # substituted with its default (the family's own default model). So None here means
+        # this assigner is being validated ahead of that fill, not that no model is wanted;
+        # `create_parameters` below assumes a resolved model unconditionally, so failing loudly
+        # here is better than the AttributeError it would otherwise raise on `None.block`.
+        if self.synaptic_model is None:
+            msg = (
+                f"Assigner for edge population {self.edge_population_name!r} has no synaptic "
+                "model resolved yet. Call fill_none_references() on the config (or set one "
+                "explicitly) before validating it against a circuit."
+            )
+            raise ValueError(msg)
+
+        # The assigned model, not a fixed list of types: different synapse model families
+        # need entirely different parameter sets (Tsodyks-Markram's Use/Dep/Fac have no
+        # counterpart on an "Exp2Syn_synapse" or "point_process" population, and neither
+        # applies to an electrical population), so only the model itself knows which
+        # SONATA edge population type(s) it is meaningful for. The UI dropdown already
+        # narrows this for Tsodyks-Markram assigners specifically, but a config submitted
+        # through the API can name any population, so the guarantee has to be enforced here.
+        model = self.synaptic_model.block
+        compatible_types = type(model).compatible_edge_population_types()
+        edge_population_type = circuit.sonata_circuit.edges[self.edge_population_name].type
+        if edge_population_type not in compatible_types:
+            msg = (
+                f"Edge population {self.edge_population_name!r} has type "
+                f"{edge_population_type!r}, but {type(model).__name__} can only be "
+                f"assigned to edge populations of type {sorted(compatible_types)}."
+            )
+            raise ValueError(msg)
+
     def _validate_neuron_set_spans(
         self,
         circuit: Circuit,
