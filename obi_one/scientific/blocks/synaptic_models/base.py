@@ -47,6 +47,32 @@ class SynapticModelBase(Block):
             raise NotImplementedError(msg)
         return cls._synapse_model_family
 
+    # ClassVar, not a bare annotation, for the same reason as `_synapse_model_family` above.
+    # The SONATA edge population `type` string(s) (e.g. "chemical") this model's parameters
+    # are meaningful for. Different population types carry entirely different parameter sets
+    # (a Tsodyks-Markram model's parameters have no counterpart on an "Exp2Syn_synapse" or
+    # "point_process" population), so this cannot be inferred from `synapse_model_family` or
+    # from any coarser chemical/electrical split - it has to be declared per model.
+    _compatible_edge_population_types: ClassVar[tuple[str, ...] | None] = None
+
+    @classmethod
+    def compatible_edge_population_types(cls) -> tuple[str, ...]:
+        """SONATA edge population ``type`` string(s) this model can be assigned to.
+
+        Checked by ``SynapseModelAssigner.validate_for_circuit`` before any synapse is
+        written, so that assigning e.g. a Tsodyks-Markram model to an ``"Exp2Syn_synapse"``
+        or electrical population is rejected instead of writing columns the mechanism the
+        edge population actually uses does not read.
+        """
+        if cls._compatible_edge_population_types is None:
+            msg = (
+                "Concrete subclasses of SynapticModelBase MUST set the class variable "
+                "_compatible_edge_population_types to the SONATA edge population type(s) "
+                "(e.g. ('chemical',)) this model's parameters apply to."
+            )
+            raise NotImplementedError(msg)
+        return cls._compatible_edge_population_types
+
     # Filled in by each concrete model. Keyed by the tag, since that is what a config answers
     # by and what identifies a parameter across models that declare the same field; the field
     # is what `sample` needs, and the default cannot live in `json_schema_extra` because it
