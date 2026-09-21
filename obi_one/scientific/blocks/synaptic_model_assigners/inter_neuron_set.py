@@ -7,13 +7,13 @@ from pydantic import Field
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.synaptic_model_assigners.base import SynapseModelAssigner
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
-    ALL_NEURON_SETS_REFERENCE_UNION,
     ALL_NEURON_SETS_REFERENCE_TYPES,
+    ALL_NEURON_SETS_REFERENCE_UNION,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 L = logging.getLogger(__name__)
 
@@ -51,9 +51,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         super().validate_for_circuit(circuit)
         ep = circuit.sonata_circuit.edges[self.edge_population_name]
         self._validate_neuron_set_spans(circuit, self.source_neuron_set, "source", ep.source.name)
-        self._validate_neuron_set_spans(
-            circuit, self.targeted_neuron_set, "target", ep.target.name
-        )
+        self._validate_neuron_set_spans(circuit, self.targeted_neuron_set, "target", ep.target.name)
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         circ = circuit.sonata_circuit
