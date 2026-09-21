@@ -16,8 +16,10 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
 )
 from obi_one.scientific.tasks.synapse_parameterization.utils import (
     check_consistent_synapse_models,
+    ensure_mechanisms_dir,
     get_default_for,
     write_back_to_edge_file,
+    write_mod_files,
 )
 from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerUnion,
@@ -144,6 +146,18 @@ class SynapseParameterizationTask(Task):
             self._circuit = Circuit(
                 name=staged_circuit.name, path=str(output_dir / "circuit_config.json")
             )
+
+        # Every model in play needs the simulator to have its mechanism compiled from a
+        # `.mod` file. Done once per edge population, before parameterizing, so a later
+        # failure never leaves the edge files parameterized for a mechanism that was never
+        # copied in. Resolved per population, not once for the whole circuit: `mechanisms_dir`
+        # can be overridden on an individual edge population, so two populations in the same
+        # circuit may legitimately resolve to different directories.
+        with BenchmarkTracker.section("write_mod_files"):
+            output_config_path = output_dir / "circuit_config.json"
+            for ep_name, assigners_for_ep in per_edge_population.items():
+                mechanisms_dir = ensure_mechanisms_dir(output_config_path, ep_name)
+                write_mod_files(assigners_for_ep, mechanisms_dir)
 
         with BenchmarkTracker.section("parameterize_synapses"):
             circ = self._circuit.sonata_circuit

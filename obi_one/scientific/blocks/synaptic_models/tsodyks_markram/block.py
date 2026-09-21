@@ -306,6 +306,9 @@ class ExcitatoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
 
     title: ClassVar[str] = "Excitatory Tsodyks-Markram"
 
+    # AMPA/NMDA glutamatergic mechanism used for excitatory Tsodyks-Markram synapses.
+    _mod_file_names: ClassVar[tuple[str, ...]] = ("ProbAMPANMDA_EMS.mod",)
+
     # The distribution each parameter falls back to, and the tag naming it. Declared here
     # rather than shared with the inhibitory model because the two take different values.
     #
@@ -385,6 +388,9 @@ class InhibitoryTsodyksMarkramSynapticModel(TsodyksMarkramSynapticModel):
     """
 
     title: ClassVar[str] = "Inhibitory Tsodyks-Markram"
+
+    # GABA-A/B mechanism used for inhibitory Tsodyks-Markram synapses.
+    _mod_file_names: ClassVar[tuple[str, ...]] = ("ProbGABAAB_EMS.mod",)
 
     # As above, for inhibitory synapses: the inhibitory example distributions from
     # connectome-manipulator's WireConnectomeExample notebook, translated the same way (gamma
