@@ -91,7 +91,7 @@ def sonata_config_for(
     cfg = deepcopy(SYNAPTOME_SONATA_CONFIG)
 
     if mechanisms_dir is not None:
-        cfg["components"]["mechanisms_dir"] = "$BASE_DIR/" + mechanisms_dir
+        cfg["components"]["mechanisms_dir"] = "$BASE_DIR/" + mechanisms_dir  # ty:ignore[invalid-assignment]
     # Edge populations
     if edge_populations:
         cfg["networks"]["edges"].append(  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]

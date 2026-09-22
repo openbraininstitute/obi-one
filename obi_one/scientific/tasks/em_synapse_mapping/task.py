@@ -295,7 +295,7 @@ class EMSynapseMappingTask(Task):
                 ext_edges_df,
                 pop_virt,
                 pop_bio,
-                n_src=len(coll_virtual),
+                n_src=len(coll_virtual),  # ty:ignore[invalid-argument-type]
                 n_tgt=len(coll_bio),
             )
 
