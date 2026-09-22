@@ -1412,13 +1412,13 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     efel_settings: EfelSettings = Field(
-        default_factory=EfelSettings,
+        default=EfelSettings(),
         title="eFEL settings",
         description="Common eFEL settings forwarded to optimization evaluations.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT, SchemaKey.UI_HIDDEN: True},
     )
     validation_protocols: tuple[str, ...] = Field(
-        default_factory=tuple,
+        default=(),
         title="Validation protocols",
         description="Protocol names held out from optimization and used only for validation.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_INPUT},
@@ -1541,16 +1541,16 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     phase_plot_settings: PhasePlotSettings = Field(
-        default_factory=PhasePlotSettings,
+        default=PhasePlotSettings(),
         title="Phase plot settings",
         description="Protocol and amplitude settings for phase-plot analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT, SchemaKey.UI_HIDDEN: True},
     )
     sinespec_settings: SineSpecSettings = Field(
-        default_factory=SineSpecSettings,
+        default=SineSpecSettings(),
         title="SineSpec settings",
         description="Amplitude settings for optional SineSpec analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT, SchemaKey.UI_HIDDEN: True},
     )
     custom_bluepyefe_cells_pklpath: str | None = Field(
         default=None,
