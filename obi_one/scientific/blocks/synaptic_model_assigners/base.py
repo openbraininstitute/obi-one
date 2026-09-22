@@ -16,15 +16,6 @@ from obi_one.scientific.unions_and_references.synaptic_models import (
 
 
 class SynapseModelAssigner(Block):
-    overwrite_if_exists: bool = Field(
-        title="Overwrite",
-        description="Overwrite if a parameterization exists already.",
-        default=False,
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
-        },
-    )
-
     random_seed: int | list[int] = Field(
         default=1,
         title="Random seed",
