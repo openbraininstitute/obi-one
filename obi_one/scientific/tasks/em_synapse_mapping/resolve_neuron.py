@@ -54,6 +54,16 @@ def resolve_provenance(
     return pt_root_id, source_mesh_entity, source_dataset
 
 
+def ensure_mechanisms_placed(path_in: Path, path_out: Path) -> None:
+    if not path_in.exists():
+        err_str = f"Mechanisms directory {path_in} does not exist!"
+        raise ValueError(err_str)
+    path_out.mkdir(exist_ok=True)
+
+    for mod_file in path_in.glob("*.mod"):
+        shutil.copy(mod_file, path_out)
+
+
 def resolve_neuron(  # ruff: ignore[too-many-locals]
     neuron_ref: CellMorphologyFromID | MEModelFromID,
     db_client: Client,
@@ -109,9 +119,7 @@ def resolve_neuron(  # ruff: ignore[too-many-locals]
         tmp_staging = out_root / f"temp_staging_{morph_entity.name}"
         memdl_paths = download_memodel(db_client, me_model_entity, tmp_staging)  # ty:ignore[invalid-argument-type]
         mechanisms_placed = "mod"
-        # TODO: If there's multiple me_models, each replaces the previous.
-        # Should merge contents instead.
-        shutil.move(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
+        ensure_mechanisms_placed(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
         hoc_dir = out_root / "hoc"
         hoc_dir.mkdir(parents=True)
         shutil.move(memdl_paths.hoc_path, hoc_dir)
