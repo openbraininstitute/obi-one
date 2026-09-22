@@ -263,6 +263,79 @@ def validate_emodel_optimisation_parameters(schema: dict, _key: str, ref: str) -
 
     validate_block_elements("ion_channel_models", ion_channel_models, ref)
 
+    mechanism_regions = mechanisms.get("properties", {}).get("mechanism_regions")
+    if mechanism_regions is None:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters mechanisms must have a "
+            "'mechanism_regions' property"
+        )
+        raise ValueError(msg)
+    validate_section_list_choices(resolve(mechanism_regions), "mechanism_regions", ref)
+
+
+# Every section-list choice object the frontend renders must expose these keys, each with
+# the given JSON type.
+SECTION_LIST_CHOICE_TYPES: dict[str, type] = {
+    "availability": str,
+    "available": bool,
+    "description": str,
+    "display_order": int,
+    "label": str,
+    "name": str,
+}
+SECTION_LIST_CHOICE_KEYS = frozenset(SECTION_LIST_CHOICE_TYPES)
+
+
+def validate_section_list_choice(choice: object, key: str, ref: str) -> None:
+    """Validate a single section-list choice object's keys and value types."""
+    if not isinstance(choice, dict):
+        msg = (
+            f"Validation error at {ref}: {key} 'choices' items must be objects. Got: {type(choice)}"
+        )
+        raise TypeError(msg)
+
+    choice_dict: dict = choice
+    missing = SECTION_LIST_CHOICE_KEYS - choice_dict.keys()
+    if missing:
+        msg = (
+            f"Validation error at {ref}: {key} 'choices' item {choice_dict.get('name')!r} is "
+            f"missing required keys: {sorted(missing)}"
+        )
+        raise ValueError(msg)
+
+    for field, expected_type in SECTION_LIST_CHOICE_TYPES.items():
+        # `bool` is a subclass of `int`, so compare the exact type of each value.
+        if type(choice_dict[field]) is not expected_type:
+            msg = (
+                f"Validation error at {ref}: {key} choice {field!r} must be a "
+                f"{expected_type.__name__}"
+            )
+            raise TypeError(msg)
+
+
+def validate_section_list_choices(schema: dict, key: str, ref: str) -> None:
+    """Enforce that a section-list field exposes a well-formed ``choices`` list.
+
+    ``choices`` drives the custom Task 2 frontend (it is not rendered from the schema),
+    so it must exist, be a list, and every element must carry the availability/label
+    metadata the frontend depends on.
+    """
+    choices = schema.get("choices")
+    if choices is None:
+        msg = f"Validation error at {ref}: {key} must expose a 'choices' list"
+        raise ValueError(msg)
+
+    if not isinstance(choices, list):
+        msg = f"Validation error at {ref}: {key} 'choices' must be a list. Got: {type(choices)}"
+        raise TypeError(msg)
+
+    if not choices:
+        msg = f"Validation error at {ref}: {key} 'choices' must not be empty"
+        raise ValueError(msg)
+
+    for choice in choices:
+        validate_section_list_choice(choice, key, ref)
+
 
 def validate_config(form: dict, config_ref: str) -> None:
     if not form.get(SchemaKey.UI_ENABLED):
@@ -556,3 +629,88 @@ def test_features_for_ignores_extras_keyed_to_another_protocol():
     )
     for protocol in selection.protocols:
         assert selection.features_for(protocol) == protocol.features
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `emodel_optimisation_parameters` section-list `choices`.
+# ---------------------------------------------------------------------------
+
+# MechanismsBySectionList.mechanism_regions exposes the section-list `choices` list that
+# drives the custom Task 2 frontend (availability, label, and ordering metadata).
+SECTION_LIST_CHOICES_BLOCK = "MechanismsBySectionList"
+SECTION_LIST_CHOICES_FIELD = "mechanism_regions"
+
+
+def _mechanism_regions_schema() -> dict:
+    """Return a deep copy of the real `mechanism_regions` field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][SECTION_LIST_CHOICES_BLOCK]["properties"][
+            SECTION_LIST_CHOICES_FIELD
+        ]
+    )
+
+
+def test_section_list_choices_valid_schema_passes():
+    # The real, generated schema must expose a well-formed `choices` list.
+    validate_section_list_choices(
+        _mechanism_regions_schema(), SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+    )
+
+
+def test_section_list_choices_expose_expected_element_structure():
+    schema = _mechanism_regions_schema()
+    choices = schema["choices"]
+
+    assert isinstance(choices, list)
+    assert choices
+
+    # Every element must carry exactly the availability/label metadata the frontend needs.
+    for choice in choices:
+        assert choice.keys() >= SECTION_LIST_CHOICE_KEYS
+
+    all_sections = next(choice for choice in choices if choice["name"] == "all")
+    assert all_sections == {
+        "availability": "available",
+        "available": True,
+        "description": "Apical, basal, somatic, and axonal sections.",
+        "display_order": 0,
+        "label": "All sections",
+        "name": "all",
+    }
+
+
+def test_section_list_choices_rejects_missing_choices():
+    schema = _mechanism_regions_schema()
+    schema.pop("choices", None)
+    with pytest.raises(ValueError, match="must expose a 'choices' list"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
+
+
+def test_section_list_choices_rejects_non_list():
+    schema = _mechanism_regions_schema()
+    schema["choices"] = {"name": "all"}
+    with pytest.raises(TypeError, match="'choices' must be a list"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
+
+
+def test_section_list_choices_rejects_element_missing_keys():
+    schema = _mechanism_regions_schema()
+    schema["choices"] = [{"name": "all", "label": "All sections"}]
+    with pytest.raises(ValueError, match="missing required keys"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
+
+
+def test_section_list_choices_rejects_wrong_element_type():
+    schema = _mechanism_regions_schema()
+    schema["choices"] = [
+        {
+            "availability": "available",
+            "available": "yes",  # must be a boolean
+            "description": "Apical, basal, somatic, and axonal sections.",
+            "display_order": 0,
+            "label": "All sections",
+            "name": "all",
+        }
+    ]
+    with pytest.raises(TypeError, match="choice 'available' must be a bool"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
