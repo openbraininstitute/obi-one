@@ -128,7 +128,7 @@ where = ["."]
 include = ["obi_one*"]
 
 [tool.setuptools.package-data]
-"obi_one.scientific.library" = ["*.json"]
+"obi_one.scientific.library" = ["*.json", "*.jinja2", "*.png"]
 
 [tool.setuptools_scm]
 tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
@@ -161,7 +161,7 @@ include = [
 # Legacy modules kept for reference; excluded from formatting and linting.
 extend-exclude = [
     "obi_one/scientific/blocks/neuron_sets/old",
-    "obi_one/scientific/blocks/synaptic_model_assigners",
+    "obi_one/scientific/blocks/synaptic_model_assigners/_original_implementation.py",
 ]
 # Honour the exclusion even when files are passed explicitly (e.g. `make format FILE=...`).
 force-exclude = true
@@ -237,7 +237,7 @@ include = ["app", "obi_one", "launch_scripts"]
 # Legacy modules kept for reference; excluded from ty type checking.
 exclude = [
     "obi_one/scientific/blocks/neuron_sets/old",
-    "obi_one/scientific/blocks/synaptic_model_assigners",
+    "obi_one/scientific/blocks/synaptic_model_assigners/_original_implementation.py",
 ]
 
 [tool.pytest.ini_options]

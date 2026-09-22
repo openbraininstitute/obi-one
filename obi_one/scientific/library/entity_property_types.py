@@ -21,6 +21,9 @@ class CircuitMappedProperties(StrEnum):
     VIRTUAL_NEURONAL_POPULATION = "VirtualNeuronalPopulation"
     NONVIRTUAL_NEURONAL_POPULATION = "NonVirtualNeuronalPopulation"
     NEURONAL_POPULATION = "NeuronalPopulation"
+    CHEMICAL_EDGE_POPULATION = "ChemicalEdgePopulation"
+    ELECTRICAL_EDGE_POPULATION = "ElectricalEdgePopulation"
+    EDGE_POPULATION = "EdgePopulation"
     MECHANISM_VARIABLES_BY_ION_CHANNEL = "MechanismVariablesByIonChannel"
     NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION = "NodePropertyUniqueValuesByPopulation"
 
