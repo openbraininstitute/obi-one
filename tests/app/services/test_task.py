@@ -719,6 +719,36 @@ def test_estimate_task_resources_circuit_extraction(db_client):
     )
 
 
+def test_estimate_task_resources_synapse_parameterization(db_client):
+    """Synapse parameterization delegates to its own estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_synaptic_physiology_assignment]
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.circuit_synaptic_physiology_assignment, config_id=uuid4()
+    )
+    expected = MachineResources(cores=1, memory=8, timelimit="01:00", compute_cell="local")
+
+    with patch(
+        "app.services.resource_estimation.synapse_parameterization.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_b",
+        )
+
+    assert result is expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
+        accounting_parameters=None,
+    )
+
+
 def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_mock):
     task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
 

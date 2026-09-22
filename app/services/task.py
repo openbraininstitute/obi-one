@@ -17,6 +17,7 @@ from entitysdk.types import (
 
 import app.services.resource_estimation.circuit_extraction
 import app.services.resource_estimation.circuit_simulation
+import app.services.resource_estimation.synapse_parameterization
 from app.config import settings
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
@@ -372,6 +373,16 @@ def estimate_task_resources(
                 db_client=db_client,
                 task_definition=task_definition,
                 compute_cell=compute_cell,
+            )
+        case TaskType.circuit_synaptic_physiology_assignment:
+            return (
+                app.services.resource_estimation.synapse_parameterization.estimate_task_resources(
+                    json_model=json_model,
+                    db_client=db_client,
+                    task_definition=task_definition,
+                    compute_cell=compute_cell,
+                    accounting_parameters=accounting_parameters,
+                )
             )
         case _:
             return task_definition.resources.model_copy(update={"compute_cell": compute_cell})
