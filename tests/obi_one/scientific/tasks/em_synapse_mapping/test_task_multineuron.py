@@ -276,7 +276,7 @@ class TestEMSynapseMappingTask:
             task.execute(db_client=mock_db_client)
 
         assert "model_template" in bio_props.properties.columns
-        assert "threshold_current" in bio_props.properties.columns
+        assert "@dynamics:threshold_current" in bio_props.properties.columns
 
     def test_execute_uses_custom_population_names(self, tmp_path, mock_db_client):
         """Custom population names propagate to writers and SONATA config (multi-neuron)."""
