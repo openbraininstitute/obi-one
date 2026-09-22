@@ -219,6 +219,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            ephemeral_storage=100,
         ),
     ),
     TaskType.em_synapse_mapping: TaskDefinition(
