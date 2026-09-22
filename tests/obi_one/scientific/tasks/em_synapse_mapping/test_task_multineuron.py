@@ -226,7 +226,7 @@ class TestEMSynapseMappingTask:
         resolved[0].use_me_model = True
         resolved[0].phys_node_props = {
             "model_template": np.array(["hoc:model"]),
-            "threshold_current": np.array([0.5], dtype=np.float32),
+            "@dynamics:threshold_current": np.array([0.5], dtype=np.float32),
         }
 
         syns = _synapses_df([999], 111)
