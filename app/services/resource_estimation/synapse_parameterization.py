@@ -9,7 +9,9 @@ from app.schemas.accounting import AccountingParameters
 from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
 
 # Scales supported for synapse parameterization. Anything larger than "small" is rejected.
-SUPPORTED_CIRCUIT_SCALES = frozenset({CircuitScale.single, CircuitScale.pair, CircuitScale.small})
+SUPPORTED_CIRCUIT_SCALES = frozenset(
+    {CircuitScale.single, CircuitScale.pair, CircuitScale.small, CircuitScale.microcircuit}
+)
 
 
 def estimate_task_resources(
