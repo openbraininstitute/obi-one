@@ -313,12 +313,56 @@ def validate_section_list_choice(choice: object, key: str, ref: str) -> None:
             raise TypeError(msg)
 
 
+def validate_section_list_property_names(schema: dict, key: str, ref: str) -> None:
+    """Enforce that a section-list dict field constrains its keys with a ``propertyNames`` enum.
+
+    ``mechanism_regions`` is keyed by ``SectionListName``, so the generated schema must expose a
+    ``propertyNames`` with a non-empty string ``enum`` of the allowed section-list names. Locking
+    this in keeps a future refactor from silently dropping the key constraint (which would let the
+    frontend and stored configs use arbitrary, unvalidated region keys).
+    """
+    property_names = schema.get("propertyNames")
+    if property_names is None:
+        msg = f"Validation error at {ref}: {key} must expose a 'propertyNames' schema"
+        raise ValueError(msg)
+
+    # Pydantic emits the key enum as a `$ref` to the shared SectionListName definition.
+    if property_names_ref := property_names.get("$ref"):
+        property_names = {**property_names, **resolve_ref(openapi_schema, property_names_ref)}
+
+    enum = property_names.get("enum")
+    if enum is None:
+        msg = f"Validation error at {ref}: {key} 'propertyNames' must expose an 'enum'"
+        raise ValueError(msg)
+
+    if not isinstance(enum, list) or not enum:
+        msg = (
+            f"Validation error at {ref}: {key} 'propertyNames.enum' must be a non-empty list. "
+            f"Got: {enum}"
+        )
+        raise ValueError(msg)
+
+    if not all(isinstance(name, str) for name in enum):
+        msg = f"Validation error at {ref}: {key} 'propertyNames.enum' must contain only strings"
+        raise TypeError(msg)
+
+    # The key enum and the `choices` list describe the same section lists, so they must agree.
+    choice_names = {choice.get("name") for choice in schema.get("choices", [])}
+    if choice_names and set(enum) != choice_names:
+        msg = (
+            f"Validation error at {ref}: {key} 'propertyNames.enum' must match the section-list "
+            f"'choices' names. Enum: {sorted(enum)}, choices: {sorted(choice_names)}"
+        )
+        raise ValueError(msg)
+
+
 def validate_section_list_choices(schema: dict, key: str, ref: str) -> None:
     """Enforce that a section-list field exposes a well-formed ``choices`` list.
 
     ``choices`` drives the custom Task 2 frontend (it is not rendered from the schema),
     so it must exist, be a list, and every element must carry the availability/label
-    metadata the frontend depends on.
+    metadata the frontend depends on. The dict's keys are additionally constrained by a
+    ``propertyNames`` enum, validated here so it can never be dropped in a later refactor.
     """
     choices = schema.get("choices")
     if choices is None:
@@ -335,6 +379,8 @@ def validate_section_list_choices(schema: dict, key: str, ref: str) -> None:
 
     for choice in choices:
         validate_section_list_choice(choice, key, ref)
+
+    validate_section_list_property_names(schema, key, ref)
 
 
 def validate_config(form: dict, config_ref: str) -> None:
@@ -677,6 +723,61 @@ def test_section_list_choices_expose_expected_element_structure():
         "label": "All sections",
         "name": "all",
     }
+
+
+def test_section_list_choices_valid_property_names_passes():
+    # The real, generated schema must expose the section-list key enum on `propertyNames`.
+    validate_section_list_property_names(
+        _mechanism_regions_schema(), SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+    )
+
+
+def test_mechanism_regions_property_names_enum_lists_section_list_names():
+    schema = _mechanism_regions_schema()
+    property_names = schema["propertyNames"]
+    if property_names_ref := property_names.get("$ref"):
+        property_names = resolve_ref(openapi_schema, property_names_ref)
+
+    assert property_names["enum"] == [
+        "all",
+        "alldend",
+        "somadend",
+        "allnoaxon",
+        "somaxon",
+        "allact",
+        "somatic",
+        "basal",
+        "apical",
+        "axonal",
+        "myelinated",
+    ]
+
+
+def test_section_list_choices_rejects_missing_property_names():
+    schema = _mechanism_regions_schema()
+    schema.pop("propertyNames", None)
+    with pytest.raises(ValueError, match="must expose a 'propertyNames' schema"):
+        validate_section_list_choices(
+            schema, SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+        )
+
+
+def test_section_list_property_names_rejects_missing_enum():
+    schema = _mechanism_regions_schema()
+    schema["propertyNames"] = {"type": "string"}
+    with pytest.raises(ValueError, match="'propertyNames' must expose an 'enum'"):
+        validate_section_list_property_names(
+            schema, SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+        )
+
+
+def test_section_list_property_names_rejects_enum_choices_mismatch():
+    schema = _mechanism_regions_schema()
+    schema["propertyNames"] = {"type": "string", "enum": ["all"]}
+    with pytest.raises(ValueError, match="must match the section-list 'choices' names"):
+        validate_section_list_property_names(
+            schema, SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+        )
 
 
 def test_section_list_choices_rejects_missing_choices():
