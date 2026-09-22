@@ -24,7 +24,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     OptimizationParams,
     OptimizationSettings,
     ParametersSelection,
-    default_distance_dependent_distributions,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     to_bpem_custom_distributions,
@@ -282,7 +281,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     )
 
     distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion] = Field(
-        default_factory=default_distance_dependent_distributions,
+        default={},
         title="Custom distance-dependent distributions",
         description=(
             "User-defined distance-dependent parameter transformations. The ten standard "
@@ -291,6 +290,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             "distributions declared by the user."
         ),
         json_schema_extra={
+            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 3,
