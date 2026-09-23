@@ -1,13 +1,25 @@
+import json
+from pathlib import Path
+
 import h5py
+import libsonata
+import numpy as np
 import pandas as pd
 from bluepysnap.edges import EdgePopulation
 from pandas import DataFrame
 
 from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
+from obi_one.scientific.blocks.synaptic_models.family_defaults import default_synaptic_model_for
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerUnion,
 )
+
+# Fallback used when a circuit's own config declares no `components.mechanisms_dir`: some
+# circuits keep their compiled mechanisms in a `mod/` folder at the circuit root without ever
+# naming it in the config (NEURON/Neurodamus tooling defaults to this folder too), so this is
+# the folder such a circuit already relies on, not an arbitrary choice on this repo's part.
+DEFAULT_MECHANISMS_DIR_NAME = "mod"
 
 
 def compatible_with(cls_a: SynapticModelBase, cls_b: SynapticModelBase) -> None:
@@ -45,21 +57,114 @@ def check_consistent_synapse_models(lst_model_assigners: list[SynapticModelAssig
 def get_default_for(
     lst_model_assigners: list[SynapticModelAssignerUnion], edge_population_name: str, circ: Circuit
 ) -> DataFrame:
-    synaptic_model_block = lst_model_assigners[0].synaptic_model.block  # ty:ignore[unresolved-attribute]
-    default_model = type(synaptic_model_block)()
+    """Build the parameter table an edge population starts from.
+
+    One row per edge. Parameters the edge file already carries are read from it;
+    the rest are sampled from the family's registered default model. The caller
+    then lets each assigner overwrite the rows it covers, so every synapse no
+    assigner claims keeps what the default model produced here.
+    """
+    if not lst_model_assigners:
+        msg = (
+            f"No synaptic model assigners were given for edge population "
+            f"{edge_population_name!r}, so there is no synapse model family to parameterize it."
+        )
+        raise ValueError(msg)
+
+    configured_model = lst_model_assigners[0].synaptic_model.block  # ty:ignore[unresolved-attribute]
+    # The family's default rather than `type(configured_model)()`: the assigners are ordered
+    # by the configuration, not by biology, so taking the first one's class made an inhibitory
+    # assigner in first position stamp its syn_type_id on every unclaimed synapse.
+    default_model = default_synaptic_model_for(configured_model)
+    # The assigners are checked against each other, never against the default. A default
+    # registered for a mismatched parameter list would quietly fill the wrong columns.
+    compatible_with(default_model, configured_model)
+
+    parameter_names = default_model.parameter_names()
     ep = circ.sonata_circuit.edges[edge_population_name]
-    already_parameterized = [
-        prop_ for prop_ in ep.property_names if prop_ in synaptic_model_block.parameter_names()
-    ]
-    to_be_filled = [
-        prop_
-        for prop_ in synaptic_model_block.parameter_names()
-        if prop_ not in already_parameterized
-    ]
+    already_parameterized = [prop_ for prop_ in ep.property_names if prop_ in parameter_names]
+    to_be_filled = [prop_ for prop_ in parameter_names if prop_ not in already_parameterized]
     df = ep.get(ep.ids(), properties=already_parameterized)  # Confirmed to work for empty list
     indices = ep.get(ep.ids(), properties=["@source_node", "@target_node"])
-    to_fill = default_model.sample(indices)
+    # Seeded from the same assigner the family came from. The synapses filled here are the ones
+    # no assigner claims, so none of them owns this draw; taking the seed from the group that
+    # was checked consistent keeps it reproducible and moves with a sweep over that seed.
+    to_fill = default_model.sample(
+        indices, rng=np.random.default_rng(lst_model_assigners[0].random_seed)
+    )
     return pd.concat([df, to_fill[to_be_filled]], axis=1)
+
+
+def models_in_play(
+    lst_model_assigners: list[SynapticModelAssignerUnion],
+) -> list[SynapticModelBase]:
+    """Every synaptic model whose mechanism actually ends up used for this edge population.
+
+    That is every assigner's configured model, plus the family's default model - `get_default_for`
+    samples the default for every synapse no assigner claims, so its mechanism is written to the
+    edge population's parameter table just as much as any assigner's. Whatever copies `.mod`
+    files into the output circuit has to walk this list, not just the assigners' own models, or
+    the default's mechanism would be missing whenever some synapses are left unclaimed.
+    """
+    configured_models = [
+        assigner.synaptic_model.block  # ty:ignore[unresolved-attribute]
+        for assigner in lst_model_assigners
+    ]
+    default_model = default_synaptic_model_for(configured_models[0])
+    return [default_model, *configured_models]
+
+
+def ensure_mechanisms_dir(circuit_config_path: Path, edge_population_name: str) -> Path:
+    """The mechanisms directory for one edge population, declaring it if not already set.
+
+    Reads it through libsonata (`edge_population_properties(...).mechanisms_dir`) rather than
+    the raw config, so this sees exactly what the simulator would: a value set directly on
+    `edge_population_name`, falling back to `components.mechanisms_dir`, with manifest
+    variables (e.g. `$BASE_DIR`) already substituted and the path already absolute -
+    libsonata resolves both of those, and a hand-rolled reimplementation of either would risk
+    disagreeing with it (and does; the population-level override was missed by an earlier
+    version of this function).
+
+    Some circuits keep their compiled mechanisms in `DEFAULT_MECHANISMS_DIR_NAME` without
+    naming it anywhere in the config - libsonata reports that as `""`, not as this repo's
+    fallback folder, so a `""` is treated the same as an explicit absence: falls back to that
+    folder rather than being treated as "no mechanisms directory", and the fallback is written
+    into `components` (never into the population, which the config may not name explicitly at
+    all), so the output circuit states explicitly where its mechanisms live rather than relying
+    on the same unstated convention. Directory created if it does not exist yet, since a fresh
+    copy of a circuit that relied on the convention may not have had one either.
+    """
+    circuit = libsonata.CircuitConfig.from_file(str(circuit_config_path))
+    mechanisms_dir_raw = circuit.edge_population_properties(edge_population_name).mechanisms_dir
+
+    if mechanisms_dir_raw:
+        mechanisms_dir = Path(mechanisms_dir_raw)
+    else:
+        with circuit_config_path.open(encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+        cfg_dict.setdefault("components", {})["mechanisms_dir"] = (
+            f"$BASE_DIR/{DEFAULT_MECHANISMS_DIR_NAME}"
+        )
+        with circuit_config_path.open("w", encoding="utf-8") as f:
+            json.dump(cfg_dict, f, indent=2)
+        mechanisms_dir = circuit_config_path.parent / DEFAULT_MECHANISMS_DIR_NAME
+
+    mechanisms_dir.mkdir(parents=True, exist_ok=True)
+    return mechanisms_dir
+
+
+def write_mod_files(
+    lst_model_assigners: list[SynapticModelAssignerUnion], mechanisms_dir: Path
+) -> None:
+    """Copy the ``.mod`` file(s) every model in play for this edge population needs.
+
+    Each model decides for itself whether to overwrite `mechanisms_dir` - see
+    `SynapticModelBase.copy_mod_files`, which leaves a file already present (a circuit's own,
+    possibly differently parameterized, copy) untouched rather than replacing it with the repo's
+    generic one.
+    """
+    for model in models_in_play(lst_model_assigners):
+        type(model).copy_mod_files(mechanisms_dir)
 
 
 def write_back_to_edge_file(df: DataFrame, ep: EdgePopulation) -> None:

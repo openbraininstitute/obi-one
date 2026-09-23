@@ -442,8 +442,8 @@ def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stag
     assert apical.source.size == 2
     assert set(basal.get(basal.ids(), properties="afferent_section_type")) == {3}
     assert set(apical.get(apical.ids(), properties="afferent_section_type")) == {4}
-    assert set(basal.get(basal.ids(), properties="syn_type_id")) == {113}
-    assert set(apical.get(apical.ids(), properties="syn_type_id")) == {7}
+    assert set(basal.get(basal.ids(), properties="syn_type_id")) == {100}
+    assert set(apical.get(apical.ids(), properties="syn_type_id")) == {0}
     assert set(basal.get(basal.ids(), properties="conductance")) == {0.4}
     assert set(apical.get(apical.ids(), properties="conductance")) == {0.8}
 

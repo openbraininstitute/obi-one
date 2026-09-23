@@ -60,7 +60,9 @@ class TestResolveNeuron:
             "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron.load_morphology_with_spines",
             return_value=spiny_morph(),
         ):
-            result = resolve_neuron(morph_ref, mock_db_client, tmp_path, tmp_path)
+            result, mechanisms_placed = resolve_neuron(
+                morph_ref, mock_db_client, tmp_path, tmp_path
+            )
 
         assert result.pt_root_id == 42
         assert result.morph_entity is morph_entity
@@ -71,6 +73,7 @@ class TestResolveNeuron:
         assert result.fn_morph_swc == Path("morphologies/morphology") / (
             str(morph_entity.id) + ".swc"
         )
+        assert mechanisms_placed is None
 
     def test_resolve_memodel(
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
@@ -112,10 +115,13 @@ class TestResolveNeuron:
             mock_cm.neurom_morphology.return_value = _mock_morphio_chain()
             mock_cm.source_mesh_entity.return_value = source_mesh
 
-            result = resolve_neuron(memodel_ref, mock_db_client, tmp_path, tmp_path)
+            result, mechanisms_placed = resolve_neuron(
+                memodel_ref, mock_db_client, tmp_path, tmp_path
+            )
 
         assert result.pt_root_id == 42
         assert result.use_me_model is True
         assert "model_template" in result.phys_node_props
-        assert "threshold_current" in result.phys_node_props
-        assert "holding_current" in result.phys_node_props
+        assert "@dynamics:threshold_current" in result.phys_node_props
+        assert "@dynamics:holding_current" in result.phys_node_props
+        assert mechanisms_placed == "mod"
