@@ -426,6 +426,7 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, mo
     [
         TaskType.circuit_extraction,
         TaskType.efeature_extraction,
+        TaskType.emodel_optimization,
         TaskType.circuit_simulation_inait_machine,
         TaskType.circuit_simulation_neurodamus_machine,
         TaskType.circuit_simulation_neurodamus_cluster,
@@ -444,6 +445,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     expected_subtype = {
         TaskType.circuit_extraction: ServiceSubtype.CIRCUIT_EXTRACTION,
         TaskType.efeature_extraction: ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
+        TaskType.emodel_optimization: ServiceSubtype.EMODEL_OPTIMISATION,
         TaskType.circuit_simulation_neurodamus_cluster: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_neurodamus_machine: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_inait_machine: ServiceSubtype.SMALL_SIM,
@@ -457,6 +459,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     expected_count = {
         TaskType.circuit_extraction: 1,
         TaskType.efeature_extraction: 1,
+        TaskType.emodel_optimization: 1,
         TaskType.circuit_simulation_neurodamus_cluster: 1,
         TaskType.circuit_simulation_neurodamus_machine: 1,
         TaskType.circuit_simulation_inait_machine: 1,
