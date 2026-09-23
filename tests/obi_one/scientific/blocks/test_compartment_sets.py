@@ -318,8 +318,10 @@ def test_compartment_set_row_limit_rejects_unestimated_output(monkeypatch):
 
 def test_build_compartment_set_skips_unavailable_morphologies():
     neuron_set = MagicMock()
+    # get_neuron_ids returns plain ints per population (numpy .tolist()), so that is what the
+    # skip logic must handle - node 1's morphology is unavailable, node 2's is read.
     neuron_set.block.get_neuron_ids.return_value = {
-        "pop": [1, SimpleNamespace(id=2)],
+        "pop": [1, 2],
     }
     locations_block = MagicMock()
     locations_block.output_location_count.return_value = None

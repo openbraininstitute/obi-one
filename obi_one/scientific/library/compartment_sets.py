@@ -177,7 +177,7 @@ def _iter_morphologies(
     caller can tell an empty result apart from a partially skipped one.
     """
     for node_id in node_ids:
-        node_id_int = int(getattr(node_id, "id", node_id))
+        node_id_int = int(node_id)
         try:
             morph = circuit.load_morphology(node_id_int, population=population)
         except (FileNotFoundError, KeyError, ValueError) as exc:
