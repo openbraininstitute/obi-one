@@ -9,7 +9,9 @@ import from here directly instead of each repeating their own
 below are ``None`` and ``HAS_EMODEL_OPTIMIZATION`` is ``False``.
 """
 
-from obi_one.core.base import OBIBaseModel
+from collections.abc import Callable
+
+from obi_one.core.scan_config import ScanConfig
 
 try:  # ruff: ignore[non-empty-init-module]
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
@@ -33,6 +35,9 @@ try:  # ruff: ignore[non-empty-init-module]
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
         EModelOptimizationTask,
     )
+    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+        fetch_variable_catalog,
+    )
 
     HAS_EMODEL_OPTIMIZATION = True
 except ImportError:
@@ -48,9 +53,10 @@ except ImportError:
     SigmoidKDBMApicDistanceDependentDistribution: type | None = None
     StepDistanceDependentDistribution: type | None = None
     UniformDistanceDependentDistribution: type | None = None
-    EModelOptimizationScanConfig: type[OBIBaseModel] | None = None
-    EModelOptimizationSingleConfig: type[OBIBaseModel] | None = None
+    EModelOptimizationScanConfig: type[ScanConfig] | None = None
+    EModelOptimizationSingleConfig: type[ScanConfig] | None = None
     EModelOptimizationTask: type | None = None
+    fetch_variable_catalog: Callable[..., dict] | None = None
 
     HAS_EMODEL_OPTIMIZATION = False
 
@@ -71,4 +77,5 @@ __all__ = [
     "SigmoidKDBMApicDistanceDependentDistribution",
     "StepDistanceDependentDistribution",
     "UniformDistanceDependentDistribution",
+    "fetch_variable_catalog",
 ]

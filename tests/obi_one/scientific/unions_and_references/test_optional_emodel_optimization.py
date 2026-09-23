@@ -7,13 +7,21 @@ not installed: the single guard lives in
 Task 2 imports, exposing ``None`` placeholders and ``HAS_EMODEL_OPTIMIZATION``).
 ``scan_configs.py``, ``tasks.py``, and ``config_task_map.py`` import from that
 package unconditionally and simply omit Task 2 when the classes are ``None``.
-These tests simulate ``bluepyemodel`` being absent by re-executing each
-module's real source with a blocking meta path finder, so the ``except``
-branches run for real instead of being mocked.
+The same applies to ``app/endpoints/ion_channel_properties.py`` and
+``app/endpoints/scan_config.py``, which import ``fetch_variable_catalog`` and
+``EModelOptimizationScanConfig`` respectively and are both pulled in by
+``app.application`` at import time; ``import app.application`` (i.e. starting
+the FastAPI service) must succeed without ``bluepyemodel`` too. These tests
+simulate ``bluepyemodel`` being absent by re-executing each module's real
+source with a blocking meta path finder, so the ``except`` branches run for
+real instead of being mocked. Only these two ``app.endpoints`` modules are
+covered directly (not ``app.application`` itself); see the comment below the
+tests for why.
 
-Only the ``bluepyemodel`` and Task 2 modules are evicted from ``sys.modules``
-(never ``obi_one`` itself or unrelated third-party packages), and the original
-entries are always restored, so this cannot leak state into other tests.
+Only the ``bluepyemodel``, Task 2, and affected ``app`` modules are evicted
+from ``sys.modules`` (never ``obi_one``/``app`` themselves in their entirety,
+or unrelated third-party packages), and the original entries are always
+restored, so this cannot leak state into other tests.
 """
 
 import importlib
@@ -41,6 +49,9 @@ class _BlockBluePyEModel(importlib.abc.MetaPathFinder):
 _MODULES_TO_EVICT = (
     "bluepyemodel",
     "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization",
+    "app.endpoints.ion_channel_properties",
+    "app.endpoints.scan_config",
+    "app.application",
 )
 
 
@@ -118,3 +129,34 @@ def test_config_task_map_omits_emodel_optimization_without_bluepyemodel():
 
     assert module.HAS_EMODEL_OPTIMIZATION is False
     assert module.TaskType.emodel_optimization not in module.TASK_MAP
+
+
+@pytest.mark.usefixtures("bluepyemodel_blocked")
+def test_ion_channel_properties_endpoint_module_omits_variable_catalog_without_bluepyemodel():
+    module = _exec_fresh("app.endpoints.ion_channel_properties")
+
+    assert module.fetch_variable_catalog is None
+
+
+@pytest.mark.usefixtures("bluepyemodel_blocked")
+def test_scan_config_endpoint_module_omits_emodel_optimization_without_bluepyemodel():
+    module = _exec_fresh("app.endpoints.scan_config")
+
+    assert module.EModelOptimizationScanConfig is None
+
+
+# Deliberately no test re-imports `app.application` itself here. Unlike the narrower
+# modules above, `app.application` transitively pulls in many other `obi_one` modules
+# (e.g. `count_scan_coordinates.py` -> `unions_and_references/scan_configs.py`) that are
+# *not* in `_MODULES_TO_EVICT` and were already fully imported with `bluepyemodel` present
+# earlier in the test session (e.g. via `tests/conftest.py`). Re-importing `app.application`
+# in that state races against those already-cached modules and can non-deterministically
+# resolve the "fresh" `app.endpoints.scan_config` import back to the pre-eviction
+# `EModelOptimizationScanConfig` class, producing a false negative (or false positive)
+# depending on test run order. This was confirmed by direct experimentation: the same
+# reimport is reliable in a pristine interpreter that has never imported `bluepyemodel`,
+# but flaky inside a shared pytest session. `test_ion_channel_properties_endpoint_module_
+# omits_variable_catalog_without_bluepyemodel` and `test_scan_config_endpoint_module_omits_
+# emodel_optimization_without_bluepyemodel` above already cover the two files directly
+# responsible for the real bug (unconditional Task 2 imports in app/endpoints/), which is
+# what actually matters for `import app.application` to succeed without bluepyemodel.
