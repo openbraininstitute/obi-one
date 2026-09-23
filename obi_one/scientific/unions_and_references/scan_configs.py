@@ -1,3 +1,5 @@
+from functools import reduce
+from operator import or_
 from typing import Annotated
 
 from pydantic import Discriminator
@@ -14,9 +16,6 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
-    EModelOptimizationScanConfig,
 )
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
@@ -53,30 +52,46 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationScanConfig,
 )
 
+try:
+    # bluepyemodel (the "emodel" optional dependency group) is required to import Task 2's
+    # ScanConfig. Keep it out of this union rather than making `import obi_one` fail entirely
+    # when the extra is not installed. See obi_one.scientific.mappings_and_registry.config_task_map
+    # for the corresponding TASK_MAP registration guard.
+    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
+        EModelOptimizationScanConfig,
+    )
+except ImportError:
+    EModelOptimizationScanConfig = None
+
+_SCAN_CONFIG_MEMBERS: tuple[type, ...] = (
+    CircuitSimulationScanConfig,
+    SimulationsForm,  # Alias for backward compatibility
+    CircuitExtractionScanConfig,
+    EMSynapseMappingScanConfig,
+    EModelEFeatureExtractionScanConfig,
+    BasicConnectivityPlotsScanConfig,
+    ConnectivityMatrixExtractionScanConfig,
+    FolderCompressionScanConfig,
+    MEModelSimulationScanConfig,
+    MorphologyContainerizationScanConfig,
+    ElectrophysiologyMetricsScanConfig,
+    MorphologyDecontainerizationScanConfig,
+    MorphologyMetricsScanConfig,
+    MorphologyLocationsScanConfig,
+    IonChannelFittingScanConfig,
+    SkeletonizationScanConfig,
+    MEModelWithSynapsesCircuitSimulationScanConfig,
+    Brian2CircuitSimulationScanConfig,
+    CreateExtracellularRecordingArrayScanConfig,
+    IonChannelModelSimulationScanConfig,
+    LearningEngineCircuitSimulationScanConfig,
+    SynapseParameterizationScanConfig,
+    MEModelSynapticModelPlacementScanConfig,
+)
+if EModelOptimizationScanConfig is not None:
+    _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelOptimizationScanConfig)
+
 ScanConfigsUnion = Annotated[
-    CircuitSimulationScanConfig
-    | SimulationsForm  # Alias for backward compatibility
-    | CircuitExtractionScanConfig
-    | EMSynapseMappingScanConfig
-    | EModelEFeatureExtractionScanConfig
-    | EModelOptimizationScanConfig
-    | BasicConnectivityPlotsScanConfig
-    | ConnectivityMatrixExtractionScanConfig
-    | FolderCompressionScanConfig
-    | MEModelSimulationScanConfig
-    | MorphologyContainerizationScanConfig
-    | ElectrophysiologyMetricsScanConfig
-    | MorphologyDecontainerizationScanConfig
-    | MorphologyMetricsScanConfig
-    | MorphologyLocationsScanConfig
-    | IonChannelFittingScanConfig
-    | SkeletonizationScanConfig
-    | MEModelWithSynapsesCircuitSimulationScanConfig
-    | Brian2CircuitSimulationScanConfig
-    | CreateExtracellularRecordingArrayScanConfig
-    | IonChannelModelSimulationScanConfig
-    | LearningEngineCircuitSimulationScanConfig
-    | SynapseParameterizationScanConfig
-    | MEModelSynapticModelPlacementScanConfig,
+    reduce(or_, _SCAN_CONFIG_MEMBERS),
     Discriminator("type"),
 ]
