@@ -537,9 +537,12 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     CustomDistanceDependentDistribution,
     DistanceDependentDistribution,
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+    EModelOptimizationTask,
     ExponentialDistanceDependentDistribution,
     ExponentialNaDendDistanceDependentDistribution,
     LinearEPasApicDistanceDependentDistribution,
@@ -550,13 +553,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     SigmoidKDBMApicDistanceDependentDistribution,
     StepDistanceDependentDistribution,
     UniformDistanceDependentDistribution,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
-    EModelOptimizationScanConfig,
-    EModelOptimizationSingleConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
-    EModelOptimizationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,

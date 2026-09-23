@@ -10,7 +10,7 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
 from obi_one.scientific.library.entity_property_types import IonChannelPropertyType
 from obi_one.scientific.library.ion_channel_properties import get_ion_channel_variables
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     fetch_variable_catalog,
 )
 
@@ -65,6 +65,15 @@ def emodel_optimization_variable_catalog_endpoint(
     ion_channel_ids: Annotated[list[str], Query()],
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
+    if fetch_variable_catalog is None:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_IMPLEMENTED,
+            detail={
+                "code": ApiErrorCode.GENERIC_ERROR,
+                "detail": "EModel Optimization (Task 2) is not available on this deployment.",
+            },
+        )
+
     try:
         catalog = fetch_variable_catalog(ion_channel_ids=ion_channel_ids, db_client=db_client)
     except entitysdk.exception.EntitySDKError as err:
