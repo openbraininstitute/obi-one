@@ -1,6 +1,5 @@
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
-from obi_one.core.base import OBIBaseModel
 from obi_one.core.registry import TaskRegistration, task_registry
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
@@ -354,12 +353,10 @@ if (
     and EModelOptimizationSingleConfig is not None
     and EModelOptimizationScanConfig is not None
 ):
-    _emodel_optimization_single_config_cls: type[OBIBaseModel] = EModelOptimizationSingleConfig
-    _emodel_optimization_scan_config_cls: type[OBIBaseModel] = EModelOptimizationScanConfig
     TASK_MAP[TaskType.emodel_optimization] = TaskRegistration(
         task_cls=EModelOptimizationTask,
-        single_config_cls=_emodel_optimization_single_config_cls,
-        scan_config_cls=_emodel_optimization_scan_config_cls,
+        single_config_cls=EModelOptimizationSingleConfig,
+        scan_config_cls=EModelOptimizationScanConfig,
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.emodel_optimization__campaign,
         campaign_generation_task_activity_type=(

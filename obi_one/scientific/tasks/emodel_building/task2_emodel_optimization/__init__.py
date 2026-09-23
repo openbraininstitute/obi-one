@@ -9,6 +9,8 @@ import from here directly instead of each repeating their own
 below are ``None`` and ``HAS_EMODEL_OPTIMIZATION`` is ``False``.
 """
 
+from obi_one.core.base import OBIBaseModel
+
 try:  # ruff: ignore[non-empty-init-module]
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
         CustomDistanceDependentDistribution,
@@ -46,8 +48,8 @@ except ImportError:
     SigmoidKDBMApicDistanceDependentDistribution: type | None = None
     StepDistanceDependentDistribution: type | None = None
     UniformDistanceDependentDistribution: type | None = None
-    EModelOptimizationScanConfig: type | None = None
-    EModelOptimizationSingleConfig: type | None = None
+    EModelOptimizationScanConfig: type[OBIBaseModel] | None = None
+    EModelOptimizationSingleConfig: type[OBIBaseModel] | None = None
     EModelOptimizationTask: type | None = None
 
     HAS_EMODEL_OPTIMIZATION = False
