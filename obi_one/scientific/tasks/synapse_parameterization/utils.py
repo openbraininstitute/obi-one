@@ -1,8 +1,6 @@
-import json
 from pathlib import Path
 
 import h5py
-import libsonata
 import numpy as np
 import pandas as pd
 from bluepysnap.edges import EdgePopulation
@@ -14,12 +12,6 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
     SynapticModelAssignerUnion,
 )
-
-# Fallback used when a circuit's own config declares no `components.mechanisms_dir`: some
-# circuits keep their compiled mechanisms in a `mod/` folder at the circuit root without ever
-# naming it in the config (NEURON/Neurodamus tooling defaults to this folder too), so this is
-# the folder such a circuit already relies on, not an arbitrary choice on this repo's part.
-DEFAULT_MECHANISMS_DIR_NAME = "mod"
 
 
 def compatible_with(cls_a: SynapticModelBase, cls_b: SynapticModelBase) -> None:
@@ -112,45 +104,6 @@ def models_in_play(
     ]
     default_model = default_synaptic_model_for(configured_models[0])
     return [default_model, *configured_models]
-
-
-def ensure_mechanisms_dir(circuit_config_path: Path, edge_population_name: str) -> Path:
-    """The mechanisms directory for one edge population, declaring it if not already set.
-
-    Reads it through libsonata (`edge_population_properties(...).mechanisms_dir`) rather than
-    the raw config, so this sees exactly what the simulator would: a value set directly on
-    `edge_population_name`, falling back to `components.mechanisms_dir`, with manifest
-    variables (e.g. `$BASE_DIR`) already substituted and the path already absolute -
-    libsonata resolves both of those, and a hand-rolled reimplementation of either would risk
-    disagreeing with it (and does; the population-level override was missed by an earlier
-    version of this function).
-
-    Some circuits keep their compiled mechanisms in `DEFAULT_MECHANISMS_DIR_NAME` without
-    naming it anywhere in the config - libsonata reports that as `""`, not as this repo's
-    fallback folder, so a `""` is treated the same as an explicit absence: falls back to that
-    folder rather than being treated as "no mechanisms directory", and the fallback is written
-    into `components` (never into the population, which the config may not name explicitly at
-    all), so the output circuit states explicitly where its mechanisms live rather than relying
-    on the same unstated convention. Directory created if it does not exist yet, since a fresh
-    copy of a circuit that relied on the convention may not have had one either.
-    """
-    circuit = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    mechanisms_dir_raw = circuit.edge_population_properties(edge_population_name).mechanisms_dir
-
-    if mechanisms_dir_raw:
-        mechanisms_dir = Path(mechanisms_dir_raw)
-    else:
-        with circuit_config_path.open(encoding="utf-8") as f:
-            cfg_dict = json.load(f)
-        cfg_dict.setdefault("components", {})["mechanisms_dir"] = (
-            f"$BASE_DIR/{DEFAULT_MECHANISMS_DIR_NAME}"
-        )
-        with circuit_config_path.open("w", encoding="utf-8") as f:
-            json.dump(cfg_dict, f, indent=2)
-        mechanisms_dir = circuit_config_path.parent / DEFAULT_MECHANISMS_DIR_NAME
-
-    mechanisms_dir.mkdir(parents=True, exist_ok=True)
-    return mechanisms_dir
 
 
 def write_mod_files(
