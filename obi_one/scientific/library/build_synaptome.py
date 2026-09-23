@@ -289,6 +289,11 @@ def _fold_staged_mechanisms_into(mechanisms_dir: Path, staged_root: Path) -> Non
 
     A file already present in the destination is left untouched, matching
     ``SynapticModelBase.copy_mod_files``: the circuit's own copy wins over a same-named import.
+
+    Temporary: this exists only because the ME-model stager writes an undeclared ``mechanisms/``
+    folder. Once staging declares its mechanisms directory (or stages straight into the circuit's
+    ``mod/``) this can be removed - at which point the staged folder already is the destination
+    and the call becomes a no-op via the guard below, so removal is safe and low-risk.
     """
     staged_mechanisms = staged_root / _STAGED_MECHANISMS_DIR_NAME
     if staged_mechanisms.resolve() == mechanisms_dir.resolve() or not staged_mechanisms.is_dir():
