@@ -1,4 +1,7 @@
+import shutil
 from enum import StrEnum
+from importlib.resources import as_file, files
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -46,6 +49,83 @@ class SynapticModelBase(Block):
             )
             raise NotImplementedError(msg)
         return cls._synapse_model_family
+
+    # ClassVar, not a bare annotation, for the same reason as `_synapse_model_family` above.
+    # The SONATA edge population `type` string(s) (e.g. "chemical") this model's parameters
+    # are meaningful for. Different population types carry entirely different parameter sets
+    # (a Tsodyks-Markram model's parameters have no counterpart on an "Exp2Syn_synapse" or
+    # "point_process" population), so this cannot be inferred from `synapse_model_family` or
+    # from any coarser chemical/electrical split - it has to be declared per model.
+    _compatible_edge_population_types: ClassVar[tuple[str, ...] | None] = None
+
+    @classmethod
+    def compatible_edge_population_types(cls) -> tuple[str, ...]:
+        """SONATA edge population ``type`` string(s) this model can be assigned to.
+
+        Checked by ``SynapseModelAssigner.validate_for_circuit`` before any synapse is
+        written, so that assigning e.g. a Tsodyks-Markram model to an ``"Exp2Syn_synapse"``
+        or electrical population is rejected instead of writing columns the mechanism the
+        edge population actually uses does not read.
+        """
+        if cls._compatible_edge_population_types is None:
+            msg = (
+                "Concrete subclasses of SynapticModelBase MUST set the class variable "
+                "_compatible_edge_population_types to the SONATA edge population type(s) "
+                "(e.g. ('chemical',)) this model's parameters apply to."
+            )
+            raise NotImplementedError(msg)
+        return cls._compatible_edge_population_types
+
+    # ClassVar, not a bare annotation, for the same reason as `_synapse_model_family` above.
+    # The generic ``.mod`` file name(s) the simulator needs to make sense of the parameters
+    # this model writes (e.g. "ProbAMPANMDA_EMS.mod"). Declared per model, not per family: two
+    # models sharing a family share parameter *names*, but each still needs its own compiled
+    # mechanism - the excitatory and inhibitory Tsodyks-Markram models use different `.mod`
+    # files even though both belong to the same family. Looked up alongside the model's own
+    # module, in a `mod/` subdirectory next to it - see `mod_file_paths`.
+    _mod_file_names: ClassVar[tuple[str, ...] | None] = None
+
+    @classmethod
+    def mod_file_names(cls) -> tuple[str, ...]:
+        """Generic ``.mod`` file name(s) this model needs the simulator to have compiled.
+
+        Empty for a model that needs no ``.mod`` file of its own (none exist yet, but a
+        model built entirely from SONATA-native properties would have none). ``None`` is
+        rejected rather than treated as empty, so a model that genuinely needs no file says
+        so explicitly with ``()`` instead of it looking like nobody got around to declaring it.
+        """
+        if cls._mod_file_names is None:
+            msg = (
+                "Concrete subclasses of SynapticModelBase MUST set the class variable "
+                "_mod_file_names to the generic '.mod' file name(s) this model needs, or to "
+                "() if it needs none."
+            )
+            raise NotImplementedError(msg)
+        return cls._mod_file_names
+
+    @classmethod
+    def copy_mod_files(cls, destination: Path) -> None:
+        """Copy the repo's generic ``.mod`` file(s) for this model into ``destination``.
+
+        Reads them from a `mod/` subdirectory next to the module the model is defined in -
+        so a model and the mechanism it depends on move together, and adding one is "add the
+        file next to the model and name it" rather than registering it somewhere central. A
+        file already present at ``destination`` (a circuit's own, possibly differently
+        parameterized, copy) is left untouched rather than overwritten - see
+        `SynapseParameterizationTask` for why that matters.
+
+        These `.mod` files are packaged data (see `[tool.setuptools.package-data]`), so `as_file`
+        is used to get a real filesystem path even if the installed package is zipped; the copy
+        happens inside that context, since the path it hands back is only guaranteed to exist
+        until the `with` block exits.
+        """
+        package = files(cls.__module__.rsplit(".", 1)[0])
+        for name in cls.mod_file_names():
+            target = destination / name
+            if target.exists():
+                continue
+            with as_file(package.joinpath("mod", name)) as source:
+                shutil.copy(source, target)
 
     # Filled in by each concrete model. Keyed by the tag, since that is what a config answers
     # by and what identifies a parameter across models that declare the same field; the field
