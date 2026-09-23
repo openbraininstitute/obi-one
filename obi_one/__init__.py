@@ -537,36 +537,23 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
-
-try:  # ruff: ignore[non-empty-init-module]
-    # bluepyemodel (the "emodel" optional dependency group) is required to import Task 2's
-    # blocks/config/task classes. Skip re-exporting them from the top-level obi_one namespace
-    # rather than making `import obi_one` fail entirely when the extra is not installed. See
-    # also the corresponding guards in obi_one.scientific.mappings_and_registry.config_task_map
-    # and obi_one.scientific.unions_and_references.{scan_configs,tasks}.
-    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
-        CustomDistanceDependentDistribution,
-        DistanceDependentDistribution,
-        ExponentialDistanceDependentDistribution,
-        ExponentialNaDendDistanceDependentDistribution,
-        LinearEPasApicDistanceDependentDistribution,
-        LinearHDApicDistanceDependentDistribution,
-        LinearHDPasDistanceDependentDistribution,
-        SigmoidKADApicDistanceDependentDistribution,
-        SigmoidKADDistanceDependentDistribution,
-        SigmoidKDBMApicDistanceDependentDistribution,
-        StepDistanceDependentDistribution,
-        UniformDistanceDependentDistribution,
-    )
-    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
-        EModelOptimizationScanConfig,
-        EModelOptimizationSingleConfig,
-    )
-    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
-        EModelOptimizationTask,
-    )
-except ImportError:
-    pass
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    CustomDistanceDependentDistribution,
+    DistanceDependentDistribution,
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+    EModelOptimizationTask,
+    ExponentialDistanceDependentDistribution,
+    ExponentialNaDendDistanceDependentDistribution,
+    LinearEPasApicDistanceDependentDistribution,
+    LinearHDApicDistanceDependentDistribution,
+    LinearHDPasDistanceDependentDistribution,
+    SigmoidKADApicDistanceDependentDistribution,
+    SigmoidKADDistanceDependentDistribution,
+    SigmoidKDBMApicDistanceDependentDistribution,
+    StepDistanceDependentDistribution,
+    UniformDistanceDependentDistribution,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,

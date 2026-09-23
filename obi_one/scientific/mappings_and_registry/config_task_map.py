@@ -1,5 +1,6 @@
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
+from obi_one.core.base import OBIBaseModel
 from obi_one.core.registry import TaskRegistration, task_registry
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
@@ -37,6 +38,12 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 )
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    HAS_EMODEL_OPTIMIZATION,
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+    EModelOptimizationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
@@ -125,23 +132,6 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
 )
 from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.types import TaskType
-
-try:
-    # bluepyemodel (the "emodel" optional dependency group) is required to import Task 2's
-    # classes. Keep this task type out of the registry rather than making `import obi_one`
-    # fail entirely when the extra is not installed. See also the corresponding guards in
-    # obi_one.scientific.unions_and_references.scan_configs and .tasks.
-    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
-        EModelOptimizationScanConfig,
-        EModelOptimizationSingleConfig,
-    )
-    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
-        EModelOptimizationTask,
-    )
-
-    HAS_EMODEL_OPTIMIZATION = True
-except ImportError:
-    HAS_EMODEL_OPTIMIZATION = False
 
 # Task registry: TaskType -> TaskRegistration.
 # asset_label is None for tasks that receive their config inline. The TaskConfig and
@@ -358,11 +348,18 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
     ),
 }
 
-if HAS_EMODEL_OPTIMIZATION:
+if (
+    HAS_EMODEL_OPTIMIZATION
+    and EModelOptimizationTask is not None
+    and EModelOptimizationSingleConfig is not None
+    and EModelOptimizationScanConfig is not None
+):
+    _emodel_optimization_single_config_cls: type[OBIBaseModel] = EModelOptimizationSingleConfig
+    _emodel_optimization_scan_config_cls: type[OBIBaseModel] = EModelOptimizationScanConfig
     TASK_MAP[TaskType.emodel_optimization] = TaskRegistration(
         task_cls=EModelOptimizationTask,
-        single_config_cls=EModelOptimizationSingleConfig,
-        scan_config_cls=EModelOptimizationScanConfig,
+        single_config_cls=_emodel_optimization_single_config_cls,
+        scan_config_cls=_emodel_optimization_scan_config_cls,
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.emodel_optimization__campaign,
         campaign_generation_task_activity_type=(

@@ -2,9 +2,12 @@
 
 Task 2 (emodel optimization) requires the optional ``emodel`` extra
 (``bluepyemodel``). Importing ``obi_one`` must still succeed when that extra is
-not installed: ``scan_configs.py``, ``tasks.py``, and ``config_task_map.py``
-each guard the Task 2 import with ``try/except ImportError`` and simply omit
-it. These tests simulate ``bluepyemodel`` being absent by re-executing each
+not installed: the single guard lives in
+``task2_emodel_optimization/__init__.py`` (``try/except ImportError`` around the
+Task 2 imports, exposing ``None`` placeholders and ``HAS_EMODEL_OPTIMIZATION``).
+``scan_configs.py``, ``tasks.py``, and ``config_task_map.py`` import from that
+package unconditionally and simply omit Task 2 when the classes are ``None``.
+These tests simulate ``bluepyemodel`` being absent by re-executing each
 module's real source with a blocking meta path finder, so the ``except``
 branches run for real instead of being mocked.
 
@@ -81,10 +84,21 @@ def _exec_fresh(module_name: str) -> types.ModuleType:
 
 
 @pytest.mark.usefixtures("bluepyemodel_blocked")
+def test_task2_package_omits_emodel_optimization_without_bluepyemodel():
+    module = _exec_fresh("obi_one.scientific.tasks.emodel_building.task2_emodel_optimization")
+
+    assert module.HAS_EMODEL_OPTIMIZATION is False
+    assert module.EModelOptimizationScanConfig is None
+    assert module.EModelOptimizationSingleConfig is None
+    assert module.EModelOptimizationTask is None
+    assert module.DistanceDependentDistribution is None
+
+
+@pytest.mark.usefixtures("bluepyemodel_blocked")
 def test_scan_configs_union_omits_emodel_optimization_without_bluepyemodel():
     module = _exec_fresh("obi_one.scientific.unions_and_references.scan_configs")
 
-    assert module._EModelOptimizationScanConfig is None
+    assert module.EModelOptimizationScanConfig is None
     assert "EModelOptimizationScanConfig" not in {
         member.__name__ for member in module._SCAN_CONFIG_MEMBERS
     }
@@ -94,7 +108,7 @@ def test_scan_configs_union_omits_emodel_optimization_without_bluepyemodel():
 def test_tasks_union_omits_emodel_optimization_without_bluepyemodel():
     module = _exec_fresh("obi_one.scientific.unions_and_references.tasks")
 
-    assert module._EModelOptimizationTask is None
+    assert module.EModelOptimizationTask is None
     assert "EModelOptimizationTask" not in {member.__name__ for member in module._TASK_MEMBERS}
 
 
