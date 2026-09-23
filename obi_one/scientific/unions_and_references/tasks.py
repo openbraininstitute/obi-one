@@ -29,10 +29,10 @@ try:
     # when the extra is not installed. See obi_one.scientific.mappings_and_registry.config_task_map
     # for the corresponding TASK_MAP registration guard.
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
-        EModelOptimizationTask,
+        EModelOptimizationTask as _EModelOptimizationTask,
     )
 except ImportError:
-    EModelOptimizationTask = None
+    _EModelOptimizationTask: type | None = None
 
 _TASK_MEMBERS: tuple[type, ...] = (
     GenerateSimulationTask,
@@ -50,10 +50,10 @@ _TASK_MEMBERS: tuple[type, ...] = (
     CreateExtracellularRecordingArrayScanConfig,
     MorphologyLocationsTask,
 )
-if EModelOptimizationTask is not None:
-    _TASK_MEMBERS = (*_TASK_MEMBERS, EModelOptimizationTask)
+if _EModelOptimizationTask is not None:
+    _TASK_MEMBERS = (*_TASK_MEMBERS, _EModelOptimizationTask)
 
 TasksUnion = Annotated[
-    reduce(or_, _TASK_MEMBERS),
+    reduce(or_, _TASK_MEMBERS),  # ty: ignore[invalid-type-form]
     Discriminator("type"),
 ]

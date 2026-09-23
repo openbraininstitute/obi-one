@@ -58,10 +58,10 @@ try:
     # when the extra is not installed. See obi_one.scientific.mappings_and_registry.config_task_map
     # for the corresponding TASK_MAP registration guard.
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
-        EModelOptimizationScanConfig,
+        EModelOptimizationScanConfig as _EModelOptimizationScanConfig,
     )
 except ImportError:
-    EModelOptimizationScanConfig = None
+    _EModelOptimizationScanConfig: type | None = None
 
 _SCAN_CONFIG_MEMBERS: tuple[type, ...] = (
     CircuitSimulationScanConfig,
@@ -88,10 +88,10 @@ _SCAN_CONFIG_MEMBERS: tuple[type, ...] = (
     SynapseParameterizationScanConfig,
     MEModelSynapticModelPlacementScanConfig,
 )
-if EModelOptimizationScanConfig is not None:
-    _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelOptimizationScanConfig)
+if _EModelOptimizationScanConfig is not None:
+    _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, _EModelOptimizationScanConfig)
 
 ScanConfigsUnion = Annotated[
-    reduce(or_, _SCAN_CONFIG_MEMBERS),
+    reduce(or_, _SCAN_CONFIG_MEMBERS),  # ty: ignore[invalid-type-form]
     Discriminator("type"),
 ]
