@@ -24,6 +24,7 @@ from app.logger import L
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import (
+    MachineResources,
     Resources,
     TaskDefinition,
     TaskDefinitionLegacy,
@@ -32,6 +33,20 @@ from app.schemas.task import (
 )
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.db_sdk import db_sdk
+
+
+def apply_placement_type(resources: Resources, compute_cell: str) -> Resources:
+    """Pick the placement the task definition declares for this compute cell.
+
+    Cells absent from ``placement_types`` get no pinned placement, leaving the launch-system to
+    resolve one from the executors the cell offers. Pinning a placement a cell does not provide
+    would be rejected.
+    """
+    if not isinstance(resources, MachineResources):
+        return resources
+    return resources.model_copy(
+        update={"placement_type": resources.placement_types.get(compute_cell)}
+    )
 
 
 def submit_task_job(
@@ -360,7 +375,7 @@ def estimate_task_resources(
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
-            return app.services.resource_estimation.circuit_extraction.estimate_task_resources(
+            resources = app.services.resource_estimation.circuit_extraction.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
                 task_definition=task_definition,
@@ -368,14 +383,14 @@ def estimate_task_resources(
                 accounting_parameters=accounting_parameters,
             )
         case TaskType.circuit_simulation_neurodamus_cluster:
-            return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
+            resources = app.services.resource_estimation.circuit_simulation.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
                 task_definition=task_definition,
                 compute_cell=compute_cell,
             )
         case TaskType.circuit_synaptic_physiology_assignment:
-            return (
+            resources = (
                 app.services.resource_estimation.synapse_parameterization.estimate_task_resources(
                     json_model=json_model,
                     db_client=db_client,
@@ -385,7 +400,9 @@ def estimate_task_resources(
                 )
             )
         case _:
-            return task_definition.resources.model_copy(update={"compute_cell": compute_cell})
+            resources = task_definition.resources.model_copy(update={"compute_cell": compute_cell})
+
+    return apply_placement_type(resources, compute_cell)
 
 
 def select_simulation_task(

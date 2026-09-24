@@ -15,7 +15,7 @@ from app.schemas.task import (
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, MachineExecutorImageType, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -39,6 +39,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=2,
             timelimit="00:10",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.circuit_single_build: TaskDefinition(
@@ -56,6 +60,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.circuit_simulation: TaskGroupLegacyDefinition(
@@ -78,6 +86,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_inait,
         ),
     ),
@@ -97,6 +109,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.circuit_simulation_neuron: TaskDefinitionLegacy(
@@ -114,6 +130,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:10",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -132,6 +152,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -164,6 +188,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -182,6 +210,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -200,6 +232,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -218,6 +254,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.em_synapse_mapping: TaskDefinition(
@@ -238,6 +278,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.efeature_extraction: TaskDefinition(
@@ -255,6 +299,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=4,
             timelimit="00:30",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.emodel_optimization: TaskDefinition(
@@ -284,6 +332,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -303,6 +355,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=32,
             timelimit="02:00",
             compute_cell="local",
+            placement_types={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
 }  # ty:ignore[invalid-assignment]

@@ -19,7 +19,7 @@ from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRe
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import ClusterResources, MachineResources, TaskLaunchSubmit
 from app.services import task as test_module
-from app.types import BuiltinScript, TaskType
+from app.types import BuiltinScript, MachinePlacementType, TaskType
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
@@ -28,6 +28,35 @@ ASSET_ID = uuid4()
 TASK_TYPES = [
     task_type for task_type in TASK_DEFINITIONS if task_type != TaskType.circuit_simulation
 ]
+
+MACHINE_TASK_TYPES = [
+    task_type
+    for task_type in TASK_TYPES
+    if isinstance(TASK_DEFINITIONS[task_type].resources, MachineResources)
+]
+
+CLUSTER_TASK_TYPES = [
+    task_type
+    for task_type in TASK_TYPES
+    if isinstance(TASK_DEFINITIONS[task_type].resources, ClusterResources)
+]
+
+# The only task routed to ECS Managed Instances. Everything else keeps the pre-existing
+# behaviour of running on Fargate on the AWS cell.
+MANAGED_INSTANCES_TASK_TYPES = {TaskType.ion_channel_model_simulation_execution}
+
+# Fields the launch-system accepts for machine resources. Guards against an obi-one-internal
+# field (such as the per-cell placement map) leaking into the payload.
+MACHINE_PAYLOAD_FIELDS = {
+    "type",
+    "cores",
+    "memory",
+    "compute_cell",
+    "timelimit",
+    "image_type",
+    "placement_type",
+    "ephemeral_storage",
+}
 
 
 @pytest.fixture
@@ -348,6 +377,7 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_inait",
+            "placement_type": None,
             "ephemeral_storage": None,
         },
         "inputs": [
@@ -410,6 +440,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_compiler",
+            "placement_type": None,
             "ephemeral_storage": None,
         },
         "inputs": [
@@ -518,6 +549,7 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "timelimit": "00:10",
             "compute_cell": "local",
             "image_type": "python_3_12_compiler",
+            "placement_type": None,
             "ephemeral_storage": None,
         },
         "code": {
@@ -674,6 +706,107 @@ def test_handle_task_failure_callback__do_nothing(
     )
 
 
+@pytest.mark.parametrize(
+    ("compute_cell", "expected"),
+    [
+        ("cell_a", MachinePlacementType.fargate),
+        ("cell_b", MachinePlacementType.azure_container_apps),
+        ("local", None),
+    ],
+)
+def test_apply_placement_type_per_cell(compute_cell, expected):
+    """The placement declared for the cell is pinned; cells without one are left unset."""
+    resources = TASK_DEFINITIONS[TaskType.circuit_extraction].resources
+
+    result = test_module.apply_placement_type(resources, compute_cell)
+
+    assert result.placement_type == expected
+    # The per-cell map is internal and must never reach the launch-system payload.
+    assert "placement_types" not in result.model_dump(mode="json")
+
+
+def test_apply_placement_type_ion_channel_pinned_to_managed_instances():
+    """Ion channel model simulation is the one task routed to ECS Managed Instances on cell_a."""
+    resources = TASK_DEFINITIONS[TaskType.ion_channel_model_simulation_execution].resources
+
+    result = test_module.apply_placement_type(resources, "cell_a")
+
+    assert result.placement_type == MachinePlacementType.ecs_managed_instances
+
+
+def test_apply_placement_type_leaves_cluster_resources_untouched():
+    """Cluster jobs have no placement concept."""
+    resources = TASK_DEFINITIONS[TaskType.emodel_optimization].resources
+
+    assert test_module.apply_placement_type(resources, "cell_a") is resources
+
+
+def test_only_ion_channel_model_declares_managed_instances():
+    """Exactly one task opts into ECS Managed Instances, on any cell."""
+    declared = {
+        task_type
+        for task_type in MACHINE_TASK_TYPES
+        if MachinePlacementType.ecs_managed_instances
+        in TASK_DEFINITIONS[task_type].resources.placement_types.values()
+    }
+
+    assert declared == MANAGED_INSTANCES_TASK_TYPES
+
+
+def test_managed_instances_declared_only_for_cell_a():
+    """ECS Managed Instances exists only on the AWS cell, so no other cell may pin it."""
+    for task_type in MACHINE_TASK_TYPES:
+        for cell, placement in TASK_DEFINITIONS[task_type].resources.placement_types.items():
+            if placement == MachinePlacementType.ecs_managed_instances:
+                assert cell == "cell_a", f"{task_type} pins managed instances on {cell}"
+
+
+@pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
+def test_cell_a_placement_preserves_previous_behaviour(task_type):
+    """On the AWS cell every task stays on Fargate, apart from the ion channel model."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    result = test_module.apply_placement_type(resources, "cell_a")
+
+    expected = (
+        MachinePlacementType.ecs_managed_instances
+        if task_type in MANAGED_INSTANCES_TASK_TYPES
+        else MachinePlacementType.fargate
+    )
+    assert result.placement_type == expected
+
+
+@pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
+def test_cell_b_never_receives_an_aws_placement(task_type):
+    """The Azure cell resolves to azure_container_apps, or is left for the launch-system."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    result = test_module.apply_placement_type(resources, "cell_b")
+
+    assert result.placement_type in {None, MachinePlacementType.azure_container_apps}
+
+
+@pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
+def test_machine_payload_fields_unchanged(task_type):
+    """placement_type is the only field added to the payload; the per-cell map stays internal."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    payload = test_module.apply_placement_type(resources, "cell_a").model_dump(mode="json")
+
+    assert set(payload) == MACHINE_PAYLOAD_FIELDS
+
+
+@pytest.mark.parametrize("task_type", CLUSTER_TASK_TYPES)
+def test_cluster_payload_has_no_placement(task_type):
+    """Cluster resources are unaffected by the placement work."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    payload = test_module.apply_placement_type(resources, "cell_a").model_dump(mode="json")
+
+    assert "placement_type" not in payload
+    assert "placement_types" not in payload
+
+
 def test_estimate_task_resources_passthrough(db_client):
     """Non-circuit_extraction tasks should return resources unchanged."""
     task_definition = TASK_DEFINITIONS[TaskType.morphology_skeletonization]
@@ -688,7 +821,12 @@ def test_estimate_task_resources_passthrough(db_client):
         task_definition=task_definition,
         compute_cell="cell_b",
     )
-    assert result == task_definition.resources.model_copy(update={"compute_cell": "cell_b"})
+    assert result == task_definition.resources.model_copy(
+        update={
+            "compute_cell": "cell_b",
+            "placement_type": task_definition.resources.placement_types["cell_b"],
+        }
+    )
 
 
 def test_estimate_task_resources_circuit_extraction(db_client):
@@ -709,7 +847,8 @@ def test_estimate_task_resources_circuit_extraction(db_client):
             compute_cell="cell_b",
         )
 
-    assert result is expected
+    # estimate_task_resources returns a placement-resolved copy, so compare by value.
+    assert result == expected
     mock_estimate.assert_called_once_with(
         json_model=json_model,
         db_client=db_client,
@@ -739,7 +878,8 @@ def test_estimate_task_resources_synapse_parameterization(db_client):
             compute_cell="cell_b",
         )
 
-    assert result is expected
+    # estimate_task_resources returns a placement-resolved copy, so compare by value.
+    assert result == expected
     mock_estimate.assert_called_once_with(
         json_model=json_model,
         db_client=db_client,
