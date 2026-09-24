@@ -1,6 +1,5 @@
 import json
 import logging
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Literal
 
@@ -283,37 +282,60 @@ class Circuit(OBIBaseModel):
         )
         raise FileNotFoundError(msg)
 
-    def _alternate_morphology_bases(self, population: str | None) -> Iterator[tuple[Path, str]]:
-        """Yield `alternate_morphologies` bases, which may be directories or `.h5` containers."""
-        alternates = self._population_config(population).get("alternate_morphologies") or {}
+    def _alternate_morphology_base(self, population: str | None, key: str) -> Path | None:
+        """The resolved `alternate_morphologies` base for one SONATA key, if the circuit has it.
 
-        for key in ("h5v1", "neurolucida-asc"):
-            raw_path = alternates.get(key)
-            if raw_path:
-                yield self._resolve_circuit_path(raw_path), f".{ALTERNATE_MORPHOLOGY_FORMATS[key]}"
+        The base may be a directory or an `.h5` container.
+        """
+        alternates = self._population_config(population).get("alternate_morphologies") or {}
+        raw_path = alternates.get(key)
+        return self._resolve_circuit_path(raw_path) if raw_path else None
 
     def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
-        """Load a node's morphology from `morphologies_dir` or `alternate_morphologies`.
+        """Load a node's morphology, preferring h5, then swc, then asc.
 
-        The fallback exists because containerized circuits hold every morphology in a single
-        `.h5` container, so there is no per-node file for `get_morphology_path` to resolve.
+        A simulation reads the h5 morphology when the circuit carries one - it is the format the
+        pipeline treats as canonical - and only falls back to the swc under `morphologies_dir` or
+        the asc alternate when it does not. The alternates also cover containerized circuits,
+        which hold every morphology in a single `.h5` container with no per-node file for
+        `get_morphology_path` to resolve.
         """
-        try:
-            return load_morphology_nrn_order(
-                self.get_morphology_path(node_id, population=population)
-            )
-        except (FileNotFoundError, KeyError):
-            pass
-
         morph_name = self.get_morphology_name(node_id, population=population)
         attempted: list[str] = []
 
-        for base, extension in self._alternate_morphology_bases(population):
+        def _from_container(key: str) -> morphio.Morphology | None:
+            base = self._alternate_morphology_base(population, key)
+            if base is None:
+                return None
+            extension = f".{ALTERNATE_MORPHOLOGY_FORMATS[key]}"
             attempted.append(f"{base} ({extension})")
             try:
                 return load_morphology_nrn_order_from_collection(base, morph_name, extension)
             except (morphio.MorphioError, OSError, RuntimeError) as exc:
                 L.debug("Could not load '%s' from %s: %s", morph_name, base, exc)
+                return None
+
+        def _from_morphologies_dir() -> morphio.Morphology | None:
+            try:
+                path = self.get_morphology_path(node_id, population=population)
+            except (FileNotFoundError, KeyError):
+                return None
+            attempted.append(str(path))
+            try:
+                return load_morphology_nrn_order(path)
+            except (morphio.MorphioError, OSError, RuntimeError) as exc:
+                L.debug("Could not load '%s' from %s: %s", morph_name, path, exc)
+                return None
+
+        # h5 (canonical for simulation), then the swc under morphologies_dir, then the asc.
+        for attempt in (
+            lambda: _from_container("h5v1"),
+            _from_morphologies_dir,
+            lambda: _from_container("neurolucida-asc"),
+        ):
+            morphology = attempt()
+            if morphology is not None:
+                return morphology
 
         msg = (
             f"Could not load morphology '{morph_name}' for node_id={node_id}, "
