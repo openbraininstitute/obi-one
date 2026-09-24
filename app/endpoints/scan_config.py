@@ -22,6 +22,9 @@ from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingS
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
     EModelEFeatureExtractionScanConfig,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    EModelOptimizationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
 )
@@ -131,7 +134,7 @@ def create_endpoint_for_scan_config(
 
 def activate_scan_config_endpoints() -> None:
     # Create endpoints for each OBI ScanConfig subclass.
-    for form, processing_method, data_postprocessing_method, execute_single_config_task in [
+    scan_configs: list[tuple[type[ScanConfig], str, str, bool]] = [
         (CircuitSimulationScanConfig, "generate", "", True),
         (Brian2CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
@@ -148,7 +151,20 @@ def activate_scan_config_endpoints() -> None:
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),
         (MEModelSynapticModelPlacementScanConfig, "generate", "", False),
-    ]:
+    ]
+    # EModel Optimization (Task 2) requires the optional `emodel` dependency group
+    # (bluepyemodel). Skip registering its endpoint rather than making `import
+    # app.application` fail entirely when the extra is not installed. See the
+    # corresponding guard in obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.
+    if EModelOptimizationScanConfig is not None:
+        scan_configs.append((EModelOptimizationScanConfig, "generate", "", False))
+
+    for (
+        form,
+        processing_method,
+        data_postprocessing_method,
+        execute_single_config_task,
+    ) in scan_configs:
         create_endpoint_for_scan_config(
             form,
             processing_method=processing_method,

@@ -1,0 +1,9 @@
+{
+  "type": "number",
+  "minimum": 0.0,
+  "maximum": 1.0,
+  "title": "Soma reference location",
+  "description": "Reference location of the soma along the morphology.",
+  "default": 0.5,
+  "ui_element": "float_input"
+}

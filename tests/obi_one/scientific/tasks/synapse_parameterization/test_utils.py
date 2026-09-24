@@ -8,8 +8,8 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )
+from obi_one.scientific.library.circuit import ensure_mechanisms_dir
 from obi_one.scientific.tasks.synapse_parameterization.utils import (
-    ensure_mechanisms_dir,
     get_default_for,
     models_in_play,
     write_mod_files,

@@ -99,3 +99,11 @@ def test_synapse_groups_use_synapse_group_singular_name():
     schema = MEModelSynapticModelPlacementScanConfig.model_json_schema()
 
     assert schema["properties"]["synapse_groups"]["singular_name"] == "Synapse Group"
+
+
+def test_morphology_location_reference_offers_grouped_blocks():
+    """The grouped blocks are selectable through the morphology-location reference."""
+    allowed = set(MorphologyLocationsReference.model_json_schema()["allowed_block_types"])
+
+    assert "RandomGroupedMorphologyLocations" in allowed
+    assert "ClusteredGroupedMorphologyLocations" in allowed

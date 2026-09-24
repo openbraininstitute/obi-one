@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "bluepyemodel"
-version = "1.0.44"
+version = "1.0.47"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepyefe" },
@@ -315,13 +315,14 @@ dependencies = [
     { name = "neuron" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pydantic" },
     { name = "pyyaml" },
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/26/e1f3f31540f35febbfcb3c7b26abe9d80f32192a4c2a78b0abfe0ef1ae06/bluepyemodel-1.0.44.tar.gz", hash = "sha256:89305afc4d7da3bbe6af4f8fa54db73ca7bfce49bbc574a9c1040646dc44a9bc", size = 13033798, upload-time = "2026-07-15T20:20:06.334Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/4b/1e3950262a387ba52ed1734cf7da82ad908d687a4fae3df4ccfc8efae81e/bluepyemodel-1.0.47.tar.gz", hash = "sha256:5cf2b69797db1479baba75108203615004e0a4a8290506697744369029490f3c", size = 13052710, upload-time = "2026-09-09T13:11:58.07Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/35/9dedd20e47cd5913d3c27e4598f993358402a1330300238664e22d78d67e/bluepyemodel-1.0.44-py3-none-any.whl", hash = "sha256:c77af2999f500f9265698cb628deb920d4c0f86395cc95ddde718aa95ed7e9aa", size = 13409872, upload-time = "2026-07-15T20:20:03.364Z" },
+    { url = "https://files.pythonhosted.org/packages/58/f1/86cd12188a3d14a3a90b354a78089eaca98350977f17af85617328a5cc35/bluepyemodel-1.0.47-py3-none-any.whl", hash = "sha256:47966b2fddcf97141a9109cc80db6ce0745f4dd6554b3042c611ae46e19d2f96", size = 13427499, upload-time = "2026-09-09T13:11:52.885Z" },
 ]
 
 [[package]]
@@ -993,14 +994,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.22"
+version = "0.19.23"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/52/32/f1197b776204fda42ddd4cbcdf8022d6729ada98688a00b0fc45d8f4c467/entitysdk-0.19.22.tar.gz", hash = "sha256:4e3118fa39ff627909bf3ce3bfbf2bbc6d736231882c32979bf837d1c5f25cf9", size = 96679, upload-time = "2026-09-15T13:50:58.346Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/58/82bdfa3a9b492a0f0e7c1238fcb0fd44b7a46a1458352d1111764f41bde2/entitysdk-0.19.23.tar.gz", hash = "sha256:b0f576366c4260fe1a91ecd115de4e847231a567f67dcf6d6affa537338c3f8b", size = 97377, upload-time = "2026-09-24T09:16:04.444Z" }
 
 [[package]]
 name = "executing"
@@ -2489,7 +2490,7 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.99" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.57" },
-    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.43" },
+    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.47" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
     { name = "brainbuilder", specifier = ">=0.20.6" },
@@ -2499,7 +2500,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.19.0" },
+    { name = "entitysdk", specifier = ">=0.19.22" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },
@@ -2516,8 +2517,8 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.5" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.5" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.6" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.6" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2553,14 +2554,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.5"
+version = "0.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/78/79f281418d475a87944672e56a5f5cb1bd542864fd8fc56a2a3199164cc4/obp_accounting_sdk-0.6.5.tar.gz", hash = "sha256:b9e8c293b8178efbe8b9f6e8b25f0ade24399809a49d73d650892221de1d6f31", size = 36785, upload-time = "2026-09-03T13:18:17.482Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/d2/52d3f467e7355629e6aec4c5b82aae37dfe9856c61c63b551c576f51363d/obp_accounting_sdk-0.6.6.tar.gz", hash = "sha256:9dddbda9bd36da1713806003932d506ac79f4e0faa938207ad62e95cac4df3ed", size = 36789, upload-time = "2026-09-24T12:28:03.176Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/60/224e7e07cc49a143804bc19f59e5e05d5cb199d7cc497f3eb9f097bb43ed/obp_accounting_sdk-0.6.5-py3-none-any.whl", hash = "sha256:c5617ed9a4e8d56d00d96bb99c2a124297f46bec5076baad86e8568cff923587", size = 27798, upload-time = "2026-09-03T13:18:16.075Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/82/a61a3dec8624a72bb50fb73be0f0b6d9e4bf5522110374c39ed9e668a6c4/obp_accounting_sdk-0.6.6-py3-none-any.whl", hash = "sha256:6c8ce44a96f0bdb78e58acd11432c0e896b5973c6c0f664a06231b56c855f6c5", size = 27820, upload-time = "2026-09-24T12:28:02.049Z" },
 ]
 
 [[package]]
