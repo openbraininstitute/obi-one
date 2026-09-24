@@ -107,7 +107,7 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure]
+def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many-branches, too-many-return-statements]
     *,
     db_client: Client,
     config_id: UUID,
@@ -155,6 +155,11 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure]
             return AccountingParameters(
                 count=1,
                 service_subtype=ServiceSubtype.EMODEL_OPTIMISATION,
+            )
+        case TaskType.circuit_synaptic_physiology_assignment:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SYNAPSE_PARAMETERIZATION_SMALL,
             )
         case TaskType.ion_channel_model_simulation_execution:
             count = 1
