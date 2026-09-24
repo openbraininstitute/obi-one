@@ -20,6 +20,7 @@ from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
+    validate_block_elements,
     validate_float_optional,
     validate_hidden_refs_not_required,
     validate_neuron_set_combination,
@@ -54,10 +55,13 @@ def validate_root_element(
             validate_block_dictionary(schema, element, config_ref, form)
         case UIElement.BLOCK_UNION:
             validate_block_union(schema, element, config_ref, form)
+        case UIElement.EMODEL_OPTIMISATION_PARAMETERS:
+            validate_emodel_optimisation_parameters(schema, element, ref)
         case _:
             msg = (
                 f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
-                f" 'block_dictionary', or 'block_union'. Got: {ui_element}"
+                f" 'block_dictionary', 'block_union', or 'emodel_optimisation_parameters'."
+                f" Got: {ui_element}"
             )
             raise ValueError(msg)
 
@@ -79,6 +83,9 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[c
 
         group = root_element_schema.get(SchemaKey.GROUP)
         group_order = root_element_schema.get(SchemaKey.GROUP_ORDER)
+        # Hidden elements don't need a group
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
+            continue
         if not group:
             msg = f"Validation error at {form_ref}: {root_element} must have a group"
             raise ValueError(msg)
@@ -176,19 +183,14 @@ def validate_scan_config_dependendent_block_components(block_schema, ref, form):
 
 
 def validate_block_dictionary(schema: dict, key: str, config_ref: str, form: dict) -> None:
-    additional_properties = schema.get("additionalProperties", {})
-    block_schemas = additional_properties.get("oneOf")
-    if block_schemas is None:
-        block_ref = additional_properties.get("$ref")
-        if block_ref is None:
-            msg = (
-                f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
-                " or '$ref' in additionalProperties"
-            )
-            raise ValueError(msg)
-        block_schemas = [{"$ref": block_ref}]
+    if schema.get("additionalProperties", {}).get("oneOf") is None:
+        msg = (
+            f"Validation error at {config_ref}: block_dictionary {key} must have 'oneOf'"
+            "in additionalProperties"
+        )
+        raise ValueError(msg)
 
-    for block_schema in block_schemas:
+    for block_schema in schema.get("additionalProperties", {}).get("oneOf"):
         ref = block_schema.get("$ref")
 
         if ref:
@@ -223,6 +225,164 @@ def validate_block_single(schema: dict, key: str, ref: str) -> None:
     validate_block(schema, ref)
 
 
+def validate_emodel_optimisation_parameters(schema: dict, _key: str, ref: str) -> None:
+    """Validate the root-level Task 2 mechanisms/optimization-parameter workflow element.
+
+    This root element's UI is built entirely custom on the frontend and is NOT rendered from the
+    schema (its tabs do not even correspond to the schema's nested structure), so most of its
+    nested fields carry no schema-driven UI metadata.
+
+    The one exception is ``mechanisms.ion_channel_models``, which is a normal
+    ``model_identifier_multiple`` selector; its ui_element is validated here.
+    """
+
+    def resolve(node: dict) -> dict:
+        node_ref = node.get("$ref")
+        return {**node, **resolve_ref(openapi_schema, node_ref)} if node_ref else node
+
+    mechanisms = schema.get("properties", {}).get("mechanisms")
+    if mechanisms is None:
+        msg = f"Validation error at {ref}: emodel_optimisation_parameters must have a 'mechanisms'"
+        raise ValueError(msg)
+    mechanisms = resolve(mechanisms)
+
+    ion_channel_models = mechanisms.get("properties", {}).get("ion_channel_models")
+    if ion_channel_models is None:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters mechanisms must have an "
+            "'ion_channel_models' property"
+        )
+        raise ValueError(msg)
+
+    if ion_channel_models.get(SchemaKey.UI_ELEMENT) != UIElement.MODEL_IDENTIFIER_MULTIPLE:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters "
+            f"mechanisms.ion_channel_models must be a '{UIElement.MODEL_IDENTIFIER_MULTIPLE}'"
+        )
+        raise ValueError(msg)
+
+    validate_block_elements("ion_channel_models", ion_channel_models, ref)
+
+    mechanism_regions = mechanisms.get("properties", {}).get("mechanism_regions")
+    if mechanism_regions is None:
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters mechanisms must have a "
+            "'mechanism_regions' property"
+        )
+        raise ValueError(msg)
+    validate_section_list_choices(resolve(mechanism_regions), "mechanism_regions", ref)
+
+
+# Every section-list choice object the frontend renders must expose these keys, each with
+# the given JSON type.
+SECTION_LIST_CHOICE_TYPES: dict[str, type] = {
+    "availability": str,
+    "available": bool,
+    "description": str,
+    "display_order": int,
+    "label": str,
+    "name": str,
+}
+SECTION_LIST_CHOICE_KEYS = frozenset(SECTION_LIST_CHOICE_TYPES)
+
+
+def validate_section_list_choice(choice: object, key: str, ref: str) -> None:
+    """Validate a single section-list choice object's keys and value types."""
+    if not isinstance(choice, dict):
+        msg = (
+            f"Validation error at {ref}: {key} 'choices' items must be objects. Got: {type(choice)}"
+        )
+        raise TypeError(msg)
+
+    choice_dict: dict = choice
+    missing = SECTION_LIST_CHOICE_KEYS - choice_dict.keys()
+    if missing:
+        msg = (
+            f"Validation error at {ref}: {key} 'choices' item {choice_dict.get('name')!r} is "
+            f"missing required keys: {sorted(missing)}"
+        )
+        raise ValueError(msg)
+
+    for field, expected_type in SECTION_LIST_CHOICE_TYPES.items():
+        # `bool` is a subclass of `int`, so compare the exact type of each value.
+        if type(choice_dict[field]) is not expected_type:
+            msg = (
+                f"Validation error at {ref}: {key} choice {field!r} must be a "
+                f"{expected_type.__name__}"
+            )
+            raise TypeError(msg)
+
+
+def validate_section_list_property_names(schema: dict, key: str, ref: str) -> None:
+    """Enforce that a section-list dict field constrains its keys with a ``propertyNames`` enum.
+
+    ``mechanism_regions`` is keyed by ``SectionListName``, so the generated schema must expose a
+    ``propertyNames`` with a non-empty string ``enum`` of the allowed section-list names. Locking
+    this in keeps a future refactor from silently dropping the key constraint (which would let the
+    frontend and stored configs use arbitrary, unvalidated region keys).
+    """
+    property_names = schema.get("propertyNames")
+    if property_names is None:
+        msg = f"Validation error at {ref}: {key} must expose a 'propertyNames' schema"
+        raise ValueError(msg)
+
+    # Pydantic emits the key enum as a `$ref` to the shared SectionListName definition.
+    if property_names_ref := property_names.get("$ref"):
+        property_names = {**property_names, **resolve_ref(openapi_schema, property_names_ref)}
+
+    enum = property_names.get("enum")
+    if enum is None:
+        msg = f"Validation error at {ref}: {key} 'propertyNames' must expose an 'enum'"
+        raise ValueError(msg)
+
+    if not isinstance(enum, list) or not enum:
+        msg = (
+            f"Validation error at {ref}: {key} 'propertyNames.enum' must be a non-empty list. "
+            f"Got: {enum}"
+        )
+        raise ValueError(msg)
+
+    if not all(isinstance(name, str) for name in enum):
+        msg = f"Validation error at {ref}: {key} 'propertyNames.enum' must contain only strings"
+        raise TypeError(msg)
+
+    # The key enum and the `choices` list describe the same section lists, so they must agree.
+    choice_names = {choice.get("name") for choice in schema.get("choices", [])}
+    if choice_names and set(enum) != choice_names:
+        msg = (
+            f"Validation error at {ref}: {key} 'propertyNames.enum' must match the section-list "
+            f"'choices' names. Enum: {sorted(enum)}, choices: {sorted(choice_names)}"
+        )
+        raise ValueError(msg)
+
+
+def validate_section_list_choices(schema: dict, key: str, ref: str) -> None:
+    """Enforce that a section-list field exposes a well-formed ``choices`` list.
+
+    ``choices`` drives the custom Task 2 frontend (it is not rendered from the schema),
+    so it must exist, be a list, and every element must carry the availability/label
+    metadata the frontend depends on. The dict's keys are additionally constrained by a
+    ``propertyNames`` enum, validated here so it can never be dropped in a later refactor.
+    """
+    choices = schema.get("choices")
+    if choices is None:
+        msg = f"Validation error at {ref}: {key} must expose a 'choices' list"
+        raise ValueError(msg)
+
+    if not isinstance(choices, list):
+        msg = f"Validation error at {ref}: {key} 'choices' must be a list. Got: {type(choices)}"
+        raise TypeError(msg)
+
+    if not choices:
+        msg = f"Validation error at {ref}: {key} 'choices' must not be empty"
+        raise ValueError(msg)
+
+    for choice in choices:
+        validate_section_list_choice(choice, key, ref)
+
+    validate_section_list_property_names(schema, key, ref)
+
+
 def validate_config(form: dict, config_ref: str) -> None:
     if not form.get(SchemaKey.UI_ENABLED):
         L.info(f"Form {config_ref} is disabled, skipping validation.")
@@ -248,6 +408,15 @@ def validate_config(form: dict, config_ref: str) -> None:
                 **root_element_schema,
                 **resolve_ref(openapi_schema, ref),
             }
+
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
+            if "default" not in root_element_schema:
+                msg = (
+                    f"Validation error at {config_ref} {root_element}: hidden root elements"
+                    f" ('{SchemaKey.UI_HIDDEN}' is True) must have a 'default'."
+                )
+                raise ValueError(msg)
+            continue
 
         validate_string(root_element_schema, "title", f"{root_element} at {config_ref}")
         validate_string(root_element_schema, "description", f"{root_element} at {config_ref}")
@@ -506,3 +675,143 @@ def test_features_for_ignores_extras_keyed_to_another_protocol():
     )
     for protocol in selection.protocols:
         assert selection.features_for(protocol) == protocol.features
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `emodel_optimisation_parameters` section-list `choices`.
+# ---------------------------------------------------------------------------
+
+# MechanismsBySectionList.mechanism_regions exposes the section-list `choices` list that
+# drives the custom Task 2 frontend (availability, label, and ordering metadata).
+SECTION_LIST_CHOICES_BLOCK = "MechanismsBySectionList"
+SECTION_LIST_CHOICES_FIELD = "mechanism_regions"
+
+
+def _mechanism_regions_schema() -> dict:
+    """Return a deep copy of the real `mechanism_regions` field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][SECTION_LIST_CHOICES_BLOCK]["properties"][
+            SECTION_LIST_CHOICES_FIELD
+        ]
+    )
+
+
+def test_section_list_choices_valid_schema_passes():
+    # The real, generated schema must expose a well-formed `choices` list.
+    validate_section_list_choices(
+        _mechanism_regions_schema(), SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+    )
+
+
+def test_section_list_choices_expose_expected_element_structure():
+    schema = _mechanism_regions_schema()
+    choices = schema["choices"]
+
+    assert isinstance(choices, list)
+    assert choices
+
+    # Every element must carry exactly the availability/label metadata the frontend needs.
+    for choice in choices:
+        assert choice.keys() >= SECTION_LIST_CHOICE_KEYS
+
+    all_sections = next(choice for choice in choices if choice["name"] == "all")
+    assert all_sections == {
+        "availability": "available",
+        "available": True,
+        "description": "Apical, basal, somatic, and axonal sections.",
+        "display_order": 0,
+        "label": "All sections",
+        "name": "all",
+    }
+
+
+def test_section_list_choices_valid_property_names_passes():
+    # The real, generated schema must expose the section-list key enum on `propertyNames`.
+    validate_section_list_property_names(
+        _mechanism_regions_schema(), SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+    )
+
+
+def test_mechanism_regions_property_names_enum_lists_section_list_names():
+    schema = _mechanism_regions_schema()
+    property_names = schema["propertyNames"]
+    if property_names_ref := property_names.get("$ref"):
+        property_names = resolve_ref(openapi_schema, property_names_ref)
+
+    assert property_names["enum"] == [
+        "all",
+        "alldend",
+        "somadend",
+        "allnoaxon",
+        "somaxon",
+        "allact",
+        "somatic",
+        "basal",
+        "apical",
+        "axonal",
+        "myelinated",
+    ]
+
+
+def test_section_list_choices_rejects_missing_property_names():
+    schema = _mechanism_regions_schema()
+    schema.pop("propertyNames", None)
+    with pytest.raises(ValueError, match="must expose a 'propertyNames' schema"):
+        validate_section_list_choices(
+            schema, SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+        )
+
+
+def test_section_list_property_names_rejects_missing_enum():
+    schema = _mechanism_regions_schema()
+    schema["propertyNames"] = {"type": "string"}
+    with pytest.raises(ValueError, match="'propertyNames' must expose an 'enum'"):
+        validate_section_list_property_names(
+            schema, SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+        )
+
+
+def test_section_list_property_names_rejects_enum_choices_mismatch():
+    schema = _mechanism_regions_schema()
+    schema["propertyNames"] = {"type": "string", "enum": ["all"]}
+    with pytest.raises(ValueError, match="must match the section-list 'choices' names"):
+        validate_section_list_property_names(
+            schema, SECTION_LIST_CHOICES_FIELD, SECTION_LIST_CHOICES_BLOCK
+        )
+
+
+def test_section_list_choices_rejects_missing_choices():
+    schema = _mechanism_regions_schema()
+    schema.pop("choices", None)
+    with pytest.raises(ValueError, match="must expose a 'choices' list"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
+
+
+def test_section_list_choices_rejects_non_list():
+    schema = _mechanism_regions_schema()
+    schema["choices"] = {"name": "all"}
+    with pytest.raises(TypeError, match="'choices' must be a list"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
+
+
+def test_section_list_choices_rejects_element_missing_keys():
+    schema = _mechanism_regions_schema()
+    schema["choices"] = [{"name": "all", "label": "All sections"}]
+    with pytest.raises(ValueError, match="missing required keys"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
+
+
+def test_section_list_choices_rejects_wrong_element_type():
+    schema = _mechanism_regions_schema()
+    schema["choices"] = [
+        {
+            "availability": "available",
+            "available": "yes",  # must be a boolean
+            "description": "Apical, basal, somatic, and axonal sections.",
+            "display_order": 0,
+            "label": "All sections",
+            "name": "all",
+        }
+    ]
+    with pytest.raises(TypeError, match="choice 'available' must be a bool"):
+        validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")

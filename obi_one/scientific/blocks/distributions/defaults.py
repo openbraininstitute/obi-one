@@ -50,7 +50,7 @@ class DistributionDefault:
     @property
     def label(self) -> str:
         """User-facing label for a default-reference dropdown option."""
-        return f"Built-in default: {self.description.removeprefix('a ')}"
+        return f"Default: {self.description.removeprefix('a ')}"
 
 
 def resolve_distribution(

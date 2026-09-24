@@ -1,0 +1,9 @@
+{
+  "type": "array",
+  "items": {
+    "type": "string"
+  },
+  "ui_element": "string_list_input",
+  "title": "title",
+  "description": "description"
+}

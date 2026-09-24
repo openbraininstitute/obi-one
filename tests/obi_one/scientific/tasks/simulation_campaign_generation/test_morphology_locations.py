@@ -34,8 +34,14 @@ MORPHOLOGY_LOCATIONS = {
     "RandomMorphologyLocations": obi.RandomMorphologyLocations(
         random_seed=0, number_of_locations=3
     ),
+    "RandomGroupedMorphologyLocations": obi.RandomGroupedMorphologyLocations(
+        random_seed=0, number_of_locations=4, n_groups=2
+    ),
     "ClusteredMorphologyLocations": obi.ClusteredMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2
+    ),
+    "ClusteredGroupedMorphologyLocations": obi.ClusteredGroupedMorphologyLocations(
+        random_seed=0, number_of_locations=4, n_clusters=2, n_groups=2
     ),
     "PathDistanceMorphologyLocations": obi.PathDistanceMorphologyLocations(
         random_seed=0, number_of_locations=3

@@ -32,6 +32,7 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.build_synaptome import (
     BuildSynaptomeError,
     BuildSynaptomeResult,
+    _fold_staged_mechanisms_into,
     _generate_locations,
     _location_edge_properties,
     _sample_physiology,
@@ -70,11 +71,18 @@ def _write_staged_memodel(
     *,
     include_morphology: bool = True,
     morphology_text: str = _SWC_MORPHOLOGY,
+    staged_mechanisms: tuple[str, ...] = ("Ca_HVA.mod",),
 ) -> Path:
     path.mkdir()
     (path / "hoc").mkdir()
     (path / "morphologies").mkdir()
     (path / "target").mkdir()
+    # The ME-model stager drops the neuron's biophysical mechanisms in a `mechanisms/` folder
+    # that the config never declares - mirror that so the fold-into-`mod` path is exercised.
+    mechanisms = path / "mechanisms"
+    mechanisms.mkdir()
+    for mod_name in staged_mechanisms:
+        (mechanisms / mod_name).write_text(f"NEURON {{ SUFFIX {mod_name[:-4]} }}\n")
     if include_morphology:
         (path / "morphologies" / "cell.swc").write_text(morphology_text)
     with h5py.File(path / "target" / "nodes.h5", "w") as h5:
@@ -442,10 +450,21 @@ def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stag
     assert apical.source.size == 2
     assert set(basal.get(basal.ids(), properties="afferent_section_type")) == {3}
     assert set(apical.get(apical.ids(), properties="afferent_section_type")) == {4}
-    assert set(basal.get(basal.ids(), properties="syn_type_id")) == {113}
-    assert set(apical.get(apical.ids(), properties="syn_type_id")) == {7}
+    assert set(basal.get(basal.ids(), properties="syn_type_id")) == {100}
+    assert set(apical.get(apical.ids(), properties="syn_type_id")) == {0}
     assert set(basal.get(basal.ids(), properties="conductance")) == {0.4}
     assert set(apical.get(apical.ids(), properties="conductance")) == {0.8}
+
+    # Every mechanism lands in one declared directory: each group's synaptic .mod file(s) plus
+    # the ME-model's own biophysical .mod folded in from the staged `mechanisms/` folder, which
+    # is itself removed so nothing is left outside the directory the config points at.
+    mechanisms_dir = result.output_directory / "mod"
+    assert (mechanisms_dir / "ProbAMPANMDA_EMS.mod").is_file()
+    assert (mechanisms_dir / "ProbGABAAB_EMS.mod").is_file()
+    assert (mechanisms_dir / "Ca_HVA.mod").is_file()
+    assert not (result.output_directory / "mechanisms").exists()
+    circuit_config = json.loads(result.circuit_config_path.read_text())
+    assert circuit_config["components"]["mechanisms_dir"] == "$BASE_DIR/mod"
 
 
 def test_build_is_deterministic_for_equal_seeds(tmp_path, stage_memodel):
@@ -711,3 +730,70 @@ def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monke
         MEModelSynapticModelPlacementTask(config=config).execute(db_client=Mock())
 
     register.assert_called_once()
+
+
+def test_fold_staged_mechanisms_moves_biophysical_mods_and_removes_the_folder(tmp_path):
+    mechanisms_dir = tmp_path / "mod"
+    mechanisms_dir.mkdir()
+    staged = tmp_path / "mechanisms"
+    staged.mkdir()
+    (staged / "Ca_HVA.mod").write_text("biophysical")
+
+    _fold_staged_mechanisms_into(mechanisms_dir, tmp_path)
+
+    assert (mechanisms_dir / "Ca_HVA.mod").read_text() == "biophysical"
+    assert not staged.exists()
+
+
+def test_fold_staged_mechanisms_keeps_the_existing_destination_copy(tmp_path):
+    # A same-named file already in the destination is the circuit's own copy and wins; the
+    # staged duplicate is dropped rather than overwriting it.
+    mechanisms_dir = tmp_path / "mod"
+    mechanisms_dir.mkdir()
+    (mechanisms_dir / "Ca_HVA.mod").write_text("circuit specific")
+    staged = tmp_path / "mechanisms"
+    staged.mkdir()
+    (staged / "Ca_HVA.mod").write_text("staged generic")
+
+    _fold_staged_mechanisms_into(mechanisms_dir, tmp_path)
+
+    assert (mechanisms_dir / "Ca_HVA.mod").read_text() == "circuit specific"
+    assert not staged.exists()
+
+
+def test_fold_staged_mechanisms_is_a_noop_without_a_staged_folder(tmp_path):
+    mechanisms_dir = tmp_path / "mod"
+    mechanisms_dir.mkdir()
+
+    _fold_staged_mechanisms_into(mechanisms_dir, tmp_path)
+
+    assert list(mechanisms_dir.iterdir()) == []
+
+
+def test_fold_staged_mechanisms_is_a_noop_when_it_is_already_the_destination(tmp_path):
+    # A circuit that already declares `mechanisms/` as its mechanisms dir must not have its
+    # files moved onto themselves (and the folder must survive).
+    staged = tmp_path / "mechanisms"
+    staged.mkdir()
+    (staged / "Ca_HVA.mod").write_text("biophysical")
+
+    _fold_staged_mechanisms_into(staged, tmp_path)
+
+    assert (staged / "Ca_HVA.mod").read_text() == "biophysical"
+
+
+def test_fold_staged_mechanisms_leaves_a_non_empty_staged_folder_in_place(tmp_path):
+    # Only `.mod` files are folded in; a staged folder that still holds something else is not
+    # removed, so nothing unrelated is lost.
+    mechanisms_dir = tmp_path / "mod"
+    mechanisms_dir.mkdir()
+    staged = tmp_path / "mechanisms"
+    staged.mkdir()
+    (staged / "Ca_HVA.mod").write_text("biophysical")
+    (staged / "README.txt").write_text("not a mod file")
+
+    _fold_staged_mechanisms_into(mechanisms_dir, tmp_path)
+
+    assert (mechanisms_dir / "Ca_HVA.mod").read_text() == "biophysical"
+    assert (staged / "README.txt").read_text() == "not a mod file"
+    assert not (staged / "Ca_HVA.mod").exists()

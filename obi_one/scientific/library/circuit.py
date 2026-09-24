@@ -1,9 +1,11 @@
+import json
 import logging
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Literal
 
 import bluepysnap as snap
+import libsonata
 import morphio
 import numpy as np
 from conntility import ConnectivityMatrix
@@ -335,3 +337,40 @@ class Circuit(OBIBaseModel):
             msg = f"{path} is not a mechanisms directory."
             raise NotADirectoryError(msg)
         return path
+
+
+def ensure_mechanisms_dir(circuit_config_path: Path, edge_population_name: str) -> Path:
+    """The mechanisms directory for one edge population, declaring it if not already set.
+
+    Reads it through libsonata (`edge_population_properties(...).mechanisms_dir`) rather than
+    the raw config, so this sees exactly what the simulator would: a value set directly on
+    `edge_population_name`, falling back to `components.mechanisms_dir`, with manifest
+    variables (e.g. `$BASE_DIR`) already substituted and the path already absolute -
+    libsonata resolves both of those, and a hand-rolled reimplementation of either would risk
+    disagreeing with it (and does; the population-level override was missed by an earlier
+    version of this function).
+
+    Some circuits keep their compiled mechanisms in `CIRCUIT_MOD_DIR` without naming it anywhere
+    in the config - libsonata reports that as `""`, not as this repo's fallback folder, so a `""`
+    is treated the same as an explicit absence: falls back to that folder rather than being
+    treated as "no mechanisms directory", and the fallback is written into `components` (never
+    into the population, which the config may not name explicitly at all), so the output circuit
+    states explicitly where its mechanisms live rather than relying on the same unstated
+    convention. Directory created if it does not exist yet, since a fresh copy of a circuit that
+    relied on the convention may not have had one either.
+    """
+    circuit = libsonata.CircuitConfig.from_file(str(circuit_config_path))
+    mechanisms_dir_raw = circuit.edge_population_properties(edge_population_name).mechanisms_dir
+
+    if mechanisms_dir_raw:
+        mechanisms_dir = Path(mechanisms_dir_raw)
+    else:
+        with circuit_config_path.open(encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+        cfg_dict.setdefault("components", {})["mechanisms_dir"] = f"$BASE_DIR/{CIRCUIT_MOD_DIR}"
+        with circuit_config_path.open("w", encoding="utf-8") as f:
+            json.dump(cfg_dict, f, indent=2)
+        mechanisms_dir = circuit_config_path.parent / CIRCUIT_MOD_DIR
+
+    mechanisms_dir.mkdir(parents=True, exist_ok=True)
+    return mechanisms_dir

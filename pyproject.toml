@@ -33,7 +33,7 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.19.0",
+    "entitysdk>=0.19.22",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
@@ -61,7 +61,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
-emodel = ["bluepyemodel>=1.0.43"]
+emodel = ["bluepyemodel>=1.0.47"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
@@ -128,7 +128,8 @@ where = ["."]
 include = ["obi_one*"]
 
 [tool.setuptools.package-data]
-"obi_one.scientific.library" = ["*.json"]
+"obi_one.scientific.library" = ["*.json", "*.jinja2", "*.png"]
+"obi_one.scientific.blocks.synaptic_models.tsodyks_markram" = ["mod/*.mod"]
 
 [tool.setuptools_scm]
 tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
@@ -161,7 +162,7 @@ include = [
 # Legacy modules kept for reference; excluded from formatting and linting.
 extend-exclude = [
     "obi_one/scientific/blocks/neuron_sets/old",
-    "obi_one/scientific/blocks/synaptic_model_assigners",
+    "obi_one/scientific/blocks/synaptic_model_assigners/_original_implementation.py",
 ]
 # Honour the exclusion even when files are passed explicitly (e.g. `make format FILE=...`).
 force-exclude = true
@@ -237,7 +238,7 @@ include = ["app", "obi_one", "launch_scripts"]
 # Legacy modules kept for reference; excluded from ty type checking.
 exclude = [
     "obi_one/scientific/blocks/neuron_sets/old",
-    "obi_one/scientific/blocks/synaptic_model_assigners",
+    "obi_one/scientific/blocks/synaptic_model_assigners/_original_implementation.py",
 ]
 
 [tool.pytest.ini_options]

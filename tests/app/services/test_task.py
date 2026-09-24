@@ -17,8 +17,9 @@ from app.errors import ApiError, ApiErrorCode
 from app.mappings import APP_TAG, TASK_DEFINITIONS
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.cluster import ClusterInstanceInfo
-from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
+from app.schemas.task import ClusterResources, MachineResources, TaskLaunchSubmit
 from app.services import task as test_module
+from app.types import BuiltinScript, TaskType
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
@@ -718,6 +719,36 @@ def test_estimate_task_resources_circuit_extraction(db_client):
     )
 
 
+def test_estimate_task_resources_synapse_parameterization(db_client):
+    """Synapse parameterization delegates to its own estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_synaptic_physiology_assignment]
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.circuit_synaptic_physiology_assignment, config_id=uuid4()
+    )
+    expected = MachineResources(cores=1, memory=8, timelimit="01:00", compute_cell="local")
+
+    with patch(
+        "app.services.resource_estimation.synapse_parameterization.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_b",
+        )
+
+    assert result is expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
+        accounting_parameters=None,
+    )
+
+
 def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_mock):
     task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
 
@@ -888,3 +919,49 @@ def test_select_simulation_task_raises_api_error_for_invalid_config_format():
     assert exc_info.value.http_status_code == HTTPStatus.BAD_REQUEST
     assert exc_info.value.details == "invalid simulation config"
     assert str(config_id) in exc_info.value.message
+
+
+def test_emodel_optimization_definition_uses_builtin_cluster_profile():
+    task_definition = TASK_DEFINITIONS[TaskType.emodel_optimization]
+
+    assert task_definition.code.script == BuiltinScript.emodel_optimisation
+    assert isinstance(task_definition.resources, ClusterResources)
+    assert task_definition.resources.model_dump(mode="json") == {
+        "type": "cluster",
+        "instances": 1,
+        "instance_type": "large",
+        "timelimit": "02:00",
+        "compute_cell": "cell_a",
+    }
+
+
+def test_emodel_optimization_job_data(config_id, activity_id, callbacks):
+    task_definition = TASK_DEFINITIONS[TaskType.emodel_optimization]
+
+    result = test_module._emodel_optimization_job_data(
+        config_id=config_id,
+        execution_activity_id=activity_id,
+        project_id=UUID(PROJECT_ID),
+        callbacks=callbacks,
+        task_definition=task_definition,
+    )
+
+    assert result["code"] == {
+        "type": "builtin",
+        "script": "emodel_optimisation",
+    }
+    assert result["resources"] == {
+        "type": "cluster",
+        "instances": 1,
+        "instance_type": "large",
+        "timelimit": "02:00",
+        "compute_cell": "cell_a",
+    }
+    assert result["inputs"] == [
+        "--config-id",
+        str(config_id),
+        "--execution-id",
+        str(activity_id),
+    ]
+    assert result["project_id"] == PROJECT_ID
+    assert result["callbacks"]

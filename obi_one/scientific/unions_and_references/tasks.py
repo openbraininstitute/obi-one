@@ -1,3 +1,5 @@
+from functools import reduce
+from operator import or_
 from typing import Annotated
 
 from pydantic import Discriminator
@@ -11,6 +13,9 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    EModelOptimizationTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
@@ -21,20 +26,26 @@ from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsTas
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsTask
 from obi_one.scientific.tasks.skeletonization import SkeletonizationTask
 
+_TASK_MEMBERS: tuple[type, ...] = (
+    GenerateSimulationTask,
+    CircuitExtractionTask,
+    BasicConnectivityPlotsTask,
+    ConnectivityMatrixExtractionTask,
+    ElectrophysiologyMetricsTask,
+    EModelEFeatureExtractionTask,
+    FolderCompressionTask,
+    IonChannelFittingTask,
+    SkeletonizationTask,
+    MorphologyContainerizationTask,
+    MorphologyDecontainerizationTask,
+    MorphologyMetricsTask,
+    CreateExtracellularRecordingArrayScanConfig,
+    MorphologyLocationsTask,
+)
+if EModelOptimizationTask is not None:
+    _TASK_MEMBERS = (*_TASK_MEMBERS, EModelOptimizationTask)
+
 TasksUnion = Annotated[
-    GenerateSimulationTask
-    | CircuitExtractionTask
-    | BasicConnectivityPlotsTask
-    | ConnectivityMatrixExtractionTask
-    | ElectrophysiologyMetricsTask
-    | EModelEFeatureExtractionTask
-    | FolderCompressionTask
-    | IonChannelFittingTask
-    | SkeletonizationTask
-    | MorphologyContainerizationTask
-    | MorphologyDecontainerizationTask
-    | MorphologyMetricsTask
-    | CreateExtracellularRecordingArrayScanConfig
-    | MorphologyLocationsTask,
+    reduce(or_, _TASK_MEMBERS),  # ty: ignore[invalid-type-form]
     Discriminator("type"),
 ]
