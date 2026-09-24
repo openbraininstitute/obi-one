@@ -145,8 +145,12 @@ def _compiler_fixture():
         base_parameters={
             "all": {
                 "Ra": ParameterSelection(value=OptimizationValue(value=100.0)),
-                "g_pas": ParameterSelection(value=OptimizationValue(mode="bounds")),
-                "e_pas": ParameterSelection(value=OptimizationValue(mode="bounds")),
+                "g_pas": ParameterSelection(
+                    value=OptimizationValue(mode="bounds", bounds=(1e-5, 6e-5)),
+                ),
+                "e_pas": ParameterSelection(
+                    value=OptimizationValue(mode="bounds", bounds=(-95.0, -60.0)),
+                ),
             }
         },
         distribution_parameters={
@@ -525,10 +529,45 @@ def test_optimization_value_validates_fixed_and_bounds_modes():
 
     with pytest.raises(ValueError, match="fixed optimization value"):
         OptimizationValue()
-    with pytest.raises(ValueError, match="must not exceed"):
+    with pytest.raises(ValueError, match="Bounds cannot be provided"):
+        OptimizationValue(value=1.0, bounds=(0.0, 2.0))
+    with pytest.raises(ValueError, match="Bounds are required"):
+        OptimizationValue(mode="bounds")
+    with pytest.raises(ValueError, match="must be greater"):
         OptimizationValue(mode="bounds", bounds=(2.0, 1.0))
+    with pytest.raises(ValueError, match="must be greater"):
+        OptimizationValue(mode="bounds", bounds=(1.0, 1.0))
+    with pytest.raises(ValueError, match="at least 2 items"):
+        OptimizationValue(mode="bounds", bounds=(1.0,))
+    with pytest.raises(ValueError, match="at most 2 items"):
+        OptimizationValue(mode="bounds", bounds=(1.0, 2.0, 3.0))
+    with pytest.raises(ValueError, match="valid number"):
+        OptimizationValue(mode="bounds", bounds=(None, 1.0))
     with pytest.raises(ValueError, match="cannot be provided"):
-        OptimizationValue(mode="bounds", value=1.0)
+        OptimizationValue(mode="bounds", value=1.0, bounds=(0.0, 2.0))
+
+
+def test_optimization_value_json_schema_mirrors_mode_rules():
+    schema = OptimizationValue.model_json_schema()
+
+    assert schema["if"] == {"properties": {"mode": {"const": "bounds"}}, "required": ["mode"]}
+    assert schema["then"]["required"] == ["bounds"]
+    assert schema["else"]["required"] == ["value"]
+    bounds_array = schema["properties"]["bounds"]["anyOf"][0]
+    assert bounds_array == {
+        "type": "array",
+        "items": {"type": "number"},
+        "minItems": 2,
+        "maxItems": 2,
+        "strictly_increasing": True,
+    }
+
+
+def test_global_parameters_default_is_validated_into_blocks():
+    v_init = EModelOptimisationParameters().global_parameters["v_init"]
+
+    assert isinstance(v_init, GlobalParameterSelection)
+    assert v_init.value.value == pytest.approx(-80.0)
 
 
 def test_distance_dependent_distribution_rejects_undeclared_placeholders():
@@ -672,18 +711,8 @@ def test_params_definition_is_accepted_by_bluepyemodel_parser():
     )
 
 
-def test_params_builder_rejects_missing_bounds_distribution_and_myelin():
+def test_params_builder_rejects_missing_distribution_and_myelin():
     config, reference, normalized = _compiler_fixture()
-
-    config.parameters_selection.base_parameters = {
-        "all": {"Ra": ParameterSelection(value=OptimizationValue(mode="bounds"))}
-    }
-    with pytest.raises(ValueError, match="no bounds"):
-        build_params_definition(
-            params_definition_input_from_config(config), normalized, bounds_fallbacks={}
-        )
-
-    config, _, normalized = _compiler_fixture()
     config.parameters_selection.base_parameters["all"]["Ra"].distribution = "missing"
     with pytest.raises(ValueError, match="undeclared distribution"):
         build_params_definition(params_definition_input_from_config(config), normalized)
@@ -960,34 +989,6 @@ def test_build_params_definition_unchanged_by_parameter_group_view():
     after = build_params_definition(params_definition_input_from_config(config), normalized)
 
     assert before == after
-
-
-def test_fallback_bounds_resolve_context_specific_parameter_names():
-    config, _, normalized = _compiler_fixture()
-    config.parameters_selection.mechanism_regions["apical"][0].parameters[
-        "gNa"
-    ].value = OptimizationValue(mode="bounds")
-    config.parameters_selection.distribution_parameters["decay"]["constant"] = OptimizationValue(
-        mode="bounds"
-    )
-
-    params = build_params_definition(
-        params_definition_input_from_config(config),
-        normalized,
-        bounds_fallbacks={
-            "g_pas": (1e-5, 6e-5),
-            "e_pas": (-95.0, -60.0),
-            "gNa_NaTg": (0.0, 1.0),
-            "distribution_decay.constant": (-0.2, 0.0),
-        },
-    )
-
-    by_name_and_location = {
-        (parameter["name"], parameter["location"]): parameter["value"]
-        for parameter in _parameter_rows(params)
-    }
-    assert by_name_and_location["gNa_NaTg", "apical"] == [0.0, 1.0]
-    assert by_name_and_location["constant", "distribution_decay"] == [-0.2, 0.0]
 
 
 def _fake_section(section_type):
