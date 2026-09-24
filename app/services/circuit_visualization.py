@@ -24,7 +24,52 @@ from app.schemas.circuit_visualization import (
 )
 
 
+def sonata_circuit_asset_id(client: Client, circuit: Circuit) -> UUID:
+    """Return the id of a circuit's ``sonata_circuit`` asset.
+
+    Accepts an already-fetched circuit and raises ``ValueError`` for non-HTTP contexts.
+
+    Args:
+        client: entitycore client used to select the asset.
+        circuit: The circuit whose asset to resolve.
+
+    Returns:
+        The asset id.
+
+    Raises:
+        ValueError: If the circuit carries no such asset, or the asset has no id.
+    """
+    try:
+        asset = client.select_assets(
+            entity=circuit,
+            selection={"label": AssetLabel.sonata_circuit},
+        ).one()
+    except EntitySDKError as exc:
+        msg = "Circuit is missing a SONATA circuit asset."
+        raise ValueError(msg) from exc
+
+    if asset.id is None:
+        msg = "SONATA circuit asset is missing an id."
+        raise ValueError(msg)
+    return asset.id
+
+
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
+    """Resolve sonata_circuit asset id for an HTTP endpoint.
+
+    Translates service-layer exceptions to HTTP errors and validates circuit scale.
+
+    Args:
+        client: entitycore client used to fetch the circuit and select its asset.
+        circuit_id: The circuit id to resolve.
+
+    Returns:
+        The asset id.
+
+    Raises:
+        HTTPException: 400 if the circuit cannot be fetched, has wrong scale,
+            or is missing a sonata_circuit asset.
+    """
     try:
         circuit = client.get_entity(entity_id=circuit_id, entity_type=Circuit)
     except EntitySDKError as e:
@@ -47,14 +92,8 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
         )
 
     try:
-        asset = client.select_assets(
-            circuit,
-            selection={
-                "label": "sonata_circuit",
-            },
-        ).one()
-
-    except EntitySDKError as e:
+        return sonata_circuit_asset_id(client, circuit)
+    except ValueError as e:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
             detail={
@@ -62,8 +101,6 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
                 "detail": "Circuit is missing a sonata_circuit asset",
             },
         ) from e
-
-    return asset.id
 
 
 def get_population_nodes(  # ruff: ignore[too-many-locals]
@@ -447,37 +484,6 @@ def load_memodel_morphology(client: Client, memodel: MEModel) -> morphio.Morphol
         the morphology cannot be resolved or carries no usable asset.
     """
     return load_cell_morphology(client, memodel_cell_morphology(client, memodel))
-
-
-def sonata_circuit_asset_id(client: Client, circuit: Circuit) -> UUID:
-    """Return the id of a circuit's ``sonata_circuit`` asset.
-
-    Unlike :func:`circuit_asset_id`, this takes an already-fetched circuit and raises
-    ``ValueError`` rather than ``HTTPException``, so it is usable outside a request.
-
-    Args:
-        client: entitycore client used to select the asset.
-        circuit: The circuit whose asset to resolve.
-
-    Returns:
-        The asset id.
-
-    Raises:
-        ValueError: If the circuit carries no such asset, or the asset has no id.
-    """
-    try:
-        asset = client.select_assets(
-            entity=circuit,
-            selection={"label": AssetLabel.sonata_circuit},
-        ).one()
-    except EntitySDKError as exc:
-        msg = "Circuit is missing a SONATA circuit asset."
-        raise ValueError(msg) from exc
-
-    if asset.id is None:
-        msg = "SONATA circuit asset is missing an id."
-        raise ValueError(msg)
-    return asset.id
 
 
 def load_single_neuron_circuit_morphology(client: Client, circuit: Circuit) -> morphio.Morphology:
