@@ -44,9 +44,10 @@ from app.endpoints import (
     validate_electrophysiology_protocol_nwb,
 )
 from app.endpoints.scan_config import activate_scan_config_endpoints
-from app.errors import ApiError, ApiErrorCode
+from app.errors import ApiError, ApiErrorCode, invalid_config_error
 from app.logger import L
 from app.schemas.base import ErrorResponse
+from obi_one.core.exception import OBIONEError
 
 
 @asynccontextmanager
@@ -107,6 +108,17 @@ async def validation_exception_handler(
     )
 
 
+async def obione_error_handler(request: Request, exception: OBIONEError) -> Response:
+    """Handle OBIONEError raised while FastAPI is still building the request body.
+
+    Block validators run during pydantic's parsing of the request body, before an endpoint's own
+    function body starts, so an endpoint's own `try/except OBIONEError` around its logic never
+    sees these. Pydantic also does not wrap `OBIONEError` into `RequestValidationError` the way it
+    does `ValueError`, so without this handler it falls through to a bare 500.
+    """
+    return await api_error_handler(request, invalid_config_error(str(exception)))
+
+
 async def entity_sdk_error_handler(request: Request, exc: EntitySDKError) -> None:
     """Handle database client errors globally.
 
@@ -134,6 +146,7 @@ app = FastAPI(
         ApiError: api_error_handler,
         RequestValidationError: validation_exception_handler,
         EntitySDKError: entity_sdk_error_handler,
+        OBIONEError: obione_error_handler,
     },  # ty:ignore[invalid-argument-type]
     root_path=settings.ROOT_PATH,
     strict_content_type=False,
