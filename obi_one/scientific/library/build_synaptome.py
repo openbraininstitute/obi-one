@@ -449,13 +449,23 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
 
         # Copy each group's synaptic-model .mod file(s) into the circuit so a simulator can
         # compile them, and fold in the ME-model's own biophysical .mod files, so the persisted
-        # circuit keeps every mechanism in the single declared directory. Done after the config
-        # is written, since ensure_mechanisms_dir resolves the directory through libsonata and
-        # needs the edge population declared in the config.
+        # circuit keeps every mechanism in the single declared directory. ensure_mechanisms_dir
+        # also stages the intrinsic mini mechanisms. Done after the config is written, since it
+        # resolves the directory through libsonata and needs the edge population declared in the
+        # config. Resolved per population, since the directory can be set per edge population,
+        # not only at the circuit level.
+        mechanisms_dir = None
         for edge_population, synaptic_model in models_by_edge_population.items():
             mechanisms_dir = ensure_mechanisms_dir(circuit_config_path, edge_population)
             _fold_staged_mechanisms_into(mechanisms_dir, output_directory)
             type(synaptic_model).copy_mod_files(mechanisms_dir)
+
+        # With no synapse groups there is no edge population to resolve against, so fall back to
+        # the circuit-level directory (which still stages the minis) and fold the ME-model's
+        # biophysical mods in here instead.
+        if mechanisms_dir is None:
+            mechanisms_dir = ensure_mechanisms_dir(circuit_config_path)
+            _fold_staged_mechanisms_into(mechanisms_dir, output_directory)
 
         validate_synaptome_artifact(
             circuit_config_path,
