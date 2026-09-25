@@ -25,7 +25,10 @@ from app.endpoints.morphology_metrics_calculation import (
     register_morphology,
     run_morphology_analysis,
 )
-from app.services.morphology import MorphologyFiles, validate_and_convert_morphology
+from app.services.morphology import (
+    MorphologyFiles,
+    convert_morphology,
+)
 from obi_one.scientific.library.morphology_measurement_annotation import (
     get_morphology_analysis_dict,
     get_morphology_template,
@@ -59,13 +62,20 @@ def mock_template_and_functions(monkeypatch):
     mock_result = MagicMock()
     mock_result.hdf5 = Path("path0.h5")
     mock_result.swc = Path("path1.swc")
+    mock_result.asc = Path("path2.asc")
 
-    mock_validate_and_convert_morphology = create_autospec(
-        validate_and_convert_morphology, return_value=mock_result
-    )
+    # Mock load_morphio_morphology to succeed (for happy path tests)
+    mock_load_morphio = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
-        mock_validate_and_convert_morphology,
+        "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+        mock_load_morphio,
+    )
+
+    # Mock convert_morphology to return our mock result
+    mock_convert_morphology = create_autospec(convert_morphology, return_value=mock_result)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.convert_morphology",
+        mock_convert_morphology,
     )
 
 
@@ -666,8 +676,13 @@ def test_converted_asc_is_uploaded_for_swc_input(client, monkeypatch):
         hdf5=_existing_path("converted.h5"),
         asc=_existing_path("converted.asc"),
     )
+    # Mock both functions to simulate successful validation and conversion
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
+        "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+        lambda *_args, **_kwargs: None,  # Returns None, doesn't raise
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.convert_morphology",
         lambda *_args, **_kwargs: converted,
     )
     monkeypatch.setattr(
@@ -714,7 +729,7 @@ class TestStoreInvalidMorphology:
             )
 
         monkeypatch.setattr(
-            "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
+            "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
             _fail,
         )
 
@@ -824,8 +839,14 @@ class TestStoreInvalidMorphology:
             )
 
         with pytest.MonkeyPatch.context() as mp:
+            # Mock load_morphio_morphology to succeed (file is valid)
             mp.setattr(
-                "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
+                "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+                lambda *_args, **_kwargs: None,
+            )
+            # Mock convert_morphology to fail with the given status code
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.convert_morphology",
                 _fail,
             )
             response = client.post(

@@ -20,7 +20,7 @@ Send `store_if_invalid: true` in the `metadata` form field to register them anyw
 {"name": "My morphology", "store_if_invalid": true}
 ```
 
-With the opt-in, a file that fails validation is registered with
+With the opt-in, a file that cannot be loaded at all (morphio validation failure) is registered with
 `lifecycle_status = disqualified`, and the original upload is kept as an asset. Format
 conversion, morphometrics and mesh generation are skipped, because none of them can run on a
 file that could not be loaded.
@@ -39,12 +39,12 @@ The flag is a request control only; it is not stored on the entity.
 Note that with the opt-in a failed morphology returns **200**, not 422. Callers must read
 `lifecycle_status` rather than treating any 2xx as a valid morphology.
 
-The flag only applies when the file itself is not a usable morphology (422). Everything else is
+The flag only applies when the file itself cannot be loaded (morphio validation failure). Everything else is
 still an error regardless of the flag:
 
 - empty uploads and unsupported file extensions → 400, bad requests rather than bad morphologies
-- format conversion failures → 400, since these can be environmental (a full disk, for example)
-  rather than a property of the uploaded file
+- format conversion failures → 400 for tool errors, 500 for system errors (disk full, etc.)
+  These are environmental/server problems, not about the uploaded file being invalid
 
 If the entity is registered but the file cannot be attached, the response is a 500 whose detail
 includes the `entity_id`, so the upload can be retried or the entity removed.

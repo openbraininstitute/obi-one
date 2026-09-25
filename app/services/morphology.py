@@ -170,7 +170,17 @@ def convert_morphology(
                 output_file=str(output_file),
                 single_point_soma=single_point_soma,
             )
+        except OSError as e:
+            # OSError includes disk full, permission denied, etc. - server errors
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ApiErrorCode.INVALID_REQUEST,
+                    "detail": f"Failed to convert the file due to system error: {e!s}",
+                },
+            ) from e
         except Exception as e:
+            # Other exceptions (including morph_tool errors) are 400
             raise HTTPException(
                 status_code=HTTPStatus.BAD_REQUEST,
                 detail={

@@ -31,7 +31,8 @@ from app.dependencies.entitysdk import get_client
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
     MorphologyFiles,
-    validate_and_convert_morphology,
+    convert_morphology,
+    load_morphio_morphology,
 )
 from obi_one.db_sdk.registration.morphology import (
     register_morphometrics,
@@ -383,26 +384,34 @@ async def _run_pipeline(
             stack.callback((output_dir / f"{output_stem}{ext}").unlink, missing_ok=True)
 
         try:
-            converted_files: MorphologyFiles = await run_in_threadpool(
-                validate_and_convert_morphology,
-                input_file=pathlib.Path(temp_file_path),
-                output_dir=output_dir,
-                output_stem=output_stem,
-                single_point_soma_by_ext=single_point_soma_by_ext,
+            # First try to load the morphology with morphio
+            await run_in_threadpool(
+                load_morphio_morphology,
+                file_path=pathlib.Path(temp_file_path),
+                raise_warnings=False,
             )
         except HTTPException as exc:
-            # convert_morphology also raises 400 for environmental failures, so only a 422
-            # means the file itself is unusable.
-            if not store_if_invalid or exc.status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
+            # Only a morphology that cannot be loaded at all qualifies for disqualified status
+            if not store_if_invalid:
                 raise
             detail = exc.detail
+            validation_error = detail["detail"] if isinstance(detail, dict) else str(detail)
             return _register_disqualified_morphology(
                 client=client,
                 morphology_name=morphology_name,
                 content=content,
                 entity_payload=entity_payload,
-                validation_error=detail["detail"] if isinstance(detail, dict) else str(detail),
+                validation_error=validation_error,
             )
+
+        # The file loaded successfully, now try to convert it
+        converted_files: MorphologyFiles = await run_in_threadpool(
+            convert_morphology,
+            input_file=pathlib.Path(temp_file_path),
+            output_dir=output_dir,
+            output_stem=output_stem,
+            single_point_soma_by_ext=single_point_soma_by_ext,
+        )
 
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,
