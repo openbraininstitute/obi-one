@@ -31,7 +31,8 @@ from pathlib import Path
 # Matches a top-level ``obi-one`` requirement line with optional extras, e.g.
 # ``obi-one`` or ``obi-one[connectivity,emodel]`` (optionally followed by a
 # version specifier, which we ignore -- the version is pinned dynamically).
-_OBI_ONE_LINE_REGEX = re.compile(
+# Shared with launch_scripts/compile_launch_deps.py (imported from there).
+OBI_ONE_LINE_REGEX = re.compile(
     r"^\s*obi[-_]one"  # package name (obi-one / obi_one)
     r"(?:\[(?P<extras>[A-Za-z0-9._,\s-]+)\])?"  # optional extras group
     r"\s*(?:[<>=!~;].*)?$"  # optional version specifier / trailing
@@ -134,7 +135,7 @@ def extract_obi_one_extras(requirements_file: Path | str) -> list[str]:
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
-        m = _OBI_ONE_LINE_REGEX.match(line)
+        m = OBI_ONE_LINE_REGEX.match(line)
         if m:
             extras = m.group("extras")
             if not extras:

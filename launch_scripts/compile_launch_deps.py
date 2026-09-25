@@ -27,6 +27,8 @@ import tomllib
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
+from obi_one.utils.versions import OBI_ONE_LINE_REGEX
+
 # Resolution target for the runtime executors. The Python version is derived from
 # the ``requires-python`` floor (see ``_python_floor_version``).
 PYTHON_PLATFORM = "x86_64-unknown-linux-gnu"
@@ -44,12 +46,6 @@ OBI_CODEARTIFACT_INDEX = (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LAUNCH_SCRIPTS_DIR = REPO_ROOT / "launch_scripts"
-
-# Top-level ``obi-one`` / ``obi_one`` line (optional extras/specifier).
-# Kept in sync with ``obi_one/utils/versions.py``.
-_OBI_ONE_LINE_REGEX = re.compile(
-    r"^\s*obi[-_]one(?:\[(?P<extras>[A-Za-z0-9._,\s-]+)\])?\s*(?:[<>=!~;].*)?$"
-)
 
 
 def resolve_in_files(paths: list[str]) -> list[Path]:
@@ -120,7 +116,7 @@ def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
         if not stripped or stripped.startswith("#"):
             resolved_lines.append(raw)
             continue
-        m = _OBI_ONE_LINE_REGEX.match(stripped)
+        m = OBI_ONE_LINE_REGEX.match(stripped)
         if m:
             obi_one_lines.append(stripped)
             extras = m.group("extras")
@@ -144,7 +140,7 @@ def _existing_pins(out_file: Path) -> str:
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if _OBI_ONE_LINE_REGEX.match(stripped):
+        if OBI_ONE_LINE_REGEX.match(stripped):
             continue
         kept.append(stripped)
     return ("\n".join(kept) + "\n") if kept else ""
