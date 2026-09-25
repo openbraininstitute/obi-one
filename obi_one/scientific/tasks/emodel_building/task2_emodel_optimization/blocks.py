@@ -1181,7 +1181,7 @@ class OptimizationParams(Block):
     """Algorithm-specific ``optimisation_params`` passed to BluePyEModel."""
 
     offspring_size: PositiveInt | list[PositiveInt] = Field(
-        default=20,
+        default=5,
         title="Offspring size",
         description=(
             "Population size per generation. The L5PC example uses 20; we default"
@@ -1304,7 +1304,7 @@ class OptimizationSettings(Block):
     """Pydantic form for optimization, evaluation, validation, and analysis recipe settings."""
 
     optimiser: Literal["SO-CMA", "MO-CMA", "IBEA"] = Field(
-        default="MO-CMA",
+        default="SO-CMA",
         title="Optimiser",
         description=(
             "BluePyEModel optimiser. ``SO-CMA`` is single-objective CMA, ``MO-CMA`` is "
@@ -1313,7 +1313,7 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
     max_ngen: PositiveInt | list[PositiveInt] = Field(
-        default=100,
+        default=20,
         title="Max generations",
         description="Maximum number of optimizer generations.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},

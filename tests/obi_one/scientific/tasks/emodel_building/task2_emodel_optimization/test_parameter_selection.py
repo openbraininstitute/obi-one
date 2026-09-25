@@ -472,7 +472,7 @@ def test_recipe_file_contains_artifact_paths_and_pipeline_settings(tmp_path):
     assert written["params"] == "config/params/params.json"
     assert written["morph_path"] == "./morphologies/"
     assert written["pipeline_settings"]["plot_currentscape"] is False
-    assert written["pipeline_settings"]["optimisation_params"] == {"offspring_size": 20}
+    assert written["pipeline_settings"]["optimisation_params"] == {"offspring_size": 5}
 
 
 def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
