@@ -9,6 +9,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
+from uuid import UUID
 
 import entitysdk
 from entitysdk import MultipartDirectoryUploadTransferConfig
@@ -17,8 +18,11 @@ from entitysdk.models import (
     ETypeClass,
     IonChannelModel,
     License,
+    MEModel,
+    MEModelCalibrationResult,
     TaskActivity,
     TaskResult,
+    ValidationResult,
 )
 from entitysdk.registration.emodel import register_emodel
 from entitysdk.registration.memodel import register_memodel
@@ -45,6 +49,8 @@ class RegisteredOptimizationOutputs:
     task_result_id: str
     emodel_id: str
     memodel_id: str
+    authorized_public: bool
+    generated_ids: list[str]
 
 
 def parse_final_json(final_path: Path, emodel_name: str) -> dict:
@@ -313,18 +319,164 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     )
     L.info("Draft MEModel registered: %s", memodel_entity.id)
 
+    generated_ids = [str(task_result.id), str(emodel_entity.id), str(memodel_entity.id)]
+
     # --- Update TaskActivity with generated_ids ---
-    if execution_activity_id is not None:
-        db_client.update_entity(
-            entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskActivity,
-            attrs_or_entity={
-                "generated_ids": [task_result.id, emodel_entity.id, memodel_entity.id],
-            },
-        )
+    update_activity_generated_ids(db_client, execution_activity_id, generated_ids)
 
     return RegisteredOptimizationOutputs(
         task_result_id=str(task_result.id),
         emodel_id=str(emodel_entity.id),
         memodel_id=str(memodel_entity.id),
+        authorized_public=authorized_public,
+        generated_ids=generated_ids,
+    )
+
+
+def register_calibration_result(
+    db_client: entitysdk.Client,
+    memodel_id: str,
+    calibration_dict: dict,
+    *,
+    authorized_public: bool,
+) -> str | None:
+    """Register a ``MEModelCalibrationResult`` for the MEModel.
+
+    Skips registration if a calibration result already exists for this MEModel.
+
+    Returns:
+        The registered entity ID, or ``None`` if it already existed.
+    """
+    existing = db_client.search_entity(
+        entity_type=MEModelCalibrationResult,
+        query={"calibrated_entity_id": memodel_id},
+    ).first()
+    if existing is not None:
+        L.info("MEModelCalibrationResult already exists for %s; skipping.", memodel_id)
+        return None
+
+    calibration = MEModelCalibrationResult(
+        holding_current=calibration_dict["holding_current"],
+        threshold_current=calibration_dict["rheobase"],
+        rin=calibration_dict.get("rin"),
+        calibrated_entity_id=UUID(memodel_id),
+        authorized_public=authorized_public,
+    )
+    registered = db_client.register_entity(entity=calibration)
+    L.info("MEModelCalibrationResult registered: %s (memodel=%s)", registered.id, memodel_id)
+    return str(registered.id)
+
+
+_FIGURE_CONTENT_TYPES = {
+    ".pdf": ContentType.application_pdf,
+    ".png": ContentType.image_png,
+}
+
+
+def register_memodel_validation_results(
+    db_client: entitysdk.Client,
+    memodel_id: str,
+    validation_dict: dict,
+    *,
+    authorized_public: bool,
+    details_dir: Path,
+) -> list[str]:
+    """Register ``ValidationResult`` entities for a bluecellulab validation run.
+
+    One ``ValidationResult`` per test entry in ``validation_dict``; figure
+    (``.pdf``/``.png``) and ``validation_details`` text are uploaded as assets.
+    Entries already registered for ``memodel_id`` are skipped.
+
+    Returns:
+        IDs of newly registered ``ValidationResult`` entities.
+    """
+    details_dir.mkdir(parents=True, exist_ok=True)
+    registered_ids: list[str] = []
+
+    for value in validation_dict.values():
+        if not isinstance(value, dict) or "name" not in value:
+            continue
+
+        existing = db_client.search_entity(
+            entity_type=ValidationResult,
+            query={"name": value["name"], "validated_entity_id": memodel_id},
+        ).first()
+        if existing is not None:
+            L.info(
+                "ValidationResult '%s' already exists for %s; skipping.",
+                value["name"],
+                memodel_id,
+            )
+            continue
+
+        validation_result = db_client.register_entity(
+            entity=ValidationResult(
+                name=value["name"],
+                passed=bool(value["passed"]),
+                validated_entity_id=UUID(memodel_id),
+                authorized_public=authorized_public,
+            )
+        )
+        registered_ids.append(str(validation_result.id))
+        L.info(
+            "ValidationResult registered: %s (name='%s', passed=%s)",
+            validation_result.id,
+            value["name"],
+            value["passed"],
+        )
+
+        for figure in value.get("figures", []):
+            figure_path = Path(figure)
+            content_type = _FIGURE_CONTENT_TYPES.get(figure_path.suffix)
+            if not figure_path.exists():
+                L.warning("Validation figure not found: %s", figure_path)
+                continue
+            if content_type is None:
+                L.warning("Unsupported validation figure format: %s", figure_path)
+                continue
+            db_client.upload_file(
+                entity_id=validation_result.id,
+                entity_type=ValidationResult,
+                file_path=figure_path,
+                file_content_type=content_type,
+                asset_label=AssetLabel.validation_result_figure,
+            )
+
+        details_text = value.get("validation_details")
+        if details_text:
+            details_path = details_dir / f"{value['name'].replace(' ', '')}_details.txt"
+            details_path.write_text(details_text, encoding="utf-8")
+            db_client.upload_file(
+                entity_id=validation_result.id,
+                entity_type=ValidationResult,
+                file_path=details_path,
+                file_content_type=ContentType.text_plain,
+                asset_label=AssetLabel.validation_result_details,
+            )
+
+    return registered_ids
+
+
+def mark_memodel_validated(db_client: entitysdk.Client, memodel_id: str) -> None:
+    """Set ``validation_status=done`` on the MEModel after successful validation."""
+    db_client.update_entity(
+        entity_id=memodel_id,  # ty:ignore[invalid-argument-type]
+        entity_type=MEModel,
+        attrs_or_entity={"validation_status": ValidationStatus.done},
+    )
+    L.info("MEModel %s marked as validated.", memodel_id)
+
+
+def update_activity_generated_ids(
+    db_client: entitysdk.Client,
+    execution_activity_id: str | None,
+    generated_ids: list[str],
+) -> None:
+    """Merge ``generated_ids`` onto the TaskActivity (replaces the full list server-side)."""
+    if execution_activity_id is None:
+        return
+    db_client.update_entity(
+        entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
+        entity_type=TaskActivity,
+        attrs_or_entity={"generated_ids": generated_ids},
     )
