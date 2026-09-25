@@ -10,26 +10,34 @@ L = logging.getLogger(__name__)
 
 def register_derivation(
     client: Client,
-    from_entity: models.Circuit | None,
+    from_entity: models.Entity | None,
     derivation_type: DerivationType | None,
     registered_circuit: models.Circuit | None,
     *,
     dry_run: bool,
+    label: str | None = None,
 ) -> models.Derivation | None:
-    """Register a derivation link between a parent and a derived circuit.
+    """Register a derivation link between a source entity and a derived circuit.
+
+    ``from_entity`` is whatever the circuit was derived from: a parent Circuit for
+    circuit-to-circuit derivations, or another entity such as an EModel for a model that
+    produces a circuit (matching ``Derivation.used``, which accepts any ``Entity``).
 
     Args:
         client: The entitycore SDK client.
-        from_entity: The parent circuit entity (None to skip).
+        from_entity: The source entity the circuit was derived from (None to skip).
         derivation_type: The type of derivation (must be a valid DerivationType).
         registered_circuit: The derived circuit entity.
         dry_run: If True, perform validation only without registering.
+        label: Optional derivation label. For an emodel_circuit derivation this is the
+            circuit's ``model_template`` string, which the neuronal-manipulation-properties
+            consumer matches against to resolve the EModel behind each node.
 
     Returns:
         The registered derivation, or None if skipped or dry_run.
     """
     if from_entity is None:
-        L.info("No derivation parent provided - skipping")
+        L.info("No derivation source provided - skipping")
         return None
 
     if derivation_type is None:
@@ -48,6 +56,7 @@ def register_derivation(
         used=from_entity,
         generated=registered_circuit,
         derivation_type=derivation_type,
+        label=label,
     )
     registered_derivation = client.register_entity(derivation_model)
     L.info(f"Derivation link '{derivation_type}' registered")

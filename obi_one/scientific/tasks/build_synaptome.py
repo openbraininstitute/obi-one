@@ -259,6 +259,9 @@ class MEModelSynapticModelPlacementTask(Task):
             target_simulator=types.TargetSimulator.NEURON,
             experiment_date=me_model.morphology.experiment_date,
             license=me_model.license or me_model.morphology.license,
+            derived_from=me_model.emodel,
+            derivation_type=types.DerivationType.emodel_circuit,
+            derivation_label=result.model_template,
             skip_validation=True,
         )
         if circuit is None:
