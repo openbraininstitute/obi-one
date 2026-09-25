@@ -745,15 +745,18 @@ class MechanismsBySectionList(Block):
     """Mechanism catalogue and region assignments for the GUI workflow."""
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
-        default_factory=tuple,
+        min_length=1,
         title="Ion channel models",
         description=(
             "Ion channel model entities available for assignment to morphology section lists."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
     )
-    mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
-        default_factory=dict,
+    mechanism_regions: dict[
+        SectionListName,
+        Annotated[tuple[MechanismRegionSelection, ...], Field(min_length=1)],
+    ] = Field(
+        min_length=1,
         title="Mechanisms by section list",
         description=(
             "Assign selected ion channel models to BluePyEModel section lists. The same model "
@@ -780,7 +783,6 @@ class EModelOptimisationParameters(Block):
     """Root-level Task 2 mechanism and optimization-parameter configuration."""
 
     mechanisms: MechanismsBySectionList = Field(
-        default_factory=MechanismsBySectionList,
         title="Mechanisms",
         description=(
             "Select ion channel models, assign them to section lists, and configure their "

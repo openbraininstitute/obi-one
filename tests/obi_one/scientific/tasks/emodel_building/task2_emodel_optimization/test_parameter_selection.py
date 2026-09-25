@@ -64,6 +64,11 @@ from obi_one.utils.filesystem import create_dir
 from obi_one.utils.io import write_json
 
 
+def _somatic_assignment():
+    """A region assignment for icm-1: mechanisms need at least one."""
+    return {"somatic": [{"ion_channel_model": {"id_str": "icm-1"}}]}
+
+
 def _scan_config_data(**overrides):
     config_data = {
         "info": {"campaign_name": "test", "campaign_description": "test"},
@@ -74,7 +79,10 @@ def _scan_config_data(**overrides):
             "morphology": {"id_str": "morphology"},
         },
         "emodel_optimisation_parameters": {
-            "mechanisms": {"ion_channel_models": [{"id_str": "icm-1"}]}
+            "mechanisms": {
+                "ion_channel_models": [{"id_str": "icm-1"}],
+                "mechanism_regions": _somatic_assignment(),
+            }
         },
     }
     legacy = overrides.pop("parameters_selection", None)
@@ -189,6 +197,7 @@ def test_parameter_selection_round_trips_and_serializes_axon_settings():
             morphology_settings={"axon_modifier": "none"},
             parameters_selection=ParametersSelection(
                 ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+                mechanism_regions=_somatic_assignment(),
                 base_parameters={},
             ),
         )
@@ -334,6 +343,7 @@ def test_modifier_validation_rejects_stale_myelinated_rows_with_path():
     reference = IonChannelModelFromID(id_str="icm-1")
     stale_selection = ParametersSelection(
         ion_channel_models=(reference,),
+        mechanism_regions=_somatic_assignment(),
         base_parameters={
             "myelinated": {
                 "cm": ParameterSelection(value=OptimizationValue(value=0.02)),
@@ -564,7 +574,13 @@ def test_optimization_value_json_schema_mirrors_mode_rules():
 
 
 def test_global_parameters_default_is_validated_into_blocks():
-    v_init = EModelOptimisationParameters().global_parameters["v_init"]
+    parameters = EModelOptimisationParameters(
+        mechanisms=MechanismsBySectionList(
+            ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+            mechanism_regions=_somatic_assignment(),
+        )
+    )
+    v_init = parameters.global_parameters["v_init"]
 
     assert isinstance(v_init, GlobalParameterSelection)
     assert v_init.value.value == pytest.approx(-80.0)
@@ -1247,6 +1263,7 @@ def test_legacy_parameters_selection_input_is_migrated_to_root_field():
         _scan_config_data(
             parameters_selection=ParametersSelection(
                 ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+                mechanism_regions=_somatic_assignment(),
                 base_parameters={},
             )
         )
@@ -1266,6 +1283,7 @@ def test_supplying_both_legacy_and_root_parameter_fields_is_rejected():
     root_selection = EModelOptimisationParameters(
         mechanisms=MechanismsBySectionList(
             ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+            mechanism_regions=_somatic_assignment(),
         ),
         base_parameters={},
     )
@@ -1304,7 +1322,9 @@ def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
     selected = IonChannelModelFromID(id_str="icm-1")
 
     with pytest.raises(ValueError, match="must not contain duplicate entity IDs"):
-        MechanismsBySectionList(ion_channel_models=(selected, selected))
+        MechanismsBySectionList(
+            ion_channel_models=(selected, selected), mechanism_regions=_somatic_assignment()
+        )
 
     with pytest.raises(ValueError, match="must also be listed in ion_channel_models"):
         MechanismsBySectionList(
@@ -1324,7 +1344,9 @@ def test_root_parameter_block_validates_global_model_reference_directly():
 
     with pytest.raises(ValueError, match="Global parameter 'ena' source must also be listed"):
         EModelOptimisationParameters(
-            mechanisms=MechanismsBySectionList(ion_channel_models=(selected,)),
+            mechanisms=MechanismsBySectionList(
+                ion_channel_models=(selected,), mechanism_regions=_somatic_assignment()
+            ),
             global_parameters={
                 "ena": GlobalParameterSelection(
                     value=OptimizationValue(value=50.0),
@@ -1353,6 +1375,7 @@ def test_no_replacement_rejects_myelinated_configuration_rows(field_name):
     if field_name == "base_parameters":
         selection = ParametersSelection(
             ion_channel_models=(reference,),
+            mechanism_regions=_somatic_assignment(),
             base_parameters={
                 "myelinated": {
                     "cm": ParameterSelection(value=OptimizationValue(value=0.02)),
@@ -1396,6 +1419,7 @@ def test_morphology_settings_rejects_removed_source_myelinated_override():
 def test_legacy_parameters_selection_json_payload_is_migrated():
     legacy = ParametersSelection(
         ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        mechanism_regions=_somatic_assignment(),
         base_parameters={},
     ).model_dump(mode="json")
 
