@@ -10,13 +10,12 @@ from obi_one.config import settings
 from obi_one.core.task import Task
 from obi_one.db_sdk import db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit import Circuit, ensure_mechanisms_dir
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.utils import (
     check_consistent_synapse_models,
-    ensure_mechanisms_dir,
     get_default_for,
     write_back_to_edge_file,
     write_mod_files,
