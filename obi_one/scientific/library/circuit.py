@@ -396,7 +396,8 @@ def ensure_mechanisms_dir(
     neuron carries them independent of which synapses are placed, and simulations name them in
     ``conditions.mechanisms`` at every scale, so they must be present for a simulator to compile.
     A file already in the directory is left untouched, so a circuit's own copy always wins.
-    TODO: make this configurable per simulation once the design is settled.
+    TODO: make this configurable per simulation once the design is settled
+    (openbraininstitute/prod-circuit-simulation#252).
     """
     mechanisms_dir_raw = None
     if edge_population_name is not None:
