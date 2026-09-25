@@ -260,22 +260,14 @@ class MEModelSynapticModelPlacementTask(Task):
             target_simulator=types.TargetSimulator.NEURON,
             experiment_date=me_model.morphology.experiment_date,
             license=me_model.license or me_model.morphology.license,
+            derived_from=me_model.emodel,
+            derivation_type=types.DerivationType.emodel_circuit,
+            derivation_label=result.model_template,
             skip_validation=True,
         )
         if circuit is None:
             msg = "Build Synaptome circuit registration did not return a Circuit."
             raise RuntimeError(msg)
-
-        # Record that the circuit was derived from the ME-model's EModel. The label is the
-        # circuit's model_template, which the neuronal-manipulation consumer matches against.
-        circuit_registration.register_derivation(
-            client=db_client,
-            from_entity=me_model.emodel,
-            derivation_type=types.DerivationType.emodel_circuit,
-            registered_circuit=circuit,
-            dry_run=False,
-            label=result.model_template,
-        )
 
         self._update_execution_activity(
             db_client=db_client,
