@@ -309,7 +309,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         holding_current=em_metrics["holding_current"],
         authorized_public=authorized_public,
         validation_status=ValidationStatus.created,
-        lifecycle_status=EntityLifecycleStatus.draft,
+        lifecycle_status=EntityLifecycleStatus.active,
     )
     L.info("Draft MEModel registered: %s", memodel_entity.id)
 
