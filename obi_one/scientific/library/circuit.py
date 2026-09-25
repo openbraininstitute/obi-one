@@ -303,7 +303,7 @@ class Circuit(OBIBaseModel):
         morph_name = self.get_morphology_name(node_id, population=population)
         attempted: list[str] = []
 
-        def _from_container(key: str) -> morphio.Morphology | None:
+        def _from_alternate(key: str) -> morphio.Morphology | None:
             base = self._alternate_morphology_base(population, key)
             if base is None:
                 return None
@@ -329,9 +329,9 @@ class Circuit(OBIBaseModel):
 
         # h5 (canonical for simulation), then the swc under morphologies_dir, then the asc.
         for attempt in (
-            lambda: _from_container("h5v1"),
+            lambda: _from_alternate("h5v1"),
             _from_morphologies_dir,
-            lambda: _from_container("neurolucida-asc"),
+            lambda: _from_alternate("neurolucida-asc"),
         ):
             morphology = attempt()
             if morphology is not None:
