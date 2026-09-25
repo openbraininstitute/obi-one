@@ -1,16 +1,16 @@
 name: Check launch-script requirements
 
-# Verifies that the frozen launch-script requirements (``*.txt``) are up to date
-# with their ``*.in`` sources. If an ``.in`` (or an obi-one dependency) changed
-# without regenerating the ``.txt``, this check fails. Run ``make
-# freeze-launch-deps`` locally and commit the result to fix it.
+# Verifies that the committed launch-script requirements (``*.txt``) are
+# consistent with their ``*.in`` sources. If an ``.in`` (or an obi-one
+# dependency) changed without regenerating the ``.txt``, this check fails. Run
+# ``make compile-launch-deps`` locally and commit the result to fix it.
 
 on:
   pull_request:
     paths:
       - "launch_scripts/**/dependencies/*.in"
       - "launch_scripts/**/dependencies/*.txt"
-      - "launch_scripts/_freeze_deps.py"
+      - "launch_scripts/compile_launch_deps.py"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/check-launch-deps.yml"

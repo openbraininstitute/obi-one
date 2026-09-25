@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps freeze-launch-deps check-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -66,11 +66,14 @@ upgrade-deps:  ## Create or update the lock file, using the latest version of th
 check-deps:  ## Check that the dependencies in the existing lock file are valid, and that entitysdk is at the latest version.
 	uv lock --locked --upgrade-package entitysdk
 
-freeze-launch-deps:  ## Freeze launch-script requirements (.in -> pinned .txt). Optional: TASK=<launch_dir>
-	uv run python launch_scripts/_freeze_deps.py $(if $(TASK),--task $(TASK))
+compile-launch-deps:  ## Compile launch-script requirements (.in -> pinned .txt), preserving existing pins. Optional: FILE=<path to .in or dir>
+	uv run python launch_scripts/compile_launch_deps.py $(FILE)
 
-check-launch-deps:  ## Verify committed launch-script .txt files are up to date with their .in sources
-	uv run python launch_scripts/_freeze_deps.py --check $(if $(TASK),--task $(TASK))
+upgrade-launch-deps:  ## Compile launch-script requirements, upgrading the transitive closure to latest. Optional: FILE=<path to .in or dir>
+	uv run python launch_scripts/compile_launch_deps.py --upgrade $(FILE)
+
+check-launch-deps:  ## Verify committed launch-script .txt files are consistent with their .in sources
+	uv run python launch_scripts/compile_launch_deps.py --check $(FILE)
 
 format:  ## Run formatters
 	uv run ruff format $(FILE)
