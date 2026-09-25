@@ -108,11 +108,11 @@ The check is strict: it resolves every task, including those needing private pac
 
 By default each task installs the obi-one version of the running service. To
 keep a task on an older, known-good obi-one (e.g. when it has not been validated
-against the current release), add it to `_PINNED_OBI_ONE_VERSIONS` in
+against the current release), add it to `PINNED_OBI_ONE_VERSIONS` in
 `app/mappings.py`:
 
 ```python
-_PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {
+PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {
     TaskType.some_task: "2026.5.1",
 }
 ```

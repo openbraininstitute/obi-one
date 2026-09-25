@@ -29,7 +29,7 @@ OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 # it has not been validated against the current release. Both the git ``ref``
 # (task code + frozen requirements) and the obi-one dependency constraint are
 # pinned together so the task runs fully at that version.
-_PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {}
+PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {}
 
 
 def _obi_one_deps_constraint(deps_name: str, version: str | None = None) -> list[str]:
@@ -342,16 +342,21 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
 }  # ty:ignore[invalid-assignment]
 
 
-def _apply_obi_one_version_pins() -> None:
-    """Pin selected tasks to a specific obi-one version (ref + constraint).
+def apply_obi_one_version_pins(
+    task_definitions: dict[TaskType, TaskDefinition],
+    pins: dict[TaskType, str],
+) -> dict[TaskType, TaskDefinition]:
+    """Return a copy of ``task_definitions`` with per-task obi-one version pins applied.
 
-    For each task in ``_PINNED_OBI_ONE_VERSIONS`` the git ``ref`` is set to
-    ``tag:<version>`` (so the task code and frozen requirements are checked out
-    at that release) and the obi-one dependency constraint is pinned to the same
-    version, keeping the code and the installed library consistent.
+    For each task in ``pins`` the git ``ref`` is set to ``tag:<version>`` (so the
+    task code and frozen requirements are checked out at that release) and the
+    obi-one dependency constraint is pinned to the same version, keeping the code
+    and the installed library consistent.
     """
-    for task_type, version in _PINNED_OBI_ONE_VERSIONS.items():
-        task_def = TASK_DEFINITIONS.get(task_type)
+    result = dict(task_definitions)
+    for task_type, version in pins.items():
+        task_def = result.get(task_type)
+        # Some TaskDefinition variants (e.g. TaskGroupLegacyDefinition) have no ``code``.
         code = getattr(task_def, "code", None)
         if task_def is None or not isinstance(code, PythonRepositoryCode):
             msg = f"Cannot pin obi-one version for unknown/non-repository task {task_type!r}"
@@ -359,14 +364,15 @@ def _apply_obi_one_version_pins() -> None:
         deps_name = Path(code.dependencies).name
         pinned_code = code.model_copy(
             update={
-                "ref": f"tag:{version}",
+                "ref": release_tag(version),
                 "dependency_constraints": _obi_one_deps_constraint(deps_name, version=version),
             }
         )
-        TASK_DEFINITIONS[task_type] = task_def.model_copy(update={"code": pinned_code})
+        result[task_type] = task_def.model_copy(update={"code": pinned_code})
+    return result
 
 
-_apply_obi_one_version_pins()
+TASK_DEFINITIONS = apply_obi_one_version_pins(TASK_DEFINITIONS, PINNED_OBI_ONE_VERSIONS)
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [
