@@ -23,7 +23,10 @@ def _optimization_config(**overrides):
             "target_efeatures": {"id_str": "target"},
             "morphology": {"id_str": "morphology"},
         },
-        "parameters_selection": {"ion_channel_models": [{"id_str": "icm"}]},
+        "parameters_selection": {
+            "ion_channel_models": [{"id_str": "icm"}],
+            "mechanism_regions": {"somatic": [{"ion_channel_model": {"id_str": "icm"}}]},
+        },
     }
     config_data.update(overrides)
     return EModelOptimizationScanConfig.model_validate(config_data)

@@ -55,6 +55,10 @@ class SchemaKey(StrEnum):
     # other - core-web-app reads `.name` off it.
     REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
+    STRICTLY_INCREASING = "strictly_increasing"
+    # Note: STRICTLY_INCREASING is a validation keyword, not UI metadata: on an array it requires
+    # every item to be greater than the one before it. JSON Schema has no keyword to compare items
+    # with each other, so the frontend registers this one with its schema validator (ajv).
     TASK_RESULT_TYPE = "task_result_type"
     TITLE_BY_KEY = "title_by_key"
     UI_ELEMENT = "ui_element"
