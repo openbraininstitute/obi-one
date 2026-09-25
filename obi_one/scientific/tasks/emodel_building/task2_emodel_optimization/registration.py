@@ -274,7 +274,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     hoc_file = next(sonata_dir.rglob("*.hoc"), None) if sonata_dir.exists() else None
     emodel_entity = register_emodel(
         client=db_client,
-        name=f"{emodel_name} (draft)",
+        name=f"{emodel_name}",
         description=f"Draft emodel from optimisation (emodel={emodel_name}).",
         authorized_public=authorized_public,
         species=species_entity,
@@ -285,7 +285,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         score=em_metrics["total_score"],
         exemplar_morphology=morph_entity,
         ion_channel_models=ion_channel_models,
-        lifecycle_status=EntityLifecycleStatus.draft,
+        lifecycle_status=EntityLifecycleStatus.active,
         etype_class=etype_class,
         hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
         emodel_summary_file=emodel_summary_file,
@@ -298,7 +298,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
     # --- Register draft MEModel via helper ---
     memodel_entity = register_memodel(
         client=db_client,
-        name=f"{emodel_name} MEModel (draft)",
+        name=f"{emodel_name} MEModel",
         description=f"Draft MEModel from optimisation (emodel={emodel_name}).",
         species=species_entity,
         brain_region=brain_region_entity,
