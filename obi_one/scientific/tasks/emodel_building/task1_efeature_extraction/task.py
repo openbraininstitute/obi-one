@@ -21,6 +21,9 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.s
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
     EModelEFeatureExtractionSingleConfig,
 )
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long]
+    protocol_class_name_for,
+)
 from obi_one.utils.filesystem import chdir, create_dir
 from obi_one.utils.io import write_json
 
@@ -41,25 +44,80 @@ DEFAULT_TARGET_WEIGHT = 1.0
 AMPLITUDE_TOLERANCE = 1e-3
 
 
+def _nwb_reported_protocol_names(nwb_path: Path) -> list[str]:
+    """Protocol names bluepyefe's reader reports for ``nwb_path``.
+
+    Returns ``[]`` for BBP-layout files (``data_organization`` present), whose
+    ecode names already match the canonical ``protocol_name`` values used in the
+    config, and for files that cannot be inspected. For other layouts the
+    reported names may differ (e.g. Scala files report ``GenericStep`` while the
+    config's canonical name is ``Step``) — the names are fed back into
+    ``files_metadata`` as per-file reader hints.
+    """
+    import h5py  # ruff: ignore[import-outside-top-level]
+
+    try:
+        with h5py.File(str(nwb_path), "r") as f:
+            if "data_organization" in f:
+                return []
+        from bluepyefe.reader import inspect_nwb  # ruff: ignore[import-outside-top-level]
+
+        return list(inspect_nwb(nwb_path)["protocols"])
+    except (OSError, KeyError, TypeError, ValueError, RuntimeError) as e:
+        L.warning("Could not inspect protocol names of %s: %s", nwb_path, e)
+        return []
+
+
+def _reader_protocol_names(
+    reported: list[str],
+    ecode: str,
+    canonical_by_class: dict[str, str],
+) -> list[str]:
+    """Names in ``reported`` that resolve to the canonical protocol ``ecode``.
+
+    Includes ``ecode`` itself when the file reports it, plus any alias whose
+    ``Protocol`` subclass (via :func:`protocol_class_name_for`) has ``ecode`` as
+    its ``protocol_name``.
+    """
+    return sorted(
+        name
+        for name in reported
+        if name == ecode or canonical_by_class.get(protocol_class_name_for(name) or "") == ecode
+    )
+
+
 def _build_files_metadata(
     *,
     nwb_paths_with_ljp: list[tuple[Path, float]],
     ecode_timing: dict[str, dict],
+    canonical_by_class: dict[str, str] | None = None,
 ) -> list[dict]:
     """Build ``files_metadata`` rows for the NWB datasets (one file per cell).
 
     Each recording carries its own LJP (read from the ``ElectricalCellRecording``
     entity); the per-protocol stimulus timing in ``ecode_timing`` is shared across
     cells. Timing left unset is omitted so bluepyefe auto-detects it from the NWB.
+
+    When ``canonical_by_class`` is given, non-BBP files are inspected for the
+    protocol names bluepyefe's reader will report; any name that resolves to a
+    configured ``Protocol`` subclass but differs from its canonical
+    ``protocol_name`` (e.g. ``GenericStep`` vs ``Step``) is stored as the ecode
+    entry's ``protocol_name`` reader hint, which bluepyefe honours over the
+    files_metadata key.
     """
-    return [
-        {
-            "cell_name": path.stem,
-            "filepath": str(path),
-            "ecodes": {ecode: {**timing, "ljp": ljp} for ecode, timing in ecode_timing.items()},
-        }
-        for path, ljp in sorted(nwb_paths_with_ljp, key=operator.itemgetter(0))
-    ]
+    rows: list[dict] = []
+    for path, ljp in sorted(nwb_paths_with_ljp, key=operator.itemgetter(0)):
+        reported = _nwb_reported_protocol_names(path) if canonical_by_class else []
+        ecodes: dict[str, dict] = {}
+        for ecode, timing in ecode_timing.items():
+            entry = {**timing, "ljp": ljp}
+            if reported and canonical_by_class:
+                names = _reader_protocol_names(reported, ecode, canonical_by_class)
+                if names and names != [ecode]:
+                    entry["protocol_name"] = names if len(names) > 1 else names[0]
+            ecodes[ecode] = entry
+        rows.append({"cell_name": path.stem, "filepath": str(path), "ecodes": ecodes})
+    return rows
 
 
 def _build_targets(
@@ -198,8 +256,13 @@ class EModelEFeatureExtractionTask(Task):
 
         selection = self.config.efeatures_by_protocol.selection
         ecode_timing = {p.protocol_name: p.stim_timing() for p in selection.protocols}
+        canonical_by_class = {type(p).__name__: p.protocol_name for p in selection.protocols}
 
-        files = _build_files_metadata(nwb_paths_with_ljp=downloaded, ecode_timing=ecode_timing)
+        files = _build_files_metadata(
+            nwb_paths_with_ljp=downloaded,
+            ecode_timing=ecode_timing,
+            canonical_by_class=canonical_by_class,
+        )
         if not files:
             msg = "No NWB ephys files were downloaded for extraction."
             raise FileNotFoundError(msg)
@@ -207,6 +270,14 @@ class EModelEFeatureExtractionTask(Task):
         targets, validation_names = _build_targets(
             selection, self.config.settings.global_efel_settings()
         )
+        if not targets:
+            msg = (
+                "No extraction targets were built: `extraction_amplitudes` is empty "
+                "for every configured protocol. Populate the amplitudes from the "
+                "recordings (mapped-electrical-cell-recording-properties endpoint) "
+                "before launching the task."
+            )
+            raise ValueError(msg)
         configuration = TargetsConfiguration(files=files, targets=targets, protocols_rheobase=[])
         return configuration, validation_names
 

@@ -39,7 +39,13 @@ def read_protocols_from_nwb(nwb_path: Path) -> list[str]:
             for cell_id in f["data_organization"]:
                 protocols.update(f["data_organization"][cell_id].keys())
         elif "acquisition" in f:
-            for key in f["acquisition"]:
+            for key, series in f["acquisition"].items():
+                description = series.attrs.get("stimulus_description")
+                if isinstance(description, bytes):
+                    description = description.decode("utf-8")
+                if description:
+                    protocols.add(description)
+                    continue
                 parts = key.split("__")
                 if len(parts) >= min_parts_for_protocol:
                     protocols.add(parts[1])
@@ -73,6 +79,70 @@ def step_amplitude_na(current_a: np.ndarray) -> float:
     return (step - baseline) * 1e9
 
 
+def estimate_step_amplitude_na(current_a: np.ndarray) -> float:
+    """Estimate the step amplitude (nA) of a current trace by locating the step.
+
+    Baseline = median of the first 5%; the step samples are those deviating from
+    baseline by more than half the peak deviation; amp is their median minus
+    baseline, converted A→nA. Unlike :func:`step_amplitude_na`, this does not
+    assume the step covers the middle of the trace.
+    """
+    current_a = np.asarray(current_a, dtype=float)
+    n = len(current_a)
+    if n == 0:
+        return 0.0
+    baseline = float(np.median(current_a[: max(1, n // 20)]))
+    deviation = np.abs(current_a - baseline)
+    peak = float(deviation.max())
+    if peak <= 0:
+        return 0.0
+    step = float(np.median(current_a[deviation > 0.5 * peak]))
+    return (step - baseline) * 1e9
+
+
+def read_amplitudes_via_inspection(
+    nwb_path: Path,
+    *,
+    round_decimals: int = 3,
+) -> dict[str, list[float]]:
+    """Return ``{protocol_name: [step_amplitude_nA, ...]}`` via bluepyefe's readers.
+
+    Fallback for NWB layouts without a ``data_organization`` group (Scala, AIBS,
+    TRT, VU): protocol names and current traces come from
+    :func:`bluepyefe.reader.inspect_nwb` — the same names bluepyefe reports at
+    extraction time. Amplitudes are estimated with
+    :func:`estimate_step_amplitude_na`. Empty dict on unreadable files or when
+    bluepyefe is not installed.
+    """
+    try:
+        from bluepyefe.reader import (  # ruff: ignore[import-outside-top-level]
+            NWBInspectionError,
+            inspect_nwb,
+        )
+    except ImportError:
+        return {}
+    try:
+        protocols = inspect_nwb(nwb_path)["protocols"]
+    except (OSError, NWBInspectionError):
+        L.warning("bluepyefe could not inspect NWB file %s", nwb_path)
+        return {}
+    amps: dict[str, list[float]] = {}
+    for protocol_name in protocols:
+        try:
+            traces = inspect_nwb(nwb_path, protocol_names=[protocol_name])["traces"]
+        except (OSError, NWBInspectionError):
+            continue
+        values = {
+            round(
+                estimate_step_amplitude_na(np.asarray(t["current"], dtype=float)),
+                round_decimals,
+            )
+            for t in traces
+        }
+        amps[protocol_name] = sorted(values)
+    return amps
+
+
 def read_amplitudes_from_nwb(
     nwb_path: Path,
     protocol_names: list[str],
@@ -86,12 +156,19 @@ def read_amplitudes_from_nwb(
     ``stimulus/presentation``, estimates the step amplitude with
     :func:`step_amplitude_na`, rounds to ``round_decimals`` decimal places
     (default 3 → 1 pA precision) and dedupes.
+
+    Files without the BBP ``data_organization`` layout are handled by
+    :func:`read_amplitudes_via_inspection`, which reports amplitudes keyed by
+    the protocol names bluepyefe's readers use.
     """
     requested = set(protocol_names)
     amps: dict[str, set[float]] = {p: set() for p in protocol_names}
     with h5py.File(str(nwb_path), "r") as f:  # ruff: ignore[too-many-nested-blocks]
         if "data_organization" not in f or "stimulus" not in f:
-            return {p: [] for p in protocol_names}
+            fallback = read_amplitudes_via_inspection(nwb_path, round_decimals=round_decimals)
+            result = {p: sorted(fallback.get(p, [])) for p in protocol_names}
+            result.update({k: v for k, v in fallback.items() if k not in result})
+            return result
         stim_pres = f["stimulus"]["presentation"]
         for cell_id in f["data_organization"]:
             cell = f["data_organization"][cell_id]

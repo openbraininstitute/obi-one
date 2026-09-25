@@ -39,7 +39,7 @@ dependencies = [
     "aiofiles",
     "bluecellulab>=2.6.99",
     "blueetl",
-    "bluepyefe>=2.3.57",
+    "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.7",
     "brainbuilder>=0.20.6",
     "brian2",
