@@ -102,6 +102,8 @@ make check-launch-deps
 
 If it reports stale files, run `make freeze-launch-deps` and commit the result.
 
+The check is strict: it resolves every task, including those needing private packages, so running it (like freezing) assumes AWS CodeArtifact access. To check only public tasks without that access, pass `TASK=<launch_dir>`, or run `launch_scripts/_freeze_deps.py --check --skip-unresolvable` to skip (with a warning) any task whose dependencies cannot be resolved.
+
 ## Pinning a task to a specific obi-one version
 
 By default each task installs the obi-one version of the running service. To
