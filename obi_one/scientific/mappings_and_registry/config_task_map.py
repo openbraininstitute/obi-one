@@ -11,6 +11,11 @@ from obi_one.scientific.tasks.build_synaptome import (
     MEModelSynapticModelPlacementSingleConfig,
     MEModelSynapticModelPlacementTask,
 )
+from obi_one.scientific.tasks.circuit_build import (
+    OrganoidCircuitBuildScanConfig,
+    OrganoidCircuitBuildSingleConfig,
+    OrganoidCircuitBuildTask,
+)
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,
     CircuitExtractionSingleConfig,
@@ -320,6 +325,12 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         task_cls=MorphologyMetricsTask,
         single_config_cls=MorphologyMetricsSingleConfig,
         scan_config_cls=MorphologyMetricsScanConfig,
+        asset_label=None,
+    ),
+    TaskType.circuit_build: TaskRegistration(
+        task_cls=OrganoidCircuitBuildTask,
+        single_config_cls=OrganoidCircuitBuildSingleConfig,
+        scan_config_cls=OrganoidCircuitBuildScanConfig,
         asset_label=None,
     ),
     TaskType.circuit_simulation_neurodamus_machine: TaskRegistration(

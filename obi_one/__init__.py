@@ -172,6 +172,9 @@ __all__ = [
     "NormallyDistributedCurrentClampSomaticStimulus",
     "OBIBaseModel",
     "OBIONEError",
+    "OrganoidCircuitBuildScanConfig",
+    "OrganoidCircuitBuildSingleConfig",
+    "OrganoidCircuitBuildTask",
     "OrnsteinUhlenbeckConductanceSomaticStimulus",
     "OrnsteinUhlenbeckCurrentSomaticStimulus",
     "PathDistanceConstrainedFractionOfSynapses",
@@ -491,6 +494,11 @@ from obi_one.scientific.tasks.build_synaptome import (
     MEModelSynapticModelPlacementSingleConfig,
     MEModelSynapticModelPlacementTask,
     build_synaptome,
+)
+from obi_one.scientific.tasks.circuit_build import (
+    OrganoidCircuitBuildScanConfig,
+    OrganoidCircuitBuildSingleConfig,
+    OrganoidCircuitBuildTask,
 )
 from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionScanConfig,

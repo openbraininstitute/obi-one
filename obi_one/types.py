@@ -35,6 +35,7 @@ class TaskType(StrEnum):
 
     # Task types supported for local-only execution (via scan generation / direct dispatch)
     basic_connectivity_plots = auto()
+    circuit_build = auto()
     brian2_circuit_simulation = auto()
     connectivity_matrix_extraction = auto()
     electrophysiology_metrics = auto()

@@ -57,6 +57,7 @@ dependencies = [
     "obp-accounting-sdk>=0.6.5",
     "numpy",
     "scipy",
+    "sonata-builder",
 ]
 
 [project.optional-dependencies]
@@ -145,6 +146,8 @@ url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaw
 explicit = true
 
 [tool.uv.sources]
+# TODO: replace with git/PyPI source once sonata-builder is published
+sonata-builder = { path = "../sonata-builder", editable = true }
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch = "main" }
 neuromorphomesh = { index = "obi-codeartifact" }
 ultraliser = { index = "obi-codeartifact" }
