@@ -526,7 +526,10 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
     assert calls["emodel"]["validation_result_status"] is False
     assert calls["memodel"]["emodel"].id == "emodel-id"
     assert calls["memodel"]["validation_status"] == ValidationStatus.created
-    assert calls["memodel"]["lifecycle_status"] == EntityLifecycleStatus.draft
+    assert calls["emodel"]["lifecycle_status"] == EntityLifecycleStatus.active
+    assert calls["memodel"]["lifecycle_status"] == EntityLifecycleStatus.active
+    assert calls["emodel"]["name"] == "test"
+    assert calls["memodel"]["name"] == "test MEModel"
     assert morphology.metadata_entities.call_count == 1
     assert reference.entity.call_count == 1
     assert etype.entity.call_count == 1
