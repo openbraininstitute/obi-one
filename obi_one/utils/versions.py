@@ -24,9 +24,12 @@ priority over the (unpinned) matching entry in the requirements file while the
 resolver still runs normally.
 """
 
+import logging
 import re
 from collections.abc import Sequence
 from pathlib import Path
+
+L = logging.getLogger(__name__)
 
 # Matches a top-level ``obi-one`` requirement line with optional extras, e.g.
 # ``obi-one`` or ``obi-one[connectivity,emodel]`` (optionally followed by a
@@ -89,6 +92,9 @@ def _normalize_version(app_version: str | None) -> str | None:
         return None
     m = _RELEASE_VERSION_REGEX.match(app_version.strip())
     if not m:
+        L.warning(
+            "obi-one version %r is not a release tag; no version constraint applied.", app_version
+        )
         return None
     return m.group("version")
 
