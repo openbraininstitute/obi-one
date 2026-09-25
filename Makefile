@@ -70,7 +70,7 @@ freeze-launch-deps:  ## Freeze launch-script requirements (.in -> pinned .txt). 
 	uv run python launch_scripts/_freeze_deps.py $(if $(TASK),--task $(TASK))
 
 check-launch-deps:  ## Verify committed launch-script .txt files are up to date with their .in sources
-	uv run python launch_scripts/_freeze_deps.py --check --skip-unresolvable $(if $(TASK),--task $(TASK))
+	uv run python launch_scripts/_freeze_deps.py --check $(if $(TASK),--task $(TASK))
 
 format:  ## Run formatters
 	uv run ruff format $(FILE)
