@@ -1,31 +1,21 @@
 #!/usr/bin/env python3
-"""Freeze launch-script requirements: compile ``*.in`` sources into pinned ``*.txt``.
+"""Compile launch-script requirements: resolve ``*.in`` sources into pinned ``*.txt``.
 
-For each ``launch_scripts/*/dependencies/*.in`` source file this script runs
-``uv pip compile`` to produce a fully-pinned sibling ``*.txt`` file, resolved for
-the runtime platform (linux/amd64, Python 3.12).
+Runs ``uv pip compile`` for each ``launch_scripts/*/dependencies/*.in`` file,
+resolved for the runtime platform (linux/amd64, Python 3.12).
 
-The ``obi-one`` package itself is intentionally left *unpinned* in the output:
-its version is pinned dynamically at task-submission time via the launch-system
-``dependency_constraints`` mechanism (see ``app/dependencies/constraints.py``).
-Accordingly, the ``obi-one[...]`` requirement line(s) from the ``.in`` file are
-copied verbatim to the top of the generated ``.txt`` and excluded from the
-resolver output (``uv pip compile --no-emit-package obi-one``), while the
-transitive dependency closure is fully pinned.
+Like ``make compile-deps`` for the project lock file, a plain compile preserves
+the versions already pinned in the committed ``*.txt`` and only repins what the
+``*.in`` (or obi-one's closure) forces; ``--upgrade`` bumps everything to latest.
+``entitysdk`` is always upgraded, mirroring ``make compile-deps``.
 
-``.in`` files that do not reference ``obi-one`` (e.g. the slim ``minimal.in``
-alternative) are compiled normally, pinning every listed package.
+``obi-one`` is left unpinned: its version is pinned dynamically at submission
+time (see ``obi_one/utils/versions.py``). Its ``*.in`` line is copied verbatim to
+the top of the ``*.txt`` and excluded from the resolver output
+(``--no-emit-package obi-one``), while its transitive closure is pinned.
 
-Usage:
-    python launch_scripts/_freeze_deps.py [--task <launch_dir_name>] [--check]
-
-Options:
-    --task   Restrict to a single ``launch_scripts/<task>`` directory.
-    --check  Do not write; exit non-zero if any generated output would differ
-             from the committed ``.txt`` (used by CI to detect stale files).
+Run ``compile_launch_deps.py --help`` for the arguments.
 """
-
-from __future__ import annotations
 
 import argparse
 import os
@@ -37,18 +27,16 @@ import tomllib
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
-# Resolution target for the runtime executors (linux/amd64). The Python version
-# is derived from the project's ``requires-python`` lower bound (see
-# ``_python_floor_version``) so the local project resolves and the pins stay
-# installable across the whole supported range.
+# Resolution target for the runtime executors. The Python version is derived from
+# the ``requires-python`` floor (see ``_python_floor_version``).
 PYTHON_PLATFORM = "x86_64-unknown-linux-gnu"
 OBI_ONE_PACKAGE = "obi-one"
 
-# Private OBI package index (AWS CodeArtifact). Some launch tasks depend on
-# packages published only here (e.g. ``ultraliser``, ``neuromorphomesh``).
-# Authentication is provided via the ``UV_INDEX_OBI_CODEARTIFACT_USERNAME`` /
-# ``UV_INDEX_OBI_CODEARTIFACT_PASSWORD`` environment variables (the obi-one
-# Makefile exports these using ``aws codeartifact get-authorization-token``).
+# Always kept at latest, mirroring the project lock file (``make compile-deps``).
+ALWAYS_LATEST_PACKAGE = "entitysdk"
+
+# Private OBI package index for packages published only there (e.g. ``ultraliser``,
+# ``neuromorphomesh``). Credentials: ``UV_INDEX_OBI_CODEARTIFACT_{USERNAME,PASSWORD}``.
 OBI_CODEARTIFACT_INDEX = (
     "https://openbraininstitute-985539765147.d.codeartifact."
     "us-east-1.amazonaws.com/pypi/pypi-prod/simple/"
@@ -57,31 +45,42 @@ OBI_CODEARTIFACT_INDEX = (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LAUNCH_SCRIPTS_DIR = REPO_ROOT / "launch_scripts"
 
-# Matches a top-level ``obi-one`` / ``obi_one`` requirement line (with optional
-# extras and/or version specifier). Kept in sync with
-# ``app/dependencies/constraints.py``.
+# Top-level ``obi-one`` / ``obi_one`` line (optional extras/specifier).
+# Kept in sync with ``obi_one/utils/versions.py``.
 _OBI_ONE_LINE_REGEX = re.compile(
     r"^\s*obi[-_]one(?:\[(?P<extras>[A-Za-z0-9._,\s-]+)\])?\s*(?:[<>=!~;].*)?$"
 )
 
 
-def discover_in_files(task: str | None) -> list[Path]:
-    """Return the sorted list of ``.in`` files to compile."""
-    if task:
-        base = LAUNCH_SCRIPTS_DIR / task / "dependencies"
-        if not base.is_dir():
-            msg = f"No dependencies directory found for task {task!r}: {base}"
+def resolve_in_files(paths: list[str]) -> list[Path]:
+    """Resolve CLI ``paths`` to a sorted, de-duplicated list of ``.in`` files.
+
+    Each entry may be an ``.in`` file (compiled directly) or a directory (all
+    ``.in`` files found recursively beneath it). With no paths, every
+    ``launch_scripts/*/dependencies/*.in`` file is discovered. Raises SystemExit
+    if a path does not exist or is not an ``.in`` file / directory.
+    """
+    if not paths:
+        return sorted(LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.in"))
+
+    found: set[Path] = set()
+    for raw in paths:
+        path = Path(raw).resolve()
+        if path.is_dir():
+            found.update(path.glob("**/*.in"))
+        elif path.is_file() and path.suffix == ".in":
+            found.add(path)
+        else:
+            msg = f"Not an .in file or directory: {path}"
             raise SystemExit(msg)
-        return sorted(base.glob("*.in"))
-    return sorted(LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.in"))
+    return sorted(found)
 
 
 def _python_floor_version() -> str:
-    """Return the lower bound of the project's ``requires-python`` (e.g. "3.12.2").
+    """Return the ``requires-python`` lower bound (e.g. "3.12.2").
 
-    Resolving at the lowest supported version keeps the frozen pins installable
-    across the whole supported range, rather than pinning packages that need a
-    newer patch release than some executor provides.
+    Resolving at the lowest supported version keeps the pins installable across
+    the whole supported range.
     """
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     requires_python = pyproject["project"]["requires-python"]  # e.g. ">=3.12.2,<3.13"
@@ -95,11 +94,8 @@ def _python_floor_version() -> str:
 def _codeartifact_index_url() -> str | None:
     """Return the CodeArtifact index URL with credentials, or None if unauthed.
 
-    Credentials come from the ``UV_INDEX_OBI_CODEARTIFACT_USERNAME`` /
-    ``UV_INDEX_OBI_CODEARTIFACT_PASSWORD`` environment variables (set by the
-    Makefile via ``aws codeartifact get-authorization-token``). If no
-    password/token is available we return None so that tasks needing only public
-    packages still resolve without the private index.
+    Returning None lets tasks needing only public packages resolve without the
+    private index.
     """
     password = os.environ.get("UV_INDEX_OBI_CODEARTIFACT_PASSWORD", "").strip()
     if not password:
@@ -111,12 +107,11 @@ def _codeartifact_index_url() -> str | None:
 
 
 def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
-    """Build the resolver input, rewriting obi-one -> local project path.
-    The named ``obi-one[extras]`` requirement is replaced with the local project
-    path (``<repo>[extras]``) so the resolver uses the *current checkout* and its
-    optional dependencies, rather than a published release. Non-obi-one lines are
-    passed through unchanged. Returns the rewritten input text and the list of
-    verbatim obi-one lines to preserve in the output.
+    """Build the resolver input, rewriting the obi-one line to the local checkout.
+
+    Replacing ``obi-one[extras]`` with the local project path resolves obi-one's
+    closure from the current checkout rather than a published release. Returns the
+    rewritten input and the verbatim obi-one lines (to preserve in the output).
     """
     obi_one_lines: list[str] = []
     resolved_lines: list[str] = []
@@ -130,16 +125,40 @@ def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
             obi_one_lines.append(stripped)
             extras = m.group("extras")
             extras_suffix = f"[{extras.strip()}]" if extras else ""
-            # Resolve obi-one from the local project checkout, with the extras.
             resolved_lines.append(f"{REPO_ROOT.as_posix()}{extras_suffix}")
         else:
             resolved_lines.append(raw)
     return "\n".join(resolved_lines) + "\n", obi_one_lines
 
 
-def compile_in_file(in_file: Path) -> str:
-    """Compile a single ``.in`` file and return the frozen ``.txt`` content."""
+def _existing_pins(out_file: Path) -> str:
+    """Return the committed ``.txt`` pins (header/obi-one/comments stripped).
+
+    uv preserves the pins from an existing output file unless a change is forced;
+    seeding a compile with these gives the pin-preservation behavior.
+    """
+    if not out_file.exists():
+        return ""
+    kept: list[str] = []
+    for raw in out_file.read_text(encoding="utf-8").splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if _OBI_ONE_LINE_REGEX.match(stripped):
+            continue
+        kept.append(stripped)
+    return ("\n".join(kept) + "\n") if kept else ""
+
+
+def compile_in_file(in_file: Path, *, upgrade: bool = False) -> str:
+    """Compile a single ``.in`` file and return the frozen ``.txt`` content.
+
+    Unless ``upgrade`` is set, versions already pinned in the committed ``.txt``
+    are preserved (uv only changes what the ``.in`` / obi-one closure forces).
+    ``entitysdk`` is always upgraded to its latest version regardless.
+    """
     resolve_input, obi_one_lines = _build_resolve_input(in_file)
+    out_file = in_file.with_suffix(".txt")
 
     out_fd, out_name = tempfile.mkstemp(suffix=".txt")
     os.close(out_fd)
@@ -149,6 +168,13 @@ def compile_in_file(in_file: Path) -> str:
     with os.fdopen(in_fd, "w", encoding="utf-8") as tmp_in_f:
         tmp_in_f.write(resolve_input)
     try:
+        # Seed the output with the current pins so uv preserves them, unless
+        # upgrading everything.
+        if not upgrade:
+            seed = _existing_pins(out_file)
+            if seed:
+                tmp_out.write_text(seed, encoding="utf-8")
+
         cmd = [
             "uv",
             "pip",
@@ -161,21 +187,18 @@ def compile_in_file(in_file: Path) -> str:
             "--python-version",
             _python_floor_version(),
             "--no-header",  # we write our own header
-            # Drop "# via" annotations: they would reference the temporary input
-            # file path (non-reproducible) and are not needed in a pinned lock.
+            # "# via" annotations reference the temporary input path (non-reproducible).
             "--no-annotate",
+            "--upgrade-package",
+            ALWAYS_LATEST_PACKAGE,
         ]
-        # Make the private OBI index available for packages published only there
-        # (e.g. ultraliser, neuromorphomesh) when credentials are present. The
-        # obi-one Makefile exports UV_INDEX_OBI_CODEARTIFACT_{USERNAME,PASSWORD}
-        # using ``aws codeartifact get-authorization-token``. Without a token we
-        # skip the index so tasks that only need public packages still resolve.
+        if upgrade:
+            cmd.append("--upgrade")
         extra_index = _codeartifact_index_url()
         if extra_index is not None:
             cmd += ["--extra-index-url", extra_index]
-        # Resolve obi-one (from the local project) to discover the transitive
-        # closure, but do not emit an obi-one== pin: the version is applied
-        # dynamically at submission time.
+        # Discover obi-one's closure from the local project but do not pin obi-one
+        # itself: its version is applied dynamically at submission time.
         if obi_one_lines:
             cmd += ["--no-emit-package", OBI_ONE_PACKAGE]
 
@@ -187,8 +210,8 @@ def compile_in_file(in_file: Path) -> str:
 
     header = (
         f"# This file was autogenerated from {in_file.name} by "
-        "launch_scripts/_freeze_deps.py.\n"
-        "# To update, run: make freeze-launch-deps\n"
+        "launch_scripts/compile_launch_deps.py.\n"
+        "# To update, run: make compile-launch-deps or make upgrade-launch-deps\n"
     )
     if obi_one_lines:
         header += (
@@ -199,15 +222,21 @@ def compile_in_file(in_file: Path) -> str:
     return header + obi_one_block + compiled
 
 
-def _check_in_txt_pairing(task: str | None) -> bool:
-    """Warn about unpaired .in/.txt files. Returns True if any mismatch is found."""
-    if task:
-        dirs = [LAUNCH_SCRIPTS_DIR / task / "dependencies"]
+def check_in_txt_pairing(in_files: list[Path]) -> bool:
+    """Warn about unpaired .in/.txt files. Returns True if any mismatch is found.
+
+    Checks the ``dependencies`` directories that contain the resolved ``in_files``
+    (so selecting a subset only checks the relevant directories). When ``in_files``
+    is empty, all launch-script dependencies directories are checked so that a
+    directory holding only orphan ``.txt`` files is still caught.
+    """
+    if in_files:
+        dirs = {p.parent for p in in_files}
     else:
-        dirs = sorted({p.parent for p in LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.in")})
-        dirs += sorted({p.parent for p in LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.txt")})
+        dirs = {p.parent for p in LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.in")}
+        dirs |= {p.parent for p in LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.txt")}
     mismatch = False
-    for deps_dir in sorted(set(dirs)):
+    for deps_dir in sorted(dirs):
         if not deps_dir.is_dir():
             continue
         in_stems = {p.stem for p in deps_dir.glob("*.in")}
@@ -221,9 +250,22 @@ def _check_in_txt_pairing(task: str | None) -> bool:
     return mismatch
 
 
-def main() -> int:
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--task", default=None, help="Restrict to one launch_scripts/<task> dir")
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        help=(
+            "Paths to compile: individual .in files and/or directories (searched "
+            "recursively for .in files). Defaults to all launch-script .in files."
+        ),
+    )
+    parser.add_argument(
+        "--upgrade",
+        action="store_true",
+        help="Upgrade the whole transitive closure to the latest versions",
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -237,11 +279,15 @@ def main() -> int:
             "instead of failing. Useful when private packages are unavailable."
         ),
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    pairing_error = _check_in_txt_pairing(args.task)
 
-    in_files = discover_in_files(args.task)
+def main() -> int:
+    args = parse_args()
+
+    in_files = resolve_in_files(args.paths)
+    pairing_error = check_in_txt_pairing(in_files)
+
     if not in_files:
         print("No .in files found.", file=sys.stderr)
         return 1 if pairing_error else 0
@@ -251,7 +297,7 @@ def main() -> int:
     for in_file in in_files:
         out_file = in_file.with_suffix(".txt")
         try:
-            content = compile_in_file(in_file)
+            content = compile_in_file(in_file, upgrade=args.upgrade)
         except subprocess.CalledProcessError:
             if args.skip_unresolvable:
                 skipped.append(in_file)
@@ -282,7 +328,7 @@ def main() -> int:
     if args.check and stale:
         print(
             f"\n{len(stale)} frozen requirements file(s) are out of date. "
-            "Run `make freeze-launch-deps` and commit the result.",
+            "Run `make compile-launch-deps` and commit the result.",
             file=sys.stderr,
         )
         return 1
