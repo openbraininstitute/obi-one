@@ -6,16 +6,18 @@ from entitysdk.types import TaskActivityType, TaskConfigType
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
+    AnyTaskDefinition,
     BuiltinCode,
     Capabilities,
     ClusterResources,
+    LaunchableTaskDefinition,
     MachineResources,
     PythonRepositoryCode,
     TaskDefinition,
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, MachineExecutorImageType, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
 
 APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
@@ -23,7 +25,7 @@ OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
 
-TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
+TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
     TaskType.circuit_extraction: TaskDefinition(
         task_type=TaskType.circuit_extraction,
         config_type=TaskConfigType.circuit_extraction__config,
@@ -39,6 +41,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=2,
             timelimit="00:10",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.circuit_single_build: TaskDefinition(
@@ -56,6 +62,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.circuit_simulation: TaskGroupLegacyDefinition(
@@ -78,6 +88,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_inait,
         ),
     ),
@@ -97,6 +111,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.circuit_simulation_neuron: TaskDefinitionLegacy(
@@ -114,6 +132,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:10",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -132,6 +154,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -164,6 +190,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -182,6 +212,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -200,6 +234,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -218,6 +256,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.em_synapse_mapping: TaskDefinition(
@@ -238,6 +280,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.efeature_extraction: TaskDefinition(
@@ -255,6 +301,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=4,
             timelimit="00:30",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskType.emodel_optimization: TaskDefinition(
@@ -284,6 +334,10 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
@@ -303,9 +357,27 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=32,
             timelimit="02:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
-}  # ty:ignore[invalid-assignment]
+}
+
+
+def get_launchable_task_definition(task_type: TaskType) -> LaunchableTaskDefinition:
+    """Return a launchable task definition (with code and resources).
+
+    ``TaskGroupLegacyDefinition`` entries are selectors only and must be resolved to a concrete
+    task type before calling this.
+    """
+    task_definition = TASK_DEFINITIONS[task_type]
+    if isinstance(task_definition, TaskGroupLegacyDefinition):
+        msg = f"Task type '{task_type}' is a task group, not a launchable task"
+        raise TypeError(msg)
+    return task_definition
+
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [
