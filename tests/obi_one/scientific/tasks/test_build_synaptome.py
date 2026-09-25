@@ -296,7 +296,6 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     build = Mock(return_value=result)
     circuit = SimpleNamespace(id="circuit-id")
     register = Mock(return_value=circuit)
-    register_derivation = Mock()
     execution_activity = SimpleNamespace(id="activity-id")
     get_activity = Mock(return_value=execution_activity)
     update_activity = Mock()
@@ -307,10 +306,6 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     monkeypatch.setattr(
         "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_circuit",
         register,
-    )
-    monkeypatch.setattr(
-        "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_derivation",
-        register_derivation,
     )
     monkeypatch.setattr(MEModelSynapticModelPlacementTask, "_get_execution_activity", get_activity)
     monkeypatch.setattr(
@@ -337,15 +332,10 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         target_simulator=TargetSimulator.NEURON,
         experiment_date="2026-08-05",
         license=license_entity,
-        skip_validation=True,
-    )
-    register_derivation.assert_called_once_with(
-        client=db_client,
-        from_entity=emodel,
+        derived_from=emodel,
         derivation_type=DerivationType.emodel_circuit,
-        registered_circuit=circuit,
-        dry_run=False,
-        label="hoc:cADpyr_L5TPC",
+        derivation_label="hoc:cADpyr_L5TPC",
+        skip_validation=True,
     )
     update_activity.assert_called_once_with(
         db_client=db_client,
