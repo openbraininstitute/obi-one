@@ -5,6 +5,9 @@ db_client, so the parameterization/output path is exercised while the entitycore
 registration branch (which needs a db_client and a parent entity) is skipped.
 """
 
+import json
+import shutil
+
 import bluepysnap as snap
 import pytest
 
@@ -29,14 +32,14 @@ def _local_circuit():
     )
 
 
-def _build_config(tmp_path):
+def _build_config(tmp_path, circuit=None):
     """A minimal single-config: one excitatory model applied to every synapse."""
     config = obi.SynapseParameterizationSingleConfig.empty_config()
     config.set(
         obi.Info(campaign_name="Test", campaign_description="Test parameterization"),
         name="info",
     )
-    config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
+    config.set(config.Initialize(circuit=circuit or _local_circuit()), name="initialize")
 
     conductance = obi.GammaDistribution(shape=4.0, scale=0.25)
     config.add(conductance, "Excitatory conductance distribution")
@@ -86,6 +89,74 @@ def test_execute_parameterizes_local_circuit(tmp_path):
     expected_syn_type_id = ExcitatoryTsodyksMarkramSynapticModel().syn_type_id
     syn_type_ids = set(edges.get(edges.ids(), properties=["syn_type_id"])["syn_type_id"])
     assert syn_type_ids == {expected_syn_type_id}
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_execute_keeps_a_circuit_specific_mod_file_rather_than_the_repos_generic_one(tmp_path):
+    """A circuit's own ProbAMPANMDA_EMS.mod must survive, not be replaced by the generic one.
+
+    The repo's generic copy and the fixture circuit's own copy happen to be byte-identical
+    today, so asserting the output merely matches either of them would not actually prove
+    which one was used. This overwrites the copied circuit's file with content that cannot
+    have come from the repo, so a pass here can only mean the "leave it alone" path ran.
+    """
+    circuit_dir = tmp_path / "circuit_with_specific_mod"
+    shutil.copytree(_local_circuit().directory, circuit_dir)
+    mod_file = circuit_dir / "mod" / "ProbAMPANMDA_EMS.mod"
+    mod_file.write_text("CIRCUIT SPECIFIC CONTENT, NOT THE REPO'S GENERIC ProbAMPANMDA_EMS.mod")
+
+    circuit = obi.Circuit(
+        name="circuit_with_specific_mod", path=str(circuit_dir / "circuit_config.json")
+    )
+    config = _build_config(tmp_path, circuit=circuit)
+
+    obi.SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    output_mod_file = config.coordinate_output_root / "mod" / "ProbAMPANMDA_EMS.mod"
+    assert output_mod_file.read_text() == (
+        "CIRCUIT SPECIFIC CONTENT, NOT THE REPO'S GENERIC ProbAMPANMDA_EMS.mod"
+    )
+
+
+def test_execute_declares_and_creates_mechanisms_dir_when_the_circuit_has_none(tmp_path):
+    """A circuit relying on the unstated './mod' convention gets an explicit entry and files.
+
+    Built from a stripped-down copy of the fixture circuit: no `mechanisms_dir` entry and no
+    pre-existing `mod/` folder, the shape a circuit takes when it never declared where its
+    compiled mechanisms live.
+    """
+    stripped_dir = tmp_path / "stripped_circuit"
+    shutil.copytree(_local_circuit().directory, stripped_dir)
+    shutil.rmtree(stripped_dir / "mod")
+
+    config_path = stripped_dir / "circuit_config.json"
+    cfg = json.loads(config_path.read_text())
+    del cfg["components"]["mechanisms_dir"]
+    config_path.write_text(json.dumps(cfg))
+
+    config = obi.SynapseParameterizationSingleConfig.empty_config()
+    config.set(obi.Info(campaign_name="Test", campaign_description="Test defaults"), name="info")
+    config.set(
+        config.Initialize(circuit=obi.Circuit(name="stripped", path=str(config_path))),
+        name="initialize",
+    )
+    config.add(
+        obi.AllPairsSynapticModelAssigner(edge_population_name=EDGE_POPULATION_NAME),
+        name="all_pairs",
+    )
+    config.fill_block_references_and_names()
+    config.fill_none_references()
+    config.scan_output_root = tmp_path / "scan"
+    config.coordinate_output_root = tmp_path / "scan" / "parameterized"
+
+    obi.SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    output_config_path = config.coordinate_output_root / "circuit_config.json"
+    output_cfg = json.loads(output_config_path.read_text())
+    assert output_cfg["components"]["mechanisms_dir"] == "$BASE_DIR/mod"
+
+    mod_dir = config.coordinate_output_root / "mod"
+    assert (mod_dir / "ProbAMPANMDA_EMS.mod").exists()
 
 
 def test_execute_rejects_output_dir_that_already_exists(tmp_path):
