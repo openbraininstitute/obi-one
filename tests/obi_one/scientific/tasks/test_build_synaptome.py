@@ -717,6 +717,7 @@ def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monke
         morphology=morphology,
         brain_region=Mock(),
         license=Mock(),
+        emodel=SimpleNamespace(id="emodel-id"),
     )
     monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
     monkeypatch.setattr(
