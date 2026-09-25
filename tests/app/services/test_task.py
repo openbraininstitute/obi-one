@@ -14,10 +14,16 @@ from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
 from app.errors import ApiError, ApiErrorCode
-from app.mappings import APP_TAG, TASK_DEFINITIONS
+from app.mappings import APP_TAG, TASK_DEFINITIONS, get_launchable_task_definition
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.cluster import ClusterInstanceInfo
-from app.schemas.task import ClusterResources, MachineResources, TaskLaunchSubmit
+from app.schemas.task import (
+    ClusterResources,
+    LaunchableTaskDefinition,
+    MachineResources,
+    TaskGroupLegacyDefinition,
+    TaskLaunchSubmit,
+)
 from app.services import task as test_module
 from app.types import BuiltinScript, MachinePlacementType, TaskType
 
@@ -799,6 +805,31 @@ def test_machine_payload_fields_unchanged(task_type):
     payload = test_module.apply_placement_type(resources, "cell_a").model_dump(mode="json")
 
     assert set(payload) == MACHINE_PAYLOAD_FIELDS
+
+
+def test_get_launchable_task_definition_returns_launchable_entry():
+    """Concrete task types resolve to a definition with code and resources."""
+    task_definition = get_launchable_task_definition(TaskType.circuit_extraction)
+
+    assert isinstance(task_definition, LaunchableTaskDefinition)
+    assert not isinstance(task_definition, TaskGroupLegacyDefinition)
+    assert task_definition.task_type == TaskType.circuit_extraction
+
+
+def test_get_launchable_task_definition_rejects_task_group():
+    """Task groups must be remapped before they can be launched."""
+    assert isinstance(TASK_DEFINITIONS[TaskType.circuit_simulation], TaskGroupLegacyDefinition)
+
+    with pytest.raises(TypeError, match="task group"):
+        get_launchable_task_definition(TaskType.circuit_simulation)
+
+
+def test_task_definition_type_name_properties():
+    """Modern task definitions expose config/activity type names for launch payloads."""
+    task_definition = get_launchable_task_definition(TaskType.circuit_extraction)
+
+    assert task_definition.config_type_name == TaskConfigType.circuit_extraction__config
+    assert task_definition.activity_type_name == TaskActivityType.circuit_extraction__execution
 
 
 @pytest.mark.parametrize("task_type", CLUSTER_TASK_TYPES)
