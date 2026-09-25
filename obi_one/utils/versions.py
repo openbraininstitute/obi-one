@@ -30,12 +30,13 @@ from pathlib import Path
 
 # Matches a top-level ``obi-one`` requirement line with optional extras, e.g.
 # ``obi-one`` or ``obi-one[connectivity,emodel]`` (optionally followed by a
-# version specifier, which we ignore -- the version is pinned dynamically).
-# Shared with launch_scripts/compile_launch_deps.py (imported from there).
+# version specifier, an environment marker, or an ``@ git+...`` direct reference,
+# all ignored here). ``@`` supports the dev-flow git reference in a hand-edited
+# ``.txt`` (see README). Shared with launch_scripts/compile_launch_deps.py.
 OBI_ONE_LINE_REGEX = re.compile(
     r"^\s*obi[-_]one"  # package name (obi-one / obi_one)
     r"(?:\[(?P<extras>[A-Za-z0-9._,\s-]+)\])?"  # optional extras group
-    r"\s*(?:[<>=!~;].*)?$"  # optional version specifier / trailing
+    r"\s*(?:[<>=!~;@].*)?$"  # optional version specifier / marker / @ url
 )
 
 
