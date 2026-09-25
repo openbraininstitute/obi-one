@@ -166,7 +166,10 @@ class TestSubmitCircuitJobs:
     )
     def test_no_constraint_for_dev_version(self, app_version):
         ls_client = MagicMock()
-        ls_client.post.return_value = MagicMock(is_success=True)
+        ls_client.post.return_value = MagicMock(
+            is_success=True,
+            json=MagicMock(return_value={"id": str(uuid4())}),
+        )
 
         submit_circuit_asset_generation_job(
             ls_client=ls_client,

@@ -6,7 +6,7 @@ from uuid import UUID
 
 import httpx
 
-from app.dependencies.constraints import build_obi_one_constraint_from_file
+from obi_one.utils.versions import build_obi_one_constraint_from_file, release_tag
 
 L = logging.getLogger(__name__)
 
@@ -16,10 +16,6 @@ ASSET_GENERATION_LAUNCH_PATH = "launch_scripts/launch_circuit_asset_generation"
 VALIDATION_IMAGE_TYPE = "python_3_12_openmpi5_neuron9_neurodamus"
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-
-
-def _app_tag(app_version: str | None) -> str:
-    return (app_version or "0.0.0").split("-")[0]
 
 
 def submit_circuit_validation_job(
@@ -78,7 +74,7 @@ def submit_circuit_validation_job(
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": f"tag:{_app_tag(app_version)}",
+            "ref": release_tag(app_version),
             "path": f"{VALIDATION_LAUNCH_PATH}/main.py",
             "dependencies": f"{VALIDATION_LAUNCH_PATH}/dependencies/default.txt",
             "dependency_constraints": build_obi_one_constraint_from_file(
@@ -149,7 +145,7 @@ def submit_circuit_asset_generation_job(
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": f"tag:{_app_tag(app_version)}",
+            "ref": release_tag(app_version),
             "path": f"{ASSET_GENERATION_LAUNCH_PATH}/main.py",
             "dependencies": f"{ASSET_GENERATION_LAUNCH_PATH}/dependencies/default.txt",
             "dependency_constraints": build_obi_one_constraint_from_file(
