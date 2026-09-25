@@ -571,7 +571,10 @@ def test_task_launch_success__circuit_simulation(
             assert job_payload == {
                 "code": task_def.code.model_dump(mode="json"),
                 "resources": task_def.resources.model_dump(mode="json")
-                | {"compute_cell": "cell_a"},
+                | {
+                    "compute_cell": "cell_a",
+                    "placement_type": task_def.resources.placement_type_map["cell_a"],
+                },
                 "inputs": [
                     "sonata-simulation-task",
                     f" --project-id {PROJECT_ID}",
@@ -615,7 +618,10 @@ def test_task_launch_success__circuit_simulation(
                     "staged_directories": [],
                 },
                 "resources": task_def.resources.model_dump(mode="json")
-                | {"compute_cell": "cell_a"},
+                | {
+                    "compute_cell": "cell_a",
+                    "placement_type": task_def.resources.placement_type_map["cell_a"],
+                },
                 "inputs": [
                     f"--task-type {response_task_type}",
                     "--config_entity_type Simulation",

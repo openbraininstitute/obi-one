@@ -6,7 +6,7 @@ from entitysdk.types import CircuitScale
 
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.accounting import AccountingParameters
-from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
+from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
 
 # Scales supported for synapse parameterization. Anything larger than "small" is rejected.
 SUPPORTED_CIRCUIT_SCALES = frozenset({CircuitScale.single, CircuitScale.pair, CircuitScale.small})
@@ -15,7 +15,7 @@ SUPPORTED_CIRCUIT_SCALES = frozenset({CircuitScale.single, CircuitScale.pair, Ci
 def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     compute_cell: str,
     accounting_parameters: AccountingParameters | None = None,  # ruff: ignore[unused-function-argument]
 ) -> Resources:
