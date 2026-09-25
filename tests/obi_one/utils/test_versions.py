@@ -89,12 +89,36 @@ def test_build_obi_one_constraint_unknown_version(app_version):
         ("# a comment\nobi-one[bluerecording]\nultraliser==2.2.7\n", ["bluerecording"]),
         ("ultraliser==2.2.7\nobi-one\n", []),
         ("obi_one[connectivity]\n", ["connectivity"]),  # underscore variant
+        # Dev-flow git reference (README): "@ git+..." must still match & yield extras.
+        (
+            "obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@abc123\n",
+            ["connectivity"],
+        ),
+        ("obi-one@git+https://example.com/obi-one.git\n", []),  # no space, no extras
+        # Environment marker.
+        ('obi-one[emodel] ; python_version < "3.13"\n', ["emodel"]),
     ],
 )
 def test_extract_obi_one_extras(tmp_path, content, expected):
     f = tmp_path / "reqs.txt"
     f.write_text(content, encoding="utf-8")
     assert test_module.extract_obi_one_extras(f) == expected
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "obi-one-extra==1.0\n",  # different package with obi-one prefix
+        "obi-onerous==1.0\n",  # prefix without a valid boundary
+    ],
+)
+def test_extract_obi_one_extras_no_false_match(tmp_path, content):
+    # A package that merely starts with "obi-one" must not match; with no real
+    # obi-one line the extractor raises.
+    f = tmp_path / "reqs.txt"
+    f.write_text(content, encoding="utf-8")
+    with pytest.raises(ValueError, match="No obi-one requirement found"):
+        test_module.extract_obi_one_extras(f)
 
 
 def test_extract_obi_one_extras_missing(tmp_path):
@@ -116,3 +140,14 @@ def test_build_obi_one_constraint_from_file_dev_version(tmp_path):
     f = tmp_path / "reqs.txt"
     f.write_text("obi-one[connectivity]\n", encoding="utf-8")
     assert test_module.build_obi_one_constraint_from_file(None, f) == []
+
+
+def test_build_obi_one_constraint_from_file_git_ref_dev_flow(tmp_path):
+    # Dev flow: a hand-edited git-reference .txt with a dev version must not raise
+    # (extras still extracted) and yields no constraint so the git ref installs.
+    f = tmp_path / "reqs.txt"
+    f.write_text(
+        "obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@abc123\n",
+        encoding="utf-8",
+    )
+    assert test_module.build_obi_one_constraint_from_file("2026.9.1-3-gabc123-dirty", f) == []
