@@ -1,17 +1,27 @@
-"""Helpers to build dynamic dependency constraints for launch-system jobs.
+"""Version helpers for launch-system jobs: checkout ref and dependency constraint.
 
-The launch-scripts' frozen requirements files leave ``obi-one`` itself
-unpinned (they only pin the transitive dependency closure). The exact
-``obi-one`` version to install is only known at task-submission time -- it must
-match the version of the service submitting the job, which is not necessarily
-the latest published release (staging and production deploy at different times
-while new versions may be released in between).
+A launch job derives two things from the service version (``settings.APP_VERSION``,
+itself produced by ``git describe``):
 
-To pin ``obi-one`` to the submitting service's version, we pass a dynamic
-dependency constraint (e.g. ``obi-one[connectivity]==2026.9.1``) alongside the
-job. The launch-system wrapper applies it via ``uv pip install --constraint``,
-so it takes priority over the (unpinned) matching entry in the requirements
-file while the resolver still runs normally.
+- the git **checkout ref** (``tag:<version>``) that selects which obi-one
+  *source* the executor checks out, and
+- the obi-one **dependency constraint** (``obi-one[extras]==<version>``) that
+  selects which published obi-one *wheel* uv installs.
+
+These answer different questions and are intentionally *not* interchangeable
+(see :func:`release_tag` vs :func:`build_obi_one_constraint`). They coincide
+only for a clean release tag; for any post-release/dev build they diverge by
+design, so the two derivations are kept here, side by side, in one place.
+
+The launch-scripts' frozen requirements files leave ``obi-one`` itself unpinned
+(they only pin the transitive dependency closure). The exact ``obi-one`` version
+to install is only known at task-submission time -- it must match the version of
+the service submitting the job, which is not necessarily the latest published
+release (staging and production deploy at different times while new versions may
+be released in between). The dynamic constraint is passed alongside the job; the
+launch-system wrapper applies it via ``uv pip install --constraint``, so it takes
+priority over the (unpinned) matching entry in the requirements file while the
+resolver still runs normally.
 """
 
 import re
@@ -34,6 +44,33 @@ _OBI_ONE_LINE_REGEX = re.compile(
 # or scm dev suffix (e.g. ``.dev3``, ``+local``) means the build is *after* a
 # release and does not correspond to a published wheel, so it is treated as dev.
 _RELEASE_VERSION_REGEX = re.compile(r"^v?(?P<version>\d{4}\.\d{1,2}\.\d+)$")
+
+
+def release_tag(app_version: str | None) -> str:
+    """Return the git ``tag:<version>`` checkout ref for a launch job.
+
+    This selects which obi-one *source* the launch-system executor checks out.
+    It is deliberately more lenient than :func:`build_obi_one_constraint`: it
+    strips any ``git describe`` suffix (``-N-g<sha>[-dirty]``) and always yields
+    a tag-shaped string, because for a released service the code lives at that
+    tag, and falls back to ``0.0.0`` when the version is unknown.
+
+    It answers a *different* question than the dependency constraint and the two
+    are not interchangeable:
+
+    - ``ref`` selects obi-one *source* from git. It can point at a tag that
+      exists even for a post-release/dev build (``git describe`` resolves it to
+      the most recent tag). In a dev/branch workflow the caller overrides it with
+      an explicit ``commit:<sha>`` at submission time, since the derived tag would
+      be the last release, not the branch under test.
+    - the constraint (:func:`build_obi_one_constraint`) selects which published
+      obi-one *wheel* to install, and is empty for any non-release build because
+      no matching wheel exists.
+
+    So for a dev build ``release_tag`` still yields a (last-release) tag while the
+    constraint is empty -- the divergence is intentional.
+    """
+    return f"tag:{(app_version or '0.0.0').split('-')[0]}"
 
 
 def _normalize_version(app_version: str | None) -> str | None:

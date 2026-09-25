@@ -4,7 +4,6 @@ from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
 
 from app.config import settings
-from app.dependencies.constraints import build_obi_one_constraint_from_file
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
     BuiltinCode,
@@ -18,8 +17,9 @@ from app.schemas.task import (
 )
 from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
+from obi_one.utils.versions import build_obi_one_constraint_from_file, release_tag
 
-APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
+APP_TAG = release_tag(settings.APP_VERSION)
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 

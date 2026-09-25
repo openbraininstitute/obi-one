@@ -1,6 +1,41 @@
 import pytest
 
-from app.dependencies import constraints as test_module
+from obi_one.utils import versions as test_module
+
+
+@pytest.mark.parametrize(
+    ("app_version", "expected"),
+    [
+        # Clean release tag -> tag:<version>.
+        ("2026.9.1", "tag:2026.9.1"),
+        ("2026.12.26", "tag:2026.12.26"),
+        # Post-release / dirty git describe -> the describe suffix is stripped,
+        # yielding the last-release tag (ref still resolves in git). The matching
+        # constraint is empty for the same input (see divergence test below).
+        ("2026.8.12-3-g49a16415-dirty", "tag:2026.8.12"),
+        ("2026.9.1-dev3+g1234", "tag:2026.9.1"),
+        # Unknown/empty version -> fallback tag.
+        (None, "tag:0.0.0"),
+        ("", "tag:0.0.0"),
+    ],
+)
+def test_release_tag(app_version, expected):
+    assert test_module.release_tag(app_version) == expected
+
+
+@pytest.mark.parametrize(
+    "app_version",
+    [
+        "2026.8.12-3-g49a16415-dirty",
+        "2026.9.1-dev3+g1234",
+    ],
+)
+def test_release_tag_and_constraint_diverge_for_dev_builds(app_version):
+    # For a dev build the two derivations intentionally diverge: the checkout ref
+    # still points at the last release tag, while no constraint is emitted because
+    # there is no matching published wheel.
+    assert test_module.release_tag(app_version).startswith("tag:")
+    assert test_module.build_obi_one_constraint(app_version) == []
 
 
 @pytest.mark.parametrize(
