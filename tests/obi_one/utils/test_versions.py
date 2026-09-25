@@ -77,6 +77,20 @@ def test_build_obi_one_constraint_unknown_version(app_version):
     assert test_module.build_obi_one_constraint(app_version, ["connectivity"]) == []
 
 
+def test_non_release_version_logs_warning(caplog):
+    with caplog.at_level("WARNING"):
+        assert test_module.build_obi_one_constraint("2026.8.12-3-gabc-dirty") == []
+    assert "not a release tag" in caplog.text
+
+
+@pytest.mark.parametrize("app_version", [None, ""])
+def test_empty_version_does_not_log(caplog, app_version):
+    # The normal "no version" path (dev/local) must not emit a warning.
+    with caplog.at_level("WARNING"):
+        assert test_module.build_obi_one_constraint(app_version) == []
+    assert not caplog.text
+
+
 @pytest.mark.parametrize(
     ("content", "expected"),
     [
