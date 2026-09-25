@@ -41,9 +41,13 @@ CLUSTER_TASK_TYPES = [
     if isinstance(TASK_DEFINITIONS[task_type].resources, ClusterResources)
 ]
 
-# The only task routed to ECS Managed Instances. Everything else keeps the pre-existing
+# Tasks routed to ECS Managed Instances. Everything else keeps the pre-existing
 # behaviour of running on Fargate on the AWS cell.
-MANAGED_INSTANCES_TASK_TYPES = {TaskType.ion_channel_model_simulation_execution}
+MANAGED_INSTANCES_TASK_TYPES = {
+    TaskType.ion_channel_model_simulation_execution,
+    TaskType.single_neuron_simulation_execution,
+    TaskType.single_neuron_synaptome_simulation_execution,
+}
 
 # Fields the launch-system accepts for machine resources. Guards against an obi-one-internal
 # field (such as the per-cell placement map) leaking into the payload.
@@ -725,9 +729,10 @@ def test_apply_placement_type_per_cell(compute_cell, expected):
     assert "placement_type_map" not in result.model_dump(mode="json")
 
 
-def test_apply_placement_type_ion_channel_pinned_to_managed_instances():
-    """Ion channel model simulation is the one task routed to ECS Managed Instances on cell_a."""
-    resources = TASK_DEFINITIONS[TaskType.ion_channel_model_simulation_execution].resources
+@pytest.mark.parametrize("task_type", sorted(MANAGED_INSTANCES_TASK_TYPES))
+def test_apply_placement_type_pinned_to_managed_instances(task_type):
+    """Simulation execution tasks are routed to ECS Managed Instances on cell_a."""
+    resources = TASK_DEFINITIONS[task_type].resources
 
     result = test_module.apply_placement_type(resources, "cell_a")
 
@@ -741,8 +746,8 @@ def test_apply_placement_type_leaves_cluster_resources_untouched():
     assert test_module.apply_placement_type(resources, "cell_a") is resources
 
 
-def test_only_ion_channel_model_declares_managed_instances():
-    """Exactly one task opts into ECS Managed Instances, on any cell."""
+def test_managed_instances_declared_by_expected_tasks():
+    """Only the expected tasks opt into ECS Managed Instances, on any cell."""
     declared = {
         task_type
         for task_type in MACHINE_TASK_TYPES
@@ -763,7 +768,7 @@ def test_managed_instances_declared_only_for_cell_a():
 
 @pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
 def test_cell_a_placement_preserves_previous_behaviour(task_type):
-    """On the AWS cell every task stays on Fargate, apart from the ion channel model."""
+    """On the AWS cell tasks stay on Fargate, apart from those pinned to Managed Instances."""
     resources = TASK_DEFINITIONS[task_type].resources
 
     result = test_module.apply_placement_type(resources, "cell_a")
