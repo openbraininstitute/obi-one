@@ -15,28 +15,26 @@ def _first_repository_task() -> TaskType:
     raise AssertionError  # unreachable
 
 
-def test_apply_obi_one_version_pins_sets_ref_and_constraint(monkeypatch):
+def test_apply_obi_one_version_pins_sets_ref_and_constraint():
     task_type = _first_repository_task()
-    original_def = mappings.TASK_DEFINITIONS[task_type]
+    original_ref = mappings.TASK_DEFINITIONS[task_type].code.ref
 
-    monkeypatch.setattr(mappings, "_PINNED_OBI_ONE_VERSIONS", {task_type: "2026.5.1"})
-    try:
-        mappings._apply_obi_one_version_pins()
-
-        pinned = mappings.TASK_DEFINITIONS[task_type]
-        assert pinned.code.ref == "tag:2026.5.1"
-        # Constraint pinned to the same version; extras still read from the file.
-        assert pinned.code.dependency_constraints
-        assert all(c.endswith("==2026.5.1") for c in pinned.code.dependency_constraints)
-    finally:
-        # Restore the module-level dict to avoid leaking state into other tests.
-        mappings.TASK_DEFINITIONS[task_type] = original_def
-
-
-def test_apply_obi_one_version_pins_unknown_task(monkeypatch):
-    # circuit_simulation is a TaskGroupLegacyDefinition (no PythonRepositoryCode).
-    monkeypatch.setattr(
-        mappings, "_PINNED_OBI_ONE_VERSIONS", {TaskType.circuit_simulation: "2026.5.1"}
+    pinned_defs = mappings.apply_obi_one_version_pins(
+        mappings.TASK_DEFINITIONS, {task_type: "2026.5.1"}
     )
+
+    pinned = pinned_defs[task_type]
+    assert pinned.code.ref == "tag:2026.5.1"
+    # Constraint pinned to the same version; extras still read from the file.
+    assert pinned.code.dependency_constraints
+    assert all(c.endswith("==2026.5.1") for c in pinned.code.dependency_constraints)
+    # The input mapping is not mutated (pure function).
+    assert mappings.TASK_DEFINITIONS[task_type].code.ref == original_ref
+
+
+def test_apply_obi_one_version_pins_unknown_task():
+    # circuit_simulation is a TaskGroupLegacyDefinition (no PythonRepositoryCode).
     with pytest.raises(RuntimeError, match="Cannot pin obi-one version"):
-        mappings._apply_obi_one_version_pins()
+        mappings.apply_obi_one_version_pins(
+            mappings.TASK_DEFINITIONS, {TaskType.circuit_simulation: "2026.5.1"}
+        )
