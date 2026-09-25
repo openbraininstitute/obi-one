@@ -106,7 +106,9 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     atlas: models.BrainAtlas | None = None,
     root: models.Circuit | UUID | None = None,
     parent: models.Circuit | UUID | None = None,
+    derived_from: models.Entity | None = None,
     derivation_type: DerivationType | None = None,
+    derivation_label: str | None = None,
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
@@ -161,8 +163,16 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         root: Root circuit entity or root circuit ID (UUID) in the derivation
             hierarchy (optional). When omitted and ``parent`` is set, defaults to
             ``parent.root_circuit_id or parent.id``.
-        parent: Parent circuit entity or ID (UUID) for derivation linking (optional).
-        derivation_type: Type of derivation (required if parent is provided).
+        parent: Parent circuit entity or ID (UUID) for the circuit derivation hierarchy
+            (optional). When set, it is also the source of the derivation link unless
+            ``derived_from`` overrides it, and ``root`` defaults from it.
+        derived_from: Source entity the circuit was derived from, for the derivation link
+            (optional). Use for a non-Circuit source such as an EModel; it does not affect the
+            circuit hierarchy (no ``root`` is derived from it). Defaults to ``parent`` when omitted.
+        derivation_type: Type of derivation (required when a derivation source is provided).
+        derivation_label: Optional label on the derivation. For an emodel_circuit derivation this
+            is the circuit's ``model_template``, which the neuronal-manipulation consumer matches
+            against to resolve the EModel behind each node.
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
@@ -290,14 +300,18 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         registered_circuit = client.register_entity(circuit_model)
         L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
 
-    # Derivation link
-    if parent is not None:
+    # Derivation link. The source is derived_from when given, otherwise the parent circuit;
+    # only parent feeds the root-circuit hierarchy above, so a non-Circuit source (e.g. an
+    # EModel) links provenance without affecting it.
+    derivation_source = derived_from if derived_from is not None else parent
+    if derivation_source is not None:
         register_derivation(
             client=client,
-            from_entity=parent,
+            from_entity=derivation_source,
             derivation_type=derivation_type,
             registered_circuit=registered_circuit,
             dry_run=dry_run,
+            label=derivation_label,
         )
 
     # Contributions
