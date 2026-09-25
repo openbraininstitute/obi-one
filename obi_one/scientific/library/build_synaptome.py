@@ -52,6 +52,7 @@ class BuildSynaptomeResult:
     circuit_config_path: Path
     output_directory: Path
     generated_files: tuple[Path, ...]
+    model_template: str
 
 
 class BuildSynaptomeError(ValueError):
@@ -334,7 +335,11 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
     circuit_config_path = Path(staged.path).resolve()
     try:
         circuit = bluepysnap.Circuit(circuit_config_path)
-        target_name, _ = _target_population(circuit)
+        target_name, target_population = _target_population(circuit)
+        # The single neuron's model_template (e.g. "hoc:<name>"). The emodel_circuit derivation
+        # registered for this circuit is labelled with it, since the neuronal-manipulation
+        # consumer matches derivation labels against this exact value read back from the nodes.
+        model_template = str(target_population.get(0, properties="model_template"))
     except BuildSynaptomeError:
         raise
     except Exception as exc:
@@ -467,4 +472,5 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
         circuit_config_path=circuit_config_path,
         output_directory=output_directory,
         generated_files=generated_files,
+        model_template=model_template,
     )

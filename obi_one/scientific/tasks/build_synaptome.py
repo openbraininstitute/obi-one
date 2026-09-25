@@ -266,6 +266,17 @@ class MEModelSynapticModelPlacementTask(Task):
             msg = "Build Synaptome circuit registration did not return a Circuit."
             raise RuntimeError(msg)
 
+        # Record that the circuit was derived from the ME-model's EModel. The label is the
+        # circuit's model_template, which the neuronal-manipulation consumer matches against.
+        circuit_registration.register_derivation(
+            client=db_client,
+            from_entity=me_model.emodel,
+            derivation_type=types.DerivationType.emodel_circuit,
+            registered_circuit=circuit,
+            dry_run=False,
+            label=result.model_template,
+        )
+
         self._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,

@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 from entitysdk.types import (
     CircuitBuildCategory,
+    DerivationType,
     TargetSimulator,
     TaskActivityType,
     TaskConfigType,
@@ -272,16 +273,17 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     subject = Mock()
     brain_region = Mock()
     license_entity = Mock()
-    morphology = SimpleNamespace(
-        subject=subject,
-        experiment_date="2026-08-05",
-        license=None,
-    )
+    emodel = SimpleNamespace(id="emodel-id")
     me_model = SimpleNamespace(
         id="me-model-id",
-        morphology=morphology,
+        morphology=SimpleNamespace(
+            subject=subject,
+            experiment_date="2026-08-05",
+            license=None,
+        ),
         brain_region=brain_region,
         license=license_entity,
+        emodel=emodel,
     )
     monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
 
@@ -289,9 +291,12 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
         output_directory=tmp_path / "SONATA",
         generated_files=(),
+        model_template="hoc:cADpyr_L5TPC",
     )
     build = Mock(return_value=result)
-    register = Mock(return_value=SimpleNamespace(id="circuit-id"))
+    circuit = SimpleNamespace(id="circuit-id")
+    register = Mock(return_value=circuit)
+    register_derivation = Mock()
     execution_activity = SimpleNamespace(id="activity-id")
     get_activity = Mock(return_value=execution_activity)
     update_activity = Mock()
@@ -303,18 +308,23 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_circuit",
         register,
     )
+    monkeypatch.setattr(
+        "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_derivation",
+        register_derivation,
+    )
     monkeypatch.setattr(MEModelSynapticModelPlacementTask, "_get_execution_activity", get_activity)
     monkeypatch.setattr(
         MEModelSynapticModelPlacementTask, "_update_execution_activity", update_activity
     )
 
     db_client = Mock()
-    circuit_id = MEModelSynapticModelPlacementTask(config=config).execute(
-        db_client=db_client,
-        execution_activity_id="activity-id",
+    assert (
+        MEModelSynapticModelPlacementTask(config=config).execute(
+            db_client=db_client,
+            execution_activity_id="activity-id",
+        )
+        == "circuit-id"
     )
-
-    assert circuit_id == "circuit-id"
     build.assert_called_once_with(config, tmp_path / "SONATA", db_client=db_client)
     register.assert_called_once_with(
         client=db_client,
@@ -328,6 +338,14 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         experiment_date="2026-08-05",
         license=license_entity,
         skip_validation=True,
+    )
+    register_derivation.assert_called_once_with(
+        client=db_client,
+        from_entity=emodel,
+        derivation_type=DerivationType.emodel_circuit,
+        registered_circuit=circuit,
+        dry_run=False,
+        label="hoc:cADpyr_L5TPC",
     )
     update_activity.assert_called_once_with(
         db_client=db_client,
@@ -441,6 +459,12 @@ def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stag
         db_client=object(),
     )
     circuit = bluepysnap.Circuit(result.circuit_config_path)
+    # The reported model_template must match what the nodes actually carry, since the
+    # emodel_circuit derivation is labelled with it and the consumer matches labels against
+    # this exact value read back from the circuit.
+    target = circuit.nodes["target"]
+    assert result.model_template == str(target.get(0, properties="model_template"))
+
     basal = circuit.edges["basal_sources__target__chemical"]
     apical = circuit.edges["apical_sources__target__chemical"]
 
@@ -717,6 +741,7 @@ def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monke
                 circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
                 output_directory=tmp_path / "SONATA",
                 generated_files=(),
+                model_template="hoc:cADpyr_L5TPC",
             )
         ),
     )
