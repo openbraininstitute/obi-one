@@ -16,7 +16,7 @@ from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.launch_system import LaunchSystemAsyncClientDep, LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-from app.mappings import TASK_DEFINITIONS
+from app.mappings import TASK_DEFINITIONS, get_launchable_task_definition
 from app.schemas.job import JobRead
 from app.schemas.task import (
     TaskAccountingCreate,
@@ -87,7 +87,7 @@ def task_launch_endpoint(
         msg = f"Mapped circuit_simulation -> {task_type}"
         L.info(msg)
 
-    task_definition = TASK_DEFINITIONS[json_model.task_type]
+    task_definition = get_launchable_task_definition(json_model.task_type)
 
     # Gate: block simulation of customized circuits still in "draft" status
     if json_model.task_type in {
@@ -183,7 +183,7 @@ def estimate_endpoint(
         config_id=json_model.config_id,
         project_context=db_client.project_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
-        task_definition=TASK_DEFINITIONS[json_model.task_type],
+        task_definition=get_launchable_task_definition(json_model.task_type),
     )
 
 

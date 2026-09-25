@@ -24,9 +24,10 @@ from app.logger import L
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import (
+    AnyTaskDefinition,
+    LaunchableTaskDefinition,
     MachineResources,
     Resources,
-    TaskDefinition,
     TaskDefinitionLegacy,
     TaskLaunchInfo,
     TaskLaunchSubmit,
@@ -54,7 +55,7 @@ def submit_task_job(
     db_client: entitysdk.Client,
     ls_client: httpx.Client,
     config_id: UUID,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     project_context: entitysdk.ProjectContext,
     callback_url: str,
     callbacks: list[CallBack],
@@ -178,7 +179,7 @@ def _circuit_simulation_job_data(
     simulation_execution_id: UUID,
     project_id: UUID,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
     return {
@@ -201,7 +202,7 @@ def _emodel_optimization_job_data(
     execution_activity_id: UUID,
     project_id: UUID,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
     return {
@@ -225,7 +226,7 @@ def _brian2_job_data(
     project_id: UUID,
     virtual_lab_id: UUID,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
     return {
@@ -250,7 +251,7 @@ def _inait_job_data(
     project_id: UUID,
     virtual_lab_id: UUID,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
     return {
@@ -277,7 +278,7 @@ def _generic_job_data(
     entity_cache: bool,
     output_root: str,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
 
@@ -344,7 +345,7 @@ def handle_task_failure_callback(
     *,
     activity_id: UUID,
     db_client: entitysdk.Client,
-    task_definition: TaskDefinition,
+    task_definition: AnyTaskDefinition,
 ) -> None:
     # TODO: Remove once simulations are migrated to generic configs
     if isinstance(task_definition, TaskDefinitionLegacy):
@@ -368,7 +369,7 @@ def handle_task_failure_callback(
 def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     compute_cell: str,
     accounting_parameters: AccountingParameters | None = None,
 ) -> Resources:

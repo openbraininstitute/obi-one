@@ -160,6 +160,13 @@ class TaskDefinitionLegacy(Schema):
         return self.activity_type.__name__
 
 
+# Every entry in TASK_DEFINITIONS is one of these three shapes.
+AnyTaskDefinition = TaskDefinition | TaskDefinitionLegacy | TaskGroupLegacyDefinition
+
+# Launchable entries carry code and resources; TaskGroupLegacyDefinition is only a selector.
+LaunchableTaskDefinition = TaskDefinition | TaskDefinitionLegacy
+
+
 class TaskCallBackSuccessRequest(Schema):
     task_type: TaskType
     accounting_service_subtype: ServiceSubtype

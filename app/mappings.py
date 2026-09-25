@@ -6,9 +6,11 @@ from entitysdk.types import TaskActivityType, TaskConfigType
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
+    AnyTaskDefinition,
     BuiltinCode,
     Capabilities,
     ClusterResources,
+    LaunchableTaskDefinition,
     MachineResources,
     PythonRepositoryCode,
     TaskDefinition,
@@ -23,7 +25,7 @@ OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
 
-TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
+TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
     TaskType.circuit_extraction: TaskDefinition(
         task_type=TaskType.circuit_extraction,
         config_type=TaskConfigType.circuit_extraction__config,
@@ -361,7 +363,21 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             },
         ),
     ),
-}  # ty:ignore[invalid-assignment]
+}
+
+
+def get_launchable_task_definition(task_type: TaskType) -> LaunchableTaskDefinition:
+    """Return a launchable task definition (with code and resources).
+
+    ``TaskGroupLegacyDefinition`` entries are selectors only and must be resolved to a concrete
+    task type before calling this.
+    """
+    task_definition = TASK_DEFINITIONS[task_type]
+    if isinstance(task_definition, TaskGroupLegacyDefinition):
+        msg = f"Task type '{task_type}' is a task group, not a launchable task"
+        raise TypeError(msg)
+    return task_definition
+
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [
