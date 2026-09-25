@@ -573,7 +573,7 @@ def test_task_launch_success__circuit_simulation(
                 "resources": task_def.resources.model_dump(mode="json")
                 | {
                     "compute_cell": "cell_a",
-                    "placement_type": task_def.resources.placement_types["cell_a"],
+                    "placement_type": task_def.resources.placement_type_map["cell_a"],
                 },
                 "inputs": [
                     "sonata-simulation-task",
@@ -620,7 +620,7 @@ def test_task_launch_success__circuit_simulation(
                 "resources": task_def.resources.model_dump(mode="json")
                 | {
                     "compute_cell": "cell_a",
-                    "placement_type": task_def.resources.placement_types["cell_a"],
+                    "placement_type": task_def.resources.placement_type_map["cell_a"],
                 },
                 "inputs": [
                     f"--task-type {response_task_type}",

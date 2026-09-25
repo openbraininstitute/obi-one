@@ -39,7 +39,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=2,
             timelimit="00:10",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -60,7 +60,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -86,7 +86,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -109,7 +109,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -130,7 +130,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:10",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -152,7 +152,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -188,7 +188,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.ecs_managed_instances,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -210,7 +210,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -232,7 +232,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -254,7 +254,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="01:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -278,7 +278,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -299,7 +299,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=4,
             timelimit="00:30",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -332,7 +332,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
@@ -355,7 +355,7 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=32,
             timelimit="02:00",
             compute_cell="local",
-            placement_types={
+            placement_type_map={
                 "cell_a": MachinePlacementType.fargate,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },

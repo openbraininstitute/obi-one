@@ -53,12 +53,12 @@ class MachineResources(Schema):
     compute_cell: str
     timelimit: str | None = None
     image_type: MachineExecutorImageType = MachineExecutorImageType.python_3_12_compiler
-    # Placement the launch-system should pin, resolved from placement_types for the compute cell
+    # Placement the launch-system should pin, resolved from placement_type_map for the compute cell
     # the request runs on. Left unset, the launch-system resolves it from the cell's executors.
     placement_type: MachinePlacementType | None = None
     # Per-compute-cell placement declared by the task definition. Internal to obi-one: excluded
     # from the payload, since the launch-system only accepts the single resolved placement_type.
-    placement_types: Annotated[
+    placement_type_map: Annotated[
         dict[str, MachinePlacementType],
         Field(exclude=True),
     ] = {}  # ruff: ignore[mutable-class-default]

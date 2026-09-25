@@ -22,7 +22,7 @@ router = APIRouter(prefix="/declared", tags=["mesh-registration"])
 
 # This job is built by hand rather than from TASK_DEFINITIONS, so it declares its own per-cell
 # placement. It uses the default python_3_12_compiler image, which both cells offer.
-MESH_LOD_PLACEMENT_TYPES = {
+MESH_LOD_PLACEMENT_TYPE_MAP = {
     "cell_a": MachinePlacementType.fargate,
     "cell_b": MachinePlacementType.azure_container_apps,
 }
@@ -109,7 +109,7 @@ def _trigger_mesh_lod_generation_task(
         "timelimit": "01:00",
         "compute_cell": compute_cell,
     }
-    placement_type = MESH_LOD_PLACEMENT_TYPES.get(compute_cell)
+    placement_type = MESH_LOD_PLACEMENT_TYPE_MAP.get(compute_cell)
     if placement_type is not None:
         resources["placement_type"] = placement_type
     job_data = {

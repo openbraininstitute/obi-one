@@ -38,14 +38,14 @@ from obi_one.db_sdk import db_sdk
 def apply_placement_type(resources: Resources, compute_cell: str) -> Resources:
     """Pick the placement the task definition declares for this compute cell.
 
-    Cells absent from ``placement_types`` get no pinned placement, leaving the launch-system to
+    Cells absent from ``placement_type_map`` get no pinned placement, leaving the launch-system to
     resolve one from the executors the cell offers. Pinning a placement a cell does not provide
     would be rejected.
     """
     if not isinstance(resources, MachineResources):
         return resources
     return resources.model_copy(
-        update={"placement_type": resources.placement_types.get(compute_cell)}
+        update={"placement_type": resources.placement_type_map.get(compute_cell)}
     )
 
 

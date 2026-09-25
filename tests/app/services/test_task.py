@@ -722,7 +722,7 @@ def test_apply_placement_type_per_cell(compute_cell, expected):
 
     assert result.placement_type == expected
     # The per-cell map is internal and must never reach the launch-system payload.
-    assert "placement_types" not in result.model_dump(mode="json")
+    assert "placement_type_map" not in result.model_dump(mode="json")
 
 
 def test_apply_placement_type_ion_channel_pinned_to_managed_instances():
@@ -747,7 +747,7 @@ def test_only_ion_channel_model_declares_managed_instances():
         task_type
         for task_type in MACHINE_TASK_TYPES
         if MachinePlacementType.ecs_managed_instances
-        in TASK_DEFINITIONS[task_type].resources.placement_types.values()
+        in TASK_DEFINITIONS[task_type].resources.placement_type_map.values()
     }
 
     assert declared == MANAGED_INSTANCES_TASK_TYPES
@@ -756,7 +756,7 @@ def test_only_ion_channel_model_declares_managed_instances():
 def test_managed_instances_declared_only_for_cell_a():
     """ECS Managed Instances exists only on the AWS cell, so no other cell may pin it."""
     for task_type in MACHINE_TASK_TYPES:
-        for cell, placement in TASK_DEFINITIONS[task_type].resources.placement_types.items():
+        for cell, placement in TASK_DEFINITIONS[task_type].resources.placement_type_map.items():
             if placement == MachinePlacementType.ecs_managed_instances:
                 assert cell == "cell_a", f"{task_type} pins managed instances on {cell}"
 
@@ -804,7 +804,7 @@ def test_cluster_payload_has_no_placement(task_type):
     payload = test_module.apply_placement_type(resources, "cell_a").model_dump(mode="json")
 
     assert "placement_type" not in payload
-    assert "placement_types" not in payload
+    assert "placement_type_map" not in payload
 
 
 def test_estimate_task_resources_passthrough(db_client):
@@ -824,7 +824,7 @@ def test_estimate_task_resources_passthrough(db_client):
     assert result == task_definition.resources.model_copy(
         update={
             "compute_cell": "cell_b",
-            "placement_type": task_definition.resources.placement_types["cell_b"],
+            "placement_type": task_definition.resources.placement_type_map["cell_b"],
         }
     )
 
