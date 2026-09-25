@@ -8,7 +8,8 @@ draft result. ``execute()`` remains available as an optional, lowest-priority lo
 diagnostic (see the Task 2 living plan) and performs the full local pipeline:
 downloads extraction features and entity assets, builds and stages the
 params/recipe artifact bundle, compiles mechanisms, runs the full BluePyEModel
-pipeline, and registers output entities.
+pipeline, registers output entities, and runs MEModel calibration + bluecellulab
+validation in isolated subprocesses.
 
 The BluePyEModel optimisation/plot/export steps live in
 :func:`run_optimization_pipeline` so remote workers can reuse them after their own
@@ -29,6 +30,7 @@ from pydantic import PrivateAttr
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    calibration_validation,
     registration,
     staging,
 )
@@ -182,6 +184,93 @@ def run_optimization_pipeline(
     L.info("Completed optimisation pipeline for emodel=%s.", emodel)
 
 
+def run_calibration_and_validation(
+    *,
+    config: EModelOptimizationSingleConfig,
+    coord_root: Path,
+    db_client: entitysdk.Client,
+    outputs: registration.RegisteredOptimizationOutputs,
+    execution_activity_id: str | None,
+) -> None:
+    """Compute MEModel calibration and run bluecellulab validations in subprocesses.
+
+    Runs against the local SONATA HOC + already-compiled mechanisms; the
+    morphology's ASC asset is downloaded via entitysdk (optimisation stages
+    SWC, but calibration/validation cells are built from ASC). Results are
+    registered against the registered MEModel (``outputs.memodel_id``), so this
+    must run after :func:`registration.register_output_entities`.
+
+    Non-fatal by design: any failure is logged as a warning and leaves the
+    registered entities untouched (``validation_status`` stays ``created``).
+    """
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
+        seed = int(config.optimization_settings.seed)  # ty:ignore[invalid-argument-type]
+        asc_morphology_path = calibration_validation.download_asc_morphology(
+            db_client,
+            config.initialize.morphology,
+            coord_root / "morphologies",
+        )
+        hoc_path, morphology_path = calibration_validation.locate_hoc_and_morphology(
+            coord_root, seed, asc_morphology_path
+        )
+        em_metrics = registration.parse_final_json(
+            coord_root / "final.json", config.initialize.emodel
+        )
+        new_ids: list[str] = []
+
+        # --- Calibration ---
+        calibration_dict = calibration_validation.compute_calibration_in_subprocess(
+            coord_root,
+            hoc_path,
+            morphology_path,
+            holding_current=em_metrics["holding_current"] or 0.0,
+            threshold_current=em_metrics["threshold_current"] or 0.0,
+        )
+        calibration_id = registration.register_calibration_result(
+            db_client,
+            outputs.memodel_id,
+            calibration_dict,
+            authorized_public=outputs.authorized_public,
+        )
+        if calibration_id is not None:
+            new_ids.append(calibration_id)
+
+        # --- Validation (uses calibrated values for cell init, falls back to BPEM) ---
+        validation_dict = calibration_validation.run_validations_in_subprocess(
+            coord_root,
+            hoc_path,
+            morphology_path,
+            outputs.memodel_id,
+            holding_current=calibration_dict["holding_current"],
+            threshold_current=calibration_dict["rheobase"],
+            output_dir=coord_root / "figures",
+        )
+        new_ids.extend(
+            registration.register_memodel_validation_results(
+                db_client,
+                outputs.memodel_id,
+                validation_dict,
+                authorized_public=outputs.authorized_public,
+                details_dir=coord_root / "validation_details" / outputs.memodel_id,
+            )
+        )
+        registration.mark_memodel_validated(db_client, outputs.memodel_id)
+
+        # --- Extend TaskActivity generated_ids (update replaces the whole list) ---
+        registration.update_activity_generated_ids(
+            db_client,
+            execution_activity_id,
+            outputs.generated_ids + new_ids,
+        )
+    except Exception:  # ruff: ignore[blind-except]
+        L.warning(
+            "MEModel calibration/validation failed for memodel=%s; "
+            "registered entities are kept (validation_status remains 'created').",
+            outputs.memodel_id,
+            exc_info=True,
+        )
+
+
 class EModelOptimizationTask(Task):
     """Run optimisation + analysis + export in a fresh working directory.
 
@@ -196,6 +285,10 @@ class EModelOptimizationTask(Task):
     7. Run optimisation / plot / SONATA export via :func:`run_optimization_pipeline`.
     8. Register ``TaskResult`` + draft ``EModel`` + draft ``MEModel`` +
        ``Derivation`` links.
+    9. Compute MEModel calibration and run bluecellulab validations in spawned
+       subprocesses; register ``MEModelCalibrationResult`` + ``ValidationResult``
+       entities against the MEModel (non-fatal on failure) via
+       :func:`run_calibration_and_validation`.
     """
 
     name: ClassVar[str] = "EModel Optimization"
@@ -283,5 +376,14 @@ class EModelOptimizationTask(Task):
             self._registered_task_result_id = outputs.task_result_id
             self._registered_emodel_id = outputs.emodel_id
             self._registered_memodel_id = outputs.memodel_id
+
+            # --- 9. MEModel calibration + validation (non-fatal) ---
+            run_calibration_and_validation(
+                config=self.config,
+                coord_root=coord_root,
+                db_client=db_client,
+                outputs=outputs,
+                execution_activity_id=execution_activity_id,
+            )
 
         return coord_root

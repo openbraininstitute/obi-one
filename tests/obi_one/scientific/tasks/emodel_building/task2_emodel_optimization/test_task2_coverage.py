@@ -839,9 +839,16 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
             task_result_id="task-result-id",
             emodel_id="emodel-id",
             memodel_id="memodel-id",
+            authorized_public=False,
+            generated_ids=["task-result-id", "emodel-id", "memodel-id"],
         )
     )
     monkeypatch.setattr(registration, "register_output_entities", register_outputs)
+    monkeypatch.setattr(
+        "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task."
+        "run_calibration_and_validation",
+        Mock(),
+    )
 
     species = SimpleNamespace(name="Mus musculus")
     brain_region = SimpleNamespace(name="Somatosensory cortex")
