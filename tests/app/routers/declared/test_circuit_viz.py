@@ -1,3 +1,4 @@
+import json
 from http import HTTPStatus
 from pathlib import Path
 from typing import cast
@@ -5,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import quote, unquote
 from uuid import UUID, uuid4
 
+import h5py
 import libsonata
 import pytest
 from entitysdk.models import Asset, Circuit
@@ -495,3 +497,82 @@ def test_morphology_dir_fallback():
     config = libsonata.CircuitConfig(config_path.read_text(), "./examples/data/circuit_configs")
     path = resolve_morph_path("S1nonbarrel_neurons", config)
     assert path.path == Path("./examples/data/circuit_configs/test_dir").absolute()
+
+
+def _make_single_population_config(tmp_path, population_config: dict) -> libsonata.CircuitConfig:
+    """Build a minimal SONATA config with one biophysical population for resolve_morph_path."""
+    with h5py.File(tmp_path / "nodes.h5", "w") as f:
+        pop = f.create_group("nodes/All")
+        pop.create_dataset("node_type_id", data=[-1])
+        group_0 = pop.create_group("0")
+        group_0.create_dataset("morphology", data=["cell"], dtype=h5py.string_dtype())
+    config = {
+        "manifest": {"$BASE_DIR": "."},
+        "networks": {
+            "nodes": [
+                {
+                    "nodes_file": "$BASE_DIR/nodes.h5",
+                    "populations": {
+                        "All": {
+                            "type": "biophysical",
+                            "biophysical_neuron_models_dir": "$BASE_DIR/hocs",
+                            **population_config,
+                        }
+                    },
+                }
+            ],
+            "edges": [],
+        },
+    }
+    config_path = tmp_path / "circuit_config.json"
+    config_path.write_text(json.dumps(config))
+    return libsonata.CircuitConfig(config_path.read_text(), str(tmp_path))
+
+
+def test_resolve_morph_path_does_not_assume_swc_for_asc_only_circuit(tmp_path):
+    """A circuit with only 'alternate_morphologies["neurolucida-asc"]' resolves to 'asc'."""
+    config = _make_single_population_config(
+        tmp_path,
+        {"alternate_morphologies": {"neurolucida-asc": "$BASE_DIR/morphologies"}},
+    )
+    morph_path = resolve_morph_path("All", config)
+    assert morph_path.format == "asc"
+    assert morph_path.path == tmp_path / "morphologies"
+
+
+def test_resolve_morph_path_prefers_swc_over_alternates(tmp_path):
+    config = _make_single_population_config(
+        tmp_path,
+        {
+            "morphologies_dir": "$BASE_DIR/morphologies",
+            "alternate_morphologies": {
+                "neurolucida-asc": "$BASE_DIR/morphologies",
+                "h5v1": "$BASE_DIR/morphologies",
+            },
+        },
+    )
+    morph_path = resolve_morph_path("All", config)
+    assert morph_path.format == "swc"
+
+
+def test_resolve_morph_path_prefers_asc_over_h5_among_alternates(tmp_path):
+    config = _make_single_population_config(
+        tmp_path,
+        {
+            "alternate_morphologies": {
+                "h5v1": "$BASE_DIR/morphologies",
+                "neurolucida-asc": "$BASE_DIR/morphologies",
+            },
+        },
+    )
+    morph_path = resolve_morph_path("All", config)
+    assert morph_path.format == "asc"
+
+
+def test_resolve_morph_path_falls_back_to_h5_when_only_h5_declared(tmp_path):
+    config = _make_single_population_config(
+        tmp_path,
+        {"alternate_morphologies": {"h5v1": "$BASE_DIR/morphologies"}},
+    )
+    morph_path = resolve_morph_path("All", config)
+    assert morph_path.format == "h5"
