@@ -12,6 +12,8 @@ from obi_one.scientific.library.compartment_sets import (
     MaterializedCompartmentSet,
     build_compartment_set_for_neuron_set,
     build_compartment_set_from_locations_block,
+    normalized_offset_column,
+    sample_morphology_locations,
 )
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.sonata_circuit_helpers import (
@@ -63,6 +65,48 @@ def test_build_compartment_set_rejects_missing_location_columns(columns, match):
             locations_block=locations_block,
             morphology_items=[(1, MagicMock())],
         )
+
+
+class TestNormalizedOffsetColumn:
+    """The column contract shared by compartment-set building and the location preview."""
+
+    def test_the_normalized_column_wins_when_both_are_present(self):
+        """`offset` is a raw within-segment distance in some tables, so it is the fallback."""
+        points = pd.DataFrame(
+            {"section_id": [1], "normalized_section_offset": [0.5], "offset": [12.5]}
+        )
+
+        assert normalized_offset_column(points) == "normalized_section_offset"
+
+    def test_offset_is_accepted_alone(self):
+        points = pd.DataFrame({"section_id": [1], "offset": [0.5]})
+
+        assert normalized_offset_column(points) == "offset"
+
+    @pytest.mark.parametrize(
+        ("columns", "match"),
+        [
+            ({"offset": [0.5]}, "section_id"),
+            ({"section_id": [1]}, "normalized_section_offset.*or.*offset"),
+        ],
+    )
+    def test_a_table_missing_either_column_is_rejected(self, columns, match):
+        with pytest.raises(KeyError, match=match):
+            normalized_offset_column(pd.DataFrame(columns))
+
+
+def test_sample_morphology_locations_returns_section_id_offset_pairs():
+    """The preview path reads the same generated table compartment sets are built from."""
+    locations_block = MagicMock()
+    locations_block.points_on.return_value = pd.DataFrame(
+        {"section_id": [3, 7], "normalized_section_offset": [0.25, 0.75]}
+    )
+    morphology = MagicMock()
+
+    rows = sample_morphology_locations(locations_block=locations_block, morphology=morphology)
+
+    assert rows == [(3, 0.25), (7, 0.75)]
+    locations_block.points_on.assert_called_once_with(morphology)
 
 
 def test_build_compartment_set_accepts_offset_column():
@@ -274,8 +318,10 @@ def test_compartment_set_row_limit_rejects_unestimated_output(monkeypatch):
 
 def test_build_compartment_set_skips_unavailable_morphologies():
     neuron_set = MagicMock()
+    # get_neuron_ids returns plain ints per population (numpy .tolist()), so that is what the
+    # skip logic must handle - node 1's morphology is unavailable, node 2's is read.
     neuron_set.block.get_neuron_ids.return_value = {
-        "pop": [1, SimpleNamespace(id=2)],
+        "pop": [1, 2],
     }
     locations_block = MagicMock()
     locations_block.output_location_count.return_value = None
