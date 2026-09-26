@@ -1080,6 +1080,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
+        case UIElement.DISTANCE_FUNCTION_INPUT:
+            validate_string_param(schema, param, ref)
         case UIElement.STRING_LIST_INPUT:
             validate_string_list_param(schema, param, ref)
         case UIElement.STRING_LIST_OPTIONAL:

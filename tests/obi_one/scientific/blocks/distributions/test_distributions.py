@@ -224,6 +224,66 @@ class TestDistanceDependentDistributions:
         }
 
 
+class TestDistanceFunctionSafety:
+    """The distance function reaches BluePyEModel's eval(); it must be AST-restricted."""
+
+    @pytest.mark.parametrize(
+        "unsafe_function",
+        [
+            "__import__('os').system('id') + {value} + {distance}",
+            "os.system('rm -rf /') + {value}*{distance}",
+            "open('/etc/passwd').read() + {value} + {distance}",
+            "(lambda: 1)() + {value} + {distance}",
+            "({value}).__class__.__mro__[1] + {distance}",
+            "{value}[0] + {distance}",
+            "eval('1') + {value} + {distance}",
+        ],
+    )
+    def test_unsafe_custom_distribution_is_rejected(self, unsafe_function):
+        with pytest.raises(ValueError, match="Distance function"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
+    @pytest.mark.parametrize(
+        "safe_function",
+        [
+            "({value} + {distance}) / 2",
+            "math.exp((-{distance})/50)*{value}",
+            "int({distance} > 100) * {value}",
+            "(15./(1. + math.exp((300-{distance})/50)))*{value}",
+            "{value} * (0.1 + 0.9 * int(({distance} > 10) & ({distance} < 20)))",
+        ],
+    )
+    def test_safe_custom_distribution_is_accepted(self, safe_function):
+        distribution = obi.CustomDistanceDependentDistribution(name="safe", function=safe_function)
+        assert distribution.function == safe_function
+
+    def test_unsafe_distribution_rejected_when_building_a_config(self):
+        """An unsafe custom distribution must block EModelOptimizationScanConfig creation."""
+        with pytest.raises(ValueError, match="Distance function"):
+            _optimization_config(
+                distance_dependent_distributions={
+                    "pwned": {
+                        "type": "CustomDistanceDependentDistribution",
+                        "function": "__import__('os').system('id') + {value} + {distance}",
+                    },
+                }
+            )
+
+    def test_safe_distribution_accepted_when_building_a_config(self):
+        config = _optimization_config(
+            distance_dependent_distributions={
+                "decay": {
+                    "type": "CustomDistanceDependentDistribution",
+                    "function": "math.exp((-{distance})/50)*{value}",
+                },
+            }
+        )
+        assert isinstance(
+            config.distance_dependent_distributions["decay"],
+            obi.CustomDistanceDependentDistribution,
+        )
+
+
 class TestFloatConstantDistribution:
     def test_sample_returns_repeated_scalar_values(self):
         """FloatConstantDistribution.sample() returns repeated scalar values, not nested lists."""
