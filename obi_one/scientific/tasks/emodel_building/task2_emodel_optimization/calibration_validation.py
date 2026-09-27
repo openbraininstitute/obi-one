@@ -25,9 +25,7 @@ from collections.abc import Callable
 from multiprocessing import get_context
 from pathlib import Path
 
-import entitysdk
-
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
+from entitysdk.types import ValidationStatus
 
 L = logging.getLogger(__name__)
 
@@ -45,37 +43,56 @@ def json_default(obj: object) -> object:
     return str(obj)
 
 
-def download_asc_morphology(
-    db_client: entitysdk.Client,
-    morphology: CellMorphologyFromID,
-    output_dir: Path,
-) -> Path:
-    """Download the morphology's ASC asset for calibration/validation.
+def validation_status_from_results(validation_dict: dict) -> ValidationStatus:
+    """Map a bluecellulab validation result dict to a MEModel ``ValidationStatus``.
 
-    Optimisation stages SWC, but bluecellulab cells are built with ASC. Raises
-    ``ValueError`` when the entity has no ASC asset.
+    ``done`` only when at least one test ran and every test passed; otherwise the
+    status stays ``created``. (A crash in calibration/validation is reported as
+    ``error`` by the caller.)
     """
-    from entitysdk.downloaders.cell_morphology import (  # ruff: ignore[import-outside-top-level]
-        download_morphology,
-    )
-    from entitysdk.exception import (  # ruff: ignore[import-outside-top-level]
-        IteratorResultError,
-    )
-    from entitysdk.models import CellMorphology  # ruff: ignore[import-outside-top-level]
+    tests = [
+        value for value in validation_dict.values() if isinstance(value, dict) and "passed" in value
+    ]
+    if tests and all(bool(value["passed"]) for value in tests):
+        return ValidationStatus.done
+    return ValidationStatus.created
 
-    entity = morphology.entity(db_client=db_client)
-    if not isinstance(entity, CellMorphology):
-        msg = f"Expected CellMorphology entity, got {type(entity).__name__}."
-        raise TypeError(msg)
-    try:
-        asc_path = download_morphology(db_client, entity, output_dir, "asc")
-    except IteratorResultError as exc:
-        msg = (
-            f"Morphology {entity.id} has no ASC asset; ASC is required for calibration/validation."
-        )
-        raise ValueError(msg) from exc
-    L.info("Downloaded ASC morphology for calibration/validation: %s", asc_path)
-    return asc_path
+
+def compute_calibration_and_validation(
+    coord_root: Path,
+    hoc_path: Path,
+    morphology_path: Path,
+    *,
+    cell_name: str,
+    holding_current: float,
+    threshold_current: float,
+    output_dir: Path,
+) -> dict:
+    """Compute MEModel calibration, then run bluecellulab validation on it.
+
+    Pure compute (subprocesses + local files only — no database calls). Raises
+    on failure; the caller decides how to handle it.
+
+    Returns:
+        Dict with keys ``calibration`` and ``validation``.
+    """
+    calibration_dict = compute_calibration_in_subprocess(
+        coord_root,
+        hoc_path,
+        morphology_path,
+        holding_current=holding_current,
+        threshold_current=threshold_current,
+    )
+    validation_dict = run_validations_in_subprocess(
+        coord_root,
+        hoc_path,
+        morphology_path,
+        cell_name,
+        holding_current=calibration_dict["holding_current"],
+        threshold_current=calibration_dict["rheobase"],
+        output_dir=output_dir,
+    )
+    return {"calibration": calibration_dict, "validation": validation_dict}
 
 
 def calibration_worker(
@@ -123,7 +140,7 @@ def validation_worker(
     coord_root: str,
     hoc_path: str,
     morphology_path: str,
-    entity_id: str,
+    cell_name: str,
     holding_current: float,
     threshold_current: float,
     celsius: float,
@@ -161,7 +178,7 @@ def validation_worker(
 
     validation_dict = run_validations(
         cell,
-        entity_id,
+        cell_name,
         output_dir=output_dir,
         celsius=celsius,
         v_init=v_init,
@@ -242,7 +259,7 @@ def run_validations_in_subprocess(
     coord_root: Path,
     hoc_path: Path,
     morphology_path: Path,
-    entity_id: str,
+    cell_name: str,
     *,
     holding_current: float = 0.0,
     threshold_current: float = 0.0,
@@ -259,14 +276,14 @@ def run_validations_in_subprocess(
     if n_processes is None:
         n_processes = min(VALIDATION_MAX_PROCESSES, os.cpu_count() or 1)
 
-    L.info("Running validations in subprocess for entity %s", entity_id)
+    L.info("Running validations in subprocess for %s", cell_name)
     return run_worker_in_subprocess(
         validation_worker,
         (
             str(coord_root),
             str(hoc_path),
             str(morphology_path),
-            entity_id,
+            cell_name,
             holding_current,
             threshold_current,
             celsius,
@@ -278,18 +295,14 @@ def run_validations_in_subprocess(
     )
 
 
-def locate_hoc_and_morphology(
-    coord_root: Path,
-    seed: int,
-    asc_morphology_path: Path,
-) -> tuple[Path, Path]:
-    """Locate the exported HOC and verify the ASC morphology + compiled mechanisms.
+def locate_hoc(coord_root: Path, seed: int) -> Path:
+    """Locate the exported HOC and verify compiled mechanisms exist.
 
     The HOC comes from the SONATA export (``export_emodels_sonata``). With
     ``only_best=False`` several candidates may exist; prefer a filename
-    containing ``seed=<seed>``. ``asc_morphology_path`` is the ASC file fetched
-    by :func:`download_asc_morphology` — the SONATA export's morphology copy is
-    not used (it is SWC, while calibration/validation build cells from ASC).
+    containing ``seed=<seed>``. The morphology and mechanisms are pipeline
+    inputs — the caller passes the morphology path in, and this function only
+    verifies the compiled arch dir (``arm64``/``x86_64``) exists.
     """
     sonata_dir = coord_root / "export_emodels_sonata"
     hoc_candidates = sorted(sonata_dir.rglob("*.hoc")) if sonata_dir.exists() else []
@@ -308,11 +321,6 @@ def locate_hoc_and_morphology(
             raise RuntimeError(msg)
     hoc_path = hoc_candidates[0]
 
-    morphology_path = asc_morphology_path
-    if not morphology_path.exists():
-        msg = f"ASC morphology not found: {morphology_path}"
-        raise FileNotFoundError(msg)
-
     for arch in ("x86_64", "arm64"):
         if (coord_root / arch / "special").exists():
             break
@@ -323,5 +331,5 @@ def locate_hoc_and_morphology(
         )
         raise FileNotFoundError(msg)
 
-    L.info("Calibration/validation inputs: hoc=%s, morphology=%s", hoc_path, morphology_path)
-    return hoc_path, morphology_path
+    L.info("Calibration/validation HOC: %s", hoc_path)
+    return hoc_path

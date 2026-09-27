@@ -18,7 +18,6 @@ from entitysdk.models import (
     ETypeClass,
     IonChannelModel,
     License,
-    MEModel,
     MEModelCalibrationResult,
     TaskActivity,
     TaskResult,
@@ -26,6 +25,7 @@ from entitysdk.models import (
 )
 from entitysdk.registration.emodel import register_emodel
 from entitysdk.registration.memodel import register_memodel
+from entitysdk.registration.validation_result import SUFFIX_TO_NAME
 from entitysdk.types import (
     ID,
     AssetLabel,
@@ -35,6 +35,7 @@ from entitysdk.types import (
     ValidationStatus,
 )
 
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
@@ -136,18 +137,29 @@ def upload_optimization_assets(
         )
 
 
-def register_output_entities(  # ruff: ignore[too-many-locals]
+def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statements,complex-structure]
     config: EModelOptimizationSingleConfig,
     coord_root: Path,
     db_client: entitysdk.Client,
     *,
     trace_ids: list | None = None,
     execution_activity_id: str | None = None,
+    em_metrics: dict | None = None,
+    calibration: dict | None = None,
+    validation: dict | None = None,
+    validation_status: ValidationStatus = ValidationStatus.created,
 ) -> RegisteredOptimizationOutputs:
-    """Register TaskResult, draft EModel, draft MEModel using entitysdk helpers.
+    """Register TaskResult, EModel, MEModel (+ calibration/validation) in one pass.
 
     Uses the shared ``entitysdk.registration`` helper package so this local path and
     the remote launch-system worker register output entities identically.
+
+    ``em_metrics``/``calibration``/``validation``/``validation_status`` come from
+    :func:`task.run_optimization_pipeline` (which parses ``final.json`` and runs
+    the subprocesses). When ``calibration``/``validation`` are provided, a
+    ``MEModelCalibrationResult`` and per-test ``ValidationResult`` entities are
+    registered against the MEModel, which itself is registered with the final
+    ``validation_status``.
     """
     init = config.initialize
     emodel_name = init.emodel
@@ -179,9 +191,10 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         )
         authorized_public = getattr(activity, "authorized_public", False)
 
-    # --- Parse emodel JSON for metrics ---
+    # --- Parse emodel JSON for metrics (reuse the pipeline's parse when given) ---
     final_path = coord_root / "final.json"
-    em_metrics = parse_final_json(final_path, emodel_name)
+    if em_metrics is None:
+        em_metrics = parse_final_json(final_path, emodel_name)
 
     # --- Collect file paths for helpers ---
     # Checkpoints: BluePyOpt writes .pkl files; task.py converts them to .h5
@@ -296,10 +309,20 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
         emodel_summary_file=emodel_summary_file,
         electrical_cell_recording_ids=trace_ids or [],
-        validation_result_figure_files=validation_figures,
+        # entitysdk's figure upload drops the file extension (file_name=<short
+        # name>) and current entitycore rejects it with 422 — figure
+        # ValidationResults are registered below via
+        # register_emodel_figure_validation_results instead.
+        validation_result_figure_files=[],
         validation_result_status=False,
     )
     L.info("Draft EModel registered: %s", emodel_entity.id)
+    register_emodel_figure_validation_results(
+        db_client,
+        str(emodel_entity.id),
+        validation_figures,
+        authorized_public=authorized_public,
+    )
 
     # --- Register draft MEModel via helper ---
     memodel_entity = register_memodel(
@@ -314,20 +337,44 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         threshold_current=em_metrics["threshold_current"],
         holding_current=em_metrics["holding_current"],
         authorized_public=authorized_public,
-        validation_status=ValidationStatus.created,
+        validation_status=validation_status,
         lifecycle_status=EntityLifecycleStatus.active,
     )
     L.info("Draft MEModel registered: %s", memodel_entity.id)
 
-    generated_ids = [str(task_result.id), str(emodel_entity.id), str(memodel_entity.id)]
+    memodel_id = str(memodel_entity.id)
+    generated_ids = [str(task_result.id), str(emodel_entity.id), memodel_id]
+
+    # --- MEModel calibration/validation results (computed pre-registration) ---
+    if calibration is not None:
+        calibration_id = register_calibration_result(
+            db_client, memodel_id, calibration, authorized_public=authorized_public
+        )
+        if calibration_id is not None:
+            generated_ids.append(calibration_id)
+    if validation is not None:
+        generated_ids.extend(
+            register_memodel_validation_results(
+                db_client,
+                memodel_id,
+                validation,
+                authorized_public=authorized_public,
+                details_dir=coord_root / "validation_details" / memodel_id,
+            )
+        )
 
     # --- Update TaskActivity with generated_ids ---
-    update_activity_generated_ids(db_client, execution_activity_id, generated_ids)
+    if execution_activity_id is not None:
+        db_sdk.update_execution_activity_with_generated(
+            client=db_client,
+            execution_activity_id=UUID(execution_activity_id),
+            generated_ids=generated_ids,
+        )
 
     return RegisteredOptimizationOutputs(
         task_result_id=str(task_result.id),
         emodel_id=str(emodel_entity.id),
-        memodel_id=str(memodel_entity.id),
+        memodel_id=memodel_id,
         authorized_public=authorized_public,
         generated_ids=generated_ids,
     )
@@ -457,26 +504,64 @@ def register_memodel_validation_results(
     return registered_ids
 
 
-def mark_memodel_validated(db_client: entitysdk.Client, memodel_id: str) -> None:
-    """Set ``validation_status=done`` on the MEModel after successful validation."""
-    db_client.update_entity(
-        entity_id=memodel_id,  # ty:ignore[invalid-argument-type]
-        entity_type=MEModel,
-        attrs_or_entity={"validation_status": ValidationStatus.done},
-    )
-    L.info("MEModel %s marked as validated.", memodel_id)
+def detect_validation_result_name(figure_stem: str) -> str | None:
+    """Map a BluePyEModel figure stem to a short ValidationResult name.
+
+    Mirrors entitysdk's naming: the suffix after the last ``__`` separator is
+    matched against ``SUFFIX_TO_NAME`` (``thumbnail`` maps to ``None`` → skip).
+    """
+    suffix_part = figure_stem.rsplit("__", maxsplit=1)[-1]
+    for suffix, name in SUFFIX_TO_NAME.items():
+        if suffix_part == suffix or suffix_part.startswith(suffix + "."):
+            return name
+    return None
 
 
-def update_activity_generated_ids(
+def register_emodel_figure_validation_results(
     db_client: entitysdk.Client,
-    execution_activity_id: str | None,
-    generated_ids: list[str],
-) -> None:
-    """Merge ``generated_ids`` onto the TaskActivity (replaces the full list server-side)."""
-    if execution_activity_id is None:
-        return
-    db_client.update_entity(
-        entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
-        entity_type=TaskActivity,
-        attrs_or_entity={"generated_ids": generated_ids},
-    )
+    emodel_id: str,
+    figure_files: list[Path],
+    *,
+    authorized_public: bool,
+) -> list[str]:
+    """Register figure-based ``ValidationResult`` entities for the EModel.
+
+    Workaround for an entitysdk bug: ``register_validation_result_figure``
+    uploads with ``file_name=<detected name>`` (no extension), which entitycore
+    rejects because the asset suffix must match the declared content type. This
+    registers the same entities (name = figure stem, ``passed=False``) but keeps
+    the real filename on upload. Remove once fixed upstream.
+
+    Returns:
+        IDs of newly registered ``ValidationResult`` entities.
+    """
+    registered_ids: list[str] = []
+    for figure_file in figure_files:
+        if detect_validation_result_name(figure_file.stem) is None:
+            continue
+        content_type = _FIGURE_CONTENT_TYPES.get(figure_file.suffix)
+        if content_type is None:
+            L.warning("Unsupported figure format: %s", figure_file)
+            continue
+        validation_result = db_client.register_entity(
+            entity=ValidationResult(
+                name=figure_file.stem,
+                passed=False,
+                validated_entity_id=UUID(emodel_id),
+                authorized_public=authorized_public,
+            )
+        )
+        db_client.upload_file(
+            entity_id=validation_result.id,
+            entity_type=ValidationResult,
+            file_path=figure_file,
+            file_content_type=content_type,
+            asset_label=AssetLabel.validation_result_figure,
+        )
+        registered_ids.append(str(validation_result.id))
+        L.info(
+            "EModel figure ValidationResult registered: %s (name='%s')",
+            validation_result.id,
+            figure_file.stem,
+        )
+    return registered_ids
