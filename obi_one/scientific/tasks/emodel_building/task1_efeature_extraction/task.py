@@ -37,11 +37,13 @@ RECIPES_RELPATH = "config/recipes.json"
 TARGETS_CONFIG_RELPATH = "config/extract_config/targets.json"
 
 # Fitness weight applied to every target. Amplitudes come from the recordings'
-# discovered values (``AMPLITUDES_BY_PROTOCOL``), so each target matches a trace
-# exactly and the tolerance only guards float-precision differences in the
-# amplitude bluepyefe recomputes from the trace.
+# discovered values (``AMPLITUDES_BY_PROTOCOL``), so each target should match a
+# trace; the tolerance absorbs the small difference between the endpoint's
+# estimate and the amplitude bluepyefe recomputes as median(current[ton:toff]).
+# It must stay well below the smallest step spacing in typical protocols
+# (~20-50 pA), so 10 pA.
 DEFAULT_TARGET_WEIGHT = 1.0
-AMPLITUDE_TOLERANCE = 1e-3
+AMPLITUDE_TOLERANCE = 0.01
 
 
 def _nwb_reported_protocol_names(nwb_path: Path) -> list[str]:
