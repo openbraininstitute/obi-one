@@ -10,6 +10,10 @@ import numpy as np
 from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
+    ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
+)
 from obi_one.scientific.library.circuit_metrics import (
     TYPES_OF_BIOPHYS_NODES,
     TYPES_OF_POINT_NODES,
@@ -361,16 +365,23 @@ class Circuit(OBIBaseModel):
         return path
 
 
-def ensure_mechanisms_dir(circuit_config_path: Path, edge_population_name: str) -> Path:
-    """The mechanisms directory for one edge population, declaring it if not already set.
+def ensure_mechanisms_dir(
+    circuit_config_path: Path, edge_population_name: str | None = None
+) -> Path:
+    """The circuit's mechanisms directory, declaring it in the config if not already set.
 
-    Reads it through libsonata (`edge_population_properties(...).mechanisms_dir`) rather than
-    the raw config, so this sees exactly what the simulator would: a value set directly on
-    `edge_population_name`, falling back to `components.mechanisms_dir`, with manifest
-    variables (e.g. `$BASE_DIR`) already substituted and the path already absolute -
-    libsonata resolves both of those, and a hand-rolled reimplementation of either would risk
-    disagreeing with it (and does; the population-level override was missed by an earlier
-    version of this function).
+    When ``edge_population_name`` is given, the directory is read through libsonata
+    (`edge_population_properties(...).mechanisms_dir`) rather than the raw config, so this sees
+    exactly what the simulator would: a value set directly on that population, falling back to
+    `components.mechanisms_dir`, with manifest variables (e.g. `$BASE_DIR`) already substituted
+    and the path already absolute - libsonata resolves both of those, and a hand-rolled
+    reimplementation of either would risk disagreeing with it (and does; the population-level
+    override was missed by an earlier version of this function). When it is ``None`` there is no
+    edge population to ask (e.g. a synaptome with no incoming synapses); libsonata only exposes
+    `mechanisms_dir` through an edge population, so this case skips the lookup and takes the
+    fallback branch below directly - it declares and returns `CIRCUIT_MOD_DIR` rather than trying
+    to honor an existing `components.mechanisms_dir`. That is only appropriate for a freshly
+    staged circuit that has not declared one; pass an edge population whenever one exists.
 
     Some circuits keep their compiled mechanisms in `CIRCUIT_MOD_DIR` without naming it anywhere
     in the config - libsonata reports that as `""`, not as this repo's fallback folder, so a `""`
@@ -380,9 +391,18 @@ def ensure_mechanisms_dir(circuit_config_path: Path, edge_population_name: str) 
     states explicitly where its mechanisms live rather than relying on the same unstated
     convention. Directory created if it does not exist yet, since a fresh copy of a circuit that
     relied on the convention may not have had one either.
+
+    The intrinsic AMPA/GABA mini receptor mechanisms are always staged into the directory: every
+    neuron carries them independent of which synapses are placed, and simulations name them in
+    ``conditions.mechanisms`` at every scale, so they must be present for a simulator to compile.
+    A file already in the directory is left untouched, so a circuit's own copy always wins.
+    TODO: make this configurable per simulation once the design is settled
+    (openbraininstitute/prod-circuit-simulation#252).
     """
-    circuit = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    mechanisms_dir_raw = circuit.edge_population_properties(edge_population_name).mechanisms_dir
+    mechanisms_dir_raw = None
+    if edge_population_name is not None:
+        circuit = libsonata.CircuitConfig.from_file(str(circuit_config_path))
+        mechanisms_dir_raw = circuit.edge_population_properties(edge_population_name).mechanisms_dir
 
     if mechanisms_dir_raw:
         mechanisms_dir = Path(mechanisms_dir_raw)
@@ -395,4 +415,8 @@ def ensure_mechanisms_dir(circuit_config_path: Path, edge_population_name: str) 
         mechanisms_dir = circuit_config_path.parent / CIRCUIT_MOD_DIR
 
     mechanisms_dir.mkdir(parents=True, exist_ok=True)
+
+    ExcitatoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)
+    InhibitoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)
+
     return mechanisms_dir
