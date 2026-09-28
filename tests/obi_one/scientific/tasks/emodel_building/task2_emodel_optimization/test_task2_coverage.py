@@ -326,13 +326,13 @@ def test_optimization_value_rejects_nonfinite_values(kwargs, message):
 def test_optimization_params_validates_limits_and_serializes_all_algorithms():
     with pytest.raises(ValueError, match="centroids"):
         OptimizationParams(centroids=(float("nan"),))
-    with pytest.raises(ValueError, match="at most 20"):
+    with pytest.raises(ValueError, match="less than or equal to 20"):
         OptimizationParams(offspring_size=21)
-    with pytest.raises(ValueError, match="at most 20"):
+    with pytest.raises(ValueError, match="less than or equal to 20"):
         OptimizationParams(offspring_size=[10, 21])
-    with pytest.raises(ValueError, match="at most 50"):
+    with pytest.raises(ValueError, match="less than or equal to 50"):
         OptimizationSettings(max_ngen=51)
-    with pytest.raises(ValueError, match="at most 50"):
+    with pytest.raises(ValueError, match="less than or equal to 50"):
         OptimizationSettings(max_ngen=[20, 51])
 
     cma = OptimizationParams(offspring_size=[2, 4], sigma=[0.1, 0.2], centroids=(1.0, 2.0))

@@ -40,6 +40,9 @@ MIN_CMA_OFFSPRING_SIZE = 2
 MAX_OFFSPRING_SIZE = 20
 MAX_NGEN = 50
 
+OffspringSize = Annotated[PositiveInt, Field(le=MAX_OFFSPRING_SIZE)]
+GenerationCount = Annotated[PositiveInt, Field(le=MAX_NGEN)]
+
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
@@ -1181,7 +1184,7 @@ class SineSpecSettings(Block):
 class OptimizationParams(Block):
     """Algorithm-specific ``optimisation_params`` passed to BluePyEModel."""
 
-    offspring_size: PositiveInt | list[PositiveInt] = Field(
+    offspring_size: OffspringSize | list[OffspringSize] = Field(
         default=5,
         title="Offspring size",
         description=(
@@ -1236,15 +1239,9 @@ class OptimizationParams(Block):
 
     @model_validator(mode="after")
     def validate_centroids(self) -> "OptimizationParams":
-        """Reject invalid CMA centroids and offspring-size values."""
+        """Reject invalid CMA centroids."""
         if self.centroids is not None and any(not math.isfinite(value) for value in self.centroids):
             msg = "CMA centroids must contain only finite values."
-            raise ValueError(msg)
-        offspring_sizes = (
-            self.offspring_size if isinstance(self.offspring_size, list) else [self.offspring_size]
-        )
-        if any(size > MAX_OFFSPRING_SIZE for size in offspring_sizes):
-            msg = f"offspring_size must be at most {MAX_OFFSPRING_SIZE}."
             raise ValueError(msg)
         return self
 
@@ -1313,7 +1310,7 @@ class OptimizationSettings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
-    max_ngen: PositiveInt | list[PositiveInt] = Field(
+    max_ngen: GenerationCount | list[GenerationCount] = Field(
         default=20,
         title="Max generations",
         description=f"Maximum number of optimizer generations (at most {MAX_NGEN}).",
@@ -1603,15 +1600,6 @@ class OptimizationSettings(Block):
         description="Save optimization response recordings under the task output directory.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-
-    @model_validator(mode="after")
-    def validate_limits(self) -> "OptimizationSettings":
-        """Reject generation counts above the task cap (checked per sweep value)."""
-        ngens = self.max_ngen if isinstance(self.max_ngen, list) else [self.max_ngen]
-        if any(ngen > MAX_NGEN for ngen in ngens):
-            msg = f"max_ngen must be at most {MAX_NGEN}."
-            raise ValueError(msg)
-        return self
 
     def to_dict(self, optimisation_params: OptimizationParams) -> dict[str, Any]:
         """Serialize validated fields using BluePyEModel's recipe setting names."""
