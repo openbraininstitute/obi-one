@@ -98,7 +98,7 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 
 ## Code Conventions
 
-- Before adding any new function/helper, search `obi_one/utils/` and `obi_one/db_sdk/` and reuse existing functionality. Do not duplicate.
+- Before adding any new function/helper, search `obi_one/utils/`, `obi_one/db_sdk/`, `obi_one/scientific/library/`, and entitysdk (`Client` methods, `entitysdk.registration`). Reuse; do not duplicate. If reusable DB/registration logic is missing from entitysdk, flag it for entitysdk instead of building a parallel version in obi-one.
 - Put generic helpers (filesystem, format I/O, serialization, etc.) in `obi_one/utils/`; keep them task-agnostic.
 - Put database-related (entitysdk) helpers in `obi_one/db_sdk/`, not in task modules or `obi_one/utils/`.
 - **Python 3.12** required (`>=3.12.2,<3.13`)
@@ -106,6 +106,7 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - **100 char line length**
 - **Google-style docstrings** (`pydocstyle convention = "google"`)
 - Comments and docstrings should explain non-obvious intent, not restate the code. Prefer none over redundant; don't duplicate what argparse/signatures already convey.
+- Functions that perform actions must not silently no-op (e.g. `if x is None: return`) or swallow errors. Let them raise, and handle optional inputs and exceptions where the function is called.
 - **Pydantic v2** for all data models
 - Do not add `from __future__ import annotations`.
 - Avoid protected (`_`-prefixed) constants and classes. Do not import protected functions from other modules; rename them to public names first (drop the leading `_`).
