@@ -2008,3 +2008,119 @@ def test_register_circuit_preserves_parent_and_inherited_emodel_derivations():
         "generated__id": "parent-id",
         "derivation_type": DerivationType.emodel_circuit,
     }
+
+
+def test_register_circuit_dry_run_with_parent_skips_inherited_lookup():
+    """Dry runs do not query or register inherited parent derivations."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    parent = MagicMock(name="parent_circuit")
+    parent.id = "parent-id"
+    parent.root_circuit_id = "root-id"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+            dry_run=True,
+        )
+
+    mock_derivation.assert_called_once()
+    client.search_entity.assert_not_called()
+
+
+def test_register_circuit_ignores_parent_derivation_without_source():
+    """Parent derivations without a source do not create an inherited link."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    parent = MagicMock(name="parent_circuit")
+    parent.id = "parent-id"
+    parent.root_circuit_id = "root-id"
+    parent_derivation = MagicMock(name="parent_derivation")
+    parent_derivation.used = None
+    client.search_entity.return_value.all.return_value = [parent_derivation]
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is parent
+
+
+def test_register_circuit_registers_explicit_derivation_source():
+    """An explicit derivation source is registered when no parent circuit is provided."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    emodel = MagicMock(name="emodel")
+    emodel.id = "emodel-id"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from=emodel,
+            derivation_type=DerivationType.emodel_circuit,
+            derivation_label="hoc:cADpyr_L5TPC",
+            skip_additional_assets=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is emodel
+    assert mock_derivation.call_args.kwargs["label"] == "hoc:cADpyr_L5TPC"
