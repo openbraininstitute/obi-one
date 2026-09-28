@@ -143,7 +143,9 @@ def submit_circuit_asset_generation_job(
             "ref": release_tag(app_version),
             "path": f"{ASSET_GENERATION_LAUNCH_PATH}/main.py",
             **build_launch_code_deps(
-                f"{ASSET_GENERATION_LAUNCH_PATH}/dependencies/default.txt", app_version
+                f"{ASSET_GENERATION_LAUNCH_PATH}/dependencies/default.txt",
+                app_version,
+                extras=("connectivity",),
             ),
         },
         "resources": {

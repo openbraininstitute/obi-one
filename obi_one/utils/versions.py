@@ -10,7 +10,6 @@ clean release tag -- see :func:`release_tag` vs :func:`_build_obi_one_constraint
 import logging
 import re
 from collections.abc import Sequence
-from pathlib import Path
 from typing import TypedDict
 
 L = logging.getLogger(__name__)
@@ -29,10 +28,6 @@ OBI_ONE_LINE_REGEX = re.compile(
 # nothing else, mirroring the setuptools_scm ``tag_regex`` in pyproject.toml. Any
 # ``git describe`` / scm dev suffix means a post-release build (treated as dev).
 _RELEASE_VERSION_REGEX = re.compile(r"^v?(?P<version>\d{4}\.\d{1,2}\.\d+)$")
-
-# ``obi_one/utils/versions.py`` -> parents[2] is the project root; used to resolve
-# the repo-relative ``dependencies`` path when reading extras.
-_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class LaunchCodeDeps(TypedDict):
@@ -81,55 +76,27 @@ def _build_obi_one_constraint(
     return [f"obi-one{extras_suffix}=={version}"]
 
 
-def _extract_obi_one_extras(requirements_file: Path | str) -> list[str]:
-    """Extract the obi-one extras declared in a requirements file.
-
-    Scans the file for the ``obi-one`` requirement line and returns its extras
-    (e.g. ``["connectivity"]`` for ``obi-one[connectivity]``). Returns an empty
-    list if obi-one is listed without extras. Raises ValueError if no obi-one
-    line is found (every launch-script requirements file must reference obi-one).
-    """
-    path = Path(requirements_file)
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        m = OBI_ONE_LINE_REGEX.match(line)
-        if m:
-            extras = m.group("extras")
-            if not extras:
-                return []
-            return [e.strip() for e in extras.split(",") if e.strip()]
-    msg = f"No obi-one requirement found in {path}"
-    raise ValueError(msg)
-
-
-def _build_obi_one_constraint_from_file(
-    app_version: str | None,
-    requirements_file: Path | str,
-) -> list[str]:
-    """Build the obi-one constraint using extras read from a requirements file.
-
-    Convenience wrapper combining :func:`_extract_obi_one_extras` and
-    :func:`_build_obi_one_constraint`, keeping the extras in sync with the
-    requirements file (the single source of truth) rather than duplicating them.
-    """
-    extras = _extract_obi_one_extras(requirements_file)
-    return _build_obi_one_constraint(app_version, extras)
-
-
-def build_launch_code_deps(dependencies: str, version: str | None) -> LaunchCodeDeps:
+def build_launch_code_deps(
+    dependencies: str,
+    version: str | None,
+    *,
+    extras: Sequence[str] | None = None,
+) -> LaunchCodeDeps:
     """Return the linked ``dependencies`` + ``dependency_constraints`` for a launch job.
 
-    Both are derived from the same requirements file, so a job cannot declare
-    ``dependencies`` without the matching obi-one constraint (or let the two
-    drift). ``dependencies`` is the repo-relative path stored in the job;
-    ``version`` is the obi-one version to pin (empty constraint if unreleased).
+    ``dependencies`` is the repo-relative requirements-file path, stored verbatim so
+    the executor can ``uv pip install -r`` it. ``dependency_constraints`` pins
+    ``obi-one[extras]`` to ``version`` (empty for a dev build).
 
-    Spread the result into a ``PythonRepositoryCode(...)`` or the job ``code`` dict.
+    ``extras`` are declared by the caller next to the task, not parsed from the file:
+    the service must not depend on the launch-script ``*.txt`` being on disk (they
+    are not in the installed ``obi_one`` package). ``tests/launch_scripts/
+    test_launch_deps_extras.py`` guards that they stay consistent with the files.
     """
-    constraint = _build_obi_one_constraint_from_file(version, _REPO_ROOT / dependencies)
-    return {"dependencies": dependencies, "dependency_constraints": constraint}
+    return {
+        "dependencies": dependencies,
+        "dependency_constraints": _build_obi_one_constraint(version, extras),
+    }
 
 
 def release_tag(app_version: str | None) -> str:
