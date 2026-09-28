@@ -19,30 +19,87 @@ from app.schemas.task import (
 )
 from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
-from obi_one.utils.versions import build_obi_one_constraint_from_file, release_tag
+from obi_one.utils.versions import LaunchCodeDeps, build_launch_code_deps, release_tag
 
 APP_TAG = release_tag(settings.APP_VERSION)
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
-# Per-task obi-one version pin (calver, e.g. "2026.5.1"). Tasks listed here are
-# checked out and installed at the pinned obi-one version instead of the running
-# service version -- use this to keep a task on an older, known-good obi-one when
-# it has not been validated against the current release. Both the git ``ref``
-# (task code + frozen requirements) and the obi-one dependency constraint are
-# pinned together so the task runs fully at that version.
+# Pins a task to a specific obi-one version (calver, e.g. "2026.5.1") instead of
+# the running service version -- e.g. to keep it on an older, known-good release.
 PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {}
 
 
-def _obi_one_deps_constraint(deps_name: str, version: str | None = None) -> list[str]:
-    """Build the dynamic obi-one constraint for a launch-script deps file.
+def _code_deps(deps_name: str, *, version: str | None = None) -> LaunchCodeDeps:
+    """Return the linked ``dependencies`` + ``dependency_constraints`` for a deps file.
 
-    Pins ``obi-one`` to ``version`` when given, otherwise to the running service
-    version. Extras are read from the requirements file so they stay in sync.
-    Returns an empty list when the version is a dev/unreleased build.
+    Spread into ``PythonRepositoryCode(...)`` so the two are always set together.
     """
-    app_version = version if version is not None else settings.APP_VERSION
-    return build_obi_one_constraint_from_file(app_version, OBI_ONE_DEPS_DIR / deps_name)
+    return build_launch_code_deps(
+        str(OBI_ONE_DEPS_DIR / deps_name), settings.APP_VERSION, version=version
+    )
+
+
+def _obi_one_code(
+    deps_name: str, *, capabilities: Capabilities | None = None
+) -> PythonRepositoryCode:
+    """Standard obi-one launch code: the obi-one repo at the app tag, running main.py.
+
+    Only the deps file (and optional capabilities) vary between obi-one tasks; the
+    location/ref/path and the linked dependency constraint are fixed here so they
+    cannot drift or be forgotten. Legacy tasks with a different repo/entrypoint
+    build ``PythonRepositoryCode`` directly.
+    """
+    return PythonRepositoryCode(
+        location=settings.OBI_ONE_REPO,
+        ref=APP_TAG,
+        path=OBI_ONE_CODE_PATH,
+        capabilities=capabilities or Capabilities(),
+        **_code_deps(deps_name),
+    )
+
+
+def _apply_obi_one_version_pins(
+    task_definitions: dict[TaskType, AnyTaskDefinition],
+    pins: dict[TaskType, str],
+) -> dict[TaskType, AnyTaskDefinition]:
+    """Return a copy of ``task_definitions`` with per-task obi-one version pins applied.
+
+    For each task in ``pins`` the git ``ref`` is set to ``tag:<version>`` (so the
+    task code and frozen requirements are checked out at that release) and the
+    obi-one dependency constraint is pinned to the same version, keeping the code
+    and the installed library consistent.
+    """
+    result = dict(task_definitions)
+    for task_type, version in pins.items():
+        task_def = result.get(task_type)
+        # Some TaskDefinition variants (e.g. TaskGroupLegacyDefinition) have no ``code``.
+        code = getattr(task_def, "code", None)
+        if task_def is None or not isinstance(code, PythonRepositoryCode):
+            msg = f"Cannot pin obi-one version for unknown/non-repository task {task_type!r}"
+            raise RuntimeError(msg)
+        deps_name = Path(code.dependencies).name
+        pinned_code = code.model_copy(
+            update={
+                "ref": release_tag(version),
+                **_code_deps(deps_name, version=version),
+            }
+        )
+        result[task_type] = task_def.model_copy(update={"code": pinned_code})
+    return result
+
+
+def get_launchable_task_definition(task_type: TaskType) -> LaunchableTaskDefinition:
+    """Return a launchable task definition (with code and resources).
+
+    ``TaskGroupLegacyDefinition`` entries are selectors only and must be resolved to a concrete
+    task type before calling this.
+    """
+    task_definition = TASK_DEFINITIONS[task_type]
+    if isinstance(task_definition, TaskGroupLegacyDefinition):
+        msg = f"Task type '{task_type}' is a task group, not a launchable task"
+        raise TypeError(msg)
+    return task_definition
 
 
 TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
@@ -50,13 +107,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.circuit_extraction,
         config_type=TaskConfigType.circuit_extraction__config,
         activity_type=TaskActivityType.circuit_extraction__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "circuit_extraction.txt"),
-            dependency_constraints=_obi_one_deps_constraint("circuit_extraction.txt"),
-        ),
+        code=_obi_one_code("circuit_extraction.txt"),
         resources=MachineResources(
             cores=1,
             memory=2,
@@ -72,13 +123,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.circuit_single_build,
         config_type=TaskConfigType.circuit_single_build__config,
         activity_type=TaskActivityType.circuit_single_build__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            dependency_constraints=_obi_one_deps_constraint("default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -125,7 +170,10 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             location=settings.OBI_ONE_REPO,
             ref=APP_TAG,
             path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            dependencies="obi_one/scientific/library/simulation/brian2/requirements.txt",
+            **build_launch_code_deps(
+                "obi_one/scientific/library/simulation/brian2/requirements.txt",
+                settings.APP_VERSION,
+            ),
             staged_directories=[],
         ),
         resources=MachineResources(
@@ -143,13 +191,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.circuit_simulation_neuron,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            dependency_constraints=_obi_one_deps_constraint("default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -166,13 +208,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.circuit_simulation_neurodamus_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            dependency_constraints=_obi_one_deps_constraint("default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -203,13 +239,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            dependency_constraints=_obi_one_deps_constraint("default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -226,13 +256,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.single_neuron_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            dependency_constraints=_obi_one_deps_constraint("default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -249,13 +273,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.single_neuron_synaptome_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            dependency_constraints=_obi_one_deps_constraint("default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -272,13 +290,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.circuit_synaptic_physiology_assignment,
         config_type=TaskConfigType.circuit_synaptic_physiology_assignment__config,
         activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "synapse_parameterization.txt"),
-            dependency_constraints=_obi_one_deps_constraint("synapse_parameterization.txt"),
-        ),
+        code=_obi_one_code("synapse_parameterization.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -294,12 +306,8 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.em_synapse_mapping,
         config_type=TaskConfigType.em_synapse_mapping__config,
         activity_type=TaskActivityType.em_synapse_mapping__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-            dependency_constraints=_obi_one_deps_constraint("default.txt"),
+        code=_obi_one_code(
+            "default.txt",
             capabilities=Capabilities(
                 env_secrets=[obi_settings.cave_client_config.microns_api_key]
             ),
@@ -319,13 +327,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.efeature_extraction,
         config_type=TaskConfigType.efeature_extraction__config,
         activity_type=TaskActivityType.efeature_extraction__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
-            dependency_constraints=_obi_one_deps_constraint("emodel_building.txt"),
-        ),
+        code=_obi_one_code("emodel_building.txt"),
         resources=MachineResources(
             cores=1,
             memory=4,
@@ -353,15 +355,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
         activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
-            dependency_constraints=_obi_one_deps_constraint(
-                "extracellular_recording_weights_calculation.txt"
-            ),
-        ),
+        code=_obi_one_code("extracellular_recording_weights_calculation.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -378,14 +372,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         task_type=TaskType.morphology_skeletonization,
         config_type=TaskConfigType.skeletonization__config,
         activity_type=TaskActivityType.skeletonization__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
-            dependency_constraints=_obi_one_deps_constraint("skeletonization.txt"),
-            capabilities=Capabilities(private_packages=True),
-        ),
+        code=_obi_one_code("skeletonization.txt", capabilities=Capabilities(private_packages=True)),
         resources=MachineResources(
             cores=16,
             memory=32,
@@ -400,51 +387,8 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
 }
 
 
-def get_launchable_task_definition(task_type: TaskType) -> LaunchableTaskDefinition:
-    """Return a launchable task definition (with code and resources).
+TASK_DEFINITIONS = _apply_obi_one_version_pins(TASK_DEFINITIONS, PINNED_OBI_ONE_VERSIONS)
 
-    ``TaskGroupLegacyDefinition`` entries are selectors only and must be resolved to a concrete
-    task type before calling this.
-    """
-    task_definition = TASK_DEFINITIONS[task_type]
-    if isinstance(task_definition, TaskGroupLegacyDefinition):
-        msg = f"Task type '{task_type}' is a task group, not a launchable task"
-        raise TypeError(msg)
-    return task_definition
-
-
-
-def apply_obi_one_version_pins(
-    task_definitions: dict[TaskType, TaskDefinition],
-    pins: dict[TaskType, str],
-) -> dict[TaskType, TaskDefinition]:
-    """Return a copy of ``task_definitions`` with per-task obi-one version pins applied.
-
-    For each task in ``pins`` the git ``ref`` is set to ``tag:<version>`` (so the
-    task code and frozen requirements are checked out at that release) and the
-    obi-one dependency constraint is pinned to the same version, keeping the code
-    and the installed library consistent.
-    """
-    result = dict(task_definitions)
-    for task_type, version in pins.items():
-        task_def = result.get(task_type)
-        # Some TaskDefinition variants (e.g. TaskGroupLegacyDefinition) have no ``code``.
-        code = getattr(task_def, "code", None)
-        if task_def is None or not isinstance(code, PythonRepositoryCode):
-            msg = f"Cannot pin obi-one version for unknown/non-repository task {task_type!r}"
-            raise RuntimeError(msg)
-        deps_name = Path(code.dependencies).name
-        pinned_code = code.model_copy(
-            update={
-                "ref": release_tag(version),
-                "dependency_constraints": _obi_one_deps_constraint(deps_name, version=version),
-            }
-        )
-        result[task_type] = task_def.model_copy(update={"code": pinned_code})
-    return result
-
-
-TASK_DEFINITIONS = apply_obi_one_version_pins(TASK_DEFINITIONS, PINNED_OBI_ONE_VERSIONS)
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [

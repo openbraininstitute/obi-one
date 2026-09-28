@@ -165,3 +165,26 @@ def test_build_obi_one_constraint_from_file_git_ref_dev_flow(tmp_path):
         encoding="utf-8",
     )
     assert test_module.build_obi_one_constraint_from_file("2026.9.1-3-gabc123-dirty", f) == []
+
+
+# A committed launch-deps file that references obi-one[connectivity].
+_REAL_DEPS = "launch_scripts/launch_circuit_asset_generation/dependencies/default.in"
+
+
+def test_build_launch_code_deps_links_both_fields():
+    result = test_module.build_launch_code_deps(_REAL_DEPS, "2026.9.1")
+    # dependencies is returned unchanged; the constraint is derived from the same
+    # file (extras included), so the two are always set together.
+    assert result["dependencies"] == _REAL_DEPS
+    assert result["dependency_constraints"] == ["obi-one[connectivity]==2026.9.1"]
+
+
+def test_build_launch_code_deps_empty_constraint_for_dev_version():
+    result = test_module.build_launch_code_deps(_REAL_DEPS, None)
+    assert result["dependencies"] == _REAL_DEPS
+    assert result["dependency_constraints"] == []
+
+
+def test_build_launch_code_deps_pinned_version_overrides_app_version():
+    result = test_module.build_launch_code_deps(_REAL_DEPS, "2026.1.1", version="2026.5.1")
+    assert result["dependency_constraints"] == ["obi-one[connectivity]==2026.5.1"]

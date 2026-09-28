@@ -28,6 +28,7 @@ import logging
 import re
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict
 
 L = logging.getLogger(__name__)
 
@@ -164,3 +165,37 @@ def build_obi_one_constraint_from_file(
     """
     extras = extract_obi_one_extras(requirements_file)
     return build_obi_one_constraint(app_version, extras)
+
+
+# Repo root, used to resolve the repo-relative ``dependencies`` path when reading
+# extras. ``obi_one/utils/versions.py`` -> parents[2] is the project root.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+class LaunchCodeDeps(TypedDict):
+    """Linked launch-job code fields: ``dependencies`` and its obi-one constraint."""
+
+    dependencies: str
+    dependency_constraints: list[str]
+
+
+def build_launch_code_deps(
+    dependencies: str,
+    app_version: str | None,
+    *,
+    version: str | None = None,
+) -> LaunchCodeDeps:
+    """Return the linked ``dependencies`` + ``dependency_constraints`` for a launch job.
+
+    Both are derived from the same requirements file, so a job cannot declare
+    ``dependencies`` without the matching obi-one constraint (or let the two
+    drift). ``dependencies`` is the repo-relative path stored in the job;
+    ``version`` pins a specific obi-one release (else the running service version).
+
+    Spread the result into a ``PythonRepositoryCode(...)`` or the job ``code`` dict.
+    """
+    constraint = build_obi_one_constraint_from_file(
+        version if version is not None else app_version,
+        _REPO_ROOT / dependencies,
+    )
+    return {"dependencies": dependencies, "dependency_constraints": constraint}
