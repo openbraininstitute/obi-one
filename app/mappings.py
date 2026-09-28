@@ -33,11 +33,11 @@ PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {}
 def _code_deps(deps_name: str, *, version: str | None = None) -> LaunchCodeDeps:
     """Return the linked ``dependencies`` + ``dependency_constraints`` for a deps file.
 
-    Spread into ``PythonRepositoryCode(...)`` so the two are always set together.
+    Pins ``version`` when given, otherwise the running service version. Spread into
+    ``PythonRepositoryCode(...)`` so the two are always set together.
     """
-    return build_launch_code_deps(
-        str(OBI_ONE_DEPS_DIR / deps_name), settings.APP_VERSION, version=version
-    )
+    resolved = version if version is not None else settings.APP_VERSION
+    return build_launch_code_deps(str(OBI_ONE_DEPS_DIR / deps_name), resolved)
 
 
 def _obi_one_code(

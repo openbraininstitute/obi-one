@@ -35,7 +35,7 @@ def test_release_tag_and_constraint_diverge_for_dev_builds(app_version):
     # still points at the last release tag, while no constraint is emitted because
     # there is no matching published wheel.
     assert test_module.release_tag(app_version).startswith("tag:")
-    assert test_module.build_obi_one_constraint(app_version) == []
+    assert test_module._build_obi_one_constraint(app_version) == []
 
 
 @pytest.mark.parametrize(
@@ -56,7 +56,7 @@ def test_release_tag_and_constraint_diverge_for_dev_builds(app_version):
     ],
 )
 def test_build_obi_one_constraint(app_version, extras, expected):
-    assert test_module.build_obi_one_constraint(app_version, extras) == expected
+    assert test_module._build_obi_one_constraint(app_version, extras) == expected
 
 
 @pytest.mark.parametrize(
@@ -74,12 +74,12 @@ def test_build_obi_one_constraint(app_version, extras, expected):
     ],
 )
 def test_build_obi_one_constraint_unknown_version(app_version):
-    assert test_module.build_obi_one_constraint(app_version, ["connectivity"]) == []
+    assert test_module._build_obi_one_constraint(app_version, ["connectivity"]) == []
 
 
 def test_non_release_version_logs_warning(caplog):
     with caplog.at_level("WARNING"):
-        assert test_module.build_obi_one_constraint("2026.8.12-3-gabc-dirty") == []
+        assert test_module._build_obi_one_constraint("2026.8.12-3-gabc-dirty") == []
     assert "not a release tag" in caplog.text
 
 
@@ -87,7 +87,7 @@ def test_non_release_version_logs_warning(caplog):
 def test_empty_version_does_not_log(caplog, app_version):
     # The normal "no version" path (dev/local) must not emit a warning.
     with caplog.at_level("WARNING"):
-        assert test_module.build_obi_one_constraint(app_version) == []
+        assert test_module._build_obi_one_constraint(app_version) == []
     assert not caplog.text
 
 
@@ -116,7 +116,7 @@ def test_empty_version_does_not_log(caplog, app_version):
 def test_extract_obi_one_extras(tmp_path, content, expected):
     f = tmp_path / "reqs.txt"
     f.write_text(content, encoding="utf-8")
-    assert test_module.extract_obi_one_extras(f) == expected
+    assert test_module._extract_obi_one_extras(f) == expected
 
 
 @pytest.mark.parametrize(
@@ -132,20 +132,20 @@ def test_extract_obi_one_extras_no_false_match(tmp_path, content):
     f = tmp_path / "reqs.txt"
     f.write_text(content, encoding="utf-8")
     with pytest.raises(ValueError, match="No obi-one requirement found"):
-        test_module.extract_obi_one_extras(f)
+        test_module._extract_obi_one_extras(f)
 
 
 def test_extract_obi_one_extras_missing(tmp_path):
     f = tmp_path / "reqs.txt"
     f.write_text("numpy==2.0\n# no obi-one here\n", encoding="utf-8")
     with pytest.raises(ValueError, match="No obi-one requirement found"):
-        test_module.extract_obi_one_extras(f)
+        test_module._extract_obi_one_extras(f)
 
 
 def test_build_obi_one_constraint_from_file(tmp_path):
     f = tmp_path / "reqs.txt"
     f.write_text("obi-one[connectivity]\n", encoding="utf-8")
-    assert test_module.build_obi_one_constraint_from_file("2026.9.1", f) == [
+    assert test_module._build_obi_one_constraint_from_file("2026.9.1", f) == [
         "obi-one[connectivity]==2026.9.1"
     ]
 
@@ -153,7 +153,7 @@ def test_build_obi_one_constraint_from_file(tmp_path):
 def test_build_obi_one_constraint_from_file_dev_version(tmp_path):
     f = tmp_path / "reqs.txt"
     f.write_text("obi-one[connectivity]\n", encoding="utf-8")
-    assert test_module.build_obi_one_constraint_from_file(None, f) == []
+    assert test_module._build_obi_one_constraint_from_file(None, f) == []
 
 
 def test_build_obi_one_constraint_from_file_git_ref_dev_flow(tmp_path):
@@ -164,7 +164,7 @@ def test_build_obi_one_constraint_from_file_git_ref_dev_flow(tmp_path):
         "obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@abc123\n",
         encoding="utf-8",
     )
-    assert test_module.build_obi_one_constraint_from_file("2026.9.1-3-gabc123-dirty", f) == []
+    assert test_module._build_obi_one_constraint_from_file("2026.9.1-3-gabc123-dirty", f) == []
 
 
 # A committed launch-deps file that references obi-one[connectivity].
@@ -183,8 +183,3 @@ def test_build_launch_code_deps_empty_constraint_for_dev_version():
     result = test_module.build_launch_code_deps(_REAL_DEPS, None)
     assert result["dependencies"] == _REAL_DEPS
     assert result["dependency_constraints"] == []
-
-
-def test_build_launch_code_deps_pinned_version_overrides_app_version():
-    result = test_module.build_launch_code_deps(_REAL_DEPS, "2026.1.1", version="2026.5.1")
-    assert result["dependency_constraints"] == ["obi-one[connectivity]==2026.5.1"]
