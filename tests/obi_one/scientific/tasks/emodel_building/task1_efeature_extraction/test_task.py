@@ -10,11 +10,14 @@ from types import ModuleType
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import h5py
 import httpx
+import numpy as np
 import pytest
 
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
+    _build_files_metadata,
 )
 
 _TASK_MODULE = "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task"
@@ -146,3 +149,83 @@ class TestEModelEFeatureExtractionTask:
             task.execute(db_client=None)
 
         mock_update_activity.assert_not_called()
+
+
+def _write_scala_nwb(path, *, description="GenericStep"):
+    """Minimal non-BBP NWB: shared sweep names in acquisition/presentation."""
+    n = 52644
+    with h5py.File(path, "w") as f:
+        acquisition = f.create_group("acquisition")
+        presentation = f.create_group("stimulus").create_group("presentation")
+        for name in ("GenericStep__0", "GenericStep__1"):
+            for grp in (acquisition, presentation):
+                series = grp.create_group(name)
+                data = series.create_dataset("data", data=np.zeros(n))
+                data.attrs["conversion"] = 1e-12
+                data.attrs["unit"] = "amperes"
+                st = series.create_dataset("starting_time", data=np.float64(0.0))
+                st.attrs["rate"] = 20000.0
+                st.attrs["unit"] = "seconds"
+            acquisition[name].attrs["stimulus_description"] = description
+
+
+class TestBuildFilesMetadata:
+    def test_bbp_file_no_reader_hint(self, tmp_path):
+        """BBP-layout files keep the canonical protocol name untouched."""
+        nwb = tmp_path / "cell.nwb"
+        with h5py.File(nwb, "w") as f:
+            f.create_group("data_organization").create_group("cell_0").create_group("Step")
+
+        files = _build_files_metadata(
+            nwb_paths_with_ljp=[(nwb, 14.0)],
+            ecode_timing={"Step": {}},
+            canonical_by_class={"GenericStepProtocol": "Step"},
+        )
+
+        assert files[0]["ecodes"]["Step"] == {"ljp": 14.0}
+
+    def test_scala_file_adds_reader_hint(self, tmp_path):
+        """A file reporting ``GenericStep`` gets it as the reader's protocol_name."""
+        nwb = tmp_path / "cell.nwb"
+        _write_scala_nwb(nwb)
+
+        files = _build_files_metadata(
+            nwb_paths_with_ljp=[(nwb, 14.0)],
+            ecode_timing={"Step": {"ton": 100.0}},
+            canonical_by_class={"GenericStepProtocol": "Step"},
+        )
+
+        entry = files[0]["ecodes"]["Step"]
+        assert entry["protocol_name"] == "GenericStep"
+        assert entry["ton"] == pytest.approx(100.0)
+        assert entry["ljp"] == pytest.approx(14.0)
+
+    def test_unreadable_file_no_hint(self, tmp_path):
+        """Unreadable files fall back to canonical names only."""
+        nwb = tmp_path / "missing.nwb"
+
+        files = _build_files_metadata(
+            nwb_paths_with_ljp=[(nwb, 0.0)],
+            ecode_timing={"Step": {}},
+            canonical_by_class={"GenericStepProtocol": "Step"},
+        )
+
+        assert files[0]["ecodes"]["Step"] == {"ljp": 0.0}
+
+
+class TestBuildTargetsConfiguration:
+    def test_empty_amplitudes_raise_clear_error(self, tmp_path):
+        """Empty extraction_amplitudes must fail early, not inside bluepyemodel."""
+        task = _make_task(tmp_path)
+
+        protocol = Mock()
+        protocol.protocol_name = "Step"
+        protocol.stim_timing.return_value = {}
+        protocol.efel_settings_overrides.return_value = {}
+        protocol.extraction_amplitudes = ()
+
+        task.config.efeatures_by_protocol.selection.protocols = (protocol,)
+        task.config.settings.global_efel_settings.return_value = {}
+
+        with pytest.raises(ValueError, match="extraction_amplitudes"):
+            task._build_targets_configuration([(tmp_path / "missing.nwb", 0.0)])
