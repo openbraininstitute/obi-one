@@ -1121,7 +1121,7 @@ def test_register_circuit_derives_root_from_parent():
     mock_deriv.assert_called_once()
 
 
-def test_register_circuit_passes_include_visualization():
+def test_register_circuit_passes_include_overview_images():
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     client = MagicMock()
     registered = MagicMock()
@@ -1147,11 +1147,11 @@ def test_register_circuit_passes_include_visualization():
             brain_region=brain_region,
             subject=subject,
             target_simulator="NEURON",
-            include_visualization=False,
+            include_overview_images=False,
             skip_validation=True,
         )
 
-    assert mock_gen.call_args.kwargs["include_visualization"] is False
+    assert mock_gen.call_args.kwargs["include_overview_images"] is False
 
 
 def test_register_circuit_with_derivation():
@@ -1639,8 +1639,8 @@ def test_register_circuit_from_metadata_missing_target_simulator():
         )
 
 
-def test_register_circuit_from_metadata_forwards_include_visualization():
-    """include_visualization is passed through to register_circuit."""
+def test_register_circuit_from_metadata_forwards_include_overview_images():
+    """include_overview_images is passed through to register_circuit."""
     client = MagicMock()
     metadata = {
         "name": "test",
@@ -1669,10 +1669,10 @@ def test_register_circuit_from_metadata_forwards_include_visualization():
             client=client,
             circuit_metadata=metadata,
             circuit_path="/some/path",
-            include_visualization=False,
+            include_overview_images=False,
         )
 
-    assert mock_register.call_args.kwargs["include_visualization"] is False
+    assert mock_register.call_args.kwargs["include_overview_images"] is False
 
 
 def test_register_circuit_neurodamus_validation_runs_in_process():
@@ -1902,7 +1902,7 @@ def test_generate_additional_skips_compressed_when_not_requested(tmp_path):
 
 
 def test_generate_additional_async_scope_skips_visualization(tmp_path):
-    """Async job scope (include_visualization=False) skips plots and overview images."""
+    """Async job scope (include_overview_images=False) skips plots and overview images."""
     circuit_dir = tmp_path / "my_circuit"
     circuit_dir.mkdir()
     config = circuit_dir / "circuit_config.json"
@@ -1936,7 +1936,7 @@ def test_generate_additional_async_scope_skips_visualization(tmp_path):
             edge_population="edges",
             circuit_entity=circuit_entity,
             force=True,
-            include_visualization=False,
+            include_overview_images=False,
         )
 
     mock_compress.assert_called_once()
@@ -1968,7 +1968,7 @@ def test_generate_additional_skips_matrices_when_already_present(tmp_path):
             edge_population="edges",
             circuit_entity=circuit_entity,
             force=False,
-            include_visualization=False,
+            include_overview_images=False,
         )
 
     mock_matrix.assert_not_called()

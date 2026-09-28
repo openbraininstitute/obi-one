@@ -171,7 +171,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     skip_additional_assets: bool = False,
     skip_validation: bool = False,
     include_compressed: bool = True,
-    include_visualization: bool = True,
+    include_overview_images: bool = True,
     lifecycle_status: types.EntityLifecycleStatus | str | None = None,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
@@ -240,7 +240,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         include_compressed: When generating additional assets, also produce the
             compressed circuit archive. Set False when the circuit folder is staged
             as symlinks (circuit customization).
-        include_visualization: When generating additional assets, also produce plots
+        include_overview_images: When generating additional assets, also produce plots
             and overview / sim-designer images. Set False for post-validation jobs that
             only need compressed + connectivity matrices.
         lifecycle_status: Optional lifecycle status (e.g. ``"draft"`` for async
@@ -449,7 +449,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             client=client,
             circuit_entity=registered_circuit,
             include_compressed=include_compressed,
-            include_visualization=include_visualization,
+            include_overview_images=include_overview_images,
         )
 
     if neurodamus_validation and not dry_run and registered_circuit is not None:
@@ -478,7 +478,7 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
-    include_visualization: bool = True,
+    include_overview_images: bool = True,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
@@ -504,7 +504,7 @@ def register_circuit_from_metadata(
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
         authorized_public: Whether to make the circuit publicly accessible.
-        include_visualization: When generating additional assets, also produce plots
+        include_overview_images: When generating additional assets, also produce plots
             and overview / sim-designer images. Defaults to True.
         overview_image_path: Path to a pre-existing overview image file (.png or .webp).
             If provided, generation is skipped and this file is registered directly (optional).
@@ -560,7 +560,7 @@ def register_circuit_from_metadata(
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
-        include_visualization=include_visualization,
+        include_overview_images=include_overview_images,
         overview_image_path=overview_image_path,
         sim_designer_image_path=sim_designer_image_path,
         dry_run=dry_run,

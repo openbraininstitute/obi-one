@@ -173,7 +173,7 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
             authorized_public=authorized_public,
             skip_validation=True,
             lifecycle_status="draft",
-            include_visualization=not dry_run,
+            include_overview_images=not dry_run,
             overview_image_path=overview_image_path,
             sim_designer_image_path=sim_designer_image_path,
             dry_run=dry_run,

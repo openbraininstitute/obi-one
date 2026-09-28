@@ -91,7 +91,7 @@ def main() -> int:
                 client=db_client,
                 circuit_entity=circuit,
                 force=args.force,
-                include_visualization=False,
+                include_overview_images=False,
             )
 
         L.info("Asset generation complete for circuit %s", UUID(args.circuit_id))
