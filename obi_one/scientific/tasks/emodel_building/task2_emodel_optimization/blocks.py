@@ -37,7 +37,8 @@ from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModel
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 
 MIN_CMA_OFFSPRING_SIZE = 2
-MAX_OFFSPRING_SIZE = 200
+MAX_OFFSPRING_SIZE = 20
+MAX_NGEN = 50
 
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
@@ -1186,7 +1187,7 @@ class OptimizationParams(Block):
         description=(
             "Population size per generation. The L5PC example uses 20; we default"
             " to a small value so the bundled example completes quickly."
-            " Allowed range: 1-200 for IBEA and 2-200 for CMA optimisers."
+            f" Capped at {MAX_OFFSPRING_SIZE}; CMA optimisers need at least 2."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -1315,7 +1316,7 @@ class OptimizationSettings(Block):
     max_ngen: PositiveInt | list[PositiveInt] = Field(
         default=20,
         title="Max generations",
-        description="Maximum number of optimizer generations.",
+        description=f"Maximum number of optimizer generations (at most {MAX_NGEN}).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
     optimisation_timeout: PositiveFloat | list[PositiveFloat] = Field(
@@ -1602,6 +1603,15 @@ class OptimizationSettings(Block):
         description="Save optimization response recordings under the task output directory.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
+
+    @model_validator(mode="after")
+    def validate_limits(self) -> "OptimizationSettings":
+        """Reject generation counts above the task cap (checked per sweep value)."""
+        ngens = self.max_ngen if isinstance(self.max_ngen, list) else [self.max_ngen]
+        if any(ngen > MAX_NGEN for ngen in ngens):
+            msg = f"max_ngen must be at most {MAX_NGEN}."
+            raise ValueError(msg)
+        return self
 
     def to_dict(self, optimisation_params: OptimizationParams) -> dict[str, Any]:
         """Serialize validated fields using BluePyEModel's recipe setting names."""
