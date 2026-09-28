@@ -465,7 +465,11 @@ def _registration_fixture(tmp_path, *, complete=True):
         return SimpleNamespace(id="task-result-id")
 
     db_client = SimpleNamespace(
-        search_entity=Mock(return_value=SimpleNamespace(one=Mock(return_value=license_entity))),
+        search_entity=Mock(
+            return_value=SimpleNamespace(
+                one=Mock(return_value=license_entity), first=Mock(return_value=None)
+            )
+        ),
         get_entity=Mock(return_value=activity),
         register_entity=Mock(side_effect=register_entity),
         upload_file=Mock(),
@@ -557,9 +561,11 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
     calls = {}
     _install_registration_helpers(monkeypatch, calls)
     config, db_client, _, _, _, _ = _registration_fixture(tmp_path)
-    cal = Mock(return_value="cal-1")
-    reg_val = Mock(return_value=["vr-1"])
-    monkeypatch.setattr(registration, "register_calibration_result", cal)
+    cal = Mock(return_value=SimpleNamespace(id="cal-1"))
+    thumb = Mock(return_value=SimpleNamespace(id="thumb-1"))
+    reg_val = Mock(return_value=[SimpleNamespace(id="vr-1")])
+    monkeypatch.setattr(registration, "register_memodel_calibration_result", cal)
+    monkeypatch.setattr(registration, "register_validation_result", thumb)
     monkeypatch.setattr(registration, "register_memodel_validation_results", reg_val)
 
     outputs = registration.register_output_entities(
@@ -567,21 +573,31 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
         tmp_path,
         db_client,
         calibration={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
-        validation={"spike_test": {"name": "SpikeTest", "passed": True}},
+        validation={
+            "spike_test": {"name": "SpikeTest", "passed": True},
+            "thumbnail_test": {"name": "thumbnail", "passed": True, "figures": ["t.png"]},
+        },
         validation_status=ValidationStatus.done,
     )
 
     # the MEModel is registered once with the final status — no post-hoc update
     assert calls["memodel"]["validation_status"] == ValidationStatus.done
     cal.assert_called_once()
-    assert cal.call_args.args[1] == "memodel-id"
+    assert cal.call_args.kwargs["calibrated_entity_id"] == "memodel-id"
+    assert cal.call_args.kwargs["threshold_current"] == pytest.approx(0.2)
+    # thumbnail generation expects a "thumbnail" ValidationResult on the EModel
+    thumb.assert_called_once()
+    assert thumb.call_args.kwargs["name"] == "thumbnail"
+    assert thumb.call_args.kwargs["validated_entity_id"] == "emodel-id"
+    assert thumb.call_args.kwargs["figure_files"] == [Path("t.png")]
     reg_val.assert_called_once()
-    assert reg_val.call_args.args[1] == "memodel-id"
+    assert reg_val.call_args.kwargs["memodel_id"] == "memodel-id"
     assert outputs.generated_ids == [
         "task-result-id",
         "emodel-id",
         "memodel-id",
         "cal-1",
+        "thumb-1",
         "vr-1",
     ]
 
@@ -634,15 +650,16 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
     (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
     (tmp_path / "figures" / "nested").mkdir(parents=True)
     (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
+    traces = tmp_path / "figures" / "nested" / "emodel=test__seed=7__traces.pdf"
+    traces.write_text("pdf", encoding="utf-8")
     (tmp_path / "final.json").write_text(json.dumps({"test": [{"fitness": 1.0}]}), encoding="utf-8")
 
     registration.register_output_entities(config, tmp_path, db_client)
 
     figure_paths = db_client.upload_directory.call_args.kwargs["paths"]
     assert Path("nested/validation.pdf") in figure_paths
-    # figure ValidationResults bypass entitysdk's helper (extensionless
-    # file_name → entitycore 422) via register_emodel_figure_validation_results
-    assert calls["emodel"]["validation_result_figure_files"] == []
+    # only recognised BluePyEModel figure kinds go to entitysdk's register_emodel
+    assert calls["emodel"]["validation_result_figure_files"] == [traces]
 
 
 def _config_data_for_selection(selection, distributions=None, **overrides):

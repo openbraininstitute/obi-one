@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import numpy as np
@@ -11,7 +10,6 @@ from entitysdk.types import ValidationStatus
 
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     calibration_validation,
-    registration,
 )
 
 
@@ -57,9 +55,6 @@ def _worker_no_output(*_args):
 
 def _fake_spawn(monkeypatch):
     monkeypatch.setattr(calibration_validation, "get_context", lambda _name: FakeContext())
-
-
-MEMODEL_ID = "12345678-1234-5678-1234-567812345678"
 
 
 def _coord_root(tmp_path: Path) -> Path:
@@ -230,118 +225,3 @@ class TestValidationStatusFromResults:
         assert calibration_validation.validation_status_from_results({}) == (
             ValidationStatus.created
         )
-
-
-class TestRegisterCalibrationResult:
-    def test_registers_with_field_mapping(self):
-        client = Mock()
-        client.search_entity.return_value.first.return_value = None
-        registered = SimpleNamespace(id="cal-1")
-        client.register_entity.return_value = registered
-
-        result = registration.register_calibration_result(
-            client,
-            MEMODEL_ID,
-            {"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
-            authorized_public=True,
-        )
-
-        assert result == "cal-1"
-        entity = client.register_entity.call_args.kwargs["entity"]
-        assert entity.holding_current == pytest.approx(-0.1)
-        assert entity.threshold_current == pytest.approx(0.2)
-        assert entity.rin == pytest.approx(50.0)
-        assert str(entity.calibrated_entity_id) == MEMODEL_ID
-        assert entity.authorized_public is True
-
-    def test_skips_existing(self):
-        client = Mock()
-        client.search_entity.return_value.first.return_value = SimpleNamespace(id="cal-0")
-
-        result = registration.register_calibration_result(
-            client,
-            MEMODEL_ID,
-            {"holding_current": 0, "rheobase": 0},
-            authorized_public=False,
-        )
-
-        assert result is None
-        client.register_entity.assert_not_called()
-
-
-class TestRegisterMemodelValidationResults:
-    def test_registers_results_and_assets(self, tmp_path):
-        figure = tmp_path / "fig.png"
-        figure.write_bytes(b"png")
-        validation_dict = {
-            "memodel_properties": {"holding_current": -0.1},
-            "spike_test": {
-                "name": "SpikeTest",
-                "passed": True,
-                "figures": [str(figure), str(tmp_path / "missing.png")],
-                "validation_details": "details",
-            },
-            "no_name_entry": {"passed": False},
-        }
-        client = Mock()
-        client.search_entity.return_value.first.return_value = None
-        client.register_entity.side_effect = lambda entity: SimpleNamespace(id=f"vr-{entity.name}")
-
-        ids = registration.register_memodel_validation_results(
-            client,
-            MEMODEL_ID,
-            validation_dict,
-            authorized_public=False,
-            details_dir=tmp_path / "details",
-        )
-
-        assert ids == ["vr-SpikeTest"]
-        assert client.register_entity.call_count == 1
-        entity = client.register_entity.call_args.kwargs["entity"]
-        assert entity.name == "SpikeTest"
-        assert entity.passed is True
-        # figure upload + details upload; the missing figure is skipped
-        assert client.upload_file.call_count == 2
-        labels = {c.kwargs["asset_label"] for c in client.upload_file.call_args_list}
-        assert labels == {"validation_result_figure", "validation_result_details"}
-
-    def test_skips_existing_result(self, tmp_path):
-        validation_dict = {"t": {"name": "SpikeTest", "passed": True}}
-        client = Mock()
-        client.search_entity.return_value.first.return_value = SimpleNamespace(id="vr-0")
-
-        ids = registration.register_memodel_validation_results(
-            client, MEMODEL_ID, validation_dict, authorized_public=False, details_dir=tmp_path
-        )
-
-        assert ids == []
-        client.register_entity.assert_not_called()
-
-
-class TestRegisterEmodelFigureValidationResults:
-    def test_registers_recognized_figures_with_real_filename(self, tmp_path):
-        figure = tmp_path / "emodel=test__seed=7__traces.pdf"
-        figure.write_bytes(b"pdf")
-        thumbnail = tmp_path / "emodel=test__seed=7__thumbnail.png"
-        thumbnail.write_bytes(b"png")
-        unknown = tmp_path / "emodel=test__seed=7__notes.pdf"
-        unknown.write_bytes(b"pdf")
-        client = Mock()
-        client.register_entity.side_effect = lambda entity: SimpleNamespace(
-            id=f"vr-{entity.name[:8]}"
-        )
-
-        ids = registration.register_emodel_figure_validation_results(
-            client, MEMODEL_ID, [figure, thumbnail, unknown], authorized_public=False
-        )
-
-        assert len(ids) == 1  # thumbnail and unrecognised suffix are skipped
-        entity = client.register_entity.call_args.kwargs["entity"]
-        assert entity.name == figure.stem
-        assert entity.passed is False
-        assert str(entity.validated_entity_id) == MEMODEL_ID
-        upload = client.upload_file.call_args.kwargs
-        # real filename with extension → entitycore suffix check passes
-        assert upload["file_path"] == figure
-        assert upload["file_content_type"].value == "application/pdf"
-        assert upload["asset_label"].value == "validation_result_figure"

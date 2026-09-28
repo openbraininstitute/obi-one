@@ -18,14 +18,19 @@ from entitysdk.models import (
     ETypeClass,
     IonChannelModel,
     License,
-    MEModelCalibrationResult,
     TaskActivity,
     TaskResult,
-    ValidationResult,
 )
 from entitysdk.registration.emodel import register_emodel
-from entitysdk.registration.memodel import register_memodel
-from entitysdk.registration.validation_result import SUFFIX_TO_NAME
+from entitysdk.registration.memodel import (
+    register_memodel,
+    register_memodel_calibration_result,
+)
+from entitysdk.registration.validation_result import (
+    SUFFIX_TO_NAME,
+    register_memodel_validation_results,
+    register_validation_result,
+)
 from entitysdk.types import (
     ID,
     AssetLabel,
@@ -234,11 +239,15 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         )
         raise RuntimeError(msg)
 
-    # Collect validation result figure files
-    validation_figures: list[Path] = [
+    # EModel analysis figures are registered as ValidationResult assets by
+    # register_emodel; entitysdk uploads them with extension-preserving names.
+    # Only BluePyEModel figure kinds known to entitysdk are registered.
+    emodel_figures: list[Path] = [
         fp
         for fp in sorted(figures_dir.rglob("*"))
-        if fp.is_file() and fp.suffix in {".pdf", ".png"}
+        if fp.is_file()
+        and fp.suffix in {".pdf", ".png"}
+        and fp.stem.rsplit("__", maxsplit=1)[-1].split(".")[0] in SUFFIX_TO_NAME
     ]
 
     # --- Register TaskResult ---
@@ -309,20 +318,10 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
         emodel_summary_file=emodel_summary_file,
         electrical_cell_recording_ids=trace_ids or [],
-        # entitysdk's figure upload drops the file extension (file_name=<short
-        # name>) and current entitycore rejects it with 422 — figure
-        # ValidationResults are registered below via
-        # register_emodel_figure_validation_results instead.
-        validation_result_figure_files=[],
+        validation_result_figure_files=emodel_figures,
         validation_result_status=False,
     )
     L.info("Draft EModel registered: %s", emodel_entity.id)
-    register_emodel_figure_validation_results(
-        db_client,
-        str(emodel_entity.id),
-        validation_figures,
-        authorized_public=authorized_public,
-    )
 
     # --- Register draft MEModel via helper ---
     memodel_entity = register_memodel(
@@ -347,19 +346,44 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
 
     # --- MEModel calibration/validation results (computed pre-registration) ---
     if calibration is not None:
-        calibration_id = register_calibration_result(
-            db_client, memodel_id, calibration, authorized_public=authorized_public
+        calibration_result = register_memodel_calibration_result(
+            client=db_client,
+            calibrated_entity_id=memodel_entity.id,
+            holding_current=calibration["holding_current"],
+            threshold_current=calibration["rheobase"],
+            rin=calibration.get("rin"),
+            authorized_public=authorized_public,
         )
-        if calibration_id is not None:
-            generated_ids.append(calibration_id)
+        if calibration_result is not None:
+            generated_ids.append(str(calibration_result.id))
     if validation is not None:
-        generated_ids.extend(
-            register_memodel_validation_results(
-                db_client,
-                memodel_id,
-                validation,
+        # Thumbnail generation looks up ValidationResult(name="thumbnail") on
+        # the EModel; bluecellulab's thumbnail entry is also registered against
+        # the MEModel below.
+        thumbnail_figures = [
+            Path(figure)
+            for value in validation.values()
+            if isinstance(value, dict) and value.get("name") == "thumbnail"
+            for figure in value.get("figures", [])
+        ]
+        if thumbnail_figures:
+            emodel_thumbnail = register_validation_result(
+                client=db_client,
+                name="thumbnail",
+                passed=True,
+                validated_entity_id=emodel_entity.id,
                 authorized_public=authorized_public,
-                details_dir=coord_root / "validation_details" / memodel_id,
+                figure_files=thumbnail_figures,
+            )
+            if emodel_thumbnail is not None:
+                generated_ids.append(str(emodel_thumbnail.id))
+        generated_ids.extend(
+            str(result.id)
+            for result in register_memodel_validation_results(
+                client=db_client,
+                memodel_id=memodel_entity.id,
+                validation_dict=validation,
+                authorized_public=authorized_public,
             )
         )
 
@@ -378,190 +402,3 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         authorized_public=authorized_public,
         generated_ids=generated_ids,
     )
-
-
-def register_calibration_result(
-    db_client: entitysdk.Client,
-    memodel_id: str,
-    calibration_dict: dict,
-    *,
-    authorized_public: bool,
-) -> str | None:
-    """Register a ``MEModelCalibrationResult`` for the MEModel.
-
-    Skips registration if a calibration result already exists for this MEModel.
-
-    Returns:
-        The registered entity ID, or ``None`` if it already existed.
-    """
-    existing = db_client.search_entity(
-        entity_type=MEModelCalibrationResult,
-        query={"calibrated_entity_id": memodel_id},
-    ).first()
-    if existing is not None:
-        L.info("MEModelCalibrationResult already exists for %s; skipping.", memodel_id)
-        return None
-
-    calibration = MEModelCalibrationResult(
-        holding_current=calibration_dict["holding_current"],
-        threshold_current=calibration_dict["rheobase"],
-        rin=calibration_dict.get("rin"),
-        calibrated_entity_id=UUID(memodel_id),
-        authorized_public=authorized_public,
-    )
-    registered = db_client.register_entity(entity=calibration)
-    L.info("MEModelCalibrationResult registered: %s (memodel=%s)", registered.id, memodel_id)
-    return str(registered.id)
-
-
-_FIGURE_CONTENT_TYPES = {
-    ".pdf": ContentType.application_pdf,
-    ".png": ContentType.image_png,
-}
-
-
-def register_memodel_validation_results(
-    db_client: entitysdk.Client,
-    memodel_id: str,
-    validation_dict: dict,
-    *,
-    authorized_public: bool,
-    details_dir: Path,
-) -> list[str]:
-    """Register ``ValidationResult`` entities for a bluecellulab validation run.
-
-    One ``ValidationResult`` per test entry in ``validation_dict``; figure
-    (``.pdf``/``.png``) and ``validation_details`` text are uploaded as assets.
-    Entries already registered for ``memodel_id`` are skipped.
-
-    Returns:
-        IDs of newly registered ``ValidationResult`` entities.
-    """
-    details_dir.mkdir(parents=True, exist_ok=True)
-    registered_ids: list[str] = []
-
-    for value in validation_dict.values():
-        if not isinstance(value, dict) or "name" not in value:
-            continue
-
-        existing = db_client.search_entity(
-            entity_type=ValidationResult,
-            query={"name": value["name"], "validated_entity_id": memodel_id},
-        ).first()
-        if existing is not None:
-            L.info(
-                "ValidationResult '%s' already exists for %s; skipping.",
-                value["name"],
-                memodel_id,
-            )
-            continue
-
-        validation_result = db_client.register_entity(
-            entity=ValidationResult(
-                name=value["name"],
-                passed=bool(value["passed"]),
-                validated_entity_id=UUID(memodel_id),
-                authorized_public=authorized_public,
-            )
-        )
-        registered_ids.append(str(validation_result.id))
-        L.info(
-            "ValidationResult registered: %s (name='%s', passed=%s)",
-            validation_result.id,
-            value["name"],
-            value["passed"],
-        )
-
-        for figure in value.get("figures", []):
-            figure_path = Path(figure)
-            content_type = _FIGURE_CONTENT_TYPES.get(figure_path.suffix)
-            if not figure_path.exists():
-                L.warning("Validation figure not found: %s", figure_path)
-                continue
-            if content_type is None:
-                L.warning("Unsupported validation figure format: %s", figure_path)
-                continue
-            db_client.upload_file(
-                entity_id=validation_result.id,
-                entity_type=ValidationResult,
-                file_path=figure_path,
-                file_content_type=content_type,
-                asset_label=AssetLabel.validation_result_figure,
-            )
-
-        details_text = value.get("validation_details")
-        if details_text:
-            details_path = details_dir / f"{value['name'].replace(' ', '')}_details.txt"
-            details_path.write_text(details_text, encoding="utf-8")
-            db_client.upload_file(
-                entity_id=validation_result.id,
-                entity_type=ValidationResult,
-                file_path=details_path,
-                file_content_type=ContentType.text_plain,
-                asset_label=AssetLabel.validation_result_details,
-            )
-
-    return registered_ids
-
-
-def detect_validation_result_name(figure_stem: str) -> str | None:
-    """Map a BluePyEModel figure stem to a short ValidationResult name.
-
-    Mirrors entitysdk's naming: the suffix after the last ``__`` separator is
-    matched against ``SUFFIX_TO_NAME`` (``thumbnail`` maps to ``None`` → skip).
-    """
-    suffix_part = figure_stem.rsplit("__", maxsplit=1)[-1]
-    for suffix, name in SUFFIX_TO_NAME.items():
-        if suffix_part == suffix or suffix_part.startswith(suffix + "."):
-            return name
-    return None
-
-
-def register_emodel_figure_validation_results(
-    db_client: entitysdk.Client,
-    emodel_id: str,
-    figure_files: list[Path],
-    *,
-    authorized_public: bool,
-) -> list[str]:
-    """Register figure-based ``ValidationResult`` entities for the EModel.
-
-    Workaround for an entitysdk bug: ``register_validation_result_figure``
-    uploads with ``file_name=<detected name>`` (no extension), which entitycore
-    rejects because the asset suffix must match the declared content type. This
-    registers the same entities (name = figure stem, ``passed=False``) but keeps
-    the real filename on upload. Remove once fixed upstream.
-
-    Returns:
-        IDs of newly registered ``ValidationResult`` entities.
-    """
-    registered_ids: list[str] = []
-    for figure_file in figure_files:
-        if detect_validation_result_name(figure_file.stem) is None:
-            continue
-        content_type = _FIGURE_CONTENT_TYPES.get(figure_file.suffix)
-        if content_type is None:
-            L.warning("Unsupported figure format: %s", figure_file)
-            continue
-        validation_result = db_client.register_entity(
-            entity=ValidationResult(
-                name=figure_file.stem,
-                passed=False,
-                validated_entity_id=UUID(emodel_id),
-                authorized_public=authorized_public,
-            )
-        )
-        db_client.upload_file(
-            entity_id=validation_result.id,
-            entity_type=ValidationResult,
-            file_path=figure_file,
-            file_content_type=content_type,
-            asset_label=AssetLabel.validation_result_figure,
-        )
-        registered_ids.append(str(validation_result.id))
-        L.info(
-            "EModel figure ValidationResult registered: %s (name='%s')",
-            validation_result.id,
-            figure_file.stem,
-        )
-    return registered_ids
