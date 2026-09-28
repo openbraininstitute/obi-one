@@ -4,7 +4,7 @@ Registered ``TaskConfig``s produced from this stage are normally executed by a
 remote launch-system worker, not by calling :meth:`EModelOptimizationTask.execute`
 locally: the worker stages entity assets, builds the versioned params/recipe
 artifacts via this module's compiler, runs BluePyEModel/NEURON, and registers the
-draft result. ``execute()`` remains available as an optional, lowest-priority local
+result. ``execute()`` remains available as an optional, lowest-priority local
 diagnostic (see the Task 2 living plan) and performs the full local pipeline:
 downloads extraction features and entity assets, builds and stages the
 params/recipe artifact bundle, compiles mechanisms, runs the full BluePyEModel
@@ -97,7 +97,7 @@ def run_optimization_pipeline(
     species: str,
     brain_region: str,
     morphology_path: Path,
-) -> dict:
+) -> registration.OptimizationPipelineResults:
     """Run BluePyEModel optimisation, plot, SONATA export, calibration, validation.
 
     Expects ``coord_root`` to already contain staged features, morphology, compiled
@@ -110,8 +110,9 @@ def run_optimization_pipeline(
     reported via ``validation_status`` — it does not abort the pipeline.
 
     Returns:
-        Dict with ``em_metrics`` (parsed ``final.json``), ``calibration``,
-        ``validation``, and ``validation_status`` for downstream registration.
+        ``OptimizationPipelineResults`` with ``em_metrics`` (parsed
+        ``final.json``), ``calibration``, ``validation``, and
+        ``validation_status`` for downstream registration.
     """
     from bluepyemodel.access_point.local import (  # ruff: ignore[import-outside-top-level]
         LocalAccessPoint,
@@ -227,12 +228,12 @@ def run_optimization_pipeline(
         emodel,
         validation_status.value,
     )
-    return {
-        "em_metrics": em_metrics,
-        "calibration": calibration_dict,
-        "validation": validation_dict,
-        "validation_status": validation_status,
-    }
+    return registration.OptimizationPipelineResults(
+        em_metrics=em_metrics,
+        calibration=calibration_dict,
+        validation=validation_dict,
+        validation_status=validation_status,
+    )
 
 
 class EModelOptimizationTask(Task):
@@ -258,7 +259,7 @@ class EModelOptimizationTask(Task):
     name: ClassVar[str] = "EModel Optimization"
     description: ClassVar[str] = (
         "Run BluePyEModel parameter optimisation against extracted features,"
-        " followed by analysis and draft emodel export."
+        " followed by analysis and emodel export."
     )
 
     config: EModelOptimizationSingleConfig
@@ -335,12 +336,9 @@ class EModelOptimizationTask(Task):
                 self.config,
                 coord_root,
                 db_client,
+                pipeline_results=pipeline_results,
                 trace_ids=trace_ids,
                 execution_activity_id=execution_activity_id,
-                em_metrics=pipeline_results["em_metrics"],
-                calibration=pipeline_results["calibration"],
-                validation=pipeline_results["validation"],
-                validation_status=pipeline_results["validation_status"],
             )
             self._registered_task_result_id = outputs.task_result_id
             self._registered_emodel_id = outputs.emodel_id

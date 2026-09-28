@@ -426,6 +426,23 @@ def test_preflight_rejects_missing_asset(tmp_path):
         morphology_preflight.preflight_morphology(tmp_path / "missing.swc", "none")
 
 
+def _pipeline_results(**overrides):
+    defaults = {
+        "em_metrics": {
+            "name": "test",
+            "total_score": 2.5,
+            "holding_current": 0.1,
+            "threshold_current": 0.2,
+            "iteration": "4",
+        },
+        "calibration": None,
+        "validation": None,
+        "validation_status": ValidationStatus.created,
+    }
+    defaults.update(overrides)
+    return registration.OptimizationPipelineResults(**defaults)
+
+
 def _install_registration_helpers(monkeypatch, calls):
     def register_emodel(**kwargs):
         calls["emodel"] = kwargs
@@ -519,6 +536,7 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
         config,
         tmp_path,
         db_client,
+        pipeline_results=_pipeline_results(),
         trace_ids=["trace-1"],
         execution_activity_id="00000000-0000-0000-0000-0000000000aa",
     )
@@ -572,12 +590,18 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
         config,
         tmp_path,
         db_client,
-        calibration={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
-        validation={
-            "spike_test": {"name": "SpikeTest", "passed": True},
-            "thumbnail_test": {"name": "thumbnail", "passed": True, "figures": ["t.png"]},
-        },
-        validation_status=ValidationStatus.done,
+        pipeline_results=_pipeline_results(
+            calibration={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
+            validation={
+                "spike_test": {"name": "SpikeTest", "passed": True},
+                "thumbnail_test": {
+                    "name": "thumbnail",
+                    "passed": True,
+                    "figures": ["t.png"],
+                },
+            },
+            validation_status=ValidationStatus.done,
+        ),
     )
 
     # the MEModel is registered once with the final status — no post-hoc update
@@ -608,7 +632,9 @@ def test_register_output_entities_raises_when_checkpoint_missing(tmp_path, monke
     config, db_client, _, _, _, _ = _registration_fixture(tmp_path, complete=False)
 
     with pytest.raises(RuntimeError, match=r"No \.h5 checkpoint found"):
-        registration.register_output_entities(config, tmp_path, db_client)
+        registration.register_output_entities(
+            config, tmp_path, db_client, pipeline_results=_pipeline_results()
+        )
 
     db_client.register_entity.assert_not_called()
     db_client.update_entity.assert_not_called()
@@ -622,7 +648,9 @@ def test_register_output_entities_raises_when_figures_missing(tmp_path, monkeypa
     (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="No analysis figures found"):
-        registration.register_output_entities(config, tmp_path, db_client)
+        registration.register_output_entities(
+            config, tmp_path, db_client, pipeline_results=_pipeline_results()
+        )
 
     db_client.register_entity.assert_not_called()
 
@@ -637,7 +665,9 @@ def test_register_output_entities_raises_when_summary_missing(tmp_path, monkeypa
     (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match=r"final\.json not found"):
-        registration.register_output_entities(config, tmp_path, db_client)
+        registration.register_output_entities(
+            config, tmp_path, db_client, pipeline_results=_pipeline_results()
+        )
 
     db_client.register_entity.assert_not_called()
 
@@ -654,7 +684,9 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
     traces.write_text("pdf", encoding="utf-8")
     (tmp_path / "final.json").write_text(json.dumps({"test": [{"fitness": 1.0}]}), encoding="utf-8")
 
-    registration.register_output_entities(config, tmp_path, db_client)
+    registration.register_output_entities(
+        config, tmp_path, db_client, pipeline_results=_pipeline_results()
+    )
 
     figure_paths = db_client.upload_directory.call_args.kwargs["paths"]
     assert Path("nested/validation.pdf") in figure_paths
@@ -944,20 +976,19 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
 
     assert result == tmp_path.resolve()
     assert register_outputs.call_args.args == (config, tmp_path.resolve(), db_client)
-    assert register_outputs.call_args.kwargs == {
-        "trace_ids": ["trace-1"],
-        "execution_activity_id": None,
-        "em_metrics": {
-            "name": "test",
-            "total_score": pytest.approx(1.5),
-            "holding_current": pytest.approx(-0.05),
-            "threshold_current": pytest.approx(0.15),
-            "iteration": "2",
-        },
-        "calibration": {"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
-        "validation": {"spike_test": {"name": "SpikeTest", "passed": True}},
-        "validation_status": ValidationStatus.done,
+    assert register_outputs.call_args.kwargs["trace_ids"] == ["trace-1"]
+    assert register_outputs.call_args.kwargs["execution_activity_id"] is None
+    results = register_outputs.call_args.kwargs["pipeline_results"]
+    assert results.em_metrics == {
+        "name": "test",
+        "total_score": pytest.approx(1.5),
+        "holding_current": pytest.approx(-0.05),
+        "threshold_current": pytest.approx(0.15),
+        "iteration": "2",
     }
+    assert results.calibration == {"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0}
+    assert results.validation == {"spike_test": {"name": "SpikeTest", "passed": True}}
+    assert results.validation_status == ValidationStatus.done
     # the pipeline hands the staged SWC straight to the compute step — no re-location
     assert compute_cv.call_args.args[2] == tmp_path.resolve() / "morphologies" / "morphology.swc"
     assert task._registered_task_result_id == "task-result-id"

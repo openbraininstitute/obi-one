@@ -1,6 +1,6 @@
 """Entity registration for Task 2 optimisation outputs.
 
-Registers the TaskResult, draft EModel, and draft MEModel after BluePyEModel
+Registers the TaskResult, EModel, and MEModel after BluePyEModel
 has written checkpoints, figures, and ``final.json`` into the working directory.
 """
 
@@ -46,6 +46,20 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config i
 )
 
 L = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OptimizationPipelineResults:
+    """Outputs of ``run_optimization_pipeline`` consumed by registration.
+
+    ``calibration``/``validation`` are ``None`` when the calibration/validation
+    compute failed; ``validation_status`` then reports ``error``.
+    """
+
+    em_metrics: dict
+    calibration: dict | None
+    validation: dict | None
+    validation_status: ValidationStatus
 
 
 @dataclass(frozen=True)
@@ -147,24 +161,20 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     coord_root: Path,
     db_client: entitysdk.Client,
     *,
+    pipeline_results: OptimizationPipelineResults,
     trace_ids: list | None = None,
     execution_activity_id: str | None = None,
-    em_metrics: dict | None = None,
-    calibration: dict | None = None,
-    validation: dict | None = None,
-    validation_status: ValidationStatus = ValidationStatus.created,
 ) -> RegisteredOptimizationOutputs:
     """Register TaskResult, EModel, MEModel (+ calibration/validation) in one pass.
 
     Uses the shared ``entitysdk.registration`` helper package so this local path and
     the remote launch-system worker register output entities identically.
 
-    ``em_metrics``/``calibration``/``validation``/``validation_status`` come from
-    :func:`task.run_optimization_pipeline` (which parses ``final.json`` and runs
-    the subprocesses). When ``calibration``/``validation`` are provided, a
-    ``MEModelCalibrationResult`` and per-test ``ValidationResult`` entities are
-    registered against the MEModel, which itself is registered with the final
-    ``validation_status``.
+    ``pipeline_results`` comes from :func:`task.run_optimization_pipeline` (which
+    parses ``final.json`` and runs the calibration/validation subprocesses). When
+    the calibration/validation results are present, a ``MEModelCalibrationResult``
+    and per-test ``ValidationResult`` entities are registered against the MEModel,
+    which itself is registered with the final ``validation_status``.
     """
     init = config.initialize
     emodel_name = init.emodel
@@ -196,10 +206,12 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         )
         authorized_public = getattr(activity, "authorized_public", False)
 
-    # --- Parse emodel JSON for metrics (reuse the pipeline's parse when given) ---
+    # --- Pipeline outputs ---
     final_path = coord_root / "final.json"
-    if em_metrics is None:
-        em_metrics = parse_final_json(final_path, emodel_name)
+    em_metrics = pipeline_results.em_metrics
+    calibration = pipeline_results.calibration
+    validation = pipeline_results.validation
+    validation_status = pipeline_results.validation_status
 
     # --- Collect file paths for helpers ---
     # Checkpoints: BluePyOpt writes .pkl files; task.py converts them to .h5
@@ -296,14 +308,14 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         cast("IonChannelModel", reference.entity(db_client=db_client)) for reference in references
     ]
 
-    # --- Register draft EModel via helper ---
+    # --- Register EModel via helper ---
     # Standalone HOC export is not produced; SONATA may still contain a HOC asset.
     sonata_dir = coord_root / "export_emodels_sonata"
     hoc_file = next(sonata_dir.rglob("*.hoc"), None) if sonata_dir.exists() else None
     emodel_entity = register_emodel(
         client=db_client,
         name=f"{emodel_name}",
-        description=f"Draft emodel from optimisation (emodel={emodel_name}).",
+        description=f"EModel from optimisation (emodel={emodel_name}).",
         authorized_public=authorized_public,
         species=species_entity,
         brain_region=brain_region_entity,
@@ -321,13 +333,13 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         validation_result_figure_files=emodel_figures,
         validation_result_status=False,
     )
-    L.info("Draft EModel registered: %s", emodel_entity.id)
+    L.info("EModel registered: %s", emodel_entity.id)
 
-    # --- Register draft MEModel via helper ---
+    # --- Register MEModel via helper ---
     memodel_entity = register_memodel(
         client=db_client,
         name=f"{emodel_name} MEModel",
-        description=f"Draft MEModel from optimisation (emodel={emodel_name}).",
+        description=f"MEModel from optimisation (emodel={emodel_name}).",
         species=species_entity,
         brain_region=brain_region_entity,
         license=license_entity,
@@ -339,7 +351,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         validation_status=validation_status,
         lifecycle_status=EntityLifecycleStatus.active,
     )
-    L.info("Draft MEModel registered: %s", memodel_entity.id)
+    L.info("MEModel registered: %s", memodel_entity.id)
 
     memodel_id = str(memodel_entity.id)
     generated_ids = [str(task_result.id), str(emodel_entity.id), memodel_id]
