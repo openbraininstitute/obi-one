@@ -116,6 +116,9 @@ def _register_parent_emodel_derivations(
     dry_run: bool,
 ) -> None:
     """Copy matching EModel derivations from a parent circuit to a derived circuit."""
+    # Customization and simplification may replace HOC files or EModels, so their parent
+    # derivations must not be inherited.
+    # TODO: Revisit when those workflows preserve model identity.
     if parent is None or parent_derivation_type in {
         DerivationType.circuit_customization,
         DerivationType.circuit_simplification,
@@ -220,13 +223,13 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             (optional). When set, it creates a Circuit-to-Circuit derivation link with
             ``derivation_type`` and no label. ``root`` defaults from it.
         derived_from_emodel: EModel source for an ``emodel_circuit`` derivation (optional).
-            It cannot be combined with ``parent`` and requires ``derivation_label``.
-            It does not affect the circuit hierarchy.
-        derivation_type: Type of derivation for a parent circuit. Explicit EModel sources always use
+            It cannot be combined with ``parent`` and requires a ``derivation_label`` matching
+            a biophysical ``model_template`` in the circuit. It does not affect the hierarchy.
+        derivation_type: Type of derivation for a parent circuit. It must be ``None`` when an
+            explicit EModel source is provided; explicit EModel sources always use
             ``emodel_circuit``.
-        derivation_label: Optional label on the derivation. For an emodel_circuit derivation this
-            is the circuit's ``model_template``, which the neuronal-manipulation consumer matches
-            against to resolve the EModel behind each node.
+        derivation_label: Label for the derivation. It is required for an explicit EModel source,
+            must match a biophysical ``model_template``, and is forbidden otherwise.
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
@@ -329,9 +332,18 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         if not isinstance(derived_from_emodel, models.EModel):
             msg = "derived_from_emodel must be an EModel"
             raise TypeError(msg)
+        if derivation_type is not None:
+            msg = "derivation_type must be None when derived_from_emodel is provided"
+            raise ValueError(msg)
         if derivation_label is None:
             msg = "derivation_label is required when derived_from_emodel is provided"
             raise ValueError(msg)
+        if derivation_label not in _get_biophysical_model_templates(c):
+            msg = "derivation_label must match a biophysical model_template in the circuit"
+            raise ValueError(msg)
+    elif derivation_label is not None:
+        msg = "derivation_label requires parent or derived_from_emodel"
+        raise ValueError(msg)
     if root is None and parent is not None:
         root = parent.root_circuit_id or parent.id
 
