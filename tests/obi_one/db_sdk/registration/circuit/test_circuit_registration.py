@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from entitysdk.types import DerivationType
 
 from obi_one.db_sdk.registration.circuit import (
     check_hierarchy_species,
@@ -1952,3 +1953,58 @@ def test_generate_additional_skips_matrices_when_already_present(tmp_path):
         )
 
     mock_matrix.assert_not_called()
+
+
+def test_register_circuit_preserves_parent_and_inherited_emodel_derivations():
+    """A child circuit keeps the parent link and inherits the parent's EModel link."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+
+    parent = MagicMock(name="parent_circuit")
+    parent.id = "parent-id"
+    parent.root_circuit_id = "root-id"
+    emodel = MagicMock(name="emodel")
+    emodel.id = "emodel-id"
+    parent_derivation = MagicMock(name="parent_derivation")
+    parent_derivation.used = emodel
+    parent_derivation.label = "hoc:cADpyr_L5TPC"
+    client.search_entity.return_value.all.return_value = [parent_derivation]
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+        )
+
+    assert mock_derivation.call_count == 2
+    assert mock_derivation.call_args_list[0].kwargs["from_entity"] is parent
+    assert mock_derivation.call_args_list[1].kwargs["from_entity"] is emodel
+    assert (
+        mock_derivation.call_args_list[1].kwargs["derivation_type"] == DerivationType.emodel_circuit
+    )
+    assert mock_derivation.call_args_list[1].kwargs["label"] == "hoc:cADpyr_L5TPC"
+    assert client.search_entity.call_args.kwargs["query"] == {
+        "generated__id": "parent-id",
+        "derivation_type": DerivationType.emodel_circuit,
+    }
