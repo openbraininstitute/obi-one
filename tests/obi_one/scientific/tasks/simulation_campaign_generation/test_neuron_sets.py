@@ -92,6 +92,7 @@ BIOPHYSICAL_NEURON_SETS = {
 }
 
 VIRTUAL_NEURON_SETS = {
+    "AllVirtualNeurons": AllVirtualNeurons(),
     "VirtualPopulationNeuronSet": VirtualPopulationNeuronSet(population=VIRTUAL_POPULATION),
     "VirtualPopulationIDNeuronSet": VirtualPopulationIDNeuronSet(
         population=VIRTUAL_POPULATION,
@@ -158,10 +159,17 @@ class TestUnionCoverage:
 
         assert union_member_names(NEURONSimulationNeuronSetUnion) - covered == set()
 
-    def test_all_virtual_neurons_is_not_selectable(self, circuit_config):
-        """``AllVirtualNeurons`` only exists as the injected default, not as a user choice."""
-        with pytest.raises(KeyError, match="AllVirtualNeurons"):
-            circuit_config().add(AllVirtualNeurons(), name="Virtual")
+    def test_all_virtual_neurons_is_selectable(self, circuit_config):
+        """``AllVirtualNeurons`` is a selectable neuron set, like the biophysical and point ones.
+
+        It may span multiple virtual populations, which spike-replay stimuli do not yet support;
+        that unsupported case is rejected at simulation build time (see the spike stimulus's
+        single-population guard), not by excluding the set from the config.
+        """
+        config = circuit_config()
+        config.add(AllVirtualNeurons(), name="Virtual")
+
+        assert "Virtual" in config.neuron_sets
 
 
 class TestNeuronSetsReachNodeSetsFile:

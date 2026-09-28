@@ -4,6 +4,7 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.morphology_locations.clustered import (
+    ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
 )
@@ -12,15 +13,18 @@ from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.random import (
+    RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
 
 # Locations sampled across the morphologies of a targeted neuron set. Every neuron receives its
 # own sampled locations, so a section id always refers to the morphology it was sampled on.
 _GENERATED_MORPHOLOGY_LOCATIONS = (
-    ClusteredMorphologyLocations
+    ClusteredGroupedMorphologyLocations
+    | ClusteredMorphologyLocations
     | ClusteredPathDistanceMorphologyLocations
     | PathDistanceMorphologyLocations
+    | RandomGroupedMorphologyLocations
     | RandomMorphologyLocations
 )
 
