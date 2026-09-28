@@ -254,6 +254,18 @@ def test_the_mechanisms_dir_is_created_if_it_does_not_exist(tmp_path):
     assert mechanisms_dir.is_dir()
 
 
+def test_the_intrinsic_mini_mechanisms_are_always_staged(tmp_path):
+    # Every neuron carries the AMPA/GABA minis independent of its synapses, and simulations name
+    # them at every scale, so ensure_mechanisms_dir stages them for every caller - not only when
+    # a synaptic model is placed.
+    config_path = _mechanisms_dir_config(tmp_path)
+
+    mechanisms_dir = ensure_mechanisms_dir(config_path, MECHANISMS_DIR_EDGE_POPULATION_NAME)
+
+    assert (mechanisms_dir / "ProbAMPANMDA_EMS.mod").is_file()
+    assert (mechanisms_dir / "ProbGABAAB_EMS.mod").is_file()
+
+
 def test_write_mod_files_copies_the_generic_mod_files_for_every_model_in_play(tmp_path):
     assigners = [_assigner_for(ExcitatoryTsodyksMarkramSynapticModel())]
 

@@ -50,7 +50,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     params_definition_input_from_config,
 )
 
-from .test_parameter_selection import _model_entity, _scan_config_data
+from .test_parameter_selection import _model_entity, _scan_config_data, _somatic_assignment
 
 
 def _reference() -> IonChannelModelFromID:
@@ -526,7 +526,10 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
     assert calls["emodel"]["validation_result_status"] is False
     assert calls["memodel"]["emodel"].id == "emodel-id"
     assert calls["memodel"]["validation_status"] == ValidationStatus.created
-    assert calls["memodel"]["lifecycle_status"] == EntityLifecycleStatus.draft
+    assert calls["emodel"]["lifecycle_status"] == EntityLifecycleStatus.active
+    assert calls["memodel"]["lifecycle_status"] == EntityLifecycleStatus.active
+    assert calls["emodel"]["name"] == "test"
+    assert calls["memodel"]["name"] == "test MEModel"
     assert morphology.metadata_entities.call_count == 1
     assert reference.entity.call_count == 1
     assert etype.entity.call_count == 1
@@ -624,13 +627,15 @@ def _decay_distribution():
 
 def test_scan_config_rejects_distribution_declaration_and_usage_errors():
     undeclared = _selection(
-        distribution_parameters={"missing": {"constant": OptimizationValue(value=1.0)}}
+        mechanism_regions=_somatic_assignment(),
+        distribution_parameters={"missing": {"constant": OptimizationValue(value=1.0)}},
     )
     with pytest.raises(ValueError, match="reference undeclared distribution 'missing'"):
         EModelOptimizationScanConfig.model_validate(_config_data_for_selection(undeclared))
 
     unknown_parameter = _selection(
-        distribution_parameters={"decay": {"unknown": OptimizationValue(value=1.0)}}
+        mechanism_regions=_somatic_assignment(),
+        distribution_parameters={"decay": {"unknown": OptimizationValue(value=1.0)}},
     )
     with pytest.raises(ValueError, match="undeclared parameters"):
         EModelOptimizationScanConfig.model_validate(
@@ -638,6 +643,7 @@ def test_scan_config_rejects_distribution_declaration_and_usage_errors():
         )
 
     undeclared_usage = _selection(
+        mechanism_regions=_somatic_assignment(),
         base_parameters={
             "all": {
                 "cm": ParameterSelection(
@@ -645,12 +651,13 @@ def test_scan_config_rejects_distribution_declaration_and_usage_errors():
                     distribution="missing",
                 )
             }
-        }
+        },
     )
     with pytest.raises(ValueError, match="Parameters reference undeclared distributions"):
         EModelOptimizationScanConfig.model_validate(_config_data_for_selection(undeclared_usage))
 
     missing_value = _selection(
+        mechanism_regions=_somatic_assignment(),
         base_parameters={
             "all": {
                 "cm": ParameterSelection(
@@ -658,7 +665,7 @@ def test_scan_config_rejects_distribution_declaration_and_usage_errors():
                     distribution="decay",
                 )
             }
-        }
+        },
     )
     with pytest.raises(ValueError, match="Used distribution 'decay' is missing values"):
         EModelOptimizationScanConfig.model_validate(
@@ -669,7 +676,7 @@ def test_scan_config_rejects_distribution_declaration_and_usage_errors():
 def test_scan_config_rejects_empty_ion_channel_model_selection():
     selection = _selection(ion_channel_models=())
 
-    with pytest.raises(ValueError, match="ion_channel_models must be set"):
+    with pytest.raises(ValueError, match="at least 1 item"):
         EModelOptimizationScanConfig.model_validate(_config_data_for_selection(selection))
 
 
@@ -697,7 +704,11 @@ def test_remaining_block_validation_and_serialization_paths():
     ):
         config = EModelOptimizationScanConfig.model_validate(
             _config_data_for_selection(
-                _selection(base_parameters={}, global_parameters={}),
+                _selection(
+                    mechanism_regions=_somatic_assignment(),
+                    base_parameters={},
+                    global_parameters={},
+                ),
                 morphology_settings={"axon_modifier": modifier},
             )
         )

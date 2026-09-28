@@ -188,7 +188,6 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     )
     synapse_groups: dict[str, SynapticModelPlacerUnion] = Field(
         default_factory=dict,
-        min_length=1,
         title="Synapse groups",
         description="Incoming synapse groups to attach to the ME-model.",
         json_schema_extra={

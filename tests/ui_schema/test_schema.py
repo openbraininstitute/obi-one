@@ -233,7 +233,9 @@ def validate_emodel_optimisation_parameters(schema: dict, _key: str, ref: str) -
     nested fields carry no schema-driven UI metadata.
 
     The one exception is ``mechanisms.ion_channel_models``, which is a normal
-    ``model_identifier_multiple`` selector; its ui_element is validated here.
+    ``model_identifier_multiple`` selector; its ui_element is validated here. The data the
+    frontend reads from the schema is validated too: the section-list ``choices`` and the
+    ``global_parameters`` default.
     """
 
     def resolve(node: dict) -> dict:
@@ -271,6 +273,14 @@ def validate_emodel_optimisation_parameters(schema: dict, _key: str, ref: str) -
         )
         raise ValueError(msg)
     validate_section_list_choices(resolve(mechanism_regions), "mechanism_regions", ref)
+
+    # The frontend's Global Parameters tab reads this default.
+    if "default" not in schema.get("properties", {}).get("global_parameters", {}):
+        msg = (
+            f"Validation error at {ref}: emodel_optimisation_parameters global_parameters must "
+            "have a 'default'"
+        )
+        raise ValueError(msg)
 
 
 # Every section-list choice object the frontend renders must expose these keys, each with
@@ -815,3 +825,10 @@ def test_section_list_choices_rejects_wrong_element_type():
     ]
     with pytest.raises(TypeError, match="choice 'available' must be a bool"):
         validate_section_list_choices(schema, SECTION_LIST_CHOICES_FIELD, "ref")
+
+
+def test_global_parameters_rejects_missing_default():
+    schema = copy.deepcopy(openapi_schema["components"]["schemas"]["EModelOptimisationParameters"])
+    del schema["properties"]["global_parameters"]["default"]
+    with pytest.raises(ValueError, match="global_parameters must have a 'default'"):
+        validate_emodel_optimisation_parameters(schema, "emodel_optimisation_parameters", "ref")

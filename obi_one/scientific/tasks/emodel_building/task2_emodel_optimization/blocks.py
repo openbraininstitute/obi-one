@@ -21,6 +21,7 @@ from pydantic import (
     ConfigDict,
     Discriminator,
     Field,
+    FiniteFloat,
     NonNegativeFloat,
     NonNegativeInt,
     PositiveFloat,
@@ -426,40 +427,59 @@ REGIONAL_PARAMETER_LOCATIONS: frozenset[RegionalSectionListName] = frozenset(
 
 
 class OptimizationValue(Block):
-    """A fixed value or an optimizable lower/upper bound pair."""
+    """A fixed value or an optimizable lower/upper bound pair.
+
+    Mode ``fixed`` requires ``value``; mode ``bounds`` requires ``bounds``. The field the mode
+    does not use stays null.
+    """
+
+    # The JSON schema form of validate_mode, so the frontend can enforce it too.
+    json_schema_extra_additions: ClassVar[dict] = {
+        "if": {"properties": {"mode": {"const": "bounds"}}, "required": ["mode"]},
+        "then": {
+            "required": ["bounds"],
+            "properties": {"bounds": {"type": "array"}, "value": {"type": "null"}},
+        },
+        "else": {
+            "required": ["value"],
+            "properties": {"value": {"type": "number"}, "bounds": {"type": "null"}},
+        },
+    }
 
     mode: Literal["fixed", "bounds"] = Field(
         default="fixed",
         title="Value mode",
         description="Choose a fixed value or an optimizable interval.",
     )
-    value: float | None = Field(
+    value: FiniteFloat | None = Field(
         default=None,
         title="Fixed value",
         description="Value used when the mode is fixed.",
     )
-    bounds: tuple[float, float] | None = Field(
+    # Not tuple[float, float]: its schema types the items with `prefixItems`, which the
+    # frontend's draft-07 ajv ignores, so null items would pass. `items` is checked by both.
+    bounds: (
+        Annotated[
+            tuple[FiniteFloat, ...],
+            Field(
+                min_length=2,
+                max_length=2,
+                json_schema_extra={SchemaKey.STRICTLY_INCREASING: True},
+            ),
+        ]
+        | None
+    ) = Field(
         default=None,
         title="Optimization bounds",
         description=(
-            "Lower and upper bounds used when the mode is bounds. If omitted, "
-            "the compiler may use an approved type-specific fallback."
+            "Lower and upper bounds used when the mode is bounds. The upper bound must be "
+            "greater than the lower bound."
         ),
     )
 
     @model_validator(mode="after")
     def validate_mode(self) -> "OptimizationValue":
-        """Keep fixed values and bounds mutually exclusive and finite."""
-        if self.value is not None and not math.isfinite(self.value):
-            msg = "Optimization values must be finite."
-            raise ValueError(msg)
-        if self.bounds is not None:
-            if any(not math.isfinite(bound) for bound in self.bounds):
-                msg = "Optimization bounds must be finite."
-                raise ValueError(msg)
-            if self.bounds[0] > self.bounds[1]:
-                msg = "Optimization lower bound must not exceed the upper bound."
-                raise ValueError(msg)
+        """Require the field of the selected mode only, with increasing bounds."""
         if self.mode == "fixed":
             if self.value is None:
                 msg = "A fixed optimization value is required when mode is 'fixed'."
@@ -467,9 +487,16 @@ class OptimizationValue(Block):
             if self.bounds is not None:
                 msg = "Bounds cannot be provided when mode is 'fixed'."
                 raise ValueError(msg)
-        elif self.value is not None:
-            msg = "A fixed value cannot be provided when mode is 'bounds'."
-            raise ValueError(msg)
+        else:
+            if self.bounds is None:
+                msg = "Bounds are required when mode is 'bounds'."
+                raise ValueError(msg)
+            if self.value is not None:
+                msg = "A fixed value cannot be provided when mode is 'bounds'."
+                raise ValueError(msg)
+            if self.bounds[0] >= self.bounds[1]:
+                msg = "Optimization upper bound must be greater than the lower bound."
+                raise ValueError(msg)
         return self
 
 
@@ -642,11 +669,12 @@ def _bounded_parameter(lower: float, upper: float) -> ParameterSelection:
     )
 
 
-def _default_global_parameters() -> dict[str, GlobalParameterSelection]:
-    return {
-        "v_init": GlobalParameterSelection(value=OptimizationValue(value=-80.0)),
-        "celsius": GlobalParameterSelection(value=OptimizationValue(value=34.0)),
-    }
+# A plain JSON default rather than a default_factory, so it is published in the schema and the
+# frontend reads it from there. Fields using it set validate_default=True to get the blocks.
+DEFAULT_GLOBAL_PARAMETERS = {
+    "v_init": {"type": "GlobalParameterSelection", "value": {"mode": "fixed", "value": -80.0}},
+    "celsius": {"type": "GlobalParameterSelection", "value": {"mode": "fixed", "value": 34.0}},
+}
 
 
 def _default_base_parameters() -> dict[SectionListName, dict[str, ParameterSelection]]:
@@ -717,15 +745,18 @@ class MechanismsBySectionList(Block):
     """Mechanism catalogue and region assignments for the GUI workflow."""
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
-        default_factory=tuple,
+        min_length=1,
         title="Ion channel models",
         description=(
             "Ion channel model entities available for assignment to morphology section lists."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
     )
-    mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
-        default_factory=dict,
+    mechanism_regions: dict[
+        SectionListName,
+        Annotated[tuple[MechanismRegionSelection, ...], Field(min_length=1)],
+    ] = Field(
+        min_length=1,
         title="Mechanisms by section list",
         description=(
             "Assign selected ion channel models to BluePyEModel section lists. The same model "
@@ -752,7 +783,6 @@ class EModelOptimisationParameters(Block):
     """Root-level Task 2 mechanism and optimization-parameter configuration."""
 
     mechanisms: MechanismsBySectionList = Field(
-        default_factory=MechanismsBySectionList,
         title="Mechanisms",
         description=(
             "Select ion channel models, assign them to section lists, and configure their "
@@ -760,7 +790,8 @@ class EModelOptimisationParameters(Block):
         ),
     )
     global_parameters: dict[str, GlobalParameterSelectionUnion] = Field(
-        default_factory=_default_global_parameters,
+        default=DEFAULT_GLOBAL_PARAMETERS,
+        validate_default=True,
         title="Global parameters",
         description="Editable global values such as v_init and celsius.",
     )
@@ -854,7 +885,8 @@ class ParametersSelection(Block):
         },
     )
     global_parameters: dict[str, GlobalParameterSelectionUnion] = Field(
-        default_factory=_default_global_parameters,
+        default=DEFAULT_GLOBAL_PARAMETERS,
+        validate_default=True,
         title="Global parameters",
         description=(
             "Editable global values such as v_init and celsius. Shown as the 'Global' card; "
@@ -1149,7 +1181,7 @@ class OptimizationParams(Block):
     """Algorithm-specific ``optimisation_params`` passed to BluePyEModel."""
 
     offspring_size: PositiveInt | list[PositiveInt] = Field(
-        default=20,
+        default=5,
         title="Offspring size",
         description=(
             "Population size per generation. The L5PC example uses 20; we default"
@@ -1272,7 +1304,7 @@ class OptimizationSettings(Block):
     """Pydantic form for optimization, evaluation, validation, and analysis recipe settings."""
 
     optimiser: Literal["SO-CMA", "MO-CMA", "IBEA"] = Field(
-        default="MO-CMA",
+        default="SO-CMA",
         title="Optimiser",
         description=(
             "BluePyEModel optimiser. ``SO-CMA`` is single-objective CMA, ``MO-CMA`` is "
@@ -1281,7 +1313,7 @@ class OptimizationSettings(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
     max_ngen: PositiveInt | list[PositiveInt] = Field(
-        default=100,
+        default=20,
         title="Max generations",
         description="Maximum number of optimizer generations.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
