@@ -1154,6 +1154,57 @@ def test_register_circuit_passes_include_overview_images():
     assert mock_gen.call_args.kwargs["include_overview_images"] is False
 
 
+def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_assets(tmp_path):
+    """A user-uploaded image is registered synchronously even with skip_additional_assets=True.
+
+    The draft path skips generated assets (deferred to the post-validation job) but must still
+    attach the image the user supplied, so it is present before that job runs.
+    """
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    overview = tmp_path / "overview.png"
+    overview.write_bytes(b"fake png")
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
+        ) as mock_sim,
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            skip_additional_assets=True,
+            overview_image_path=overview,
+        )
+
+    # Generated assets are skipped, but the uploaded overview image is attached synchronously.
+    mock_gen.assert_not_called()
+    mock_overview.assert_called_once()
+    assert mock_overview.call_args.kwargs["image_path"] == overview
+    mock_sim.assert_not_called()
+
+
 def test_register_circuit_with_derivation():
     """Test that derivation link is created when parent is provided."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
@@ -1901,8 +1952,9 @@ def test_generate_additional_skips_compressed_when_not_requested(tmp_path):
     mock_compress.assert_not_called()
 
 
-def test_generate_additional_async_scope_skips_visualization(tmp_path):
-    """Async job scope (include_overview_images=False) skips plots and overview images."""
+def test_generate_additional_generates_plots_but_skips_overview_images(tmp_path):
+    """include_overview_images=False still (re)generates plots with the matrix, only the
+    overview / sim-designer images are skipped."""
     circuit_dir = tmp_path / "my_circuit"
     circuit_dir.mkdir()
     config = circuit_dir / "circuit_config.json"
@@ -1941,7 +1993,7 @@ def test_generate_additional_async_scope_skips_visualization(tmp_path):
 
     mock_compress.assert_called_once()
     mock_matrix.assert_called_once()
-    mock_plots.assert_not_called()
+    mock_plots.assert_called_once()
     mock_overview.assert_not_called()
     mock_sim.assert_not_called()
 
@@ -1972,6 +2024,82 @@ def test_generate_additional_skips_matrices_when_already_present(tmp_path):
         )
 
     mock_matrix.assert_not_called()
+
+
+def test_generate_additional_regenerates_plots_with_the_matrix(tmp_path):
+    """Connectivity plots are coupled to the matrix: when the matrix is (re)generated the
+    plots are too, regardless of include_overview_images."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ) as mock_matrix,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=True,
+        )
+
+    mock_matrix.assert_called_once()
+    mock_plots.assert_called_once()
+
+
+def test_generate_additional_skips_an_image_already_present(tmp_path):
+    """An image already attached (e.g. a user-uploaded one) is not regenerated/overwritten."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    overview_asset = MagicMock()
+    overview_asset.label = "circuit_visualization"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [overview_asset]
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ),
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_sim_designer_image_asset"
+        ) as mock_sim,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=False,
+            include_overview_images=True,
+        )
+
+    # The overview image is already present, so it is skipped; the sim-designer image is not.
+    mock_overview.assert_not_called()
+    mock_sim.assert_called_once()
 
 
 def test_register_circuit_preserves_parent_and_inherited_emodel_derivations():

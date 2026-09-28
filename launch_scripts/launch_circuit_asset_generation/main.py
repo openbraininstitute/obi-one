@@ -1,9 +1,10 @@
 """Launch script for circuit asset generation task.
 
-Runs on ECS. Stages the circuit and generates compressed circuit + connectivity
-matrices only. Visualization assets (plots, overview, sim-designer images) are
-produced synchronously at register/customize time and are not regenerated here.
-Best-effort: failures are logged but do not affect circuit status.
+Runs on ECS. Stages the circuit and generates the compressed circuit, connectivity
+matrices, connectivity plots, and the overview / sim-designer images. Any image the
+user uploaded at registration time is already attached and is left untouched (skipped
+rather than overwritten). Best-effort: failures are logged but do not affect circuit
+status.
 
 Environment Variables Required:
     PERSISTENT_TOKEN_ID: Persistent authentication token.
@@ -91,7 +92,7 @@ def main() -> int:
                 client=db_client,
                 circuit_entity=circuit,
                 force=args.force,
-                include_overview_images=False,
+                include_overview_images=True,
             )
 
         L.info("Asset generation complete for circuit %s", UUID(args.circuit_id))

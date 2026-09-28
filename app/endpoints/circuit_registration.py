@@ -173,11 +173,14 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
             authorized_public=authorized_public,
             skip_validation=True,
             lifecycle_status="draft",
-            include_overview_images=not dry_run,
             overview_image_path=overview_image_path,
             sim_designer_image_path=sim_designer_image_path,
             dry_run=dry_run,
-            skip_additional_assets=dry_run,
+            # Draft carries no generated assets: compressed circuit, connectivity matrices/plots,
+            # and overview/sim-designer images are produced by the post-validation asset job, so a
+            # circuit disqualified in validation never ends up with them. A user-uploaded image is
+            # the exception and is attached synchronously by register_circuit.
+            skip_additional_assets=True,
         )
     except (OSError, tarfile.TarError) as e:
         raise HTTPException(
@@ -383,9 +386,9 @@ def generate_assets_endpoint(
 ) -> dict:
     """Trigger asset generation for an active circuit.
 
-    Re-launchable: generates compressed circuit and connectivity matrices.
-    Visualization assets are created at register/customize time and are not
-    regenerated here. Does not affect readiness_status.
+    Re-launchable: generates the compressed circuit, connectivity matrices and plots,
+    and the overview / sim-designer images (skipping any image the user uploaded, which
+    is attached at registration time). Does not affect readiness_status.
 
     Returns ``job_id`` so clients can follow progress and logs via
     ``GET /declared/task/{job_id}`` and ``GET /declared/task/{job_id}/stream``.

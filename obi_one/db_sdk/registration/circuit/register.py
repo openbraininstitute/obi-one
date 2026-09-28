@@ -9,7 +9,11 @@ from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
 from obi_one.db_sdk.registration.circuit.assets import register_asset
-from obi_one.db_sdk.registration.circuit.generate import generate_additional_circuit_assets
+from obi_one.db_sdk.registration.circuit.generate import (
+    generate_additional_circuit_assets,
+    generate_overview_image_asset,
+    generate_sim_designer_image_asset,
+)
 from obi_one.db_sdk.registration.circuit.links import (
     register_contributions,
     register_derivation,
@@ -451,6 +455,29 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             include_compressed=include_compressed,
             include_overview_images=include_overview_images,
         )
+    elif not dry_run and (overview_image_path is not None or sim_designer_image_path is not None):
+        # Generated assets are deferred to the post-validation job, but a user-uploaded image is
+        # attached right away so it is present before that job runs (which then skips any image
+        # already present rather than overwriting the user's). Only the provided image(s) are
+        # registered here - no plots, matrices, or figures are generated.
+        config_path = Path(circuit_path)
+        viz_dir = config_path.parents[1] / (config_path.parent.name + "__CIRCUIT_VIZ__")
+        if overview_image_path is not None:
+            generate_overview_image_asset(
+                plot_dir=None,
+                output_dir=viz_dir,
+                image_path=Path(overview_image_path),
+                client=client,
+                circuit_entity=registered_circuit,
+            )
+        if sim_designer_image_path is not None:
+            generate_sim_designer_image_asset(
+                plot_dir=None,
+                output_dir=viz_dir,
+                image_path=Path(sim_designer_image_path),
+                client=client,
+                circuit_entity=registered_circuit,
+            )
 
     if neurodamus_validation and not dry_run and registered_circuit is not None:
         result = run_circuit_validation(
