@@ -332,7 +332,7 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         target_simulator=TargetSimulator.NEURON,
         experiment_date="2026-08-05",
         license=license_entity,
-        derived_from=emodel,
+        derived_from_emodel=emodel,
         derivation_type=DerivationType.emodel_circuit,
         derivation_label="hoc:cADpyr_L5TPC",
         skip_validation=True,
