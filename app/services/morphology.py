@@ -156,6 +156,13 @@ def convert_morphology(
     target_exts: Iterable[str] | None = None,
     output_stem: str | None = None,
 ) -> MorphologyFiles:
+    """Convert a morphology to every target extension.
+
+    Raises:
+        HTTPException: 422 when the file itself cannot be converted (bad structure), so callers
+            may treat it the same as a load failure; 500 for system errors such as a full disk.
+
+    """
     file_extension = input_file.suffix
     output_stem = output_stem or input_file.stem
     target_exts = target_exts or ALLOWED_EXTENSIONS - {file_extension}
@@ -171,18 +178,21 @@ def convert_morphology(
                 single_point_soma=single_point_soma,
             )
         except OSError as e:
-            # OSError includes disk full, permission denied, etc. - server errors
+            # Disk full, permissions, etc. - a server problem, not the file's fault.
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
                     "code": ApiErrorCode.INVALID_REQUEST,
-                    "detail": f"Failed to convert the file due to system error: {e!s}",
+                    "detail": f"Failed to convert the file due to a system error: {e!s}",
                 },
             ) from e
         except Exception as e:
-            # Other exceptions (including morph_tool errors) are 400
+            # Not a system error, so the file loaded but could not be converted, e.g. an
+            # unsupported soma type or degenerate geometry from the numeric soma conversion.
+            # morph_tool signals these as MorphToolException/MorphioError; anything else here is
+            # still tied to this input, so attribute it to the file rather than the server.
             raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
                 detail={
                     "code": ApiErrorCode.INVALID_REQUEST,
                     "detail": f"Failed to convert the file: {e!s}",

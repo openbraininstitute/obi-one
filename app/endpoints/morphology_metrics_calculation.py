@@ -61,6 +61,11 @@ ALLOWED_EXT_STR: Final[str] = ", ".join(ALLOWED_EXTENSIONS)
 
 BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
 
+# Service contract (see load_morphio_morphology / convert_morphology): this status means the
+# failure is a property of the uploaded file, so it may be stored as disqualified. Any other
+# status is a server or request error and is always propagated.
+FILE_IS_INVALID_STATUS: Final[HTTPStatus] = HTTPStatus.UNPROCESSABLE_ENTITY
+
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
 
@@ -314,9 +319,10 @@ def _register_disqualified_morphology(
     entity_payload: dict[str, Any],
     validation_error: str,
 ) -> MorphologyRegistrationResponse:
-    """Register a morphology whose file could not be read, keeping the original upload.
+    """Register a morphology that failed validation, keeping the original upload.
 
-    Conversion, morphometrics and meshing cannot run on a file morphio could not load.
+    Applies when the file cannot be parsed or cannot be converted. Conversion, morphometrics
+    and meshing are skipped, since none of them can run on a file that could not be processed.
     """
     L.warning(
         "Morphology '%s' failed validation, registering as disqualified: %s",
@@ -384,34 +390,33 @@ async def _run_pipeline(
             stack.callback((output_dir / f"{output_stem}{ext}").unlink, missing_ok=True)
 
         try:
-            # First try to load the morphology with morphio
+            # Loading and conversion both raise 422 when the failure is a property of the file
+            # (unparseable, or a structure morph_tool cannot convert). System errors such as a
+            # full disk surface as 500 and are re-raised below.
             await run_in_threadpool(
                 load_morphio_morphology,
                 file_path=pathlib.Path(temp_file_path),
                 raise_warnings=False,
             )
+            converted_files: MorphologyFiles = await run_in_threadpool(
+                convert_morphology,
+                input_file=pathlib.Path(temp_file_path),
+                output_dir=output_dir,
+                output_stem=output_stem,
+                single_point_soma_by_ext=single_point_soma_by_ext,
+            )
         except HTTPException as exc:
-            # Only a morphology that cannot be loaded at all qualifies for disqualified status
-            if not store_if_invalid:
+            file_is_invalid = exc.status_code == FILE_IS_INVALID_STATUS
+            if not (store_if_invalid and file_is_invalid):
                 raise
             detail = exc.detail
-            validation_error = detail["detail"] if isinstance(detail, dict) else str(detail)
             return _register_disqualified_morphology(
                 client=client,
                 morphology_name=morphology_name,
                 content=content,
                 entity_payload=entity_payload,
-                validation_error=validation_error,
+                validation_error=detail["detail"] if isinstance(detail, dict) else str(detail),
             )
-
-        # The file loaded successfully, now try to convert it
-        converted_files: MorphologyFiles = await run_in_threadpool(
-            convert_morphology,
-            input_file=pathlib.Path(temp_file_path),
-            output_dir=output_dir,
-            output_stem=output_stem,
-            single_point_soma_by_ext=single_point_soma_by_ext,
-        )
 
         analysis_path = _get_h5_analysis_path(
             original_file_path=temp_file_path,

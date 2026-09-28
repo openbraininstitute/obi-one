@@ -820,31 +820,27 @@ class TestStoreInvalidMorphology:
         )
         assert "store_if_invalid" not in payload
 
-    @pytest.mark.parametrize("status_code", [400, 500])
-    def test_non_validation_failures_are_not_disqualified(self, client, spies, status_code):
-        """Only 422 means "not a morphology". A conversion or infra failure must stay an error.
+    def test_system_error_during_conversion_stays_an_error(self, client, spies):
+        """A 500 from conversion is a server problem (e.g. full disk), not a bad file.
 
-        convert_morphology wraps any exception from morph_tool, including environmental ones,
-        in a 400. Recording those as disqualified would blame the user's file for a server
-        problem, and would return 200 for a request that actually failed.
+        It must surface as an error and must not create a disqualified entity, otherwise a
+        transient outage would leave orphaned records behind.
         """
 
         def _fail(*_args, **_kwargs):
             raise HTTPException(
-                status_code=status_code,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
                     "code": "INVALID_REQUEST",
-                    "detail": "Failed to convert the file: no space",
+                    "detail": "Failed to convert the file due to a system error: no space",
                 },
             )
 
         with pytest.MonkeyPatch.context() as mp:
-            # Mock load_morphio_morphology to succeed (file is valid)
             mp.setattr(
                 "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
                 lambda *_args, **_kwargs: None,
             )
-            # Mock convert_morphology to fail with the given status code
             mp.setattr(
                 "app.endpoints.morphology_metrics_calculation.convert_morphology",
                 _fail,
@@ -855,7 +851,75 @@ class TestStoreInvalidMorphology:
                 files={"file": ("bad.swc", b"garbage")},
             )
 
-        assert response.status_code == status_code, response.json()
+        assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR, response.json()
+        spies["register"].assert_not_called()
+
+    def test_unconvertible_file_is_disqualified(self, client, spies):
+        """A file that loads but cannot be converted is a file problem, stored as disqualified.
+
+        convert_morphology raises 422 for structural problems it cannot convert (an unsupported
+        soma type, for example). With the opt-in, that is kept rather than rejected, the same as
+        a file morphio cannot load at all.
+        """
+
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": "Failed to convert the file: unsupported soma type",
+                },
+            )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+                lambda *_args, **_kwargs: None,
+            )
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.convert_morphology",
+                _fail,
+            )
+            response = client.post(
+                ROUTE,
+                data={"metadata": json.dumps({"store_if_invalid": True})},
+                files={"file": ("bad.swc", b"garbage")},
+            )
+
+        assert response.status_code == HTTPStatus.OK, response.json()
+        body = response.json()
+        assert body["lifecycle_status"] == "disqualified"
+        assert body["validation_error"] == "Failed to convert the file: unsupported soma type"
+        spies["register"].assert_called_once()
+
+    def test_conversion_failure_without_opt_in_still_errors(self, client, spies):
+        """Without the opt-in, a 422 conversion failure is rejected as before."""
+
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": "Failed to convert the file: unsupported soma type",
+                },
+            )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+                lambda *_args, **_kwargs: None,
+            )
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.convert_morphology",
+                _fail,
+            )
+            response = client.post(
+                ROUTE,
+                data={"metadata": json.dumps({})},
+                files={"file": ("bad.swc", b"garbage")},
+            )
+
+        assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, response.json()
         spies["register"].assert_not_called()
 
     def _post_with_failing_upload(self, client, spies, *, delete_fails: bool):

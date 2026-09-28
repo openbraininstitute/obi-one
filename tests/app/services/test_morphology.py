@@ -323,7 +323,8 @@ class TestConvertMorphology:
 
         assert result.swc == tmp_path / "neuron.swc"
 
-    def test_raises_http_exception_on_conversion_error(self, tmp_path):
+    def test_conversion_error_is_unprocessable(self, tmp_path):
+        """A file that loads but cannot be converted is the file's fault, so 422 not 400/500."""
         input_file = tmp_path / "neuron.swc"
         input_file.write_text("dummy")
 
@@ -338,8 +339,27 @@ class TestConvertMorphology:
                 target_exts=[".h5"],
             )
 
-        assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+        assert exc_info.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
         assert "Failed to convert the file" in exc_info.value.detail["detail"]
+
+    def test_system_error_during_conversion_is_500(self, tmp_path):
+        """An OSError (disk full, permissions) is a server problem, so 500."""
+        input_file = tmp_path / "neuron.swc"
+        input_file.write_text("dummy")
+
+        with (
+            pytest.raises(HTTPException) as exc_info,
+            patch(_MORPH_TOOL, side_effect=OSError("No space left on device")),
+        ):
+            convert_morphology(
+                input_file,
+                output_dir=tmp_path,
+                single_point_soma_by_ext={".h5": False},
+                target_exts=[".h5"],
+            )
+
+        assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        assert "system error" in exc_info.value.detail["detail"]
 
     def test_single_point_soma_passed_to_morph_tool(self, tmp_path):
         input_file = tmp_path / "neuron.h5"
