@@ -161,13 +161,12 @@ class TestReadAmplitudesFromNwb:
         out = read_amplitudes_from_nwb(path, ["GenericStep"])
         assert out["GenericStep"] == [0.0, 0.05]
 
-    def test_scala_reports_file_protocol_name(self, tmp_path):
-        """Reported names not among the requested ones are still returned."""
+    def test_scala_filters_to_requested_protocol_class(self, tmp_path):
+        """Unrelated file protocols are dropped; same-class names still match."""
         path = tmp_path / "cell.nwb"
         _write_scala_nwb(path, {"GenericStep__0": 100.0})
-        out = read_amplitudes_from_nwb(path, ["Unrelated"])
-        assert out["Unrelated"] == []
-        assert out["GenericStep"] == [0.1]
+        assert read_amplitudes_from_nwb(path, ["step"]) == {"GenericStep": [0.1]}
+        assert read_amplitudes_from_nwb(path, ["IDRest"]) == {}
 
 
 def _fake_inspect_nwb(traces):

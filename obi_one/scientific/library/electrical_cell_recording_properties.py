@@ -137,6 +137,7 @@ def estimate_step_amplitude(current: np.ndarray) -> float:
 
 def read_amplitudes_via_inspection(
     nwb_path: Path,
+    protocol_names: list[str] | None = None,
     *,
     round_decimals: int = 3,
 ) -> dict[str, list[float]]:
@@ -150,6 +151,11 @@ def read_amplitudes_via_inspection(
     are estimated with :func:`estimate_step_amplitude`. Traces whose unit
     ``to_nA`` does not recognise are skipped. Empty dict on unreadable files or
     when bluepyefe is not installed.
+
+    When ``protocol_names`` is given, only file protocols belonging to a
+    requested ``Protocol`` class (via ``protocol_class_name_for``) are
+    inspected — e.g. requested ``step`` matches the file's ``GenericStep``,
+    while unrelated protocols in the same file are excluded.
     """
     try:
         from bluepyefe.reader import (  # ruff: ignore[import-outside-top-level]
@@ -164,6 +170,13 @@ def read_amplitudes_via_inspection(
     except (OSError, NWBInspectionError):
         L.warning("bluepyefe could not inspect NWB file %s", nwb_path)
         return {}
+    if protocol_names is not None:
+        from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long, import-outside-top-level]
+            protocol_class_name_for,
+        )
+
+        wanted = {cls for p in protocol_names if (cls := protocol_class_name_for(p))}
+        protocols = [p for p in protocols if protocol_class_name_for(p) in wanted]
     amps: dict[str, list[float]] = {}
     for protocol_name in protocols:
         try:
@@ -207,16 +220,16 @@ def read_amplitudes_from_nwb(
 
     Files without the BBP ``data_organization`` layout are handled by
     :func:`read_amplitudes_via_inspection`, which reports amplitudes keyed by
-    the protocol names bluepyefe's readers use.
+    the protocol names bluepyefe's readers use, limited to the requested
+    protocol classes.
     """
     requested = set(protocol_names)
     amps: dict[str, set[float]] = {p: set() for p in protocol_names}
     with h5py.File(str(nwb_path), "r") as f:  # ruff: ignore[too-many-nested-blocks]
         if "data_organization" not in f or "stimulus" not in f:
-            fallback = read_amplitudes_via_inspection(nwb_path, round_decimals=round_decimals)
-            result = {p: sorted(fallback.get(p, [])) for p in protocol_names}
-            result.update({k: v for k, v in fallback.items() if k not in result})
-            return result
+            return read_amplitudes_via_inspection(
+                nwb_path, protocol_names, round_decimals=round_decimals
+            )
         from bluepyefe.tools import to_nA  # ruff: ignore[import-outside-top-level]
 
         stim_pres = f["stimulus"]["presentation"]
