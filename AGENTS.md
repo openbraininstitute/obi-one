@@ -105,6 +105,7 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - **Ruff** with `select = ["ALL"]` - very strict linting. Run `make format` before PRs.
 - **100 char line length**
 - **Google-style docstrings** (`pydocstyle convention = "google"`)
+- Comments and docstrings should explain non-obvious intent, not restate the code. Prefer none over redundant; don't duplicate what argparse/signatures already convey.
 - **Pydantic v2** for all data models
 - Do not add `from __future__ import annotations`.
 - Avoid protected (`_`-prefixed) constants and classes. Do not import protected functions from other modules; rename them to public names first (drop the leading `_`).
