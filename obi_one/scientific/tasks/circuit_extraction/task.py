@@ -298,8 +298,20 @@ class CircuitExtractionTask(Task):
             self._temp_dir.cleanup()
             self._temp_dir = None
 
-    def _register_output(self, db_client: Client, circuit_path: Path) -> models.Circuit | None:
-        """Register the extracted circuit entity with assets and derivation link."""
+    def _register_output(
+        self, db_client: Client, circuit_path: Path, *, async_validation: bool = False
+    ) -> models.Circuit | None:
+        """Register extracted circuit with assets and derivation link.
+
+        Args:
+            db_client: EntitySDK client.
+            circuit_path: Path to extracted circuit_config.json.
+            async_validation: Register as draft, validated later by launch-system job.
+                See ``register_circuit``.
+
+        Returns:
+            Registered circuit entity.
+        """
         parent = self._circuit_entity
 
         # Build circuit name and description
@@ -335,6 +347,7 @@ class CircuitExtractionTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=types.DerivationType.circuit_extraction,
+            async_validation=async_validation,
         )
 
     def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
@@ -453,8 +466,11 @@ class CircuitExtractionTask(Task):
         new_circuit_entity = None
         if db_client and self._circuit_entity:
             with BenchmarkTracker.section("register_circuit"):
+                # API launch (has activity): draft + async validation. Local run: in-process.
                 new_circuit_entity = self._register_output(
-                    db_client=db_client, circuit_path=new_circuit_path
+                    db_client=db_client,
+                    circuit_path=new_circuit_path,
+                    async_validation=execution_activity is not None,
                 )
 
             # Update execution activity (if any)

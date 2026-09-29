@@ -1,6 +1,7 @@
 import json
 import re
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pydantic
@@ -13,6 +14,7 @@ from obi_one.scientific.blocks.neuron_sets.combined import (
     SetOperation,
 )
 from obi_one.scientific.blocks.neuron_sets.population import VirtualPopulationNeuronSet
+from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionTask
 
 from tests.utils import CIRCUIT_DIR
 
@@ -347,3 +349,20 @@ def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
     # Combined = AllBiophysicalNeurons INTERSECT AllBiophysicalNeurons = all biophysical neurons
     c_orig = instance.initialize.circuit.sonata_circuit
     assert c_res.nodes["S1nonbarrel_neurons"].size == c_orig.nodes["S1nonbarrel_neurons"].size
+
+
+@pytest.mark.parametrize("async_validation", [True, False])
+def test_register_output_forwards_async_validation(tmp_path, async_validation):
+    task = Mock(_circuit_entity=Mock(root_circuit_id=None))
+    task._circuit_entity.name = "parent"
+    task.config.info.campaign_name = "campaign"
+    task.config.info.campaign_description = "description"
+    task.config.single_coordinate_scan_params.scan_params = []
+    with patch(
+        "obi_one.scientific.tasks.circuit_extraction.task.circuit_registration.register_circuit"
+    ) as mock_register:
+        CircuitExtractionTask._register_output(
+            task, Mock(), tmp_path / "circuit_config.json", async_validation=async_validation
+        )
+
+    assert mock_register.call_args.kwargs["async_validation"] is async_validation

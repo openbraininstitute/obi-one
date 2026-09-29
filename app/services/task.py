@@ -28,6 +28,7 @@ from app.schemas.task import (
     LaunchableTaskDefinition,
     MachineResources,
     Resources,
+    TaskDefinition,
     TaskDefinitionLegacy,
     TaskLaunchInfo,
     TaskLaunchSubmit,
@@ -90,6 +91,14 @@ def submit_task_job(
         project_context=project_context,
     )
     all_callbacks = [failure_callback, *callbacks]
+    if isinstance(task_definition, TaskDefinition) and task_definition.async_circuit_validation:
+        all_callbacks.append(
+            _generate_circuit_validation_callback(
+                activity_id=activity_id,
+                callback_url=callback_url,
+                project_context=project_context,
+            )
+        )
 
     match task_definition.task_type:
         case TaskType.circuit_simulation_brian2_machine:
@@ -336,6 +345,40 @@ def _generate_failure_callback(
     )
     return CallBack(
         event_type=CallBackEvent.job_on_failure,
+        action_type=CallBackAction.http_request_with_token,
+        config=config,
+    )
+
+
+def _generate_circuit_validation_callback(
+    *,
+    callback_url: str,
+    activity_id: UUID,
+    project_context: ProjectContext,
+) -> CallBack:
+    """Build job success callback that validates task draft circuits.
+
+    Project IDs go in headers: launch-system adds only token.
+
+    Args:
+        callback_url: Base task callback URL.
+        activity_id: Task execution activity ID.
+        project_context: Task project context.
+
+    Returns:
+        Callback for launch-system job.
+    """
+    config = HttpRequestCallBackConfig(
+        url=f"{callback_url}/circuit-validation",
+        method="POST",
+        params={"activity_id": str(activity_id)},
+        headers={
+            "virtual-lab-id": str(project_context.virtual_lab_id),
+            "project-id": str(project_context.project_id),
+        },
+    )
+    return CallBack(
+        event_type=CallBackEvent.job_on_success,
         action_type=CallBackAction.http_request_with_token,
         config=config,
     )

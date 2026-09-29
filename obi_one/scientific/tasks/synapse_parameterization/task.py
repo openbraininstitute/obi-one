@@ -57,9 +57,19 @@ class SynapseParameterizationTask(Task):
             self._temp_dir = None
 
     def _register_parameterized_circuit(
-        self, *, db_client: Client, circuit_path: Path
+        self, *, db_client: Client, circuit_path: Path, async_validation: bool = False
     ) -> models.Circuit | None:
-        """Register the parameterized circuit as a derivation of the original."""
+        """Register parameterized circuit as derivation of original.
+
+        Args:
+            db_client: EntitySDK client.
+            circuit_path: Output circuit folder.
+            async_validation: Register as draft, validated later by launch-system job.
+                See ``register_circuit``.
+
+        Returns:
+            Registered circuit entity, or None when no parent entity.
+        """
         parent = self._circuit_entity
         if parent is None:
             return None
@@ -80,6 +90,7 @@ class SynapseParameterizationTask(Task):
             parent=parent,
             derivation_type=types.DerivationType.circuit_rewiring,
             skip_validation=True,
+            async_validation=async_validation,
         )
 
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
@@ -172,8 +183,11 @@ class SynapseParameterizationTask(Task):
         if db_client and self._circuit_entity:
             L.info("Registering the output...")
             with BenchmarkTracker.section("register_circuit"):
+                # API launch (has activity): draft + async validation. Local run: in-process.
                 new_circuit_entity = self._register_parameterized_circuit(
-                    db_client=db_client, circuit_path=output_dir
+                    db_client=db_client,
+                    circuit_path=output_dir,
+                    async_validation=execution_activity is not None,
                 )
 
             # Update execution activity (if any) with the registered circuit

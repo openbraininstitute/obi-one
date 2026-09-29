@@ -643,6 +643,105 @@ def test_generate_failure_callback(project_context, activity_id):
     assert res.config.params == {"task_type": "circuit_extraction", "activity_id": str(activity_id)}
 
 
+def test_generate_circuit_validation_callback(project_context, activity_id):
+    res = test_module._generate_circuit_validation_callback(
+        callback_url="my-callback-url",
+        activity_id=activity_id,
+        project_context=project_context,
+    )
+
+    assert res.event_type == CallBackEvent.job_on_success
+    assert res.action_type == CallBackAction.http_request_with_token
+    assert res.config.url == "my-callback-url/circuit-validation"
+    assert res.config.method == "POST"
+    assert res.config.params == {"activity_id": str(activity_id)}
+    # Launch-system adds only token; project goes in headers.
+    assert res.config.headers == {
+        "virtual-lab-id": str(project_context.virtual_lab_id),
+        "project-id": str(project_context.project_id),
+    }
+
+
+@pytest.mark.parametrize(
+    ("task_type", "expected_callback_urls"),
+    [
+        (
+            TaskType.circuit_single_build,
+            ["http://my-callback-url/failure", "http://my-callback-url/circuit-validation"],
+        ),
+        (
+            TaskType.circuit_extraction,
+            ["http://my-callback-url/failure", "http://my-callback-url/circuit-validation"],
+        ),
+        (
+            TaskType.circuit_synaptic_physiology_assignment,
+            ["http://my-callback-url/failure", "http://my-callback-url/circuit-validation"],
+        ),
+        (
+            TaskType.em_synapse_mapping,
+            ["http://my-callback-url/failure", "http://my-callback-url/circuit-validation"],
+        ),
+        (TaskType.efeature_extraction, ["http://my-callback-url/failure"]),
+    ],
+)
+def test_submit_task_job__circuit_validation_callback(
+    task_type, expected_callback_urls, db_client, ls_client, project_context, httpx_mock
+):
+    """Only tasks registering draft circuits get validation success callback."""
+    task_definition = TASK_DEFINITIONS[task_type]
+    config_id = uuid4()
+    activity_id = uuid4()
+    activity_response = {"task_activity_type": task_definition.activity_type}
+    httpx_mock.add_response(
+        url=f"http://my-url/task-config/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "task_config_type": task_definition.config_type,
+            "meta": {},
+        },
+    )
+    httpx_mock.add_callback(
+        lambda request: httpx.Response(
+            status_code=200,
+            json=json.loads(request.content) | activity_response | {"id": str(activity_id)},
+        ),
+        url="http://my-url/task-activity",
+        method="POST",
+    )
+    httpx_mock.add_response(
+        url="http://my-launch-system-url/job", method="POST", json={"id": str(uuid4())}
+    )
+    httpx_mock.add_callback(
+        lambda request: httpx.Response(
+            status_code=200,
+            json={
+                "id": str(activity_id),
+                "start_time": datetime.now(UTC).isoformat(),
+                "status": "pending",
+            }
+            | activity_response
+            | json.loads(request.content),
+        ),
+        url=f"http://my-url/task-activity/{activity_id}",
+        method="PATCH",
+    )
+
+    test_module.submit_task_job(
+        config_id=config_id,
+        db_client=db_client,
+        ls_client=ls_client,
+        task_definition=task_definition,
+        project_context=project_context,
+        callback_url="http://my-callback-url",
+        callbacks=[],
+    )
+
+    job_request = httpx_mock.get_request(url="http://my-launch-system-url/job", method="POST")
+    job_callbacks = json.loads(job_request.content)["callbacks"]
+    assert [c["config"]["url"] for c in job_callbacks] == expected_callback_urls
+
+
 @pytest.mark.parametrize(
     ("task_type", "activity_route", "activity_response"),
     [

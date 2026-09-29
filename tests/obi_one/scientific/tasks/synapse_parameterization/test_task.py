@@ -7,6 +7,7 @@ registration branch (which needs a db_client and a parent entity) is skipped.
 
 import json
 import shutil
+from unittest.mock import Mock, patch
 
 import bluepysnap as snap
 import pytest
@@ -17,6 +18,7 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.tasks.synapse_parameterization.config import DEFAULT_SYNAPTIC_MODEL_NAME
+from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
 from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 from tests.utils import CIRCUIT_DIR
@@ -423,3 +425,16 @@ def test_fill_is_idempotent_after_a_reload_and_refill():
     reloaded.fill_none_references()
 
     assert reloaded.model_dump(mode="json") == after_first
+
+
+@pytest.mark.parametrize("async_validation", [True, False])
+def test_register_parameterized_circuit_forwards_async_validation(tmp_path, async_validation):
+    task = Mock(_circuit_entity=Mock(root_circuit_id=None))
+    with patch(
+        "obi_one.scientific.tasks.synapse_parameterization.task.circuit_registration.register_circuit"
+    ) as mock_register:
+        SynapseParameterizationTask._register_parameterized_circuit(
+            task, db_client=Mock(), circuit_path=tmp_path, async_validation=async_validation
+        )
+
+    assert mock_register.call_args.kwargs["async_validation"] is async_validation

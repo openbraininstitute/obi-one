@@ -128,6 +128,10 @@ class TaskDefinition(Schema):
     activity_type: TaskActivityType
     code: Code
     resources: Resources
+    # Task registers output circuits as draft (register_circuit(async_validation=True)).
+    # On job success, API submits validation job for them. Enable together with task change:
+    # draft without this callback never validated.
+    async_circuit_validation: bool = False
 
     @property
     def config_type_name(self) -> str:

@@ -46,6 +46,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.circuit_single_build: TaskDefinition(
         task_type=TaskType.circuit_single_build,
@@ -67,6 +68,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.circuit_simulation: TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
@@ -261,6 +263,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.em_synapse_mapping: TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
@@ -285,6 +288,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.efeature_extraction: TaskDefinition(
         task_type=TaskType.efeature_extraction,

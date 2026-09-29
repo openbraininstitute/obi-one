@@ -23,11 +23,28 @@ def register_output(
     total_internal: int,
     total_external: int,
     target_simulator: TargetSimulator = TargetSimulator.NEURON,
+    *,
+    async_validation: bool = False,
 ) -> str:
-    """Register the EM synapse mapping output as a circuit entity.
+    """Register EM synapse mapping output as circuit entity.
 
-    Uses register_circuit to handle entity creation, count computation,
-    folder upload, compression, and additional asset generation.
+    Delegates to ``register_circuit``: entity, counts, folder upload, extra assets.
+
+    Args:
+        db_client: EntitySDK client.
+        circuit_path: Path to output circuit_config.json.
+        resolved_neurons: Mapped neurons; set name and description.
+        source_dataset: Source EM dense reconstruction dataset.
+        em_dataset: EM dataset reference; gives license and publications.
+        all_notices: CAVE table notice texts, appended to description.
+        total_internal: Internal synapse count (multi-neuron description).
+        total_external: External synapse count (multi-neuron description).
+        target_simulator: Target simulator of circuit.
+        async_validation: Register as draft, validated later by launch-system job.
+            See ``register_circuit``.
+
+    Returns:
+        Registered circuit ID.
     """
     em_entity = em_dataset.entity(db_client)
     pt_root_ids = [rn.pt_root_id for rn in resolved_neurons]
@@ -72,6 +89,7 @@ def register_output(
         publications=publications,
         skip_additional_assets=False,
         skip_validation=True,
+        async_validation=async_validation,
     )
 
     L.info(f"Output registered as: {registered_circuit.id}")  # ty:ignore[unresolved-attribute]

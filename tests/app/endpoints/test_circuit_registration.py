@@ -1,18 +1,26 @@
 """Unit tests for circuit registration endpoint helpers."""
 
 import tarfile
+from datetime import UTC, datetime
+from http import HTTPStatus
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
+import entitysdk
 import pytest
+from entitysdk.common import ProjectContext
 from fastapi import HTTPException
 
 from app.endpoints.circuit_helpers import (
     trigger_asset_generation_task,
+    trigger_validation_for_generated_circuits,
     trigger_validation_task,
 )
 from app.endpoints.circuit_registration import register_circuit_endpoint
+from app.errors import ApiError
 from obi_one.utils.io import extract_tar_gz
+
+from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
 
 class TestExtractArchive:
@@ -136,6 +144,89 @@ class TestTriggerValidationTask:
         ls_client.post.assert_called_once()
         assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"
         assert "--force false" in ls_client.post.call_args[1]["json"]["inputs"]
+
+
+class TestTriggerValidationForGeneratedCircuits:
+    """Validation of task-generated circuits, triggered by task success callback."""
+
+    @staticmethod
+    def _db_client(httpx_mock, activity_id, generated):
+        httpx_mock.add_response(
+            url=f"http://my-url/task-activity/{activity_id}",
+            method="GET",
+            json={
+                "id": str(activity_id),
+                "status": "done",
+                "start_time": datetime.now(UTC).isoformat(),
+                "task_activity_type": "circuit_single_build__execution",
+                "generated": [
+                    {"id": str(entity_id), "type": entity_type, "lifecycle_status": status}
+                    for entity_id, entity_type, status in generated
+                ],
+            },
+        )
+        return entitysdk.Client(
+            api_url="http://my-url",
+            token_manager="my-token",  # ruff: ignore[hardcoded-password-func-arg]
+            project_context=ProjectContext(virtual_lab_id=VIRTUAL_LAB_ID, project_id=PROJECT_ID),
+        )
+
+    @patch("app.endpoints.circuit_helpers.trigger_validation_task")
+    def test_submits_only_draft_circuits(self, mock_trigger, httpx_mock):
+        activity_id = uuid4()
+        draft_circuit_id = uuid4()
+        job_id = uuid4()
+        mock_trigger.return_value = job_id
+        db_client = self._db_client(
+            httpx_mock,
+            activity_id,
+            [
+                (draft_circuit_id, "circuit", "draft"),
+                (uuid4(), "circuit", "active"),
+                (uuid4(), "memodel", "draft"),
+            ],
+        )
+        ls_client = MagicMock()
+
+        job_ids = trigger_validation_for_generated_circuits(
+            db_client=db_client,
+            ls_client=ls_client,
+            activity_id=activity_id,
+            compute_cell="cell_a",
+        )
+
+        assert job_ids == [job_id]
+        mock_trigger.assert_called_once_with(
+            ls_client=ls_client,
+            circuit_id=draft_circuit_id,
+            project_id=UUID(PROJECT_ID),
+            virtual_lab_id=UUID(VIRTUAL_LAB_ID),
+            compute_cell="cell_a",
+        )
+
+    @patch("app.endpoints.circuit_helpers.trigger_validation_task")
+    def test_raises_when_submission_fails(self, mock_trigger, httpx_mock):
+        """One failed submission does not stop others; error raised after all attempts."""
+        activity_id = uuid4()
+        failed_circuit_id = uuid4()
+        mock_trigger.side_effect = [None, uuid4()]
+        db_client = self._db_client(
+            httpx_mock,
+            activity_id,
+            [(failed_circuit_id, "circuit", "draft"), (uuid4(), "circuit", "draft")],
+        )
+
+        with pytest.raises(ApiError) as exc_info:
+            trigger_validation_for_generated_circuits(
+                db_client=db_client,
+                ls_client=MagicMock(),
+                activity_id=activity_id,
+                compute_cell="cell_a",
+            )
+
+        assert exc_info.value.http_status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        assert str(failed_circuit_id) in exc_info.value.message
+        assert mock_trigger.call_count == 2
 
 
 # ---------------------------------------------------------------------------

@@ -262,6 +262,8 @@ class MEModelSynapticModelPlacementTask(Task):
             derived_from_emodel=me_model.emodel,
             derivation_label=result.model_template,
             skip_validation=True,
+            # API launch (has activity): draft + async validation. Local run: in-process.
+            async_validation=execution_activity is not None,
         )
         if circuit is None:
             msg = "Build Synaptome circuit registration did not return a Circuit."

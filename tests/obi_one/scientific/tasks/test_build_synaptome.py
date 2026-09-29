@@ -266,7 +266,18 @@ def test_build_synaptome_config_provenance(monkeypatch):
     assert config.input_entities(db_client=Mock()) == [me_model]
 
 
-def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("execution_activity_id", "execution_activity"),
+    [
+        # API launch: draft, validated later by launch-system job.
+        ("activity-id", SimpleNamespace(id="activity-id")),
+        # Local run: no job submitter, so in-process registration.
+        (None, None),
+    ],
+)
+def test_build_synaptome_task_registers_circuit_and_updates_activity(
+    tmp_path, monkeypatch, execution_activity_id, execution_activity
+):
     config = _config()
     config.coordinate_output_root = tmp_path
     subject = Mock()
@@ -293,9 +304,7 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         model_template="hoc:cADpyr_L5TPC",
     )
     build = Mock(return_value=result)
-    circuit = SimpleNamespace(id="circuit-id")
-    register = Mock(return_value=circuit)
-    execution_activity = SimpleNamespace(id="activity-id")
+    register = Mock(return_value=SimpleNamespace(id="circuit-id"))
     get_activity = Mock(return_value=execution_activity)
     update_activity = Mock()
     monkeypatch.setattr(
@@ -315,7 +324,7 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     assert (
         MEModelSynapticModelPlacementTask(config=config).execute(
             db_client=db_client,
-            execution_activity_id="activity-id",
+            execution_activity_id=execution_activity_id,
         )
         == "circuit-id"
     )
@@ -334,6 +343,7 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         derived_from_emodel=emodel,
         derivation_label="hoc:cADpyr_L5TPC",
         skip_validation=True,
+        async_validation=execution_activity is not None,
     )
     update_activity.assert_called_once_with(
         db_client=db_client,
