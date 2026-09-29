@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from entitysdk import models
-from entitysdk.types import TaskActivityType, TaskConfigType
+from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
 
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
@@ -76,6 +76,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskDefinition(
         task_type=TaskType.circuit_single_build,
@@ -92,6 +93,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
@@ -275,6 +277,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
@@ -296,6 +299,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskDefinition(
         task_type=TaskType.efeature_extraction,

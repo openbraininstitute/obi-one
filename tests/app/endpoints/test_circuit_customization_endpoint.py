@@ -15,7 +15,7 @@ from app.endpoints.circuit_customization import (
     _save_uploads,
     _validate_file_groups,
 )
-from app.endpoints.circuit_helpers import trigger_validation_task
+from app.services.circuit_launch import trigger_validation_task
 
 # ---------------------------------------------------------------------------
 # CircuitCustomizationResponse
@@ -285,7 +285,7 @@ class TestRunValidations:
 
 
 class TestTriggerValidationTask:
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_success(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
@@ -324,7 +324,7 @@ class TestTriggerValidationTask:
         assert "--force false" in job_data["inputs"]
         assert str(project_id) == job_data["project_id"]
 
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_forwards_force_true(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
@@ -353,7 +353,7 @@ class TestTriggerValidationTask:
         assert "--force true" in job_data["inputs"]
         assert job_data["resources"]["compute_cell"] == "cell_b"
 
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_failure_logs_warning(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"

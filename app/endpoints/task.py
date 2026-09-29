@@ -26,6 +26,7 @@ from app.schemas.task import (
     TaskLaunchSubmit,
 )
 from app.services import accounting as accounting_service, job as job_service, task as task_service
+from app.services.generated_entities import handle_generated_entities
 from app.types import TaskType
 
 
@@ -227,6 +228,31 @@ def task_success_endpoint(
         count=json_model.count,
         project_id=user_context.project_id,
         http_client=accounting_factory._http_client,  # ruff: ignore[private-member-access]  # ty:ignore[invalid-argument-type]
+    )
+    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
+
+
+@router.post(
+    "/callback/generated-entities",
+    summary="Task generated-entities callback",
+    description=(
+        "Called when a task job succeeds. Runs the handler of each entity type the task registered."
+    ),
+)
+def task_generated_entities_endpoint(
+    task_type: TaskType,
+    activity_id: UUID,
+    _user_context: UserContextWithProjectIdDep,
+    db_client: DatabaseClientDep,
+    ls_client: LaunchSystemClientDep,
+    compute_cell: ComputeCellDep,
+) -> None:
+    handle_generated_entities(
+        task_definition=get_launchable_task_definition(task_type),
+        activity_id=activity_id,
+        db_client=db_client,
+        ls_client=ls_client,
+        compute_cell=compute_cell,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
 

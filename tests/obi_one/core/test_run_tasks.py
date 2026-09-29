@@ -151,6 +151,30 @@ def test_run_task_type_downloads_config_deserializes_sets_entity_and_executes_ta
 
 
 @patch("obi_one.core.run_tasks.get_task_spec_for_task_type")
+def test_run_task_type_sets_task_options_on_the_task(mock_get_task_spec_for_task_type, db_client):
+    mock_task_cls = MagicMock()
+    single_config = MagicMock()
+    mock_get_task_spec_for_task_type.return_value = SimpleNamespace(
+        asset_label=None,
+        task_cls=mock_task_cls,
+        single_config_cls=MagicMock(return_value=single_config),
+    )
+
+    test_module.run_task_type(
+        TaskType.circuit_extraction,
+        entity_type=MagicMock(),
+        entity_id="ent-1",
+        scan_output_root="/out",
+        db_client=db_client,
+        task_options={"circuit_validation_mode": "async_launch"},
+    )
+
+    mock_task_cls.assert_called_once_with(
+        config=single_config, circuit_validation_mode="async_launch"
+    )
+
+
+@patch("obi_one.core.run_tasks.get_task_spec_for_task_type")
 def test_run_task_type_without_asset_label_creates_default_config(
     mock_get_task_spec_for_task_type,
     db_client,

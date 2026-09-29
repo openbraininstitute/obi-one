@@ -191,7 +191,7 @@ Treat as two related customization/staging items from the review.
 | `authorized_public` | Passed into `models.Circuit` |
 
 **Still deferred:** none for this item — the HTTP endpoint now calls library
-``register_circuit(..., lifecycle_status="draft", skip_validation=True)`` then
+``register_circuit(..., validation_mode=CircuitValidationMode.async_launch)`` then
 triggers the async validation job.
 
 **How to review:** Register with `parent_circuit_id` + `derivation_type` and confirm EntityCore shows derivation + correct root; register without parent and confirm no derivation / no root.
@@ -203,7 +203,7 @@ triggers the async validation job.
 The numbered list above maps to the work completed in the review pass. Original review also mentioned:
 
 - **App tag once deployed** — done: validation launch uses `tag:{APP_VERSION}` (same as asset generation)
-- **Unify on `register_circuit`** — done: HTTP `/circuit/register` delegates to library `register_circuit` with draft + skip_validation
+- **Unify on `register_circuit`** — done: HTTP `/circuit/register` delegates to library `register_circuit` with `validation_mode=async_launch` (draft, no in-process check)
 - **Fine-grained success callbacks** — explicitly later
 
 If you want those as items 12–14 in a follow-up doc, say so.

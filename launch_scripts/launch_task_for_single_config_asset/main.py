@@ -18,6 +18,15 @@ from obi_one.types import TaskType
 L = logging.getLogger(__name__)
 
 
+def parse_task_option(option: str) -> tuple[str, str]:
+    """Split a ``KEY=VALUE`` task option into its two parts."""
+    key, sep, value = option.partition("=")
+    if not sep or not key:
+        msg = f"Task option must be KEY=VALUE, got {option!r}"
+        raise argparse.ArgumentTypeError(msg)
+    return key, value
+
+
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Script to launch a task for a single configuration asset."
@@ -49,6 +58,14 @@ def get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--virtual_lab_id", required=True, help="Virtual Lab ID as string")
     parser.add_argument("--project_id", required=True, help="Project ID as string.")
+    parser.add_argument(
+        "--task_option",
+        action="append",
+        default=[],
+        type=parse_task_option,
+        metavar="KEY=VALUE",
+        help="Field to set on the task, e.g. circuit_validation_mode=async_launch. Repeatable.",
+    )
     return parser
 
 
@@ -127,6 +144,7 @@ def main() -> int:
             db_client=db_client,
             entity_cache=args.entity_cache,
             execution_activity_id=args.execution_activity_id,
+            task_options=dict(args.task_option),
         )
     except Exception as e:  # ruff: ignore[blind-except]
         # Catch any error that may occur to make sure that error status is correctly set

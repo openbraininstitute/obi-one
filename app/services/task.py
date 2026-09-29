@@ -33,6 +33,7 @@ from app.schemas.task import (
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
+from app.services.generated_entities import get_generated_entity_handlers
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.db_sdk import db_sdk
 
@@ -91,6 +92,19 @@ def submit_task_job(
         project_context=project_context,
     )
     all_callbacks = [failure_callback, *callbacks]
+    handlers = get_generated_entity_handlers(task_definition)
+    if handlers:
+        all_callbacks.append(
+            _generate_generated_entities_callback(
+                activity_id=activity_id,
+                task_type=task_definition.task_type,
+                callback_url=callback_url,
+                project_context=project_context,
+            )
+        )
+    task_options = {
+        key: value for handler in handlers.values() for key, value in handler.task_options.items()
+    }
 
     match task_definition.task_type:
         case TaskType.circuit_simulation_brian2_machine:
@@ -142,6 +156,7 @@ def submit_task_job(
                 project_id=project_context.project_id,
                 virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
                 output_root=settings.LAUNCH_SYSTEM_OUTPUT_DIR,
+                task_options=task_options,
             )
 
     # Submit job
@@ -280,6 +295,7 @@ def _generic_job_data(
     output_root: str,
     callbacks: list[CallBack],
     task_definition: LaunchableTaskDefinition,
+    task_options: dict[str, str] | None = None,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
 
@@ -305,6 +321,7 @@ def _generic_job_data(
             f"--project_id {project_id}",
             f"--execution_activity_id {activity_id}",
         ]
+    inputs.extend(f"--task_option {key}={value}" for key, value in (task_options or {}).items())
 
     return {
         "code": task_definition.code.model_dump(mode="json"),
@@ -337,6 +354,33 @@ def _generate_failure_callback(
     )
     return CallBack(
         event_type=CallBackEvent.job_on_failure,
+        action_type=CallBackAction.http_request_with_token,
+        config=config,
+    )
+
+
+def _generate_generated_entities_callback(
+    *,
+    callback_url: str,
+    task_type: TaskType,
+    activity_id: UUID,
+    project_context: ProjectContext,
+) -> CallBack:
+    """Build the callback that handles the generated entities once the job succeeds.
+
+    The launch-system only adds the auth token, so the project context goes in the headers.
+    """
+    config = HttpRequestCallBackConfig(
+        url=f"{callback_url}/generated-entities",
+        method="POST",
+        params={"task_type": task_type, "activity_id": str(activity_id)},
+        headers={
+            "virtual-lab-id": str(project_context.virtual_lab_id),
+            "project-id": str(project_context.project_id),
+        },
+    )
+    return CallBack(
+        event_type=CallBackEvent.job_on_success,
         action_type=CallBackAction.http_request_with_token,
         config=config,
     )

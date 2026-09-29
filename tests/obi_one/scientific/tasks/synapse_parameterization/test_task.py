@@ -7,6 +7,7 @@ registration branch (which needs a db_client and a parent entity) is skipped.
 
 import json
 import shutil
+from unittest.mock import Mock, patch
 
 import bluepysnap as snap
 import pytest
@@ -14,6 +15,7 @@ import pytest
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey
 from obi_one.core.tuple import NamedTuple
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
@@ -503,3 +505,31 @@ def test_reference_type_preserved_for_biophysical_source_neuron_set():
     assert config.synapse_model_assigners["a"].source_neuron_set.type == (
         "BiophysicalNeuronSetReference"
     )
+
+
+@pytest.mark.parametrize(
+    ("validation_mode", "skip_additional_assets"),
+    [
+        (CircuitValidationMode.async_launch, True),
+        (CircuitValidationMode.sync_bluepysnap, False),
+        (CircuitValidationMode.skip, False),
+    ],
+)
+def test_register_parameterized_circuit_uses_validation_mode(
+    tmp_path, validation_mode, skip_additional_assets
+):
+    """The task's validation mode and asset flag are passed to register_circuit as they are."""
+    task = Mock(
+        _circuit_entity=Mock(root_circuit_id=None),
+        circuit_validation_mode=validation_mode,
+        _defer_circuit_assets=skip_additional_assets,
+    )
+    with patch(
+        "obi_one.scientific.tasks.synapse_parameterization.task.circuit_registration.register_circuit"
+    ) as mock_register:
+        SynapseParameterizationTask._register_parameterized_circuit(
+            task, db_client=Mock(), circuit_path=tmp_path
+        )
+
+    assert mock_register.call_args.kwargs["validation_mode"] == validation_mode
+    assert mock_register.call_args.kwargs["skip_additional_assets"] is skip_additional_assets

@@ -142,6 +142,27 @@ SONATA structural checks go through `obi_one.utils.circuit.run_validation()`, wh
 applies OBI edge-property ignore rules and can return both FATAL errors and WARNINGs
 (`raise_on_error=False` in the async validation task).
 
+## Circuits produced by tasks
+
+Tasks launched with `POST /declared/task/launch` that output a circuit use the same draft → validation → assets flow. The SONATA check and the asset generation no longer run inside the task job, so they do not add to the task's resources.
+
+1. A task definition lists the entity types it registers in `generated_entity_types` (`app/mappings.py`). If a type has a handler in `app/services/generated_entities.py`, the job is launched with the handler's task options and a `job_on_success` callback: `POST /declared/task/callback/generated-entities?task_type=<type>&activity_id=<id>`.
+2. For `EntityType.circuit`, the task option is `circuit_validation_mode=async_launch`, passed to the launch script as `--task_option`. The task is a `CircuitOutputTask` (`obi_one/scientific/tasks/circuit_output_task.py`). It calls `register_circuit(..., validation_mode=CircuitValidationMode.async_launch, skip_additional_assets=True)`: the circuit is created as `draft`, with no SONATA check and no generated assets. As before, the circuit is added to the `generated` list of the execution activity.
+3. When the job succeeds, the callback runs the handlers for the entity types the task definition lists. The circuit handler starts one validation job per draft circuit of the activity. From there the flow is the one described above (validation → `active` or `disqualified` → asset generation).
+
+`circuit_validation_mode` is a field of `CircuitOutputTask`, and each task sets its own default. Without the option, a local run keeps the old in-process behavior: `sync_bluepysnap` for circuit extraction, `skip` for the other tasks. A task run with `async_launch` but no execution activity fails right away, because nothing would validate its draft.
+
+The launch-system only adds the auth token to `http_request_with_token` callbacks, so the callbacks carry the `virtual-lab-id` and `project-id` headers the endpoints need.
+
+| Task | Task type | Local default | Launched via API |
+|------|-----------|---------------|------------------|
+| Build Synaptome | `circuit_single_build` | `skip` | `async_launch` |
+| Circuit extraction | `circuit_extraction` | `sync_bluepysnap` | `async_launch` |
+| EM synapse mapping | `em_synapse_mapping` | `skip` | `async_launch` |
+| Synapse parameterization | `circuit_synaptic_physiology_assignment` | `skip` | `async_launch` |
+
+Build Synaptome, EM synapse mapping and synapse parameterization skipped the SNAP validation before. They now get it, and a circuit that fails it ends up `disqualified` ([prod-build-circuit#49](https://github.com/openbraininstitute/prod-build-circuit/issues/49)).
+
 ## Validation Details
 
 ### Layer 1 (Sync, at upload time)
@@ -209,3 +230,4 @@ Full circuit validation after merge:
 3. **Single container name**: The local executor reuses container name `obi_one` — only one validation job can run at a time. Production (ECS) doesn't have this limitation.
 4. **Test circuit data**: The tiny N=10 test circuit has datatype warnings (float64 vs float32, int16 vs uint) from bluepysnap. These are tolerated as warnings, not fatal errors.
 5. **Morphology SWC files**: The test circuit uses H5 morphologies (`alternate_morphologies.h5v1`) — individual SWC files are referenced in node properties but not physically present. This is expected for the compact test archive.
+6. **Build Synaptome and SNAP validation**: The target node population staged from an ME-model has no `synapse_class`, which SNAP requires for biophysical nodes, so Build Synaptome circuits end up `disqualified`. The fix is a circuit-type aware validation ([prod-build-circuit#49](https://github.com/openbraininstitute/prod-build-circuit/issues/49)).

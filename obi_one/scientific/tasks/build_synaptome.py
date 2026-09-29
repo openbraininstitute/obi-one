@@ -10,8 +10,8 @@ from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.core.task import Task
 from obi_one.db_sdk.registration import circuit as circuit_registration
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.build_synaptome import (
     BuildSynaptomeResult,
@@ -19,6 +19,7 @@ from obi_one.scientific.library.build_synaptome import (
 )
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.tasks.circuit_output_task import CircuitOutputTask
 from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsReference,
     AllDistributionsUnion,
@@ -216,10 +217,11 @@ def build_synaptome(
     return build_synaptome_artifact(config, output_directory, db_client=db_client)
 
 
-class MEModelSynapticModelPlacementTask(Task):
+class MEModelSynapticModelPlacementTask(CircuitOutputTask):
     """Build and register a single-cell synaptome circuit."""
 
     config: MEModelSynapticModelPlacementSingleConfig
+    circuit_validation_mode: CircuitValidationMode = CircuitValidationMode.skip
 
     def execute(
         self,
@@ -234,6 +236,7 @@ class MEModelSynapticModelPlacementTask(Task):
             db_client=db_client,
             execution_activity_id=execution_activity_id,
         )
+        self._check_circuit_validation_mode(execution_activity)
         me_model = cast(
             "models.MEModel",
             self.config.initialize.me_model.entity(db_client=db_client),
@@ -261,7 +264,8 @@ class MEModelSynapticModelPlacementTask(Task):
             license=me_model.license or me_model.morphology.license,
             derived_from_emodel=me_model.emodel,
             derivation_label=result.model_template,
-            skip_validation=True,
+            validation_mode=self.circuit_validation_mode,
+            skip_additional_assets=self._defer_circuit_assets,
         )
         if circuit is None:
             msg = "Build Synaptome circuit registration did not return a Circuit."

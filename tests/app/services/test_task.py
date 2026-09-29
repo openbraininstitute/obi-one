@@ -646,6 +646,100 @@ def test_generate_failure_callback(project_context, activity_id):
     assert res.config.params == {"task_type": "circuit_extraction", "activity_id": str(activity_id)}
 
 
+def test_generate_generated_entities_callback(project_context, activity_id):
+    res = test_module._generate_generated_entities_callback(
+        callback_url="my-callback-url",
+        task_type=TaskType.circuit_extraction,
+        activity_id=activity_id,
+        project_context=project_context,
+    )
+
+    assert res.event_type == CallBackEvent.job_on_success
+    assert res.action_type == CallBackAction.http_request_with_token
+    assert res.config.url == "my-callback-url/generated-entities"
+    assert res.config.method == "POST"
+    assert res.config.params == {"task_type": "circuit_extraction", "activity_id": str(activity_id)}
+    # Launch-system adds only token; project goes in headers.
+    assert res.config.headers == {
+        "virtual-lab-id": str(project_context.virtual_lab_id),
+        "project-id": str(project_context.project_id),
+    }
+
+
+@pytest.mark.parametrize(
+    ("task_type", "generates_circuits"),
+    [
+        (TaskType.circuit_single_build, True),
+        (TaskType.circuit_extraction, True),
+        (TaskType.circuit_synaptic_physiology_assignment, True),
+        (TaskType.em_synapse_mapping, True),
+        (TaskType.efeature_extraction, False),
+    ],
+)
+def test_submit_task_job__generated_entities_callback(
+    task_type, generates_circuits, db_client, ls_client, project_context, httpx_mock
+):
+    """Tasks generating circuits get the post-success callback and the async validation option."""
+    task_definition = TASK_DEFINITIONS[task_type]
+    config_id = uuid4()
+    activity_id = uuid4()
+    activity_response = {"task_activity_type": task_definition.activity_type}
+    httpx_mock.add_response(
+        url=f"http://my-url/task-config/{config_id}",
+        method="GET",
+        json={
+            "id": str(config_id),
+            "task_config_type": task_definition.config_type,
+            "meta": {},
+        },
+    )
+    httpx_mock.add_callback(
+        lambda request: httpx.Response(
+            status_code=200,
+            json=json.loads(request.content) | activity_response | {"id": str(activity_id)},
+        ),
+        url="http://my-url/task-activity",
+        method="POST",
+    )
+    httpx_mock.add_response(
+        url="http://my-launch-system-url/job", method="POST", json={"id": str(uuid4())}
+    )
+    httpx_mock.add_callback(
+        lambda request: httpx.Response(
+            status_code=200,
+            json={
+                "id": str(activity_id),
+                "start_time": datetime.now(UTC).isoformat(),
+                "status": "pending",
+            }
+            | activity_response
+            | json.loads(request.content),
+        ),
+        url=f"http://my-url/task-activity/{activity_id}",
+        method="PATCH",
+    )
+
+    test_module.submit_task_job(
+        config_id=config_id,
+        db_client=db_client,
+        ls_client=ls_client,
+        task_definition=task_definition,
+        project_context=project_context,
+        callback_url="http://my-callback-url",
+        callbacks=[],
+    )
+
+    job = json.loads(
+        httpx_mock.get_request(url="http://my-launch-system-url/job", method="POST").content
+    )
+    expected_urls = ["http://my-callback-url/failure"]
+    if generates_circuits:
+        expected_urls.append("http://my-callback-url/generated-entities")
+    assert [c["config"]["url"] for c in job["callbacks"]] == expected_urls
+    option = "--task_option circuit_validation_mode=async_launch"
+    assert (option in job["inputs"]) is generates_circuits
+
+
 @pytest.mark.parametrize(
     ("task_type", "activity_route", "activity_response"),
     [

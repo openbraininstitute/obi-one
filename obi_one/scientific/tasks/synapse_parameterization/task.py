@@ -7,10 +7,11 @@ from entitysdk import Client, models, types
 from pydantic import PrivateAttr
 
 from obi_one.config import settings
-from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.library.circuit import Circuit, ensure_mechanisms_dir
+from obi_one.scientific.tasks.circuit_output_task import CircuitOutputTask
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
@@ -33,8 +34,9 @@ else:
 L = logging.getLogger(__name__)
 
 
-class SynapseParameterizationTask(Task):
+class SynapseParameterizationTask(CircuitOutputTask):
     config: SynapseParameterizationSingleConfig
+    circuit_validation_mode: CircuitValidationMode = CircuitValidationMode.skip
 
     _circuit: Circuit | None = PrivateAttr(default=None)
     _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
@@ -79,7 +81,8 @@ class SynapseParameterizationTask(Task):
             root=parent.root_circuit_id or parent.id,
             parent=parent,
             derivation_type=types.DerivationType.circuit_rewiring,
-            skip_validation=True,
+            validation_mode=self.circuit_validation_mode,
+            skip_additional_assets=self._defer_circuit_assets,
         )
 
     def _assemble_per_edge_population(self) -> dict[str, list[SynapticModelAssignerUnion]]:
@@ -115,6 +118,7 @@ class SynapseParameterizationTask(Task):
         execution_activity = SynapseParameterizationTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
+        self._check_circuit_validation_mode(execution_activity)
 
         # Resolve the circuit (local path or staging from ID), then copy it into the output
         # directory so that its synapse parameters can be modified in place.

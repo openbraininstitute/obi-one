@@ -2,6 +2,9 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import pytest
+
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.tasks.em_synapse_mapping.register import register_output
 
 
@@ -91,3 +94,42 @@ class TestRegisterOutputMultiple:
         desc = call_kwargs["description"]
         assert desc.count("dup") == 1
         assert "unique" in desc
+
+    @pytest.mark.parametrize(
+        ("validation_mode", "skip_additional_assets"),
+        [
+            (CircuitValidationMode.async_launch, True),
+            (CircuitValidationMode.skip, False),
+        ],
+    )
+    def test_forwards_validation_mode_and_asset_deferral(
+        self, tmp_path, validation_mode, skip_additional_assets
+    ):
+        em_dataset = Mock()
+        em_dataset.entity.return_value = SimpleNamespace(license=SimpleNamespace(id="lic"))
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.em_synapse_mapping.register.assemble_publication_links",
+                return_value={},
+            ),
+            patch(
+                "obi_one.scientific.tasks.em_synapse_mapping.register.circuit_registration.register_circuit",
+                return_value=SimpleNamespace(id=uuid4()),
+            ) as mock_register,
+        ):
+            register_output(
+                db_client=Mock(),
+                circuit_path=tmp_path / "circuit_config.json",
+                resolved_neurons=[_resolved_neuron(111)],
+                source_dataset=_source_dataset(),
+                em_dataset=em_dataset,
+                all_notices=[],
+                total_internal=0,
+                total_external=0,
+                validation_mode=validation_mode,
+                skip_additional_assets=skip_additional_assets,
+            )
+
+        assert mock_register.call_args.kwargs["validation_mode"] == validation_mode
+        assert mock_register.call_args.kwargs["skip_additional_assets"] is skip_additional_assets
