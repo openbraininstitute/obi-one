@@ -2,9 +2,9 @@ import logging
 from typing import ClassVar
 
 import entitysdk
-from fastapi import HTTPException
 from pydantic import Field
 
+from obi_one.core.exception import OBIONEError
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
@@ -51,6 +51,6 @@ class MorphologyMetricsTask(Task):
             L.info(morphology_metrics)
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+            raise OBIONEError(f"Internal Server Error: {e}") from e
         else:
             return morphology_metrics
