@@ -4,7 +4,6 @@
 # version in the launch-<version> tag created at release time.
 obi-one
 aiofiles==25.1.0
-annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
 asttokens==3.0.2
@@ -38,7 +37,6 @@ distributed==2026.8.0
 efel==5.7.34
 entitysdk==0.19.27
 executing==2.2.1
-fastapi==0.141.1
 find-libpython==0.5.1
 fonttools==4.66.0
 fsspec==2026.9.0
@@ -86,7 +84,7 @@ neurom==4.0.5
 neuron==9.0.2
 numexpr==2.14.2
 numpy==2.4.6
-obi-auth==1.1.0
+obi-auth==1.2.1
 obp-accounting-sdk==0.6.6
 packaging==26.3
 pandas==2.3.3
@@ -127,7 +125,6 @@ setuptools==84.0.0
 six==1.17.0
 sortedcontainers==2.4.0
 stack-data==0.6.3
-starlette==1.7.0
 sympy==1.14.0
 tables==3.11.1
 tblib==3.2.2
@@ -141,9 +138,8 @@ truststore==0.10.4
 typing-extensions==4.16.0
 typing-inspection==0.4.4
 tzdata==2026.4
-ultraliser==2.2.7
+ultraliser==2.2.9
 urllib3==2.8.0
-uvicorn==0.54.0
 voxcell==3.1.11
 wcwidth==0.9.1
 xarray==2026.7.0
