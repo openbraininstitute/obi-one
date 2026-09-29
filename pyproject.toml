@@ -221,7 +221,7 @@ builtins-ignorelist = ["license"]
     "unused-method-argument",
 ]
 "launch_scripts/**/*.py" = ["implicit-namespace-package"]
-"launch_scripts/compile_launch_deps.py" = [
+"launch_scripts/tools/*.py" = [
     "print",                                # `print` found (this is a CLI tool)
     "suspicious-subprocess-import",         # `subprocess` module is possibly insecure
     "subprocess-without-shell-equals-true", # check for execution of untrusted input
@@ -248,7 +248,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-pythonpath = ["launch_scripts"]
+pythonpath = ["launch_scripts/tools"]
 addopts = [
     "--import-mode=importlib",
     "-vv",

@@ -1,0 +1,96 @@
+name: Create launch tag
+
+# For each published release X, create the annotated tag ``launch-X`` that
+# launch-system jobs check out (``ref=tag:launch-X``). Its commit is a child of X
+# whose only change pins every bare ``obi-one[extras]`` line of
+# ``launch_scripts/*/dependencies/*.txt`` to ``==X``, so a job installs the obi-one
+# X wheel together with the transitive closure frozen at X.
+#
+# The commit intentionally lives outside any branch: only the tag is pushed, so
+# ``main`` keeps unpinned requirements and ``git describe`` is unaffected.
+# ``launch-*`` tags must never be moved or deleted: running jobs depend on them.
+#
+# The tag is pushed with GITHUB_TOKEN, which triggers no further workflows (and
+# ``launch-*`` does not match the Docker publish tag filter anyway).
+#
+# Recovery: re-run the failed job, or run this workflow manually with the release
+# tag as input.
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create the launch tag for (calver, e.g. 2026.9.15)"
+        required: true
+        type: string
+
+concurrency:
+  group: launch-tag-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  create-launch-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Validate release tag
+        run: |
+          if ! [[ "$RELEASE_TAG" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+            echo "::error::Not a calver release tag: '$RELEASE_TAG'"
+            exit 1
+          fi
+          echo "LAUNCH_TAG=launch-$RELEASE_TAG" >> "$GITHUB_ENV"
+
+      - name: Checkout release
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+
+      - name: Fail if the launch tag already exists
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$LAUNCH_TAG" >/dev/null; then
+            echo "::error::$LAUNCH_TAG already exists; launch tags are never overwritten."
+            exit 1
+          fi
+
+      - name: Setup python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Pin obi-one in launch-script requirements
+        run: python3 launch_scripts/tools/launch_deps_pin.py --version "$RELEASE_TAG"
+
+      - name: Verify only obi-one lines changed
+        run: |
+          unexpected_files=$(git diff --name-only | grep -Ev '^launch_scripts/[^/]+/dependencies/[^/]+\.txt$' || true)
+          if [ -n "$unexpected_files" ]; then
+            echo "::error::Unexpected files changed:"; echo "$unexpected_files"
+            exit 1
+          fi
+          if [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            echo "::error::Unexpected untracked files:"; git ls-files --others --exclude-standard
+            exit 1
+          fi
+          unexpected_lines=$(git diff --unified=0 --no-color \
+            | grep -E '^[-+]' | grep -Ev '^(\+\+\+|---) ' \
+            | grep -Ev '^[-+]obi[-_]one' || true)
+          if [ -n "$unexpected_lines" ]; then
+            echo "::error::Unexpected changed lines:"; echo "$unexpected_lines"
+            exit 1
+          fi
+          git diff --stat
+
+      - name: Commit and push the launch tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --all --message "Pin obi-one==$RELEASE_TAG for launch jobs"
+          git tag --annotate "$LAUNCH_TAG" --message "Launch tag for obi-one $RELEASE_TAG"
+          git push origin "refs/tags/$LAUNCH_TAG"

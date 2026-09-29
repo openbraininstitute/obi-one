@@ -10,7 +10,7 @@ on:
     paths:
       - "launch_scripts/**/dependencies/*.in"
       - "launch_scripts/**/dependencies/*.txt"
-      - "launch_scripts/compile_launch_deps.py"
+      - "launch_scripts/tools/**"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/check-launch-deps.yml"

@@ -75,7 +75,7 @@ class TestTriggerValidationTask:
         call_kwargs = ls_client.post.call_args[1]
         assert call_kwargs["url"] == "/job"
         job_data = call_kwargs["json"]
-        assert job_data["code"]["ref"] == "tag:1.2.3"
+        assert job_data["code"]["ref"] == "tag:launch-1.2.3"
         assert job_data["resources"]["image_type"] == "python_3_12_openmpi5_neuron9_neurodamus"
         assert job_data["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
@@ -134,7 +134,7 @@ class TestTriggerValidationTask:
             is None
         )
         ls_client.post.assert_called_once()
-        assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"
+        assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:launch-0.0.0"
         assert "--force false" in ls_client.post.call_args[1]["json"]["inputs"]
 
 
@@ -298,7 +298,7 @@ class TestTriggerAssetGenerationTask:
         ls_client.post.assert_called_once()
         call_kwargs = ls_client.post.call_args[1]
         job_data = call_kwargs["json"]
-        assert "tag:1.2.3" in job_data["code"]["ref"]
+        assert "tag:launch-1.2.3" in job_data["code"]["ref"]
         assert job_data["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
         assert "--force false" in job_data["inputs"]
@@ -356,7 +356,7 @@ class TestTriggerAssetGenerationTask:
 
         call_kwargs = ls_client.post.call_args[1]
         job_data = call_kwargs["json"]
-        assert "tag:0.0.0" in job_data["code"]["ref"]
+        assert "tag:launch-0.0.0" in job_data["code"]["ref"]
 
     @patch("app.endpoints.circuit_helpers.settings")
     def test_failure_returns_none(self, mock_settings):

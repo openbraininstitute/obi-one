@@ -2,6 +2,7 @@
 
 The scripts under [**launch_scripts/**](https://github.com/openbraininstitute/obi-one/tree/main/launch_scripts) run as tasks in the [launch-system](https://github.com/openbraininstitute/launch-system).
 Each task has one or more requirements files under `launch_scripts/<task>/dependencies/`.
+The tools that manage them live in `launch_scripts/tools/` (`launch_deps_compile.py`, `launch_deps_pin.py` and their shared `launch_deps_common.py`).
 
 For each requirements file there is a human-edited source `*.in` and a fully-pinned, machine-generated `*.txt`:
 
@@ -34,7 +35,7 @@ make upgrade-launch-deps
 make upgrade-launch-deps FILE=launch_scripts/launch_task_for_single_config_asset
 ```
 
-`obi-one` itself is intentionally left **unpinned** in the compiled files. Its version is pinned dynamically at task-submission time to match the running service version (via the launch-system `dependency_constraints` mechanism, see `obi_one/utils/versions.py`). This keeps staging and production consistent even when they run different obi-one versions, without baking a version into the committed files.
+`obi-one` itself is intentionally left **unpinned** in the compiled files on branches (including `main`). Its closure is resolved from the local checkout, and the obi-one line itself is pinned only in the release's launch tag (see below).
 
 ## Checking
 
@@ -46,21 +47,47 @@ make check-launch-deps
 
 Like `make check-deps` for the project lock file, this fails only when a committed `*.txt` is **inconsistent** with its `*.in` (or obi-one's closure) — not merely because newer upstream versions exist. If it reports stale files, run `make compile-launch-deps` and commit the result.
 
-The check is strict: it resolves every task, including those needing private packages, so running it (like compiling) assumes AWS CodeArtifact access. To check only public tasks without that access, pass `FILE=<path>` (an `.in` file or a directory), or run `launch_scripts/compile_launch_deps.py --check --skip-unresolvable` to skip (with a warning) any task whose dependencies cannot be resolved.
+The check is strict: it resolves every task, including those needing private packages, so running it (like compiling) assumes AWS CodeArtifact access. To check only public tasks without that access, pass `FILE=<path>` (an `.in` file or a directory), or run `uv run python launch_scripts/tools/launch_deps_compile.py --check --skip-unresolvable` to skip (with a warning) any task whose dependencies cannot be resolved.
+
+## Releases and launch tags
+
+Launch jobs do not check out the release tag `X` itself but its **launch tag** `launch-X`, whose requirements pin obi-one to that release:
+
+1. A maintainer creates release `X` from the GitHub UI as usual (calver `YYYY.M.N`, e.g. `2026.9.15`). This creates tag `X` on `main` and triggers the Docker (`publish.yml`) and PyPI (`publish-pypi.yml`) workflows.
+2. The same `release: published` event triggers `.github/workflows/launch-tag.yml`. It checks out `X`, runs `launch_deps_pin.py --version X` to rewrite every bare `obi-one[extras]` line to `obi-one[extras]==X`, verifies that nothing else changed, commits the result as a child of `X`, and pushes only the annotated tag `launch-X`. The commit is not on any branch, so `main` stays unpinned and `git describe` is unaffected.
+3. The service running version `X` submits jobs with `ref=tag:launch-X` (see `launch_ref` in `obi_one/utils/versions.py`). The executor checks out that tag and runs `uv pip install -r <dependencies>.txt`, installing the obi-one `X` wheel together with the closure frozen at `X`. A dev build (e.g. `2026.9.15-3-g49a1641-dirty`) uses the launch tag of its last release.
+
+Pinning only the obi-one line is consistent because `check-launch-deps` keeps `main`'s closure in sync with obi-one's own requirements, so the closure committed at `X` was compiled against `X`'s source.
+
+Every launch job's requirements must therefore live under `launch_scripts/*/dependencies/`, even when its script lives elsewhere (e.g. the brian2 simulation runs `obi_one/scientific/library/simulation/brian2/simulate_brian2.py` with `launch_scripts/launch_brian2_simulation/dependencies/default.txt`).
+
+**Launch tags must never be edited, moved or deleted**: running and future jobs of that release depend on them. The workflow refuses to overwrite an existing launch tag.
+
+To try the pin locally (then revert with `git checkout -- launch_scripts obi_one`):
+
+```bash
+make pin-launch-deps VERSION=2026.9.15
+```
+
+### Recovery
+
+If `launch-tag.yml` fails, jobs submitted by release `X` fail at checkout until `launch-X` exists. GitHub notifies the author of the release. Fix the cause and either re-run the failed job, or run the workflow manually from the Actions tab (`workflow_dispatch`) with the release tag as input.
+
+The launch-system must accept `launch-<calver>` tags (`validate_tag` in its `app/schemas/validators.py`).
 
 ## Pinning a task to a specific obi-one version
 
-By default each task installs the obi-one version of the running service.
-To keep a task on an older, known-good obi-one (e.g. when it has not been validated against the current release), add it to `PINNED_OBI_ONE_VERSIONS` in `app/mappings.py`:
+By default each task checks out the launch tag of the running service version.
+To keep a task on an older, known-good release (e.g. when it has not been validated against the current one), add it to `PINNED_OBI_ONE_VERSIONS` in `app/mappings.py`:
 
 ```python
 PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {
-    TaskType.some_task: "2026.5.1",
+    TaskType.some_task: "2026.9.15",
 }
 ```
 
-This pins both the git `ref` (task code + frozen requirements are checked out at that release) and the obi-one dependency constraint to that version, so the task runs fully at the pinned release.
-The version must be a released calver tag.
+The value is a plain release version (no `v` prefix, no suffix; validated at import). The task then checks out `tag:launch-2026.9.15`, so its script, requirements and obi-one wheel all come from that release.
+The release must have a launch tag, i.e. it must have been created after the launch-tag workflow was introduced.
 
 ## Testing a task against an obi-one feature branch (local dev)
 
@@ -72,6 +99,6 @@ The git-reference edit therefore has to be committed and pushed to your branch.
 
 1. On your feature branch, edit the task's frozen `*.txt` obi-one line to a git reference, e.g. `obi-one[connectivity] @ git+https://github.com/openbraininstitute/obi-one.git@<branch-or-sha>`. uv installs obi-one from git at run time.
 2. Commit and push it, then submit with the git `ref` set to that commit SHA (launch-system accepts `commit:<40-hex>`), so the executor checks out the task code and requirements — and installs obi-one — from your branch.
-3. **Revert the `*.txt` edit before merging.** `make check-launch-deps` (and the CI check) flags the hand-edited git reference as stale, preventing accidental merge.
+3. **Revert the `*.txt` edit before merging.** `make check-launch-deps` (and the CI check) flags the hand-edited git reference as stale, preventing accidental merge. It would also make the launch-tag workflow fail at release time, since `launch_deps_pin.py` refuses to pin a non-bare obi-one line.
 
-Note: a git reference in the requirements file and a `==version` obi-one constraint are mutually exclusive (they would conflict). This is handled automatically: a local dev build reports a post-release/dirty version (e.g. `2026.8.12-3-g49a1641-dirty`), which is treated as unreleased, so no version constraint is sent and the git reference installs cleanly. Only a clean release tag (exact calver, no suffix) produces a constraint.
+Without the edit, a `commit:<sha>` job installs the latest obi-one release from PyPI (the obi-one line is unpinned on branches), not the branch's library code.

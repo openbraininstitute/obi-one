@@ -317,7 +317,7 @@ class TestTriggerValidationTask:
         call_kwargs = ls_client.post.call_args[1]
         assert call_kwargs["url"] == "/job"
         job_data = call_kwargs["json"]
-        assert job_data["code"]["ref"] == "tag:1.2.3"
+        assert job_data["code"]["ref"] == "tag:launch-1.2.3"
         assert "staged_directories" not in job_data["code"]
         assert job_data["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
@@ -377,5 +377,5 @@ class TestTriggerValidationTask:
             is None
         )
         ls_client.post.assert_called_once()
-        assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:0.0.0"
+        assert ls_client.post.call_args[1]["json"]["code"]["ref"] == "tag:launch-0.0.0"
         assert "--force false" in ls_client.post.call_args[1]["json"]["inputs"]

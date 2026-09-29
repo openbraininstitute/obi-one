@@ -5,7 +5,7 @@ from uuid import UUID
 
 import httpx
 
-from obi_one.utils.versions import build_launch_code_deps, release_tag
+from obi_one.utils.versions import launch_ref
 
 L = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def submit_circuit_validation_job(
             used to build the generate-assets callback URL.
         compute_cell: Compute cell for the launch-system job (from the vlab).
         obi_one_repo: Git repository URL for the launch script checkout.
-        app_version: App version used to form ``tag:<version>``; defaults to ``0.0.0``.
+        app_version: App version used to form ``tag:launch-<version>``; defaults to ``0.0.0``.
         force: When True, validate even if the circuit is not in ``draft`` status.
         generate_assets_on_success: When True, trigger asset generation after a
             successful validation. Disable for standalone re-validation.
@@ -71,11 +71,9 @@ def submit_circuit_validation_job(
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": release_tag(app_version),
+            "ref": launch_ref(app_version),
             "path": f"{VALIDATION_LAUNCH_PATH}/main.py",
-            **build_launch_code_deps(
-                f"{VALIDATION_LAUNCH_PATH}/dependencies/default.txt", app_version
-            ),
+            "dependencies": f"{VALIDATION_LAUNCH_PATH}/dependencies/default.txt",
         },
         "resources": {
             "type": "machine",
@@ -128,7 +126,7 @@ def submit_circuit_asset_generation_job(
         virtual_lab_id: Virtual lab ID for the job.
         compute_cell: Compute cell for the launch-system job (from the vlab).
         obi_one_repo: Git repository URL for the launch script checkout.
-        app_version: App version used to form ``tag:<version>``; defaults to ``0.0.0``.
+        app_version: App version used to form ``tag:launch-<version>``; defaults to ``0.0.0``.
         force: When True, regenerate compressed archive even if it already exists.
 
     Returns:
@@ -140,13 +138,9 @@ def submit_circuit_asset_generation_job(
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": release_tag(app_version),
+            "ref": launch_ref(app_version),
             "path": f"{ASSET_GENERATION_LAUNCH_PATH}/main.py",
-            **build_launch_code_deps(
-                f"{ASSET_GENERATION_LAUNCH_PATH}/dependencies/default.txt",
-                app_version,
-                extras=("connectivity",),
-            ),
+            "dependencies": f"{ASSET_GENERATION_LAUNCH_PATH}/dependencies/default.txt",
         },
         "resources": {
             "type": "machine",

@@ -68,9 +68,11 @@ class TestSubmitCircuitJobs:
         )
 
         job = ls_client.post.call_args[1]["json"]
-        assert job["code"]["ref"] == "tag:2026.8.12"
-        # validation default.txt declares obi-one without extras
-        assert job["code"]["dependency_constraints"] == ["obi-one==2026.8.12"]
+        assert job["code"]["ref"] == "tag:launch-2026.8.12"
+        assert job["code"]["dependencies"] == (
+            "launch_scripts/launch_circuit_validation/dependencies/default.txt"
+        )
+        assert "dependency_constraints" not in job["code"]
         assert job["resources"]["image_type"] == "python_3_12_openmpi5_neuron9_neurodamus"
         assert job["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job["inputs"]
@@ -148,9 +150,11 @@ class TestSubmitCircuitJobs:
         )
 
         job = ls_client.post.call_args[1]["json"]
-        assert job["code"]["ref"] == "tag:2026.9.1"
-        # asset-generation default.txt declares obi-one[connectivity]
-        assert job["code"]["dependency_constraints"] == ["obi-one[connectivity]==2026.9.1"]
+        assert job["code"]["ref"] == "tag:launch-2026.9.1"
+        assert job["code"]["dependencies"] == (
+            "launch_scripts/launch_circuit_asset_generation/dependencies/default.txt"
+        )
+        assert "dependency_constraints" not in job["code"]
         assert "launch_circuit_asset_generation" in job["code"]["path"]
         assert job["resources"]["compute_cell"] == "cell_b"
         assert job["resources"]["cores"] == 2
@@ -161,10 +165,14 @@ class TestSubmitCircuitJobs:
         assert "image_type" not in job["resources"]
 
     @pytest.mark.parametrize(
-        "app_version",
-        [None, "2026.8.12-3-g49a16415-dirty", "2026.8.12-3-g49a16415"],
+        ("app_version", "expected_ref"),
+        [
+            (None, "tag:launch-0.0.0"),
+            ("2026.8.12-3-g49a16415-dirty", "tag:launch-2026.8.12"),
+            ("2026.8.12-3-g49a16415", "tag:launch-2026.8.12"),
+        ],
     )
-    def test_no_constraint_for_dev_version(self, app_version):
+    def test_dev_version_uses_last_release_launch_ref(self, app_version, expected_ref):
         ls_client = MagicMock()
         ls_client.post.return_value = MagicMock(
             is_success=True,
@@ -183,6 +191,5 @@ class TestSubmitCircuitJobs:
         )
 
         job = ls_client.post.call_args[1]["json"]
-        # Post-release / dirty dev builds do not match a published release,
-        # so no obi-one constraint is applied (lets a git ref install cleanly).
-        assert job["code"]["dependency_constraints"] == []
+        # Post-release / dirty dev builds check out the last release's launch tag.
+        assert job["code"]["ref"] == expected_ref

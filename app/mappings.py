@@ -3,6 +3,7 @@ from pathlib import Path
 
 from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
+from pydantic import TypeAdapter
 
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
@@ -20,51 +21,34 @@ from app.schemas.task import (
 )
 from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
-from obi_one.utils.versions import build_launch_code_deps, release_tag
+from obi_one.utils.versions import ReleaseVersion, launch_ref
 
-APP_TAG = release_tag(settings.APP_VERSION)
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
-# Pins a task to a specific obi-one version (calver, e.g. "2026.5.1") instead of
-# the running service version -- e.g. to keep it on an older, known-good release.
-# Only tasks built with ``_obi_one_code`` can be pinned.
-PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = {}
-
-# obi-one extras each launch deps file installs, declared here (not parsed from the
-# frozen *.txt at runtime -- those are not in the installed obi_one package). Kept
-# consistent with the files by tests/launch_scripts/test_launch_deps_extras.py.
-OBI_ONE_DEPS_EXTRAS: dict[str, tuple[str, ...]] = {
-    "circuit_extraction.txt": ("connectivity",),
-    "synapse_parameterization.txt": ("connectivity",),
-    "emodel_building.txt": ("emodel",),
-    "extracellular_recording_weights_calculation.txt": ("bluerecording",),
-    "default.txt": (),
-    "skeletonization.txt": (),
-}
+# Keeps a task on an obi-one release (e.g. "2026.9.15") instead of the service version: the
+# task checks out ``tag:launch-<version>``, so its code, requirements and obi-one wheel all come
+# from that release. Only tasks running code from the obi-one repository can be pinned.
+PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = TypeAdapter(
+    dict[TaskType, ReleaseVersion]
+).validate_python({})
 
 
 def _obi_one_code(
     deps_name: str,
     *,
     capabilities: Capabilities | None = None,
-    version: str | None = None,
 ) -> PythonRepositoryCode:
-    """Standard obi-one launch code: the obi-one repo, running main.py.
+    """Standard obi-one launch code: the obi-one repo at the service's launch ref, running main.py.
 
-    ``ref`` and the obi-one constraint use ``version`` (default: the running service
-    version); extras come from ``OBI_ONE_DEPS_EXTRAS``. Legacy tasks with a different
-    repo/entrypoint build ``PythonRepositoryCode`` directly.
+    Legacy tasks with a different repo/entrypoint build ``PythonRepositoryCode`` directly.
     """
-    version = version if version is not None else settings.APP_VERSION
     return PythonRepositoryCode(
         location=settings.OBI_ONE_REPO,
-        ref=release_tag(version),
+        ref=launch_ref(settings.APP_VERSION),
         path=OBI_ONE_CODE_PATH,
+        dependencies=str(OBI_ONE_DEPS_DIR / deps_name),
         capabilities=capabilities or Capabilities(),
-        **build_launch_code_deps(
-            str(OBI_ONE_DEPS_DIR / deps_name), version, extras=OBI_ONE_DEPS_EXTRAS[deps_name]
-        ),
     )
 
 
@@ -74,8 +58,8 @@ def _build_task_definitions(
 ) -> dict[TaskType, AnyTaskDefinition]:
     """Index ``definitions`` by their own ``task_type`` and apply obi-one version pins.
 
-    Keying by ``task_type`` means each task type is written once per definition. A
-    pinned task's code is rebuilt with ``_obi_one_code`` at the pinned version.
+    Keying by ``task_type`` means each task type is written once per definition. A pinned
+    task keeps its code but checks out the launch ref of the pinned version.
     """
     result: dict[TaskType, AnyTaskDefinition] = {}
     for definition in definitions:
@@ -86,12 +70,10 @@ def _build_task_definitions(
 
     for task_type, version in pins.items():
         code = getattr(result.get(task_type), "code", None)
-        if not isinstance(code, PythonRepositoryCode) or code.path != OBI_ONE_CODE_PATH:
-            msg = f"Cannot pin obi-one version for {task_type!r}: not an obi-one launch task"
+        if not isinstance(code, PythonRepositoryCode) or code.location != settings.OBI_ONE_REPO:
+            msg = f"Cannot pin obi-one version for {task_type!r}: not obi-one repository code"
             raise ValueError(msg)
-        pinned_code = _obi_one_code(
-            Path(code.dependencies).name, capabilities=code.capabilities, version=version
-        )
+        pinned_code = code.model_copy(update={"ref": launch_ref(version)})
         result[task_type] = result[task_type].model_copy(update={"code": pinned_code})
     return result
 
@@ -162,12 +144,9 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref=launch_ref(settings.APP_VERSION),
             path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            **build_launch_code_deps(
-                "obi_one/scientific/library/simulation/brian2/requirements.txt",
-                settings.APP_VERSION,
-            ),
+            dependencies="launch_scripts/launch_brian2_simulation/dependencies/default.txt",
             staged_directories=[],
         ),
         resources=MachineResources(
