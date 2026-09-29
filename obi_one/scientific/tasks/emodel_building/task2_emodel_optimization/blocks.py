@@ -750,6 +750,7 @@ class MechanismsBySectionList(Block):
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
         min_length=1,
+        max_length=20,
         title="Ion channel models",
         description=(
             "Ion channel model entities available for assignment to morphology section lists."
