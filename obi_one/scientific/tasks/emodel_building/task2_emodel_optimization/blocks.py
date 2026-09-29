@@ -69,7 +69,6 @@ _ALLOWED_AST_OPS: tuple[type[ast.AST], ...] = (
     ast.Div,
     ast.FloorDiv,
     ast.Mod,
-    ast.Pow,
     ast.USub,
     ast.UAdd,
     ast.BitAnd,
@@ -85,8 +84,47 @@ _ALLOWED_AST_OPS: tuple[type[ast.AST], ...] = (
     ast.GtE,
 )
 # Names callable directly, and the single module whose members may be accessed/called.
-_ALLOWED_CALL_NAMES = frozenset({"int", "float", "abs", "min", "max"})
+# ``int`` is intentionally excluded: it (and int-returning ``math`` functions) can produce
+# arbitrary-precision integers, whose arithmetic (e.g. ``**``) is an unbounded memory/CPU DoS.
+# Keeping only float-returning callables guarantees float semantics, which saturate/overflow in
+# O(1) instead of allocating unbounded bignums.
+_ALLOWED_CALL_NAMES = frozenset({"float", "abs", "min", "max"})
 _ALLOWED_MODULES = frozenset({"math"})
+_ALLOWED_MATH_FUNCTIONS = frozenset(
+    {
+        "exp",
+        "expm1",
+        "log",
+        "log1p",
+        "log2",
+        "log10",
+        "sqrt",
+        "pow",
+        "fabs",
+        "hypot",
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan",
+        "atan2",
+        "sinh",
+        "cosh",
+        "tanh",
+        "erf",
+        "erfc",
+        "degrees",
+        "radians",
+        "copysign",
+        "fmod",
+        "remainder",
+    }
+)
+# Cap the expression size so a single evaluation is bounded, long expressions becomes a CPU sink).
+_MAX_AST_NODES = 50
+# Cap the raw string length before parsing.
+_MAX_FUNCTION_LENGTH = 500
 # Every identifier that may appear as a bare ``Name``. Placeholders are substituted with a
 # numeric literal before parsing, so only these module/builtin names should remain.
 _ALLOWED_NAMES = _ALLOWED_CALL_NAMES | _ALLOWED_MODULES
@@ -103,8 +141,33 @@ def _distance_call_error(node: ast.Call) -> str | None:
     is_builtin_call = isinstance(func, ast.Name) and func.id in _ALLOWED_CALL_NAMES
     if not (is_module_call or is_builtin_call):
         return f"calls are limited to math.* and {sorted(_ALLOWED_CALL_NAMES)}"
+    # Only float-returning math functions are allowed; int-returning ones (factorial, comb, ...)
+    # would reintroduce unbounded-integer arithmetic.
+    if is_module_call and func.attr not in _ALLOWED_MATH_FUNCTIONS:
+        return f"math.{func.attr} is not an allowed function"
     if node.keywords:
         return "calls may not use keyword arguments"
+    return None
+
+
+def _distance_leaf_error(node: ast.AST) -> str | None:
+    """Check the non-operator leaf nodes (attribute/name/constant/call)."""
+    if isinstance(node, ast.Attribute) and not (
+        isinstance(node.value, ast.Name) and node.value.id in _ALLOWED_MODULES
+    ):
+        return "attributes may only be accessed on the math module"
+    if isinstance(node, ast.Name) and node.id not in _ALLOWED_NAMES:
+        return f"disallowed name: {node.id!r}"
+    # Reject integer literals: they are arbitrary-precision and can seed bignum arithmetic. Users
+    # must write floats (``3.0`` not ``3``); ``bool`` (a subclass of int) is allowed for masks.
+    if (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, int)
+        and not isinstance(node.value, bool)
+    ):
+        return "numeric literals must be floats (write 3.0, not 3)"
+    if isinstance(node, ast.Call):
+        return _distance_call_error(node)
     return None
 
 
@@ -115,32 +178,45 @@ def _distance_node_error(node: ast.AST) -> str | None:
         return None if allowed else f"disallowed operator: {type(node).__name__}"
     if not isinstance(node, _ALLOWED_AST_NODES):
         return f"disallowed expression: {type(node).__name__}"
-    if isinstance(node, ast.Attribute) and not (
-        isinstance(node.value, ast.Name) and node.value.id in _ALLOWED_MODULES
-    ):
-        return "attributes may only be accessed on the math module"
-    if isinstance(node, ast.Name) and node.id not in _ALLOWED_NAMES:
-        return f"disallowed name: {node.id!r}"
-    if isinstance(node, ast.Call):
-        return _distance_call_error(node)
-    return None
+    return _distance_leaf_error(node)
 
 
 def validate_safe_distance_function(function: str) -> None:
-    """Reject distance functions that are not a safe arithmetic expression.
+    """Reject distance functions that are not a safe, bounded arithmetic expression.
 
-    The raw function contains ``{placeholder}`` tokens that are not valid Python, so we
-    substitute each with a numeric literal before parsing. We then walk the AST and raise
-    ``ValueError`` on any node, operator, name, or attribute outside the whitelist. This is
-    the security boundary that prevents arbitrary code from reaching BluePyEModel's
-    ``eval()``.
+    The security boundary that prevents arbitrary code (RCE) and unbounded computation (DoS) from
+    reaching BluePyEModel/bluepyopt's unsandboxed ``eval``. Enforces, in order:
+
+    - a raw-string length cap (bounds parse-time cost of giant literals),
+    - a node-count cap (bounds per-eval CPU),
+    - a whitelist of nodes/operators/names/attributes/calls (blocks code execution),
+    - float-only numerics: integer literals, ``int()``, and int-returning ``math`` functions are
+      rejected, and ``**`` is disallowed, so no arbitrary-precision integer can form. Floats
+      saturate to ``inf``/raise ``OverflowError`` in O(1), never allocating unbounded bignums.
+
+    ``{placeholder}`` tokens are not valid Python, so each is substituted with a float literal
+    before parsing.
     """
-    expression = _PLACEHOLDER_PATTERN.sub("1", function)
+    if len(function) > _MAX_FUNCTION_LENGTH:
+        msg = (
+            f"Distance function is too long ({len(function)} chars > {_MAX_FUNCTION_LENGTH})."
+        )
+        raise ValueError(msg)
+
+    expression = _PLACEHOLDER_PATTERN.sub("1.0", function)
     try:
         tree = ast.parse(expression, mode="eval")
     except SyntaxError as exc:
         msg = f"Distance function is not a valid expression: {exc}."
         raise ValueError(msg) from exc
+
+    node_count = sum(1 for _ in ast.walk(tree))
+    if node_count > _MAX_AST_NODES:
+        msg = (
+            f"Distance function is too complex ({node_count} nodes > {_MAX_AST_NODES}). "
+            "Simplify the expression."
+        )
+        raise ValueError(msg)
 
     for node in ast.walk(tree):
         reason = _distance_node_error(node)
@@ -300,7 +376,7 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+        default="{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
         "({distance} < {step_end})))",
         frozen=True,
         title="Distance function",
@@ -320,7 +396,7 @@ class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistributi
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="math.exp((-{distance})/50)*{value}",
+        default="math.exp((-{distance})/50.)*{value}",
         frozen=True,
         title="Distance function",
         description="Expression using {value} and {distance}.",
@@ -358,7 +434,7 @@ class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution)
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="(15./(1. + math.exp((300-{distance})/50)))*{value}",
+        default="(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
         frozen=True,
         title="Distance function",
         description="Expression using {value} and {distance}.",
@@ -377,7 +453,7 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="({value}-5*{distance}/150)",
+        default="({value}-5.*{distance}/150.)",
         frozen=True,
         title="Distance function",
         description="Expression using {value} and {distance}.",
@@ -415,7 +491,7 @@ class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="(15./(1. + math.exp((150-{distance})/10)))*{value}",
+        default="(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
         frozen=True,
         title="Distance function",
         description="Expression using {value} and {distance}.",
@@ -434,7 +510,7 @@ class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="(15./(1. + math.exp(({distance}-50)/50)))*{value}",
+        default="(15./(1. + math.exp(({distance}-50.)/50.)))*{value}",
         frozen=True,
         title="Distance function",
         description="Expression using {value} and {distance}.",

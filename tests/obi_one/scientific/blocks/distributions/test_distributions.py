@@ -46,14 +46,14 @@ class TestDistanceDependentDistributions:
                 obi.StepDistanceDependentDistribution,
                 "step",
                 (
-                    "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                    "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
                     "({distance} < {step_end})))"
                 ),
             ),
             (
                 obi.ExponentialNaDendDistanceDependentDistribution,
                 "exp_na_dend",
-                "math.exp((-{distance})/50)*{value}",
+                "math.exp((-{distance})/50.)*{value}",
             ),
             (
                 obi.LinearHDApicDistanceDependentDistribution,
@@ -63,12 +63,12 @@ class TestDistanceDependentDistributions:
             (
                 obi.SigmoidKADApicDistanceDependentDistribution,
                 "sigmoid_kad_apic",
-                "(15./(1. + math.exp((300-{distance})/50)))*{value}",
+                "(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
             ),
             (
                 obi.LinearEPasApicDistanceDependentDistribution,
                 "linear_e_pas_apic",
-                "({value}-5*{distance}/150)",
+                "({value}-5.*{distance}/150.)",
             ),
             (
                 obi.LinearHDPasDistanceDependentDistribution,
@@ -78,12 +78,12 @@ class TestDistanceDependentDistributions:
             (
                 obi.SigmoidKADDistanceDependentDistribution,
                 "sigmoid_kad",
-                "(15./(1. + math.exp((150-{distance})/10)))*{value}",
+                "(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
             ),
             (
                 obi.SigmoidKDBMApicDistanceDependentDistribution,
                 "sigmoid_kdbm_apic",
-                "(15./(1. + math.exp(({distance}-50)/50)))*{value}",
+                "(15./(1. + math.exp(({distance}-50.)/50.)))*{value}",
             ),
         ],
     )
@@ -101,13 +101,13 @@ class TestDistanceDependentDistributions:
     def test_custom_distribution_is_validated_and_serialized(self):
         distribution = obi.CustomDistanceDependentDistribution(
             name="custom_profile",
-            function="({value} + {distance}) / 2",
+            function="({value} + {distance}) / 2.0",
             soma_ref_location=0.25,
         )
 
         assert distribution.to_emc_dict() == {
             "name": "custom_profile",
-            "function": "({value} + {distance}) / 2",
+            "function": "({value} + {distance}) / 2.0",
             "soma_ref_location": 0.25,
         }
 
@@ -128,7 +128,7 @@ class TestDistanceDependentDistributions:
     def test_empty_distribution_parameters_are_not_serialized(self):
         distribution = obi.CustomDistanceDependentDistribution(
             name="custom_profile",
-            function="({value} + {distance}) / 2",
+            function="({value} + {distance}) / 2.0",
             parameters=[],
         )
 
@@ -217,7 +217,7 @@ class TestDistanceDependentDistributions:
         assert distribution.to_emc_dict() == {
             "name": "step",
             "function": (
-                "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
                 "({distance} < {step_end})))"
             ),
             "soma_ref_location": 0.5,
@@ -246,16 +246,57 @@ class TestDistanceFunctionSafety:
     @pytest.mark.parametrize(
         "safe_function",
         [
-            "({value} + {distance}) / 2",
-            "math.exp((-{distance})/50)*{value}",
-            "int({distance} > 100) * {value}",
-            "(15./(1. + math.exp((300-{distance})/50)))*{value}",
-            "{value} * (0.1 + 0.9 * int(({distance} > 10) & ({distance} < 20)))",
+            "({value} + {distance}) / 2.0",
+            "math.exp((-{distance})/50.)*{value}",
+            "float({distance} > 100.) * {value}",
+            "(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
+            "{value} * (0.1 + 0.9 * float(({distance} > 10.) & ({distance} < 20.)))",
         ],
     )
     def test_safe_custom_distribution_is_accepted(self, safe_function):
         distribution = obi.CustomDistanceDependentDistribution(name="safe", function=safe_function)
         assert distribution.function == safe_function
+
+    @pytest.mark.parametrize(
+        "unsafe_function",
+        [
+            "int({distance}) + {value}",
+            "int({value}) ** int({distance})",
+            "math.factorial(30) + {value} + {distance}",
+            "math.comb(40, 20) + {value} + {distance}",
+            "math.floor({distance}) + {value}",
+        ],
+    )
+    def test_int_producing_calls_are_rejected(self, unsafe_function):
+        """int() and int-returning math functions are forbidden (unbounded-integer DoS)."""
+        with pytest.raises(ValueError, match="Distance function"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
+    def test_overly_complex_function_is_rejected(self):
+        """A structurally large expression (under the length cap) is rejected by the node cap."""
+        long_function = "{value}" + "+{distance}" * 30
+        with pytest.raises(ValueError, match="too complex"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=long_function)
+
+    def test_integer_literals_are_rejected(self):
+        """Integer literals are forbidden (arbitrary-precision); users must write floats."""
+        with pytest.raises(ValueError, match="must be floats"):
+            obi.CustomDistanceDependentDistribution(
+                name="evil", function="{value}*{distance} + 3"
+            )
+
+    def test_power_operator_is_rejected(self):
+        """`**` is forbidden: integer exponentiation is an unbounded-memory DoS."""
+        with pytest.raises(ValueError, match="Pow"):
+            obi.CustomDistanceDependentDistribution(
+                name="evil", function="{value} ** {distance}"
+            )
+
+    def test_overly_long_function_is_rejected(self):
+        """A giant raw string is rejected before parsing (bounds parse-time cost)."""
+        long_function = "{value}+{distance}+" + "9." * 300
+        with pytest.raises(ValueError, match="too long"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=long_function)
 
     def test_unsafe_distribution_rejected_when_building_a_config(self):
         """An unsafe custom distribution must block EModelOptimizationScanConfig creation."""
@@ -274,7 +315,7 @@ class TestDistanceFunctionSafety:
             distance_dependent_distributions={
                 "decay": {
                     "type": "CustomDistanceDependentDistribution",
-                    "function": "math.exp((-{distance})/50)*{value}",
+                    "function": "math.exp((-{distance})/50.)*{value}",
                 },
             }
         )
