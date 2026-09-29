@@ -43,11 +43,11 @@ decorator==5.3.1
 deprecation==2.1.0
 distributed==2026.8.0
 efel==5.7.34
-entitysdk==0.19.27
+entitysdk==0.19.28
 executing==2.2.1
 fasteners==0.20
 find-libpython==0.5.1
-fonttools==4.66.0
+fonttools==4.66.1
 fsspec==2026.9.0
 gitdb==4.0.12
 gitpython==3.1.62
@@ -63,7 +63,7 @@ hyperframe==6.1.0
 idna==3.20
 igor2==0.5.13
 importlib-resources==7.1.0
-ipykernel==7.3.0
+ipykernel==7.4.0
 ipyparallel==9.2.0
 ipython==9.17.1
 ipython-pygments-lexers==1.1.1

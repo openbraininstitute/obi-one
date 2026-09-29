@@ -39,10 +39,10 @@ debugpy==1.8.22
 deprecation==2.1.0
 distributed==2026.8.0
 efel==5.7.34
-entitysdk==0.19.27
+entitysdk==0.19.28
 executing==2.2.1
 find-libpython==0.5.1
-fonttools==4.66.0
+fonttools==4.66.1
 fsspec==2026.9.0
 h11==0.16.0
 h2==4.4.1

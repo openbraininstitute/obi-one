@@ -13,9 +13,9 @@ cryptography==50.0.1
 cycler==0.12.1
 deprecation==2.1.0
 efel==5.7.34
-entitysdk==0.19.27
+entitysdk==0.19.28
 find-libpython==0.5.1
-fonttools==4.66.0
+fonttools==4.66.1
 h11==0.16.0
 h5py==3.16.0
 httpcore2==2.13.1

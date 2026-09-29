@@ -6,8 +6,10 @@ job instead). ``launch_deps_compile`` is a standalone script under
 ``launch_scripts/tools/`` and is importable here via the ``pythonpath`` pytest setting.
 """
 
+import re
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import time
+from pathlib import Path
 
 import launch_deps_compile
 import pytest
@@ -150,16 +152,32 @@ class TestMain:
         d = self._setup(tmp_path, monkeypatch)
         delays = {"a": 0.2, "b": 0.1, "c": 0.0}  # finish in reverse order
 
-        def fake_compile(in_file, *, upgrade=False):  # ruff: ignore[unused-function-argument]
+        def fake_compile(in_file, **_):
             time.sleep(delays[in_file.stem])
             return f"{in_file.stem}-content" if in_file.stem != "b" else "changed"
 
         monkeypatch.setattr(launch_deps_compile, "compile_in_file", fake_compile)
         assert launch_deps_compile.main(["--check", "--jobs", "3", str(d)]) == 1
         captured = capsys.readouterr()
-        assert [line.split("/")[-1] for line in captured.out.splitlines()] == ["a.txt", "c.txt"]
+        assert [line.split()[1].split("/")[-1] for line in captured.out.splitlines()] == [
+            "a.txt",
+            "c.txt",
+        ]
         assert "STALE: launch_x/dependencies/b.txt" in captured.err
         assert "1 frozen requirements file(s) are out of date" in captured.err
+
+    def test_reports_time_and_index(self, tmp_path, monkeypatch, capsys):
+        d = self._setup(tmp_path, monkeypatch, names=("a",))
+        (d / "b.in").write_text("ultraliser\n", encoding="utf-8")
+        (d / "b.txt").write_text("b-content", encoding="utf-8")
+        monkeypatch.setenv("UV_INDEX_OBI_CODEARTIFACT_PASSWORD", "secret")
+        monkeypatch.setattr(
+            launch_deps_compile, "compile_in_file", lambda f, **_: f"{f.stem}-content"
+        )
+        assert launch_deps_compile.main(["--check", str(d)]) == 0
+        lines = capsys.readouterr().out.splitlines()
+        assert re.fullmatch(r"ok: \S+/a\.txt \(\d+\.\ds, pypi\)", lines[0])
+        assert re.fullmatch(r"ok: \S+/b\.txt \(\d+\.\ds, codeartifact\+pypi\)", lines[1])
 
     def test_writes_files(self, tmp_path, monkeypatch):
         d = self._setup(tmp_path, monkeypatch)
@@ -167,7 +185,35 @@ class TestMain:
         assert launch_deps_compile.main([str(d)]) == 0
         assert (d / "b.txt").read_text(encoding="utf-8") == "new-b"
 
-    def _failing_compile(self, in_file, *, upgrade=False):  # ruff: ignore[unused-method-argument]
+    @pytest.mark.parametrize("extra_args", [[], ["--upgrade"]])
+    def test_missing_txt_created(self, tmp_path, monkeypatch, capsys, extra_args):
+        d = self._setup(tmp_path, monkeypatch)
+        (d / "b.txt").unlink()
+        monkeypatch.setattr(launch_deps_compile, "compile_in_file", lambda f, **_: f"new-{f.stem}")
+        assert launch_deps_compile.main([*extra_args, str(d)]) == 0
+        assert (d / "b.txt").read_text(encoding="utf-8") == "new-b"
+        assert "MISSING" not in capsys.readouterr().err
+
+    def test_missing_txt_fails_check(self, tmp_path, monkeypatch, capsys):
+        d = self._setup(tmp_path, monkeypatch)
+        (d / "b.txt").unlink()
+        monkeypatch.setattr(
+            launch_deps_compile, "compile_in_file", lambda f, **_: f"{f.stem}-content"
+        )
+        assert launch_deps_compile.main(["--check", str(d)]) == 1
+        assert not (d / "b.txt").exists()
+        err = capsys.readouterr().err
+        assert "MISSING .txt for launch_x/dependencies/b.in" in err
+        assert "STALE: launch_x/dependencies/b.txt" in err
+
+    def test_orphan_txt_fails_compile(self, tmp_path, monkeypatch, capsys):
+        d = self._setup(tmp_path, monkeypatch)
+        (d / "orphan.txt").write_text("x", encoding="utf-8")
+        monkeypatch.setattr(launch_deps_compile, "compile_in_file", lambda f, **_: f"new-{f.stem}")
+        assert launch_deps_compile.main([str(d)]) == 1
+        assert "MISSING .in for launch_x/dependencies/orphan.txt" in capsys.readouterr().err
+
+    def _failing_compile(self, in_file, **_):
         if in_file.stem == "b":
             raise subprocess.CalledProcessError(1, ["uv"], stderr="uv: no solution\n")
         return f"{in_file.stem}-content"
@@ -191,3 +237,46 @@ class TestMain:
     def test_invalid_jobs(self, jobs):
         with pytest.raises(SystemExit):
             launch_deps_compile.parse_args(["--jobs", jobs])
+
+
+class TestPrivateIndex:
+    @pytest.mark.parametrize(
+        ("in_text", "txt_text", "expected"),
+        [
+            ("obi-one\nultraliser==2.2.7\n", None, True),
+            ("obi-one\nUltra_Liser>=2\n", None, False),  # different normalized name
+            ("obi-one\nNeuroMorphoMesh\n", None, True),
+            ("obi-one[meshing]\n", "obi-one[meshing]\nneuromorphomesh==1.0\n", True),  # transitive
+            ("obi-one\nnumpy\n# ultraliser\n", "obi-one\nnumpy==2.0\n", False),
+            ("obi-one\nultraliser-tools\n", None, False),
+        ],
+    )
+    def test_needs_private_index(self, tmp_path, in_text, txt_text, expected):
+        in_file = tmp_path / "reqs.in"
+        in_file.write_text(in_text, encoding="utf-8")
+        if txt_text is not None:
+            in_file.with_suffix(".txt").write_text(txt_text, encoding="utf-8")
+        assert launch_deps_compile.needs_private_index(in_file) is expected
+
+    @pytest.mark.parametrize(
+        ("in_text", "expect_index"), [("ultraliser\n", True), ("numpy\n", False)]
+    )
+    def test_extra_index_for(self, tmp_path, monkeypatch, in_text, expect_index):
+        monkeypatch.setenv("UV_INDEX_OBI_CODEARTIFACT_PASSWORD", "secret")
+        in_file = tmp_path / "reqs.in"
+        in_file.write_text(in_text, encoding="utf-8")
+        assert (launch_deps_compile.extra_index_for(in_file) is not None) is expect_index
+
+    @pytest.mark.parametrize("extra_index", ["https://index.example/simple/", None])
+    def test_index_passed_to_uv(self, tmp_path, monkeypatch, extra_index):
+        in_file = tmp_path / "reqs.in"
+        in_file.write_text("numpy\n", encoding="utf-8")
+        commands = []
+
+        def fake_run(cmd, **_):
+            commands.append(cmd)
+            Path(cmd[cmd.index("--output-file") + 1]).write_text("", encoding="utf-8")
+
+        monkeypatch.setattr(launch_deps_compile.subprocess, "run", fake_run)
+        launch_deps_compile.compile_in_file(in_file, extra_index=extra_index)
+        assert ("--extra-index-url" in commands[0]) is (extra_index is not None)
