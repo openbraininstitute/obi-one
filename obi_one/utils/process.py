@@ -1,7 +1,9 @@
 import logging
 import os
+import resource
 import shlex
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import sys
 from pathlib import Path
 
 L = logging.getLogger(__name__)
@@ -41,3 +43,11 @@ def run_and_log(
         L.warning("stderr: %s", result.stderr.strip())
 
     return result
+
+
+def log_peak_rss() -> None:
+    """Log peak resident memory for recalibrating launch resource estimates."""
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    # ru_maxrss is in KiB on Linux (the launch-system executor), bytes on macOS.
+    gb = rss / 1024**2 if sys.platform.startswith("linux") else rss / 1024**3
+    L.info("Peak RSS: %.2f GB", gb)

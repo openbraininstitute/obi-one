@@ -493,6 +493,10 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
             "app.services.accounting.estimate_circuit_extraction_count",
             return_value=expected_count[TaskType.circuit_extraction],
         ),
+        patch(
+            "app.services.accounting.estimate_emodel_optimization_count",
+            return_value=expected_count[TaskType.emodel_optimization],
+        ),
     ):
         res = test_module._evaluate_accounting_parameters(
             db_client=db_client,

@@ -21,6 +21,9 @@ from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
 from obi_one.db_sdk.db_sdk import select_json_asset_content
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.estimate import (
+    estimate_emodel_optimization_count,
+)
 from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
@@ -107,7 +110,7 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many-branches, too-many-return-statements]
+def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many-branches]
     *,
     db_client: Client,
     config_id: UUID,
@@ -157,10 +160,8 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
                 service_subtype=ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
             )
         case TaskType.emodel_optimization:
-            return AccountingParameters(
-                count=1,
-                service_subtype=ServiceSubtype.EMODEL_OPTIMISATION,
-            )
+            count = estimate_emodel_optimization_count(db_client=db_client, config_id=config_id)
+            service_subtype = ServiceSubtype.EMODEL_OPTIMISATION
         case TaskType.circuit_synaptic_physiology_assignment:
             return AccountingParameters(
                 count=1,

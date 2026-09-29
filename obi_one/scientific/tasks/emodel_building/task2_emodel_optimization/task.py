@@ -18,6 +18,7 @@ compute, no database access).
 """
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, ClassVar, cast
 
@@ -43,6 +44,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     resolve_ion_channel_models,
 )
 from obi_one.utils.filesystem import chdir
+from obi_one.utils.process import log_peak_rss
 
 L = logging.getLogger(__name__)
 
@@ -158,6 +160,7 @@ def run_optimization_pipeline(
         mapper = map
         seeds = [config.optimization_settings.seed]
         for seed in seeds:
+            t_start = time.monotonic()
             setup_and_run_optimisation(
                 access_point,
                 seed=seed,
@@ -165,6 +168,12 @@ def run_optimization_pipeline(
                 terminator=None,
             )
             store_best_model(access_point=access_point, seed=seed)
+            # Timing log for recalibrating launch resource estimates.
+            L.info(
+                "Optimisation wall time (seed=%s): %.0f s",
+                seed,
+                time.monotonic() - t_start,
+            )
 
         # Convert pkl checkpoints to HDF5 for storage and registration.
         # BluePyOpt always writes .pkl; we convert after each seed so that
@@ -223,6 +232,7 @@ def run_optimization_pipeline(
         )
         validation_status = ValidationStatus.error
 
+    log_peak_rss()
     L.info(
         "Completed optimisation pipeline for emodel=%s (validation_status=%s).",
         emodel,

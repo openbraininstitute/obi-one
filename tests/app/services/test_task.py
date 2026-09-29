@@ -958,6 +958,36 @@ def test_estimate_task_resources_extracellular_recording_weights(db_client):
     )
 
 
+def test_estimate_task_resources_emodel_optimization(db_client):
+    """Emodel optimization tasks should delegate to emodel_optimization.estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.emodel_optimization]
+    json_model = TaskLaunchSubmit(task_type=TaskType.emodel_optimization, config_id=uuid4())
+    expected = task_definition.resources.model_copy(
+        update={"timelimit": "02:00", "compute_cell": "cell_b"}
+    )
+
+    with patch(
+        "app.services.resource_estimation.emodel_optimization.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_b",
+        )
+
+    assert result == expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
+        accounting_parameters=None,
+    )
+
+
 def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_mock):
     task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
 
