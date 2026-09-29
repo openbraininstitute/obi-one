@@ -4,8 +4,8 @@ from typing import ClassVar
 import entitysdk
 from pydantic import Field
 
-from obi_one.core.exception import OBIONEError
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
@@ -51,6 +51,7 @@ class MorphologyMetricsTask(Task):
             L.info(morphology_metrics)
 
         except Exception as e:
-            raise OBIONEError(f"Internal Server Error: {e}") from e
+            message = f"Internal Server Error: {e}"
+            raise OBIONEError(message) from e
         else:
             return morphology_metrics
