@@ -6,6 +6,9 @@ job instead). ``launch_deps_compile`` is a standalone script under
 ``launch_scripts/tools/`` and is importable here via the ``pythonpath`` pytest setting.
 """
 
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import time
+
 import launch_deps_compile
 import pytest
 
@@ -129,3 +132,62 @@ class TestPythonFloorVersion:
         # Reads the real pyproject; must return a dotted version >= 3.12.
         version = launch_deps_compile._python_floor_version()
         assert version.startswith("3.12")
+
+
+class TestMain:
+    """``main`` with ``compile_in_file`` replaced, so no uv resolution runs."""
+
+    def _setup(self, tmp_path, monkeypatch, names=("a", "b", "c")):
+        d = tmp_path / "launch_x" / "dependencies"
+        d.mkdir(parents=True)
+        for name in names:
+            (d / f"{name}.in").write_text("numpy\n", encoding="utf-8")
+            (d / f"{name}.txt").write_text(f"{name}-content", encoding="utf-8")
+        monkeypatch.setattr(launch_deps_compile, "REPO_ROOT", tmp_path)
+        return d
+
+    def test_parallel_results_reported_in_file_order(self, tmp_path, monkeypatch, capsys):
+        d = self._setup(tmp_path, monkeypatch)
+        delays = {"a": 0.2, "b": 0.1, "c": 0.0}  # finish in reverse order
+
+        def fake_compile(in_file, *, upgrade=False):  # ruff: ignore[unused-function-argument]
+            time.sleep(delays[in_file.stem])
+            return f"{in_file.stem}-content" if in_file.stem != "b" else "changed"
+
+        monkeypatch.setattr(launch_deps_compile, "compile_in_file", fake_compile)
+        assert launch_deps_compile.main(["--check", "--jobs", "3", str(d)]) == 1
+        captured = capsys.readouterr()
+        assert [line.split("/")[-1] for line in captured.out.splitlines()] == ["a.txt", "c.txt"]
+        assert "STALE: launch_x/dependencies/b.txt" in captured.err
+        assert "1 frozen requirements file(s) are out of date" in captured.err
+
+    def test_writes_files(self, tmp_path, monkeypatch):
+        d = self._setup(tmp_path, monkeypatch)
+        monkeypatch.setattr(launch_deps_compile, "compile_in_file", lambda f, **_: f"new-{f.stem}")
+        assert launch_deps_compile.main([str(d)]) == 0
+        assert (d / "b.txt").read_text(encoding="utf-8") == "new-b"
+
+    def _failing_compile(self, in_file, *, upgrade=False):  # ruff: ignore[unused-method-argument]
+        if in_file.stem == "b":
+            raise subprocess.CalledProcessError(1, ["uv"], stderr="uv: no solution\n")
+        return f"{in_file.stem}-content"
+
+    def test_failure_prints_uv_stderr_and_raises(self, tmp_path, monkeypatch, capsys):
+        d = self._setup(tmp_path, monkeypatch)
+        monkeypatch.setattr(launch_deps_compile, "compile_in_file", self._failing_compile)
+        with pytest.raises(subprocess.CalledProcessError):
+            launch_deps_compile.main(["--check", str(d)])
+        assert "uv: no solution" in capsys.readouterr().err
+
+    def test_failure_skipped(self, tmp_path, monkeypatch, capsys):
+        d = self._setup(tmp_path, monkeypatch)
+        monkeypatch.setattr(launch_deps_compile, "compile_in_file", self._failing_compile)
+        assert launch_deps_compile.main(["--check", "--skip-unresolvable", str(d)]) == 0
+        err = capsys.readouterr().err
+        assert "uv: no solution" in err
+        assert "SKIP (unresolvable): launch_x/dependencies/b.in" in err
+
+    @pytest.mark.parametrize("jobs", ["0", "-1", "x"])
+    def test_invalid_jobs(self, jobs):
+        with pytest.raises(SystemExit):
+            launch_deps_compile.parse_args(["--jobs", jobs])

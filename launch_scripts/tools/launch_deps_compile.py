@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
@@ -37,6 +38,10 @@ OBI_ONE_PACKAGE = "obi-one"
 
 # Always kept at latest, mirroring the project lock file (``make compile-deps``).
 ALWAYS_LATEST_PACKAGE = "entitysdk"
+
+# Default cap on parallel compiles: each one is a network-bound ``uv pip compile``, and
+# a handful already reaches roughly the duration of the slowest file.
+DEFAULT_MAX_JOBS = 8
 
 # Private OBI package index for packages published only there (e.g. ``ultraliser``,
 # ``neuromorphomesh``). Credentials: ``UV_INDEX_OBI_CODEARTIFACT_{USERNAME,PASSWORD}``.
@@ -192,11 +197,13 @@ def compile_in_file(in_file: Path, *, upgrade: bool = False) -> str:
         if extra_index is not None:
             cmd += ["--extra-index-url", extra_index]
         # Discover obi-one's closure from the local project but do not pin obi-one
-        # itself: its version is applied dynamically at submission time.
+        # itself: it is pinned only in the release's launch tag.
         if obi_one_lines:
             cmd += ["--no-emit-package", OBI_ONE_PACKAGE]
 
-        subprocess.run(cmd, check=True, cwd=REPO_ROOT)
+        # Output is captured so that parallel compiles do not interleave; on failure
+        # it is available as CalledProcessError.stderr.
+        subprocess.run(cmd, check=True, cwd=REPO_ROOT, capture_output=True, text=True)
         compiled = tmp_out.read_text(encoding="utf-8")
     finally:
         tmp_out.unlink(missing_ok=True)
@@ -244,7 +251,23 @@ def check_in_txt_pairing(in_files: list[Path]) -> bool:
     return mismatch
 
 
-def parse_args() -> argparse.Namespace:
+def _positive_int(value: str) -> int:
+    n = int(value)
+    if n < 1:
+        msg = f"must be >= 1, got {n}"
+        raise argparse.ArgumentTypeError(msg)
+    return n
+
+
+def _compile_or_error(in_file: Path, *, upgrade: bool) -> str | subprocess.CalledProcessError:
+    """Compile ``in_file``, returning the uv failure instead of raising it."""
+    try:
+        return compile_in_file(in_file, upgrade=upgrade)
+    except subprocess.CalledProcessError as e:
+        return e
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -273,11 +296,17 @@ def parse_args() -> argparse.Namespace:
             "instead of failing. Useful when private packages are unavailable."
         ),
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--jobs",
+        type=_positive_int,
+        default=min(DEFAULT_MAX_JOBS, os.cpu_count() or 1),
+        help="Number of files compiled in parallel (default: %(default)s)",
+    )
+    return parser.parse_args(argv)
 
 
-def main() -> int:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
 
     in_files = resolve_in_files(args.paths)
     pairing_error = check_in_txt_pairing(in_files)
@@ -286,13 +315,17 @@ def main() -> int:
         print("No .in files found.", file=sys.stderr)
         return 1 if pairing_error else 0
 
+    # Each compile is an independent, network-bound uv subprocess, so threads suffice.
+    # Results are then handled in file order, keeping the output deterministic.
+    with ThreadPoolExecutor(max_workers=args.jobs) as executor:
+        results = list(executor.map(lambda f: _compile_or_error(f, upgrade=args.upgrade), in_files))
+
     stale: list[Path] = []
     skipped: list[Path] = []
-    for in_file in in_files:
+    for in_file, content in zip(in_files, results, strict=True):
         out_file = in_file.with_suffix(".txt")
-        try:
-            content = compile_in_file(in_file, upgrade=args.upgrade)
-        except subprocess.CalledProcessError:
+        if isinstance(content, subprocess.CalledProcessError):
+            print(content.stderr or "", end="", file=sys.stderr)
             if args.skip_unresolvable:
                 skipped.append(in_file)
                 print(
@@ -300,7 +333,7 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 continue
-            raise
+            raise content
         if args.check:
             existing = out_file.read_text(encoding="utf-8") if out_file.exists() else ""
             if existing != content:
