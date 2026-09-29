@@ -32,7 +32,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.circuit_extraction__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "circuit_extraction.txt"),
         ),
@@ -54,7 +54,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.circuit_single_build__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
@@ -249,7 +249,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "synapse_parameterization.txt"),
         ),
@@ -271,7 +271,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.em_synapse_mapping__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
             capabilities=Capabilities(
