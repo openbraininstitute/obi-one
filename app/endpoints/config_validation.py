@@ -10,6 +10,9 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.validator import run_grid_scan_validation
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    EModelOptimizationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -35,7 +38,7 @@ router = APIRouter(
 )
 
 
-class SharedStatePartial(BaseModel):
+class _SharedStatePartialBase(BaseModel):
     """All validatable config fields. Each is optional — validate whichever are present."""
 
     circuit_simulation_config: CircuitSimulationScanConfig | None = None
@@ -76,6 +79,27 @@ _VALIDATION_CONFIG: dict[str, bool] = {
     # against the database; only the fitting task itself (NWB download, nrnivmodl) is skipped.
     "ion_channel_fitting_config": False,
 }
+
+
+# Optimize > E-Model optimization. EModelOptimizationScanConfig is None without the optional
+# `emodel` extra, and `None | None` raises TypeError while the class body is evaluated, which
+# would stop the service starting. Same conditional idiom as app/endpoints/scan_config.py. The
+# field and its _VALIDATION_CONFIG entry must stay gated together, or the key is parsed and
+# then never validated.
+if EModelOptimizationScanConfig is not None:
+
+    class SharedStatePartial(_SharedStatePartialBase):
+        """Validatable config fields, including E-Model optimization."""
+
+        emodel_optimization_config: EModelOptimizationScanConfig | None = None  # ty:ignore[invalid-type-form]
+
+    # False mirrors the generate endpoint. Generation still resolves the referenced entities;
+    # only the BluePyEModel/NEURON run is skipped.
+    _VALIDATION_CONFIG["emodel_optimization_config"] = False
+else:
+    SharedStatePartial = _SharedStatePartialBase
+    # Pydantic puts the model name in its error string, which the 422 detail returns verbatim.
+    SharedStatePartial.__name__ = "SharedStatePartial"
 
 
 @router.post(
