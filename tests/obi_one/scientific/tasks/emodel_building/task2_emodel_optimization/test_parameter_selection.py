@@ -399,13 +399,13 @@ def test_optimization_settings_serialize_bluepyemodel_recipe_fields():
             relative_amp=False,
         ),
     )
-    params = OptimizationParams(offspring_size=30, sigma=0.3, weight_hv=0.7)
+    params = OptimizationParams(offspring_size=20, sigma=0.3, weight_hv=0.7)
 
     recipe_settings = settings.to_dict(params)
 
     assert recipe_settings["optimiser"] == "MO-CMA"
     assert recipe_settings["optimisation_params"] == {
-        "offspring_size": 30,
+        "offspring_size": 20,
         "sigma": 0.3,
         "weight_hv": 0.7,
     }

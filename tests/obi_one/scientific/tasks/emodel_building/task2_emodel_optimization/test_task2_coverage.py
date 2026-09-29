@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
+from uuid import UUID
 
 import morphio
 import pytest
@@ -19,6 +20,7 @@ from entitysdk.types import EntityLifecycleStatus, ValidationStatus
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    calibration_validation,
     registration,
     staging,
     utils,
@@ -324,10 +326,14 @@ def test_optimization_value_rejects_nonfinite_values(kwargs, message):
 def test_optimization_params_validates_limits_and_serializes_all_algorithms():
     with pytest.raises(ValueError, match="centroids"):
         OptimizationParams(centroids=(float("nan"),))
-    with pytest.raises(ValueError, match="at most 200"):
-        OptimizationParams(offspring_size=201)
-    with pytest.raises(ValueError, match="at most 200"):
-        OptimizationParams(offspring_size=[20, 201])
+    with pytest.raises(ValueError, match="less than or equal to 20"):
+        OptimizationParams(offspring_size=21)
+    with pytest.raises(ValueError, match="less than or equal to 20"):
+        OptimizationParams(offspring_size=[10, 21])
+    with pytest.raises(ValueError, match="less than or equal to 50"):
+        OptimizationSettings(max_ngen=51)
+    with pytest.raises(ValueError, match="less than or equal to 50"):
+        OptimizationSettings(max_ngen=[20, 51])
 
     cma = OptimizationParams(offspring_size=[2, 4], sigma=[0.1, 0.2], centroids=(1.0, 2.0))
     assert cma.to_dict("SO-CMA") == {
@@ -424,6 +430,23 @@ def test_preflight_rejects_missing_asset(tmp_path):
         morphology_preflight.preflight_morphology(tmp_path / "missing.swc", "none")
 
 
+def _pipeline_results(**overrides):
+    defaults = {
+        "em_metrics": {
+            "name": "test",
+            "total_score": 2.5,
+            "holding_current": 0.1,
+            "threshold_current": 0.2,
+            "iteration": "4",
+        },
+        "calibration": None,
+        "validation": None,
+        "validation_status": ValidationStatus.created,
+    }
+    defaults.update(overrides)
+    return registration.OptimizationPipelineResults(**defaults)
+
+
 def _install_registration_helpers(monkeypatch, calls):
     def register_emodel(**kwargs):
         calls["emodel"] = kwargs
@@ -463,7 +486,11 @@ def _registration_fixture(tmp_path, *, complete=True):
         return SimpleNamespace(id="task-result-id")
 
     db_client = SimpleNamespace(
-        search_entity=Mock(return_value=SimpleNamespace(one=Mock(return_value=license_entity))),
+        search_entity=Mock(
+            return_value=SimpleNamespace(
+                one=Mock(return_value=license_entity), first=Mock(return_value=None)
+            )
+        ),
         get_entity=Mock(return_value=activity),
         register_entity=Mock(side_effect=register_entity),
         upload_file=Mock(),
@@ -513,8 +540,9 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
         config,
         tmp_path,
         db_client,
+        pipeline_results=_pipeline_results(),
         trace_ids=["trace-1"],
-        execution_activity_id="activity-id",
+        execution_activity_id="00000000-0000-0000-0000-0000000000aa",
     )
 
     assert result_calls["result"].authorized_public is True
@@ -540,7 +568,7 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
     assert summary_upload["file_path"].name == "final.json"
     assert db_client.upload_directory.call_count == 1
     db_client.update_entity.assert_called_once_with(
-        entity_id="activity-id",
+        entity_id=UUID("00000000-0000-0000-0000-0000000000aa"),
         entity_type=pytest.importorskip("entitysdk.models").TaskActivity,
         attrs_or_entity={
             "generated_ids": ["task-result-id", "emodel-id", "memodel-id"],
@@ -551,13 +579,66 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
     assert outputs.memodel_id == "memodel-id"
 
 
+def test_register_output_entities_registers_calibration_and_validation(tmp_path, monkeypatch):
+    calls = {}
+    _install_registration_helpers(monkeypatch, calls)
+    config, db_client, _, _, _, _ = _registration_fixture(tmp_path)
+    cal = Mock(return_value=SimpleNamespace(id="cal-1"))
+    thumb = Mock(return_value=SimpleNamespace(id="thumb-1"))
+    reg_val = Mock(return_value=[SimpleNamespace(id="vr-1")])
+    monkeypatch.setattr(registration, "register_memodel_calibration_result", cal)
+    monkeypatch.setattr(registration, "register_validation_result", thumb)
+    monkeypatch.setattr(registration, "register_memodel_validation_results", reg_val)
+
+    outputs = registration.register_output_entities(
+        config,
+        tmp_path,
+        db_client,
+        pipeline_results=_pipeline_results(
+            calibration={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
+            validation={
+                "spike_test": {"name": "SpikeTest", "passed": True},
+                "thumbnail_test": {
+                    "name": "thumbnail",
+                    "passed": True,
+                    "figures": ["t.png"],
+                },
+            },
+            validation_status=ValidationStatus.done,
+        ),
+    )
+
+    # the MEModel is registered once with the final status — no post-hoc update
+    assert calls["memodel"]["validation_status"] == ValidationStatus.done
+    cal.assert_called_once()
+    assert cal.call_args.kwargs["calibrated_entity_id"] == "memodel-id"
+    assert cal.call_args.kwargs["threshold_current"] == pytest.approx(0.2)
+    # thumbnail generation expects a "thumbnail" ValidationResult on the EModel
+    thumb.assert_called_once()
+    assert thumb.call_args.kwargs["name"] == "thumbnail"
+    assert thumb.call_args.kwargs["validated_entity_id"] == "emodel-id"
+    assert thumb.call_args.kwargs["figure_files"] == [Path("t.png")]
+    reg_val.assert_called_once()
+    assert reg_val.call_args.kwargs["memodel_id"] == "memodel-id"
+    assert outputs.generated_ids == [
+        "task-result-id",
+        "emodel-id",
+        "memodel-id",
+        "cal-1",
+        "thumb-1",
+        "vr-1",
+    ]
+
+
 def test_register_output_entities_raises_when_checkpoint_missing(tmp_path, monkeypatch):
     calls = {}
     _install_registration_helpers(monkeypatch, calls)
     config, db_client, _, _, _, _ = _registration_fixture(tmp_path, complete=False)
 
     with pytest.raises(RuntimeError, match=r"No \.h5 checkpoint found"):
-        registration.register_output_entities(config, tmp_path, db_client)
+        registration.register_output_entities(
+            config, tmp_path, db_client, pipeline_results=_pipeline_results()
+        )
 
     db_client.register_entity.assert_not_called()
     db_client.update_entity.assert_not_called()
@@ -571,7 +652,9 @@ def test_register_output_entities_raises_when_figures_missing(tmp_path, monkeypa
     (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="No analysis figures found"):
-        registration.register_output_entities(config, tmp_path, db_client)
+        registration.register_output_entities(
+            config, tmp_path, db_client, pipeline_results=_pipeline_results()
+        )
 
     db_client.register_entity.assert_not_called()
 
@@ -586,7 +669,9 @@ def test_register_output_entities_raises_when_summary_missing(tmp_path, monkeypa
     (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match=r"final\.json not found"):
-        registration.register_output_entities(config, tmp_path, db_client)
+        registration.register_output_entities(
+            config, tmp_path, db_client, pipeline_results=_pipeline_results()
+        )
 
     db_client.register_entity.assert_not_called()
 
@@ -599,15 +684,18 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
     (tmp_path / "checkpoints" / "model.h5").write_text("checkpoint", encoding="utf-8")
     (tmp_path / "figures" / "nested").mkdir(parents=True)
     (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
+    traces = tmp_path / "figures" / "nested" / "emodel=test__seed=7__traces.pdf"
+    traces.write_text("pdf", encoding="utf-8")
     (tmp_path / "final.json").write_text(json.dumps({"test": [{"fitness": 1.0}]}), encoding="utf-8")
 
-    registration.register_output_entities(config, tmp_path, db_client)
+    registration.register_output_entities(
+        config, tmp_path, db_client, pipeline_results=_pipeline_results()
+    )
 
     figure_paths = db_client.upload_directory.call_args.kwargs["paths"]
     assert Path("nested/validation.pdf") in figure_paths
-    assert calls["emodel"]["validation_result_figure_files"] == [
-        tmp_path / "figures" / "nested" / "validation.pdf"
-    ]
+    # only recognised BluePyEModel figure kinds go to entitysdk's register_emodel
+    assert calls["emodel"]["validation_result_figure_files"] == [traces]
 
 
 def _config_data_for_selection(selection, distributions=None, **overrides):
@@ -839,9 +927,36 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
             task_result_id="task-result-id",
             emodel_id="emodel-id",
             memodel_id="memodel-id",
+            authorized_public=False,
+            generated_ids=["task-result-id", "emodel-id", "memodel-id"],
         )
     )
     monkeypatch.setattr(registration, "register_output_entities", register_outputs)
+    monkeypatch.setattr(
+        calibration_validation, "locate_hoc", Mock(return_value=tmp_path / "hoc.hoc")
+    )
+    compute_cv = Mock(
+        return_value={
+            "calibration": {"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
+            "validation": {"spike_test": {"name": "SpikeTest", "passed": True}},
+        }
+    )
+    monkeypatch.setattr(calibration_validation, "compute_calibration_and_validation", compute_cv)
+    (tmp_path / "final.json").write_text(
+        json.dumps(
+            {
+                "test": [
+                    {
+                        "fitness": 1.5,
+                        "holding_current": -0.05,
+                        "threshold_current": 0.15,
+                        "iteration": 2,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
 
     species = SimpleNamespace(name="Mus musculus")
     brain_region = SimpleNamespace(name="Somatosensory cortex")
@@ -865,10 +980,21 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
 
     assert result == tmp_path.resolve()
     assert register_outputs.call_args.args == (config, tmp_path.resolve(), db_client)
-    assert register_outputs.call_args.kwargs == {
-        "trace_ids": ["trace-1"],
-        "execution_activity_id": None,
+    assert register_outputs.call_args.kwargs["trace_ids"] == ["trace-1"]
+    assert register_outputs.call_args.kwargs["execution_activity_id"] is None
+    results = register_outputs.call_args.kwargs["pipeline_results"]
+    assert results.em_metrics == {
+        "name": "test",
+        "total_score": pytest.approx(1.5),
+        "holding_current": pytest.approx(-0.05),
+        "threshold_current": pytest.approx(0.15),
+        "iteration": "2",
     }
+    assert results.calibration == {"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0}
+    assert results.validation == {"spike_test": {"name": "SpikeTest", "passed": True}}
+    assert results.validation_status == ValidationStatus.done
+    # the pipeline hands the staged SWC straight to the compute step — no re-location
+    assert compute_cv.call_args.args[2] == tmp_path.resolve() / "morphologies" / "morphology.swc"
     assert task._registered_task_result_id == "task-result-id"
     assert task._registered_emodel_id == "emodel-id"
     assert task._registered_memodel_id == "memodel-id"

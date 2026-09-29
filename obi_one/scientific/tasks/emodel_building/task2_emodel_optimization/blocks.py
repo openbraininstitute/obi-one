@@ -37,7 +37,11 @@ from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModel
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 
 MIN_CMA_OFFSPRING_SIZE = 2
-MAX_OFFSPRING_SIZE = 200
+MAX_OFFSPRING_SIZE = 20
+MAX_NGEN = 50
+
+OffspringSize = Annotated[PositiveInt, Field(le=MAX_OFFSPRING_SIZE)]
+GenerationCount = Annotated[PositiveInt, Field(le=MAX_NGEN)]
 
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
@@ -746,6 +750,7 @@ class MechanismsBySectionList(Block):
 
     ion_channel_models: tuple[IonChannelModelFromID, ...] = Field(
         min_length=1,
+        max_length=20,
         title="Ion channel models",
         description=(
             "Ion channel model entities available for assignment to morphology section lists."
@@ -1180,13 +1185,13 @@ class SineSpecSettings(Block):
 class OptimizationParams(Block):
     """Algorithm-specific ``optimisation_params`` passed to BluePyEModel."""
 
-    offspring_size: PositiveInt | list[PositiveInt] = Field(
+    offspring_size: OffspringSize | list[OffspringSize] = Field(
         default=5,
         title="Offspring size",
         description=(
             "Population size per generation. The L5PC example uses 20; we default"
             " to a small value so the bundled example completes quickly."
-            " Allowed range: 1-200 for IBEA and 2-200 for CMA optimisers."
+            f" Capped at {MAX_OFFSPRING_SIZE}; CMA optimisers need at least 2."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -1235,15 +1240,9 @@ class OptimizationParams(Block):
 
     @model_validator(mode="after")
     def validate_centroids(self) -> "OptimizationParams":
-        """Reject invalid CMA centroids and offspring-size values."""
+        """Reject invalid CMA centroids."""
         if self.centroids is not None and any(not math.isfinite(value) for value in self.centroids):
             msg = "CMA centroids must contain only finite values."
-            raise ValueError(msg)
-        offspring_sizes = (
-            self.offspring_size if isinstance(self.offspring_size, list) else [self.offspring_size]
-        )
-        if any(size > MAX_OFFSPRING_SIZE for size in offspring_sizes):
-            msg = f"offspring_size must be at most {MAX_OFFSPRING_SIZE}."
             raise ValueError(msg)
         return self
 
@@ -1312,10 +1311,10 @@ class OptimizationSettings(Block):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
-    max_ngen: PositiveInt | list[PositiveInt] = Field(
+    max_ngen: GenerationCount | list[GenerationCount] = Field(
         default=20,
         title="Max generations",
-        description="Maximum number of optimizer generations.",
+        description=f"Maximum number of optimizer generations (at most {MAX_NGEN}).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
     optimisation_timeout: PositiveFloat | list[PositiveFloat] = Field(

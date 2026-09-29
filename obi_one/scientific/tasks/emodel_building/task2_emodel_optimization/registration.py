@@ -1,6 +1,6 @@
 """Entity registration for Task 2 optimisation outputs.
 
-Registers the TaskResult, draft EModel, and draft MEModel after BluePyEModel
+Registers the TaskResult, EModel, and MEModel after BluePyEModel
 has written checkpoints, figures, and ``final.json`` into the working directory.
 """
 
@@ -9,6 +9,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
+from uuid import UUID
 
 import entitysdk
 from entitysdk import MultipartDirectoryUploadTransferConfig
@@ -21,7 +22,15 @@ from entitysdk.models import (
     TaskResult,
 )
 from entitysdk.registration.emodel import register_emodel
-from entitysdk.registration.memodel import register_memodel
+from entitysdk.registration.memodel import (
+    register_memodel,
+    register_memodel_calibration_result,
+)
+from entitysdk.registration.validation_result import (
+    SUFFIX_TO_NAME,
+    register_memodel_validation_results,
+    register_validation_result,
+)
 from entitysdk.types import (
     ID,
     AssetLabel,
@@ -31,11 +40,26 @@ from entitysdk.types import (
     ValidationStatus,
 )
 
+from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
 
 L = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OptimizationPipelineResults:
+    """Outputs of ``run_optimization_pipeline`` consumed by registration.
+
+    ``calibration``/``validation`` are ``None`` when the calibration/validation
+    compute failed; ``validation_status`` then reports ``error``.
+    """
+
+    em_metrics: dict
+    calibration: dict | None
+    validation: dict | None
+    validation_status: ValidationStatus
 
 
 @dataclass(frozen=True)
@@ -45,6 +69,8 @@ class RegisteredOptimizationOutputs:
     task_result_id: str
     emodel_id: str
     memodel_id: str
+    authorized_public: bool
+    generated_ids: list[str]
 
 
 def parse_final_json(final_path: Path, emodel_name: str) -> dict:
@@ -130,18 +156,25 @@ def upload_optimization_assets(
         )
 
 
-def register_output_entities(  # ruff: ignore[too-many-locals]
+def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statements,complex-structure]
     config: EModelOptimizationSingleConfig,
     coord_root: Path,
     db_client: entitysdk.Client,
     *,
+    pipeline_results: OptimizationPipelineResults,
     trace_ids: list | None = None,
     execution_activity_id: str | None = None,
 ) -> RegisteredOptimizationOutputs:
-    """Register TaskResult, draft EModel, draft MEModel using entitysdk helpers.
+    """Register TaskResult, EModel, MEModel (+ calibration/validation) in one pass.
 
     Uses the shared ``entitysdk.registration`` helper package so this local path and
     the remote launch-system worker register output entities identically.
+
+    ``pipeline_results`` comes from :func:`task.run_optimization_pipeline` (which
+    parses ``final.json`` and runs the calibration/validation subprocesses). When
+    the calibration/validation results are present, a ``MEModelCalibrationResult``
+    and per-test ``ValidationResult`` entities are registered against the MEModel,
+    which itself is registered with the final ``validation_status``.
     """
     init = config.initialize
     emodel_name = init.emodel
@@ -173,9 +206,12 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         )
         authorized_public = getattr(activity, "authorized_public", False)
 
-    # --- Parse emodel JSON for metrics ---
+    # --- Pipeline outputs ---
     final_path = coord_root / "final.json"
-    em_metrics = parse_final_json(final_path, emodel_name)
+    em_metrics = pipeline_results.em_metrics
+    calibration = pipeline_results.calibration
+    validation = pipeline_results.validation
+    validation_status = pipeline_results.validation_status
 
     # --- Collect file paths for helpers ---
     # Checkpoints: BluePyOpt writes .pkl files; task.py converts them to .h5
@@ -215,11 +251,15 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         )
         raise RuntimeError(msg)
 
-    # Collect validation result figure files
-    validation_figures: list[Path] = [
+    # EModel analysis figures are registered as ValidationResult assets by
+    # register_emodel; entitysdk uploads them with extension-preserving names.
+    # Only BluePyEModel figure kinds known to entitysdk are registered.
+    emodel_figures: list[Path] = [
         fp
         for fp in sorted(figures_dir.rglob("*"))
-        if fp.is_file() and fp.suffix in {".pdf", ".png"}
+        if fp.is_file()
+        and fp.suffix in {".pdf", ".png"}
+        and fp.stem.rsplit("__", maxsplit=1)[-1].split(".")[0] in SUFFIX_TO_NAME
     ]
 
     # --- Register TaskResult ---
@@ -268,14 +308,14 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         cast("IonChannelModel", reference.entity(db_client=db_client)) for reference in references
     ]
 
-    # --- Register draft EModel via helper ---
+    # --- Register EModel via helper ---
     # Standalone HOC export is not produced; SONATA may still contain a HOC asset.
     sonata_dir = coord_root / "export_emodels_sonata"
     hoc_file = next(sonata_dir.rglob("*.hoc"), None) if sonata_dir.exists() else None
     emodel_entity = register_emodel(
         client=db_client,
         name=f"{emodel_name}",
-        description=f"Draft emodel from optimisation (emodel={emodel_name}).",
+        description=f"EModel from optimisation (emodel={emodel_name}).",
         authorized_public=authorized_public,
         species=species_entity,
         brain_region=brain_region_entity,
@@ -290,16 +330,16 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
         emodel_summary_file=emodel_summary_file,
         electrical_cell_recording_ids=trace_ids or [],
-        validation_result_figure_files=validation_figures,
+        validation_result_figure_files=emodel_figures,
         validation_result_status=False,
     )
-    L.info("Draft EModel registered: %s", emodel_entity.id)
+    L.info("EModel registered: %s", emodel_entity.id)
 
-    # --- Register draft MEModel via helper ---
+    # --- Register MEModel via helper ---
     memodel_entity = register_memodel(
         client=db_client,
         name=f"{emodel_name} MEModel",
-        description=f"Draft MEModel from optimisation (emodel={emodel_name}).",
+        description=f"MEModel from optimisation (emodel={emodel_name}).",
         species=species_entity,
         brain_region=brain_region_entity,
         license=license_entity,
@@ -308,23 +348,69 @@ def register_output_entities(  # ruff: ignore[too-many-locals]
         threshold_current=em_metrics["threshold_current"],
         holding_current=em_metrics["holding_current"],
         authorized_public=authorized_public,
-        validation_status=ValidationStatus.created,
+        validation_status=validation_status,
         lifecycle_status=EntityLifecycleStatus.active,
     )
-    L.info("Draft MEModel registered: %s", memodel_entity.id)
+    L.info("MEModel registered: %s", memodel_entity.id)
+
+    memodel_id = str(memodel_entity.id)
+    generated_ids = [str(task_result.id), str(emodel_entity.id), memodel_id]
+
+    # --- MEModel calibration/validation results (computed pre-registration) ---
+    if calibration is not None:
+        calibration_result = register_memodel_calibration_result(
+            client=db_client,
+            calibrated_entity_id=memodel_entity.id,
+            holding_current=calibration["holding_current"],
+            threshold_current=calibration["rheobase"],
+            rin=calibration.get("rin"),
+            authorized_public=authorized_public,
+        )
+        if calibration_result is not None:
+            generated_ids.append(str(calibration_result.id))
+    if validation is not None:
+        # Thumbnail generation looks up ValidationResult(name="thumbnail") on
+        # the EModel; bluecellulab's thumbnail entry is also registered against
+        # the MEModel below.
+        thumbnail_figures = [
+            Path(figure)
+            for value in validation.values()
+            if isinstance(value, dict) and value.get("name") == "thumbnail"
+            for figure in value.get("figures", [])
+        ]
+        if thumbnail_figures:
+            emodel_thumbnail = register_validation_result(
+                client=db_client,
+                name="thumbnail",
+                passed=True,
+                validated_entity_id=emodel_entity.id,
+                authorized_public=authorized_public,
+                figure_files=thumbnail_figures,
+            )
+            if emodel_thumbnail is not None:
+                generated_ids.append(str(emodel_thumbnail.id))
+        generated_ids.extend(
+            str(result.id)
+            for result in register_memodel_validation_results(
+                client=db_client,
+                memodel_id=memodel_entity.id,
+                validation_dict=validation,
+                authorized_public=authorized_public,
+            )
+        )
 
     # --- Update TaskActivity with generated_ids ---
     if execution_activity_id is not None:
-        db_client.update_entity(
-            entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
-            entity_type=TaskActivity,
-            attrs_or_entity={
-                "generated_ids": [task_result.id, emodel_entity.id, memodel_entity.id],
-            },
+        db_sdk.update_execution_activity_with_generated(
+            client=db_client,
+            execution_activity_id=UUID(execution_activity_id),
+            generated_ids=generated_ids,
         )
 
     return RegisteredOptimizationOutputs(
         task_result_id=str(task_result.id),
         emodel_id=str(emodel_entity.id),
-        memodel_id=str(memodel_entity.id),
+        memodel_id=memodel_id,
+        authorized_public=authorized_public,
+        generated_ids=generated_ids,
     )

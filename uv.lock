@@ -994,14 +994,14 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.26"
+version = "0.19.27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/e4/9d4e3882ef1254647d794e453553b1887a32f663436cfdf3b6d5f4671620/entitysdk-0.19.26.tar.gz", hash = "sha256:b7a08dc3561c8ab1060297aed35241366437d7c7cccab0c478ab533bbf2b1bc0", size = 99349, upload-time = "2026-09-28T13:23:13.592Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/d1/8d589b401bee8ca388e96ce68703fae2564c3568ebaa4cec6b634849ab95/entitysdk-0.19.27.tar.gz", hash = "sha256:07c28f778c7ba098186f50e26b1d9306aca8a3e95adef4340759e5b3f1a5f16b", size = 99446, upload-time = "2026-09-29T08:17:41.042Z" }
 
 [[package]]
 name = "executing"
@@ -2489,7 +2489,7 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "bluecellulab", specifier = ">=2.6.104" },
     { name = "blueetl" },
-    { name = "bluepyefe", specifier = ">=2.3.57" },
+    { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.47" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.4.6" },
@@ -2500,7 +2500,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.19.22" },
+    { name = "entitysdk", specifier = ">=0.19.25" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },

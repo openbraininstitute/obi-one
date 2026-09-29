@@ -100,8 +100,36 @@ def test_stage_memodel_as_circuit_from_id(monkeypatch, tmp_path):
         client=mock_client,
         memodel=mock_memodel_entity,
         output_dir=mock_output_dir,
+        max_concurrent=1,
     )
     mock_build_circuit.assert_called_once_with(circuit_config_path)
+
+
+def test_stage_memodel_as_circuit_forwards_max_concurrent(monkeypatch, tmp_path):
+    mock_stage_sonata = MagicMock(return_value=tmp_path / "circuit.json")
+    mock_build_circuit = MagicMock(return_value=MagicMock())
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.stage_sonata_from_memodel",
+        mock_stage_sonata,
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging._build_memodel_circuit",
+        mock_build_circuit,
+    )
+
+    mock_client = MagicMock()
+    mock_memodel_entity = MagicMock()
+
+    with patch.object(MEModelFromID, "entity", return_value=mock_memodel_entity):
+        test_module.stage_memodel_as_circuit(
+            client=mock_client,
+            circuit=MEModelFromID(id_str="memodel-id"),
+            output_dir=tmp_path / "output",
+            max_concurrent=8,
+        )
+
+    assert mock_stage_sonata.call_args.kwargs["max_concurrent"] == 8
 
 
 @pytest.mark.parametrize(
