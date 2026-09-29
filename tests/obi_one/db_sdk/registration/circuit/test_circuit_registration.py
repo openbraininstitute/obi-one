@@ -1553,6 +1553,30 @@ def test_generate_sim_designer_image_asset_with_provided_image(tmp_path):
     )
 
 
+def test_generate_sim_designer_image_asset_skips_when_no_figure(tmp_path):
+    """When no figure can be generated, registration is skipped (no template fallback)."""
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with (
+        patch("obi_one.utils.circuit.generate_overview_figure", return_value=None) as mock_figure,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+    ):
+        generate_sim_designer_image_asset(
+            plot_dir=tmp_path / "empty_plots",
+            output_dir=output_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_figure.assert_called_once()
+    mock_add.assert_not_called()
+    assert not (output_dir / "simulation_designer_image.png").exists()
+
+
 def test_generate_overview_image_asset_webp_format(tmp_path):
     """Test that a .webp overview image is copied with the correct name."""
     image_file = tmp_path / "overview.webp"
