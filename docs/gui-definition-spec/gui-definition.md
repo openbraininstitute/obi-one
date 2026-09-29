@@ -106,7 +106,11 @@ There are two major types of such UI elements:
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 
+        - [model_selector_single](components/model_selector/model_selector.md)
+
         - [model_identifier_multiple](components/multiple_entities/multiple_entities.md)
+
+        - [model_identifier_grouped](components/model_identifier_grouped/model_identifier_grouped.md)
 
         - [task_result_selector](components/task_result_selector/task_result_selector.md)
 
