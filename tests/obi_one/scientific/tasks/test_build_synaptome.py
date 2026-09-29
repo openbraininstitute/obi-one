@@ -272,16 +272,17 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     subject = Mock()
     brain_region = Mock()
     license_entity = Mock()
-    morphology = SimpleNamespace(
-        subject=subject,
-        experiment_date="2026-08-05",
-        license=None,
-    )
+    emodel = SimpleNamespace(id="emodel-id")
     me_model = SimpleNamespace(
         id="me-model-id",
-        morphology=morphology,
+        morphology=SimpleNamespace(
+            subject=subject,
+            experiment_date="2026-08-05",
+            license=None,
+        ),
         brain_region=brain_region,
         license=license_entity,
+        emodel=emodel,
     )
     monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
 
@@ -289,9 +290,11 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
         output_directory=tmp_path / "SONATA",
         generated_files=(),
+        model_template="hoc:cADpyr_L5TPC",
     )
     build = Mock(return_value=result)
-    register = Mock(return_value=SimpleNamespace(id="circuit-id"))
+    circuit = SimpleNamespace(id="circuit-id")
+    register = Mock(return_value=circuit)
     execution_activity = SimpleNamespace(id="activity-id")
     get_activity = Mock(return_value=execution_activity)
     update_activity = Mock()
@@ -309,12 +312,13 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     )
 
     db_client = Mock()
-    circuit_id = MEModelSynapticModelPlacementTask(config=config).execute(
-        db_client=db_client,
-        execution_activity_id="activity-id",
+    assert (
+        MEModelSynapticModelPlacementTask(config=config).execute(
+            db_client=db_client,
+            execution_activity_id="activity-id",
+        )
+        == "circuit-id"
     )
-
-    assert circuit_id == "circuit-id"
     build.assert_called_once_with(config, tmp_path / "SONATA", db_client=db_client)
     register.assert_called_once_with(
         client=db_client,
@@ -327,6 +331,8 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         target_simulator=TargetSimulator.NEURON,
         experiment_date="2026-08-05",
         license=license_entity,
+        derived_from_emodel=emodel,
+        derivation_label="hoc:cADpyr_L5TPC",
         skip_validation=True,
     )
     update_activity.assert_called_once_with(
@@ -441,6 +447,12 @@ def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stag
         db_client=object(),
     )
     circuit = bluepysnap.Circuit(result.circuit_config_path)
+    # The reported model_template must match what the nodes actually carry, since the
+    # emodel_circuit derivation is labelled with it and the consumer matches labels against
+    # this exact value read back from the circuit.
+    target = circuit.nodes["target"]
+    assert result.model_template == str(target.get(0, properties="model_template"))
+
     basal = circuit.edges["basal_sources__target__chemical"]
     apical = circuit.edges["apical_sources__target__chemical"]
 
@@ -465,6 +477,39 @@ def test_multiple_groups_use_independent_placement_and_physiology(tmp_path, stag
     assert not (result.output_directory / "mechanisms").exists()
     circuit_config = json.loads(result.circuit_config_path.read_text())
     assert circuit_config["components"]["mechanisms_dir"] == "$BASE_DIR/mod"
+
+
+def test_build_stages_intrinsic_mini_mechanisms_with_no_synapse_groups(tmp_path, stage_memodel):
+    # A neuron carries intrinsic AMPA/GABA mini receptors regardless of which synapses are
+    # placed, so both mechanisms must be staged even when no synapse groups are configured. With
+    # no edge population, there is nothing for the configured-synapse path to copy, so a mini
+    # `.mod` in the declared directory can only have come from the intrinsic-staging path.
+    stage_memodel()
+    result = build_synaptome(
+        _config(groups={}, morphology_locations={}),
+        tmp_path / "artifact",
+        db_client=object(),
+    )
+
+    mechanisms_dir = result.output_directory / "mod"
+    assert (mechanisms_dir / "ProbAMPANMDA_EMS.mod").is_file()
+    assert (mechanisms_dir / "ProbGABAAB_EMS.mod").is_file()
+    circuit_config = json.loads(result.circuit_config_path.read_text())
+    assert circuit_config["components"]["mechanisms_dir"] == "$BASE_DIR/mod"
+
+
+def test_both_mini_mechanisms_are_staged_when_only_excitatory_is_configured(
+    tmp_path, stage_memodel
+):
+    # The minis are intrinsic to the neuron, not to a synapse group, so both must be staged even
+    # when only one synapse type is placed. With a single excitatory group, the inhibitory mini
+    # can only be present because ensure_mechanisms_dir stages it regardless of what is placed.
+    stage_memodel()
+    result = build_synaptome(_config(), tmp_path / "artifact", db_client=object())
+
+    mechanisms_dir = result.output_directory / "mod"
+    assert (mechanisms_dir / "ProbAMPANMDA_EMS.mod").is_file()
+    assert (mechanisms_dir / "ProbGABAAB_EMS.mod").is_file()
 
 
 def test_build_is_deterministic_for_equal_seeds(tmp_path, stage_memodel):
@@ -703,6 +748,7 @@ def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monke
         morphology=morphology,
         brain_region=Mock(),
         license=Mock(),
+        emodel=SimpleNamespace(id="emodel-id"),
     )
     monkeypatch.setattr(MEModelFromID, "entity", Mock(return_value=me_model))
     monkeypatch.setattr(
@@ -717,6 +763,7 @@ def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monke
                 circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
                 output_directory=tmp_path / "SONATA",
                 generated_files=(),
+                model_template="hoc:cADpyr_L5TPC",
             )
         ),
     )

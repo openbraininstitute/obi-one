@@ -145,7 +145,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     Registered TaskConfigs from this class are normally executed by a remote
     launch-system worker: the worker stages entity assets, compiles this config
     into the versioned params/recipe artifacts, runs BluePyEModel/NEURON, and
-    registers the draft result. See ``EModelOptimizationTask.execute()`` for the
+    registers the result. See ``EModelOptimizationTask.execute()`` for the
     optional local diagnostic path.
     """
 
@@ -153,7 +153,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     name: ClassVar[str] = "EModel Optimization"
     description: ClassVar[str] = (
         "Run BluePyEModel parameter optimisation against extracted features,"
-        " followed by analysis and draft emodel export."
+        " followed by analysis and emodel export."
     )
 
     json_schema_extra_additions: ClassVar[dict] = {

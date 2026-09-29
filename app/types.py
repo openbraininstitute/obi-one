@@ -43,6 +43,14 @@ class MachineExecutorImageType(StrEnum):
     python_3_12_openmpi5_neuron9_neurodamus = auto()
 
 
+class MachinePlacementType(StrEnum):
+    """Machine executor placement, mirroring launch-system's ExecutorPlacementType."""
+
+    fargate = auto()
+    ecs_managed_instances = auto()
+    azure_container_apps = auto()
+
+
 class IdentifierType(StrEnum):
     orcid = auto()
     ror = auto()

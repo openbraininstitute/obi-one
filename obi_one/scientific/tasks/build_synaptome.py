@@ -188,7 +188,6 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     )
     synapse_groups: dict[str, SynapticModelPlacerUnion] = Field(
         default_factory=dict,
-        min_length=1,
         title="Synapse groups",
         description="Incoming synapse groups to attach to the ME-model.",
         json_schema_extra={
@@ -260,6 +259,8 @@ class MEModelSynapticModelPlacementTask(Task):
             target_simulator=types.TargetSimulator.NEURON,
             experiment_date=me_model.morphology.experiment_date,
             license=me_model.license or me_model.morphology.license,
+            derived_from_emodel=me_model.emodel,
+            derivation_label=result.model_template,
             skip_validation=True,
         )
         if circuit is None:
