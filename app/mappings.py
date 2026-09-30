@@ -32,7 +32,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.circuit_extraction__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "circuit_extraction.txt"),
         ),
@@ -46,6 +46,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.circuit_single_build: TaskDefinition(
         task_type=TaskType.circuit_single_build,
@@ -53,7 +54,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.circuit_single_build__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
         ),
@@ -67,6 +68,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.circuit_simulation: TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
@@ -247,7 +249,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "synapse_parameterization.txt"),
         ),
@@ -261,6 +263,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.em_synapse_mapping: TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
@@ -268,7 +271,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
         activity_type=TaskActivityType.em_synapse_mapping__execution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref="commit:1d97d12e54756e56b3b9aded3eaf1387dd951556",  # TESTING
             path=OBI_ONE_CODE_PATH,
             dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
             capabilities=Capabilities(
@@ -285,6 +288,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        async_circuit_validation=True,
     ),
     TaskType.efeature_extraction: TaskDefinition(
         task_type=TaskType.efeature_extraction,

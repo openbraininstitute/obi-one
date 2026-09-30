@@ -75,6 +75,11 @@ class TestSubmitCircuitJobs:
         assert job["callbacks"][0]["config"]["url"] == (
             f"http://localhost:8100/declared/circuit/{circuit_id}/generate-assets"
         )
+        # Launch-system adds only token; project goes in headers.
+        assert job["callbacks"][0]["config"]["headers"] == {
+            "virtual-lab-id": str(virtual_lab_id),
+            "project-id": str(project_id),
+        }
 
     def test_validation_job_without_asset_callback(self):
         ls_client = MagicMock()

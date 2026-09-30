@@ -340,6 +340,8 @@ class EMSynapseMappingTask(Task):
             all_notices=all_notices,
             total_internal=total_internal,
             total_external=total_external,
+            # API launch (has activity): draft + async validation. Local run: in-process.
+            async_validation=execution_activity is not None,
         )
 
         # Update execution activity (if any)

@@ -66,6 +66,11 @@ def submit_circuit_validation_job(
                 "config": {
                     "url": (f"{api_url}/declared/circuit/{circuit_id}/generate-assets"),
                     "method": "POST",
+                    # Launch-system adds only token; endpoint needs project.
+                    "headers": {
+                        "virtual-lab-id": str(virtual_lab_id),
+                        "project-id": str(project_id),
+                    },
                 },
             }
         )

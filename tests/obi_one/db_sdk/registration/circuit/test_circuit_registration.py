@@ -1083,6 +1083,48 @@ def test_register_circuit_sets_lifecycle_status_draft():
     assert circuit_model.lifecycle_status == "draft"
 
 
+def test_register_circuit_async_validation_leaves_check_and_archive_to_jobs():
+    """async_validation registers draft: no SONATA check, no compressed archive."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset") as mock_asset,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validate,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.run_circuit_validation"
+        ) as mock_neurodamus,
+    ):
+        result = register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            async_validation=True,
+        )
+
+    assert result is registered
+    mock_validate.assert_not_called()
+    mock_neurodamus.assert_not_called()
+    assert client.register_entity.call_args[0][0].lifecycle_status == "draft"
+    assert mock_asset.call_args.kwargs["asset_label"] == "sonata_circuit"
+    assert mock_gen.call_args.kwargs["include_compressed"] is False
+    assert mock_gen.call_args.kwargs["include_visualization"] is True
+
+
 def test_register_circuit_derives_root_from_parent():
     """When root is omitted, use parent.root_circuit_id or parent.id."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
@@ -2405,4 +2447,20 @@ def test_register_circuit_validates_explicit_emodel_metadata(
             derivation_label=label,
             skip_additional_assets=True,
             skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_neurodamus_and_async_validation():
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path="unused",
+            name="c",
+            description="d",
+            build_category=MagicMock(),
+            brain_region=MagicMock(),
+            subject=MagicMock(),
+            target_simulator=MagicMock(),
+            neurodamus_validation=True,
+            async_validation=True,
         )

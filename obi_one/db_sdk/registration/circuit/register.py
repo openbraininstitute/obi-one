@@ -177,6 +177,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
     neurodamus_validation: bool = False,
+    async_validation: bool = False,
 ) -> models.Circuit | None:
     """Register a circuit entity with all associated links and assets.
 
@@ -188,10 +189,11 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     point neurons, electrical models, spines) are computed automatically from
     the circuit files. The SONATA circuit folder is registered as an asset.
 
-    For the HTTP draft → async-validate → assets flow, call with
-    ``lifecycle_status="draft"`` and ``skip_validation=True``, then trigger
-    the validation launch job. Sync registration (tasks/notebooks) leaves
-    those defaults so validation and assets run in-process.
+    Async flow (draft, then validation job, then asset job): pass
+    ``async_validation=True`` (or ``lifecycle_status="draft"`` plus
+    ``skip_validation=True``), then trigger validation launch job. Sync
+    registration (notebooks, local task runs) keeps defaults: validation and
+    assets in-process.
 
     Set ``neurodamus_validation=True`` to run the fuller MOD compile / HOC /
     snap validation in-process after registration (same checks as the
@@ -253,14 +255,31 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         neurodamus_validation: If True, register as ``draft``, skip the light
             bluepysnap SONATA check, then run MOD compile / HOC / snap validation
             in-process and set lifecycle to ``active`` or ``disqualified``.
+        async_validation: If True, register as ``draft``, skip SONATA check and
+            compressed archive. Launch-system validation job checks circuit later;
+            on success, asset job builds archive. Not combinable with
+            ``neurodamus_validation``.
 
     Returns:
         The registered circuit entity, or the unregistered ``Circuit`` model
         (with computed size/properties) when ``dry_run`` is True.
+
+    Raises:
+        ValueError: Both ``neurodamus_validation`` and ``async_validation`` set,
+            public circuit without license, species mismatch, or neurodamus
+            validation failed.
+        FileNotFoundError: Given overview / sim designer image missing.
     """
+    if neurodamus_validation and async_validation:
+        msg = "neurodamus_validation and async_validation are mutually exclusive."
+        raise ValueError(msg)
     if neurodamus_validation:
         skip_validation = True
         lifecycle_status = "draft"
+    if async_validation:
+        skip_validation = True
+        lifecycle_status = "draft"
+        include_compressed = False
 
     # Validate that a license is provided for public circuits
     if authorized_public and license is None:
