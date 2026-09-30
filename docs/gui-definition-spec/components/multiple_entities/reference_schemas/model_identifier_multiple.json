@@ -1,18 +1,20 @@
 {
   "model_identifier_multiple": {
-    "oneOf": [
-        {
-            "type": "#/components/schemas/EMSynapseMappingInputNamedTuple"
-        },
-        {
-            "type": "array",
-            "minLength": 1,
-            "items": {
-                "type": "#/components/schemas/EMSynapseMappingInputNamedTuple"
-            }
+    "anyOf": [
+      {
+        "type": "#/components/schemas/ElectricalCellRecordingFromID"
+      },
+      {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 3,
+        "items": {
+          "type": "#/components/schemas/ElectricalCellRecordingFromID"
         }
+      }
     ],
-  "title": "Neurons",
-  "description": "Neurons to include in the circuit (>= 1).",
-  "ui_element": "model_identifier_multiple"
+    "title": "Electrical cell recordings",
+    "description": "ElectricalCellRecording entities to extract features from (>= 1).",
+    "ui_element": "model_identifier_multiple"
+  }
 }
