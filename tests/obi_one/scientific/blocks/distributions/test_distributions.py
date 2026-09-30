@@ -284,16 +284,12 @@ class TestDistanceFunctionSafety:
     def test_integer_literals_are_rejected(self):
         """Integer literals are forbidden (arbitrary-precision); users must write floats."""
         with pytest.raises(ValueError, match="must be floats"):
-            obi.CustomDistanceDependentDistribution(
-                name="evil", function="{value}*{distance} + 3"
-            )
+            obi.CustomDistanceDependentDistribution(name="evil", function="{value}*{distance} + 3")
 
     def test_power_operator_is_rejected(self):
         """`**` is forbidden: integer exponentiation is an unbounded-memory DoS."""
         with pytest.raises(ValueError, match="Pow"):
-            obi.CustomDistanceDependentDistribution(
-                name="evil", function="{value} ** {distance}"
-            )
+            obi.CustomDistanceDependentDistribution(name="evil", function="{value} ** {distance}")
 
     def test_overly_long_function_is_rejected(self):
         """A giant raw string is rejected before parsing (bounds parse-time cost)."""
@@ -330,8 +326,7 @@ class TestDistanceFunctionSafety:
     def test_check_distance_function_accepts_step_runtime_placeholders(self):
         # step_begin/step_end are morphology-derived runtime placeholders, always allowed.
         result = check_distance_function(
-            "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
-            "({distance} < {step_end})))"
+            "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & ({distance} < {step_end})))"
         )
         assert result.valid
 
