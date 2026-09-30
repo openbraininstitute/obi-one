@@ -146,6 +146,11 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
                 count=1,
                 service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
             )
+        case TaskType.circuit_single_build:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SYNAPTOME_BUILD,
+            )
         case TaskType.efeature_extraction:
             return AccountingParameters(
                 count=1,
