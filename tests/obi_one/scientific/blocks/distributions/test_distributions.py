@@ -457,6 +457,25 @@ class TestDistanceFunctionSafety:
         assert "invalid placeholder" in result.error
         assert fn[result.from_ : result.to] == "{value:>9}"
 
+    def test_check_distance_function_flags_unbalanced_open_brace(self):
+        fn = "{value}*{distance}*{scale"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "unbalanced '{'" in result.error
+
+    def test_check_distance_function_flags_unbalanced_close_brace(self):
+        fn = "{value}*{distance}}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "unbalanced '}'" in result.error
+
+    @pytest.mark.parametrize(
+        "unsafe_function", ["{value}*{distance}*{scale", "{value}*{distance}}"]
+    )
+    def test_unbalanced_braces_are_rejected(self, unsafe_function):
+        with pytest.raises(ValueError, match="unbalanced"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
     def test_unsafe_distribution_config_rejects_comment_dos(self):
         """The comment/format-spec DoS must block config creation, not just the block."""
         with pytest.raises(ValueError, match="Distance function"):
