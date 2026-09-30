@@ -9,6 +9,9 @@ from bluepyemodel.preprocessing.schemas import (
 )
 
 import obi_one as obi
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    check_distance_function,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
 )
@@ -295,8 +298,42 @@ class TestDistanceFunctionSafety:
     def test_overly_long_function_is_rejected(self):
         """A giant raw string is rejected before parsing (bounds parse-time cost)."""
         long_function = "{value}+{distance}+" + "9." * 300
-        with pytest.raises(ValueError, match="too long"):
+        # The field-level ``max_length`` constraint rejects it (Pydantic message).
+        with pytest.raises(ValueError, match="at most 500 characters"):
             obi.CustomDistanceDependentDistribution(name="evil", function=long_function)
+
+    def test_check_distance_function_reports_valid(self):
+        result = check_distance_function("math.exp((-{distance})/50.)*{value}")
+        assert result.valid
+        assert result.error is None
+
+    def test_check_distance_function_reports_error_span(self):
+        fn = "os.system('x') + {value} + {distance}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        # The span points at the offending call in the original string.
+        assert fn[result.from_ : result.to] == "os.system('x')"
+        assert "calls are limited" in result.error
+
+    def test_check_distance_function_flags_int_literal_position(self):
+        fn = "{value}*{distance} + 3"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert fn[result.from_ : result.to] == "3"
+
+    def test_check_distance_function_accepts_declared_parameters(self):
+        result = check_distance_function(
+            "math.exp({distance}*{constant})*{value}", parameters=("constant",)
+        )
+        assert result.valid
+
+    def test_check_distance_function_accepts_step_runtime_placeholders(self):
+        # step_begin/step_end are morphology-derived runtime placeholders, always allowed.
+        result = check_distance_function(
+            "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
+            "({distance} < {step_end})))"
+        )
+        assert result.valid
 
     def test_unsafe_distribution_rejected_when_building_a_config(self):
         """An unsafe custom distribution must block EModelOptimizationScanConfig creation."""

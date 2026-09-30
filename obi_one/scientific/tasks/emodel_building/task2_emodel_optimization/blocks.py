@@ -124,7 +124,10 @@ _ALLOWED_MATH_FUNCTIONS = frozenset(
 # Cap the expression size so a single evaluation is bounded, long expressions becomes a CPU sink).
 _MAX_AST_NODES = 50
 # Cap the raw string length before parsing.
-_MAX_FUNCTION_LENGTH = 500
+MAX_DISTANCE_FUNCTION_LENGTH = 500
+# Placeholders BluePyEModel fills at runtime from the morphology (not user-declared parameters).
+# Only the ``step`` distribution uses them; they are always allowed in placeholder validation.
+RUNTIME_PLACEHOLDERS = frozenset({"step_begin", "step_end"})
 # Every identifier that may appear as a bare ``Name``. Placeholders are substituted with a
 # numeric literal before parsing, so only these module/builtin names should remain.
 _ALLOWED_NAMES = _ALLOWED_CALL_NAMES | _ALLOWED_MODULES
@@ -197,9 +200,10 @@ def validate_safe_distance_function(function: str) -> None:
     ``{placeholder}`` tokens are not valid Python, so each is substituted with a float literal
     before parsing.
     """
-    if len(function) > _MAX_FUNCTION_LENGTH:
+    if len(function) > MAX_DISTANCE_FUNCTION_LENGTH:
         msg = (
-            f"Distance function is too long ({len(function)} chars > {_MAX_FUNCTION_LENGTH})."
+            f"Distance function is too long "
+            f"({len(function)} chars > {MAX_DISTANCE_FUNCTION_LENGTH})."
         )
         raise ValueError(msg)
 
@@ -225,6 +229,119 @@ def validate_safe_distance_function(function: str) -> None:
             raise ValueError(msg)
 
 
+class DistanceFunctionCheck(BaseModel):
+    """Structured result of validating a distance function, for editor feedback.
+
+    ``from_`` / ``to`` are character offsets into the original ``function`` string delimiting the
+    offending span (whole string when a position cannot be localized). Both are 0 when valid.
+    """
+
+    valid: bool
+    error: str | None = None
+    from_: int = Field(default=0, alias="from")
+    to: int = 0
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+def _same_length_placeholder_token(match: re.Match[str]) -> str:
+    """A valid float literal the same length as ``{name}`` so AST offsets map to the original."""
+    length = len(match.group(0))
+    # Shortest placeholder is ``{x}`` (3 chars); ``1.`` + zeros keeps a valid float of equal width.
+    return "1." + "0" * (length - 2)
+
+
+def check_distance_function(
+    function: str, parameters: tuple[str, ...] | None = None
+) -> DistanceFunctionCheck:
+    """Validate ``function`` and return a structured result with the error span (never raises).
+
+    Mirrors :func:`validate_safe_distance_function` and the placeholder/declaration rules, but
+    reports the character span of the first problem instead of raising, so an editor can highlight
+    it. Placeholders are substituted with an equal-length token to keep offsets aligned.
+    """
+    if len(function) > MAX_DISTANCE_FUNCTION_LENGTH:
+        return DistanceFunctionCheck(
+            valid=False,
+            error=(
+                f"Distance function is too long "
+                f"({len(function)} chars > {MAX_DISTANCE_FUNCTION_LENGTH})."
+            ),
+            **{"from": 0},
+            to=len(function),
+        )
+
+    expression = _PLACEHOLDER_PATTERN.sub(_same_length_placeholder_token, function)
+    try:
+        tree = ast.parse(expression, mode="eval")
+    except SyntaxError as exc:
+        offset = (exc.offset or 1) - 1
+        return DistanceFunctionCheck(
+            valid=False,
+            error=f"Not a valid expression: {exc.msg}.",
+            **{"from": min(offset, len(function))},
+            to=len(function),
+        )
+
+    node_count = sum(1 for _ in ast.walk(tree))
+    if node_count > _MAX_AST_NODES:
+        return DistanceFunctionCheck(
+            valid=False,
+            error=(
+                f"Distance function is too complex ({node_count} nodes > {_MAX_AST_NODES}). "
+                "Simplify the expression."
+            ),
+            **{"from": 0},
+            to=len(function),
+        )
+
+    for node in ast.walk(tree):
+        reason = _distance_node_error(node)
+        if reason is not None:
+            start = getattr(node, "col_offset", 0)
+            end = getattr(node, "end_col_offset", len(function))
+            return DistanceFunctionCheck(
+                valid=False,
+                error=f"Distance function contains {reason}.",
+                **{"from": start},
+                to=end,
+            )
+
+    placeholder_error = _distance_placeholder_error(function, parameters)
+    if placeholder_error is not None:
+        return placeholder_error
+
+    return DistanceFunctionCheck(valid=True)
+
+
+def _distance_placeholder_error(
+    function: str, parameters: tuple[str, ...] | None
+) -> DistanceFunctionCheck | None:
+    """Check required/declared/undeclared placeholders; return a whole-string error or None."""
+    whole = {"from": 0}
+    for required in ("value", "distance"):
+        if f"{{{required}}}" not in function:
+            return DistanceFunctionCheck(
+                valid=False,
+                error=f"Distance function must contain the {{{required}}} placeholder.",
+                **whole,
+                to=len(function),
+            )
+    declared = {"value", "distance", *RUNTIME_PLACEHOLDERS, *(parameters or [])}
+    undeclared = sorted(set(_PLACEHOLDER_PATTERN.findall(function)) - declared)
+    if undeclared:
+        return DistanceFunctionCheck(
+            valid=False,
+            error=(
+                f"Distance function contains undeclared placeholders: {undeclared}. "
+                "Add them to 'parameters' or remove them."
+            ),
+            **whole,
+            to=len(function),
+        )
+    return None
+
+
 class DistanceDependentDistribution(Block):
     """A BluePyEModel distance-dependent parameter transformation."""
 
@@ -239,6 +356,7 @@ class DistanceDependentDistribution(Block):
     )
     function: str | None = Field(
         default=None,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description=(
             "Expression using {value} and {distance}; custom expressions may also use "
@@ -328,6 +446,7 @@ class UniformDistanceDependentDistribution(DistanceDependentDistribution):
     function: None = Field(
         default=None,
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={
@@ -350,6 +469,7 @@ class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
     function: str = Field(
         default="(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -379,6 +499,7 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
         default="{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
         "({distance} < {step_end})))",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -398,6 +519,7 @@ class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistributi
     function: str = Field(
         default="math.exp((-{distance})/50.)*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -417,6 +539,7 @@ class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
     function: str = Field(
         default="(1. + 3./100. * {distance})*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -436,6 +559,7 @@ class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution)
     function: str = Field(
         default="(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -455,6 +579,7 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
     function: str = Field(
         default="({value}-5.*{distance}/150.)",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -474,6 +599,7 @@ class LinearHDPasDistanceDependentDistribution(DistanceDependentDistribution):
     function: str = Field(
         default="(1. + 3./100. * {distance})*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -493,6 +619,7 @@ class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
     function: str = Field(
         default="(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -512,6 +639,7 @@ class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution
     function: str = Field(
         default="(15./(1. + math.exp(({distance}-50.)/50.)))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
@@ -524,6 +652,7 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
     title: ClassVar[str] = "Custom Distance-Dependent Distribution"
     function: str = Field(
         min_length=1,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Custom distance function",
         description="Python expression containing at least {value} and {distance}.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
