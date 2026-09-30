@@ -98,8 +98,6 @@ if EModelOptimizationScanConfig is not None:
     _VALIDATION_CONFIG["emodel_optimization_config"] = False
 else:
     SharedStatePartial = _SharedStatePartialBase
-    # Pydantic puts the model name in its error string, which the 422 detail returns verbatim.
-    SharedStatePartial.__name__ = "SharedStatePartial"
 
 
 @router.post(
