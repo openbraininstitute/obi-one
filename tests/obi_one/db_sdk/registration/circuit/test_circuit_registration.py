@@ -2126,6 +2126,170 @@ def test_generate_additional_skips_an_image_already_present(tmp_path):
     mock_sim.assert_called_once()
 
 
+def test_generate_additional_without_edge_population_skips_matrix_and_plots(tmp_path):
+    """With no edge_population (e.g. single-cell circuits) the matrix and its plots are skipped."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset"
+        ) as mock_matrix,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population=None,
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=False,
+        )
+
+    mock_matrix.assert_not_called()
+    mock_plots.assert_not_called()
+
+
+def test_generate_additional_skips_plots_when_matrix_generation_fails(tmp_path):
+    """If matrix generation raises, matrix_config stays None so the coupled plots are skipped,
+    and the failure does not abort the run."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            side_effect=RuntimeError("extraction boom"),
+        ) as mock_matrix,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=False,
+        )
+
+    mock_matrix.assert_called_once()
+    mock_plots.assert_not_called()
+
+
+def test_generate_additional_step_failure_does_not_abort_remaining_steps(tmp_path):
+    """Each step is independent: a failing compression is logged but images still generate."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset",
+            side_effect=RuntimeError("compress boom"),
+        ) as mock_compress,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ),
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_sim_designer_image_asset"
+        ) as mock_sim,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=True,
+        )
+
+    mock_compress.assert_called_once()
+    mock_overview.assert_called_once()
+    mock_sim.assert_called_once()
+
+
+def test_generate_overview_image_asset_generates_figure_when_no_image_provided(tmp_path):
+    """Without a provided image, the overview figure is generated from the plots and registered."""
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    generated = output_dir / "circuit_visualization.png"
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with (
+        patch(
+            "obi_one.utils.circuit.generate_overview_figure", return_value=generated
+        ) as mock_figure,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+    ):
+        generate_overview_image_asset(
+            plot_dir=tmp_path / "plots",
+            output_dir=output_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_figure.assert_called_once()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["circuit_visualization.png"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_overview_image_asset_skips_when_no_figure(tmp_path):
+    """When no figure can be generated, the overview registration is skipped."""
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with (
+        patch("obi_one.utils.circuit.generate_overview_figure", return_value=None) as mock_figure,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+    ):
+        generate_overview_image_asset(
+            plot_dir=tmp_path / "empty_plots",
+            output_dir=output_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_figure.assert_called_once()
+    mock_add.assert_not_called()
+
+
 def test_register_circuit_preserves_parent_and_inherited_emodel_derivations():
     """A child circuit keeps the parent link and inherits the parent's EModel link."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
