@@ -11,8 +11,8 @@ Each requirements file has two versions:
 
 ## TL;DR for task developers
 
-- **Change a task's dependencies:** edit its `*.in` (never the `*.txt`), run `make compile-launch-deps FILE=<path to the .in>`, and commit both files.
-- **Add a task:** create `launch_scripts/<task>/dependencies/<name>.in` with a bare `obi-one[<extras>]` line (no version) plus any extra packages, compile it as above, and commit both files. Tasks run by `launch_scripts/launch_task_for_single_config_asset/main.py` use `_obi_one_code("<name>.txt")` in `app/mappings.py`.
+- **Add a task:** create `launch_scripts/<task>/dependencies/<name>.in` with a bare `obi-one[<extras>]` line (no version) plus any extra packages, run `make compile-launch-deps FILE=<path to the .in>`, and commit both the `*.in` and the generated `*.txt`. Tasks run by `launch_scripts/launch_task_for_single_config_asset/main.py` use `_obi_one_code("<name>.txt")` in `app/mappings.py`.
+- **Change a task's dependencies:** edit its `*.in` (never the `*.txt`), compile it as above, and commit both files.
 - **Change obi-one's own dependencies** (`pyproject.toml`): also run `make compile-launch-deps`, or `check-launch-deps` fails in CI.
 - **Upgrade the pinned versions:** compiling never upgrades existing pins; raise a lower bound in the `*.in` for one package, or run `make upgrade-launch-deps FILE=<path to the .in>` for the whole closure, then test the task (see [Compiling](#compiling)).
 - **Private packages** (CodeArtifact, e.g. `ultraliser`): add them to `PRIVATE_PACKAGES` in `launch_scripts/tools/launch_deps_compile.py` and set the CodeArtifact credentials before compiling (see [Compiling](#compiling)).
