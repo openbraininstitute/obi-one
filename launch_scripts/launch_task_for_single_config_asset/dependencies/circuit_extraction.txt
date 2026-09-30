@@ -9,8 +9,8 @@ anyio==4.15.1
 asttokens==3.0.2
 attrs==26.1.0
 bigrandomgraphs==0.1.1
-blosc2==4.14.0
-bluecellulab==2.6.105
+blosc2==4.14.1
+bluecellulab==2.6.106
 blueetl==0.13.4
 blueetl-core==0.2.5
 bluepyefe==2.3.63
@@ -22,13 +22,13 @@ cachetools==7.2.0
 caveclient==8.2.1
 certifi==2026.7.22
 cffi==2.1.1
-charset-normalizer==3.5.1
+charset-normalizer==3.5.2
 click==8.5.0
 cloudpickle==3.1.2
 comm==0.2.3
 connectome-analysis==1.1.0
 connectome-manipulator==1.0.4
-connectome-utilities==0.4.13
+connectome-utilities==0.4.14
 contourpy==1.4.0
 cryptography==50.0.1
 cycler==0.12.1
@@ -100,7 +100,7 @@ parso==0.8.7
 partd==1.4.2
 pexpect==4.9.0
 pillow==12.3.0
-platformdirs==4.12.1
+platformdirs==4.12.2
 progressbar==2.5
 prompt-toolkit==3.0.53
 psutil==7.2.2
@@ -154,6 +154,6 @@ tzdata==2026.4
 urllib3==2.8.0
 voxcell==3.1.11
 wcwidth==0.9.1
-xarray==2026.7.0
+xarray==2026.9.0
 xmltodict==1.0.4
 zict==3.0.0
