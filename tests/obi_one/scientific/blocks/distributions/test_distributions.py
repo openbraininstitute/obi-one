@@ -11,6 +11,7 @@ from bluepyemodel.preprocessing.schemas import (
 import obi_one as obi
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     check_distance_function,
+    validate_safe_distance_function,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
@@ -322,6 +323,70 @@ class TestDistanceFunctionSafety:
             "math.exp({distance}*{constant})*{value}", parameters=("constant",)
         )
         assert result.valid
+
+    def test_check_distance_function_flags_disallowed_name(self):
+        # Covers the disallowed-name leaf branch via the structured checker.
+        result = check_distance_function("foo + {value} + {distance}")
+        assert not result.valid
+        assert "disallowed name" in result.error
+
+    def test_check_distance_function_rejects_too_long(self):
+        result = check_distance_function("{value}+{distance}+" + "1.0+" * 300)
+        assert not result.valid
+        assert "too long" in result.error
+        assert result.to == len("{value}+{distance}+" + "1.0+" * 300)
+
+    def test_check_distance_function_reports_syntax_error(self):
+        result = check_distance_function("({value} + {distance}")
+        assert not result.valid
+        assert "valid expression" in result.error
+
+    def test_check_distance_function_requires_value_and_distance(self):
+        missing_value = check_distance_function("{distance} * 2.0")
+        assert not missing_value.valid
+        assert "{value}" in missing_value.error
+
+        missing_distance = check_distance_function("{value} * 2.0")
+        assert not missing_distance.valid
+        assert "{distance}" in missing_distance.error
+
+    def test_check_distance_function_flags_undeclared_placeholder(self):
+        result = check_distance_function("{value} + {distance} + {mystery}")
+        assert not result.valid
+        assert "undeclared placeholders" in result.error
+        assert "mystery" in result.error
+
+    def test_check_distance_function_rejects_too_complex(self):
+        # Covers the node-cap branch of the structured checker (under the length cap).
+        result = check_distance_function("{value}" + "+{distance}" * 30)
+        assert not result.valid
+        assert "too complex" in result.error
+
+    def test_check_distance_function_allows_math_call(self):
+        # A valid math.* call exercises the safe-call path.
+        result = check_distance_function("math.exp({distance}) * {value}")
+        assert result.valid
+        assert result.error is None
+
+    def test_check_distance_function_rejects_keyword_arguments(self):
+        # Covers the keyword-arguments rejection branch in call validation.
+        result = check_distance_function("math.exp({distance}, base=2.0) * {value}")
+        assert not result.valid
+        assert "keyword arguments" in result.error
+
+    def test_check_distance_function_rejects_non_math_attribute(self):
+        # Covers the attribute-access branch (attribute on something other than math).
+        result = check_distance_function("({value}).real + {distance}")
+        assert not result.valid
+        assert "attributes may only be accessed on the math module" in result.error
+
+    def test_validate_safe_distance_function_raises_on_too_long(self):
+        with pytest.raises(ValueError, match="too long"):
+            validate_safe_distance_function("{value}+{distance}+" + "1.0+" * 300)
+
+    def test_validate_safe_distance_function_raises_on_syntax_error(self):
+        with pytest.raises(ValueError, match="valid expression"):
+            validate_safe_distance_function("({value} + {distance}")
 
     def test_check_distance_function_accepts_step_runtime_placeholders(self):
         # step_begin/step_end are morphology-derived runtime placeholders, always allowed.
