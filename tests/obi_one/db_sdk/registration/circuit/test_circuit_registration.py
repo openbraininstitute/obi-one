@@ -1205,6 +1205,95 @@ def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_a
     mock_sim.assert_not_called()
 
 
+def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_assets(tmp_path):
+    """Both a provided overview and sim-designer image are attached synchronously.
+
+    The real image helpers run (only add_image_assets is mocked) so the viz_dir derivation and
+    the file copy are exercised end-to-end.
+    """
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    overview = tmp_path / "overview.png"
+    overview.write_bytes(b"fake overview")
+    sim_designer = tmp_path / "sim.png"
+    sim_designer.write_bytes(b"fake sim")
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            skip_additional_assets=True,
+            overview_image_path=overview,
+            sim_designer_image_path=sim_designer,
+        )
+
+    mock_gen.assert_not_called()
+    # Both images are copied into a sibling __CIRCUIT_VIZ__ dir and registered.
+    registered_files = {call.kwargs["plot_files"][0] for call in mock_add.call_args_list}
+    assert registered_files == {"circuit_visualization.png", "simulation_designer_image.png"}
+    viz_dir = circuit_path.parents[1] / (circuit_path.parent.name + "__CIRCUIT_VIZ__")
+    assert (viz_dir / "circuit_visualization.png").exists()
+    assert (viz_dir / "simulation_designer_image.png").exists()
+
+
+def test_register_circuit_dry_run_skips_uploaded_image(tmp_path):
+    """A dry run registers nothing, so a provided image is not attached."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    overview = tmp_path / "overview.png"
+    overview.write_bytes(b"fake png")
+    client = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
+        ) as mock_sim,
+        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            skip_additional_assets=True,
+            overview_image_path=overview,
+            dry_run=True,
+        )
+
+    mock_overview.assert_not_called()
+    mock_sim.assert_not_called()
+
+
 def test_register_circuit_with_derivation():
     """Test that derivation link is created when parent is provided."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
