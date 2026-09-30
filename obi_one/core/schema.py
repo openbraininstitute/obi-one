@@ -92,6 +92,7 @@ class UIElement(StrEnum):
     MODEL_IDENTIFIER = "model_identifier"
     MODEL_IDENTIFIER_SCAN = "model_identifier_scan"
     MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"
+    MODEL_IDENTIFIER_GROUPED = "model_identifier_grouped"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
     MORPHOLOGY_LOCATION_SELECTION = "morphology_location_selection"
     MORPHOLOGY_SECTION_TYPE_SELECTION = "morphology_section_type_selection"

@@ -4,7 +4,7 @@ Registered ``TaskConfig``s produced from this stage are normally executed by a
 remote launch-system worker, not by calling :meth:`EModelOptimizationTask.execute`
 locally: the worker stages entity assets, builds the versioned params/recipe
 artifacts via this module's compiler, runs BluePyEModel/NEURON, and registers the
-draft result. ``execute()`` remains available as an optional, lowest-priority local
+result. ``execute()`` remains available as an optional, lowest-priority local
 diagnostic (see the Task 2 living plan) and performs the full local pipeline:
 downloads extraction features and entity assets, builds and stages the
 params/recipe artifact bundle, compiles mechanisms, runs the full BluePyEModel
@@ -12,23 +12,27 @@ pipeline, and registers output entities.
 
 The BluePyEModel optimisation/plot/export steps live in
 :func:`run_optimization_pipeline` so remote workers can reuse them after their own
-staging without going through :class:`EModelOptimizationTask`.
+staging without going through :class:`EModelOptimizationTask`; the pipeline also
+runs MEModel calibration + bluecellulab validation in isolated subprocesses (pure
+compute, no database access).
 """
 
 import logging
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import entitysdk
 from bluepyemodel.preprocessing import (
     NormalizedIonChannelModel,
     preflight_morphology,
 )
+from entitysdk.types import ValidationStatus
 from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    calibration_validation,
     registration,
     staging,
 )
@@ -92,12 +96,23 @@ def run_optimization_pipeline(
     etype: str,
     species: str,
     brain_region: str,
-) -> None:
-    """Run BluePyEModel optimisation, plot, and SONATA export.
+    morphology_path: Path,
+) -> registration.OptimizationPipelineResults:
+    """Run BluePyEModel optimisation, plot, SONATA export, calibration, validation.
 
     Expects ``coord_root`` to already contain staged features, morphology, compiled
     mechanisms, and the params/recipe artifact bundle. Does not compile mechanisms,
     stage assets, or register entities.
+
+    MEModel calibration + bluecellulab validation run here (in isolated
+    subprocesses) so remote launch-system workers get them without PCS changes;
+    they only need local artifacts, never the database. A failure is logged and
+    reported via ``validation_status`` — it does not abort the pipeline.
+
+    Returns:
+        ``OptimizationPipelineResults`` with ``em_metrics`` (parsed
+        ``final.json``), ``calibration``, ``validation``, and
+        ``validation_status`` for downstream registration.
     """
     from bluepyemodel.access_point.local import (  # ruff: ignore[import-outside-top-level]
         LocalAccessPoint,
@@ -179,7 +194,46 @@ def run_optimization_pipeline(
             map_function=mapper,
         )
 
-    L.info("Completed optimisation pipeline for emodel=%s.", emodel)
+    # --- MEModel calibration + bluecellulab validation (subprocesses, local files) ---
+    # final.json is written by store_best_model above; parse once here and reuse
+    # for registration. Validation figures land outside ``figures/`` so they are
+    # not swept into the EModel optimisation-figure ValidationResults.
+    em_metrics = registration.parse_final_json(coord_root / "final.json", emodel)
+    calibration_dict: dict | None = None
+    validation_dict: dict | None = None
+    validation_status = ValidationStatus.created
+    try:
+        cv_results = calibration_validation.compute_calibration_and_validation(
+            coord_root,
+            calibration_validation.locate_hoc(coord_root, cast("int", seeds[0])),
+            morphology_path,
+            cell_name=emodel,
+            holding_current=em_metrics["holding_current"] or 0.0,
+            threshold_current=em_metrics["threshold_current"] or 0.0,
+            output_dir=coord_root / "validation_figures",
+        )
+        calibration_dict = cv_results["calibration"]
+        validation_dict = cv_results["validation"]
+        validation_status = calibration_validation.validation_status_from_results(validation_dict)
+    except Exception:  # ruff: ignore[blind-except]
+        L.warning(
+            "MEModel calibration/validation failed; results will be registered "
+            "without them (validation_status='error').",
+            exc_info=True,
+        )
+        validation_status = ValidationStatus.error
+
+    L.info(
+        "Completed optimisation pipeline for emodel=%s (validation_status=%s).",
+        emodel,
+        validation_status.value,
+    )
+    return registration.OptimizationPipelineResults(
+        em_metrics=em_metrics,
+        calibration=calibration_dict,
+        validation=validation_dict,
+        validation_status=validation_status,
+    )
 
 
 class EModelOptimizationTask(Task):
@@ -193,15 +247,19 @@ class EModelOptimizationTask(Task):
     4. Fetch trace IDs via the derivation chain without downloading raw traces.
     5. Reconstruct the optimisation recipe and merge optimisation settings.
     6. Compile mechanisms via ``nrnivmodl``.
-    7. Run optimisation / plot / SONATA export via :func:`run_optimization_pipeline`.
-    8. Register ``TaskResult`` + draft ``EModel`` + draft ``MEModel`` +
-       ``Derivation`` links.
+    7. Run optimisation / plot / SONATA export via :func:`run_optimization_pipeline`,
+       which also computes MEModel calibration and runs bluecellulab validations
+       in spawned subprocesses (non-fatal on failure).
+    8. Register ``TaskResult`` + ``EModel`` + ``MEModel`` + ``Derivation`` links;
+       the MEModel gets its final ``validation_status``, then
+       ``MEModelCalibrationResult`` and per-test ``ValidationResult`` entities
+       are registered against it.
     """
 
     name: ClassVar[str] = "EModel Optimization"
     description: ClassVar[str] = (
         "Run BluePyEModel parameter optimisation against extracted features,"
-        " followed by analysis and draft emodel export."
+        " followed by analysis and emodel export."
     )
 
     config: EModelOptimizationSingleConfig
@@ -256,12 +314,12 @@ class EModelOptimizationTask(Task):
         # --- 6. Compile mechanisms ---
         emodel_building_utils.compile_mechanisms(coord_root / "mechanisms")
 
-        # --- 7. Run optimisation / plot / export ---
+        # --- 7. Run optimisation / plot / export / calibration / validation ---
         etype_entity = init.etype.entity(db_client=db_client)
         species_entity, brain_region_entity = self.config.initialize.morphology.metadata_entities(
             db_client=db_client
         )
-        run_optimization_pipeline(
+        pipeline_results = run_optimization_pipeline(
             config=self.config,
             coord_root=coord_root,
             normalized_models=normalized_models,
@@ -269,6 +327,7 @@ class EModelOptimizationTask(Task):
             etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
             species=species_entity.name,
             brain_region=brain_region_entity.name,
+            morphology_path=coord_root / "morphologies" / morph_filename,
         )
 
         # --- 8. Register output entities ---
@@ -277,6 +336,7 @@ class EModelOptimizationTask(Task):
                 self.config,
                 coord_root,
                 db_client,
+                pipeline_results=pipeline_results,
                 trace_ids=trace_ids,
                 execution_activity_id=execution_activity_id,
             )
