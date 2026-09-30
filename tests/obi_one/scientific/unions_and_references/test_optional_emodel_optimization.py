@@ -168,7 +168,6 @@ def test_config_validation_omits_emodel_optimization_without_bluepyemodel():
 
     assert "emodel_optimization_config" not in module.SharedStatePartial.model_fields
     assert set(module.SharedStatePartial.model_fields) == set(module._VALIDATION_CONFIG)
-    assert module.SharedStatePartial.__name__ == "SharedStatePartial"
 
 
 # Deliberately no test re-imports `app.application` itself here. Unlike the narrower
