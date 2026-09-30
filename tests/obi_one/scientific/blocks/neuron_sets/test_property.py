@@ -9,6 +9,7 @@ from obi_one.scientific.blocks.neuron_sets.property import (
     NeuronPropertyFilter,
     VirtualPopulationPropertyNeuronSet,
 )
+from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
@@ -40,7 +41,7 @@ def test_property_neuron_set_basic(circuit):
 
 
 def test_property_neuron_set_symbolic_expression(circuit):
-    """Test symbolic expression when properties resolve in only one population."""
+    """Test the property filter stays symbolic, pinned to its population."""
     nset = BiophysicalPopulationPropertyNeuronSet(
         population="S1nonbarrel_neurons",
         property_filter=NeuronPropertyFilter(
@@ -50,10 +51,33 @@ def test_property_neuron_set_symbolic_expression(circuit):
     nset.set_block_name("prop_sym")
 
     nset_def, combined = nset.get_node_set_definition(circuit)
-    # Symbolic: property key-value pairs without population key
-    assert "population" not in nset_def
-    assert nset_def == {"layer": ["3", "6"], "synapse_class": "EXC"}
+    # libsonata intersects the clauses of a multi-key node set object, so the population
+    # restriction needs no materialized IDs.
+    assert nset_def == {
+        "layer": ["3", "6"],
+        "synapse_class": "EXC",
+        "population": "S1nonbarrel_neurons",
+    }
     assert combined == {}
+
+
+def test_property_neuron_set_symbolic_expression_resolves_to_the_same_ids(circuit):
+    """The symbolic definition selects exactly the neurons the filter resolves to."""
+    nset = BiophysicalPopulationPropertyNeuronSet(
+        population="S1nonbarrel_neurons",
+        property_filter=NeuronPropertyFilter(
+            filter_dict={"layer": ["3", "6"], "synapse_class": ["EXC"]}
+        ),
+    )
+    nset.set_block_name("prop_sym_ids")
+
+    nset_def, _ = nset.get_node_set_definition(circuit)
+
+    sonata_circuit = circuit.sonata_circuit
+    add_node_set_to_circuit(sonata_circuit, {"__test__": nset_def})
+    resolved = sonata_circuit.nodes["S1nonbarrel_neurons"].ids("__test__").tolist()
+
+    assert resolved == nset.get_neuron_ids(circuit)["S1nonbarrel_neurons"]
 
 
 def test_property_neuron_set_with_sampling(circuit):
