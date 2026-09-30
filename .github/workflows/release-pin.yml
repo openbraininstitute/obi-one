@@ -1,0 +1,177 @@
+name: Pin release
+
+# For each release X published from the GitHub UI (tag X at main HEAD, commit A):
+#
+# 1. The ``dispatch`` job, triggered by the release, re-dispatches this workflow on
+#    ``main``. A release-triggered run uses the workflow file of the tagged commit,
+#    so it must not get the App key: the ``release`` environment only allows
+#    ``main``, where the workflow code has been reviewed.
+# 2. The ``pin`` job, running on ``main``, pins every obi-one line of
+#    ``launch_scripts/*/dependencies/*.txt`` to ``==X``, commits the result B on
+#    ``main`` and moves tag X from A to B, both in one atomic push with the
+#    ``obi-one-release`` GitHub App token (a ruleset bypass actor of ``main``).
+# 3. It then dispatches the Docker and PyPI builds on tag X (now B) and waits for
+#    them, so the release run fails if a build fails.
+#
+# Launch jobs of service X check out ``tag:X``, so the task code, the obi-one X
+# wheel and the transitive closure compiled on ``main`` come from the same commit.
+#
+# Recovery: re-run the failed run, or run this workflow on ``main`` with the release
+# tag as input. If X is already pinned, only the builds are dispatched.
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to pin (calver, e.g. 2026.9.15)"
+        required: true
+        type: string
+
+run-name: Pin release ${{ github.event.release.tag_name || inputs.tag }}
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  GH_REPO: ${{ github.repository }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  dispatch:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Validate release tag
+        run: |
+          if ! [[ "$RELEASE_TAG" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+            echo "::error::Not a calver release tag: '$RELEASE_TAG'"
+            exit 1
+          fi
+
+      - name: Dispatch the pin job on main
+        run: gh workflow run release-pin.yml --ref main --raw-field tag="$RELEASE_TAG"
+
+  pin:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: release
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Validate inputs
+        run: |
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run this workflow on main, not '$GITHUB_REF'"
+            exit 1
+          fi
+          if ! [[ "$RELEASE_TAG" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+            echo "::error::Not a calver release tag: '$RELEASE_TAG'"
+            exit 1
+          fi
+
+      - name: Create release token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Check the release tag
+        id: tag
+        run: |
+          if ! tag_commit=$(git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG^{commit}"); then
+            echo "::error::Tag $RELEASE_TAG does not exist"
+            exit 1
+          fi
+          if [ "$tag_commit" != "$(git rev-parse HEAD)" ]; then
+            echo "::error::Tag $RELEASE_TAG ($tag_commit) is not main HEAD: releases must be created from main HEAD, with no merge in between."
+            exit 1
+          fi
+          # The tag object (the commit itself for a lightweight tag), for the push lease.
+          echo "object=$(git rev-parse "refs/tags/$RELEASE_TAG")" >> "$GITHUB_OUTPUT"
+          if python3 launch_scripts/tools/launch_deps_pin.py --check --version "$RELEASE_TAG"; then
+            echo "Tag $RELEASE_TAG is already pinned; only dispatching the builds."
+            echo "pinned=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pinned=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pin obi-one in launch-script requirements
+        if: steps.tag.outputs.pinned == 'false'
+        run: python3 launch_scripts/tools/launch_deps_pin.py --version "$RELEASE_TAG"
+
+      - name: Verify only obi-one lines changed
+        if: steps.tag.outputs.pinned == 'false'
+        run: |
+          unexpected_files=$(git diff --name-only | grep -Ev '^launch_scripts/[^/]+/dependencies/[^/]+\.txt$' || true)
+          if [ -n "$unexpected_files" ]; then
+            echo "::error::Unexpected files changed:"; echo "$unexpected_files"
+            exit 1
+          fi
+          if [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            echo "::error::Unexpected untracked files:"; git ls-files --others --exclude-standard
+            exit 1
+          fi
+          unexpected_lines=$(git diff --unified=0 --no-color \
+            | grep -E '^[-+]' | grep -Ev '^(\+\+\+|---) ' \
+            | grep -Ev '^[-+]obi[-_]one' || true)
+          if [ -n "$unexpected_lines" ]; then
+            echo "::error::Unexpected changed lines:"; echo "$unexpected_lines"
+            exit 1
+          fi
+          git diff --stat
+
+      - name: Commit, move the release tag and push
+        if: steps.tag.outputs.pinned == 'false'
+        env:
+          TAG_OBJECT: ${{ steps.tag.outputs.object }}
+        run: |
+          git config user.name "obi-one-release[bot]"
+          git config user.email "335985424+obi-one-release[bot]@users.noreply.github.com"
+          git commit --all --message "Pin obi-one==$RELEASE_TAG for launch jobs"
+          git tag --force --annotate "$RELEASE_TAG" --message "obi-one $RELEASE_TAG"
+          # Atomic: main and the tag are updated together or not at all. main must
+          # fast-forward, and the tag is replaced only if it still points at A.
+          git push --atomic --force-with-lease="refs/tags/$RELEASE_TAG:$TAG_OBJECT" \
+            origin HEAD:refs/heads/main "refs/tags/$RELEASE_TAG"
+
+      - name: Build and publish from the release tag
+        run: |
+          # The API version returning the id of the dispatched run.
+          api_version="X-GitHub-Api-Version: 2026-03-10"
+          declare -A run_ids
+          for workflow in publish.yml publish-pypi.yml; do
+            run_ids[$workflow]=$(gh api --method POST --header "$api_version" \
+              "repos/$GH_REPO/actions/workflows/$workflow/dispatches" \
+              --raw-field ref="$RELEASE_TAG" --jq .workflow_run_id)
+            echo "Dispatched $workflow: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/${run_ids[$workflow]}"
+          done
+          failed=()
+          for workflow in "${!run_ids[@]}"; do
+            if gh run watch "${run_ids[$workflow]}" --exit-status --interval 30 >/dev/null; then
+              echo "$workflow succeeded"
+            else
+              failed+=("$workflow")
+            fi
+          done
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::Failed builds: ${failed[*]}. Re-run the failed runs."
+            exit 1
+          fi

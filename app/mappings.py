@@ -20,7 +20,7 @@ from app.schemas.task import (
 )
 from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
-from obi_one.utils.versions import launch_ref
+from obi_one.utils.versions import release_tag_ref
 
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
@@ -31,13 +31,13 @@ def _obi_one_code(
     *,
     capabilities: Capabilities | None = None,
 ) -> PythonRepositoryCode:
-    """Standard obi-one launch code: the obi-one repo at the service's launch ref, running main.py.
+    """Standard obi-one launch code: the obi-one repo at the service's release tag, running main.py.
 
     Legacy tasks with a different repo/entrypoint build ``PythonRepositoryCode`` directly.
     """
     return PythonRepositoryCode(
         location=settings.OBI_ONE_REPO,
-        ref=launch_ref(settings.APP_VERSION),
+        ref=release_tag_ref(settings.APP_VERSION),
         path=OBI_ONE_CODE_PATH,
         dependencies=str(OBI_ONE_DEPS_DIR / deps_name),
         capabilities=capabilities or Capabilities(),
@@ -126,7 +126,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=launch_ref(settings.APP_VERSION),
+            ref=release_tag_ref(settings.APP_VERSION),
             path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
             dependencies="launch_scripts/launch_brian2_simulation/dependencies/default.txt",
             staged_directories=[],

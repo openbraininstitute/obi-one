@@ -27,7 +27,7 @@ from app.schemas.task import (
 )
 from app.services import task as test_module
 from app.types import BuiltinScript, MachinePlacementType, TaskType
-from obi_one.utils.versions import launch_ref
+from obi_one.utils.versions import release_tag_ref
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
@@ -439,7 +439,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": task_definition.code.location,
-            "ref": launch_ref(settings.APP_VERSION),
+            "ref": release_tag_ref(settings.APP_VERSION),
             "path": "obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
             "dependencies": "launch_scripts/launch_brian2_simulation/dependencies/default.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},

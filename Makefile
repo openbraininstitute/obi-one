@@ -75,7 +75,7 @@ upgrade-launch-deps:  ## Compile launch-script requirements, upgrading the trans
 check-launch-deps:  ## Verify committed launch-script .txt files are consistent with their .in sources
 	uv run python launch_scripts/tools/launch_deps_compile.py --check $(FILE)
 
-pin-launch-deps:  ## Pin obi-one==VERSION in launch-script .txt files (used by the launch-tag workflow). Required: VERSION=<calver>. Optional: FILE=<path to .txt or dir>
+pin-launch-deps:  ## Pin obi-one==VERSION in launch-script .txt files (used by the release-pin workflow). Required: VERSION=<calver>. Optional: FILE=<path to .txt or dir>
 	python3 launch_scripts/tools/launch_deps_pin.py --version "$(VERSION)" $(FILE)
 
 format:  ## Run formatters

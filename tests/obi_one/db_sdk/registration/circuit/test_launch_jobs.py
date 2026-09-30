@@ -68,7 +68,7 @@ class TestSubmitCircuitJobs:
         )
 
         job = ls_client.post.call_args[1]["json"]
-        assert job["code"]["ref"] == "tag:launch-2026.8.12"
+        assert job["code"]["ref"] == "tag:2026.8.12"
         assert job["code"]["dependencies"] == (
             "launch_scripts/launch_circuit_validation/dependencies/default.txt"
         )
@@ -150,7 +150,7 @@ class TestSubmitCircuitJobs:
         )
 
         job = ls_client.post.call_args[1]["json"]
-        assert job["code"]["ref"] == "tag:launch-2026.9.1"
+        assert job["code"]["ref"] == "tag:2026.9.1"
         assert job["code"]["dependencies"] == (
             "launch_scripts/launch_circuit_asset_generation/dependencies/default.txt"
         )
@@ -167,12 +167,12 @@ class TestSubmitCircuitJobs:
     @pytest.mark.parametrize(
         ("app_version", "expected_ref"),
         [
-            (None, "tag:launch-0.0.0"),
-            ("2026.8.12-3-g49a16415-dirty", "tag:launch-2026.8.12"),
-            ("2026.8.12-3-g49a16415", "tag:launch-2026.8.12"),
+            (None, "tag:0.0.0"),
+            ("2026.8.12-3-g49a16415-dirty", "tag:2026.8.12"),
+            ("2026.8.12-3-g49a16415", "tag:2026.8.12"),
         ],
     )
-    def test_dev_version_uses_last_release_launch_ref(self, app_version, expected_ref):
+    def test_dev_version_uses_last_release_tag(self, app_version, expected_ref):
         ls_client = MagicMock()
         ls_client.post.return_value = MagicMock(
             is_success=True,
@@ -191,5 +191,5 @@ class TestSubmitCircuitJobs:
         )
 
         job = ls_client.post.call_args[1]["json"]
-        # Post-release / dirty dev builds check out the last release's launch tag.
+        # Post-release / dirty dev builds check out the last release's tag.
         assert job["code"]["ref"] == expected_ref

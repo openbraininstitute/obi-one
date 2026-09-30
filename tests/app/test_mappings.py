@@ -9,7 +9,7 @@ from app.types import TaskType
 def test_obi_one_code_uses_app_version(monkeypatch):
     monkeypatch.setattr(mappings.settings, "APP_VERSION", "2026.9.1")
     code = mappings._obi_one_code("circuit_extraction.txt")
-    assert code.ref == "tag:launch-2026.9.1"
+    assert code.ref == "tag:2026.9.1"
     assert code.dependencies == str(mappings.OBI_ONE_DEPS_DIR / "circuit_extraction.txt")
     assert "dependency_constraints" not in code.model_dump()
 
@@ -17,7 +17,7 @@ def test_obi_one_code_uses_app_version(monkeypatch):
 def test_obi_one_code_dev_version_uses_last_release(monkeypatch):
     monkeypatch.setattr(mappings.settings, "APP_VERSION", "2026.9.1-3-gabc1234-dirty")
     code = mappings._obi_one_code("default.txt")
-    assert code.ref == "tag:launch-2026.9.1"
+    assert code.ref == "tag:2026.9.1"
 
 
 def test_task_definitions_keyed_by_task_type():

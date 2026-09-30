@@ -18,7 +18,7 @@ from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRe
 from app.schemas.task import TaskAccountingInfo, TaskLaunchInfo
 from app.services.accounting import _DURATION_BILLING_SCALES, CIRCUIT_SCALE_TO_SERVICE_SUBTYPE
 from app.types import TaskType
-from obi_one.utils.versions import launch_ref
+from obi_one.utils.versions import release_tag_ref
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID, assert_request
 
@@ -612,7 +612,7 @@ def test_task_launch_success__circuit_simulation(
                 "code": {
                     "type": "python_repository",
                     "location": "https://github.com/openbraininstitute/obi-one.git",
-                    "ref": launch_ref(settings.APP_VERSION),
+                    "ref": release_tag_ref(settings.APP_VERSION),
                     "path": OBI_ONE_CODE_PATH,
                     "dependencies": str(OBI_ONE_DEPS_DIR / "default.txt"),
                     "capabilities": {"private_packages": False, "env_secrets": []},

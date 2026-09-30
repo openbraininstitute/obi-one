@@ -17,7 +17,7 @@ from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.mesh_validation import _save_upload_to_tempfile
 from app.logger import L
 from app.types import MachinePlacementType
-from obi_one.utils.versions import launch_ref
+from obi_one.utils.versions import release_tag_ref
 
 router = APIRouter(prefix="/declared", tags=["mesh-registration"])
 
@@ -117,7 +117,7 @@ def _trigger_mesh_lod_generation_task(
         "code": {
             "type": "python_repository",
             "location": settings.OBI_ONE_REPO,
-            "ref": launch_ref(settings.APP_VERSION),
+            "ref": release_tag_ref(settings.APP_VERSION),
             "path": f"{launch_path}/main.py",
             "dependencies": f"{launch_path}/dependencies/mesh_lod_generation.txt",
             "capabilities": {"private_packages": True},

@@ -9,11 +9,12 @@ the versions already pinned in the committed ``*.txt`` and only repins what the
 ``*.in`` (or obi-one's closure) forces; ``--upgrade`` bumps everything to latest.
 ``entitysdk`` is always upgraded, mirroring ``make compile-deps``.
 
-``obi-one`` is left unpinned on branches: it is pinned to ``==<version>`` only in
-the ``launch-<version>`` tag created for each release (``launch_deps_pin.py``, run
-by ``.github/workflows/launch-tag.yml``). Its ``*.in`` line is copied verbatim to
-the top of the ``*.txt`` and excluded from the resolver output
-(``--no-emit-package obi-one``), while its transitive closure is pinned.
+``obi-one`` itself is resolved from the local checkout and excluded from the resolver
+output (``--no-emit-package obi-one``), while its transitive closure is pinned. Its
+bare ``*.in`` line is written at the top of the ``*.txt`` with the release pin
+currently found in the committed ``*.txt`` files: the release workflow
+(``.github/workflows/release-pin.yml``) re-pins it with ``launch_deps_pin.py`` for
+each release, and compiling keeps that pin.
 
 Run ``launch_deps_compile.py --help`` for the arguments.
 """
@@ -26,12 +27,13 @@ import sys
 import tempfile
 import time
 import tomllib
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from launch_deps_common import LAUNCH_SCRIPTS_DIR, OBI_ONE_LINE_REGEX, REPO_ROOT
+from launch_deps_common import LAUNCH_SCRIPTS_DIR, OBI_ONE_LINE_REGEX, RELEASE_PIN_REGEX, REPO_ROOT
 
 # Resolution target for the runtime executors. The Python version is derived from
 # the ``requires-python`` floor (see ``_python_floor_version``).
@@ -184,12 +186,38 @@ def _python_floor_version() -> str:
     return m.group(1)
 
 
+def current_release_pin(txt_files: Iterable[Path]) -> str | None:
+    """Return the release version obi-one is pinned to in ``txt_files``, if any.
+
+    Lines that are bare or carry a different specifier (e.g. a dev-flow git
+    reference) are ignored: compiling rewrites them. Raises SystemExit if the files
+    pin different releases.
+    """
+    files_by_version: dict[str, list[Path]] = {}
+    for path in txt_files:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            m = OBI_ONE_LINE_REGEX.match(line.strip())
+            pin = RELEASE_PIN_REGEX.match(m.group("spec") or "") if m else None
+            if pin:
+                files_by_version.setdefault(pin.group("version"), []).append(path)
+    if len(files_by_version) > 1:
+        details = "\n".join(
+            f"  =={version}: {', '.join(str(p.relative_to(REPO_ROOT)) for p in paths)}"
+            for version, paths in sorted(files_by_version.items())
+        )
+        msg = f"The launch-script .txt files pin different obi-one releases:\n{details}"
+        raise SystemExit(msg)
+    return next(iter(files_by_version), None)
+
+
 def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
     """Build the resolver input, rewriting the obi-one line to the local checkout.
 
     Replacing ``obi-one[extras]`` with the local project path resolves obi-one's
     closure from the current checkout rather than a published release. Returns the
     rewritten input and the verbatim obi-one lines (to preserve in the output).
+    Raises SystemExit if an obi-one line of the ``.in`` is not bare, since only the
+    release workflow pins obi-one.
     """
     obi_one_lines: list[str] = []
     resolved_lines: list[str] = []
@@ -200,6 +228,9 @@ def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
             continue
         m = OBI_ONE_LINE_REGEX.match(stripped)
         if m:
+            if m.group("spec"):
+                msg = f"{in_file}: the obi-one line must be bare, got {stripped!r}"
+                raise SystemExit(msg)
             obi_one_lines.append(stripped)
             extras = m.group("extras")
             extras_suffix = f"[{extras.strip()}]" if extras else ""
@@ -228,12 +259,19 @@ def _existing_pins(out_file: Path) -> str:
     return ("\n".join(kept) + "\n") if kept else ""
 
 
-def compile_in_file(in_file: Path, *, upgrade: bool = False, extra_index: str | None = None) -> str:
+def compile_in_file(
+    in_file: Path,
+    *,
+    upgrade: bool = False,
+    extra_index: str | None = None,
+    obi_one_pin: str | None = None,
+) -> str:
     """Compile a single ``.in`` file and return the frozen ``.txt`` content.
 
     Unless ``upgrade`` is set, versions already pinned in the committed ``.txt``
     are preserved (uv only changes what the ``.in`` / obi-one closure forces).
-    ``entitysdk`` is always upgraded to its latest version regardless.
+    ``entitysdk`` is always upgraded to its latest version regardless. The obi-one
+    lines are written pinned to ``obi_one_pin``, or bare if it is None.
     """
     resolve_input, obi_one_lines = _build_resolve_input(in_file)
     out_file = in_file.with_suffix(".txt")
@@ -274,8 +312,8 @@ def compile_in_file(in_file: Path, *, upgrade: bool = False, extra_index: str | 
             cmd.append("--upgrade")
         if extra_index is not None:
             cmd += ["--extra-index-url", extra_index]
-        # Discover obi-one's closure from the local project but do not pin obi-one
-        # itself: it is pinned only in the release's launch tag.
+        # Discover obi-one's closure from the local project but do not emit obi-one
+        # itself: its line is written from the .in with the release pin.
         if obi_one_lines:
             cmd += ["--no-emit-package", OBI_ONE_PACKAGE]
 
@@ -294,20 +332,23 @@ def compile_in_file(in_file: Path, *, upgrade: bool = False, extra_index: str | 
     )
     if obi_one_lines:
         header += (
-            "# obi-one is intentionally left unpinned here; it is pinned to the release\n"
-            "# version in the launch-<version> tag created at release time.\n"
+            "# The obi-one pin is updated for each release by .github/workflows/release-pin.yml\n"
+            "# and kept by compiling.\n"
         )
-    obi_one_block = ("\n".join(obi_one_lines) + "\n") if obi_one_lines else ""
+    pin_suffix = f"=={obi_one_pin}" if obi_one_pin else ""
+    obi_one_block = "".join(f"{line}{pin_suffix}\n" for line in obi_one_lines)
     return header + obi_one_block + compiled
 
 
-def _compile_or_error(in_file: Path, *, upgrade: bool) -> CompileResult:
+def _compile_or_error(in_file: Path, *, upgrade: bool, obi_one_pin: str | None) -> CompileResult:
     """Compile ``in_file``, returning the uv failure instead of raising it."""
     extra_index = extra_index_for(in_file)
     index = "codeartifact+pypi" if extra_index is not None else "pypi"
     start = time.monotonic()
     try:
-        content = compile_in_file(in_file, upgrade=upgrade, extra_index=extra_index)
+        content = compile_in_file(
+            in_file, upgrade=upgrade, extra_index=extra_index, obi_one_pin=obi_one_pin
+        )
     except subprocess.CalledProcessError as e:
         content = e
     return CompileResult(content, time.monotonic() - start, index)
@@ -368,10 +409,18 @@ def main(argv: list[str] | None = None) -> int:
         print("No .in files found.", file=sys.stderr)
         return 1 if check_in_txt_pairing(in_files) else 0
 
+    # Read from all committed files, so compiling a subset keeps the same pin.
+    obi_one_pin = current_release_pin(sorted(LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.txt")))
+
     # Each compile is an independent, network-bound uv subprocess, so threads suffice.
     # Results are then handled in file order, keeping the output deterministic.
     with ThreadPoolExecutor(max_workers=args.jobs) as executor:
-        results = list(executor.map(lambda f: _compile_or_error(f, upgrade=args.upgrade), in_files))
+        results = list(
+            executor.map(
+                lambda f: _compile_or_error(f, upgrade=args.upgrade, obi_one_pin=obi_one_pin),
+                in_files,
+            )
+        )
 
     stale: list[Path] = []
     skipped: list[Path] = []

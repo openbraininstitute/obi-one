@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Pin obi-one to a release version in the launch-script requirements.
 
-Rewrites every bare ``obi-one[extras]`` line of the compiled
-``launch_scripts/*/dependencies/*.txt`` files to ``obi-one[extras]==<version>``,
-leaving every other byte untouched. Run by ``.github/workflows/launch-tag.yml`` on
-a checkout of release ``<version>`` to build the ``launch-<version>`` tag that
-launch jobs check out. The transitive closure in those files was already compiled
-against that release's source, so pinning the obi-one line alone is consistent.
+Rewrites every obi-one line of the compiled ``launch_scripts/*/dependencies/*.txt``
+files to ``obi-one[extras]==<version>``, leaving every other byte untouched. Lines
+may be bare (before the first release) or pinned to a previous release. Run by
+``.github/workflows/release-pin.yml`` on ``main`` for each release: the transitive
+closure in those files was compiled against ``main``'s source, so re-pinning the
+obi-one line alone is consistent.
 
-Any obi-one line that is already pinned, has a marker or a git reference (e.g. a
+With ``--check`` nothing is written: the tool fails unless every obi-one line is
+already pinned to ``<version>``. The publish workflows run it on the release tag.
+
+An obi-one line with any other specifier, a marker or a git reference (e.g. a
 leftover dev-flow edit) is an error, as is finding no obi-one line at all: nothing
 is written in either case.
 
@@ -20,7 +23,12 @@ import re
 import sys
 from pathlib import Path
 
-from launch_deps_common import LAUNCH_SCRIPTS_DIR, OBI_ONE_LINE_REGEX, RELEASE_VERSION_REGEX
+from launch_deps_common import (
+    LAUNCH_SCRIPTS_DIR,
+    OBI_ONE_LINE_REGEX,
+    RELEASE_PIN_REGEX,
+    RELEASE_VERSION_REGEX,
+)
 
 # Any requirement line naming obi-one, recognised or not: catches lines the strict
 # OBI_ONE_LINE_REGEX does not parse (e.g. an inline comment) so they are not
@@ -55,12 +63,18 @@ def resolve_txt_files(paths: list[str]) -> list[Path]:
     return sorted(found)
 
 
+def read_text_verbatim(path: Path) -> str:
+    """Return the content of ``path`` with its original line endings."""
+    # newline="" disables the translation that Path.read_text applies.
+    with path.open(encoding="utf-8", newline="") as f:
+        return f.read()
+
+
 def pin_text(text: str, version: str) -> tuple[str, int]:
-    """Return ``text`` with bare obi-one lines pinned to ``version``, and their count.
+    """Return ``text`` with its obi-one lines pinned to ``version``, and their count.
 
     Line endings and all non-obi-one lines are preserved exactly. Raises PinError
-    for an obi-one line that is not bare (specifier, marker, ``@`` reference or
-    otherwise unparsable).
+    for an obi-one line that is neither bare nor pinned to a release.
     """
     out: list[str] = []
     count = 0
@@ -71,10 +85,15 @@ def pin_text(text: str, version: str) -> tuple[str, int]:
             out.append(line)
             continue
         m = OBI_ONE_LINE_REGEX.match(body)
-        if not m or m.group("spec"):
-            msg = f"obi-one line is not a bare requirement, refusing to pin: {body.strip()!r}"
+        spec = m.group("spec").rstrip() if m and m.group("spec") else None
+        if not m or (spec is not None and not RELEASE_PIN_REGEX.match(spec)):
+            msg = (
+                "obi-one line is neither bare nor pinned to a release, refusing to pin: "
+                f"{body.strip()!r}"
+            )
             raise PinError(msg)
-        out.append(f"{body.rstrip()}=={version}{ending}")
+        requirement = body[: m.start("spec")] if spec is not None else body
+        out.append(f"{requirement.rstrip()}=={version}{ending}")
         count += 1
     return "".join(out), count
 
@@ -93,11 +112,8 @@ def pin_files(files: list[Path], version: str) -> dict[Path, str]:
     pinned: dict[Path, str] = {}
     errors: list[str] = []
     for path in files:
-        # newline="" keeps the original line endings (read_text translates them).
-        with path.open(encoding="utf-8", newline="") as f:
-            text = f.read()
         try:
-            content, count = pin_text(text, version)
+            content, count = pin_text(read_text_verbatim(path), version)
         except PinError as e:
             errors.append(f"{path}: {e}")
             continue
@@ -120,6 +136,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="obi-one release version to pin (calver YYYY.M.N, no prefix)",
     )
     parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Do not write; fail unless every obi-one line is already pinned to VERSION",
+    )
+    parser.add_argument(
         "paths",
         nargs="*",
         help=(
@@ -133,10 +154,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     pinned = pin_files(resolve_txt_files(args.paths), args.version)
-    for path, content in pinned.items():
+    changed = {
+        path: content for path, content in pinned.items() if read_text_verbatim(path) != content
+    }
+
+    if args.check:
+        for path in changed:
+            print(f"NOT PINNED to obi-one=={args.version}: {path}", file=sys.stderr)
+        return 1 if changed else 0
+
+    for path, content in changed.items():
         # newline="" keeps the original line endings verbatim.
         path.write_text(content, encoding="utf-8", newline="")
         print(f"pinned obi-one=={args.version}: {path}")
+    for path in sorted(pinned.keys() - changed.keys()):
+        print(f"already pinned: {path}")
     return 0
 
 

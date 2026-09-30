@@ -2,7 +2,7 @@
 
 Imported as a sibling top-level module by ``launch_deps_compile.py`` and
 ``launch_deps_pin.py``; it must not import ``obi_one`` so that the pin tool runs
-with a bare Python interpreter (see ``.github/workflows/launch-tag.yml``).
+with a bare Python interpreter (see ``.github/workflows/release-pin.yml``).
 """
 
 import re
@@ -23,4 +23,8 @@ OBI_ONE_LINE_REGEX = re.compile(
 # A clean obi-one release version: calver ``YYYY.M.N`` with nothing else, matching
 # the setuptools_scm ``tag_regex`` in pyproject.toml (without the ``v`` prefix,
 # which obi-one releases do not use).
-RELEASE_VERSION_REGEX = re.compile(r"^\d{4}\.\d{1,2}\.\d+$")
+RELEASE_VERSION_PATTERN = r"\d{4}\.\d{1,2}\.\d+"
+RELEASE_VERSION_REGEX = re.compile(rf"^{RELEASE_VERSION_PATTERN}$")
+
+# The ``spec`` of an obi-one line pinned to a release by ``launch_deps_pin.py``.
+RELEASE_PIN_REGEX = re.compile(rf"^==(?P<version>{RELEASE_VERSION_PATTERN})$")

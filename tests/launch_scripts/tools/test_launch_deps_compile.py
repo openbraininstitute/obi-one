@@ -104,6 +104,13 @@ class TestBuildResolveInput:
         # be named "obi-one", so compare whole lines, not substrings).
         assert "obi-one[connectivity]" not in resolved_lines
 
+    @pytest.mark.parametrize("line", ["obi-one==2026.9.1", "obi-one @ git+https://x.org/r.git"])
+    def test_rejects_non_bare_obi_one(self, tmp_path, line):
+        f = tmp_path / "reqs.in"
+        f.write_text(f"{line}\n", encoding="utf-8")
+        with pytest.raises(SystemExit, match="the obi-one line must be bare"):
+            launch_deps_compile._build_resolve_input(f)
+
     def test_no_obi_one_passthrough(self, tmp_path):
         f = tmp_path / "reqs.in"
         f.write_text("# comment\nnumpy==2.0\n\n", encoding="utf-8")
@@ -111,6 +118,48 @@ class TestBuildResolveInput:
         assert obi_one_lines == []
         assert "numpy==2.0" in resolved
         assert "# comment" in resolved
+
+
+class TestCurrentReleasePin:
+    def _write(self, tmp_path, name, text):
+        path = tmp_path / name
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_returns_common_pin(self, tmp_path):
+        files = [
+            self._write(tmp_path, "a.txt", "obi-one[emodel]==2026.9.15\nnumpy==2.0\n"),
+            self._write(tmp_path, "b.txt", "obi-one==2026.9.15\n"),
+            self._write(tmp_path, "c.txt", "numpy==2.0\n"),
+        ]
+        assert launch_deps_compile.current_release_pin(files) == "2026.9.15"
+
+    def test_ignores_bare_and_other_specs(self, tmp_path):
+        files = [
+            self._write(tmp_path, "a.txt", "obi-one==2026.9.15\n"),
+            self._write(tmp_path, "b.txt", "obi-one\n"),
+            self._write(tmp_path, "c.txt", "obi-one @ git+https://x.org/r.git@abc\n"),
+        ]
+        assert launch_deps_compile.current_release_pin(files) == "2026.9.15"
+
+    def test_none_when_unpinned(self, tmp_path):
+        files = [self._write(tmp_path, "a.txt", "obi-one[emodel]\n")]
+        assert launch_deps_compile.current_release_pin(files) is None
+
+    def test_different_pins_raise(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(launch_deps_compile, "REPO_ROOT", tmp_path)
+        files = [
+            self._write(tmp_path, "a.txt", "obi-one==2026.9.15\n"),
+            self._write(tmp_path, "b.txt", "obi-one==2026.9.14\n"),
+        ]
+        with pytest.raises(
+            SystemExit, match=r"different obi-one releases(.|\n)*==2026\.9\.14: b\.txt"
+        ):
+            launch_deps_compile.current_release_pin(files)
+
+    def test_repo_files_are_consistent(self):
+        files = sorted(launch_deps_compile.LAUNCH_SCRIPTS_DIR.glob("*/dependencies/*.txt"))
+        launch_deps_compile.current_release_pin(files)
 
 
 class TestExistingPins:
@@ -176,8 +225,26 @@ class TestMain:
         )
         assert launch_deps_compile.main(["--check", str(d)]) == 0
         lines = capsys.readouterr().out.splitlines()
-        assert re.fullmatch(r"ok: \S+/a\.txt \(\d+\.\ds, pypi\)", lines[0])
-        assert re.fullmatch(r"ok: \S+/b\.txt \(\d+\.\ds, codeartifact\+pypi\)", lines[1])
+        assert re.fullmatch(r"ok: \S+/a\.txt \[\d+\.\ds, pypi\]", lines[0])
+        assert re.fullmatch(r"ok: \S+/b\.txt \[\d+\.\ds, codeartifact\+pypi\]", lines[1])
+
+    @pytest.mark.parametrize("pin", ["2026.9.15", None])
+    def test_passes_committed_pin(self, tmp_path, monkeypatch, pin):
+        d = self._setup(tmp_path, monkeypatch, names=("a",))
+        other = tmp_path / "launch_y" / "dependencies" / "other.txt"
+        other.parent.mkdir(parents=True)
+        other.write_text(f"obi-one=={pin}\n" if pin else "obi-one\n", encoding="utf-8")
+        monkeypatch.setattr(launch_deps_compile, "LAUNCH_SCRIPTS_DIR", tmp_path)
+        pins = []
+
+        def fake_compile(in_file, *, obi_one_pin, **_):
+            pins.append(obi_one_pin)
+            return f"{in_file.stem}-content"
+
+        monkeypatch.setattr(launch_deps_compile, "compile_in_file", fake_compile)
+        # Only launch_x is compiled, but the pin comes from all committed files.
+        assert launch_deps_compile.main(["--check", str(d)]) == 0
+        assert pins == [pin]
 
     def test_writes_files(self, tmp_path, monkeypatch):
         d = self._setup(tmp_path, monkeypatch)
@@ -280,3 +347,21 @@ class TestPrivateIndex:
         monkeypatch.setattr(launch_deps_compile.subprocess, "run", fake_run)
         launch_deps_compile.compile_in_file(in_file, extra_index=extra_index)
         assert ("--extra-index-url" in commands[0]) is (extra_index is not None)
+
+
+class TestCompileInFile:
+    @pytest.mark.parametrize(
+        ("obi_one_pin", "expected_line"),
+        [("2026.9.15", "obi-one[emodel]==2026.9.15"), (None, "obi-one[emodel]")],
+    )
+    def test_obi_one_line_written_with_pin(self, tmp_path, monkeypatch, obi_one_pin, expected_line):
+        in_file = tmp_path / "reqs.in"
+        in_file.write_text("obi-one[emodel]\n", encoding="utf-8")
+
+        def fake_run(cmd, **_):
+            Path(cmd[cmd.index("--output-file") + 1]).write_text("numpy==2.0\n", encoding="utf-8")
+
+        monkeypatch.setattr(launch_deps_compile.subprocess, "run", fake_run)
+        content = launch_deps_compile.compile_in_file(in_file, obi_one_pin=obi_one_pin)
+        body = [line for line in content.splitlines() if not line.startswith("#")]
+        assert body == [expected_line, "numpy==2.0"]
