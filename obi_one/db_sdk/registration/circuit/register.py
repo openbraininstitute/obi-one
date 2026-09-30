@@ -29,6 +29,7 @@ from obi_one.db_sdk.registration.circuit.resolve import (
     get_subject,
 )
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
 from obi_one.scientific.tasks.circuit_validation.task import run_circuit_validation
 from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
 from obi_one.utils.io import extract_tar_gz
@@ -88,6 +89,61 @@ def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
     return circuit_path, circuit_path_compressed
 
 
+def _get_biophysical_model_templates(circuit: OBICircuit) -> set[str]:
+    """Get model-template values used by biophysical populations in a circuit."""
+    templates: set[str] = set()
+    for population_name in circuit.sonata_circuit.nodes.population_names:
+        population = circuit.sonata_circuit.nodes[population_name]
+        if population.type not in TYPES_OF_BIOPHYS_NODES:
+            continue
+        if "model_template" not in population.property_names:
+            continue
+        templates.update(
+            str(template)
+            for template in population.get(properties="model_template").unique().tolist()
+            if template
+        )
+    return templates
+
+
+def _register_parent_emodel_derivations(
+    client: Client,
+    parent: models.Circuit | None,
+    registered_circuit: models.Circuit | None,
+    *,
+    parent_derivation_type: DerivationType | None,
+    model_templates: set[str],
+    dry_run: bool,
+) -> None:
+    """Copy matching EModel derivations from a parent circuit to a derived circuit."""
+    # Customization and simplification may replace HOC files or EModels, so their parent
+    # derivations must not be inherited.
+    # TODO: Revisit when those workflows preserve model identity.
+    if parent is None or parent_derivation_type in {
+        DerivationType.circuit_customization,
+        DerivationType.circuit_simplification,
+    }:
+        return
+
+    derivations = client.search_entity(
+        entity_type=models.Derivation,
+        query={
+            "generated__id": parent.id,
+            "derivation_type": DerivationType.emodel_circuit,
+        },
+    ).all()
+    for derivation in derivations:
+        if derivation.used is not None and derivation.label in model_templates:
+            register_derivation(
+                client=client,
+                from_entity=derivation.used,
+                derivation_type=DerivationType.emodel_circuit,
+                registered_circuit=registered_circuit,
+                dry_run=dry_run,
+                label=derivation.label,
+            )
+
+
 def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, complex-structure, too-many-branches, too-many-statements]
     client: Client,
     circuit_path: str | Path,
@@ -106,7 +162,9 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     atlas: models.BrainAtlas | None = None,
     root: models.Circuit | UUID | None = None,
     parent: models.Circuit | UUID | None = None,
+    derived_from_emodel: models.EModel | None = None,
     derivation_type: DerivationType | None = None,
+    derivation_label: str | None = None,
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
@@ -161,8 +219,17 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         root: Root circuit entity or root circuit ID (UUID) in the derivation
             hierarchy (optional). When omitted and ``parent`` is set, defaults to
             ``parent.root_circuit_id or parent.id``.
-        parent: Parent circuit entity or ID (UUID) for derivation linking (optional).
-        derivation_type: Type of derivation (required if parent is provided).
+        parent: Parent circuit entity or ID (UUID) for the circuit derivation hierarchy
+            (optional). When set, it creates a Circuit-to-Circuit derivation link with
+            ``derivation_type`` and no label. ``root`` defaults from it.
+        derived_from_emodel: EModel source for an ``emodel_circuit`` derivation (optional).
+            It cannot be combined with ``parent`` and requires a ``derivation_label`` matching
+            a biophysical ``model_template`` in the circuit. It does not affect the hierarchy.
+        derivation_type: Type of derivation for a parent circuit. It must be ``None`` when an
+            explicit EModel source is provided; explicit EModel sources always use
+            ``emodel_circuit``.
+        derivation_label: Label for the derivation. It is required for an explicit EModel source,
+            must match a biophysical ``model_template``, and is forbidden otherwise.
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
@@ -251,6 +318,32 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     # Resolve parent and derive root when not explicitly provided
     if parent is not None and isinstance(parent, UUID):
         parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
+    if parent is not None and derived_from_emodel is not None:
+        msg = "parent and derived_from_emodel cannot both be provided"
+        raise ValueError(msg)
+    if parent is not None:
+        if not isinstance(parent, models.Circuit):
+            msg = "parent must be a Circuit or UUID"
+            raise TypeError(msg)
+        if derivation_label is not None:
+            msg = "derivation_label must be None when parent is provided"
+            raise ValueError(msg)
+    elif derived_from_emodel is not None:
+        if not isinstance(derived_from_emodel, models.EModel):
+            msg = "derived_from_emodel must be an EModel"
+            raise TypeError(msg)
+        if derivation_type is not None:
+            msg = "derivation_type must be None when derived_from_emodel is provided"
+            raise ValueError(msg)
+        if derivation_label is None:
+            msg = "derivation_label is required when derived_from_emodel is provided"
+            raise ValueError(msg)
+        if derivation_label not in _get_biophysical_model_templates(c):
+            msg = "derivation_label must match a biophysical model_template in the circuit"
+            raise ValueError(msg)
+    elif derivation_label is not None:
+        msg = "derivation_label requires parent or derived_from_emodel"
+        raise ValueError(msg)
     if root is None and parent is not None:
         root = parent.root_circuit_id or parent.id
 
@@ -290,7 +383,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         registered_circuit = client.register_entity(circuit_model)
         L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
 
-    # Derivation link
+    # Derivation links: parent circuits and explicit EModels are mutually exclusive.
     if parent is not None:
         register_derivation(
             client=client,
@@ -298,6 +391,23 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             derivation_type=derivation_type,
             registered_circuit=registered_circuit,
             dry_run=dry_run,
+        )
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=registered_circuit,
+            parent_derivation_type=derivation_type,
+            model_templates=_get_biophysical_model_templates(c),
+            dry_run=dry_run,
+        )
+    elif derived_from_emodel is not None:
+        register_derivation(
+            client=client,
+            from_entity=derived_from_emodel,
+            derivation_type=DerivationType.emodel_circuit,
+            registered_circuit=registered_circuit,
+            dry_run=dry_run,
+            label=derivation_label,
         )
 
     # Contributions

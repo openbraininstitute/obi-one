@@ -4,10 +4,12 @@ import json as json_module
 import shutil
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from entitysdk.types import DerivationType
 
 from obi_one.db_sdk.registration.circuit import (
     check_hierarchy_species,
@@ -42,7 +44,11 @@ from obi_one.db_sdk.registration.circuit.generate import (
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
 )
-from obi_one.db_sdk.registration.circuit.register import _resolve_target_simulator
+from obi_one.db_sdk.registration.circuit.register import (
+    _get_biophysical_model_templates,
+    _register_parent_emodel_derivations,
+    _resolve_target_simulator,
+)
 
 from tests.utils import CIRCUIT_DIR
 
@@ -961,8 +967,19 @@ class _FakeCircuit:
             setattr(self, k, v)
 
 
+class _FakeEModel:
+    """Fake EModel class that accepts any kwargs and supports isinstance."""
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
 _patch_models_circuit = patch(
     "obi_one.db_sdk.registration.circuit.register.models.Circuit", _FakeCircuit
+)
+_patch_models_emodel = patch(
+    "obi_one.db_sdk.registration.circuit.register.models.EModel", _FakeEModel
 )
 
 
@@ -1076,9 +1093,7 @@ def test_register_circuit_derives_root_from_parent():
     client.register_entity.return_value = registered
     brain_region, subject = _mock_brain_region_and_subject()
 
-    parent = MagicMock()
-    parent.id = "parent-id"
-    parent.root_circuit_id = "root-id"
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
 
     with (
         _patch_models_circuit,
@@ -1147,12 +1162,17 @@ def test_register_circuit_with_derivation():
     registered.name = "test_circuit"
     registered.id = "new-id"
     client.register_entity.return_value = registered
-    parent = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="parent-id")
     brain_region, subject = _mock_brain_region_and_subject()
 
     with (
         _patch_models_circuit,
+        _patch_models_emodel,
         patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
         patch(
             "obi_one.db_sdk.registration.circuit.register.register_derivation"
         ) as mock_derivation,
@@ -1952,3 +1972,437 @@ def test_generate_additional_skips_matrices_when_already_present(tmp_path):
         )
 
     mock_matrix.assert_not_called()
+
+
+def test_register_circuit_preserves_parent_and_inherited_emodel_derivations():
+    """A child circuit keeps the parent link and inherits the parent's EModel link."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    emodel = MagicMock(name="emodel")
+    emodel.id = "emodel-id"
+    parent_derivation = MagicMock(name="parent_derivation")
+    parent_derivation.used = emodel
+    parent_derivation.label = "hoc:cADpyr_L5TPC"
+    client.search_entity.return_value.all.return_value = [parent_derivation]
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+        )
+
+    assert mock_derivation.call_count == 2
+    assert mock_derivation.call_args_list[0].kwargs["from_entity"] is parent
+    assert mock_derivation.call_args_list[1].kwargs["from_entity"] is emodel
+    assert (
+        mock_derivation.call_args_list[1].kwargs["derivation_type"] == DerivationType.emodel_circuit
+    )
+    assert mock_derivation.call_args_list[1].kwargs["label"] == "hoc:cADpyr_L5TPC"
+    assert client.search_entity.call_args.kwargs["query"] == {
+        "generated__id": "parent-id",
+        "derivation_type": DerivationType.emodel_circuit,
+    }
+
+
+def test_register_circuit_dry_run_with_parent_queries_inherited_derivations():
+    """Dry runs query inherited parent derivations but do not register them."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+            dry_run=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["dry_run"] is True
+    client.search_entity.assert_called_once()
+
+
+def test_register_circuit_ignores_parent_derivation_without_source():
+    """Parent derivations without a source do not create an inherited link."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    parent_derivation = MagicMock(name="parent_derivation")
+    parent_derivation.used = None
+    client.search_entity.return_value.all.return_value = [parent_derivation]
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is parent
+
+
+def test_register_circuit_registers_explicit_derivation_source():
+    """An explicit derivation source is registered when no parent circuit is provided."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    emodel = _FakeEModel(id="emodel-id")
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=emodel,
+            derivation_label="hoc:cADpyr_L5TPC",
+            skip_additional_assets=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is emodel
+    assert mock_derivation.call_args.kwargs["label"] == "hoc:cADpyr_L5TPC"
+
+
+@pytest.mark.parametrize(
+    "parent_derivation_type",
+    [DerivationType.circuit_customization, DerivationType.circuit_simplification],
+)
+def test_parent_emodel_derivations_are_skipped_for_modified_circuit_types(
+    parent_derivation_type,
+):
+    """Customization and simplification may replace the parent's EModels."""
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.register.register_derivation"
+    ) as mock_derivation:
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=MagicMock(),
+            parent_derivation_type=parent_derivation_type,
+            model_templates={"hoc:Cell"},
+            dry_run=False,
+        )
+
+    client.search_entity.assert_not_called()
+    mock_derivation.assert_not_called()
+
+
+def test_parent_emodel_derivations_filter_by_new_circuit_templates():
+    """Only EModels still referenced by the new circuit are copied."""
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    retained = MagicMock(used=MagicMock(), label="hoc:Retained")
+    removed = MagicMock(used=MagicMock(), label="hoc:Removed")
+    client.search_entity.return_value.all.return_value = [retained, removed]
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.register.register_derivation"
+    ) as mock_derivation:
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=MagicMock(),
+            parent_derivation_type=DerivationType.circuit_extraction,
+            model_templates={"hoc:Retained"},
+            dry_run=False,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is retained.used
+    assert mock_derivation.call_args.kwargs["label"] == "hoc:Retained"
+
+
+def test_parent_emodel_derivations_are_registered_in_dry_run():
+    """Dry runs query inherited sources but delegate registration skipping to the helper."""
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    derivation = MagicMock(used=MagicMock(), label="hoc:Cell")
+    client.search_entity.return_value.all.return_value = [derivation]
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.register.register_derivation"
+    ) as mock_derivation:
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=None,
+            parent_derivation_type=DerivationType.circuit_extraction,
+            model_templates={"hoc:Cell"},
+            dry_run=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["dry_run"] is True
+
+
+def test_register_circuit_rejects_parent_and_explicit_emodel():
+    """Parent and explicit EModel provenance are mutually exclusive."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(ValueError, match="cannot both be provided"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=_FakeCircuit(id="parent-id", root_circuit_id="root-id"),
+            derived_from_emodel=_FakeEModel(id="emodel-id"),
+            derivation_type=DerivationType.emodel_circuit,
+            derivation_label="hoc:Cell",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_requires_label_for_explicit_emodel():
+    """Explicit EModel provenance requires the model-template label."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(ValueError, match="derivation_label is required"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=_FakeEModel(id="emodel-id"),
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_get_biophysical_model_templates_skips_missing_property():
+    """Populations without model_template do not contribute inherited EModel labels."""
+    population = SimpleNamespace(type="biophysical", property_names=[])
+    nodes = MagicMock(population_names=["biophysical"])
+    nodes.__getitem__.return_value = population
+    circuit = SimpleNamespace(sonata_circuit=SimpleNamespace(nodes=nodes))
+
+    assert _get_biophysical_model_templates(circuit) == set()
+
+
+def test_register_circuit_rejects_non_circuit_parent():
+    """A parent source must be a Circuit after UUID resolution."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with pytest.raises(TypeError, match="parent must be a Circuit"):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=MagicMock(),
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_parent_label():
+    """Parent Circuit derivations cannot carry an EModel label."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        pytest.raises(ValueError, match="derivation_label must be None"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=_FakeCircuit(id="parent-id", root_circuit_id="root-id"),
+            derivation_label="hoc:Cell",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_non_emodel_source():
+    """An explicit source must be an EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        pytest.raises(TypeError, match="derived_from_emodel must be an EModel"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=MagicMock(),
+            derivation_label="hoc:Cell",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("derivation_type", "label", "message"),
+    [
+        (
+            DerivationType.circuit_extraction,
+            "hoc:Cell",
+            "derivation_type must be None",
+        ),
+        (None, "hoc:Missing", "derivation_label must match"),
+    ],
+)
+def test_register_circuit_validates_explicit_emodel_metadata(
+    derivation_type,
+    label,
+    message,
+):
+    """Explicit EModel links require fixed type metadata and a matching template."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:Cell"},
+        ),
+        pytest.raises(ValueError, match=message),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=_FakeEModel(id="emodel-id"),
+            derivation_type=derivation_type,
+            derivation_label=label,
+            skip_additional_assets=True,
+            skip_validation=True,
+        )

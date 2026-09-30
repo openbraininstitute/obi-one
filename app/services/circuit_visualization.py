@@ -22,6 +22,7 @@ from app.schemas.circuit_visualization import (
     SectionDict,
     SynapseGroup,
 )
+from obi_one.scientific.library.circuit import ALTERNATE_MORPHOLOGY_FORMATS
 
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
@@ -145,17 +146,18 @@ def resolve_morph_path(
     population_name: str,
     config: libsonata.CircuitConfig,
 ) -> MorphPath:
+    """Resolve the morphology format actually declared for a population.
+
+    Only declared formats are considered, in priority order: 'swc', then 'asc', then 'h5'.
+    """
     pop_properties = config.node_population_properties(population_name)
     if pop_properties.morphologies_dir:
         return MorphPath(path=Path(pop_properties.morphologies_dir), format="swc")
 
     alternate_morphologies: dict = pop_properties.alternate_morphology_formats
-
-    path_item = next(iter(alternate_morphologies.items()), None)
-
-    if path_item:
-        format_ = "asc" if path_item[0] == "neurolucida-asc" else "h5"
-        return MorphPath(path=Path(path_item[1]), format=format_)
+    for sonata_key, format_ in ALTERNATE_MORPHOLOGY_FORMATS.items():
+        if sonata_key in alternate_morphologies:
+            return MorphPath(path=Path(alternate_morphologies[sonata_key]), format=format_)
 
     m = "No morphologies found"
     raise ValueError(m)
