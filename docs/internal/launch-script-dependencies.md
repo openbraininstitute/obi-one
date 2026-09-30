@@ -14,6 +14,7 @@ Each requirements file has two versions:
 - **Change a task's dependencies:** edit its `*.in` (never the `*.txt`), run `make compile-launch-deps FILE=<path to the .in>`, and commit both files.
 - **Add a task:** create `launch_scripts/<task>/dependencies/<name>.in` with a bare `obi-one[<extras>]` line (no version) plus any extra packages, compile it as above, and commit both files. Tasks run by `launch_scripts/launch_task_for_single_config_asset/main.py` use `_obi_one_code("<name>.txt")` in `app/mappings.py`.
 - **Change obi-one's own dependencies** (`pyproject.toml`): also run `make compile-launch-deps`, or `check-launch-deps` fails in CI.
+- **Upgrade the pinned versions:** compiling never upgrades existing pins; raise a lower bound in the `*.in` for one package, or run `make upgrade-launch-deps FILE=<path to the .in>` for the whole closure, then test the task (see [Compiling](#compiling)).
 - **Private packages** (CodeArtifact, e.g. `ultraliser`): add them to `PRIVATE_PACKAGES` in `launch_scripts/tools/launch_deps_compile.py` and set the CodeArtifact credentials before compiling (see [Compiling](#compiling)).
 - **Don't touch the obi-one pin** (`obi-one[...]==X` in the `*.txt`): the release workflow updates it, and compiling keeps it.
 - **Test a task against your branch's obi-one code:** see [Testing a task against an obi-one feature branch](#testing-a-task-against-an-obi-one-feature-branch), and revert the `*.txt` edit before merging.
@@ -33,6 +34,7 @@ make upgrade-launch-deps
 
 This runs `uv pip compile` for the runtime platform (**linux/amd64, Python 3.12**) and pins the full transitive closure, compiling the files in parallel (`launch_deps_compile.py --jobs N`, default up to 8).
 Like `make compile-deps`, `compile-launch-deps` **preserves the versions already pinned**, changing a pin only when the `*.in` (or obi-one's own requirements) forces it; `entitysdk` is the exception and is always upgraded to its latest version.
+To upgrade one package, raise its lower bound in the `*.in` and compile. `make upgrade-launch-deps` refreshes the whole closure of the selected files, which can bring breaking changes, so test the affected tasks before merging.
 
 `obi-one` itself is resolved from the local checkout, so its closure matches the current source, but it is not pinned by the resolver. Its line is written with the release pin found in the committed `*.txt` files (`obi-one[extras]==X` after release `X`, bare before the first release), and compiling keeps that pin. Only the release workflow changes it (see below). The obi-one lines of the `*.in` files must stay bare.
 
