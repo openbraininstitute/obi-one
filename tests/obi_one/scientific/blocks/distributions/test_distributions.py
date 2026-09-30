@@ -380,6 +380,30 @@ class TestDistanceFunctionSafety:
         assert not result.valid
         assert "attributes may only be accessed on the math module" in result.error
 
+    def test_check_distance_function_rejects_string_constants(self):
+        # String constants + % enable allocation bombs, e.g. '%10000000s' % x. Reject all strings.
+        for fn in (
+            '"%10000000s" % ({value} + {distance})',
+            '"x" + {value} + {distance}',
+        ):
+            result = check_distance_function(fn)
+            assert not result.valid, fn
+            assert "literals must be floats" in result.error
+
+    def test_check_distance_function_rejects_math_introspection(self):
+        # math.__dict__/__loader__ etc. are introspection escapes; only allowed attrs pass.
+        for fn in (
+            "math.__dict__ + {value} + {distance}",
+            "math.__loader__ + {value} + {distance}",
+        ):
+            result = check_distance_function(fn)
+            assert not result.valid, fn
+            assert "is not an allowed attribute" in result.error
+
+    def test_check_distance_function_allows_math_constant(self):
+        result = check_distance_function("math.pi * {value} * {distance} * 0.0 + {value}")
+        assert result.valid
+
     def test_validate_safe_distance_function_raises_on_too_long(self):
         with pytest.raises(ValueError, match="too long"):
             validate_safe_distance_function("{value}+{distance}+" + "1.0+" * 300)
@@ -394,6 +418,56 @@ class TestDistanceFunctionSafety:
             "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & ({distance} < {step_end})))"
         )
         assert result.valid
+
+    @pytest.mark.parametrize(
+        "unsafe_function",
+        [
+            # Comment channel: the payload after '#' is lexed away before the AST, and its
+            # format spec survives the placeholder regex, so bluepyopt's str.format pads a
+            # string to gigabytes (memory-exhaustion DoS). Comments are rejected outright.
+            "{value}*{distance} # {value:>999999999}",
+            "{value}*{distance}  # any comment",
+            # Format spec / conversion / attribute / index / positional / empty brace fields
+            # are not bare-identifier placeholders and are rejected before parsing.
+            "{value}*{distance}*{value:>9}",
+            "{value}*{distance}*{value!r}",
+            "{value}*{distance}*{value.__class__}",
+            "{value}*{distance}*{value[0]}",
+            "{value}*{distance}*{0}",
+            "{value}*{distance}*{}",
+            "{value}*{distance}*{a.b}",
+        ],
+    )
+    def test_comment_and_format_spec_channels_are_rejected(self, unsafe_function):
+        """The distance function must not smuggle format specs via comments or brace fields."""
+        with pytest.raises(ValueError, match="Distance function"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
+    def test_check_distance_function_flags_comment_position(self):
+        fn = "{value}*{distance} # {value:>999999999}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "comments are not allowed" in result.error
+        assert fn[result.from_] == "#"
+
+    def test_check_distance_function_flags_format_spec_span(self):
+        fn = "{value}*{distance}*{value:>9}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "invalid placeholder" in result.error
+        assert fn[result.from_ : result.to] == "{value:>9}"
+
+    def test_unsafe_distribution_config_rejects_comment_dos(self):
+        """The comment/format-spec DoS must block config creation, not just the block."""
+        with pytest.raises(ValueError, match="Distance function"):
+            _optimization_config(
+                distance_dependent_distributions={
+                    "dos": {
+                        "type": "CustomDistanceDependentDistribution",
+                        "function": "{value}*{distance} # {value:>999999999}",
+                    },
+                }
+            )
 
     def test_unsafe_distribution_rejected_when_building_a_config(self):
         """An unsafe custom distribution must block EModelOptimizationScanConfig creation."""

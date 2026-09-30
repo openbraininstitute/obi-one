@@ -125,6 +125,11 @@ _ALLOWED_MATH_FUNCTIONS = frozenset(
         "remainder",
     }
 )
+# Float constants on ``math`` that may be referenced directly (e.g. ``math.pi``). Combined with the
+# functions, this is the ONLY set of ``math`` attributes allowed; everything else (``__dict__``,
+# ``__loader__``, ``__globals__`` on functions, ...) is rejected to prevent introspection escapes.
+_ALLOWED_MATH_CONSTANTS = frozenset({"pi", "e", "tau", "inf", "nan"})
+_ALLOWED_MATH_ATTRIBUTES = _ALLOWED_MATH_FUNCTIONS | _ALLOWED_MATH_CONSTANTS
 # Cap the expression size so a single evaluation is bounded, long expressions becomes a CPU sink).
 _MAX_AST_NODES = 50
 # Cap the raw string length before parsing.
@@ -135,6 +140,39 @@ RUNTIME_PLACEHOLDERS = frozenset({"step_begin", "step_end"})
 # Every identifier that may appear as a bare ``Name``. Placeholders are substituted with a
 # numeric literal before parsing, so only these module/builtin names should remain.
 _ALLOWED_NAMES = _ALLOWED_CALL_NAMES | _ALLOWED_MODULES
+
+# A placeholder is exactly ``{`` + a Python identifier + ``}``. Anything else inside braces
+# (a format spec ``{value:>9}``, conversion ``{value!r}``, attribute ``{value.x}``, index
+# ``{value[0]}``, or a positional/empty field ``{0}``/``{}``) is rejected before parsing.
+_PLACEHOLDER_FIELD_PATTERN = re.compile(r"\{[^{}]*\}")
+_BARE_PLACEHOLDER_PATTERN = re.compile(r"\{[A-Za-z_]\w*\}")
+
+
+def _distance_brace_or_comment_error(function: str) -> tuple[str, int, int] | None:
+    """Reject ``#`` comments and non-placeholder brace fields before AST parsing.
+
+    The AST validator never sees ``#`` comments (they are lexed away) and the placeholder
+    substitution regex ignores brace fields carrying a spec/conversion (``:``/``!``/``.``/``[``).
+    Such a field would survive untouched into bluepyopt's two ``str.format`` passes, where a width
+    spec like ``{value:>999999999}`` pads a string to gigabytes (memory-exhaustion DoS). Braces can
+    only legitimately be placeholders here, so any brace content that is not a bare identifier, or
+    any ``#``, is rejected. Returns ``(reason, from, to)`` or ``None`` when safe.
+    """
+    hash_index = function.find("#")
+    if hash_index != -1:
+        return ("'#' (comments are not allowed)", hash_index, len(function))
+    for match in _PLACEHOLDER_FIELD_PATTERN.finditer(function):
+        if not _BARE_PLACEHOLDER_PATTERN.fullmatch(match.group(0)):
+            reason = f"an invalid placeholder {match.group(0)!r} (use {{name}} only)"
+            return (reason, match.start(), match.end())
+    remaining = _PLACEHOLDER_FIELD_PATTERN.sub("", function)
+    stray = remaining.find("{")
+    if stray != -1:
+        return ("an unbalanced '{'", function.find("{"), len(function))
+    stray = remaining.find("}")
+    if stray != -1:
+        return ("an unbalanced '}'", function.find("}"), len(function))
+    return None
 
 
 def _distance_call_error(node: ast.Call) -> str | None:
@@ -157,22 +195,36 @@ def _distance_call_error(node: ast.Call) -> str | None:
     return None
 
 
+def _distance_attribute_error(node: ast.Attribute) -> str | None:
+    """Only ``math.<allowed function/constant>`` may be accessed; blocks introspection escapes."""
+    if not (isinstance(node.value, ast.Name) and node.value.id in _ALLOWED_MODULES):
+        return "attributes may only be accessed on the math module"
+    if node.attr not in _ALLOWED_MATH_ATTRIBUTES:
+        return f"math.{node.attr} is not an allowed attribute"
+    return None
+
+
+def _distance_constant_error(node: ast.Constant) -> str | None:
+    """Only float literals (and ``bool`` masks) are allowed.
+
+    Integer literals are arbitrary-precision (bignum DoS); strings/bytes enable ``%``-format and
+    concatenation allocation bombs (e.g. ``"%10000000s" % x``).
+    """
+    if isinstance(node.value, (float, bool)):
+        return None
+    if isinstance(node.value, int):
+        return "numeric literals must be floats (write 3.0, not 3)"
+    return f"literals must be floats, not {type(node.value).__name__}"
+
+
 def _distance_leaf_error(node: ast.AST) -> str | None:
     """Check the non-operator leaf nodes (attribute/name/constant/call)."""
-    if isinstance(node, ast.Attribute) and not (
-        isinstance(node.value, ast.Name) and node.value.id in _ALLOWED_MODULES
-    ):
-        return "attributes may only be accessed on the math module"
+    if isinstance(node, ast.Attribute):
+        return _distance_attribute_error(node)
     if isinstance(node, ast.Name) and node.id not in _ALLOWED_NAMES:
         return f"disallowed name: {node.id!r}"
-    # Reject integer literals: they are arbitrary-precision and can seed bignum arithmetic. Users
-    # must write floats (``3.0`` not ``3``); ``bool`` (a subclass of int) is allowed for masks.
-    if (
-        isinstance(node, ast.Constant)
-        and isinstance(node.value, int)
-        and not isinstance(node.value, bool)
-    ):
-        return "numeric literals must be floats (write 3.0, not 3)"
+    if isinstance(node, ast.Constant):
+        return _distance_constant_error(node)
     if isinstance(node, ast.Call):
         return _distance_call_error(node)
     return None
@@ -209,6 +261,12 @@ def validate_safe_distance_function(function: str) -> None:
             f"Distance function is too long "
             f"({len(function)} chars > {MAX_DISTANCE_FUNCTION_LENGTH})."
         )
+        raise ValueError(msg)
+
+    brace_or_comment = _distance_brace_or_comment_error(function)
+    if brace_or_comment is not None:
+        reason, _, _ = brace_or_comment
+        msg = f"Distance function contains {reason}."
         raise ValueError(msg)
 
     expression = _PLACEHOLDER_PATTERN.sub("1.0", function)
@@ -255,15 +313,8 @@ def _same_length_placeholder_token(match: re.Match[str]) -> str:
     return "1." + "0" * (length - 2)
 
 
-def check_distance_function(
-    function: str, parameters: tuple[str, ...] | None = None
-) -> DistanceFunctionCheck:
-    """Validate ``function`` and return a structured result with the error span (never raises).
-
-    Mirrors :func:`validate_safe_distance_function` and the placeholder/declaration rules, but
-    reports the character span of the first problem instead of raising, so an editor can highlight
-    it. Placeholders are substituted with an equal-length token to keep offsets aligned.
-    """
+def _distance_pre_parse_check(function: str) -> "DistanceFunctionCheck | None":
+    """Length and brace/comment guards that must run before parsing; span-aware, never raises."""
     if len(function) > MAX_DISTANCE_FUNCTION_LENGTH:
         return DistanceFunctionCheck(
             valid=False,
@@ -274,6 +325,30 @@ def check_distance_function(
             **{"from": 0},
             to=len(function),
         )
+    brace_or_comment = _distance_brace_or_comment_error(function)
+    if brace_or_comment is not None:
+        reason, start, end = brace_or_comment
+        return DistanceFunctionCheck(
+            valid=False,
+            error=f"Distance function contains {reason}.",
+            **{"from": start},
+            to=end,
+        )
+    return None
+
+
+def check_distance_function(
+    function: str, parameters: tuple[str, ...] | None = None
+) -> DistanceFunctionCheck:
+    """Validate ``function`` and return a structured result with the error span (never raises).
+
+    Mirrors :func:`validate_safe_distance_function` and the placeholder/declaration rules, but
+    reports the character span of the first problem instead of raising, so an editor can highlight
+    it. Placeholders are substituted with an equal-length token to keep offsets aligned.
+    """
+    pre_parse = _distance_pre_parse_check(function)
+    if pre_parse is not None:
+        return pre_parse
 
     expression = _PLACEHOLDER_PATTERN.sub(_same_length_placeholder_token, function)
     try:
