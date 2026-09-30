@@ -19,7 +19,11 @@ from bluecellulab.validation import (
 from obi_one.scientific.validations.memodel.config import SimulatorConfig
 from obi_one.scientific.validations.memodel.names import ValidationName
 
+_DEFAULT_REBOUND_HOLDING_CURRENT_NA = 0.04140625
+_DEFAULT_REBOUND_HYPERPOLARIZATION_AMPLITUDE_NA = -0.11953125
+_DEFAULT_REBOUND_HOLD_DURATION_MS = 5000.0
 _DEFAULT_REBOUND_HYPERPOLARIZATION_DURATION_MS = 500.0
+_DEFAULT_REBOUND_TOTAL_DURATION_MS = 25000.0
 
 
 def spiking_preset() -> ParametricValidation:
@@ -48,92 +52,84 @@ def depolarization_block_preset() -> ParametricValidation:
 
 
 def rebound_burst_preset(
-    rin: float,
     *,
-    holding_voltage: float = -65.0,
-    target_voltage: float = -110.0,
-    simulator_config: SimulatorConfig,
+    holding_current: float | None = None,
+    hyperpolarization_amplitude: float | None = None,
+    hold_duration_ms: float = _DEFAULT_REBOUND_HOLD_DURATION_MS,
     expect_spikes: bool = True,
     hyperpolarization_duration_ms: float = _DEFAULT_REBOUND_HYPERPOLARIZATION_DURATION_MS,
+    total_duration_ms: float = _DEFAULT_REBOUND_TOTAL_DURATION_MS,
 ) -> ParametricValidation:
-    """Thalamic rebound burst validation (Hartley et al. 2024).
+    """Reproduce the calibrated BluePyOpt rebound-burst protocol.
 
-    Protocol:
-        1. Hold at holding_voltage (via DC offset current from v_init)
-        2. Hyperpolarize for ``hyperpolarization_duration_ms`` to target_voltage
-           (de-inactivate T-type Ca2+)
-        3. Release back to holding_voltage for 1000 ms (observe rebound burst)
-
-    All currents are computed from the cell's input resistance:
-        I = (V_target - V_source) / Rin
+    The protocol uses fixed calibrated currents rather than reconstructing them
+    from input resistance. The pulse amplitude is applied on top of the holding
+    current, and the phases contain absolute total currents.
 
     Args:
-        rin: Input resistance of the cell in MOhm.
-        holding_voltage: Holding potential in mV (default -65 mV for burst scenario).
-        target_voltage: Hyperpolarization target in mV (default -110 mV).
-        simulator_config: Shared simulator conditions. Its ``v_init`` is used
-            for current conversion and must match global NEURON ``h.v_init``.
+        holding_current: Calibrated baseline holding current in nA. Defaults to
+            the current stored by the original BluePyOpt protocol.
+        hyperpolarization_amplitude: Calibrated pulse amplitude in nA, applied
+            on top of the holding current.
+        hold_duration_ms: Duration of the pre-pulse holding phase in ms.
         expect_spikes: If True, pass when spikes > 0. If False, pass when spikes == 0.
-        hyperpolarization_duration_ms: Duration of the hyperpolarization phase in
-            ms. Defaults to 500 ms to preserve the established protocol.
+        hyperpolarization_duration_ms: Duration of the hyperpolarization phase in ms.
+        total_duration_ms: Total protocol duration in ms, including the release phase.
 
     Returns:
         A configured ParametricValidation for the rebound burst test.
     """
-    if isinstance(hyperpolarization_duration_ms, bool):
-        message = "hyperpolarization_duration_ms must be a positive finite number."
-        raise TypeError(message)
-    try:
-        hyperpolarization_duration_ms = float(hyperpolarization_duration_ms)
-    except (TypeError, ValueError) as error:
-        message = "hyperpolarization_duration_ms must be a positive finite number."
-        raise TypeError(message) from error
-    if not math.isfinite(hyperpolarization_duration_ms) or hyperpolarization_duration_ms <= 0.0:
-        message = "hyperpolarization_duration_ms must be a positive finite number."
+    resolved_holding_current = (
+        _DEFAULT_REBOUND_HOLDING_CURRENT_NA if holding_current is None else float(holding_current)
+    )
+    resolved_hyperpolarization_amplitude = (
+        _DEFAULT_REBOUND_HYPERPOLARIZATION_AMPLITUDE_NA
+        if hyperpolarization_amplitude is None
+        else float(hyperpolarization_amplitude)
+    )
+    durations = {
+        "hold_duration_ms": hold_duration_ms,
+        "hyperpolarization_duration_ms": hyperpolarization_duration_ms,
+        "total_duration_ms": total_duration_ms,
+    }
+    durations = {name: float(value) for name, value in durations.items()}
+    if any(not math.isfinite(value) or value <= 0.0 for value in durations.values()):
+        message = "Rebound protocol durations must be positive finite numbers."
+        raise ValueError(message)
+    release_duration_ms = (
+        durations["total_duration_ms"]
+        - durations["hold_duration_ms"]
+        - durations["hyperpolarization_duration_ms"]
+    )
+    if release_duration_ms <= 0.0:
+        message = "Rebound total duration must exceed the hold and pulse durations."
+        raise ValueError(message)
+    if not math.isfinite(resolved_holding_current) or not math.isfinite(
+        resolved_hyperpolarization_amplitude
+    ):
+        message = "Rebound protocol currents must be finite numbers."
         raise ValueError(message)
 
-    # Compute currents from Rin (Ohm's law: I = dV / R)
-    hold_offset = (
-        (holding_voltage - simulator_config.v_init) / rin
-        if holding_voltage != simulator_config.v_init
-        else 0.0
-    )
-    hyperpol_current = (target_voltage - holding_voltage) / rin
-
-    # Three phases: hold (250ms) → hyperpolarize → release (1000ms)
+    # The pulse amplitude is an increment on top of the calibrated holding current.
     phases: list[tuple[float, float]] = [
-        (250.0, hold_offset),  # Phase 0: pre-hold (equilibrate)
+        (durations["hold_duration_ms"], resolved_holding_current),
         (
-            hyperpolarization_duration_ms,
-            hold_offset + hyperpol_current,
-        ),  # Phase 1: hyperpolarization
-        (1000.0, hold_offset),  # Phase 2: release (measurement window)
+            durations["hyperpolarization_duration_ms"],
+            resolved_holding_current + resolved_hyperpolarization_amplitude,
+        ),
+        (release_duration_ms, resolved_holding_current),
     ]
-
     protocol = SequenceProtocol(
         phases=phases,
         pre_delay=0.0,
-        post_delay=250.0,
+        post_delay=0.0,
         absolute_amplitudes=True,
-        measurement_phase=2,  # Count spikes only during release
-        add_hypamp=True,
+        measurement_phase=2,
+        add_hypamp=False,
     )
 
     criterion: GreaterThan | EqualTo = (
         GreaterThan(threshold=0) if expect_spikes else EqualTo(expected=0)
-    )
-
-    # Both the burst-expected test and the negative control (expect_spikes=False,
-    # typically held at -80 mV) use the single controlled-vocabulary name. The
-    # control is meant to be run for inspection only, never registered, so the
-    # shared name does not cause a registration collision.
-    duration_suffix = (
-        f"_hyper{hyperpolarization_duration_ms:g}ms"
-        if not math.isclose(
-            hyperpolarization_duration_ms,
-            _DEFAULT_REBOUND_HYPERPOLARIZATION_DURATION_MS,
-        )
-        else ""
     )
     return ParametricValidation(
         validation_name=ValidationName.REBOUND_BURST,
@@ -141,8 +137,9 @@ def rebound_burst_preset(
         measurement=EfelMeasurement(feature_name="Spikecount"),
         criterion=criterion,
         figure_filename=(
-            f"rebound_burst_hold{holding_voltage:g}mV_"
-            f"target{target_voltage:g}mV{duration_suffix}.pdf"
+            f"rebound_burst_hold{resolved_holding_current:g}nA_"
+            f"amp{resolved_hyperpolarization_amplitude:g}nA_"
+            f"hyper{durations['hyperpolarization_duration_ms']:g}ms.pdf"
         ),
     )
 

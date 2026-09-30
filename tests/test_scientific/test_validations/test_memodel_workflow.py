@@ -115,12 +115,15 @@ class TestMEModelValidationWorkflow:
 
         assert isinstance(tests[2].protocol, SequenceProtocol)
         assert tests[2].protocol.measurement_phase == 2
-        assert tests[2].protocol.phases[0][0] == pytest.approx(250.0)
-        assert tests[2].protocol.phases[0][1] == pytest.approx(0.05)
+        assert tests[2].protocol.add_hypamp is False
+        assert tests[2].protocol.pre_delay == pytest.approx(0.0)
+        assert tests[2].protocol.post_delay == pytest.approx(0.0)
+        assert tests[2].protocol.phases[0][0] == pytest.approx(5000.0)
+        assert tests[2].protocol.phases[0][1] == pytest.approx(0.04140625)
         assert tests[2].protocol.phases[1][0] == pytest.approx(500.0)
-        assert tests[2].protocol.phases[1][1] == pytest.approx(-0.30)
-        assert tests[2].protocol.phases[2][0] == pytest.approx(1000.0)
-        assert tests[2].protocol.phases[2][1] == pytest.approx(0.05)
+        assert tests[2].protocol.phases[1][1] == pytest.approx(-0.078125)
+        assert tests[2].protocol.phases[2][0] == pytest.approx(19500.0)
+        assert tests[2].protocol.phases[2][1] == pytest.approx(0.04140625)
         bpap = tests[3]
         assert isinstance(bpap, BPAPTest)
         assert bpap.amplitude_factor == pytest.approx(30.0)

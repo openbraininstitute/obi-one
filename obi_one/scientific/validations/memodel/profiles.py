@@ -189,11 +189,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             ),
             depolarization_block_preset(),
             rebound_burst_preset(
-                rin=rin,
-                holding_voltage=-65.0,
-                target_voltage=-100.0,
                 hyperpolarization_duration_ms=(self.rebound_hyperpolarization_duration_ms),
-                simulator_config=simulator_config,
                 expect_spikes=True,
             ),
             # BlueCelluLab validation equivalents.
