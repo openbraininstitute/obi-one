@@ -6,7 +6,9 @@ name: Pin release
 #    ``main``. A release-triggered run uses the workflow file of the tagged commit,
 #    so it must not get the App key: the ``release`` environment only allows
 #    ``main``, where the workflow code has been reviewed.
-# 2. The ``pin`` job, running on ``main``, pins every obi-one line of
+# 2. On ``main``, ``check-launch-deps`` verifies that the requirements at tag X are
+#    consistent with the source, since the release fixes that closure. The ``pin``
+#    job then pins every obi-one line of
 #    ``launch_scripts/*/dependencies/*.txt`` to ``==X``, commits the result B on
 #    ``main`` and moves tag X from A to B, both in one atomic push with the
 #    ``obi-one-release`` GitHub App token (a ruleset bypass actor of ``main``).
@@ -54,8 +56,18 @@ jobs:
       - name: Dispatch the pin job on main
         run: gh workflow run release-pin.yml --ref main --raw-field tag="$RELEASE_TAG"
 
+  check-launch-deps:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/check-launch-deps.yml
+    with:
+      ref: refs/tags/${{ inputs.tag }}
+    permissions:
+      contents: read
+      id-token: write
+
   pin:
     if: github.event_name == 'workflow_dispatch'
+    needs: check-launch-deps
     runs-on: ubuntu-latest
     timeout-minutes: 120
     environment: release

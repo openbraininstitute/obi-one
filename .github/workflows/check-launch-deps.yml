@@ -4,6 +4,9 @@ name: Check launch-script requirements
 # consistent with their ``*.in`` sources. If an ``.in`` (or an obi-one
 # dependency) changed without regenerating the ``.txt``, this check fails. Run
 # ``make compile-launch-deps`` locally and commit the result to fix it.
+#
+# Also called by release-pin.yml on the release tag before pinning, since the
+# release fixes that commit's closure.
 
 on:
   pull_request:
@@ -17,6 +20,13 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to check (defaults to the triggering ref)"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   check-launch-deps:
@@ -27,6 +37,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:

@@ -54,7 +54,7 @@ Launch jobs check out the release tag `X`, whose requirements pin obi-one to tha
 
 1. A maintainer creates release `X` from the GitHub UI as usual (calver `YYYY.M.N`, e.g. `2026.9.15`), targeting `main` HEAD. This creates tag `X` at `main` HEAD, and nothing is built yet.
 2. The release triggers `.github/workflows/release-pin.yml`, which re-dispatches itself on `main`: the job that uses the release App key must run workflow code from `main`, not from the tagged commit.
-3. The dispatched run checks that tag `X` is `main` HEAD, runs `launch_deps_pin.py --version X` to rewrite every obi-one line of `launch_scripts/*/dependencies/*.txt` to `obi-one[extras]==X`, and verifies that nothing else changed. It commits the result on `main` and moves tag `X` to that commit, in one atomic push with the `obi-one-release` GitHub App token (a bypass actor of the `main` ruleset).
+3. The dispatched run first runs `check-launch-deps` on tag `X`, since the release fixes that commit's closure. It then checks that tag `X` is `main` HEAD, runs `launch_deps_pin.py --version X` to rewrite every obi-one line of `launch_scripts/*/dependencies/*.txt` to `obi-one[extras]==X`, and verifies that nothing else changed. It commits the result on `main` and moves tag `X` to that commit, in one atomic push with the `obi-one-release` GitHub App token (a bypass actor of the `main` ruleset).
 4. It then dispatches the Docker (`publish.yml`) and PyPI (`publish-pypi.yml`) builds on tag `X` and waits for them. Both run only on a release tag whose obi-one lines are pinned to it (`launch_deps_pin.py --check`).
 5. The service running version `X` submits jobs with `ref=tag:X` (`release_tag_ref` in `obi_one/utils/versions.py`), so the executor installs the obi-one `X` wheel together with the closure frozen at `X`. A dev build (e.g. `2026.9.15-3-g49a1641-dirty`) uses the tag of its last release.
 
@@ -71,7 +71,7 @@ make pin-launch-deps VERSION=2026.9.15
 git restore 'launch_scripts/*/dependencies/*.txt'
 ```
 
-If `release-pin.yml` fails, the release is published but nothing is built, and tag `X` may still point at the unpinned commit. Fix the cause and re-run the failed run, or run the workflow on `main` from the Actions tab with the release tag as input: if the tag is already pinned, it only dispatches the builds. If only a build failed, re-run that build.
+If `release-pin.yml` fails, the release is published but nothing is built, and tag `X` may still point at the unpinned commit. Fix the cause and re-run the failed run, or run the workflow on `main` from the Actions tab with the release tag as input: if the tag is already pinned, it only dispatches the builds. If only a build failed, re-run that build. If `check-launch-deps` fails on tag `X`, delete release `X` and its tag, fix `main` and release again.
 
 ## Testing a task against an obi-one feature branch
 
