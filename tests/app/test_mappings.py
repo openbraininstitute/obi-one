@@ -1,9 +1,8 @@
-"""Tests for task-definition building and obi-one version pinning in app.mappings."""
+"""Tests for task-definition building in app.mappings."""
 
 import pytest
 
 from app import mappings
-from app.schemas.task import PythonRepositoryCode
 from app.types import TaskType
 
 
@@ -29,46 +28,4 @@ def test_task_definitions_keyed_by_task_type():
 def test_build_task_definitions_rejects_duplicates():
     task_def = mappings.TASK_DEFINITIONS[TaskType.circuit_extraction]
     with pytest.raises(ValueError, match="Duplicate task definition"):
-        mappings._build_task_definitions((task_def, task_def), {})
-
-
-@pytest.mark.parametrize(
-    "task_type",
-    [
-        TaskType.morphology_skeletonization,  # _obi_one_code with capabilities
-        TaskType.circuit_simulation_brian2_machine,  # obi-one repo, own script and deps
-    ],
-)
-def test_build_task_definitions_applies_pin(task_type):
-    task_def = mappings.TASK_DEFINITIONS[task_type]
-    original = task_def.code
-    assert isinstance(original, PythonRepositoryCode)
-
-    result = mappings._build_task_definitions((task_def,), {task_type: "2026.5.1"})
-
-    pinned = result[task_type].code
-    assert isinstance(pinned, PythonRepositoryCode)
-    assert pinned.ref == "tag:launch-2026.5.1"
-    # Everything but the ref is preserved, and the input is not mutated.
-    assert pinned.model_dump(exclude={"ref"}) == original.model_dump(exclude={"ref"})
-    assert original.ref != "tag:launch-2026.5.1"
-
-
-@pytest.mark.parametrize(
-    "task_type",
-    [
-        TaskType.circuit_simulation,  # task group, no code
-        TaskType.circuit_simulation_inait_machine,  # different repo
-        TaskType.circuit_simulation_neurodamus_cluster,  # launch-system builtin script
-        TaskType.emodel_optimization,  # launch-system builtin script
-    ],
-)
-def test_build_task_definitions_rejects_unpinnable(task_type):
-    task_def = mappings.TASK_DEFINITIONS[task_type]
-    with pytest.raises(ValueError, match="Cannot pin obi-one version"):
-        mappings._build_task_definitions((task_def,), {task_type: "2026.5.1"})
-
-
-def test_build_task_definitions_rejects_unknown_pin():
-    with pytest.raises(ValueError, match="Cannot pin obi-one version"):
-        mappings._build_task_definitions((), {TaskType.circuit_extraction: "2026.5.1"})
+        mappings._build_task_definitions((task_def, task_def))

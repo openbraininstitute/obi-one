@@ -1,9 +1,8 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from pathlib import Path
 
 from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
-from pydantic import TypeAdapter
 
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
@@ -21,17 +20,10 @@ from app.schemas.task import (
 )
 from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
-from obi_one.utils.versions import ReleaseVersion, launch_ref
+from obi_one.utils.versions import launch_ref
 
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
-
-# Keeps a task on an obi-one release (e.g. "2026.9.15") instead of the service version: the
-# task checks out ``tag:launch-<version>``, so its code, requirements and obi-one wheel all come
-# from that release. Only tasks running code from the obi-one repository can be pinned.
-PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = TypeAdapter(
-    dict[TaskType, ReleaseVersion]
-).validate_python({})
 
 
 def _obi_one_code(
@@ -54,12 +46,10 @@ def _obi_one_code(
 
 def _build_task_definitions(
     definitions: Iterable[AnyTaskDefinition],
-    pins: Mapping[TaskType, str],
 ) -> dict[TaskType, AnyTaskDefinition]:
-    """Index ``definitions`` by their own ``task_type`` and apply obi-one version pins.
+    """Index ``definitions`` by their own ``task_type``, rejecting duplicates.
 
-    Keying by ``task_type`` means each task type is written once per definition. A pinned
-    task keeps its code but checks out the launch ref of the pinned version.
+    Keying by ``task_type`` means each task type is written once per definition.
     """
     result: dict[TaskType, AnyTaskDefinition] = {}
     for definition in definitions:
@@ -67,14 +57,6 @@ def _build_task_definitions(
             msg = f"Duplicate task definition for {definition.task_type!r}"
             raise ValueError(msg)
         result[definition.task_type] = definition
-
-    for task_type, version in pins.items():
-        code = getattr(result.get(task_type), "code", None)
-        if not isinstance(code, PythonRepositoryCode) or code.location != settings.OBI_ONE_REPO:
-            msg = f"Cannot pin obi-one version for {task_type!r}: not obi-one repository code"
-            raise ValueError(msg)
-        pinned_code = code.model_copy(update={"ref": launch_ref(version)})
-        result[task_type] = result[task_type].model_copy(update={"code": pinned_code})
     return result
 
 
@@ -359,9 +341,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
     ),
 ]
 
-TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = _build_task_definitions(
-    definitions=_TASK_DEFINITIONS, pins=PINNED_OBI_ONE_VERSIONS
-)
+TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = _build_task_definitions(_TASK_DEFINITIONS)
 
 
 def get_launchable_task_definition(task_type: TaskType) -> LaunchableTaskDefinition:

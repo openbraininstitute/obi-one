@@ -6,17 +6,6 @@ release ``<version>`` plus its launch-script requirements with obi-one pinned to
 selects the task code, the obi-one wheel and the frozen transitive closure at once.
 """
 
-import re
-from typing import Annotated
-
-from pydantic import StringConstraints
-
-# A clean obi-one release version (calver ``YYYY.M.N``, no prefix or suffix): the
-# only versions that have a ``launch-<version>`` tag. Mirrors the pattern in
-# launch_scripts/tools/launch_deps_common.py (which must not import obi_one).
-RELEASE_VERSION_REGEX = re.compile(r"^\d{4}\.\d{1,2}\.\d+$")
-ReleaseVersion = Annotated[str, StringConstraints(pattern=RELEASE_VERSION_REGEX.pattern)]
-
 
 def launch_ref(app_version: str | None) -> str:
     """Return the git ``tag:launch-<version>`` checkout ref for a launch job.

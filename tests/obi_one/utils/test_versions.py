@@ -1,5 +1,4 @@
 import pytest
-from pydantic import TypeAdapter, ValidationError
 
 from obi_one.utils import versions as test_module
 
@@ -21,28 +20,3 @@ from obi_one.utils import versions as test_module
 )
 def test_launch_ref(app_version, expected):
     assert test_module.launch_ref(app_version) == expected
-
-
-@pytest.mark.parametrize("version", ["2026.9.15", "2026.12.1"])
-def test_release_version_regex_accepts_releases(version):
-    assert test_module.RELEASE_VERSION_REGEX.match(version)
-
-
-@pytest.mark.parametrize("version", ["v2026.9.1", "2026.9.1-3-gabc", "2026.9", "", "0.0.0"])
-def test_release_version_regex_rejects_non_releases(version):
-    assert not test_module.RELEASE_VERSION_REGEX.match(version)
-
-
-class TestReleaseVersion:
-    adapter = TypeAdapter(test_module.ReleaseVersion)
-
-    @pytest.mark.parametrize("version", ["2026.9.15", "2026.12.1"])
-    def test_accepts_releases(self, version):
-        assert self.adapter.validate_python(version) == version
-
-    @pytest.mark.parametrize(
-        "version", ["v2026.9.1", "2026.9.1-3-gabc", "2026.9", "launch-2026.9.1", ""]
-    )
-    def test_rejects_non_releases(self, version):
-        with pytest.raises(ValidationError, match="should match pattern"):
-            self.adapter.validate_python(version)

@@ -60,23 +60,6 @@ git checkout -- 'launch_scripts/*/dependencies/*.txt'
 
 If `launch-tag.yml` fails, the jobs of release `X` fail at checkout until `launch-X` exists; GitHub notifies the author of the release. Fix the cause and re-run the failed job, or run the workflow manually from the Actions tab with the release tag as input.
 
-## Pinning a task to a specific obi-one version
-
-By default each task checks out the launch tag of the running service version.
-To keep a task on an older, known-good release, add it to `PINNED_OBI_ONE_VERSIONS` in `app/mappings.py`:
-
-```python
-PINNED_OBI_ONE_VERSIONS: dict[TaskType, str] = TypeAdapter(
-    dict[TaskType, ReleaseVersion]
-).validate_python({
-    TaskType.some_task: "2026.9.15",
-})
-```
-
-The task then checks out `tag:launch-2026.9.15`, so its script, requirements and obi-one wheel all come from that release.
-Values must be plain release versions (validated at import), and the release must have a launch tag, i.e. it must have been created after the launch-tag workflow was introduced.
-Only tasks running code from the obi-one repository can be pinned.
-
 ## Testing a task against an obi-one feature branch
 
 The launch-system executor clones obi-one from GitHub at the submitted `ref`, not from your local working copy, so any change it should use must be committed and pushed.
