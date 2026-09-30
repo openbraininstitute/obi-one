@@ -57,4 +57,5 @@ class SingleNeuronSimulationExecutionTask(SimulationExecutionTask):
             client=db_client,
             circuit=cast("MEModelCircuit", generation_single_config.initialize.circuit),
             output_dir=create_dir(data_dir / "circuit"),
+            max_concurrent=8,
         )

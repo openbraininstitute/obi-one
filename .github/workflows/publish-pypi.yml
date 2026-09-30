@@ -7,16 +7,16 @@ on:
 
 jobs:
 
-  build_sdist:
-    name: Build sdist
+  build:
+    name: Build sdist and wheel
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build SDist
-        run: pipx run build --sdist
+      - name: Build sdist and wheel
+        run: pipx run build
 
       - name: Check metadata
         run: pipx run twine check dist/*
@@ -26,9 +26,9 @@ jobs:
           name: build
           path: dist
 
-  upload_sdist:
-    name: Upload sdist
-    needs: [build_sdist]
+  upload:
+    name: Upload sdist and wheel
+    needs: [build]
     runs-on: ubuntu-latest
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
