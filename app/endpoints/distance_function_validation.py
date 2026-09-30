@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.dependencies.auth import user_verified
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     MAX_DISTANCE_FUNCTION_LENGTH,
     check_distance_function,
 )
