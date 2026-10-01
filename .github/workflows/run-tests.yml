@@ -16,11 +16,13 @@ jobs:
     # to match the spec, not the validators weakened to admit a bad config.
     #
     # Policy: adding NEW validator files is allowed (that is how new UI elements are added).
-    # Modifying or deleting an EXISTING validator file is blocked, since that is how a validator
-    # gets weakened or removed. The registry.py / __init__.py wiring files are exempt because
-    # registering a new validator requires editing them (they are covered by CODEOWNERS review).
-    # A PR may still change locked files when it carries the 'change-validators' label. Direct
-    # pushes to main are not gated here.
+    # Modifying or deleting an EXISTING file under the folder is blocked, since that is how a
+    # validator gets weakened or removed. Only registry.py is exempt from this block, because
+    # registering a new validator requires editing it. A PR may still change blocked files when
+    # it carries the 'change-validators' label. Direct pushes to main are not gated here.
+    #
+    # Separately, CODEOWNERS requires owner review for every file under the folder (adds,
+    # edits, and deletes alike, including registry.py), independent of this CI guard.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
