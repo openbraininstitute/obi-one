@@ -6,3 +6,5 @@ bluepysnap
 pydantic
 click
 h5py
+# neurodamus image NEURON 9.0.2.devX < 9.0.2
+neuron==9.0.1

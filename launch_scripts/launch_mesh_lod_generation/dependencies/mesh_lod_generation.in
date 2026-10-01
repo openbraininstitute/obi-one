@@ -1,2 +1,4 @@
 obi-one
 ultraliser>=2.1.9
+# neurodamus image NEURON 9.0.2.devX < 9.0.2
+neuron==9.0.1

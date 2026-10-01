@@ -34,7 +34,7 @@ mpmath==1.3.0
 neo==0.14.5
 networkx==3.7
 neurom==4.0.5
-neuron==9.0.2
+neuron==9.0.1
 numpy==2.4.6
 obi-auth==1.2.1
 packaging==26.3
