@@ -15,6 +15,7 @@ from obi_one.core.scan_config import ScanConfig
 
 try:  # ruff: ignore[non-empty-init-module]
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+        MAX_DISTANCE_FUNCTION_LENGTH,
         CustomDistanceDependentDistribution,
         DistanceDependentDistribution,
         ExponentialDistanceDependentDistribution,
@@ -27,6 +28,7 @@ try:  # ruff: ignore[non-empty-init-module]
         SigmoidKDBMApicDistanceDependentDistribution,
         StepDistanceDependentDistribution,
         UniformDistanceDependentDistribution,
+        check_distance_function,
     )
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
         EModelOptimizationScanConfig,
@@ -57,11 +59,14 @@ except ImportError:
     EModelOptimizationSingleConfig: type[ScanConfig] | None = None
     EModelOptimizationTask: type | None = None
     fetch_variable_catalog: Callable[..., dict] | None = None
+    check_distance_function: Callable[..., object] | None = None
+    MAX_DISTANCE_FUNCTION_LENGTH: int | None = None
 
     HAS_EMODEL_OPTIMIZATION = False
 
 __all__ = [
     "HAS_EMODEL_OPTIMIZATION",
+    "MAX_DISTANCE_FUNCTION_LENGTH",
     "CustomDistanceDependentDistribution",
     "DistanceDependentDistribution",
     "EModelOptimizationScanConfig",
@@ -77,5 +82,6 @@ __all__ = [
     "SigmoidKDBMApicDistanceDependentDistribution",
     "StepDistanceDependentDistribution",
     "UniformDistanceDependentDistribution",
+    "check_distance_function",
     "fetch_variable_catalog",
 ]

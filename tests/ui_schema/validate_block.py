@@ -15,6 +15,9 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
     MorphologyMappedProperties,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    MAX_DISTANCE_FUNCTION_LENGTH,
+)
 
 L = logging.getLogger()
 
@@ -85,6 +88,62 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = f"Validation error at {ref}: string_input param {param} failed to validate a string"
+        raise ValidationError(msg) from None
+
+
+def validate_distance_function_input(schema: dict, param: str, ref: str) -> None:
+    # Non-nullable distance function: a plain string carrying max_length at the schema root
+    # (so the frontend reads `maxLength` directly, with no structural branching). Nullable
+    # fields must use `distance_function_input_nullable` instead.
+    validate_string_param(schema, param, ref)
+
+    if schema.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: distance_function_input param {param} must be a plain "
+            f"'string' (use distance_function_input_nullable for `str | None`). Got: {schema}"
+        )
+        raise ValidationError(msg) from None
+    max_length = schema.get("maxLength")
+    if max_length != MAX_DISTANCE_FUNCTION_LENGTH:
+        msg = (
+            f"Validation error at {ref}: distance_function_input param {param} must declare "
+            f"max_length=MAX_DISTANCE_FUNCTION_LENGTH ({MAX_DISTANCE_FUNCTION_LENGTH}) at the "
+            f"schema root. Got: {max_length}"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_distance_function_input_nullable(schema: dict, param: str, ref: str) -> None:
+    # Nullable distance function (`str | None`): an anyOf whose first branch is the string
+    # carrying max_length and whose second branch is null. The string must come first so the
+    # frontend reads `maxLength` from a fixed position without branching.
+    any_of = schema.get("anyOf")
+    if not isinstance(any_of, list) or len(any_of) != 2:
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must be an "
+            f"'anyOf' of a string and null. Got: {schema}"
+        )
+        raise ValidationError(msg) from None
+    string_branch, null_branch = any_of
+    if string_branch.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must have "
+            f"the string as its first anyOf branch. Got: {string_branch}"
+        )
+        raise ValidationError(msg) from None
+    if null_branch.get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must have "
+            f"null as its second anyOf branch. Got: {null_branch}"
+        )
+        raise ValidationError(msg) from None
+    max_length = string_branch.get("maxLength")
+    if max_length != MAX_DISTANCE_FUNCTION_LENGTH:
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must "
+            f"declare max_length=MAX_DISTANCE_FUNCTION_LENGTH ({MAX_DISTANCE_FUNCTION_LENGTH}) on "
+            f"its string branch. Got: {max_length}"
+        )
         raise ValidationError(msg) from None
 
 
@@ -1162,6 +1221,10 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
+        case UIElement.DISTANCE_FUNCTION_INPUT:
+            validate_distance_function_input(schema, param, ref)
+        case UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE:
+            validate_distance_function_input_nullable(schema, param, ref)
         case UIElement.STRING_LIST_INPUT:
             validate_string_list_param(schema, param, ref)
         case UIElement.STRING_LIST_OPTIONAL:
