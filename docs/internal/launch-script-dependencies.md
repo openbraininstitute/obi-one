@@ -21,6 +21,16 @@ Each requirements file has two versions:
 
 ## Compiling
 
+The everyday developer loop for a task's dependencies is edit the `*.in`, compile to regenerate the `*.txt`, then check (locally or in CI) before committing both files. Which command to run depends on what you want to happen to the pins:
+
+```mermaid
+flowchart TD
+    S{"Goal?"}
+    S -->|"add/remove a dep,<br/>or react to a pyproject.toml change"| C1["edit .in →<br/>make compile-launch-deps<br/>(keeps existing pins)"]
+    S -->|"upgrade ONE package"| C2["raise its lower bound in .in →<br/>make compile-launch-deps"]
+    S -->|"upgrade EVERYTHING<br/>to latest"| C3["make upgrade-launch-deps →<br/>test the affected tasks<br/>(may bring breaking changes)"]
+```
+
 ```bash
 # Compile all launch-script requirements
 make compile-launch-deps
@@ -52,26 +62,62 @@ It resolves every task, including the private ones. Without CodeArtifact access,
 
 ## Releases
 
-Launch jobs check out the release tag `X`, whose requirements pin obi-one to that release:
+The release workflow is driven by `release-pin.yml`, which fires twice for one release: once on the `release: published` event (to re-dispatch itself on `main`) and once on the resulting `workflow_dispatch` run on `main` (to check, pin, move the tag and dispatch the builds).
+
+```mermaid
+sequenceDiagram
+    actor M as Maintainer
+    participant GH as GitHub<br/>(release/tags)
+    participant RP1 as release-pin.yml<br/>(tagged commit)
+    participant RP2 as release-pin.yml<br/>(main)
+    participant CL as check-launch-deps
+    participant PUB as publish.yml /<br/>publish-pypi.yml
+
+    M->>GH: Publish release X (tag at main HEAD = A)
+    GH->>RP1: release: published
+    Note over RP1: dispatch job<br/>validates calver tag
+    RP1->>RP2: gh workflow run --ref main (workflow_dispatch)
+    RP2->>CL: run check-launch-deps on tag X
+    CL-->>RP2: OK (closure consistent)
+    Note over RP2: pin job (environment: release)<br/>verify tag X == main HEAD
+    alt tag X not yet pinned
+        RP2->>RP2: launch_deps_pin.py --version X<br/>rewrite obi-one lines to ==X
+        RP2->>GH: atomic push: commit B on main + move tag X→B
+    end
+    RP2->>PUB: dispatch builds on tag X
+    PUB-->>RP2: success / failure
+    Note over RP2: run fails if any build failed
+    RP2-->>M: Release X complete (tag X pins obi-one==X)
+```
+
+Launch jobs check out the release tag `X`, whose requirements pin obi-one to that release.
+
+### The release flow
 
 1. A maintainer creates release `X` from the GitHub UI as usual (calver `YYYY.M.N`, e.g. `2026.9.15`), targeting `main` HEAD. This creates tag `X` at `main` HEAD, and nothing is built yet.
-2. The release triggers `.github/workflows/release-pin.yml`, which re-dispatches itself on `main`: the job that uses the release App key must run workflow code from `main`, not from the tagged commit.
-3. The dispatched run first runs `check-launch-deps` on tag `X`, since the release fixes that commit's closure. It then checks that tag `X` is `main` HEAD, runs `launch_deps_pin.py --version X` to rewrite every obi-one line of `launch_scripts/*/dependencies/*.txt` to `obi-one[extras]==X`, and verifies that nothing else changed. It commits the result on `main` and moves tag `X` to that commit, in one atomic push with the `obi-one-release` GitHub App token (a bypass actor of the `main` ruleset).
+2. The release triggers `release-pin.yml` on the tagged commit. That run holds no credentials; its only job re-dispatches the workflow on `main` (see [Why two runs](#why-two-runs)).
+3. The dispatched run (on `main`) first runs `check-launch-deps` on tag `X`, since the release fixes that commit's closure. It then checks that tag `X` is `main` HEAD, runs `launch_deps_pin.py --version X` to rewrite every obi-one line of `launch_scripts/*/dependencies/*.txt` to `obi-one[extras]==X`, verifies that nothing else changed, commits the result on `main` and moves tag `X` to that commit — in one atomic push with the `obi-one-release` GitHub App token (a bypass actor of the `main` ruleset).
 4. It then dispatches the Docker (`publish.yml`) and PyPI (`publish-pypi.yml`) builds on tag `X` and waits for them. Both run only on a release tag whose obi-one lines are pinned to it (`launch_deps_pin.py --check`).
-5. The service running version `X` submits jobs with `ref=tag:X` (`release_tag_ref` in `obi_one/utils/versions.py`), so the executor installs the obi-one `X` wheel together with the closure frozen at `X`. A dev build (e.g. `2026.9.15-3-g49a1641-dirty`) uses the tag of its last release.
+5. The service running version `X` submits jobs with `ref=tag:X` (`release_tag_ref` in `obi_one/utils/versions.py`), so the executor installs the obi-one `X` wheel together with the closure frozen at `X`.
 
 Pinning only the obi-one line is consistent because `check-launch-deps` keeps `main`'s closure in sync with obi-one's requirements, so the closure committed at `X` was compiled against `X`'s source. Between releases, `main` keeps the pin of the last release.
 
-Nothing should be merged to `main` while a release is running: the workflow fails if tag `X` is no longer `main` HEAD.
+### Why two runs
 
-The workflow needs the `release` environment (deployment restricted to `main`), with the variable `RELEASE_APP_CLIENT_ID` and the secret `RELEASE_APP_PRIVATE_KEY` of the `obi-one-release` GitHub App. Don't allow tags in that environment: a tag-triggered run uses the workflow files of the tagged commit.
+A `release: published` event runs the workflow file as it exists at the **tagged commit**, not on `main`. The `pin` job needs the `obi-one-release` App token (push to `main`, move tags), which must never be reachable from unreviewed workflow code. The `release` environment enforces this: it is restricted to `main` and does not allow tags. So the first run (on the tag) has no secrets and only re-dispatches the workflow on `main`; the second run (on `main`) runs reviewed code, can mint the token, and does the real work. The job `if` conditions implement the split (`dispatch` on the `release` event, `check-launch-deps` and `pin` on `workflow_dispatch`).
 
-To try the pin locally, then revert it (this discards any local change to those files):
+### Operational notes
 
-```bash
-make pin-launch-deps VERSION=2026.9.15
-git restore 'launch_scripts/*/dependencies/*.txt'
-```
+- **Don't merge to `main` while a release is running:** the workflow fails if tag `X` is no longer `main` HEAD.
+- **Required configuration:** the `release` environment with the variable `RELEASE_APP_CLIENT_ID` and the secret `RELEASE_APP_PRIVATE_KEY` of the `obi-one-release` GitHub App. Keep the environment restricted to `main` and never allow tags.
+- **Try the pin locally, then revert** (this discards any local change to those files):
+
+  ```bash
+  make pin-launch-deps VERSION=2026.9.15
+  git restore 'launch_scripts/*/dependencies/*.txt'
+  ```
+
+### Recovery
 
 If `release-pin.yml` fails, the release is published but nothing is built, and tag `X` may still point at the unpinned commit. Fix the cause and re-run the failed run, or run the workflow on `main` from the Actions tab with the release tag as input: if the tag is already pinned, it only dispatches the builds. If only a build failed, re-run that build. If `check-launch-deps` fails on tag `X`, delete release `X` and its tag, fix `main` and release again.
 
