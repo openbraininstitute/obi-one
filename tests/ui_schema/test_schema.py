@@ -15,12 +15,17 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocol
     efeatures,
     protocols,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    MAX_DISTANCE_FUNCTION_LENGTH,
+)
 
 from .validate_block import (
     openapi_schema,
     resolve_ref,
     validate_block,
     validate_block_elements,
+    validate_distance_function_input,
+    validate_distance_function_input_nullable,
     validate_float_optional,
     validate_hidden_refs_not_required,
     validate_neuron_set_combination,
@@ -832,3 +837,109 @@ def test_global_parameters_rejects_missing_default():
     del schema["properties"]["global_parameters"]["default"]
     with pytest.raises(ValueError, match="global_parameters must have a 'default'"):
         validate_emodel_optimisation_parameters(schema, "emodel_optimisation_parameters", "ref")
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `distance_function_input` UI element validator.
+# ---------------------------------------------------------------------------
+
+# ExponentialNaDendDistanceDependentDistribution.function uses
+# UIElement.DISTANCE_FUNCTION_INPUT with max_length=MAX_DISTANCE_FUNCTION_LENGTH.
+DISTANCE_FUNCTION_BLOCK = "ExponentialNaDendDistanceDependentDistribution"
+DISTANCE_FUNCTION_FIELD = "function"
+
+
+def _distance_function_schema() -> dict:
+    """Return a deep copy of the real `distance_function_input` field schema."""
+    return copy.deepcopy(
+        openapi_schema["components"]["schemas"][DISTANCE_FUNCTION_BLOCK]["properties"][
+            DISTANCE_FUNCTION_FIELD
+        ]
+    )
+
+
+def test_distance_function_input_valid_schema_passes():
+    schema = _distance_function_schema()
+    assert schema.get("maxLength") == MAX_DISTANCE_FUNCTION_LENGTH
+    validate_distance_function_input(schema, DISTANCE_FUNCTION_FIELD, DISTANCE_FUNCTION_BLOCK)
+
+
+def test_distance_function_input_rejects_missing_max_length():
+    schema = _distance_function_schema()
+    del schema["maxLength"]
+    with pytest.raises(ValidationError, match="max_length=MAX_DISTANCE_FUNCTION_LENGTH"):
+        validate_distance_function_input(schema, DISTANCE_FUNCTION_FIELD, "ref")
+
+
+def test_distance_function_input_rejects_wrong_max_length():
+    schema = _distance_function_schema()
+    schema["maxLength"] = MAX_DISTANCE_FUNCTION_LENGTH + 1
+    with pytest.raises(ValidationError, match="max_length=MAX_DISTANCE_FUNCTION_LENGTH"):
+        validate_distance_function_input(schema, DISTANCE_FUNCTION_FIELD, "ref")
+
+
+def test_distance_function_input_rejects_nullable_schema():
+    # The non-nullable validator must reject an anyOf (`str | None`) schema; that is the
+    # nullable element's job.
+    schema: dict[str, Any] = {
+        "anyOf": [{"type": "string", "maxLength": MAX_DISTANCE_FUNCTION_LENGTH}, {"type": "null"}],
+        SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT,
+    }
+    with pytest.raises(ValidationError, match="plain 'string'"):
+        validate_distance_function_input(schema, DISTANCE_FUNCTION_FIELD, "ref")
+
+
+# ---------------------------------------------------------------------------
+# Targeted tests for the `distance_function_input_nullable` UI element validator.
+# ---------------------------------------------------------------------------
+
+# DistanceDependentDistribution.function (the abstract base) uses
+# UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE: a `str | None` whose string branch carries
+# max_length. The base is never a schema component, so build the schema explicitly.
+
+
+def _nullable_distance_function_schema() -> dict:
+    return {
+        "anyOf": [{"type": "string", "maxLength": MAX_DISTANCE_FUNCTION_LENGTH}, {"type": "null"}],
+        SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE,
+    }
+
+
+def test_distance_function_input_nullable_valid_schema_passes():
+    validate_distance_function_input_nullable(
+        _nullable_distance_function_schema(), DISTANCE_FUNCTION_FIELD, "ref"
+    )
+
+
+def test_distance_function_input_nullable_rejects_missing_max_length():
+    schema = _nullable_distance_function_schema()
+    del schema["anyOf"][0]["maxLength"]
+    with pytest.raises(ValidationError, match="max_length=MAX_DISTANCE_FUNCTION_LENGTH"):
+        validate_distance_function_input_nullable(schema, DISTANCE_FUNCTION_FIELD, "ref")
+
+
+def test_distance_function_input_nullable_rejects_wrong_max_length():
+    schema = _nullable_distance_function_schema()
+    schema["anyOf"][0]["maxLength"] = MAX_DISTANCE_FUNCTION_LENGTH + 1
+    with pytest.raises(ValidationError, match="max_length=MAX_DISTANCE_FUNCTION_LENGTH"):
+        validate_distance_function_input_nullable(schema, DISTANCE_FUNCTION_FIELD, "ref")
+
+
+def test_distance_function_input_nullable_rejects_string_not_first():
+    schema: dict[str, Any] = {
+        "anyOf": [{"type": "null"}, {"type": "string", "maxLength": MAX_DISTANCE_FUNCTION_LENGTH}],
+        SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE,
+    }
+    with pytest.raises(ValidationError, match="first anyOf branch"):
+        validate_distance_function_input_nullable(schema, DISTANCE_FUNCTION_FIELD, "ref")
+
+
+def test_distance_function_input_nullable_rejects_plain_string():
+    # A plain non-nullable string must be rejected; that is the non-nullable element's job.
+    schema: dict[str, Any] = {
+        "type": "string",
+        "maxLength": MAX_DISTANCE_FUNCTION_LENGTH,
+        SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE,
+    }
+    with pytest.raises(ValidationError, match="anyOf"):
+        validate_distance_function_input_nullable(schema, DISTANCE_FUNCTION_FIELD, "ref")

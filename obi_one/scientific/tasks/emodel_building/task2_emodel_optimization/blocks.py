@@ -1,5 +1,6 @@
 """Blocks for the 02_emodel_optimization stage."""
 
+import ast
 import math
 import re
 from collections.abc import Mapping
@@ -46,6 +47,379 @@ GenerationCount = Annotated[PositiveInt, Field(le=MAX_NGEN)]
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 
+# BluePyEModel evaluates the distance function string with Python ``eval()`` at runtime
+# (bluepyemodel.model.model.define_distributions). A user-supplied function is therefore
+# arbitrary code (e.g. ``__import__('os').system(...)``). To close that hole we parse the
+# function into an AST and reject anything outside this whitelist: arithmetic, comparisons,
+# the bitwise ``&`` used by the ``step`` distribution, and calls to the two names the
+# built-in distributions rely on (``math.<fn>`` and ``int``). No attribute access other
+# than ``math.*``, no arbitrary names, no subscripts, comprehensions, lambdas, etc.
+_ALLOWED_AST_NODES: tuple[type[ast.AST], ...] = (
+    ast.Expression,
+    ast.BinOp,
+    ast.UnaryOp,
+    ast.BoolOp,
+    ast.Compare,
+    ast.Call,
+    ast.Attribute,
+    ast.Name,
+    ast.Load,
+    ast.Constant,
+)
+_ALLOWED_AST_OPS: tuple[type[ast.AST], ...] = (
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.FloorDiv,
+    ast.Mod,
+    ast.USub,
+    ast.UAdd,
+    ast.BitAnd,
+    ast.BitOr,
+    ast.And,
+    ast.Or,
+    ast.Not,
+    ast.Eq,
+    ast.NotEq,
+    ast.Lt,
+    ast.LtE,
+    ast.Gt,
+    ast.GtE,
+)
+# Names callable directly, and the single module whose members may be accessed/called.
+# ``int`` is intentionally excluded: it (and int-returning ``math`` functions) can produce
+# arbitrary-precision integers, whose arithmetic (e.g. ``**``) is an unbounded memory/CPU DoS.
+# Keeping only float-returning callables guarantees float semantics, which saturate/overflow in
+# O(1) instead of allocating unbounded bignums.
+_ALLOWED_CALL_NAMES = frozenset({"float", "abs", "min", "max"})
+_ALLOWED_MODULES = frozenset({"math"})
+_ALLOWED_MATH_FUNCTIONS = frozenset(
+    {
+        "exp",
+        "expm1",
+        "log",
+        "log1p",
+        "log2",
+        "log10",
+        "sqrt",
+        "pow",
+        "fabs",
+        "hypot",
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan",
+        "atan2",
+        "sinh",
+        "cosh",
+        "tanh",
+        "erf",
+        "erfc",
+        "degrees",
+        "radians",
+        "copysign",
+        "fmod",
+        "remainder",
+    }
+)
+# Float constants on ``math`` that may be referenced directly (e.g. ``math.pi``). Combined with the
+# functions, this is the ONLY set of ``math`` attributes allowed; everything else (``__dict__``,
+# ``__loader__``, ``__globals__`` on functions, ...) is rejected to prevent introspection escapes.
+_ALLOWED_MATH_CONSTANTS = frozenset({"pi", "e", "tau", "inf", "nan"})
+_ALLOWED_MATH_ATTRIBUTES = _ALLOWED_MATH_FUNCTIONS | _ALLOWED_MATH_CONSTANTS
+# Cap the expression size so a single evaluation is bounded, long expressions becomes a CPU sink).
+_MAX_AST_NODES = 50
+# Cap the raw string length before parsing.
+MAX_DISTANCE_FUNCTION_LENGTH = 500
+# Placeholders BluePyEModel fills at runtime from the morphology (not user-declared parameters).
+# Only the ``step`` distribution uses them; they are always allowed in placeholder validation.
+RUNTIME_PLACEHOLDERS = frozenset({"step_begin", "step_end"})
+# Every identifier that may appear as a bare ``Name``. Placeholders are substituted with a
+# numeric literal before parsing, so only these module/builtin names should remain.
+_ALLOWED_NAMES = _ALLOWED_CALL_NAMES | _ALLOWED_MODULES
+
+# A placeholder is exactly ``{`` + a Python identifier + ``}``. Anything else inside braces
+# (a format spec ``{value:>9}``, conversion ``{value!r}``, attribute ``{value.x}``, index
+# ``{value[0]}``, or a positional/empty field ``{0}``/``{}``) is rejected before parsing.
+_PLACEHOLDER_FIELD_PATTERN = re.compile(r"\{[^{}]*\}")
+_BARE_PLACEHOLDER_PATTERN = re.compile(r"\{[A-Za-z_]\w*\}")
+
+
+def _distance_brace_or_comment_error(function: str) -> tuple[str, int, int] | None:
+    """Reject ``#`` comments and non-placeholder brace fields before AST parsing.
+
+    The AST validator never sees ``#`` comments (they are lexed away) and the placeholder
+    substitution regex ignores brace fields carrying a spec/conversion (``:``/``!``/``.``/``[``).
+    Such a field would survive untouched into bluepyopt's two ``str.format`` passes, where a width
+    spec like ``{value:>999999999}`` pads a string to gigabytes (memory-exhaustion DoS). Braces can
+    only legitimately be placeholders here, so any brace content that is not a bare identifier, or
+    any ``#``, is rejected. Returns ``(reason, from, to)`` or ``None`` when safe.
+    """
+    hash_index = function.find("#")
+    if hash_index != -1:
+        return ("'#' (comments are not allowed)", hash_index, len(function))
+    for match in _PLACEHOLDER_FIELD_PATTERN.finditer(function):
+        if not _BARE_PLACEHOLDER_PATTERN.fullmatch(match.group(0)):
+            reason = f"an invalid placeholder {match.group(0)!r} (use {{name}} only)"
+            return (reason, match.start(), match.end())
+    remaining = _PLACEHOLDER_FIELD_PATTERN.sub("", function)
+    stray = remaining.find("{")
+    if stray != -1:
+        return ("an unbalanced '{'", function.find("{"), len(function))
+    stray = remaining.find("}")
+    if stray != -1:
+        return ("an unbalanced '}'", function.find("}"), len(function))
+    return None
+
+
+def _distance_call_error(node: ast.Call) -> str | None:
+    """Return why a call node is disallowed, or None if it is a safe math.*/builtin call."""
+    func = node.func
+    is_module_call = (
+        isinstance(func, ast.Attribute)
+        and isinstance(func.value, ast.Name)
+        and func.value.id in _ALLOWED_MODULES
+    )
+    is_builtin_call = isinstance(func, ast.Name) and func.id in _ALLOWED_CALL_NAMES
+    if not (is_module_call or is_builtin_call):
+        return f"calls are limited to math.* and {sorted(_ALLOWED_CALL_NAMES)}"
+    # Only float-returning math functions are allowed; int-returning ones (factorial, comb, ...)
+    # would reintroduce unbounded-integer arithmetic.
+    if is_module_call and func.attr not in _ALLOWED_MATH_FUNCTIONS:
+        return f"math.{func.attr} is not an allowed function"
+    if node.keywords:
+        return "calls may not use keyword arguments"
+    return None
+
+
+def _distance_attribute_error(node: ast.Attribute) -> str | None:
+    """Only ``math.<allowed function/constant>`` may be accessed; blocks introspection escapes."""
+    if not (isinstance(node.value, ast.Name) and node.value.id in _ALLOWED_MODULES):
+        return "attributes may only be accessed on the math module"
+    if node.attr not in _ALLOWED_MATH_ATTRIBUTES:
+        return f"math.{node.attr} is not an allowed attribute"
+    return None
+
+
+def _distance_constant_error(node: ast.Constant) -> str | None:
+    """Only float literals (and ``bool`` masks) are allowed.
+
+    Integer literals are arbitrary-precision (bignum DoS); strings/bytes enable ``%``-format and
+    concatenation allocation bombs (e.g. ``"%10000000s" % x``).
+    """
+    if isinstance(node.value, (float, bool)):
+        return None
+    if isinstance(node.value, int):
+        return "numeric literals must be floats (write 3.0, not 3)"
+    return f"literals must be floats, not {type(node.value).__name__}"
+
+
+def _distance_leaf_error(node: ast.AST) -> str | None:
+    """Check the non-operator leaf nodes (attribute/name/constant/call)."""
+    if isinstance(node, ast.Attribute):
+        return _distance_attribute_error(node)
+    if isinstance(node, ast.Name) and node.id not in _ALLOWED_NAMES:
+        return f"disallowed name: {node.id!r}"
+    if isinstance(node, ast.Constant):
+        return _distance_constant_error(node)
+    if isinstance(node, ast.Call):
+        return _distance_call_error(node)
+    return None
+
+
+def _distance_node_error(node: ast.AST) -> str | None:
+    """Return why ``node`` is disallowed in a distance function, or None if it is safe."""
+    if isinstance(node, ast.operator | ast.unaryop | ast.boolop | ast.cmpop):
+        allowed = isinstance(node, _ALLOWED_AST_OPS)
+        return None if allowed else f"disallowed operator: {type(node).__name__}"
+    if not isinstance(node, _ALLOWED_AST_NODES):
+        return f"disallowed expression: {type(node).__name__}"
+    return _distance_leaf_error(node)
+
+
+def validate_safe_distance_function(function: str) -> None:
+    """Reject distance functions that are not a safe, bounded arithmetic expression.
+
+    The security boundary that prevents arbitrary code (RCE) and unbounded computation (DoS) from
+    reaching BluePyEModel/bluepyopt's unsandboxed ``eval``. Enforces, in order:
+
+    - a raw-string length cap (bounds parse-time cost of giant literals),
+    - a node-count cap (bounds per-eval CPU),
+    - a whitelist of nodes/operators/names/attributes/calls (blocks code execution),
+    - float-only numerics: integer literals, ``int()``, and int-returning ``math`` functions are
+      rejected, and ``**`` is disallowed, so no arbitrary-precision integer can form. Floats
+      saturate to ``inf``/raise ``OverflowError`` in O(1), never allocating unbounded bignums.
+
+    ``{placeholder}`` tokens are not valid Python, so each is substituted with a float literal
+    before parsing.
+    """
+    if len(function) > MAX_DISTANCE_FUNCTION_LENGTH:
+        msg = (
+            f"Distance function is too long "
+            f"({len(function)} chars > {MAX_DISTANCE_FUNCTION_LENGTH})."
+        )
+        raise ValueError(msg)
+
+    brace_or_comment = _distance_brace_or_comment_error(function)
+    if brace_or_comment is not None:
+        reason, _, _ = brace_or_comment
+        msg = f"Distance function contains {reason}."
+        raise ValueError(msg)
+
+    expression = _PLACEHOLDER_PATTERN.sub("1.0", function)
+    try:
+        tree = ast.parse(expression, mode="eval")
+    except SyntaxError as exc:
+        msg = f"Distance function is not a valid expression: {exc}."
+        raise ValueError(msg) from exc
+
+    node_count = sum(1 for _ in ast.walk(tree))
+    if node_count > _MAX_AST_NODES:
+        msg = (
+            f"Distance function is too complex ({node_count} nodes > {_MAX_AST_NODES}). "
+            "Simplify the expression."
+        )
+        raise ValueError(msg)
+
+    for node in ast.walk(tree):
+        reason = _distance_node_error(node)
+        if reason is not None:
+            msg = f"Distance function contains {reason}."
+            raise ValueError(msg)
+
+
+class DistanceFunctionCheck(BaseModel):
+    """Structured result of validating a distance function, for editor feedback.
+
+    ``from_`` / ``to`` are character offsets into the original ``function`` string delimiting the
+    offending span (whole string when a position cannot be localized). Both are 0 when valid.
+    """
+
+    valid: bool
+    error: str | None = None
+    from_: int = Field(default=0, alias="from")
+    to: int = 0
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+def _same_length_placeholder_token(match: re.Match[str]) -> str:
+    """A valid float literal the same length as ``{name}`` so AST offsets map to the original."""
+    length = len(match.group(0))
+    # Shortest placeholder is ``{x}`` (3 chars); ``1.`` + zeros keeps a valid float of equal width.
+    return "1." + "0" * (length - 2)
+
+
+def _distance_pre_parse_check(function: str) -> "DistanceFunctionCheck | None":
+    """Length and brace/comment guards that must run before parsing; span-aware, never raises."""
+    if len(function) > MAX_DISTANCE_FUNCTION_LENGTH:
+        return DistanceFunctionCheck(
+            valid=False,
+            error=(
+                f"Distance function is too long "
+                f"({len(function)} chars > {MAX_DISTANCE_FUNCTION_LENGTH})."
+            ),
+            **{"from": 0},
+            to=len(function),
+        )
+    brace_or_comment = _distance_brace_or_comment_error(function)
+    if brace_or_comment is not None:
+        reason, start, end = brace_or_comment
+        return DistanceFunctionCheck(
+            valid=False,
+            error=f"Distance function contains {reason}.",
+            **{"from": start},
+            to=end,
+        )
+    return None
+
+
+def check_distance_function(
+    function: str, parameters: tuple[str, ...] | None = None
+) -> DistanceFunctionCheck:
+    """Validate ``function`` and return a structured result with the error span (never raises).
+
+    Mirrors :func:`validate_safe_distance_function` and the placeholder/declaration rules, but
+    reports the character span of the first problem instead of raising, so an editor can highlight
+    it. Placeholders are substituted with an equal-length token to keep offsets aligned.
+    """
+    pre_parse = _distance_pre_parse_check(function)
+    if pre_parse is not None:
+        return pre_parse
+
+    expression = _PLACEHOLDER_PATTERN.sub(_same_length_placeholder_token, function)
+    try:
+        tree = ast.parse(expression, mode="eval")
+    except SyntaxError as exc:
+        offset = (exc.offset or 1) - 1
+        return DistanceFunctionCheck(
+            valid=False,
+            error=f"Not a valid expression: {exc.msg}.",
+            **{"from": min(offset, len(function))},
+            to=len(function),
+        )
+
+    node_count = sum(1 for _ in ast.walk(tree))
+    if node_count > _MAX_AST_NODES:
+        return DistanceFunctionCheck(
+            valid=False,
+            error=(
+                f"Distance function is too complex ({node_count} nodes > {_MAX_AST_NODES}). "
+                "Simplify the expression."
+            ),
+            **{"from": 0},
+            to=len(function),
+        )
+
+    for node in ast.walk(tree):
+        reason = _distance_node_error(node)
+        if reason is not None:
+            start = getattr(node, "col_offset", 0)
+            end = getattr(node, "end_col_offset", len(function))
+            return DistanceFunctionCheck(
+                valid=False,
+                error=f"Distance function contains {reason}.",
+                **{"from": start},
+                to=end,
+            )
+
+    placeholder_error = _distance_placeholder_error(function, parameters)
+    if placeholder_error is not None:
+        return placeholder_error
+
+    return DistanceFunctionCheck(valid=True)
+
+
+def _distance_placeholder_error(
+    function: str, parameters: tuple[str, ...] | None
+) -> DistanceFunctionCheck | None:
+    """Check required/declared/undeclared placeholders; return a whole-string error or None."""
+    whole = {"from": 0}
+    for required in ("value", "distance"):
+        if f"{{{required}}}" not in function:
+            return DistanceFunctionCheck(
+                valid=False,
+                error=f"Distance function must contain the {{{required}}} placeholder.",
+                **whole,
+                to=len(function),
+            )
+    declared = {"value", "distance", *RUNTIME_PLACEHOLDERS, *(parameters or [])}
+    undeclared = sorted(set(_PLACEHOLDER_PATTERN.findall(function)) - declared)
+    if undeclared:
+        return DistanceFunctionCheck(
+            valid=False,
+            error=(
+                f"Distance function contains undeclared placeholders: {undeclared}. "
+                "Add them to 'parameters' or remove them."
+            ),
+            **whole,
+            to=len(function),
+        )
+    return None
+
 
 class DistanceDependentDistribution(Block):
     """A BluePyEModel distance-dependent parameter transformation."""
@@ -61,12 +435,13 @@ class DistanceDependentDistribution(Block):
     )
     function: str | None = Field(
         default=None,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description=(
             "Expression using {value} and {distance}; custom expressions may also use "
             "placeholders defined by the corresponding parameter configuration."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE},
     )
     soma_ref_location: float = Field(
         default=0.5,
@@ -89,16 +464,18 @@ class DistanceDependentDistribution(Block):
 
     @model_validator(mode="after")
     def validate_function(self) -> "DistanceDependentDistribution":
-        """Require functions to expose implicit and declared inputs.
+        """Require functions to expose implicit and declared inputs, and be safe.
 
-        This only checks placeholder presence; it is not an AST validator or a
-        sandbox. BluePyEModel evaluates the function string with Python ``eval()``
-        at runtime (see ``bluepyemodel.model.model.define_distributions()``), so
-        this validator must never be described as a security boundary.
+        BluePyEModel evaluates the function string with Python ``eval()`` at runtime
+        (see ``bluepyemodel.model.model.define_distributions()``). Because the string is
+        user-controlled, this validator restricts it to a safe arithmetic AST via
+        ``validate_safe_distance_function`` before any placeholder/declaration checks.
         """
         if self.parameters and self.function is None:
             msg = "Distance-dependent distributions with parameters must define a function."
             raise ValueError(msg)
+        if self.function is not None:
+            validate_safe_distance_function(self.function)
         if self.function is not None and "{value}" not in self.function:
             msg = "Distance-dependent functions must contain the {value} placeholder."
             raise ValueError(msg)
@@ -150,10 +527,7 @@ class UniformDistanceDependentDistribution(DistanceDependentDistribution):
         frozen=True,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
-            SchemaKey.UI_HIDDEN: True,
-        },
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
 
@@ -170,9 +544,10 @@ class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
     function: str = Field(
         default="(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -196,12 +571,13 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+        default="{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
         "({distance} < {step_end})))",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -216,11 +592,12 @@ class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistributi
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="math.exp((-{distance})/50)*{value}",
+        default="math.exp((-{distance})/50.)*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -237,9 +614,10 @@ class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
     function: str = Field(
         default="(1. + 3./100. * {distance})*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -254,11 +632,12 @@ class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution)
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="(15./(1. + math.exp((300-{distance})/50)))*{value}",
+        default="(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -273,11 +652,12 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="({value}-5*{distance}/150)",
+        default="({value}-5.*{distance}/150.)",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -294,9 +674,10 @@ class LinearHDPasDistanceDependentDistribution(DistanceDependentDistribution):
     function: str = Field(
         default="(1. + 3./100. * {distance})*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -311,11 +692,12 @@ class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="(15./(1. + math.exp((150-{distance})/10)))*{value}",
+        default="(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -330,11 +712,12 @@ class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
-        default="(15./(1. + math.exp(({distance}-50)/50)))*{value}",
+        default="(15./(1. + math.exp(({distance}-50.)/50.)))*{value}",
         frozen=True,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -344,9 +727,10 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
     title: ClassVar[str] = "Custom Distance-Dependent Distribution"
     function: str = Field(
         min_length=1,
+        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Custom distance function",
         description="Python expression containing at least {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
 
@@ -1446,7 +1830,7 @@ class OptimizationSettings(Block):
         default=EfelSettings(),
         title="eFEL settings",
         description="Common eFEL settings forwarded to optimization evaluations.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT, SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     validation_protocols: tuple[str, ...] = Field(
         default=(),
@@ -1575,13 +1959,13 @@ class OptimizationSettings(Block):
         default=PhasePlotSettings(),
         title="Phase plot settings",
         description="Protocol and amplitude settings for phase-plot analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT, SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     sinespec_settings: SineSpecSettings = Field(
         default=SineSpecSettings(),
         title="SineSpec settings",
         description="Amplitude settings for optional SineSpec analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT, SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     custom_bluepyefe_cells_pklpath: str | None = Field(
         default=None,

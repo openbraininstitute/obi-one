@@ -290,7 +290,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             "distributions declared by the user."
         ),
         json_schema_extra={
-            SchemaKey.UI_HIDDEN: True,
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 3,

@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
 from entitysdk.types import EntityLifecycleStatus
 
 from obi_one.db_sdk.registration.circuit.launch_jobs import (
@@ -60,14 +61,18 @@ class TestSubmitCircuitJobs:
                 api_url="http://localhost:8100",
                 compute_cell="cell_a",
                 obi_one_repo="https://github.com/org/repo.git",
-                app_version="1.2.3-dev",
+                app_version="2026.8.12",
                 force=True,
             )
             == job_id
         )
 
         job = ls_client.post.call_args[1]["json"]
-        assert job["code"]["ref"] == "tag:1.2.3"
+        assert job["code"]["ref"] == "tag:2026.8.12"
+        assert job["code"]["dependencies"] == (
+            "launch_scripts/launch_circuit_validation/dependencies/default.txt"
+        )
+        assert "dependency_constraints" not in job["code"]
         assert job["resources"]["image_type"] == "python_3_12_openmpi5_neuron9_neurodamus"
         assert job["resources"]["compute_cell"] == "cell_a"
         assert f"--circuit_id {circuit_id}" in job["inputs"]
@@ -138,14 +143,18 @@ class TestSubmitCircuitJobs:
                 virtual_lab_id=virtual_lab_id,
                 compute_cell="cell_b",
                 obi_one_repo="https://github.com/org/repo.git",
-                app_version="9.9.9",
+                app_version="2026.9.1",
                 force=False,
             )
             == job_id
         )
 
         job = ls_client.post.call_args[1]["json"]
-        assert job["code"]["ref"] == "tag:9.9.9"
+        assert job["code"]["ref"] == "tag:2026.9.1"
+        assert job["code"]["dependencies"] == (
+            "launch_scripts/launch_circuit_asset_generation/dependencies/default.txt"
+        )
+        assert "dependency_constraints" not in job["code"]
         assert "launch_circuit_asset_generation" in job["code"]["path"]
         assert job["resources"]["compute_cell"] == "cell_b"
         assert job["resources"]["cores"] == 2
@@ -154,3 +163,33 @@ class TestSubmitCircuitJobs:
         assert "--force false" in job["inputs"]
         assert job["callbacks"] == []
         assert "image_type" not in job["resources"]
+
+    @pytest.mark.parametrize(
+        ("app_version", "expected_ref"),
+        [
+            (None, "tag:0.0.0"),
+            ("2026.8.12-3-g49a16415-dirty", "tag:2026.8.12"),
+            ("2026.8.12-3-g49a16415", "tag:2026.8.12"),
+        ],
+    )
+    def test_dev_version_uses_last_release_tag(self, app_version, expected_ref):
+        ls_client = MagicMock()
+        ls_client.post.return_value = MagicMock(
+            is_success=True,
+            json=MagicMock(return_value={"id": str(uuid4())}),
+        )
+
+        submit_circuit_asset_generation_job(
+            ls_client=ls_client,
+            circuit_id=uuid4(),
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+            compute_cell="cell_b",
+            obi_one_repo="https://github.com/org/repo.git",
+            app_version=app_version,
+            force=False,
+        )
+
+        job = ls_client.post.call_args[1]["json"]
+        # Post-release / dirty dev builds check out the last release's tag.
+        assert job["code"]["ref"] == expected_ref
