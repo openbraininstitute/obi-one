@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 from entitysdk import Client, models
+from entitysdk.types import AssetLabel
 
 from obi_one.db_sdk.registration.circuit.assets import (
     OVERVIEW_IMAGE_NAME,
@@ -190,14 +191,14 @@ def generate_sim_designer_image_asset(
         )
 
 
-def _entity_has_asset(circuit_entity: models.Circuit | None, asset_label: str) -> bool:
+def _entity_has_asset(circuit_entity: models.Circuit | None, asset_label: AssetLabel) -> bool:
     """Return True if circuit_entity already has an asset with the given label."""
     if circuit_entity is None:
         return False
     existing = {
         getattr(asset.label, "value", asset.label) for asset in (circuit_entity.assets or [])
     }
-    return asset_label in existing
+    return asset_label.value in existing
 
 
 def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
@@ -276,7 +277,7 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
             "Compression not requested for circuit %s — skipping compressed_sonata_circuit",
             getattr(circuit_entity, "id", None),
         )
-    elif not force and _entity_has_asset(circuit_entity, "compressed_sonata_circuit"):
+    elif not force and _entity_has_asset(circuit_entity, AssetLabel.compressed_sonata_circuit):
         L.info(
             "compressed_sonata_circuit already present on circuit %s — skipping compression",
             getattr(circuit_entity, "id", None),
@@ -292,7 +293,9 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
         except Exception as e:  # ruff: ignore[blind-except]
             L.warning(f"Compressed circuit asset generation/registration failed: {e}")
 
-    skip_matrices = not force and _entity_has_asset(circuit_entity, "circuit_connectivity_matrices")
+    skip_matrices = not force and _entity_has_asset(
+        circuit_entity, AssetLabel.circuit_connectivity_matrices
+    )
     matrix_config = None
     if skip_matrices:
         L.info(
@@ -333,7 +336,7 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     if not include_overview_images:
         return
 
-    if force or not _entity_has_asset(circuit_entity, "circuit_visualization"):
+    if force or not _entity_has_asset(circuit_entity, AssetLabel.circuit_visualization):
         try:
             generate_overview_image_asset(
                 plot_dir=plot_dir,
@@ -350,7 +353,7 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
             getattr(circuit_entity, "id", None),
         )
 
-    if force or not _entity_has_asset(circuit_entity, "simulation_designer_image"):
+    if force or not _entity_has_asset(circuit_entity, AssetLabel.simulation_designer_image):
         try:
             generate_sim_designer_image_asset(
                 plot_dir=plot_dir,
