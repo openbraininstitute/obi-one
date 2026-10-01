@@ -26,6 +26,7 @@ from .float_input import validate_float_input
 from .float_optional import validate_float_optional
 from .float_parameter_sweep import validate_float_param_sweep
 from .int_parameter_sweep import validate_int_param_sweep
+from .integer_input import validate_integer_input
 from .ion_channel_variable_modification_by_neuron import (
     validate_ion_channel_variable_modification_by_neuron,
 )
@@ -80,6 +81,7 @@ VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
     UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE: validate_distance_function_input_nullable,
     UIElement.STOCHASTICITY: validate_stochasticity,
     UIElement.FLOAT_INPUT: validate_float_input,
+    UIElement.INTEGER_INPUT: validate_integer_input,
     UIElement.FLOAT_PARAMETER_SWEEP: validate_float_param_sweep,
     UIElement.INT_PARAMETER_SWEEP: validate_int_param_sweep,
     UIElement.FLOAT_OPTIONAL: validate_float_optional,
