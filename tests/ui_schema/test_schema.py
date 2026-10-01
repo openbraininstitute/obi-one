@@ -17,22 +17,21 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     MAX_DISTANCE_FUNCTION_LENGTH,
 )
 
-from .validators import (
-    openapi_schema,
-    resolve_ref,
-    validate_distance_function_input,
+from .validators.distance_function_input import validate_distance_function_input
+from .validators.distance_function_input_nullable import (
     validate_distance_function_input_nullable,
-    validate_float_optional,
-    validate_neuron_set_combination,
-    validate_select_efeatures_by_protocol,
 )
-from .validators.root import (
+from .validators.float_optional import validate_float_optional
+from .validators.neuron_set_combination import validate_neuron_set_combination
+from .validators.root.config import validate_config
+from .validators.root.emodel_optimisation_parameters import (
     SECTION_LIST_CHOICE_KEYS,
-    validate_config,
     validate_emodel_optimisation_parameters,
     validate_section_list_choices,
     validate_section_list_property_names,
 )
+from .validators.select_efeatures_by_protocol import validate_select_efeatures_by_protocol
+from .validators.shared import openapi_schema, resolve_ref
 
 
 def test_schema() -> None:

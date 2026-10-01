@@ -36,14 +36,13 @@ jobs:
         run: |
           # Modified (M) or deleted (D) files under validators/ are violations: existing
           # validators must not be weakened or removed. Added (A) files are allowed so new
-          # validators can be introduced. registry.py / __init__.py (block and root) are exempt
-          # because registering a new validator requires editing them. Three-dot compares
-          # against the merge-base so only files this PR changed are counted.
+          # validators can be introduced. registry.py is exempt because registering a new
+          # validator requires editing it (the __init__.py files re-export nothing, so they
+          # never need editing to add a validator). Three-dot compares against the merge-base so
+          # only files this PR changed are counted.
           VIOLATIONS=$(git diff --name-status --diff-filter=MD "$BASE_SHA"..."$HEAD_SHA" \
             -- 'tests/ui_schema/validators/' \
             ':(exclude)tests/ui_schema/validators/registry.py' \
-            ':(exclude)tests/ui_schema/validators/__init__.py' \
-            ':(exclude)tests/ui_schema/validators/root/__init__.py' \
             | awk '{print $2}')
           if [ -n "$VIOLATIONS" ]; then
             echo "::error::Existing UI-element validators are locked (no edits or deletes):"

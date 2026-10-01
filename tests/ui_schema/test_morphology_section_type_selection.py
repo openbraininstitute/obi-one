@@ -16,7 +16,9 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 )
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
 
-from .validators import validate_morphology_section_type_selection
+from .validators.morphology_section_type_selection import (
+    validate_morphology_section_type_selection,
+)
 
 
 def test_morphology_section_type_selection_schema():
