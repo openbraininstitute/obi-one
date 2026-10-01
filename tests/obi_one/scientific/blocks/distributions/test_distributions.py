@@ -9,6 +9,10 @@ from bluepyemodel.preprocessing.schemas import (
 )
 
 import obi_one as obi
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    check_distance_function,
+    validate_safe_distance_function,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
 )
@@ -46,14 +50,14 @@ class TestDistanceDependentDistributions:
                 obi.StepDistanceDependentDistribution,
                 "step",
                 (
-                    "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                    "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
                     "({distance} < {step_end})))"
                 ),
             ),
             (
                 obi.ExponentialNaDendDistanceDependentDistribution,
                 "exp_na_dend",
-                "math.exp((-{distance})/50)*{value}",
+                "math.exp((-{distance})/50.)*{value}",
             ),
             (
                 obi.LinearHDApicDistanceDependentDistribution,
@@ -63,12 +67,12 @@ class TestDistanceDependentDistributions:
             (
                 obi.SigmoidKADApicDistanceDependentDistribution,
                 "sigmoid_kad_apic",
-                "(15./(1. + math.exp((300-{distance})/50)))*{value}",
+                "(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
             ),
             (
                 obi.LinearEPasApicDistanceDependentDistribution,
                 "linear_e_pas_apic",
-                "({value}-5*{distance}/150)",
+                "({value}-5.*{distance}/150.)",
             ),
             (
                 obi.LinearHDPasDistanceDependentDistribution,
@@ -78,12 +82,12 @@ class TestDistanceDependentDistributions:
             (
                 obi.SigmoidKADDistanceDependentDistribution,
                 "sigmoid_kad",
-                "(15./(1. + math.exp((150-{distance})/10)))*{value}",
+                "(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
             ),
             (
                 obi.SigmoidKDBMApicDistanceDependentDistribution,
                 "sigmoid_kdbm_apic",
-                "(15./(1. + math.exp(({distance}-50)/50)))*{value}",
+                "(15./(1. + math.exp(({distance}-50.)/50.)))*{value}",
             ),
         ],
     )
@@ -101,13 +105,13 @@ class TestDistanceDependentDistributions:
     def test_custom_distribution_is_validated_and_serialized(self):
         distribution = obi.CustomDistanceDependentDistribution(
             name="custom_profile",
-            function="({value} + {distance}) / 2",
+            function="({value} + {distance}) / 2.0",
             soma_ref_location=0.25,
         )
 
         assert distribution.to_emc_dict() == {
             "name": "custom_profile",
-            "function": "({value} + {distance}) / 2",
+            "function": "({value} + {distance}) / 2.0",
             "soma_ref_location": 0.25,
         }
 
@@ -128,7 +132,7 @@ class TestDistanceDependentDistributions:
     def test_empty_distribution_parameters_are_not_serialized(self):
         distribution = obi.CustomDistanceDependentDistribution(
             name="custom_profile",
-            function="({value} + {distance}) / 2",
+            function="({value} + {distance}) / 2.0",
             parameters=[],
         )
 
@@ -217,11 +221,298 @@ class TestDistanceDependentDistributions:
         assert distribution.to_emc_dict() == {
             "name": "step",
             "function": (
-                "{value} * (0.1 + 0.9 * int(({distance} > {step_begin}) & "
+                "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
                 "({distance} < {step_end})))"
             ),
             "soma_ref_location": 0.5,
         }
+
+
+class TestDistanceFunctionSafety:
+    """The distance function reaches BluePyEModel's eval(); it must be AST-restricted."""
+
+    @pytest.mark.parametrize(
+        "unsafe_function",
+        [
+            "__import__('os').system('id') + {value} + {distance}",
+            "os.system('rm -rf /') + {value}*{distance}",
+            "open('/etc/passwd').read() + {value} + {distance}",
+            "(lambda: 1)() + {value} + {distance}",
+            "({value}).__class__.__mro__[1] + {distance}",
+            "{value}[0] + {distance}",
+            "eval('1') + {value} + {distance}",
+        ],
+    )
+    def test_unsafe_custom_distribution_is_rejected(self, unsafe_function):
+        with pytest.raises(ValueError, match="Distance function"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
+    @pytest.mark.parametrize(
+        "safe_function",
+        [
+            "({value} + {distance}) / 2.0",
+            "math.exp((-{distance})/50.)*{value}",
+            "float({distance} > 100.) * {value}",
+            "(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
+            "{value} * (0.1 + 0.9 * float(({distance} > 10.) & ({distance} < 20.)))",
+        ],
+    )
+    def test_safe_custom_distribution_is_accepted(self, safe_function):
+        distribution = obi.CustomDistanceDependentDistribution(name="safe", function=safe_function)
+        assert distribution.function == safe_function
+
+    @pytest.mark.parametrize(
+        "unsafe_function",
+        [
+            "int({distance}) + {value}",
+            "int({value}) ** int({distance})",
+            "math.factorial(30) + {value} + {distance}",
+            "math.comb(40, 20) + {value} + {distance}",
+            "math.floor({distance}) + {value}",
+        ],
+    )
+    def test_int_producing_calls_are_rejected(self, unsafe_function):
+        """int() and int-returning math functions are forbidden (unbounded-integer DoS)."""
+        with pytest.raises(ValueError, match="Distance function"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
+    def test_overly_complex_function_is_rejected(self):
+        """A structurally large expression (under the length cap) is rejected by the node cap."""
+        long_function = "{value}" + "+{distance}" * 30
+        with pytest.raises(ValueError, match="too complex"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=long_function)
+
+    def test_integer_literals_are_rejected(self):
+        """Integer literals are forbidden (arbitrary-precision); users must write floats."""
+        with pytest.raises(ValueError, match="must be floats"):
+            obi.CustomDistanceDependentDistribution(name="evil", function="{value}*{distance} + 3")
+
+    def test_power_operator_is_rejected(self):
+        """`**` is forbidden: integer exponentiation is an unbounded-memory DoS."""
+        with pytest.raises(ValueError, match="Pow"):
+            obi.CustomDistanceDependentDistribution(name="evil", function="{value} ** {distance}")
+
+    def test_overly_long_function_is_rejected(self):
+        """A giant raw string is rejected before parsing (bounds parse-time cost)."""
+        long_function = "{value}+{distance}+" + "9." * 300
+        # The field-level ``max_length`` constraint rejects it (Pydantic message).
+        with pytest.raises(ValueError, match="at most 500 characters"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=long_function)
+
+    def test_check_distance_function_reports_valid(self):
+        result = check_distance_function("math.exp((-{distance})/50.)*{value}")
+        assert result.valid
+        assert result.error is None
+
+    def test_check_distance_function_reports_error_span(self):
+        fn = "os.system('x') + {value} + {distance}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        # The span points at the offending call in the original string.
+        assert fn[result.from_ : result.to] == "os.system('x')"
+        assert "calls are limited" in result.error
+
+    def test_check_distance_function_flags_int_literal_position(self):
+        fn = "{value}*{distance} + 3"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert fn[result.from_ : result.to] == "3"
+
+    def test_check_distance_function_accepts_declared_parameters(self):
+        result = check_distance_function(
+            "math.exp({distance}*{constant})*{value}", parameters=("constant",)
+        )
+        assert result.valid
+
+    def test_check_distance_function_flags_disallowed_name(self):
+        # Covers the disallowed-name leaf branch via the structured checker.
+        result = check_distance_function("foo + {value} + {distance}")
+        assert not result.valid
+        assert "disallowed name" in result.error
+
+    def test_check_distance_function_rejects_too_long(self):
+        result = check_distance_function("{value}+{distance}+" + "1.0+" * 300)
+        assert not result.valid
+        assert "too long" in result.error
+        assert result.to == len("{value}+{distance}+" + "1.0+" * 300)
+
+    def test_check_distance_function_reports_syntax_error(self):
+        result = check_distance_function("({value} + {distance}")
+        assert not result.valid
+        assert "valid expression" in result.error
+
+    def test_check_distance_function_requires_value_and_distance(self):
+        missing_value = check_distance_function("{distance} * 2.0")
+        assert not missing_value.valid
+        assert "{value}" in missing_value.error
+
+        missing_distance = check_distance_function("{value} * 2.0")
+        assert not missing_distance.valid
+        assert "{distance}" in missing_distance.error
+
+    def test_check_distance_function_flags_undeclared_placeholder(self):
+        result = check_distance_function("{value} + {distance} + {mystery}")
+        assert not result.valid
+        assert "undeclared placeholders" in result.error
+        assert "mystery" in result.error
+
+    def test_check_distance_function_rejects_too_complex(self):
+        # Covers the node-cap branch of the structured checker (under the length cap).
+        result = check_distance_function("{value}" + "+{distance}" * 30)
+        assert not result.valid
+        assert "too complex" in result.error
+
+    def test_check_distance_function_allows_math_call(self):
+        # A valid math.* call exercises the safe-call path.
+        result = check_distance_function("math.exp({distance}) * {value}")
+        assert result.valid
+        assert result.error is None
+
+    def test_check_distance_function_rejects_keyword_arguments(self):
+        # Covers the keyword-arguments rejection branch in call validation.
+        result = check_distance_function("math.exp({distance}, base=2.0) * {value}")
+        assert not result.valid
+        assert "keyword arguments" in result.error
+
+    def test_check_distance_function_rejects_non_math_attribute(self):
+        # Covers the attribute-access branch (attribute on something other than math).
+        result = check_distance_function("({value}).real + {distance}")
+        assert not result.valid
+        assert "attributes may only be accessed on the math module" in result.error
+
+    def test_check_distance_function_rejects_string_constants(self):
+        # String constants + % enable allocation bombs, e.g. '%10000000s' % x. Reject all strings.
+        for fn in (
+            '"%10000000s" % ({value} + {distance})',
+            '"x" + {value} + {distance}',
+        ):
+            result = check_distance_function(fn)
+            assert not result.valid, fn
+            assert "literals must be floats" in result.error
+
+    def test_check_distance_function_rejects_math_introspection(self):
+        # math.__dict__/__loader__ etc. are introspection escapes; only allowed attrs pass.
+        for fn in (
+            "math.__dict__ + {value} + {distance}",
+            "math.__loader__ + {value} + {distance}",
+        ):
+            result = check_distance_function(fn)
+            assert not result.valid, fn
+            assert "is not an allowed attribute" in result.error
+
+    def test_check_distance_function_allows_math_constant(self):
+        result = check_distance_function("math.pi * {value} * {distance} * 0.0 + {value}")
+        assert result.valid
+
+    def test_validate_safe_distance_function_raises_on_too_long(self):
+        with pytest.raises(ValueError, match="too long"):
+            validate_safe_distance_function("{value}+{distance}+" + "1.0+" * 300)
+
+    def test_validate_safe_distance_function_raises_on_syntax_error(self):
+        with pytest.raises(ValueError, match="valid expression"):
+            validate_safe_distance_function("({value} + {distance}")
+
+    def test_check_distance_function_accepts_step_runtime_placeholders(self):
+        # step_begin/step_end are morphology-derived runtime placeholders, always allowed.
+        result = check_distance_function(
+            "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & ({distance} < {step_end})))"
+        )
+        assert result.valid
+
+    @pytest.mark.parametrize(
+        "unsafe_function",
+        [
+            # Comment channel: the payload after '#' is lexed away before the AST, and its
+            # format spec survives the placeholder regex, so bluepyopt's str.format pads a
+            # string to gigabytes (memory-exhaustion DoS). Comments are rejected outright.
+            "{value}*{distance} # {value:>999999999}",
+            "{value}*{distance}  # any comment",
+            # Format spec / conversion / attribute / index / positional / empty brace fields
+            # are not bare-identifier placeholders and are rejected before parsing.
+            "{value}*{distance}*{value:>9}",
+            "{value}*{distance}*{value!r}",
+            "{value}*{distance}*{value.__class__}",
+            "{value}*{distance}*{value[0]}",
+            "{value}*{distance}*{0}",
+            "{value}*{distance}*{}",
+            "{value}*{distance}*{a.b}",
+        ],
+    )
+    def test_comment_and_format_spec_channels_are_rejected(self, unsafe_function):
+        """The distance function must not smuggle format specs via comments or brace fields."""
+        with pytest.raises(ValueError, match="Distance function"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
+    def test_check_distance_function_flags_comment_position(self):
+        fn = "{value}*{distance} # {value:>999999999}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "comments are not allowed" in result.error
+        assert fn[result.from_] == "#"
+
+    def test_check_distance_function_flags_format_spec_span(self):
+        fn = "{value}*{distance}*{value:>9}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "invalid placeholder" in result.error
+        assert fn[result.from_ : result.to] == "{value:>9}"
+
+    def test_check_distance_function_flags_unbalanced_open_brace(self):
+        fn = "{value}*{distance}*{scale"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "unbalanced '{'" in result.error
+
+    def test_check_distance_function_flags_unbalanced_close_brace(self):
+        fn = "{value}*{distance}}"
+        result = check_distance_function(fn)
+        assert not result.valid
+        assert "unbalanced '}'" in result.error
+
+    @pytest.mark.parametrize(
+        "unsafe_function", ["{value}*{distance}*{scale", "{value}*{distance}}"]
+    )
+    def test_unbalanced_braces_are_rejected(self, unsafe_function):
+        with pytest.raises(ValueError, match="unbalanced"):
+            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+
+    def test_unsafe_distribution_config_rejects_comment_dos(self):
+        """The comment/format-spec DoS must block config creation, not just the block."""
+        with pytest.raises(ValueError, match="Distance function"):
+            _optimization_config(
+                distance_dependent_distributions={
+                    "dos": {
+                        "type": "CustomDistanceDependentDistribution",
+                        "function": "{value}*{distance} # {value:>999999999}",
+                    },
+                }
+            )
+
+    def test_unsafe_distribution_rejected_when_building_a_config(self):
+        """An unsafe custom distribution must block EModelOptimizationScanConfig creation."""
+        with pytest.raises(ValueError, match="Distance function"):
+            _optimization_config(
+                distance_dependent_distributions={
+                    "pwned": {
+                        "type": "CustomDistanceDependentDistribution",
+                        "function": "__import__('os').system('id') + {value} + {distance}",
+                    },
+                }
+            )
+
+    def test_safe_distribution_accepted_when_building_a_config(self):
+        config = _optimization_config(
+            distance_dependent_distributions={
+                "decay": {
+                    "type": "CustomDistanceDependentDistribution",
+                    "function": "math.exp((-{distance})/50.)*{value}",
+                },
+            }
+        )
+        assert isinstance(
+            config.distance_dependent_distributions["decay"],
+            obi.CustomDistanceDependentDistribution,
+        )
 
 
 class TestFloatConstantDistribution:

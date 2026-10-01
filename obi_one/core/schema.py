@@ -73,6 +73,8 @@ class UIElement(StrEnum):
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
+    DISTANCE_FUNCTION_INPUT = "distance_function_input"
+    DISTANCE_FUNCTION_INPUT_NULLABLE = "distance_function_input_nullable"
     EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
