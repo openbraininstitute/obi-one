@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from entitysdk import Client, MultipartUploadTransferConfig, models
+from entitysdk.types import AssetLabel
 
 from obi_one.db_sdk.db_sdk import _upload_or_replace_directory, _upload_or_replace_file
 from obi_one.utils.io import compressed_archive_filename, convert_image_to_webp
@@ -69,50 +70,50 @@ def _check_matrix_folder(file_path: Path) -> None:
                 raise ValueError(msg)
 
 
-CIRCUIT_ASSET_MAPPING: dict[str, dict] = {
-    "sonata_circuit": {
+CIRCUIT_ASSET_MAPPING: dict[AssetLabel, dict] = {
+    AssetLabel.sonata_circuit: {
         "is_directory": True,
         "content_type": "application/vnd.directory",
         "required_contents": ["circuit_config.json", "node_sets.json"],
         "required_validations": [],
     },
-    "compressed_sonata_circuit": {
+    AssetLabel.compressed_sonata_circuit: {
         "is_directory": False,
         "content_type": "application/gzip",
         "required_contents": [COMPRESSED_CIRCUIT_FILENAME],
         "required_validations": [],
     },
-    "circuit_connectivity_matrices": {
+    AssetLabel.circuit_connectivity_matrices: {
         "is_directory": True,
         "content_type": "application/vnd.directory",
         "required_contents": ["matrix_config.json"],
         "required_validations": [_check_matrix_folder],
     },
-    "circuit_visualization": {
+    AssetLabel.circuit_visualization: {
         "is_directory": False,
         "content_type": "image/webp",
         "required_contents": ["circuit_visualization.webp"],
         "required_validations": [],
     },
-    "node_stats": {
+    AssetLabel.node_stats: {
         "is_directory": False,
         "content_type": "image/webp",
         "required_contents": ["node_stats.webp"],
         "required_validations": [],
     },
-    "network_stats_a": {
+    AssetLabel.network_stats_a: {
         "is_directory": False,
         "content_type": "image/webp",
         "required_contents": ["network_stats_a.webp"],
         "required_validations": [],
     },
-    "network_stats_b": {
+    AssetLabel.network_stats_b: {
         "is_directory": False,
         "content_type": "image/webp",
         "required_contents": ["network_stats_b.webp"],
         "required_validations": [],
     },
-    "simulation_designer_image": {
+    AssetLabel.simulation_designer_image: {
         "is_directory": False,
         "content_type": "image/png",
         "required_contents": ["simulation_designer_image.png"],
@@ -147,7 +148,11 @@ def register_asset(
         L.info(f"No path for '{asset_label}' asset provided - skipping")
         return None
 
-    if asset_label not in CIRCUIT_ASSET_MAPPING:
+    try:
+        label_enum = AssetLabel(asset_label)
+    except ValueError:
+        label_enum = None
+    if label_enum is None or label_enum not in CIRCUIT_ASSET_MAPPING:
         msg = f"Asset label '{asset_label}' not supported!"
         raise ValueError(msg)
 
@@ -156,7 +161,7 @@ def register_asset(
         raise ValueError(msg)
 
     # Validate required contents
-    asset_config = CIRCUIT_ASSET_MAPPING[asset_label]
+    asset_config = CIRCUIT_ASSET_MAPPING[label_enum]
     is_dir = asset_config["is_directory"]
     _check_required_contents(
         file_path,
@@ -193,7 +198,7 @@ def register_asset(
         asset = _upload_or_replace_directory(
             client,
             registered_circuit,
-            asset_label=asset_label,
+            asset_label=label_enum,
             name=asset_label,
             paths=files_in_dir,
         )
@@ -201,7 +206,7 @@ def register_asset(
         asset = _upload_or_replace_file(
             client,
             registered_circuit,
-            asset_label=asset_label,
+            asset_label=label_enum,
             file_path=file_path,
             file_content_type=content_type,
         )
@@ -213,7 +218,7 @@ def add_compressed_circuit_asset(
     client: Client, compressed_file: Path, registered_circuit: models.Circuit
 ) -> models.Asset:
     """Upload a compressed circuit file asset to a registered circuit entity."""
-    asset_label = "compressed_sonata_circuit"
+    asset_label = AssetLabel.compressed_sonata_circuit
 
     if not compressed_file.exists():
         msg = f"Compressed circuit file '{compressed_file}' does not exist!"
@@ -229,7 +234,7 @@ def add_compressed_circuit_asset(
         file_content_type="application/gzip",
         transfer_config=transfer_config,
     )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {compressed_asset.id}")
+    L.info(f"'{asset_label.value}' asset uploaded under asset ID {compressed_asset.id}")
     return compressed_asset
 
 
@@ -237,7 +242,7 @@ def add_connectivity_matrix_asset(
     client: Client, matrix_dir: Path, registered_circuit: models.Circuit
 ) -> models.Asset:
     """Upload connectivity matrix directory asset to a registered circuit entity."""
-    asset_label = "circuit_connectivity_matrices"
+    asset_label = AssetLabel.circuit_connectivity_matrices
 
     if not matrix_dir.is_dir():
         msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
@@ -254,10 +259,10 @@ def add_connectivity_matrix_asset(
         client,
         registered_circuit,
         asset_label=asset_label,
-        name=asset_label,
+        name=asset_label.value,
         paths=matrix_files,
     )
-    L.info(f"'{asset_label}' asset uploaded under asset ID {matrix_asset.id}")
+    L.info(f"'{asset_label.value}' asset uploaded under asset ID {matrix_asset.id}")
     return matrix_asset
 
 
@@ -271,14 +276,16 @@ def add_image_assets(
 
     Note: Image files will be converted to .webp, if needed.
     """
+    # Keys are plot-figure filename stems (not asset labels); values pair the target asset
+    # label with the on-disk format.
     asset_label_map = {
-        "node_stats": ("node_stats", "webp"),
-        "small_adj_and_stats": ("network_stats_a", "webp"),
-        "small_network_in_2D": ("network_stats_b", "webp"),
-        "network_global_stats": ("network_stats_a", "webp"),
-        "network_pathway_stats": ("network_stats_b", "webp"),
-        OVERVIEW_IMAGE_NAME: ("circuit_visualization", "webp"),
-        SIM_DESIGNER_IMAGE_NAME: ("simulation_designer_image", "png"),
+        "node_stats": (AssetLabel.node_stats, "webp"),
+        "small_adj_and_stats": (AssetLabel.network_stats_a, "webp"),
+        "small_network_in_2D": (AssetLabel.network_stats_b, "webp"),
+        "network_global_stats": (AssetLabel.network_stats_a, "webp"),
+        "network_pathway_stats": (AssetLabel.network_stats_b, "webp"),
+        OVERVIEW_IMAGE_NAME: (AssetLabel.circuit_visualization, "webp"),
+        SIM_DESIGNER_IMAGE_NAME: (AssetLabel.simulation_designer_image, "png"),
     }
     if not plot_dir.is_dir():
         msg = f"Connectivity plots directory '{plot_dir}' does not exist!"
@@ -308,6 +315,6 @@ def add_image_assets(
             file_path=file_path,
             file_content_type=f"image/{fmt}",
         )
-        L.info(f"'{asset_label}' asset uploaded under asset ID {plot_asset.id}")
+        L.info(f"'{asset_label.value}' asset uploaded under asset ID {plot_asset.id}")
         plot_assets.append(plot_asset)
     return plot_assets
