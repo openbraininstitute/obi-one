@@ -14,7 +14,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import libsonata
 import pytest
+from bluepysnap import Circuit as SnapCircuit
 
 import obi_one as obi
 from obi_one.core.block_reference import BlockReference
@@ -145,6 +147,18 @@ class GeneratedSimulation:
     def dangling_node_sets(self) -> set[str]:
         """Referenced node set names that were never written to ``node_sets.json``."""
         return self.referenced_node_sets() - set(self.node_sets)
+
+    def resolved_node_set_ids(self, name: str, circuit_path: Path, population: str) -> list[int]:
+        """The neuron IDs a written node set selects, resolved the way the simulator does.
+
+        Node set definitions are written symbolically wherever SONATA can express them, so the
+        IDs cannot simply be read back out of the file. neurodamus loads this file with
+        ``libsonata.NodeSets.from_file`` and calls ``materialize`` once per node population;
+        this does the same, which makes it an end-to-end check of the written definition.
+        """
+        node_sets = libsonata.NodeSets.from_file(str(self.directory / "node_sets.json"))
+        nodes = SnapCircuit(str(circuit_path)).nodes[population].to_libsonata
+        return node_sets.materialize(name, nodes).flatten().tolist()
 
 
 @dataclass

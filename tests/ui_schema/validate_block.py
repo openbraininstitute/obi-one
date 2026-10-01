@@ -18,9 +18,11 @@ registry and shared helpers, never the root package, so there is no import cycle
 
 import logging
 
+from jsonschema import ValidationError
+
 from obi_one.core.schema import SchemaKey
 
-from tests.ui_schema.validators.shared import validate_string
+from tests.ui_schema.validators.shared import accepts_null, validate_string
 
 L = logging.getLogger()
 
@@ -75,6 +77,15 @@ def validate_block(schema: dict, ref: str) -> None:
 
     for param, param_schema in schema.get("properties", {}).items():
         if param_schema.get(SchemaKey.UI_HIDDEN):
+            # Hidden elements are never shown or edited, so they must carry a default.
+            # Pydantic omits an explicit ``default: null`` for nullable fields, so a schema
+            # that accepts ``null`` (an implicit ``None`` default) counts as defaulted.
+            if "default" not in param_schema and not accepts_null(param_schema):
+                msg = (
+                    f"Validation error at {ref}: hidden element {param} "
+                    f"('{SchemaKey.UI_HIDDEN}' is True) must have a 'default'."
+                )
+                raise ValidationError(msg)
             continue
 
         if param == "type":

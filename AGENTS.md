@@ -84,25 +84,29 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 | `staging.py` | Preprocessing, data fetching, and preparation before execution |
 | `task.py` | Task / scientific execution logic |
 | `registration.py` | Database registration of results after execution |
-| `utils.py` | Task-specific helpers only; prefer `obi_one/utils/` when shareable |
+| `utils.py` | Task-specific helpers only (see Code Conventions for shared utilities) |
 
 - Put task-related blocks under `obi_one/scientific/blocks/<task_name>/`.
 - Create only modules that are actually needed.
-- Generic helpers (filesystem, format I/O, serialization, etc.) belong in `obi_one/utils/`.
-- Always check for and reuse existing helpers before adding new ones; keep utilities task-agnostic and avoid duplication across tasks.
+- For helpers and shared utilities, follow Code Conventions (reuse / centralization).
 
 ## entitysdk / database
 
 - Prefer `entitysdk.Client` and its methods over reimplementing the same behavior.
 - Use types from `entitysdk.types` instead of plain strings when those types exist.
-- Put database-related (entitysdk) helpers in `obi_one/db_sdk/`, not in task modules or `obi_one/utils/`.
+- Database helper placement: see Code Conventions.
 
 ## Code Conventions
 
+- Before adding any new function/helper, search `obi_one/utils/`, `obi_one/db_sdk/`, `obi_one/scientific/library/`, and entitysdk (`Client` methods, `entitysdk.registration`). Reuse; do not duplicate. If reusable DB/registration logic is missing from entitysdk, flag it for entitysdk instead of building a parallel version in obi-one.
+- Put generic helpers (filesystem, format I/O, serialization, etc.) in `obi_one/utils/`; keep them task-agnostic.
+- Put database-related (entitysdk) helpers in `obi_one/db_sdk/`, not in task modules or `obi_one/utils/`.
 - **Python 3.12** required (`>=3.12.2,<3.13`)
 - **Ruff** with `select = ["ALL"]` - very strict linting. Run `make format` before PRs.
-- **100 char line length**
+- **100 char line length** (Python code; not Markdown, see Documentation)
 - **Google-style docstrings** (`pydocstyle convention = "google"`)
+- Comments and docstrings should explain non-obvious intent, not restate the code. Prefer none over redundant; don't duplicate what argparse/signatures already convey.
+- Functions that perform actions must not silently no-op (e.g. `if x is None: return`) or swallow errors. Let them raise, and handle optional inputs and exceptions where the function is called.
 - **Pydantic v2** for all data models
 - Do not add `from __future__ import annotations`.
 - Avoid protected (`_`-prefixed) constants and classes. Do not import protected functions from other modules; rename them to public names first (drop the leading `_`).
@@ -119,6 +123,10 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - Tests use class-based organization (`class TestFoo:` with `def test_*` methods)
 - Env vars for testing loaded from `.env.test-local`
 - Always run `make format` before committing test files
+
+## Documentation
+
+- In Markdown files (`README.md`, `docs/`, `AGENTS.md`, etc.), do not hard wrap lines at a fixed width. Write each paragraph or list item on one line; a line break is allowed only at the end of a sentence.
 
 ## Dependencies
 

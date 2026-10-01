@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     # Path to the obi-one repository
     OBI_ONE_REPO: str = "https://github.com/openbraininstitute/obi-one.git"
 
-    # Path to launch script within the repository. Must contain code.py and requirements.txt.
+    # Launch script directory within the repository: contains main.py and dependencies/.
     OBI_ONE_LAUNCH_PATH: str = "launch_scripts/launch_task_for_single_config_asset"
 
     MOUNT_BASE_DIR: str | None = None

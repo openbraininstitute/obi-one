@@ -57,6 +57,9 @@ def validate_group_order(schema: dict, form_ref: str) -> None:  # ruff: ignore[c
 
         group = root_element_schema.get(SchemaKey.GROUP)
         group_order = root_element_schema.get(SchemaKey.GROUP_ORDER)
+        # Hidden elements don't need a group
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
+            continue
         if not group:
             msg = f"Validation error at {form_ref}: {root_element} must have a group"
             raise ValueError(msg)

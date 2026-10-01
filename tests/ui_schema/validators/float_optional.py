@@ -6,18 +6,18 @@ from .shared import determine_minimum_valid_numeric_value
 
 
 def validate_float_optional(schema: dict, param: str, ref: str) -> None:
-    any_of = schema.get("anyOf", [{}, {}])
-    if any_of[0].get("type") != "number":
+    any_of = schema.get("anyOf", [])
+    numeric_schema = next((branch for branch in any_of if branch.get("type") == "number"), None)
+    if numeric_schema is None:
         msg = (
             f"Validation error at {ref}: float_optional param {param} should "
-            "be a union with a 'number' as first element"
+            "include a 'number' branch"
         )
         raise ValidationError(msg) from None
 
-    if any_of[1].get("type") != "null":
+    if not any(branch.get("type") == "null" for branch in any_of):
         msg = (
-            f"Validation error at {ref}: float_optional param {param} should "
-            "be a union with 'null' as second element"
+            f"Validation error at {ref}: float_optional param {param} should include a null branch"
         )
         raise ValidationError(msg) from None
 

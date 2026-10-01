@@ -31,6 +31,28 @@ def resolve_ref(openapi_schema: dict, ref: str) -> dict:
     return resolved_node
 
 
+def accepts(schema: dict, value: object) -> bool:
+    try:
+        validate(value, schema)
+    except ValidationError:
+        return False
+    return True
+
+
+def accepts_null(schema: dict) -> bool:
+    """Return whether the schema permits ``null`` (a nullable field, implicitly None-defaulted).
+
+    Detected structurally (without resolving ``$ref`` or validating an instance): the schema is
+    nullable if it is ``type: null`` or has a ``null`` branch in ``anyOf``/``oneOf``.
+    """
+    if schema.get("type") == "null":
+        return True
+    for branch in (*schema.get("anyOf", []), *schema.get("oneOf", [])):
+        if isinstance(branch, dict) and branch.get("type") == "null":
+            return True
+    return False
+
+
 def validate_string(schema: dict, prop: str, ref: str) -> None:
     value = schema.get(prop)
 

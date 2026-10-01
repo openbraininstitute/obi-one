@@ -10,6 +10,7 @@ services:
     - |
       python -m pytest && coverage xml
     volumes:
+    - ./launch_scripts:/code/launch_scripts:ro
     - ./tests:/code/tests
     - ./examples:/code/examples
     - ./.coverage:/code/.coverage

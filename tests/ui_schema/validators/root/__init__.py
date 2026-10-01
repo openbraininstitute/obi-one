@@ -25,6 +25,12 @@ from .block_dictionary import validate_block_dictionary
 from .block_single import validate_block_single
 from .block_union import validate_root_block_union
 from .config import validate_config, validate_root_element
+from .emodel_optimisation_parameters import (
+    SECTION_LIST_CHOICE_KEYS,
+    validate_emodel_optimisation_parameters,
+    validate_section_list_choices,
+    validate_section_list_property_names,
+)
 from .shared import (
     validate_array,
     validate_block_usability_dictionary,
@@ -34,14 +40,18 @@ from .shared import (
 )
 
 __all__ = [
+    "SECTION_LIST_CHOICE_KEYS",
     "validate_array",
     "validate_block_dictionary",
     "validate_block_single",
     "validate_block_usability_dictionary",
     "validate_config",
     "validate_dict",
+    "validate_emodel_optimisation_parameters",
     "validate_group_order",
     "validate_root_block_union",
     "validate_root_element",
     "validate_scan_config_dependendent_block_components",
+    "validate_section_list_choices",
+    "validate_section_list_property_names",
 ]

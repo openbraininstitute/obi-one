@@ -62,6 +62,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     DEFAULT_BIOPHYSICAL_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
+    MULTI_POPULATION_CIRCUIT_PATH,
     POINT_POPULATION,
     VIRTUAL_POPULATION,
     build_config,
@@ -92,6 +93,7 @@ BIOPHYSICAL_NEURON_SETS = {
 }
 
 VIRTUAL_NEURON_SETS = {
+    "AllVirtualNeurons": AllVirtualNeurons(),
     "VirtualPopulationNeuronSet": VirtualPopulationNeuronSet(population=VIRTUAL_POPULATION),
     "VirtualPopulationIDNeuronSet": VirtualPopulationIDNeuronSet(
         population=VIRTUAL_POPULATION,
@@ -158,10 +160,17 @@ class TestUnionCoverage:
 
         assert union_member_names(NEURONSimulationNeuronSetUnion) - covered == set()
 
-    def test_all_virtual_neurons_is_not_selectable(self, circuit_config):
-        """``AllVirtualNeurons`` only exists as the injected default, not as a user choice."""
-        with pytest.raises(KeyError, match="AllVirtualNeurons"):
-            circuit_config().add(AllVirtualNeurons(), name="Virtual")
+    def test_all_virtual_neurons_is_selectable(self, circuit_config):
+        """``AllVirtualNeurons`` is a selectable neuron set, like the biophysical and point ones.
+
+        It may span multiple virtual populations, which spike-replay stimuli do not yet support;
+        that unsupported case is rejected at simulation build time (see the spike stimulus's
+        single-population guard), not by excluding the set from the config.
+        """
+        config = circuit_config()
+        config.add(AllVirtualNeurons(), name="Virtual")
+
+        assert "Virtual" in config.neuron_sets
 
 
 class TestNeuronSetsReachNodeSetsFile:
@@ -334,7 +343,12 @@ class TestCombinedNeuronSets:
 
         result = generate(config, tmp_path)
 
-        assert result.node_sets["Combined"]["node_id"] == [0, 1, 2, 3]
+        # A union is written as a SONATA compound node set, which libsonata resolves as the
+        # union of the sets it names -- no need to materialize the combined ID list here.
+        assert isinstance(result.node_sets["Combined"], list)
+        assert result.resolved_node_set_ids(
+            "Combined", MULTI_POPULATION_CIRCUIT_PATH, BIOPHYSICAL_POPULATION
+        ) == [0, 1, 2, 3]
 
     def test_intersection_and_difference(self, circuit, tmp_path):
         first = BiophysicalPopulationIDNeuronSet(
@@ -481,9 +495,10 @@ class TestDefaultNeuronSetInjection:
         result = generate(config, tmp_path)
 
         assert isinstance(config.neuron_sets[DEFAULT_BIOPHYSICAL_NODE_SET], AllBiophysicalNeurons)
+        # Written symbolically: the simulator resolves it against the circuit it stages itself,
+        # so generation never has to read node properties for this.
         assert result.node_sets[DEFAULT_BIOPHYSICAL_NODE_SET] == {
             "population": BIOPHYSICAL_POPULATION,
-            "node_id": list(range(10)),
         }
 
     def test_untargeted_stimulus_and_recording_get_the_default(self, circuit, tmp_path):

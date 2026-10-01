@@ -48,7 +48,8 @@ def validate_root_element(
     if validator is None:
         msg = (
             f"Validation error at {config_ref} {element}: 'ui_element' must be 'block_single',"
-            f" 'block_dictionary', or 'block_union'. Got: {ui_element}"
+            f" 'block_dictionary', 'block_union', or 'emodel_optimisation_parameters'."
+            f" Got: {ui_element}"
         )
         raise ValueError(msg)
 
@@ -80,6 +81,15 @@ def validate_config(form: dict, config_ref: str) -> None:
                 **root_element_schema,
                 **resolve_ref(openapi_schema, ref),
             }
+
+        if root_element_schema.get(SchemaKey.UI_HIDDEN):
+            if "default" not in root_element_schema:
+                msg = (
+                    f"Validation error at {config_ref} {root_element}: hidden root elements"
+                    f" ('{SchemaKey.UI_HIDDEN}' is True) must have a 'default'."
+                )
+                raise ValueError(msg)
+            continue
 
         validate_string(root_element_schema, "title", f"{root_element} at {config_ref}")
         validate_string(root_element_schema, "description", f"{root_element} at {config_ref}")

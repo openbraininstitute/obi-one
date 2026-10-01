@@ -5,6 +5,7 @@ from obi_one.scientific.blocks.distributions.constant import (
     FloatConstantDistribution,
     IntConstantDistribution,
 )
+from obi_one.scientific.blocks.synaptic_models.domains import is_valid_parameter_sample
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
@@ -87,24 +88,48 @@ def test_sampling_uses_explicit_distributions_and_preserves_values():
     [
         ("u_hill_coefficient_distribution", "u_hill_coefficient", 0.0),
         ("conductance_distribution", "conductance", -0.1),
-        ("conductance_scale_factor_distribution", "conductance_scale_factor", 0.0),
+        ("conductance_scale_factor_distribution", "conductance_scale_factor", -0.1),
         ("facilitation_time", "facilitation_time", 0.0),
         ("depression_time", "depression_time", 0.0),
         ("n_rrp_vesicles_distribution", "n_rrp_vesicles", 1.5),
         ("decay_time", "decay_time", 0.0),
         ("u_syn", "u_syn", 1.1),
         ("delay_distribution", "delay", -0.1),
-        ("conductance_distribution", "conductance", float("nan")),
     ],
 )
-def test_sampling_rejects_invalid_explicit_distribution_values(
+def test_sampling_clips_values_outside_a_parameter_domain(
     distribution_field, parameter_name, sample
 ):
+    """A distribution the user chose can draw outside what the model can represent.
+
+    That is the distribution being ill-suited to the parameter rather than broken, so the value
+    is pulled onto the domain and the run goes on. This used to raise, which made a Normal
+    unusable for any parameter whose tail crosses zero.
+    """
     model = ExcitatoryTsodyksMarkramSynapticModel(
         **{distribution_field: _distribution_reference(FloatConstantDistribution(value=sample))}
     )
+    _parameter, domain = model._sampled_fields()[distribution_field]
 
-    with pytest.raises(ValueError, match=parameter_name):
+    (drawn,) = model.sample(pd.DataFrame(index=[0]))[parameter_name]
+
+    assert not is_valid_parameter_sample(sample, domain), "the case no longer tests anything"
+    assert is_valid_parameter_sample(drawn, domain)
+
+
+def test_sampling_still_rejects_a_value_with_nowhere_to_be_clipped_to():
+    """NaN has no position on the line, so there is no edge of the domain to pull it to.
+
+    That means the distribution is broken rather than ill-suited, and inventing a number for it
+    would put a made-up value into the circuit with nothing recording it.
+    """
+    model = ExcitatoryTsodyksMarkramSynapticModel(
+        conductance_distribution=_distribution_reference(
+            FloatConstantDistribution(value=float("nan"))
+        )
+    )
+
+    with pytest.raises(ValueError, match="conductance"):
         model.sample(pd.DataFrame(index=[0]))
 
 
@@ -113,6 +138,7 @@ def test_sampling_rejects_invalid_explicit_distribution_values(
     [
         ("u_hill_coefficient_distribution", "u_hill_coefficient", 1.0),
         ("conductance_distribution", "conductance", 0.0),
+        ("conductance_scale_factor_distribution", "conductance_scale_factor", 0.0),
         ("n_rrp_vesicles_distribution", "n_rrp_vesicles", 1.0),
         ("u_syn", "u_syn", 0.0),
         ("u_syn", "u_syn", 1.0),
@@ -126,3 +152,36 @@ def test_sampling_accepts_valid_parameter_boundaries(distribution_field, paramet
     samples = model.sample(pd.DataFrame(index=[0]))
 
     assert samples[parameter_name].tolist() == [sample]
+
+
+def test_shared_within_is_ignored_by_default():
+    """With no sharing flag set, sampling runs normally."""
+    model = ExcitatoryTsodyksMarkramSynapticModel()
+
+    samples = model.sample(pd.DataFrame(index=[0, 1]))
+
+    assert len(samples) == 2
+
+
+@pytest.mark.parametrize(
+    "shared_within_field",
+    ["u_syn_shared_within", "conductance_distribution_shared_within", "delay_shared_within"],
+)
+def test_sampling_rejects_unimplemented_shared_within(shared_within_field):
+    """Setting a `*_shared_within` flag fails loudly rather than being silently ignored."""
+    model = ExcitatoryTsodyksMarkramSynapticModel(**{shared_within_field: True})
+
+    with pytest.raises(NotImplementedError, match="shared_within"):
+        model.sample(pd.DataFrame(index=[0]))
+
+
+def test_shared_within_error_names_every_enabled_flag():
+    model = ExcitatoryTsodyksMarkramSynapticModel(
+        u_syn_shared_within=True, delay_shared_within=True
+    )
+
+    with pytest.raises(NotImplementedError) as exc_info:
+        model.sample(pd.DataFrame(index=[0]))
+
+    assert "u_syn_shared_within" in str(exc_info.value)
+    assert "delay_shared_within" in str(exc_info.value)

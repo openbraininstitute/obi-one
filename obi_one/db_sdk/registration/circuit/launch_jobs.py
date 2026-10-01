@@ -5,16 +5,14 @@ from uuid import UUID
 
 import httpx
 
+from obi_one.utils.versions import release_tag_ref
+
 L = logging.getLogger(__name__)
 
 DEFAULT_OBI_ONE_REPO = "https://github.com/openbraininstitute/obi-one.git"
 VALIDATION_LAUNCH_PATH = "launch_scripts/launch_circuit_validation"
 ASSET_GENERATION_LAUNCH_PATH = "launch_scripts/launch_circuit_asset_generation"
 VALIDATION_IMAGE_TYPE = "python_3_12_openmpi5_neuron9_neurodamus"
-
-
-def _app_tag(app_version: str | None) -> str:
-    return (app_version or "0.0.0").split("-")[0]
 
 
 def submit_circuit_validation_job(
@@ -73,7 +71,7 @@ def submit_circuit_validation_job(
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": f"tag:{_app_tag(app_version)}",
+            "ref": release_tag_ref(app_version),
             "path": f"{VALIDATION_LAUNCH_PATH}/main.py",
             "dependencies": f"{VALIDATION_LAUNCH_PATH}/dependencies/default.txt",
         },
@@ -140,7 +138,7 @@ def submit_circuit_asset_generation_job(
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": f"tag:{_app_tag(app_version)}",
+            "ref": release_tag_ref(app_version),
             "path": f"{ASSET_GENERATION_LAUNCH_PATH}/main.py",
             "dependencies": f"{ASSET_GENERATION_LAUNCH_PATH}/dependencies/default.txt",
         },

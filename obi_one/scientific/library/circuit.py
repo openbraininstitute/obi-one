@@ -1,14 +1,19 @@
+import json
 import logging
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import bluepysnap as snap
+import libsonata
 import morphio
 import numpy as np
 from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
+    ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
+)
 from obi_one.scientific.library.circuit_metrics import (
     TYPES_OF_BIOPHYS_NODES,
     TYPES_OF_POINT_NODES,
@@ -22,6 +27,13 @@ from obi_one.scientific.library.morphology_loader import (
 L = logging.getLogger(__name__)
 
 CIRCUIT_MOD_DIR = "mod"
+
+# SONATA `alternate_morphologies` keys, mapped to their file extension. Order matters: it is
+# also the format-resolution priority used by app.services.circuit_visualization.resolve_morph_path.
+ALTERNATE_MORPHOLOGY_FORMATS: dict[str, Literal["asc", "h5"]] = {
+    "neurolucida-asc": "asc",
+    "h5v1": "h5",
+}
 
 
 class Circuit(OBIBaseModel):
@@ -274,37 +286,60 @@ class Circuit(OBIBaseModel):
         )
         raise FileNotFoundError(msg)
 
-    def _alternate_morphology_bases(self, population: str | None) -> Iterator[tuple[Path, str]]:
-        """Yield `alternate_morphologies` bases, which may be directories or `.h5` containers."""
-        alternates = self._population_config(population).get("alternate_morphologies") or {}
+    def _alternate_morphology_base(self, population: str | None, key: str) -> Path | None:
+        """The resolved `alternate_morphologies` base for one SONATA key, if the circuit has it.
 
-        for key, extension in (("h5v1", ".h5"), ("neurolucida-asc", ".asc")):
-            raw_path = alternates.get(key)
-            if raw_path:
-                yield self._resolve_circuit_path(raw_path), extension
+        The base may be a directory or an `.h5` container.
+        """
+        alternates = self._population_config(population).get("alternate_morphologies") or {}
+        raw_path = alternates.get(key)
+        return self._resolve_circuit_path(raw_path) if raw_path else None
 
     def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
-        """Load a node's morphology from `morphologies_dir` or `alternate_morphologies`.
+        """Load a node's morphology, preferring h5, then swc, then asc.
 
-        The fallback exists because containerized circuits hold every morphology in a single
-        `.h5` container, so there is no per-node file for `get_morphology_path` to resolve.
+        A simulation reads the h5 morphology when the circuit carries one - it is the format the
+        pipeline treats as canonical - and only falls back to the swc under `morphologies_dir` or
+        the asc alternate when it does not. The alternates also cover containerized circuits,
+        which hold every morphology in a single `.h5` container with no per-node file for
+        `get_morphology_path` to resolve.
         """
-        try:
-            return load_morphology_nrn_order(
-                self.get_morphology_path(node_id, population=population)
-            )
-        except (FileNotFoundError, KeyError):
-            pass
-
         morph_name = self.get_morphology_name(node_id, population=population)
         attempted: list[str] = []
 
-        for base, extension in self._alternate_morphology_bases(population):
+        def _from_alternate(key: str) -> morphio.Morphology | None:
+            base = self._alternate_morphology_base(population, key)
+            if base is None:
+                return None
+            extension = f".{ALTERNATE_MORPHOLOGY_FORMATS[key]}"
             attempted.append(f"{base} ({extension})")
             try:
                 return load_morphology_nrn_order_from_collection(base, morph_name, extension)
             except (morphio.MorphioError, OSError, RuntimeError) as exc:
                 L.debug("Could not load '%s' from %s: %s", morph_name, base, exc)
+                return None
+
+        def _from_morphologies_dir() -> morphio.Morphology | None:
+            try:
+                path = self.get_morphology_path(node_id, population=population)
+            except (FileNotFoundError, KeyError):
+                return None
+            attempted.append(str(path))
+            try:
+                return load_morphology_nrn_order(path)
+            except (morphio.MorphioError, OSError, RuntimeError) as exc:
+                L.debug("Could not load '%s' from %s: %s", morph_name, path, exc)
+                return None
+
+        # h5 (canonical for simulation), then the swc under morphologies_dir, then the asc.
+        for attempt in (
+            lambda: _from_alternate("h5v1"),
+            _from_morphologies_dir,
+            lambda: _from_alternate("neurolucida-asc"),
+        ):
+            morphology = attempt()
+            if morphology is not None:
+                return morphology
 
         msg = (
             f"Could not load morphology '{morph_name}' for node_id={node_id}, "
@@ -328,3 +363,60 @@ class Circuit(OBIBaseModel):
             msg = f"{path} is not a mechanisms directory."
             raise NotADirectoryError(msg)
         return path
+
+
+def ensure_mechanisms_dir(
+    circuit_config_path: Path, edge_population_name: str | None = None
+) -> Path:
+    """The circuit's mechanisms directory, declaring it in the config if not already set.
+
+    When ``edge_population_name`` is given, the directory is read through libsonata
+    (`edge_population_properties(...).mechanisms_dir`) rather than the raw config, so this sees
+    exactly what the simulator would: a value set directly on that population, falling back to
+    `components.mechanisms_dir`, with manifest variables (e.g. `$BASE_DIR`) already substituted
+    and the path already absolute - libsonata resolves both of those, and a hand-rolled
+    reimplementation of either would risk disagreeing with it (and does; the population-level
+    override was missed by an earlier version of this function). When it is ``None`` there is no
+    edge population to ask (e.g. a synaptome with no incoming synapses); libsonata only exposes
+    `mechanisms_dir` through an edge population, so this case skips the lookup and takes the
+    fallback branch below directly - it declares and returns `CIRCUIT_MOD_DIR` rather than trying
+    to honor an existing `components.mechanisms_dir`. That is only appropriate for a freshly
+    staged circuit that has not declared one; pass an edge population whenever one exists.
+
+    Some circuits keep their compiled mechanisms in `CIRCUIT_MOD_DIR` without naming it anywhere
+    in the config - libsonata reports that as `""`, not as this repo's fallback folder, so a `""`
+    is treated the same as an explicit absence: falls back to that folder rather than being
+    treated as "no mechanisms directory", and the fallback is written into `components` (never
+    into the population, which the config may not name explicitly at all), so the output circuit
+    states explicitly where its mechanisms live rather than relying on the same unstated
+    convention. Directory created if it does not exist yet, since a fresh copy of a circuit that
+    relied on the convention may not have had one either.
+
+    The intrinsic AMPA/GABA mini receptor mechanisms are always staged into the directory: every
+    neuron carries them independent of which synapses are placed, and simulations name them in
+    ``conditions.mechanisms`` at every scale, so they must be present for a simulator to compile.
+    A file already in the directory is left untouched, so a circuit's own copy always wins.
+    TODO: make this configurable per simulation once the design is settled
+    (openbraininstitute/prod-circuit-simulation#252).
+    """
+    mechanisms_dir_raw = None
+    if edge_population_name is not None:
+        circuit = libsonata.CircuitConfig.from_file(str(circuit_config_path))
+        mechanisms_dir_raw = circuit.edge_population_properties(edge_population_name).mechanisms_dir
+
+    if mechanisms_dir_raw:
+        mechanisms_dir = Path(mechanisms_dir_raw)
+    else:
+        with circuit_config_path.open(encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+        cfg_dict.setdefault("components", {})["mechanisms_dir"] = f"$BASE_DIR/{CIRCUIT_MOD_DIR}"
+        with circuit_config_path.open("w", encoding="utf-8") as f:
+            json.dump(cfg_dict, f, indent=2)
+        mechanisms_dir = circuit_config_path.parent / CIRCUIT_MOD_DIR
+
+    mechanisms_dir.mkdir(parents=True, exist_ok=True)
+
+    ExcitatoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)
+    InhibitoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)
+
+    return mechanisms_dir
