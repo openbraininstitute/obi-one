@@ -12,12 +12,13 @@ from obp_accounting_sdk.constants import ServiceSubtype
 from app.application import app
 from app.config import settings
 from app.dependencies.compute_cell import get_compute_cell
-from app.mappings import APP_TAG, OBI_ONE_CODE_PATH, OBI_ONE_DEPS_DIR, TASK_DEFINITIONS
+from app.mappings import OBI_ONE_CODE_PATH, OBI_ONE_DEPS_DIR, TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.task import TaskAccountingInfo, TaskLaunchInfo
 from app.services.accounting import _DURATION_BILLING_SCALES, CIRCUIT_SCALE_TO_SERVICE_SUBTYPE
 from app.types import TaskType
+from obi_one.utils.versions import release_tag_ref
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID, assert_request
 
@@ -611,7 +612,7 @@ def test_task_launch_success__circuit_simulation(
                 "code": {
                     "type": "python_repository",
                     "location": "https://github.com/openbraininstitute/obi-one.git",
-                    "ref": APP_TAG,
+                    "ref": release_tag_ref(settings.APP_VERSION),
                     "path": OBI_ONE_CODE_PATH,
                     "dependencies": str(OBI_ONE_DEPS_DIR / "default.txt"),
                     "capabilities": {"private_packages": False, "env_secrets": []},
