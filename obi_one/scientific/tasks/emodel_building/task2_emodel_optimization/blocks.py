@@ -441,7 +441,7 @@ class DistanceDependentDistribution(Block):
             "Expression using {value} and {distance}; custom expressions may also use "
             "placeholders defined by the corresponding parameter configuration."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE},
     )
     soma_ref_location: float = Field(
         default=0.5,
@@ -525,13 +525,9 @@ class UniformDistanceDependentDistribution(DistanceDependentDistribution):
     function: None = Field(
         default=None,
         frozen=True,
-        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description="Expression using {value} and {distance}.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT,
-            SchemaKey.UI_HIDDEN: True,
-        },
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
 
