@@ -33,7 +33,6 @@ from app.services.morphology import (
 )
 from obi_one.db_sdk.registration.morphology import (
     register_morphometrics,
-    try_generate_and_upload_mesh,
     upload_morphology_content,
     upload_morphology_file,
 )
@@ -62,7 +61,6 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 class MorphologyRegistrationResponse(BaseModel):
     entity_id: str
     measurement_entity_id: str
-    mesh_asset_id: str | None
     status: str
     morphology_name: str
 
@@ -263,20 +261,6 @@ def _prepare_entity_payload(
     return entity_payload
 
 
-def _resolve_swc_bytes_for_mesh(
-    _client: Any,
-    converted_files: MorphologyFiles,
-    file_extension: str,
-    content: bytes,
-) -> bytes | None:
-    """Return the SWC bytes to use for mesh generation, or None if not applicable."""
-    if converted_files.swc and converted_files.swc.exists():
-        return converted_files.swc.read_bytes()
-    if file_extension == ".swc":
-        return content
-    return None
-
-
 def _upload_converted_morphology_assets(
     client: Client,
     entity_uuid: UUID,
@@ -299,7 +283,7 @@ async def _run_pipeline(
     content: bytes,
     entity_payload: dict[str, Any],
     single_point_soma_by_ext: dict[str, bool],
-) -> tuple[str, str, str | None]:
+) -> tuple[str, str]:
     with ExitStack() as stack:
         temp_file_obj = stack.enter_context(
             tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
@@ -343,15 +327,7 @@ async def _run_pipeline(
         except EntitySDKError as err:
             _raise_entitysdk_failure("registration", err)
 
-        swc_bytes = _resolve_swc_bytes_for_mesh(client, converted_files, file_extension, content)
-        mesh_asset_id: str | None = None
-        if swc_bytes is not None:
-            mesh_asset = await run_in_threadpool(
-                lambda: try_generate_and_upload_mesh(client, entity_uuid, swc_bytes=swc_bytes)
-            )
-            mesh_asset_id = str(mesh_asset.id) if mesh_asset else None
-
-        return str(entity_uuid), str(measurement_annotation.id), mesh_asset_id
+        return str(entity_uuid), str(measurement_annotation.id)
 
 
 @router.post(
@@ -359,7 +335,7 @@ async def _run_pipeline(
     summary="Calculate morphology metrics and register entities.",
     description=(
         "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
-        "asset, measurements, and (when possible) a GLB surface mesh."
+        "assets, and measurements."
     ),
 )
 async def morphology_metrics_calculation(
@@ -380,7 +356,7 @@ async def morphology_metrics_calculation(
         or DEFAULT_SINGLE_POINT_SOMA_BY_EXT
     )
     try:
-        entity_id, measurement_entity_id, mesh_asset_id = await _run_pipeline(
+        entity_id, measurement_entity_id = await _run_pipeline(
             client=client,
             morphology_name=morphology_name,
             file_extension=file_extension,
@@ -403,7 +379,6 @@ async def morphology_metrics_calculation(
     return MorphologyRegistrationResponse(
         entity_id=entity_id,
         measurement_entity_id=measurement_entity_id,
-        mesh_asset_id=mesh_asset_id,
         status="success",
         morphology_name=morphology_name,
     )
