@@ -20,6 +20,15 @@ OBI_ONE_LINE_REGEX = re.compile(
     r"\s*(?P<spec>[<>=!~;@].*)?$"  # optional version specifier / marker / @ url
 )
 
+# Marks a requirement whose version comes from the task's runtime image and is not
+# published on an index (e.g. a NEURON dev build baked into the neurodamus image).
+# Such a line is kept out of resolution and written verbatim into the compiled
+# ``.txt``. Syntax: ``<requirement>  # image-local``.
+IMAGE_LOCAL_COMMENT = "# image-local"
+IMAGE_LOCAL_LINE_REGEX = re.compile(
+    rf"^(?P<requirement>[A-Za-z0-9][^#]*?)\s*{re.escape(IMAGE_LOCAL_COMMENT)}$"
+)
+
 # A clean obi-one release version: calver ``YYYY.M.N`` with nothing else, matching
 # the setuptools_scm ``tag_regex`` in pyproject.toml (without the ``v`` prefix,
 # which obi-one releases do not use).

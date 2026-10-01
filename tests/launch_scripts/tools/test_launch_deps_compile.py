@@ -92,12 +92,12 @@ class TestBuildResolveInput:
     def test_obi_one_line_rewritten_to_local_project(self, tmp_path):
         f = tmp_path / "reqs.in"
         f.write_text("obi-one[connectivity]\nnumpy\n", encoding="utf-8")
-        resolved, obi_one_lines = launch_deps_compile._build_resolve_input(f)
+        resolver_input = launch_deps_compile._build_resolve_input(f)
         # The obi-one line is preserved verbatim for the output header...
-        assert obi_one_lines == ["obi-one[connectivity]"]
+        assert resolver_input.obi_one_lines == ("obi-one[connectivity]",)
         # ...and rewritten to the local project path (with extras) for resolution.
         repo = launch_deps_compile.REPO_ROOT.as_posix()
-        resolved_lines = resolved.splitlines()
+        resolved_lines = resolver_input.text.splitlines()
         assert f"{repo}[connectivity]" in resolved_lines
         assert "numpy" in resolved_lines
         # No bare "obi-one[...]" requirement line remains (the repo dir may itself
@@ -114,10 +114,49 @@ class TestBuildResolveInput:
     def test_no_obi_one_passthrough(self, tmp_path):
         f = tmp_path / "reqs.in"
         f.write_text("# comment\nnumpy==2.0\n\n", encoding="utf-8")
-        resolved, obi_one_lines = launch_deps_compile._build_resolve_input(f)
-        assert obi_one_lines == []
-        assert "numpy==2.0" in resolved
-        assert "# comment" in resolved
+        resolver_input = launch_deps_compile._build_resolve_input(f)
+        assert resolver_input.obi_one_lines == ()
+        assert "numpy==2.0" in resolver_input.text
+        assert "# comment" in resolver_input.text
+
+    def test_image_local_line_excluded_from_resolution(self, tmp_path):
+        f = tmp_path / "reqs.in"
+        f.write_text("obi-one\nneuron==9.0.2.dev64  # image-local\nnumpy\n", encoding="utf-8")
+        resolver_input = launch_deps_compile._build_resolve_input(f)
+        assert resolver_input.image_local_lines == ("neuron==9.0.2.dev64  # image-local",)
+        assert "neuron" not in resolver_input.text
+        assert "numpy" in resolver_input.text.splitlines()
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "neuron==9.0.2.dev64",  # unmarked: resolved like any other requirement
+            "# image-local",  # bare comment, no requirement
+            "neuron==9.0.2.dev64  # image-local build",  # marker must end the line
+        ],
+    )
+    def test_unmarked_lines_are_resolved(self, tmp_path, line):
+        f = tmp_path / "reqs.in"
+        f.write_text(f"{line}\n", encoding="utf-8")
+        resolver_input = launch_deps_compile._build_resolve_input(f)
+        assert resolver_input.image_local_lines == ()
+        assert line in resolver_input.text
+
+
+class TestRequirementName:
+    @pytest.mark.parametrize(
+        ("line", "expected"),
+        [
+            ("neuron==9.0.2.dev64  # image-local", "neuron"),
+            ("Ultra_Liser>=2", "ultra-liser"),
+        ],
+    )
+    def test_normalized_name(self, line, expected):
+        assert launch_deps_compile.requirement_name(line) == expected
+
+    def test_unparsable_line_raises(self):
+        with pytest.raises(SystemExit, match="Could not read a package name"):
+            launch_deps_compile.requirement_name("# not a requirement")
 
 
 class TestCurrentReleasePin:
@@ -176,6 +215,13 @@ class TestExistingPins:
         assert pins == "numpy==2.4.6\npandas==2.3.3\n"
         assert "obi-one" not in pins
         assert "#" not in pins
+
+    def test_strips_image_local_pins(self, tmp_path):
+        # Seeding the resolver with a version that is not on any index would make
+        # the resolution unsatisfiable.
+        f = tmp_path / "out.txt"
+        f.write_text("neuron==9.0.2.dev64  # image-local\nnumpy==2.4.6\n", encoding="utf-8")
+        assert launch_deps_compile._existing_pins(f) == "numpy==2.4.6\n"
 
 
 class TestPythonFloorVersion:
@@ -365,3 +411,24 @@ class TestCompileInFile:
         content = launch_deps_compile.compile_in_file(in_file, obi_one_pin=obi_one_pin)
         body = [line for line in content.splitlines() if not line.startswith("#")]
         assert body == [expected_line, "numpy==2.0"]
+
+    def test_image_local_line_written_and_not_emitted(self, tmp_path, monkeypatch):
+        in_file = tmp_path / "reqs.in"
+        in_file.write_text("obi-one\nneuron==9.0.2.dev64  # image-local\n", encoding="utf-8")
+        commands = []
+
+        def fake_run(cmd, **_):
+            commands.append(cmd)
+            # uv would resolve neuron's own closure but not emit neuron itself.
+            Path(cmd[cmd.index("--output-file") + 1]).write_text("numpy==2.0\n", encoding="utf-8")
+
+        monkeypatch.setattr(launch_deps_compile.subprocess, "run", fake_run)
+        content = launch_deps_compile.compile_in_file(in_file)
+        excluded = [
+            cmd
+            for flag, cmd in zip(commands[0], commands[0][1:], strict=False)
+            if flag == "--no-emit-package"
+        ]
+        assert excluded == ["neuron", "obi-one"]
+        body = [line for line in content.splitlines() if not line.startswith("#")]
+        assert body == ["obi-one", "neuron==9.0.2.dev64  # image-local", "numpy==2.0"]

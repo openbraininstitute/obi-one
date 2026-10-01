@@ -16,6 +16,10 @@ currently found in the committed ``*.txt`` files: the release workflow
 (``.github/workflows/release-pin.yml``) re-pins it with ``launch_deps_pin.py`` for
 each release, and compiling keeps that pin.
 
+Requirements marked ``# image-local`` are likewise excluded and copied verbatim: they
+pin a build that only exists in the task's runtime image (see
+docs/internal/launch-script-dependencies.md).
+
 Run ``launch_deps_compile.py --help`` for the arguments.
 """
 
@@ -33,7 +37,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from launch_deps_common import LAUNCH_SCRIPTS_DIR, OBI_ONE_LINE_REGEX, RELEASE_PIN_REGEX, REPO_ROOT
+from launch_deps_common import (
+    IMAGE_LOCAL_LINE_REGEX,
+    LAUNCH_SCRIPTS_DIR,
+    OBI_ONE_LINE_REGEX,
+    RELEASE_PIN_REGEX,
+    REPO_ROOT,
+)
 
 # Resolution target for the runtime executors. The Python version is derived from
 # the ``requires-python`` floor (see ``_python_floor_version``).
@@ -72,6 +82,19 @@ class CompileResult:
     content: str | subprocess.CalledProcessError
     seconds: float
     index: str
+
+
+@dataclass(frozen=True)
+class ResolverInput:
+    """Resolver input built from one ``.in`` file.
+
+    ``text`` is what uv resolves; ``obi_one_lines`` and ``image_local_lines`` are the
+    verbatim ``.in`` lines excluded from resolution and written into the ``.txt``.
+    """
+
+    text: str
+    obi_one_lines: tuple[str, ...]
+    image_local_lines: tuple[str, ...]
 
 
 def resolve_in_files(paths: list[str]) -> list[Path]:
@@ -128,6 +151,15 @@ def check_in_txt_pairing(in_files: list[Path]) -> bool:
 
 def _normalize_name(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def requirement_name(line: str) -> str:
+    """Return the normalized package name of requirement ``line``."""
+    m = REQUIREMENT_NAME_REGEX.match(line)
+    if not m:
+        msg = f"Could not read a package name from requirement line {line!r}"
+        raise SystemExit(msg)
+    return _normalize_name(m.group(1))
 
 
 def needs_private_index(in_file: Path) -> bool:
@@ -210,21 +242,26 @@ def current_release_pin(txt_files: Iterable[Path]) -> str | None:
     return next(iter(files_by_version), None)
 
 
-def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
+def _build_resolve_input(in_file: Path) -> ResolverInput:
     """Build the resolver input, rewriting the obi-one line to the local checkout.
 
     Replacing ``obi-one[extras]`` with the local project path resolves obi-one's
-    closure from the current checkout rather than a published release. Returns the
-    rewritten input and the verbatim obi-one lines (to preserve in the output).
-    Raises SystemExit if an obi-one line of the ``.in`` is not bare, since only the
-    release workflow pins obi-one.
+    closure from the current checkout rather than a published release. Lines marked
+    ``# image-local`` are dropped from the resolver input, since the version they pin
+    exists only in the task's runtime image. Both kinds are returned verbatim, to be
+    written into the ``.txt``. Raises SystemExit if an obi-one line of the ``.in`` is
+    not bare, since only the release workflow pins obi-one.
     """
     obi_one_lines: list[str] = []
+    image_local_lines: list[str] = []
     resolved_lines: list[str] = []
     for raw in in_file.read_text(encoding="utf-8").splitlines():
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             resolved_lines.append(raw)
+            continue
+        if IMAGE_LOCAL_LINE_REGEX.match(stripped):
+            image_local_lines.append(stripped)
             continue
         m = OBI_ONE_LINE_REGEX.match(stripped)
         if m:
@@ -237,14 +274,18 @@ def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
             resolved_lines.append(f"{REPO_ROOT.as_posix()}{extras_suffix}")
         else:
             resolved_lines.append(raw)
-    return "\n".join(resolved_lines) + "\n", obi_one_lines
+    return ResolverInput(
+        "\n".join(resolved_lines) + "\n", tuple(obi_one_lines), tuple(image_local_lines)
+    )
 
 
 def _existing_pins(out_file: Path) -> str:
-    """Return the committed ``.txt`` pins (header/obi-one/comments stripped).
+    """Return the committed ``.txt`` pins (header/obi-one/image-local/comments stripped).
 
     uv preserves the pins from an existing output file unless a change is forced;
-    seeding a compile with these gives the pin-preservation behavior.
+    seeding a compile with these gives the pin-preservation behavior. Image-local
+    lines are left out: their version is not on any index, so seeding them would make
+    the resolution unsatisfiable.
     """
     if not out_file.exists():
         return ""
@@ -253,7 +294,7 @@ def _existing_pins(out_file: Path) -> str:
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if OBI_ONE_LINE_REGEX.match(stripped):
+        if OBI_ONE_LINE_REGEX.match(stripped) or IMAGE_LOCAL_LINE_REGEX.match(stripped):
             continue
         kept.append(stripped)
     return ("\n".join(kept) + "\n") if kept else ""
@@ -273,7 +314,7 @@ def compile_in_file(
     ``entitysdk`` is always upgraded to its latest version regardless. The obi-one
     lines are written pinned to ``obi_one_pin``, or bare if it is None.
     """
-    resolve_input, obi_one_lines = _build_resolve_input(in_file)
+    resolver_input = _build_resolve_input(in_file)
     out_file = in_file.with_suffix(".txt")
 
     out_fd, out_name = tempfile.mkstemp(suffix=".txt")
@@ -282,7 +323,7 @@ def compile_in_file(
     in_fd, in_name = tempfile.mkstemp(suffix=".in")
     tmp_in = Path(in_name)
     with os.fdopen(in_fd, "w", encoding="utf-8") as tmp_in_f:
-        tmp_in_f.write(resolve_input)
+        tmp_in_f.write(resolver_input.text)
     try:
         # Seed the output with the current pins so uv preserves them, unless
         # upgrading everything.
@@ -313,8 +354,11 @@ def compile_in_file(
         if extra_index is not None:
             cmd += ["--extra-index-url", extra_index]
         # Discover obi-one's closure from the local project but do not emit obi-one
-        # itself: its line is written from the .in with the release pin.
-        if obi_one_lines:
+        # itself: its line is written from the .in with the release pin. Image-local
+        # packages are likewise written from the .in, with the image's version.
+        for line in resolver_input.image_local_lines:
+            cmd += ["--no-emit-package", requirement_name(line)]
+        if resolver_input.obi_one_lines:
             cmd += ["--no-emit-package", OBI_ONE_PACKAGE]
 
         # Output is captured so that parallel compiles do not interleave; on failure
@@ -330,14 +374,20 @@ def compile_in_file(
         "launch_scripts/tools/launch_deps_compile.py.\n"
         "# To update, run: make compile-launch-deps or make upgrade-launch-deps\n"
     )
-    if obi_one_lines:
+    if resolver_input.obi_one_lines:
         header += (
             "# The obi-one pin is updated for each release by .github/workflows/release-pin.yml\n"
             "# and kept by compiling.\n"
         )
     pin_suffix = f"=={obi_one_pin}" if obi_one_pin else ""
-    obi_one_block = "".join(f"{line}{pin_suffix}\n" for line in obi_one_lines)
-    return header + obi_one_block + compiled
+    obi_one_block = "".join(f"{line}{pin_suffix}\n" for line in resolver_input.obi_one_lines)
+    image_local_block = ""
+    if resolver_input.image_local_lines:
+        image_local_block = (
+            "# Provided by the task's runtime image, copied from the .in and not resolved:\n"
+            + "".join(f"{line}\n" for line in resolver_input.image_local_lines)
+        )
+    return header + obi_one_block + image_local_block + compiled
 
 
 def _compile_or_error(in_file: Path, *, upgrade: bool, obi_one_pin: str | None) -> CompileResult:
