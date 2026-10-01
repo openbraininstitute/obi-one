@@ -374,8 +374,8 @@ class TestPrivateIndex:
         [
             ("obi-one\nultraliser==2.2.7\n", None, True),
             ("obi-one\nUltra_Liser>=2\n", None, False),  # different normalized name
-            ("obi-one\nNeuroMorphoMesh\n", None, True),
-            ("obi-one[meshing]\n", "obi-one[meshing]\nneuromorphomesh==1.0\n", True),  # transitive
+            ("obi-one\nUltraLiser\n", None, True),
+            ("obi-one[meshing]\n", "obi-one[meshing]\nultraliser==2.2.9\n", True),  # transitive
             ("obi-one\nnumpy\n# ultraliser\n", "obi-one\nnumpy==2.0\n", False),
             ("obi-one\nultraliser-tools\n", None, False),
         ],
