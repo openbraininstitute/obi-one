@@ -24,7 +24,6 @@ from app.endpoints import (
     circuit_visualization,
     config_validation,
     contributor,
-    convert_morphology_to_registered_mesh,
     count_scan_coordinates,
     electrical_cell_recording_properties,
     ephys_metrics,
@@ -183,7 +182,6 @@ app.include_router(circuit_customization.router)
 app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
-app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(electrical_cell_recording_properties.router)
 app.include_router(ephys_metrics.router)

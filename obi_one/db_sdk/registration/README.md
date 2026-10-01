@@ -26,10 +26,10 @@ publication links.
   `tasks/circuit_extraction/task.py` and `tasks/synapse_parameterization/task.py`.
 - **FastAPI endpoints that register.** The registration there is thin and entangled with
   request handling. Leave it in `app/endpoints/`.
-- **Compute helpers.** Meshing, morphometrics, SONATA manipulation and the like stay in
+- **Compute helpers.** Morphometrics, SONATA manipulation and the like stay in
   `scientific/library/` and `utils/`. Importing them from here is fine and already done —
   `circuit/generate.py` imports `obi_one.utils.circuit`, and `morphology/register.py`
-  imports `scientific/library/morphology_mesh.py`.
+  imports `scientific/library/morphology_measurement_annotation.py`.
 - **Staging and read helpers.** `db_sdk.resolve_circuit` fetches and stages a circuit for
   reading rather than registering one, so it stays in `db_sdk.py` despite being
   circuit-specific.
@@ -67,13 +67,6 @@ them is a real refactor, not a file move.
 About 48 lines registering `SimulatableExtracellularRecordingArray` plus three assets
 (`register_entity` at :257, uploads at :260/:276/:285), inline in `execute()` and mixed with
 BlueRecording weight computation.
-
-### 4. GLB mesh upload — deduplicate first
-
-`library/morphology_mesh.py:47` and `app/endpoints/convert_morphology_to_registered_mesh.py:108`
-are both called `mesh_and_upload` and both upload an `AssetLabel.cell_surface_mesh` GLB.
-The endpoint also has `_upload_glb_asset` at :71. Resolve the duplication before deciding
-what, if anything, moves — the upload half would belong in `registration/morphology/assets.py`.
 
 ### Deliberately left alone
 
