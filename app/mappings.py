@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from pathlib import Path
 
 from entitysdk import models
@@ -19,23 +20,52 @@ from app.schemas.task import (
 )
 from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
+from obi_one.utils.versions import release_tag_ref
 
-APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
 
-TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
-    TaskType.circuit_extraction: TaskDefinition(
+def _obi_one_code(
+    deps_name: str,
+    *,
+    capabilities: Capabilities | None = None,
+) -> PythonRepositoryCode:
+    """Standard obi-one launch code: the obi-one repo at the service's release tag, running main.py.
+
+    Legacy tasks with a different repo/entrypoint build ``PythonRepositoryCode`` directly.
+    """
+    return PythonRepositoryCode(
+        location=settings.OBI_ONE_REPO,
+        ref=release_tag_ref(settings.APP_VERSION),
+        path=OBI_ONE_CODE_PATH,
+        dependencies=str(OBI_ONE_DEPS_DIR / deps_name),
+        capabilities=capabilities or Capabilities(),
+    )
+
+
+def _build_task_definitions(
+    definitions: Iterable[AnyTaskDefinition],
+) -> dict[TaskType, AnyTaskDefinition]:
+    """Index ``definitions`` by their own ``task_type``, rejecting duplicates.
+
+    Keying by ``task_type`` means each task type is written once per definition.
+    """
+    result: dict[TaskType, AnyTaskDefinition] = {}
+    for definition in definitions:
+        if definition.task_type in result:
+            msg = f"Duplicate task definition for {definition.task_type!r}"
+            raise ValueError(msg)
+        result[definition.task_type] = definition
+    return result
+
+
+_TASK_DEFINITIONS: list[AnyTaskDefinition] = [
+    TaskDefinition(
         task_type=TaskType.circuit_extraction,
         config_type=TaskConfigType.circuit_extraction__config,
         activity_type=TaskActivityType.circuit_extraction__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "circuit_extraction.txt"),
-        ),
+        code=_obi_one_code("circuit_extraction.txt"),
         resources=MachineResources(
             cores=1,
             memory=2,
@@ -47,16 +77,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             },
         ),
     ),
-    TaskType.circuit_single_build: TaskDefinition(
+    TaskDefinition(
         task_type=TaskType.circuit_single_build,
         config_type=TaskConfigType.circuit_single_build__config,
         activity_type=TaskActivityType.circuit_single_build__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -68,11 +93,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             },
         ),
     ),
-    TaskType.circuit_simulation: TaskGroupLegacyDefinition(
+    TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,
     ),
-    TaskType.circuit_simulation_inait_machine: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_inait_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
@@ -95,15 +120,15 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_inait,
         ),
     ),
-    TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_brian2_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref=release_tag_ref(settings.APP_VERSION),
             path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            dependencies="obi_one/scientific/library/simulation/brian2/requirements.txt",
+            dependencies="launch_scripts/launch_brian2_simulation/dependencies/default.txt",
             staged_directories=[],
         ),
         resources=MachineResources(
@@ -117,16 +142,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             },
         ),
     ),
-    TaskType.circuit_simulation_neuron: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neuron,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -139,16 +159,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.circuit_simulation_neurodamus_machine: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neurodamus_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -161,7 +176,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neurodamus_cluster,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
@@ -175,16 +190,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -197,16 +207,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.single_neuron_simulation_execution: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.single_neuron_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -219,16 +224,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.single_neuron_synaptome_simulation_execution: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.single_neuron_synaptome_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -241,16 +241,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.circuit_synaptic_physiology_assignment: TaskDefinition(
+    TaskDefinition(
         task_type=TaskType.circuit_synaptic_physiology_assignment,
         config_type=TaskConfigType.circuit_synaptic_physiology_assignment__config,
         activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "synapse_parameterization.txt"),
-        ),
+        code=_obi_one_code("synapse_parameterization.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -262,15 +257,12 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             },
         ),
     ),
-    TaskType.em_synapse_mapping: TaskDefinition(
+    TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
         config_type=TaskConfigType.em_synapse_mapping__config,
         activity_type=TaskActivityType.em_synapse_mapping__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        code=_obi_one_code(
+            "default.txt",
             capabilities=Capabilities(
                 env_secrets=[obi_settings.cave_client_config.microns_api_key]
             ),
@@ -286,16 +278,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             },
         ),
     ),
-    TaskType.efeature_extraction: TaskDefinition(
+    TaskDefinition(
         task_type=TaskType.efeature_extraction,
         config_type=TaskConfigType.efeature_extraction__config,
         activity_type=TaskActivityType.efeature_extraction__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "emodel_building.txt"),
-        ),
+        code=_obi_one_code("emodel_building.txt"),
         resources=MachineResources(
             cores=1,
             memory=4,
@@ -307,7 +294,7 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             },
         ),
     ),
-    TaskType.emodel_optimization: TaskDefinition(
+    TaskDefinition(
         task_type=TaskType.emodel_optimization,
         config_type=TaskConfigType.emodel_optimization__config,
         activity_type=TaskActivityType.emodel_optimization__execution,
@@ -319,16 +306,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             compute_cell="cell_a",
         ),
     ),
-    TaskType.extracellular_recording_weights_calculation: TaskDefinition(
+    TaskDefinition(
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
         activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
-        ),
+        code=_obi_one_code("extracellular_recording_weights_calculation.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -341,17 +323,11 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.morphology_skeletonization: TaskDefinition(
+    TaskDefinition(
         task_type=TaskType.morphology_skeletonization,
         config_type=TaskConfigType.skeletonization__config,
         activity_type=TaskActivityType.skeletonization__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
-            capabilities=Capabilities(private_packages=True),
-        ),
+        code=_obi_one_code("skeletonization.txt", capabilities=Capabilities(private_packages=True)),
         resources=MachineResources(
             cores=16,
             memory=32,
@@ -363,7 +339,9 @@ TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = {
             },
         ),
     ),
-}
+]
+
+TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = _build_task_definitions(_TASK_DEFINITIONS)
 
 
 def get_launchable_task_definition(task_type: TaskType) -> LaunchableTaskDefinition:

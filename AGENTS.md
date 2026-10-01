@@ -103,7 +103,7 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - Put database-related (entitysdk) helpers in `obi_one/db_sdk/`, not in task modules or `obi_one/utils/`.
 - **Python 3.12** required (`>=3.12.2,<3.13`)
 - **Ruff** with `select = ["ALL"]` - very strict linting. Run `make format` before PRs.
-- **100 char line length**
+- **100 char line length** (Python code; not Markdown, see Documentation)
 - **Google-style docstrings** (`pydocstyle convention = "google"`)
 - Comments and docstrings should explain non-obvious intent, not restate the code. Prefer none over redundant; don't duplicate what argparse/signatures already convey.
 - Functions that perform actions must not silently no-op (e.g. `if x is None: return`) or swallow errors. Let them raise, and handle optional inputs and exceptions where the function is called.
@@ -123,6 +123,10 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - Tests use class-based organization (`class TestFoo:` with `def test_*` methods)
 - Env vars for testing loaded from `.env.test-local`
 - Always run `make format` before committing test files
+
+## Documentation
+
+- In Markdown files (`README.md`, `docs/`, `AGENTS.md`, etc.), do not hard wrap lines at a fixed width. Write each paragraph or list item on one line; a line break is allowed only at the end of a sentence.
 
 ## Dependencies
 
