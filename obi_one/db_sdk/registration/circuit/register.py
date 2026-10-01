@@ -8,7 +8,7 @@ from uuid import UUID
 from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
-from obi_one.db_sdk.registration.circuit.assets import register_asset
+from obi_one.db_sdk.registration.circuit.assets import register_sonata_circuit_asset
 from obi_one.db_sdk.registration.circuit.generate import (
     generate_additional_circuit_assets,
     generate_overview_image_asset,
@@ -433,10 +433,9 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         )
 
     # Register SONATA circuit folder asset
-    register_asset(
+    register_sonata_circuit_asset(
         client=client,
         file_path=circuit_folder,
-        asset_label="sonata_circuit",
         registered_circuit=registered_circuit,
         dry_run=dry_run,
     )

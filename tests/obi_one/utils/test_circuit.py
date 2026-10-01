@@ -442,7 +442,7 @@ def _register_and_get_scale(scale_override):
 
     with (
         patch("obi_one.db_sdk.registration.circuit.register.models.Circuit", _FakeCircuitModel),
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(

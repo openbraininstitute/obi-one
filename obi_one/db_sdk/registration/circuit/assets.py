@@ -22,6 +22,12 @@ COMPRESSED_CIRCUIT_FILENAME = compressed_archive_filename(
     COMPRESSED_CIRCUIT_NAME, COMPRESSED_CIRCUIT_FORMAT
 )
 
+# Canonical config filename inside a connectivity-matrix asset directory.
+MATRIX_CONFIG_FILENAME = "matrix_config.json"
+
+# Required files inside the main SONATA circuit folder.
+SONATA_CIRCUIT_REQUIRED_CONTENTS = ["circuit_config.json", "node_sets.json"]
+
 
 def _check_required_contents(file_path: Path, contents: list[str], *, is_directory: bool) -> None:
     """Validate that required files exist within a path."""
@@ -55,11 +61,11 @@ def _check_matrix_folder(file_path: Path) -> None:
     }
     L.info(f"{len(matrix_files)} files in '{file_path}'")
 
-    if "matrix_config.json" not in matrix_files:
-        msg = "matrix_config.json missing!"
+    if MATRIX_CONFIG_FILENAME not in matrix_files:
+        msg = f"{MATRIX_CONFIG_FILENAME} missing!"
         raise ValueError(msg)
 
-    with matrix_files["matrix_config.json"].open(encoding="utf-8") as f:
+    with matrix_files[MATRIX_CONFIG_FILENAME].open(encoding="utf-8") as f:
         mat_cfg = json.load(f)
 
     for pop in mat_cfg:
@@ -70,147 +76,65 @@ def _check_matrix_folder(file_path: Path) -> None:
                 raise ValueError(msg)
 
 
-CIRCUIT_ASSET_MAPPING: dict[AssetLabel, dict] = {
-    AssetLabel.sonata_circuit: {
-        "is_directory": True,
-        "content_type": "application/vnd.directory",
-        "required_contents": ["circuit_config.json", "node_sets.json"],
-        "required_validations": [],
-    },
-    AssetLabel.compressed_sonata_circuit: {
-        "is_directory": False,
-        "content_type": "application/gzip",
-        "required_contents": [COMPRESSED_CIRCUIT_FILENAME],
-        "required_validations": [],
-    },
-    AssetLabel.circuit_connectivity_matrices: {
-        "is_directory": True,
-        "content_type": "application/vnd.directory",
-        "required_contents": ["matrix_config.json"],
-        "required_validations": [_check_matrix_folder],
-    },
-    AssetLabel.circuit_visualization: {
-        "is_directory": False,
-        "content_type": "image/webp",
-        "required_contents": ["circuit_visualization.webp"],
-        "required_validations": [],
-    },
-    AssetLabel.node_stats: {
-        "is_directory": False,
-        "content_type": "image/webp",
-        "required_contents": ["node_stats.webp"],
-        "required_validations": [],
-    },
-    AssetLabel.network_stats_a: {
-        "is_directory": False,
-        "content_type": "image/webp",
-        "required_contents": ["network_stats_a.webp"],
-        "required_validations": [],
-    },
-    AssetLabel.network_stats_b: {
-        "is_directory": False,
-        "content_type": "image/webp",
-        "required_contents": ["network_stats_b.webp"],
-        "required_validations": [],
-    },
-    AssetLabel.simulation_designer_image: {
-        "is_directory": False,
-        "content_type": "image/png",
-        "required_contents": ["simulation_designer_image.png"],
-        "required_validations": [],
-    },
-}
-
-
-def register_asset(
+def register_sonata_circuit_asset(
     client: Client,
     file_path: Path | None,
-    asset_label: str,
     registered_circuit: models.Circuit | None,
     *,
     dry_run: bool,
 ) -> models.Asset | None:
-    """Register an asset for a circuit entity.
+    """Register the main SONATA circuit folder asset for a circuit entity.
 
-    Validates the asset label, file existence, and required contents before registration.
+    Validates that the folder exists and contains the required SONATA files before
+    registration. Other circuit assets (compressed archive, connectivity matrices,
+    images) are registered by their dedicated ``add_*`` helpers.
 
     Args:
         client: The entitycore SDK client.
-        file_path: Path to the asset. None to skip.
-        asset_label: Label identifying the asset type (must be in CIRCUIT_ASSET_MAPPING).
+        file_path: Path to the SONATA circuit folder. None to skip.
         registered_circuit: The circuit entity to attach the asset to.
         dry_run: If True, perform validation only without registering.
 
     Returns:
         The registered asset, or None if skipped or dry_run.
     """
-    if file_path is None:
-        L.info(f"No path for '{asset_label}' asset provided - skipping")
-        return None
+    asset_label = AssetLabel.sonata_circuit
 
-    try:
-        label_enum = AssetLabel(asset_label)
-    except ValueError:
-        label_enum = None
-    if label_enum is None or label_enum not in CIRCUIT_ASSET_MAPPING:
-        msg = f"Asset label '{asset_label}' not supported!"
-        raise ValueError(msg)
+    if file_path is None:
+        L.info(f"No path for '{asset_label.value}' asset provided - skipping")
+        return None
 
     if not file_path.exists():
         msg = f"File path '{file_path}' does not exist!"
         raise ValueError(msg)
 
-    # Validate required contents
-    asset_config = CIRCUIT_ASSET_MAPPING[label_enum]
-    is_dir = asset_config["is_directory"]
-    _check_required_contents(
-        file_path,
-        asset_config.get("required_contents", []),
-        is_directory=is_dir,
-    )
-
-    # Run additional validations
-    for val_fct in asset_config.get("required_validations", []):
-        val_fct(file_path)
-
-    content_type = asset_config["content_type"]
+    _check_required_contents(file_path, SONATA_CIRCUIT_REQUIRED_CONTENTS, is_directory=True)
 
     if dry_run:
-        L.info(f"Asset '{asset_label}': DRY RUN (not registered)")
+        L.info(f"Asset '{asset_label.value}': DRY RUN (not registered)")
         return None
 
     if registered_circuit is None:
         msg = "registered_circuit is required when dry_run is False!"
         raise ValueError(msg)
 
-    # Upload from local file system
-    if is_dir:
-        files_in_dir = {
-            str(path.relative_to(file_path)): path
-            for path in file_path.rglob("*")
-            if path.is_file()
-        }
-        # Filter out .DS_Store files
-        num_ignored = sum(1 for f in files_in_dir if ".ds_store" in f.lower())
-        if num_ignored > 0:
-            L.warning(f"{num_ignored} '.DS_Store' file(s) found in '{file_path}' - ignoring")
-        files_in_dir = {k: v for k, v in files_in_dir.items() if ".ds_store" not in k.lower()}
-        asset = _upload_or_replace_directory(
-            client,
-            registered_circuit,
-            asset_label=label_enum,
-            name=asset_label,
-            paths=files_in_dir,
-        )
-    else:
-        asset = _upload_or_replace_file(
-            client,
-            registered_circuit,
-            asset_label=label_enum,
-            file_path=file_path,
-            file_content_type=content_type,
-        )
-    L.info(f"'{asset_label}' asset uploaded under ID {asset.id}")
+    files_in_dir = {
+        str(path.relative_to(file_path)): path for path in file_path.rglob("*") if path.is_file()
+    }
+    # Filter out .DS_Store files
+    num_ignored = sum(1 for f in files_in_dir if ".ds_store" in f.lower())
+    if num_ignored > 0:
+        L.warning(f"{num_ignored} '.DS_Store' file(s) found in '{file_path}' - ignoring")
+    files_in_dir = {k: v for k, v in files_in_dir.items() if ".ds_store" not in k.lower()}
+
+    asset = _upload_or_replace_directory(
+        client,
+        registered_circuit,
+        asset_label=asset_label,
+        name=asset_label.value,
+        paths=files_in_dir,
+    )
+    L.info(f"'{asset_label.value}' asset uploaded under ID {asset.id}")
     return asset
 
 
@@ -223,6 +147,9 @@ def add_compressed_circuit_asset(
     if not compressed_file.exists():
         msg = f"Compressed circuit file '{compressed_file}' does not exist!"
         raise FileNotFoundError(msg)
+
+    # Validate the file is the canonical compressed-circuit archive.
+    _check_required_contents(compressed_file, [COMPRESSED_CIRCUIT_FILENAME], is_directory=False)
 
     # Upload compressed file asset (replace if present)
     transfer_config = MultipartUploadTransferConfig()
@@ -247,6 +174,10 @@ def add_connectivity_matrix_asset(
     if not matrix_dir.is_dir():
         msg = f"Connectivity matrix directory '{matrix_dir}' does not exist!"
         raise FileNotFoundError(msg)
+
+    # Validate matrix_config.json exists and all referenced matrix files are present.
+    _check_required_contents(matrix_dir, [MATRIX_CONFIG_FILENAME], is_directory=True)
+    _check_matrix_folder(matrix_dir)
 
     # Collect matrix files
     matrix_files = {

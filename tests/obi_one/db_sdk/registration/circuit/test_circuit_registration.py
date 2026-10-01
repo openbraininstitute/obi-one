@@ -26,12 +26,12 @@ from obi_one.db_sdk.registration.circuit import (
     get_publications,
     get_root_circuit,
     get_subject,
-    register_asset,
     register_circuit,
     register_circuit_from_metadata,
     register_contributions,
     register_derivation,
     register_publication_links,
+    register_sonata_circuit_asset,
 )
 from obi_one.db_sdk.registration.circuit.assets import (
     COMPRESSED_CIRCUIT_FILENAME,
@@ -759,49 +759,37 @@ def test_register_publication_links_already_exists():
     client.register_entity.assert_not_called()
 
 
-# --- register_asset ---
+# --- register_sonata_circuit_asset ---
 
 
-def test_register_asset_none_path():
+def _make_sonata_circuit_dir(path: Path) -> None:
+    """Create a minimal valid SONATA circuit folder."""
+    (path / "circuit_config.json").write_text("{}")
+    (path / "node_sets.json").write_text("{}")
+
+
+def test_register_sonata_circuit_asset_none_path():
     """Test that None file_path skips registration."""
     client = MagicMock()
     circuit = MagicMock()
-    result = register_asset(
+    result = register_sonata_circuit_asset(
         client=client,
         file_path=None,
-        asset_label="sonata_circuit",
         registered_circuit=circuit,
         dry_run=False,
     )
     assert result is None
 
 
-def test_register_asset_unsupported_label():
-    """Test that unsupported asset label raises."""
-    client = MagicMock()
-    circuit = MagicMock()
-    with pytest.raises(ValueError, match="not supported"):
-        register_asset(
-            client=client,
-            file_path=Path("/some/path"),
-            asset_label="invalid_label",
-            registered_circuit=circuit,
-            dry_run=False,
-        )
-
-
-def test_register_asset_dry_run(tmp_path):
+def test_register_sonata_circuit_asset_dry_run(tmp_path):
     """Test that dry_run skips registration after validation."""
-    # Create a valid sonata_circuit directory
-    (tmp_path / "circuit_config.json").write_text("{}")
-    (tmp_path / "node_sets.json").write_text("{}")
+    _make_sonata_circuit_dir(tmp_path)
 
     client = MagicMock()
     circuit = MagicMock()
-    result = register_asset(
+    result = register_sonata_circuit_asset(
         client=client,
         file_path=tmp_path,
-        asset_label="sonata_circuit",
         registered_circuit=circuit,
         dry_run=True,
     )
@@ -809,21 +797,18 @@ def test_register_asset_dry_run(tmp_path):
     client.upload_directory.assert_not_called()
 
 
-def test_register_asset_local_directory(tmp_path):
-    """Test uploading a local directory asset."""
-    # Create a valid sonata_circuit directory
-    (tmp_path / "circuit_config.json").write_text("{}")
-    (tmp_path / "node_sets.json").write_text("{}")
+def test_register_sonata_circuit_asset_uploads_directory(tmp_path):
+    """Test uploading the SONATA circuit folder."""
+    _make_sonata_circuit_dir(tmp_path)
 
     client = MagicMock()
     uploaded_asset = MagicMock(id="asset-123")
     client.upload_directory.return_value = uploaded_asset
     circuit = MagicMock(id="circuit-id")
 
-    result = register_asset(
+    result = register_sonata_circuit_asset(
         client=client,
         file_path=tmp_path,
-        asset_label="sonata_circuit",
         registered_circuit=circuit,
         dry_run=False,
     )
@@ -831,127 +816,32 @@ def test_register_asset_local_directory(tmp_path):
     client.upload_directory.assert_called_once()
 
 
-def test_register_asset_local_file(tmp_path):
-    """Test uploading a local file asset."""
-    gz_file = tmp_path / COMPRESSED_CIRCUIT_FILENAME
-    gz_file.write_text("compressed data")
-
-    client = MagicMock()
-    uploaded_asset = MagicMock(id="asset-456")
-    client.upload_file.return_value = uploaded_asset
-    circuit = MagicMock(id="circuit-id")
-
-    result = register_asset(
-        client=client,
-        file_path=gz_file,
-        asset_label="compressed_sonata_circuit",
-        registered_circuit=circuit,
-        dry_run=False,
-    )
-    assert result is uploaded_asset
-    client.upload_file.assert_called_once()
-
-
-def test_register_asset_nonexistent_path():
-    """Test that non-existent local path raises."""
+def test_register_sonata_circuit_asset_nonexistent_path():
+    """Test that a non-existent local path raises."""
     client = MagicMock()
     circuit = MagicMock()
     with pytest.raises(ValueError, match="does not exist"):
-        register_asset(
+        register_sonata_circuit_asset(
             client=client,
             file_path=Path("/nonexistent/path"),
-            asset_label="sonata_circuit",
             registered_circuit=circuit,
             dry_run=False,
         )
 
 
-def test_register_asset_missing_required_contents(tmp_path):
-    """Test that missing required contents raises."""
-    # Create directory without required files
+def test_register_sonata_circuit_asset_missing_required_contents(tmp_path):
+    """Test that a folder missing the required SONATA files raises."""
     (tmp_path / "some_file.txt").write_text("hello")
 
     client = MagicMock()
     circuit = MagicMock()
     with pytest.raises(ValueError, match="not found in"):
-        register_asset(
+        register_sonata_circuit_asset(
             client=client,
             file_path=tmp_path,
-            asset_label="sonata_circuit",
             registered_circuit=circuit,
             dry_run=False,
         )
-
-
-@pytest.mark.parametrize(
-    ("asset_label", "is_dir", "setup_fn"),
-    [
-        (
-            "sonata_circuit",
-            True,
-            lambda p: [
-                (p / "circuit_config.json").write_text("{}"),
-                (p / "node_sets.json").write_text("{}"),
-            ],
-        ),
-        (
-            "compressed_sonata_circuit",
-            False,
-            lambda p: (p / COMPRESSED_CIRCUIT_FILENAME).write_text("data"),
-        ),
-        (
-            "circuit_connectivity_matrices",
-            True,
-            lambda p: [
-                (p / "matrix_config.json").write_text(json_module.dumps({})),
-            ],
-        ),
-        (
-            "circuit_visualization",
-            False,
-            lambda p: (p / "circuit_visualization.webp").write_text("img"),
-        ),
-        ("node_stats", False, lambda p: (p / "node_stats.webp").write_text("img")),
-        ("network_stats_a", False, lambda p: (p / "network_stats_a.webp").write_text("img")),
-        ("network_stats_b", False, lambda p: (p / "network_stats_b.webp").write_text("img")),
-        (
-            "simulation_designer_image",
-            False,
-            lambda p: (p / "simulation_designer_image.png").write_text("img"),
-        ),
-    ],
-)
-def test_register_asset_all_labels(tmp_path, asset_label, is_dir, setup_fn):
-    """Test that all supported asset labels can be registered."""
-    if is_dir:
-        asset_path = tmp_path / asset_label
-        asset_path.mkdir()
-        setup_fn(asset_path)
-        file_path = asset_path
-    else:
-        setup_fn(tmp_path)
-        # For files, find the created file
-        files = [f for f in tmp_path.iterdir() if f.is_file()]
-        file_path = files[0]
-
-    client = MagicMock()
-    uploaded = MagicMock(id=f"{asset_label}-id")
-    client.upload_directory.return_value = uploaded
-    client.upload_file.return_value = uploaded
-    circuit = MagicMock(id="circuit-id")
-
-    result = register_asset(
-        client=client,
-        file_path=file_path,
-        asset_label=asset_label,
-        registered_circuit=circuit,
-        dry_run=False,
-    )
-    assert result is uploaded
-    if is_dir:
-        client.upload_directory.assert_called_once()
-    else:
-        client.upload_file.assert_called_once()
 
 
 # --- register_circuit ---
@@ -1029,7 +919,7 @@ def test_register_circuit_registers_entity():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         result = register_circuit(
@@ -1060,7 +950,7 @@ def test_register_circuit_sets_lifecycle_status_draft():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
         patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validate,
     ):
@@ -1097,7 +987,7 @@ def test_register_circuit_derives_root_from_parent():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.register_derivation") as mock_deriv,
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
@@ -1132,7 +1022,7 @@ def test_register_circuit_passes_include_overview_images():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
@@ -1172,7 +1062,7 @@ def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_a
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
@@ -1225,7 +1115,7 @@ def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
@@ -1270,7 +1160,7 @@ def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
@@ -1312,7 +1202,7 @@ def test_register_circuit_dry_run_skips_uploaded_image(tmp_path):
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_overview_image_asset"
         ) as mock_overview,
@@ -1354,7 +1244,7 @@ def test_register_circuit_with_derivation():
     with (
         _patch_models_circuit,
         _patch_models_emodel,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
             return_value={"hoc:cADpyr_L5TPC"},
@@ -1393,7 +1283,7 @@ def test_register_circuit_skip_additional_assets():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
@@ -1426,7 +1316,7 @@ def test_register_circuit_skip_validation():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validation,
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
@@ -1458,7 +1348,7 @@ def test_register_circuit_runs_validation_by_default():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validation,
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
@@ -1541,7 +1431,7 @@ def test_register_circuit_from_compressed_gz(tmp_path):
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
@@ -1901,7 +1791,7 @@ def test_register_circuit_neurodamus_validation_runs_in_process():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
         patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validate,
         patch(
@@ -1944,7 +1834,7 @@ def test_register_circuit_neurodamus_validation_raises_on_failure():
 
     with (
         _patch_models_circuit,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
         patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
         patch(
@@ -2528,7 +2418,7 @@ def test_register_circuit_preserves_parent_and_inherited_emodel_derivations():
     with (
         _patch_models_circuit,
         _patch_models_emodel,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
             return_value={"hoc:cADpyr_L5TPC"},
@@ -2615,7 +2505,7 @@ def test_register_circuit_ignores_parent_derivation_without_source():
     with (
         _patch_models_circuit,
         _patch_models_emodel,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
             return_value={"hoc:cADpyr_L5TPC"},
@@ -2657,7 +2547,7 @@ def test_register_circuit_registers_explicit_derivation_source():
     with (
         _patch_models_circuit,
         _patch_models_emodel,
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch(
             "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
             return_value={"hoc:cADpyr_L5TPC"},
