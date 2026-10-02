@@ -87,7 +87,6 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
     )
 
     section_types: SectionTypes = Field(
-        default=(3, 4),
         title="Section Types",
         description=(
             "Neurite section types where locations may be generated. Defaults to basal and "
