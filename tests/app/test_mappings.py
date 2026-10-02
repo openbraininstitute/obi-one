@@ -1,8 +1,11 @@
 """Tests for task-definition building in app.mappings."""
 
+from pathlib import Path
+
 import pytest
 
 from app import mappings
+from app.schemas.task import PythonRepositoryCode
 from app.types import TaskType
 
 
@@ -23,6 +26,25 @@ def test_obi_one_code_dev_version_uses_last_release(monkeypatch):
 def test_task_definitions_keyed_by_task_type():
     for task_type, task_def in mappings.TASK_DEFINITIONS.items():
         assert task_def.task_type == task_type
+
+
+def test_referenced_dependencies_files_exist():
+    """Every requirements file an obi-one task installs must be committed.
+
+    ``dependencies`` is relative to the checkout of ``location``, so only the
+    definitions pointing at the obi-one repo can be checked here.
+    """
+    repo_root = Path(mappings.__file__).resolve().parents[1]
+    codes = [getattr(task_def, "code", None) for task_def in mappings.TASK_DEFINITIONS.values()]
+    referenced = {
+        code.dependencies
+        for code in codes
+        if isinstance(code, PythonRepositoryCode)
+        and code.location == mappings.settings.OBI_ONE_REPO
+    }
+    assert referenced  # guard against the filter silently matching nothing
+    missing = sorted(path for path in referenced if not (repo_root / path).is_file())
+    assert not missing
 
 
 def test_build_task_definitions_rejects_duplicates():

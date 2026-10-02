@@ -1,9 +1,10 @@
 name: Check launch-script requirements
 
 # Verifies that the committed launch-script requirements (``*.txt``) are
-# consistent with their ``*.in`` sources. If an ``.in`` (or an obi-one
-# dependency) changed without regenerating the ``.txt``, this check fails. Run
-# ``make compile-launch-deps`` locally and commit the result to fix it.
+# consistent with their ``*.in`` sources and ``*.override`` pins. If one of them
+# (or an obi-one dependency) changed without regenerating the ``.txt``, this
+# check fails. Run ``make compile-launch-deps`` locally and commit the result to
+# fix it.
 #
 # Also called by release-pin.yml on the release tag before pinning, since the
 # release fixes that commit's closure.
@@ -12,6 +13,7 @@ on:
   pull_request:
     paths:
       - "launch_scripts/**/dependencies/*.in"
+      - "launch_scripts/**/dependencies/*.override"
       - "launch_scripts/**/dependencies/*.txt"
       - "launch_scripts/tools/**"
       - "pyproject.toml"
