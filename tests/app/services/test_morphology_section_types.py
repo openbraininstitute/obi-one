@@ -23,6 +23,8 @@ from app.services.morphology_section_types import (
 from tests.utils import DATA_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 SERVICE_MODULE = "app.services.morphology_section_types"
+# The single-neuron-circuit morphology loading this service delegates to lives here.
+CIRCUIT_VISUALIZATION_MODULE = "app.services.circuit_visualization"
 
 
 def _values_and_labels(options):
@@ -302,8 +304,8 @@ def test_memodel_with_synapses_sonata_asset_requires_id():
         memodel_with_synapses_section_type_options(client, circuit_id)
 
 
-@patch(f"{SERVICE_MODULE}.get_nodes", return_value=[])
-@patch(f"{SERVICE_MODULE}.download_circuit_config")
+@patch(f"{CIRCUIT_VISUALIZATION_MODULE}.get_nodes", return_value=[])
+@patch(f"{CIRCUIT_VISUALIZATION_MODULE}.download_circuit_config")
 def test_memodel_with_synapses_requires_one_biophysical_node(mock_download, mock_nodes):
     circuit_id = uuid4()
     circuit = Circuit.model_construct(
