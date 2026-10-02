@@ -19,7 +19,7 @@ from app.types import BuiltinScript, MachineExecutorImageType, TaskType
 from obi_one.config import settings as obi_settings
 
 # APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
-APP_TAG = "commit:faad3e71ea7c68bb571aa3f51d470b1cff512a10"
+APP_TAG = "commit:1b436bbe62a13b79f9d6ac02f63aeb3214075b57"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
