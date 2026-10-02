@@ -7,16 +7,19 @@ not installed: the single guard lives in
 Task 2 imports, exposing ``None`` placeholders and ``HAS_EMODEL_OPTIMIZATION``).
 ``scan_configs.py``, ``tasks.py``, and ``config_task_map.py`` import from that
 package unconditionally and simply omit Task 2 when the classes are ``None``.
-The same applies to ``app/endpoints/ion_channel_properties.py`` and
-``app/endpoints/scan_config.py``, which import ``fetch_variable_catalog`` and
-``EModelOptimizationScanConfig`` respectively and are both pulled in by
-``app.application`` at import time; ``import app.application`` (i.e. starting
-the FastAPI service) must succeed without ``bluepyemodel`` too. These tests
-simulate ``bluepyemodel`` being absent by re-executing each module's real
-source with a blocking meta path finder, so the ``except`` branches run for
-real instead of being mocked. Only these two ``app.endpoints`` modules are
-covered directly (not ``app.application`` itself); see the comment below the
-tests for why.
+The same applies to ``app/endpoints/ion_channel_properties.py``,
+``app/endpoints/scan_config.py`` and ``app/endpoints/config_validation.py``,
+which import ``fetch_variable_catalog`` and ``EModelOptimizationScanConfig``
+and are all pulled in by ``app.application`` at import time; ``import
+app.application`` (i.e. starting the FastAPI service) must succeed without
+``bluepyemodel`` too. ``config_validation.py`` is the sharpest case: it declares
+``emodel_optimization_config`` on a conditional subclass precisely because
+annotating a field as ``None | None`` raises ``TypeError`` while the class body
+is evaluated. These tests simulate ``bluepyemodel`` being absent by
+re-executing each module's real source with a blocking meta path finder, so the
+``except`` branches run for real instead of being mocked. Only these three
+``app.endpoints`` modules are covered directly (not ``app.application``
+itself); see the comment below the tests for why.
 
 Only the ``bluepyemodel``, Task 2, and affected ``app`` modules are evicted
 from ``sys.modules`` (never ``obi_one``/``app`` themselves in their entirety,
@@ -51,6 +54,7 @@ _MODULES_TO_EVICT = (
     "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization",
     "app.endpoints.ion_channel_properties",
     "app.endpoints.scan_config",
+    "app.endpoints.config_validation",
     "app.application",
 )
 
@@ -143,6 +147,27 @@ def test_scan_config_endpoint_module_omits_emodel_optimization_without_bluepyemo
     module = _exec_fresh("app.endpoints.scan_config")
 
     assert module.EModelOptimizationScanConfig is None
+
+
+@pytest.mark.usefixtures("bluepyemodel_blocked")
+def test_config_validation_omits_emodel_optimization_without_bluepyemodel():
+    """The shared-state model must drop the key rather than fail to import.
+
+    Declaring ``emodel_optimization_config: EModelOptimizationScanConfig | None`` directly
+    would raise ``TypeError: unsupported operand type(s) for |`` here, taking the whole
+    service down with it, so this also guards the conditional-subclass structure.
+
+    The field/``_VALIDATION_CONFIG`` equality is asserted again because CI installs the
+    ``emodel`` extra (``make install-all`` -> ``uv sync --extra all``), so the equivalent
+    assertion in ``tests/app/endpoints/test_config_validation.py`` only ever exercises the
+    bluepyemodel-*present* branch. This is the only coverage of the absent branch, where a
+    field gated without its ``_VALIDATION_CONFIG`` entry would be parsed and then silently
+    never validated.
+    """
+    module = _exec_fresh("app.endpoints.config_validation")
+
+    assert "emodel_optimization_config" not in module.SharedStatePartial.model_fields
+    assert set(module.SharedStatePartial.model_fields) == set(module._VALIDATION_CONFIG)
 
 
 # Deliberately no test re-imports `app.application` itself here. Unlike the narrower

@@ -20,6 +20,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
+    MORPHOLOGY_CIRCUIT_PATH,
     MULTI_POPULATION_CIRCUIT_PATH,
     build_config,
     generate,
@@ -37,9 +38,14 @@ def staging_recorder(monkeypatch):
     """
     calls: list[dict] = []
 
-    def _stage_circuit(self, *, dest_dir=Path(), db_client=None, entity_cache=False):
+    def _stage_circuit(self, *, dest_dir=Path(), db_client=None, entity_cache=False, **kwargs):
         calls.append(
-            {"dest_dir": Path(dest_dir), "entity_cache": entity_cache, "db_client": db_client}
+            {
+                "dest_dir": Path(dest_dir),
+                "entity_cache": entity_cache,
+                "db_client": db_client,
+                **kwargs,
+            }
         )
         return Circuit(name=str(self), path=str(MULTI_POPULATION_CIRCUIT_PATH))
 
@@ -89,6 +95,45 @@ class TestCircuitFromID:
 
         assert staging_recorder[0]["dest_dir"] == tmp_path / "0" / "sonata_circuit"
         assert staging_recorder[0]["entity_cache"] is False
+
+    def test_only_the_nodes_are_staged(self, staging_recorder, tmp_path, db_client):
+        """Generation reads node properties and node sets, never the edges.
+
+        Edge files dominate a large circuit, and a private-project circuit has to be downloaded
+        rather than symlinked, so staging them would be a wasted download.
+        """
+        generate(self._config(), tmp_path, db_client=db_client)
+
+        assert staging_recorder[0]["nodes_only"] is True
+
+    def test_a_morphology_location_target_needs_the_whole_circuit(
+        self, monkeypatch, tmp_path, db_client
+    ):
+        """Morphology locations become compartment sets, which walk each neuron's morphology."""
+        calls: list[dict] = []
+
+        def _stage_circuit(self, **kwargs):
+            calls.append(kwargs)
+            return Circuit(name=str(self), path=str(MORPHOLOGY_CIRCUIT_PATH))
+
+        monkeypatch.setattr(CircuitFromID, "stage_circuit", _stage_circuit)
+
+        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=CircuitFromID(id_str=CIRCUIT_ID),
+            blocks={
+                "Locations": locations,
+                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                    neuron_set=locations.ref, amplitude=0.2, duration=50.0
+                ),
+            },
+        )
+
+        result = generate(config, tmp_path, db_client=db_client)
+
+        assert set(result.compartment_sets) == {"Locations"}
+        assert calls[0].get("nodes_only") is not True
 
     def test_entity_cache_stages_into_a_shared_scan_level_directory(
         self, staging_recorder, tmp_path, db_client

@@ -15,6 +15,9 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
     MorphologyMappedProperties,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    MAX_DISTANCE_FUNCTION_LENGTH,
+)
 
 L = logging.getLogger()
 
@@ -85,6 +88,62 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = f"Validation error at {ref}: string_input param {param} failed to validate a string"
+        raise ValidationError(msg) from None
+
+
+def validate_distance_function_input(schema: dict, param: str, ref: str) -> None:
+    # Non-nullable distance function: a plain string carrying max_length at the schema root
+    # (so the frontend reads `maxLength` directly, with no structural branching). Nullable
+    # fields must use `distance_function_input_nullable` instead.
+    validate_string_param(schema, param, ref)
+
+    if schema.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: distance_function_input param {param} must be a plain "
+            f"'string' (use distance_function_input_nullable for `str | None`). Got: {schema}"
+        )
+        raise ValidationError(msg) from None
+    max_length = schema.get("maxLength")
+    if max_length != MAX_DISTANCE_FUNCTION_LENGTH:
+        msg = (
+            f"Validation error at {ref}: distance_function_input param {param} must declare "
+            f"max_length=MAX_DISTANCE_FUNCTION_LENGTH ({MAX_DISTANCE_FUNCTION_LENGTH}) at the "
+            f"schema root. Got: {max_length}"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_distance_function_input_nullable(schema: dict, param: str, ref: str) -> None:
+    # Nullable distance function (`str | None`): an anyOf whose first branch is the string
+    # carrying max_length and whose second branch is null. The string must come first so the
+    # frontend reads `maxLength` from a fixed position without branching.
+    any_of = schema.get("anyOf")
+    if not isinstance(any_of, list) or len(any_of) != 2:
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must be an "
+            f"'anyOf' of a string and null. Got: {schema}"
+        )
+        raise ValidationError(msg) from None
+    string_branch, null_branch = any_of
+    if string_branch.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must have "
+            f"the string as its first anyOf branch. Got: {string_branch}"
+        )
+        raise ValidationError(msg) from None
+    if null_branch.get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must have "
+            f"null as its second anyOf branch. Got: {null_branch}"
+        )
+        raise ValidationError(msg) from None
+    max_length = string_branch.get("maxLength")
+    if max_length != MAX_DISTANCE_FUNCTION_LENGTH:
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must "
+            f"declare max_length=MAX_DISTANCE_FUNCTION_LENGTH ({MAX_DISTANCE_FUNCTION_LENGTH}) on "
+            f"its string branch. Got: {max_length}"
+        )
         raise ValidationError(msg) from None
 
 
@@ -786,8 +845,90 @@ def validate_model_identifier_multiple(schema: dict, param: str, ref: str) -> No
         raise ValidationError(msg) from None
 
 
+def validate_model_identifier_grouped(schema: dict, param: str, ref: str) -> None:
+    """Validate a grouped model-identifier field (case D of the multiple-entities spec).
+
+    The field is a NamedTuple group or a list of them:
+    ``anyOf: [ {$ref: Group}, {type: array, items: {$ref: Group}} ]``. Each group carries a
+    ``name`` string and an ``elements`` array of model-identifier (``{"id_str": ...}``) objects.
+    The single-group and list-of-groups branches must reference the same group schema so the two
+    ways of storing the value stay in sync.
+    """
+    any_of = schema.get("anyOf")
+    if not isinstance(any_of, list) or len(any_of) != 2:
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} should be an "
+            "'anyOf' of a group and an array of groups"
+        )
+        raise ValidationError(msg)
+
+    single_branch, array_branch = any_of
+    group_ref = single_branch.get("$ref")
+    array_items_ref = array_branch.get("items", {}).get("$ref")
+    if group_ref is None or array_branch.get("type") != "array" or array_items_ref != group_ref:
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} should reference "
+            "the same group schema for its single-group and list-of-groups branches"
+        )
+        raise ValidationError(msg)
+
+    group_schema = resolve_ref(openapi_schema, group_ref)
+    group_props = group_schema.get("properties", {})
+
+    if group_props.get("name", {}).get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} group should have "
+            "a 'name' string"
+        )
+        raise ValidationError(msg)
+
+    elements = group_props.get("elements", {})
+    if elements.get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} group should have "
+            "an 'elements' array"
+        )
+        raise ValidationError(msg)
+
+    # Each element must validate a model-identifier ({"id_str": ...}) object.
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(elements.get("items", {}), resolver=resolver)
+    obj = {"id_str": "model_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} group elements "
+            f"failed to validate a 'model identifier' object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
-    """To do"""
+    """Validate a single-entity selector field.
+
+    The field is a single ``FromID`` entity reference (an ``{"id_str": ...}`` object) that
+    declares an ``entity_query`` with a ``type`` telling the frontend which entities to browse.
+    """
+    entity_query = schema.get(SchemaKey.ENTITY_QUERY)
+    if not isinstance(entity_query, dict) or not entity_query.get("type"):
+        msg = (
+            f"Validation error at {ref}: model_selector_single param {param} must declare an "
+            f"'{SchemaKey.ENTITY_QUERY}' with a 'type'. Got: {entity_query!r}"
+        )
+        raise ValidationError(msg)
+
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+    obj = {"id_str": "model_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: model_selector_single param {param} failed to validate "
+            f"an entity-reference object {obj}"
+        )
+        raise ValidationError(msg) from None
 
 
 def validate_task_result_selector(schema: dict, param: str, ref: str) -> None:
@@ -1080,6 +1221,10 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
+        case UIElement.DISTANCE_FUNCTION_INPUT:
+            validate_distance_function_input(schema, param, ref)
+        case UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE:
+            validate_distance_function_input_nullable(schema, param, ref)
         case UIElement.STRING_LIST_INPUT:
             validate_string_list_param(schema, param, ref)
         case UIElement.STRING_LIST_OPTIONAL:
@@ -1120,6 +1265,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_model_identifier(schema, param, ref)
         case UIElement.MODEL_IDENTIFIER_MULTIPLE:
             validate_model_identifier_multiple(schema, param, ref)
+        case UIElement.MODEL_IDENTIFIER_GROUPED:
+            validate_model_identifier_grouped(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
         case UIElement.TASK_RESULT_SELECTOR:

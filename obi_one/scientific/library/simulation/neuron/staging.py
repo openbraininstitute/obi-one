@@ -90,6 +90,7 @@ def stage_memodel_as_circuit(
     client: Client,
     circuit: MEModelCircuit | MEModelFromID,
     output_dir: Path,
+    max_concurrent: int = 1,
 ) -> MEModelCircuit:
     """Stage a single-neuron ME-model circuit for simulation execution."""
     if isinstance(circuit, MEModelCircuit):
@@ -99,6 +100,7 @@ def stage_memodel_as_circuit(
         client=client,
         memodel=cast("MEModel", circuit.entity(db_client=client)),
         output_dir=output_dir,
+        max_concurrent=max_concurrent,
     )
     return _build_memodel_circuit(circuit_config_path)
 

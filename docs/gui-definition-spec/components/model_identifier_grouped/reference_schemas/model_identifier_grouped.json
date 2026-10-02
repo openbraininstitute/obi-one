@@ -1,0 +1,19 @@
+{
+  "model_identifier_grouped": {
+    "anyOf": [
+      {
+        "type": "#/components/schemas/EMSynapseMappingInputNamedTuple"
+      },
+      {
+        "type": "array",
+        "items": {
+          "type": "#/components/schemas/EMSynapseMappingInputNamedTuple"
+        }
+      }
+    ],
+    "title": "Neurons",
+    "description": "Neurons to include in the circuit (>= 1).",
+    "accepted_input_types": ["CellMorphologyFromID", "MEModelFromID"],
+    "ui_element": "model_identifier_grouped"
+  }
+}

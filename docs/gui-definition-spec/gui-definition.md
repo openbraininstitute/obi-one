@@ -96,6 +96,10 @@ There are two major types of such UI elements:
 
         - [axon_modifier](components/axon_modifier/axon_modifier.md) (one-off)
 
+        - [distance_function_input](components/distance_function_input/distance_function_input.md)
+
+        - [distance_function_input_nullable](components/distance_function_input_nullable/distance_function_input_nullable.md)
+
         - [object](components/object/object.md)
 
         - [stochasticity](components/stochasticity/stochasticity.md) (one-off)
@@ -106,7 +110,11 @@ There are two major types of such UI elements:
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 
+        - [model_selector_single](components/model_selector/model_selector.md)
+
         - [model_identifier_multiple](components/multiple_entities/multiple_entities.md)
+
+        - [model_identifier_grouped](components/model_identifier_grouped/model_identifier_grouped.md)
 
         - [task_result_selector](components/task_result_selector/task_result_selector.md)
 
