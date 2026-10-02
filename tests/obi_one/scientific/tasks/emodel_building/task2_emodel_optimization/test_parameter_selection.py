@@ -75,9 +75,9 @@ def _scan_config_data(**overrides):
         "initialize": {
             "emodel": "test",
             "etype": {"id_str": "etype"},
-            "target_efeatures": {"id_str": "target"},
-            "morphology": {"id_str": "morphology"},
         },
+        "target_efeatures": {"task_result": {"id_str": "target"}},
+        "morphology": {"cell_morphology": {"id_str": "morphology"}},
         "emodel_optimisation_parameters": {
             "mechanisms": {
                 "ion_channel_models": [{"id_str": "icm-1"}],
@@ -260,14 +260,26 @@ def test_schema_groups_match_figma_navigation():
 
     assert properties["info"]["group"] == "Setup"
     assert properties["initialize"]["group"] == "Setup"
-    assert initialize_schema["target_efeatures"]["title"] == "Target EFeatures"
-    assert initialize_schema["target_efeatures"]["ui_element"] == UIElement.TASK_RESULT_SELECTOR
-    assert (
-        initialize_schema["target_efeatures"]["task_result_type"] == "efeature_extraction__result"
-    )
-    assert "entity_query" not in initialize_schema["target_efeatures"]
-    assert initialize_schema["morphology"]["title"] == "Cell morphology"
-    assert initialize_schema["morphology"]["entity_query"] == {"type": "cell_morphology"}
+    assert set(initialize_schema) == {"type", "emodel", "etype"}
+    inputs = {
+        name: prop["group_order"]
+        for name, prop in properties.items()
+        if prop.get("group") == "Inputs"
+    }
+    assert inputs == {
+        "target_efeatures": 0,
+        "morphology": 1,
+        "emodel_optimisation_parameters": 2,
+        "distance_dependent_distributions": 3,
+    }
+    target_schema = schema["$defs"]["TargetEFeaturesInput"]["properties"]["task_result"]
+    morphology_schema = schema["$defs"]["CellMorphologyInput"]["properties"]["cell_morphology"]
+    assert properties["target_efeatures"]["title"] == "Target e-features"
+    assert properties["morphology"]["title"] == "Cell morphology"
+    assert target_schema["ui_element"] == UIElement.TASK_RESULT_SELECTOR
+    assert target_schema["task_result_type"] == "efeature_extraction__result"
+    assert "entity_query" not in target_schema
+    assert morphology_schema["entity_query"] == {"type": "cell_morphology"}
     assert properties["emodel_optimisation_parameters"]["group"] == "Inputs"
     assert properties["emodel_optimisation_parameters"]["title"] == "Mechanisms"
     assert properties["emodel_optimisation_parameters"]["ui_element"] == (
@@ -283,7 +295,10 @@ def test_schema_groups_match_figma_navigation():
     assert global_parameter_schema["ion_channel_model"]["entity_query"] == {
         "type": "ion_channel_model"
     }
-    assert properties["distance_dependent_distributions"]["group"] == "Inputs"
+    distributions = properties["distance_dependent_distributions"]
+    assert distributions["title"] == "Distance-dependent distributions"
+    assert distributions["singular_name"] == "Distance-dependent distribution"
+    assert len(distributions["additionalProperties"]["oneOf"]) == 10
     assert properties["morphology_settings"]["group"] == "Settings"
     assert properties["morphology_settings"]["title"] == "Morphology settings"
     assert properties["optimization_settings"]["group"] == "Settings"
@@ -491,7 +506,8 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
             return "1  soma  0 0 0 1 -1\\n"
 
     config = SimpleNamespace(
-        initialize=SimpleNamespace(emodel="test", morphology=FakeMorphology()),
+        initialize=SimpleNamespace(emodel="test"),
+        morphology=SimpleNamespace(cell_morphology=FakeMorphology()),
     )
 
     features_path = staging.download_extraction_features(
@@ -1571,7 +1587,7 @@ def test_stage_traces_returns_only_derivation_trace_ids():
 def test_derive_mtype_uses_first_label_and_handles_empty_mtypes():
     morphology_entity = SimpleNamespace(mtypes=[SimpleNamespace(pref_label="L5_TTPC")])
     morphology = SimpleNamespace(entity=lambda **_: morphology_entity)
-    config = SimpleNamespace(initialize=SimpleNamespace(morphology=morphology))
+    config = SimpleNamespace(morphology=SimpleNamespace(cell_morphology=morphology))
 
     assert staging.derive_mtype(config, object()) == "L5_TTPC"
 
@@ -1625,9 +1641,9 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(pref_label="cADpyr")))
     config = SimpleNamespace(
         coordinate_output_root=tmp_path,
-        initialize=SimpleNamespace(
-            emodel="test", etype=etype, target_efeatures=object(), morphology=morphology
-        ),
+        initialize=SimpleNamespace(emodel="test", etype=etype),
+        target_efeatures=SimpleNamespace(task_result=object()),
+        morphology=SimpleNamespace(cell_morphology=morphology),
         morphology_settings=SimpleNamespace(axon_modifier="none"),
         parameters_selection=SimpleNamespace(ion_channel_model_references=()),
         optimization_settings=SimpleNamespace(seed=7),
@@ -1808,3 +1824,54 @@ def test_default_section_list_catalog_is_the_canonical_catalog():
         "somatic",
         "axonal",
     )
+
+
+def test_distribution_dictionary_accepts_standard_entries_keyed_by_fixed_name():
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            distance_dependent_distributions={
+                "Uniform 1": {"type": "UniformDistanceDependentDistribution"},
+                "Step 1": {"type": "StepDistanceDependentDistribution"},
+                "decay": {
+                    "type": "CustomDistanceDependentDistribution",
+                    "function": "math.exp({distance}*-0.01)*{value}",
+                },
+            }
+        )
+    )
+    # Standard entries are forwarded under their fixed name; custom ones under their key.
+    bpem = params_definition_input_from_config(config).distance_dependent_distributions
+    assert set(bpem) == {"uniform", "step", "decay"}
+
+
+def test_standard_distribution_settings_reach_bluepyemodel():
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            distance_dependent_distributions={
+                "Exp 1": {
+                    "type": "ExponentialDistanceDependentDistribution",
+                    "soma_ref_location": 0.0,
+                },
+                "Step 1": {
+                    "type": "StepDistanceDependentDistribution",
+                    "soma_ref_location": 0.25,
+                },
+            }
+        )
+    )
+    bpem = params_definition_input_from_config(config).distance_dependent_distributions
+    assert bpem["exp"].soma_ref_location == pytest.approx(0.0)
+    assert bpem["step"].soma_ref_location == pytest.approx(0.25)
+    assert bpem["step"].to_emc_dict()["name"] == "step"
+
+
+def test_distribution_dictionary_rejects_duplicate_names():
+    with pytest.raises(ValueError, match=r"declared more than once: \['exp'\]"):
+        EModelOptimizationScanConfig.model_validate(
+            _scan_config_data(
+                distance_dependent_distributions={
+                    "a": {"type": "ExponentialDistanceDependentDistribution"},
+                    "b": {"type": "ExponentialDistanceDependentDistribution"},
+                }
+            )
+        )

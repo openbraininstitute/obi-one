@@ -473,7 +473,8 @@ def _registration_fixture(tmp_path, *, complete=True):
     )
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(id="etype-id")))
     config = SimpleNamespace(
-        initialize=SimpleNamespace(emodel="test", etype=etype, morphology=morphology),
+        initialize=SimpleNamespace(emodel="test", etype=etype),
+        morphology=SimpleNamespace(cell_morphology=morphology),
         optimization_settings=SimpleNamespace(seed=7),
         parameters_selection=SimpleNamespace(ion_channel_model_references=(reference,)),
     )
@@ -966,9 +967,9 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(pref_label="cADpyr")))
     config = SimpleNamespace(
         coordinate_output_root=tmp_path,
-        initialize=SimpleNamespace(
-            emodel="test", etype=etype, target_efeatures=object(), morphology=morphology
-        ),
+        initialize=SimpleNamespace(emodel="test", etype=etype),
+        target_efeatures=SimpleNamespace(task_result=object()),
+        morphology=SimpleNamespace(cell_morphology=morphology),
         morphology_settings=SimpleNamespace(axon_modifier="none"),
         parameters_selection=SimpleNamespace(ion_channel_model_references=()),
         optimization_settings=SimpleNamespace(seed=7),

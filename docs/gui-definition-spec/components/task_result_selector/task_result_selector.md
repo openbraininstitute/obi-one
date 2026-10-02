@@ -18,8 +18,8 @@ The element must specify:
 ### Example Pydantic implementation
 
 ```py
-class OptimizationInitialize(Block):
-    target_efeatures: TaskResultFromID = Field(
+class TargetEFeaturesInput(Block):
+    task_result: TaskResultFromID = Field(
         title="Target EFeatures",
         description="Result of the 01_efeature_extraction stage staged as the optimization target.",
         json_schema_extra={
@@ -32,7 +32,7 @@ class OptimizationInitialize(Block):
 Which produces:
 
 ```jsonc
-"target_efeatures": {
+"task_result": {
   "$ref": "#/components/schemas/TaskResultFromID",
   "ui_element": "task_result_selector",
   "task_result_type": "efeature_extraction__result"

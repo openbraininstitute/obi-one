@@ -8,6 +8,7 @@ in :mod:`bluepyemodel.preprocessing`. This module only:
 """
 
 from collections.abc import Iterable, Mapping
+from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
 from bluepyemodel.preprocessing.parameters import (
@@ -15,11 +16,16 @@ from bluepyemodel.preprocessing.parameters import (
     normalize_ion_channel_model,
 )
 from bluepyemodel.preprocessing.schemas import (
+    STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS,
     CustomDistanceDependentDistribution as BpemCustomDistanceDependentDistribution,
     DistanceDependentDistribution,
     OptimizationArtifactInput,
     ParametersSelection,
     ParamsDefinitionInput,
+)
+
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    CustomDistanceDependentDistribution,
 )
 
 if TYPE_CHECKING:
@@ -55,25 +61,60 @@ def to_bpem_parameters_selection(selection: Any) -> ParametersSelection:
     return ParametersSelection.model_validate(_dump_bpem_payload(selection))
 
 
+def bpem_distribution_name(key: str, distribution: Any) -> str:
+    """Name parameters use to reference a declared distribution.
+
+    Custom distributions are referenced by their dictionary key. Standard distributions keep
+    their frozen BluePyEModel ``name`` (e.g. ``step``, which BluePyEModel special-cases at
+    runtime), whatever key the user gave them.
+    """
+    if isinstance(distribution, CustomDistanceDependentDistribution):
+        return key
+    return distribution.name
+
+
 def to_bpem_distributions(
     distributions: Mapping[str, Any],
 ) -> dict[str, DistanceDependentDistribution]:
-    """Convert obi-one distance-dependent distribution declarations."""
-    return {
-        name: DistanceDependentDistribution.model_validate(_dump_bpem_payload(distribution))
-        for name, distribution in distributions.items()
-    }
+    """Convert the distribution declarations for the BluePyEModel params compiler.
+
+    Results are keyed by :func:`bpem_distribution_name`, so a standard entry overrides the
+    built-in catalogue entry of the same name (carrying e.g. its ``soma_ref_location``).
+    Standard entries are validated as their BluePyEModel class, which keeps ``step``'s
+    runtime placeholders valid.
+
+    Raises:
+        ValueError: If two declarations resolve to the same distribution name.
+    """
+    names = list(starmap(bpem_distribution_name, distributions.items()))
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    if duplicates:
+        msg = f"Distance-dependent distributions declared more than once: {duplicates}."
+        raise ValueError(msg)
+    converted: dict[str, DistanceDependentDistribution] = {}
+    for name, distribution in zip(names, distributions.values(), strict=True):
+        schema = (
+            DistanceDependentDistribution
+            if isinstance(distribution, CustomDistanceDependentDistribution)
+            else type(STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS[name])
+        )
+        converted[name] = schema.model_validate(_dump_bpem_payload(distribution))
+    return converted
 
 
 def to_bpem_custom_distributions(
     distributions: Mapping[str, Any],
 ) -> dict[str, BpemCustomDistanceDependentDistribution]:
-    """Convert obi-one custom distribution blocks to bluepyemodel schemas."""
+    """Convert the custom entries of a distribution dictionary to bluepyemodel schemas.
+
+    Standard entries are skipped: BluePyEModel resolves them from its built-in catalogue.
+    """
     return {
         name: BpemCustomDistanceDependentDistribution.model_validate(
             _dump_bpem_payload(distribution),
         )
         for name, distribution in distributions.items()
+        if isinstance(distribution, CustomDistanceDependentDistribution)
     }
 
 

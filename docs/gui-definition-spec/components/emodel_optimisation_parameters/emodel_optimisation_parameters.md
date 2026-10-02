@@ -40,7 +40,7 @@ EModelOptimizationScanConfig
 │   ├── global_parameters
 │   ├── base_parameters
 │   └── distribution_parameters
-└── distance_dependent_distributions: dict[str, CustomDistanceDependentDistribution]
+└── distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion]
 ```
 
 `emodel_optimisation_parameters` is a root ScanConfig field using its own registered `ui_element`
@@ -75,5 +75,6 @@ The self-validation performed by the Python models (not the UI schema) still app
 - Fixed and bounds values use `OptimizationValue`.
 - Parameter distributions must be declared by the external `distance_dependent_distributions`
   field or be a standard distribution.
+- `distance_dependent_distributions` (title "Distance-dependent distributions") accepts every distribution type, standard or custom. Parameters reference standard entries by their fixed `name` (e.g. `exp`) and custom entries by their dictionary key; a declared standard entry overrides BluePyEModel's built-in definition of that name, so its `soma_ref_location` is applied. Each resolved name may be declared only once.
 - Standard distribution blocks set a readable `title` (shown in the UI) with the formula in the description; the class name stays the `type` discriminator.
 - `linear_hdpas` has no obi-one block; it has the same formula as `linear_hd_apic`, so use `LinearHDApicDistanceDependentDistribution` (title "Linear increase (Ih)").

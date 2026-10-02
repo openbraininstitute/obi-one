@@ -24,9 +24,9 @@ def _optimization_config(**overrides):
         "initialize": {
             "emodel": "test",
             "etype": {"id_str": "etype"},
-            "target_efeatures": {"id_str": "target"},
-            "morphology": {"id_str": "morphology"},
         },
+        "target_efeatures": {"task_result": {"id_str": "target"}},
+        "morphology": {"cell_morphology": {"id_str": "morphology"}},
         "parameters_selection": {
             "ion_channel_models": [{"id_str": "icm"}],
             "mechanism_regions": {"somatic": [{"ion_channel_model": {"id_str": "icm"}}]},

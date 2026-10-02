@@ -45,9 +45,9 @@ VALID_OPTIMIZATION_CONFIG = {
     "initialize": {
         "emodel": "L5PC",
         "etype": {"id_str": "00000000-0000-0000-0000-000000000000"},
-        "target_efeatures": {"id_str": "11111111-1111-1111-1111-111111111111"},
-        "morphology": {"id_str": "22222222-2222-2222-2222-222222222222"},
     },
+    "target_efeatures": {"task_result": {"id_str": "11111111-1111-1111-1111-111111111111"}},
+    "morphology": {"cell_morphology": {"id_str": "22222222-2222-2222-2222-222222222222"}},
     "emodel_optimisation_parameters": {
         "mechanisms": {
             "ion_channel_models": [{"id_str": "33333333-3333-3333-3333-333333333333"}],
@@ -108,11 +108,8 @@ def test_valid_optimization_config_parses():
 
 @requires_emodel_extra
 def test_optimization_config_rejects_incomplete_initialize():
-    """All four `initialize` fields are required; dropping one must fail at parse time."""
-    initialize = {
-        k: v for k, v in VALID_OPTIMIZATION_CONFIG["initialize"].items() if k != "target_efeatures"
-    }
-    bad = {**VALID_OPTIMIZATION_CONFIG, "initialize": initialize}
+    """Required inputs (here `target_efeatures`) must fail at parse time when dropped."""
+    bad = {k: v for k, v in VALID_OPTIMIZATION_CONFIG.items() if k != "target_efeatures"}
 
     with pytest.raises(ValidationError):
         SharedStatePartial(emodel_optimization_config=bad)

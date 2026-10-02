@@ -17,6 +17,7 @@ from obi_one.scientific.library.info_scan_config.config import (
     InfoScanConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    CellMorphologyInput,
     DistanceDependentDistributionUnion,
     EModelOptimisationParameters,
     MorphologySettings,
@@ -24,9 +25,11 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     OptimizationParams,
     OptimizationSettings,
     ParametersSelection,
+    TargetEFeaturesInput,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     to_bpem_custom_distributions,
+    to_bpem_distributions,
 )
 
 
@@ -201,8 +204,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
-            self.initialize.target_efeatures.entity(db_client=db_client),
-            self.initialize.morphology.entity(db_client=db_client),
+            self.target_efeatures.task_result.entity(db_client=db_client),
+            self.morphology.cell_morphology.entity(db_client=db_client),
         ]
         entities.extend(
             reference.entity(db_client=db_client)
@@ -230,6 +233,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     @model_validator(mode="after")
     def validate_parameter_selection(self) -> "EModelOptimizationScanConfig":
         """Validate section-list and distribution references across sibling blocks."""
+        to_bpem_distributions(self.distance_dependent_distributions)
         _validate_section_list_availability(
             self.morphology_settings,
             self.parameters_selection,
@@ -266,6 +270,26 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     # --- Inputs ---
 
+    target_efeatures: TargetEFeaturesInput = Field(
+        title="Target e-features",
+        description="E-feature extraction result used as the optimisation target.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    morphology: CellMorphologyInput = Field(
+        title="Cell morphology",
+        description="Cell morphology the e-model is optimised on.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
     emodel_optimisation_parameters: EModelOptimisationParameters = Field(
         title="Mechanisms",
         description=(
@@ -276,24 +300,24 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.EMODEL_OPTIMISATION_PARAMETERS,
             SchemaKey.GROUP: BlockGroup.INPUTS,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 
     distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion] = Field(
         default={},
-        title="Custom distance-dependent distributions",
+        title="Distance-dependent distributions",
         description=(
-            "User-defined distance-dependent parameter transformations. The ten standard "
-            "distributions (uniform, exp, step, ...) are always selectable by name on any "
-            "parameter row without being declared here; this field only holds custom "
-            "distributions declared by the user."
+            "Distance-dependent parameter transformations: standard ones (uniform, exp, "
+            "step, ...) or custom formulas. Parameters reference standard distributions by "
+            "their fixed name, which works even if they are not added here, and custom "
+            "distributions by their key."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 3,
-            SchemaKey.SINGULAR_NAME: "Custom Distance-Dependent Distribution",
+            SchemaKey.SINGULAR_NAME: "Distance-dependent distribution",
         },
     )
 

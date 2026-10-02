@@ -780,7 +780,7 @@ DistanceDependentDistributionUnion = Annotated[
 
 
 class OptimizationInitialize(Block):
-    """Entity-based inputs for the optimisation stage's Setup > Initialization card."""
+    """E-model name and e-type for the optimisation stage's Setup > Initialization card."""
 
     emodel: str = Field(
         title="E-Model name",
@@ -800,7 +800,12 @@ class OptimizationInitialize(Block):
             },
         },
     )
-    target_efeatures: TaskResultFromID = Field(
+
+
+class TargetEFeaturesInput(Block):
+    """Extracted e-features used as the optimisation target (Inputs card)."""
+
+    task_result: TaskResultFromID = Field(
         title="Target EFeatures",
         description=(
             "TaskResult entity from the 01_efeature_extraction stage. Its extracted-features "
@@ -812,7 +817,12 @@ class OptimizationInitialize(Block):
             SchemaKey.TASK_RESULT_TYPE: TaskResultType.efeature_extraction__result,
         },
     )
-    morphology: CellMorphologyFromID = Field(
+
+
+class CellMorphologyInput(Block):
+    """Cell morphology the e-model is optimised on (Inputs card)."""
+
+    cell_morphology: CellMorphologyFromID = Field(
         title="Cell morphology",
         description=(
             "CellMorphology entity whose SWC asset is staged into ``./morphologies/``. "
@@ -826,12 +836,11 @@ class OptimizationInitialize(Block):
 
 
 def default_distance_dependent_distributions() -> dict[str, DistanceDependentDistributionUnion]:
-    """Custom distance-dependent distributions declared by the user (empty by default).
+    """Distance-dependent distributions declared by the user (empty by default).
 
-    The ten legacy distributions from
+    Standard distributions from
     ``bluepyemodel.preprocessing.schemas.STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS``
-    are always selectable by name without being declared here; this dict only holds
-    user-defined distributions (see ``CustomDistanceDependentDistribution``).
+    are always selectable by name, whether or not they are declared here.
     """
     return {}
 
