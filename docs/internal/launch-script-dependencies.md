@@ -55,14 +55,7 @@ Some tasks depend on private packages from AWS CodeArtifact (currently `ultralis
 
 ## Image overrides
 
-Some executor images ship a build that is not published on any index, such as the NEURON dev build of `python_3_12_openmpi5_neuron9_neurodamus` (`app/types.py`). Putting that version in the `*.in` would make the resolution unsatisfiable, so it goes in a sibling `*.override` file instead:
-
-```
-launch_scripts/launch_task_for_single_config_asset/dependencies/
-  neurodamus_simulation.in         # obi-one[extras] + the task's own deps
-  neurodamus_simulation.override   # versions the image provides
-  neurodamus_simulation.txt        # generated
-```
+Some executor images ship a build that is not published on any index, such as the NEURON dev build of `python_3_12_openmpi5_neuron9_neurodamus` (`app/types.py`). Putting that version in the `*.in` would make the resolution unsatisfiable, so it goes in a sibling `<name>.override` instead:
 
 ```
 # neurodamus_simulation.override
@@ -71,13 +64,9 @@ launch_scripts/launch_task_for_single_config_asset/dependencies/
 neuron==9.0.2.dev64
 ```
 
-**`*.override` files are owned by the maintainers of the launch-system images**, and are updated when the image changes. A task developer editing the `*.in` never needs to touch one.
+**`*.override` files are owned by the maintainers of the launch-system images** and are updated when the image changes; task developers only edit the `*.in`. Only a task whose `image_type` provides the build may have one, and an `*.override` without a matching `*.in` is an error.
 
-Compiling excludes the named packages from the resolver output (`--no-emit-package`) and writes the `*.override` requirements into the `*.txt` in their place, under a generated comment. The pins the resolver would otherwise preserve are also filtered, so an unpublishable version is never fed back as a resolution constraint. Editing an `*.override` makes its `*.txt` stale, and `make compile-launch-deps` regenerates it as usual.
-
-The rest of the closure is still resolved against the version available on the index, so this suits a dev build of an already-resolvable package (NEURON dev builds share the dependencies of the matching release). For a package that nothing else in the closure requires, none of its dependencies would be pinned.
-
-Only tasks whose `image_type` provides the build may have an `*.override`: the executor installs the requirements into the image's environment, where the pin is already satisfied. An `*.override` without a matching `*.in` is reported as an error, since it would override nothing.
+Compiling excludes those packages from the resolver output and writes the `*.override` requirements into the `*.txt` in their place, so editing one makes its `*.txt` stale. The rest of the closure is still resolved against the version on the index, which suits a dev build of an already-resolvable package (NEURON dev builds share the dependencies of the matching release).
 
 ## Checking
 

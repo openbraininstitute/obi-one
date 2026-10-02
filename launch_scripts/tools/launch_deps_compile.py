@@ -292,8 +292,7 @@ def _existing_pins(out_file: Path, skip_names: frozenset[str]) -> str:
 
     uv preserves the pins from an existing output file unless a change is forced;
     seeding a compile with these gives the pin-preservation behavior. Packages in
-    ``skip_names`` are left out: an overridden version may not exist on any index,
-    so seeding it would make the resolution unsatisfiable.
+    ``skip_names`` are left out.
     """
     if not out_file.exists():
         return ""
