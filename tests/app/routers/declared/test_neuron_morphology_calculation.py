@@ -1,3 +1,4 @@
+import inspect
 import json
 import pathlib
 import sys
@@ -9,8 +10,9 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import CellMorphologyProtocol
+from entitysdk.models import CellMorphology, CellMorphologyProtocol
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
+from entitysdk.types import EntityLifecycleStatus
 from fastapi import HTTPException
 
 from app.dependencies.entitysdk import get_client
@@ -23,7 +25,10 @@ from app.endpoints.morphology_metrics_calculation import (
     register_morphology,
     run_morphology_analysis,
 )
-from app.services.morphology import MorphologyFiles, validate_and_convert_morphology
+from app.services.morphology import (
+    MorphologyFiles,
+    convert_morphology,
+)
 from obi_one.scientific.library.morphology_measurement_annotation import (
     get_morphology_analysis_dict,
     get_morphology_template,
@@ -57,13 +62,20 @@ def mock_template_and_functions(monkeypatch):
     mock_result = MagicMock()
     mock_result.hdf5 = Path("path0.h5")
     mock_result.swc = Path("path1.swc")
+    mock_result.asc = Path("path2.asc")
 
-    mock_validate_and_convert_morphology = create_autospec(
-        validate_and_convert_morphology, return_value=mock_result
-    )
+    # Mock load_morphio_morphology to succeed (for happy path tests)
+    mock_load_morphio = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
-        mock_validate_and_convert_morphology,
+        "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+        mock_load_morphio,
+    )
+
+    # Mock convert_morphology to return our mock result
+    mock_convert_morphology = create_autospec(convert_morphology, return_value=mock_result)
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.convert_morphology",
+        mock_convert_morphology,
     )
 
 
@@ -214,6 +226,24 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
     response = client.post(
         ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
     )
+    assert response.status_code == 500
+    assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
+
+
+def test_morphometrics_registration_failure(client, monkeypatch, mock_entity_payload):
+    """A failure registering morphometrics is reported, not swallowed."""
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.register_morphometrics",
+        MagicMock(side_effect=EntitySDKError("morphometrics fail")),
+    )
+
+    response = client.post(
+        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
+    )
+
     assert response.status_code == 500
     assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
 
@@ -646,8 +676,13 @@ def test_converted_asc_is_uploaded_for_swc_input(client, monkeypatch):
         hdf5=_existing_path("converted.h5"),
         asc=_existing_path("converted.asc"),
     )
+    # Mock both functions to simulate successful validation and conversion
     monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
+        "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+        lambda *_args, **_kwargs: None,  # Returns None, doesn't raise
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.convert_morphology",
         lambda *_args, **_kwargs: converted,
     )
     monkeypatch.setattr(
@@ -675,3 +710,281 @@ def test_converted_asc_is_uploaded_for_swc_input(client, monkeypatch):
         f"converted .asc was not uploaded; uploaded: {uploaded_suffixes}"
     )
     assert {".swc", ".h5", ".asc"} <= set(uploaded_suffixes)
+
+
+class TestStoreInvalidMorphology:
+    """Morphologies whose file fails validation are registered as disqualified on opt-in."""
+
+    VALIDATION_DETAIL = "Morphology validation failed: bad parent id"
+
+    @pytest.fixture
+    def failing_validation(self, monkeypatch):
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": self.VALIDATION_DETAIL,
+                },
+            )
+
+        monkeypatch.setattr(
+            "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+            _fail,
+        )
+
+    @pytest.fixture
+    def spies(self, monkeypatch):
+        recorded = {
+            "register": MagicMock(return_value=MagicMock(id=str(uuid.uuid4()))),
+            "metrics": MagicMock(return_value=MagicMock(id=str(uuid.uuid4()))),
+            "mesh": MagicMock(return_value=None),
+            "content": MagicMock(return_value=MagicMock()),
+        }
+        target = "app.endpoints.morphology_metrics_calculation."
+        monkeypatch.setattr(target + "register_morphology", recorded["register"])
+        monkeypatch.setattr(target + "register_morphometrics", recorded["metrics"])
+        monkeypatch.setattr(target + "try_generate_and_upload_mesh", recorded["mesh"])
+        monkeypatch.setattr(target + "upload_morphology_content", recorded["content"])
+        monkeypatch.setattr(target + "run_morphology_analysis", lambda _: [])
+        return recorded
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_rejected_by_default(self, client, spies):
+        """Without the opt-in the request still fails and nothing is registered."""
+        response = client.post(
+            ROUTE, data={"metadata": "{}"}, files={"file": ("bad.swc", b"garbage")}
+        )
+
+        assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, response.json()
+        spies["register"].assert_not_called()
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_stored_as_disqualified_when_opted_in(self, client, spies):
+        """With the opt-in the morphology is registered as disqualified, file kept."""
+        metadata = json.dumps({"name": "My morphology", "store_if_invalid": True})
+
+        response = client.post(
+            ROUTE, data={"metadata": metadata}, files={"file": ("bad.swc", b"garbage")}
+        )
+
+        assert response.status_code == 200, response.json()
+        body = response.json()
+        assert body["lifecycle_status"] == "disqualified"
+        assert body["validation_error"] == self.VALIDATION_DETAIL
+        assert body["measurement_entity_id"] is None
+        assert body["mesh_asset_id"] is None
+
+        # Registered as disqualified, with the metadata the user supplied.
+        spies["register"].assert_called_once()
+        assert (
+            spies["register"].call_args.kwargs["lifecycle_status"]
+            == EntityLifecycleStatus.disqualified
+        )
+        assert spies["register"].call_args.args[1]["name"] == "My morphology"
+
+        # Original upload is kept, but nothing that needs a parseable file runs.
+        spies["content"].assert_called_once()
+        spies["metrics"].assert_not_called()
+        spies["mesh"].assert_not_called()
+
+    def test_opt_in_does_not_affect_valid_files(self, client, spies):
+        """A valid file is unaffected by the flag: no lifecycle_status is forced."""
+        metadata = json.dumps({"name": "Good cell", "store_if_invalid": True})
+
+        response = client.post(
+            ROUTE, data={"metadata": metadata}, files={"file": ("good.swc", b"content")}
+        )
+
+        assert response.status_code == 200, response.json()
+        body = response.json()
+        assert body["lifecycle_status"] == "active"
+        assert body["validation_error"] is None
+        assert body["measurement_entity_id"] is not None
+
+        # The status the entity is actually registered with must resolve to active, whether
+        # passed explicitly or left to register_morphology's default.
+        spies["register"].assert_called_once()
+        kwargs = spies["register"].call_args.kwargs
+        if "lifecycle_status" in kwargs:
+            assert kwargs["lifecycle_status"] == EntityLifecycleStatus.active
+        else:
+            default = inspect.signature(register_morphology).parameters["lifecycle_status"].default
+            assert default == EntityLifecycleStatus.active
+        spies["metrics"].assert_called_once()
+
+    def test_opt_in_is_not_persisted_as_entity_metadata(self):
+        """The opt-in is a request control, not something stored on the entity."""
+        payload = _prepare_entity_payload(
+            MorphologyMetadata(name="My morphology", store_if_invalid=True), "bad.swc"
+        )
+        assert "store_if_invalid" not in payload
+
+    def test_system_error_during_conversion_stays_an_error(self, client, spies):
+        """A 500 from conversion is a server problem (e.g. full disk), not a bad file.
+
+        It must surface as an error and must not create a disqualified entity, otherwise a
+        transient outage would leave orphaned records behind.
+        """
+
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": "Failed to convert the file due to a system error: no space",
+                },
+            )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+                lambda *_args, **_kwargs: None,
+            )
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.convert_morphology",
+                _fail,
+            )
+            response = client.post(
+                ROUTE,
+                data={"metadata": json.dumps({"store_if_invalid": True})},
+                files={"file": ("bad.swc", b"garbage")},
+            )
+
+        assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR, response.json()
+        spies["register"].assert_not_called()
+
+    def test_unconvertible_file_is_disqualified(self, client, spies):
+        """A file that loads but cannot be converted is a file problem, stored as disqualified.
+
+        convert_morphology raises 422 for structural problems it cannot convert (an unsupported
+        soma type, for example). With the opt-in, that is kept rather than rejected, the same as
+        a file morphio cannot load at all.
+        """
+
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": "Failed to convert the file: unsupported soma type",
+                },
+            )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+                lambda *_args, **_kwargs: None,
+            )
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.convert_morphology",
+                _fail,
+            )
+            response = client.post(
+                ROUTE,
+                data={"metadata": json.dumps({"store_if_invalid": True})},
+                files={"file": ("bad.swc", b"garbage")},
+            )
+
+        assert response.status_code == HTTPStatus.OK, response.json()
+        body = response.json()
+        assert body["lifecycle_status"] == "disqualified"
+        assert body["validation_error"] == "Failed to convert the file: unsupported soma type"
+        spies["register"].assert_called_once()
+
+    def test_conversion_failure_without_opt_in_still_errors(self, client, spies):
+        """Without the opt-in, a 422 conversion failure is rejected as before."""
+
+        def _fail(*_args, **_kwargs):
+            raise HTTPException(
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_REQUEST",
+                    "detail": "Failed to convert the file: unsupported soma type",
+                },
+            )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
+                lambda *_args, **_kwargs: None,
+            )
+            mp.setattr(
+                "app.endpoints.morphology_metrics_calculation.convert_morphology",
+                _fail,
+            )
+            response = client.post(
+                ROUTE,
+                data={"metadata": json.dumps({})},
+                files={"file": ("bad.swc", b"garbage")},
+            )
+
+        assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, response.json()
+        spies["register"].assert_not_called()
+
+    def _post_with_failing_upload(self, client, spies, *, delete_fails: bool):
+        entity_id = str(uuid.uuid4())
+        spies["register"].return_value = MagicMock(id=entity_id)
+        spies["content"].side_effect = EntitySDKError("upload failed")
+
+        db_client = MagicMock()
+        if delete_fails:
+            db_client.delete_entity.side_effect = EntitySDKError("delete failed")
+        client.app.dependency_overrides[get_client] = lambda: db_client
+
+        response = client.post(
+            ROUTE,
+            data={"metadata": json.dumps({"store_if_invalid": True})},
+            files={"file": ("bad.swc", b"garbage")},
+        )
+        return entity_id, db_client, response
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_upload_failure_leaves_no_entity_behind(self, client, spies):
+        """An entity without its file is a failed operation, so it must be removed."""
+        entity_id, db_client, response = self._post_with_failing_upload(
+            client, spies, delete_fails=False
+        )
+
+        assert response.status_code == 500
+        detail = response.json()["detail"]
+        assert detail["code"] == "ENTITYSDK_API_FAILURE"
+        db_client.delete_entity.assert_called_once()
+        assert str(db_client.delete_entity.call_args.kwargs["entity_id"]) == entity_id
+        # Cleanup succeeded, so there is no orphan for the caller to deal with.
+        assert detail["entity_id"] is None
+
+    @pytest.mark.usefixtures("failing_validation")
+    def test_entity_id_reported_when_cleanup_also_fails(self, client, spies):
+        """If the entity cannot be removed either, the caller needs its id."""
+        entity_id, _db_client, response = self._post_with_failing_upload(
+            client, spies, delete_fails=True
+        )
+
+        assert response.status_code == 500
+        assert response.json()["detail"]["entity_id"] == entity_id
+
+    def test_disqualified_status_reaches_the_registered_entity(self):
+        """The real CellMorphology is built with the disqualified status, not just passed along."""
+        client = MagicMock()
+        client.register_entity.side_effect = lambda entity: entity
+        client.search_entity.return_value.one.return_value = PlaceholderCellMorphologyProtocol(
+            generation_type="placeholder"
+        )
+
+        payload = _prepare_entity_payload(
+            MorphologyMetadata(name="My morphology", cell_morphology_protocol_id=str(uuid.uuid4())),
+            "bad.swc",
+        )
+        morphology = register_morphology(
+            client, payload, lifecycle_status=EntityLifecycleStatus.disqualified
+        )
+
+        assert morphology.lifecycle_status == EntityLifecycleStatus.disqualified
+        assert morphology.name == "My morphology"
+
+
+def test_disqualified_status_available_in_entitysdk():
+    """Guard the contract this feature depends on across entitysdk upgrades."""
+    assert EntityLifecycleStatus.disqualified.value == "disqualified"
+    assert "lifecycle_status" in CellMorphology.model_fields
