@@ -9,6 +9,8 @@ Each requirements file has two versions:
 - **`*.in`**: the source of truth. Edit this to add or change dependencies.
 - **`*.txt`**: generated from the `*.in` and fully pinned. Do not edit by hand. The launch-system installs from it at task run time.
 
+A task may additionally have an **`*.override`** file, pinning packages that its runtime image provides. See [Image overrides](#image-overrides).
+
 ## TL;DR for task developers
 
 - **Add a task:** create `launch_scripts/<task>/dependencies/<name>.in` with a bare `obi-one[<extras>]` line (no version) plus any extra packages, run `make compile-launch-deps FILE=<path to the .in>`, and commit both the `*.in` and the generated `*.txt`. Tasks run by `launch_scripts/launch_task_for_single_config_asset/main.py` use `_obi_one_code("<name>.txt")` in `app/mappings.py`.
@@ -16,6 +18,7 @@ Each requirements file has two versions:
 - **Change obi-one's own dependencies** (`pyproject.toml`): also run `make compile-launch-deps`, or `check-launch-deps` fails in CI.
 - **Upgrade the pinned versions:** compiling never upgrades existing pins; raise a lower bound in the `*.in` for one package, or run `make upgrade-launch-deps FILE=<path to the .in>` for the whole closure, then test the task (see [Compiling](#compiling)).
 - **Private packages** (CodeArtifact, e.g. `ultraliser`): add them to `PRIVATE_PACKAGES` in `launch_scripts/tools/launch_deps_compile.py` and set the CodeArtifact credentials before compiling (see [Compiling](#compiling)).
+- **Pin a build that only exists in the runtime image** (e.g. the NEURON dev build of the neurodamus image): add a `<name>.override` file next to the `<name>.in`. Task developers don't touch it (see [Image overrides](#image-overrides)).
 - **Don't touch the obi-one pin** (`obi-one[...]==X` in the `*.txt`): the release workflow updates it, and compiling keeps it.
 - **Test a task against your branch's obi-one code:** see [Testing a task against an obi-one feature branch](#testing-a-task-against-an-obi-one-feature-branch), and revert the `*.txt` edit before merging.
 
@@ -49,6 +52,21 @@ To upgrade one package, raise its lower bound in the `*.in` and compile. `make u
 `obi-one` itself is resolved from the local checkout, so its closure matches the current source, but it is not pinned by the resolver. Its line is written with the release pin found in the committed `*.txt` files (`obi-one[extras]==X` after release `X`, bare before the first release), and compiling keeps that pin. Only the release workflow changes it (see below). The obi-one lines of the `*.in` files must stay bare.
 
 Some tasks depend on private packages from AWS CodeArtifact (currently `ultraliser`, used by `skeletonization` and `mesh_lod_generation`). The CodeArtifact index is used only for files that require a package listed in `PRIVATE_PACKAGES` (`launch_deps_compile.py`), directly or in their compiled `.txt`: it proxies PyPI but sends no caching headers, so using it everywhere makes every run slow. Add new private packages to that list. Compiling or checking these files needs `UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws` and `UV_INDEX_OBI_CODEARTIFACT_PASSWORD` set to a CodeArtifact token (`aws codeartifact get-authorization-token --domain openbraininstitute --query authorizationToken --output text`).
+
+## Image overrides
+
+Some executor images ship a build that is not published on any index, such as the NEURON dev build of `python_3_12_openmpi5_neuron9_neurodamus` (`app/types.py`). Putting that version in the `*.in` would make the resolution unsatisfiable, so it goes in a sibling `<name>.override` instead:
+
+```
+# neurodamus_simulation.override
+# Provided by the python_3_12_openmpi5_neuron9_neurodamus launch-system image.
+# Maintained with that image; not edited by task developers.
+neuron==9.0.2.dev64
+```
+
+**`*.override` files are owned by the maintainers of the launch-system images** and are updated when the image changes; task developers only edit the `*.in`. Only a task whose `image_type` provides the build may have one, and an `*.override` without a matching `*.in` is an error.
+
+Compiling excludes those packages from the resolver output and writes the `*.override` requirements into the `*.txt` in their place, so editing one makes its `*.txt` stale. The rest of the closure is still resolved against the version on the index, which suits a dev build of an already-resolvable package (NEURON dev builds share the dependencies of the matching release).
 
 ## Checking
 

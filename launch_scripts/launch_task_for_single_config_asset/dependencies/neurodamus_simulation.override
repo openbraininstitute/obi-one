@@ -1,0 +1,3 @@
+# Provided by the python_3_12_openmpi5_neuron9_neurodamus launch-system image.
+# Maintained with that image; not edited by task developers.
+neuron==9.0.2.dev64
