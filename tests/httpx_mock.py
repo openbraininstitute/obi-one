@@ -10,7 +10,7 @@ import respx
 from respx.mocks import HTTPCoreMocker
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Generator
 
     import httpx
 
@@ -127,7 +127,7 @@ class HTTPXMock:
 
 
 @contextmanager
-def mock_httpx() -> Iterator[HTTPXMock]:
+def mock_httpx() -> Generator[HTTPXMock, None, None]:
     """Mock requests made through both HTTPX implementations."""
     with (
         respx.mock(using="httpcore", assert_all_called=False) as standard_router,

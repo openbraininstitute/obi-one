@@ -109,7 +109,7 @@ dev = [
     "pytest-httpx>=0.35.0",
     "respx==0.22.0",
     "ruff",
-    "ty>=0.0.33",
+    "ty==0.0.35",  # TODO: upgrade separately
 ]
 docs = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.1"]
 
@@ -135,7 +135,7 @@ version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.uv]
-required-version = ">=0.9.22"
+required-version = ">=0.12.22"
 
 [[tool.uv.index]]
 name = "obi-codeartifact"
