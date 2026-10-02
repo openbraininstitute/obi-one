@@ -9,7 +9,7 @@ import re
 import tempfile
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from datetime import UTC, datetime
 from functools import partial, singledispatch
 from pathlib import Path
@@ -1034,7 +1034,7 @@ def activity_wrapper(
     entitysdk_client: Client,
     activity_id: uuid.UUID,
     activity_type: type[Activity],
-) -> Iterator[None]:
+) -> Generator[None, None, None]:
     """Ensure that the activity status is updated correctly in entitycore."""
 
     def _update_activity_status(attrs: dict) -> None:

@@ -6,7 +6,7 @@ This module provides functionality to run simulations using different backends
 
 import argparse
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,7 +46,7 @@ class MPIProcess:
 
 
 @contextmanager
-def neuron_mpi_process(libnrnmech_path: str) -> Iterator[MPIProcess]:
+def neuron_mpi_process(libnrnmech_path: str) -> Generator[MPIProcess, None, None]:
     h.nrn_load_dll(libnrnmech_path)
     h.nrnmpi_init()
     parallel_context = h.ParallelContext()
