@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one==2026.9.23
+obi-one==2026.10.0
 # Pinned by neurodamus_simulation.override, not resolved:
 neuron==9.0.2.dev64
 aiofiles==25.1.0
