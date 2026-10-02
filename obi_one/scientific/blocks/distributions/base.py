@@ -101,7 +101,7 @@ class Distribution(Block, abc.ABC):
             kwargs["le"] = self.max
         else:
             kwargs["lt"] = self.max
-        return self.sample(n=n, rng=rng, **kwargs)
+        return self.sample(n=n, rng=rng, **kwargs)  # ty:ignore[invalid-argument-type]
 
     @abc.abstractmethod
     def _sample_generator(self, n: int = 1, rng: np.random.Generator | None = None) -> list[float]:
