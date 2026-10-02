@@ -3,8 +3,8 @@
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
 obi-one==2026.9.23
-# Provided by the task's runtime image, copied from the .in and not resolved:
-neuron==9.0.2.dev64  # image-local
+# Pinned by neurodamus_simulation.override, not resolved:
+neuron==9.0.2.dev64
 aiofiles==25.1.0
 annotated-types==0.8.0
 anyio==4.15.1

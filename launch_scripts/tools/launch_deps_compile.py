@@ -16,8 +16,9 @@ currently found in the committed ``*.txt`` files: the release workflow
 (``.github/workflows/release-pin.yml``) re-pins it with ``launch_deps_pin.py`` for
 each release, and compiling keeps that pin.
 
-Requirements marked ``# image-local`` are likewise excluded and copied verbatim: they
-pin a build that only exists in the task's runtime image (see
+A sibling ``*.override`` file pins packages provided by the task's runtime image,
+which may not exist on any index: they are excluded from the resolution and written
+into the ``*.txt`` instead of the resolved version (see
 docs/internal/launch-script-dependencies.md).
 
 Run ``launch_deps_compile.py --help`` for the arguments.
@@ -37,18 +38,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from launch_deps_common import (
-    IMAGE_LOCAL_LINE_REGEX,
-    LAUNCH_SCRIPTS_DIR,
-    OBI_ONE_LINE_REGEX,
-    RELEASE_PIN_REGEX,
-    REPO_ROOT,
-)
+from launch_deps_common import LAUNCH_SCRIPTS_DIR, OBI_ONE_LINE_REGEX, RELEASE_PIN_REGEX, REPO_ROOT
 
 # Resolution target for the runtime executors. The Python version is derived from
 # the ``requires-python`` floor (see ``_python_floor_version``).
 PYTHON_PLATFORM = "x86_64-unknown-linux-gnu"
 OBI_ONE_PACKAGE = "obi-one"
+
+# Suffix of the sibling file pinning packages provided by the task's runtime image
+# (``<name>.override`` next to ``<name>.in``). Owned by the maintainers of the
+# launch-system images, not by task developers.
+OVERRIDE_SUFFIX = ".override"
 
 # Always kept at latest, mirroring the project lock file (``make compile-deps``).
 ALWAYS_LATEST_PACKAGE = "entitysdk"
@@ -84,19 +84,6 @@ class CompileResult:
     index: str
 
 
-@dataclass(frozen=True)
-class ResolverInput:
-    """Resolver input built from one ``.in`` file.
-
-    ``text`` is what uv resolves; ``obi_one_lines`` and ``image_local_lines`` are the
-    verbatim ``.in`` lines excluded from resolution and written into the ``.txt``.
-    """
-
-    text: str
-    obi_one_lines: tuple[str, ...]
-    image_local_lines: tuple[str, ...]
-
-
 def resolve_in_files(paths: list[str]) -> list[Path]:
     """Resolve CLI ``paths`` to a sorted, de-duplicated list of ``.in`` files.
 
@@ -122,12 +109,13 @@ def resolve_in_files(paths: list[str]) -> list[Path]:
 
 
 def check_in_txt_pairing(in_files: list[Path]) -> bool:
-    """Warn about unpaired .in/.txt files. Returns True if any mismatch is found.
+    """Warn about unpaired .in/.txt/.override files. Returns True on any mismatch.
 
     Checks the ``dependencies`` directories that contain the resolved ``in_files``
     (so selecting a subset only checks the relevant directories). When ``in_files``
     is empty, all launch-script dependencies directories are checked so that a
-    directory holding only orphan ``.txt`` files is still caught.
+    directory holding only orphan ``.txt`` files is still caught. An ``.override``
+    is optional, but one without an ``.in`` would silently override nothing.
     """
     if in_files:
         dirs = {p.parent for p in in_files}
@@ -140,12 +128,19 @@ def check_in_txt_pairing(in_files: list[Path]) -> bool:
             continue
         in_stems = {p.stem for p in deps_dir.glob("*.in")}
         txt_stems = {p.stem for p in deps_dir.glob("*.txt")}
+        override_stems = {p.stem for p in deps_dir.glob(f"*{OVERRIDE_SUFFIX}")}
         for stem in sorted(in_stems - txt_stems):
             mismatch = True
             print(f"MISSING .txt for {deps_dir.relative_to(REPO_ROOT)}/{stem}.in", file=sys.stderr)
         for stem in sorted(txt_stems - in_stems):
             mismatch = True
             print(f"MISSING .in for {deps_dir.relative_to(REPO_ROOT)}/{stem}.txt", file=sys.stderr)
+        for stem in sorted(override_stems - in_stems):
+            mismatch = True
+            print(
+                f"MISSING .in for {deps_dir.relative_to(REPO_ROOT)}/{stem}{OVERRIDE_SUFFIX}",
+                file=sys.stderr,
+            )
     return mismatch
 
 
@@ -160,6 +155,26 @@ def requirement_name(line: str) -> str:
         msg = f"Could not read a package name from requirement line {line!r}"
         raise SystemExit(msg)
     return _normalize_name(m.group(1))
+
+
+def read_override_requirements(in_file: Path) -> list[str]:
+    """Return the requirements pinned by ``in_file``'s ``.override`` sibling.
+
+    Empty if there is no such file. Raises SystemExit if the file holds no
+    requirement, which would silently compile as if it were absent.
+    """
+    override_file = in_file.with_suffix(OVERRIDE_SUFFIX)
+    if not override_file.exists():
+        return []
+    lines = [
+        stripped
+        for raw in override_file.read_text(encoding="utf-8").splitlines()
+        if (stripped := raw.strip()) and not stripped.startswith("#")
+    ]
+    if not lines:
+        msg = f"{override_file}: no requirement found; delete the file instead"
+        raise SystemExit(msg)
+    return lines
 
 
 def needs_private_index(in_file: Path) -> bool:
@@ -242,26 +257,21 @@ def current_release_pin(txt_files: Iterable[Path]) -> str | None:
     return next(iter(files_by_version), None)
 
 
-def _build_resolve_input(in_file: Path) -> ResolverInput:
+def _build_resolve_input(in_file: Path) -> tuple[str, list[str]]:
     """Build the resolver input, rewriting the obi-one line to the local checkout.
 
     Replacing ``obi-one[extras]`` with the local project path resolves obi-one's
-    closure from the current checkout rather than a published release. Lines marked
-    ``# image-local`` are dropped from the resolver input, since the version they pin
-    exists only in the task's runtime image. Both kinds are returned verbatim, to be
-    written into the ``.txt``. Raises SystemExit if an obi-one line of the ``.in`` is
-    not bare, since only the release workflow pins obi-one.
+    closure from the current checkout rather than a published release. Returns the
+    rewritten input and the verbatim obi-one lines (to preserve in the output).
+    Raises SystemExit if an obi-one line of the ``.in`` is not bare, since only the
+    release workflow pins obi-one.
     """
     obi_one_lines: list[str] = []
-    image_local_lines: list[str] = []
     resolved_lines: list[str] = []
     for raw in in_file.read_text(encoding="utf-8").splitlines():
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             resolved_lines.append(raw)
-            continue
-        if IMAGE_LOCAL_LINE_REGEX.match(stripped):
-            image_local_lines.append(stripped)
             continue
         m = OBI_ONE_LINE_REGEX.match(stripped)
         if m:
@@ -274,18 +284,16 @@ def _build_resolve_input(in_file: Path) -> ResolverInput:
             resolved_lines.append(f"{REPO_ROOT.as_posix()}{extras_suffix}")
         else:
             resolved_lines.append(raw)
-    return ResolverInput(
-        "\n".join(resolved_lines) + "\n", tuple(obi_one_lines), tuple(image_local_lines)
-    )
+    return "\n".join(resolved_lines) + "\n", obi_one_lines
 
 
-def _existing_pins(out_file: Path) -> str:
-    """Return the committed ``.txt`` pins (header/obi-one/image-local/comments stripped).
+def _existing_pins(out_file: Path, skip_names: frozenset[str]) -> str:
+    """Return the committed ``.txt`` pins (header, obi-one and comments stripped).
 
     uv preserves the pins from an existing output file unless a change is forced;
-    seeding a compile with these gives the pin-preservation behavior. Image-local
-    lines are left out: their version is not on any index, so seeding them would make
-    the resolution unsatisfiable.
+    seeding a compile with these gives the pin-preservation behavior. Packages in
+    ``skip_names`` are left out: an overridden version may not exist on any index,
+    so seeding it would make the resolution unsatisfiable.
     """
     if not out_file.exists():
         return ""
@@ -294,10 +302,43 @@ def _existing_pins(out_file: Path) -> str:
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if OBI_ONE_LINE_REGEX.match(stripped) or IMAGE_LOCAL_LINE_REGEX.match(stripped):
+        if OBI_ONE_LINE_REGEX.match(stripped) or requirement_name(stripped) in skip_names:
             continue
         kept.append(stripped)
     return ("\n".join(kept) + "\n") if kept else ""
+
+
+def _render_txt(
+    in_file: Path,
+    compiled: str,
+    *,
+    obi_one_lines: list[str],
+    obi_one_pin: str | None,
+    override_lines: list[str],
+) -> str:
+    """Return the ``.txt`` content: generated header, unresolved lines, then the closure.
+
+    The obi-one and ``.override`` requirements are excluded from the resolver output,
+    so they are written here instead: obi-one pinned to ``obi_one_pin`` (bare if it is
+    None), the overrides verbatim.
+    """
+    header = (
+        f"# This file was autogenerated from {in_file.name} by "
+        "launch_scripts/tools/launch_deps_compile.py.\n"
+        "# To update, run: make compile-launch-deps or make upgrade-launch-deps\n"
+    )
+    if obi_one_lines:
+        header += (
+            "# The obi-one pin is updated for each release by .github/workflows/release-pin.yml\n"
+            "# and kept by compiling.\n"
+        )
+    pin_suffix = f"=={obi_one_pin}" if obi_one_pin else ""
+    blocks = [header, *(f"{line}{pin_suffix}\n" for line in obi_one_lines)]
+    if override_lines:
+        blocks.append(f"# Pinned by {in_file.with_suffix(OVERRIDE_SUFFIX).name}, not resolved:\n")
+        blocks += [f"{line}\n" for line in override_lines]
+    blocks.append(compiled)
+    return "".join(blocks)
 
 
 def compile_in_file(
@@ -311,10 +352,13 @@ def compile_in_file(
 
     Unless ``upgrade`` is set, versions already pinned in the committed ``.txt``
     are preserved (uv only changes what the ``.in`` / obi-one closure forces).
-    ``entitysdk`` is always upgraded to its latest version regardless. The obi-one
-    lines are written pinned to ``obi_one_pin``, or bare if it is None.
+    ``entitysdk`` is always upgraded to its latest version regardless. The
+    requirements of the ``.override`` sibling replace the resolved version of the
+    packages they name.
     """
-    resolver_input = _build_resolve_input(in_file)
+    resolve_input, obi_one_lines = _build_resolve_input(in_file)
+    override_lines = read_override_requirements(in_file)
+    override_names = frozenset(requirement_name(line) for line in override_lines)
     out_file = in_file.with_suffix(".txt")
 
     out_fd, out_name = tempfile.mkstemp(suffix=".txt")
@@ -323,12 +367,12 @@ def compile_in_file(
     in_fd, in_name = tempfile.mkstemp(suffix=".in")
     tmp_in = Path(in_name)
     with os.fdopen(in_fd, "w", encoding="utf-8") as tmp_in_f:
-        tmp_in_f.write(resolver_input.text)
+        tmp_in_f.write(resolve_input)
     try:
         # Seed the output with the current pins so uv preserves them, unless
         # upgrading everything.
         if not upgrade:
-            seed = _existing_pins(out_file)
+            seed = _existing_pins(out_file, override_names)
             if seed:
                 tmp_out.write_text(seed, encoding="utf-8")
 
@@ -354,11 +398,11 @@ def compile_in_file(
         if extra_index is not None:
             cmd += ["--extra-index-url", extra_index]
         # Discover obi-one's closure from the local project but do not emit obi-one
-        # itself: its line is written from the .in with the release pin. Image-local
-        # packages are likewise written from the .in, with the image's version.
-        for line in resolver_input.image_local_lines:
-            cmd += ["--no-emit-package", requirement_name(line)]
-        if resolver_input.obi_one_lines:
+        # itself: its line is written from the .in with the release pin. Overridden
+        # packages are likewise written from the .override, with the image's version.
+        for name in sorted(override_names):
+            cmd += ["--no-emit-package", name]
+        if obi_one_lines:
             cmd += ["--no-emit-package", OBI_ONE_PACKAGE]
 
         # Output is captured so that parallel compiles do not interleave; on failure
@@ -369,25 +413,13 @@ def compile_in_file(
         tmp_out.unlink(missing_ok=True)
         tmp_in.unlink(missing_ok=True)
 
-    header = (
-        f"# This file was autogenerated from {in_file.name} by "
-        "launch_scripts/tools/launch_deps_compile.py.\n"
-        "# To update, run: make compile-launch-deps or make upgrade-launch-deps\n"
+    return _render_txt(
+        in_file,
+        compiled,
+        obi_one_lines=obi_one_lines,
+        obi_one_pin=obi_one_pin,
+        override_lines=override_lines,
     )
-    if resolver_input.obi_one_lines:
-        header += (
-            "# The obi-one pin is updated for each release by .github/workflows/release-pin.yml\n"
-            "# and kept by compiling.\n"
-        )
-    pin_suffix = f"=={obi_one_pin}" if obi_one_pin else ""
-    obi_one_block = "".join(f"{line}{pin_suffix}\n" for line in resolver_input.obi_one_lines)
-    image_local_block = ""
-    if resolver_input.image_local_lines:
-        image_local_block = (
-            "# Provided by the task's runtime image, copied from the .in and not resolved:\n"
-            + "".join(f"{line}\n" for line in resolver_input.image_local_lines)
-        )
-    return header + obi_one_block + image_local_block + compiled
 
 
 def _compile_or_error(in_file: Path, *, upgrade: bool, obi_one_pin: str | None) -> CompileResult:
