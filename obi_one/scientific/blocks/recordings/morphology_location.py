@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
 import entitysdk
@@ -66,11 +65,10 @@ class MorphologyLocationVoltageRecording(Block):
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
-        sonata_simulation_config_directory: Path | None = None,
     ) -> dict:
         # This recording samples on its own `dt`, so the simulation's timestep is not used. It is
         # still accepted, because the generation task calls every recording the same way.
-        del simulation_timestep, default_node_set, db_client, sonata_simulation_config_directory
+        del simulation_timestep, default_node_set, db_client
 
         if end_time is None:
             msg = f"End time must be specified for recording '{self.block_name}'."

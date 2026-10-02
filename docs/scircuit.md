@@ -186,17 +186,13 @@ Recordings capture network activity:
 
 #### ExtracellularElectrodeArrayRecordingBlock
 
-Records the extracellular signal seen by each electrode of a recording array. Only available for
-circuit simulations, since the signal is computed from a weight matrix covering the whole circuit.
+Records the extracellular signal seen by each electrode of a recording array. Only available for circuit simulations, since the signal is computed from a weight matrix covering the whole circuit.
 
-- **Extracellular Recording Array**: ID of a `SimulatableExtracellularRecordingArray` entity, built
-  for the circuit being simulated by `CreateExtracellularRecordingArrayTask`
+- **Extracellular Recording Array**: ID of a `SimulatableExtracellularRecordingArray` entity, built for the circuit being simulated by `CreateExtracellularRecordingArrayTask`
 - **Neuron Set**: Neurons contributing to the signal
 - **Timestep**: Interval between recorded samples in ms
 
-At generation time the array's `electrode_array_weight_matrix` asset is downloaded next to the
-generated `simulation_config.json` as `<recording name>_electrodes.h5`, and the block emits a SONATA
-report of type `lfp` referencing it through `electrodes_file`:
+The block emits a SONATA report of type `lfp` whose `electrodes_file` is named after the array, `<array id>.h5`, and generation links the array to the Simulation entity through its `recording_arrays`:
 
 ```json
 "reports": {
@@ -207,13 +203,14 @@ report of type `lfp` referencing it through `electrodes_file`:
     "dt": 0.1,
     "start_time": 0.0,
     "end_time": 100.0,
-    "electrodes_file": "LFPRecording_electrodes.h5"
+    "electrodes_file": "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44.h5"
   }
 }
 ```
 
-LFP reports always record the membrane current (`i_membrane`), so unlike compartment reports they
-take no `variable_name`.
+Nothing is downloaded at generation. The weight matrix (the array's `electrode_array_weight_matrix` asset) holds a weight per electrode for every segment of the circuit, so it can be large, and generation has no use for it. It is fetched when the simulation is run: entitysdk's `stage_simulation` downloads the matrix of every array linked to the Simulation, identifies which report each belongs to by the file name, and rewrites `electrodes_file` to point at the staged copy.
+
+LFP reports always record the membrane current (`i_membrane`), so unlike compartment reports they take no `variable_name`.
 
 ## Running Simulations
 

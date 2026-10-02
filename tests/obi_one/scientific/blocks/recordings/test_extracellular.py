@@ -1,42 +1,22 @@
 import json
-from dataclasses import dataclass
 from pathlib import Path
+from uuid import UUID
 
 import libsonata
 import pytest
-from entitysdk.result import IteratorResult
-from entitysdk.types import AssetLabel
 
 import obi_one as obi
-from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
 
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 
 
-@dataclass
-class _FakeDownloadedAsset:
-    path: Path
+class _ClientThatMustNotBeUsed:
+    """Fails the test on any use: emitting the report must not touch the database."""
 
-
-class _FakeClient:
-    """Stands in for an entitysdk client, writing dummy weight-matrix files on download."""
-
-    def __init__(self, asset_names=("weights.h5",)) -> None:
-        self.asset_names = asset_names
-        self.selections = []
-
-    def get_entity(self, entity_id, entity_type):  # ruff: ignore[unused-method-argument]
-        return object()
-
-    def download_assets(self, entity, *, selection, output_path):  # ruff: ignore[unused-method-argument]
-        self.selections.append(selection)
-        downloaded = []
-        for asset_name in self.asset_names:
-            path = Path(output_path) / asset_name
-            path.write_bytes(b"weights")
-            downloaded.append(_FakeDownloadedAsset(path))
-        return IteratorResult(downloaded)
+    def __getattr__(self, name):
+        msg = f"the recording used the database client ({name})"
+        raise AssertionError(msg)
 
 
 def _recording(name="LFPRecording", dt=0.1):
@@ -49,16 +29,9 @@ def _recording(name="LFPRecording", dt=0.1):
 
 
 class TestExtracellularElectrodeArrayRecordingBlock:
-    def test_generates_sonata_lfp_report(self, tmp_path):
-        recording = _recording()
-        db_client = _FakeClient()
-
-        reports = recording.config(
-            SIMULATION_TIMESTEP_MILLISECONDS,
-            end_time=100.0,
-            default_node_set="AllBiophysical",
-            db_client=db_client,
-            sonata_simulation_config_directory=tmp_path,
+    def test_generates_sonata_lfp_report(self):
+        reports = _recording().config(
+            SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, default_node_set="AllBiophysical"
         )
 
         assert reports == {
@@ -69,35 +42,33 @@ class TestExtracellularElectrodeArrayRecordingBlock:
                 "dt": 0.1,
                 "start_time": 0.0,
                 "end_time": 100.0,
-                "electrodes_file": "LFPRecording_electrodes.h5",
+                "electrodes_file": f"{ARRAY_ID}.h5",
             }
         }
 
-    def test_downloads_weight_matrix_next_to_simulation_config(self, tmp_path):
-        recording = _recording(name="ProbeA")
-        db_client = _FakeClient()
+    def test_electrodes_file_is_named_after_the_array(self):
+        """entitysdk's stage_simulation reads the array id back out of the file name's stem."""
+        reports = _recording().config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0)
 
-        recording.config(
+        electrodes_file = Path(reports["LFPRecording"]["electrodes_file"])
+        assert UUID(electrodes_file.stem) == UUID(ARRAY_ID)
+
+    def test_does_not_download_the_weight_matrix(self):
+        """The matrix covers the whole circuit; it is staged when the simulation is run."""
+        reports = _recording().config(
             SIMULATION_TIMESTEP_MILLISECONDS,
             end_time=100.0,
-            db_client=db_client,
-            sonata_simulation_config_directory=tmp_path,
+            db_client=_ClientThatMustNotBeUsed(),
         )
 
-        # Selected by asset label, and renamed after the block so two arrays cannot collide.
-        assert db_client.selections == [{"label": AssetLabel.electrode_array_weight_matrix}]
-        assert (tmp_path / "ProbeA_electrodes.h5").read_bytes() == b"weights"
-        assert not (tmp_path / "weights.h5").exists()
+        assert reports["LFPRecording"]["electrodes_file"] == f"{ARRAY_ID}.h5"
 
     def test_report_is_accepted_by_libsonata(self, tmp_path):
-        """`write_simulation_config` validates with libsonata, which is strict about lfp reports."""
-        recording = _recording()
-        reports = recording.config(
-            SIMULATION_TIMESTEP_MILLISECONDS,
-            end_time=100.0,
-            db_client=_FakeClient(),
-            sonata_simulation_config_directory=tmp_path,
-        )
+        """`write_simulation_config` validates with libsonata, which is strict about lfp reports.
+
+        Nothing exists at the path: libsonata does not need the file, only the simulation does.
+        """
+        reports = _recording().config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0)
 
         sonata_config = {
             "version": 1,
@@ -109,37 +80,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
 
         report = parsed.report("LFPRecording")
         assert report.type == libsonata.SimulationConfig.Report.Type.lfp
-        assert report.electrodes_file == str(tmp_path / "LFPRecording_electrodes.h5")
-
-    def test_missing_db_client_raises(self, tmp_path):
-        recording = _recording()
-
-        with pytest.raises(OBIONEError, match="needs a database client"):
-            recording.config(
-                SIMULATION_TIMESTEP_MILLISECONDS,
-                end_time=100.0,
-                sonata_simulation_config_directory=tmp_path,
-            )
-
-    def test_missing_config_directory_raises(self):
-        recording = _recording()
-
-        with pytest.raises(OBIONEError, match="needs the simulation config directory"):
-            recording.config(
-                SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, db_client=_FakeClient()
-            )
-
-    @pytest.mark.parametrize("asset_names", [(), ("a.h5", "b.h5")])
-    def test_requires_exactly_one_weight_matrix_asset(self, tmp_path, asset_names):
-        recording = _recording()
-
-        with pytest.raises(OBIONEError, match="Expected exactly one"):
-            recording.config(
-                SIMULATION_TIMESTEP_MILLISECONDS,
-                end_time=100.0,
-                db_client=_FakeClient(asset_names=asset_names),
-                sonata_simulation_config_directory=tmp_path,
-            )
+        assert report.electrodes_file == str(tmp_path / f"{ARRAY_ID}.h5")
 
 
 class TestCircuitRecordingUnion:

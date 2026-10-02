@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Annotated
 
 import entitysdk
@@ -44,7 +43,6 @@ class BaseRecording(Block, ABC):
 
     _default_node_set: str = PrivateAttr(default="All")
     _simulation_timestep: PositiveFloat = PrivateAttr(default=SIMULATION_TIMESTEP_MILLISECONDS)
-    _sonata_simulation_config_directory: Path | None = PrivateAttr(default=None)
 
     @property
     @abstractmethod
@@ -62,11 +60,9 @@ class BaseRecording(Block, ABC):
         end_time: NonNegativeFloat | None = None,
         default_node_set: str = "All",
         db_client: entitysdk.client.Client | None = None,
-        sonata_simulation_config_directory: Path | None = None,
     ) -> dict:
         self._default_node_set = default_node_set
         self._simulation_timestep = simulation_timestep
-        self._sonata_simulation_config_directory = sonata_simulation_config_directory
 
         if (self.neuron_set is not None) and (
             self.neuron_set.block.get_neuron_set_population_type()
