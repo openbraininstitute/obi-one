@@ -152,7 +152,12 @@ EXPECTED_COMBINED_DEFAULTS = {
 
 def _block(name: str):
     """Construct a block by class name with every field, references included, left at default."""
-    return getattr(obi, name)()
+    cls = getattr(obi, name)
+    kwargs = {}
+    # section_types has no default and is required on generated morphology-location blocks.
+    if "section_types" in cls.model_fields:
+        kwargs["section_types"] = (3, 4)
+    return cls(**kwargs)
 
 
 def _input_entry(result, name: str) -> dict:

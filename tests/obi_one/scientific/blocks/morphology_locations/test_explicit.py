@@ -125,6 +125,7 @@ def test_explicit_locations_reconstruct_random_locations(morphology):
     random_locations = RandomMorphologyLocations(
         random_seed=17,
         number_of_locations=20,
+        section_types=(3, 4),
     ).points_on(morphology)
     explicit_locations = ExplicitMorphologyLocations(
         locations=[
