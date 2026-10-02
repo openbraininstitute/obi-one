@@ -5,16 +5,14 @@ from uuid import UUID
 
 import httpx
 
+from obi_one.utils.versions import release_tag_ref
+
 L = logging.getLogger(__name__)
 
 DEFAULT_OBI_ONE_REPO = "https://github.com/openbraininstitute/obi-one.git"
 VALIDATION_LAUNCH_PATH = "launch_scripts/launch_circuit_validation"
 ASSET_GENERATION_LAUNCH_PATH = "launch_scripts/launch_circuit_asset_generation"
 VALIDATION_IMAGE_TYPE = "python_3_12_openmpi5_neuron9_neurodamus"
-
-
-def _app_tag(app_version: str | None) -> str:
-    return (app_version or "0.0.0").split("-")[0]
 
 
 def submit_circuit_validation_job(
@@ -29,7 +27,7 @@ def submit_circuit_validation_job(
     app_version: str | None = None,
     force: bool = False,
     generate_assets_on_success: bool = True,
-) -> bool:
+) -> UUID | None:
     """Submit a circuit validation job to the launch-system.
 
     The job runs on ``python_3_12_openmpi5_neuron9_neurodamus``, stages the
@@ -42,7 +40,9 @@ def submit_circuit_validation_job(
         circuit_id: Circuit entity ID to validate.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
-        api_url: Base URL of the obi-one API (for the generate-assets callback).
+        api_url: Base URL of the obi-one API, already including the ``/api/obi-one``
+            path prefix (e.g. ``https://staging.cell-a.openbraininstitute.org/api/obi-one``);
+            used to build the generate-assets callback URL.
         compute_cell: Compute cell for the launch-system job (from the vlab).
         obi_one_repo: Git repository URL for the launch script checkout.
         app_version: App version used to form ``tag:<version>``; defaults to ``0.0.0``.
@@ -51,7 +51,9 @@ def submit_circuit_validation_job(
             successful validation. Disable for standalone re-validation.
 
     Returns:
-        True if the launch-system accepted the job, False otherwise.
+        Launch-system job ID if the job was accepted, otherwise ``None``.
+        The job ID can be used with ``GET /declared/task/{job_id}`` and
+        ``GET /declared/task/{job_id}/stream`` to inspect status and logs.
     """
     callbacks = []
     if generate_assets_on_success:
@@ -60,7 +62,7 @@ def submit_circuit_validation_job(
                 "action_type": "http_request_with_token",
                 "event_type": "job_on_success",
                 "config": {
-                    "url": (f"{api_url}/api/obi-one/declared/circuit/{circuit_id}/generate-assets"),
+                    "url": (f"{api_url}/declared/circuit/{circuit_id}/generate-assets"),
                     "method": "POST",
                 },
             }
@@ -69,7 +71,7 @@ def submit_circuit_validation_job(
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": f"tag:{_app_tag(app_version)}",
+            "ref": release_tag_ref(app_version),
             "path": f"{VALIDATION_LAUNCH_PATH}/main.py",
             "dependencies": f"{VALIDATION_LAUNCH_PATH}/dependencies/default.txt",
         },
@@ -93,11 +95,12 @@ def submit_circuit_validation_job(
 
     response = ls_client.post(url="/job", json=job_data)
     if response.is_success:
-        L.info("Validation task submitted for circuit %s", circuit_id)
-        return True
+        job_id = UUID(response.json()["id"])
+        L.info("Validation task submitted for circuit %s (job_id=%s)", circuit_id, job_id)
+        return job_id
 
     L.warning("Failed to submit validation task for circuit %s: %s", circuit_id, response.text)
-    return False
+    return None
 
 
 def submit_circuit_asset_generation_job(
@@ -110,11 +113,12 @@ def submit_circuit_asset_generation_job(
     obi_one_repo: str = DEFAULT_OBI_ONE_REPO,
     app_version: str | None = None,
     force: bool = False,
-) -> bool:
+) -> UUID | None:
     """Submit a circuit asset-generation job to the launch-system.
 
-    Stages the circuit and generates compressed SONATA + connectivity matrices.
-    Visualization assets are expected to already exist from registration.
+    Stages the circuit and generates the compressed SONATA circuit, connectivity
+    matrices and plots, and the overview / sim-designer images (skipping any image the
+    user already uploaded at registration time).
 
     Args:
         ls_client: Launch-system HTTP client (authenticated).
@@ -127,19 +131,22 @@ def submit_circuit_asset_generation_job(
         force: When True, regenerate compressed archive even if it already exists.
 
     Returns:
-        True if the launch-system accepted the job, False otherwise.
+        Launch-system job ID if the job was accepted, otherwise ``None``.
+        The job ID can be used with ``GET /declared/task/{job_id}`` and
+        ``GET /declared/task/{job_id}/stream`` to inspect status and logs.
     """
     job_data = {
         "code": {
             "type": "python_repository",
             "location": obi_one_repo,
-            "ref": f"tag:{_app_tag(app_version)}",
+            "ref": release_tag_ref(app_version),
             "path": f"{ASSET_GENERATION_LAUNCH_PATH}/main.py",
             "dependencies": f"{ASSET_GENERATION_LAUNCH_PATH}/dependencies/default.txt",
         },
         "resources": {
             "type": "machine",
-            "cores": 1,
+            # Launch-system valid combo for 16GB is 2 cores (1 core allows only ≤8GB).
+            "cores": 2,
             "memory": 16,
             "timelimit": "01:00",
             "compute_cell": compute_cell,
@@ -156,10 +163,11 @@ def submit_circuit_asset_generation_job(
 
     response = ls_client.post(url="/job", json=job_data)
     if response.is_success:
-        L.info("Asset generation task submitted for circuit %s", circuit_id)
-        return True
+        job_id = UUID(response.json()["id"])
+        L.info("Asset generation task submitted for circuit %s (job_id=%s)", circuit_id, job_id)
+        return job_id
 
     L.warning(
         "Failed to submit asset generation task for circuit %s: %s", circuit_id, response.text
     )
-    return False
+    return None

@@ -61,7 +61,11 @@ class SynapticModelPlacer(Block):
         title="Placement strategy",
         description=(
             "Existing morphology-location block used to place this group's incoming synapses. "
-            "The number of locations corresponds to the number of synapses."
+            "The number of locations corresponds to the number of synapses. Each location group "
+            "becomes a distinct presynaptic neuron, so a strategy with a group count (e.g. "
+            "Random Grouped Morphology Locations) sets how many presynaptic neurons the synapses "
+            "come from; strategies without one place every synapse from a single presynaptic "
+            "neuron."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -184,13 +188,12 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     )
     synapse_groups: dict[str, SynapticModelPlacerUnion] = Field(
         default_factory=dict,
-        min_length=1,
         title="Synapse groups",
         description="Incoming synapse groups to attach to the ME-model.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: [],
-            SchemaKey.SINGULAR_NAME: "Synaptic Model Placer",
+            SchemaKey.SINGULAR_NAME: "Synapse Group",
             SchemaKey.GROUP: BlockGroup.SYNAPSE_GROUPS,
             SchemaKey.GROUP_ORDER: 1,
         },
@@ -256,6 +259,8 @@ class MEModelSynapticModelPlacementTask(Task):
             target_simulator=types.TargetSimulator.NEURON,
             experiment_date=me_model.morphology.experiment_date,
             license=me_model.license or me_model.morphology.license,
+            derived_from_emodel=me_model.emodel,
+            derivation_label=result.model_template,
             skip_validation=True,
         )
         if circuit is None:

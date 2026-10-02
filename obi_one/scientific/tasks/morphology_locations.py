@@ -8,11 +8,11 @@ import neurom.io
 import neurom.view
 import numpy as np
 import pandas as pd
-from fastapi import HTTPException
 from matplotlib import pyplot as plt
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
@@ -107,4 +107,5 @@ class MorphologyLocationsTask(Task):
 
         except Exception as e:
             L.error(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+            message = f"Internal Server Error: {e}"
+            raise OBIONEError(message) from e

@@ -8,5 +8,15 @@ def load_morphology_nrn_order(path: Path) -> morphio.Morphology:
 
     This is REQUIRED for compatibility with Neurodamus / SONATA section_id semantics.
     """
-    collection = morphio.Collection(str(path.parent), extensions=[path.suffix])
-    return collection.load(path.stem, morphio.Option.nrn_order)
+    return load_morphology_nrn_order_from_collection(path.parent, path.stem, path.suffix)
+
+
+def load_morphology_nrn_order_from_collection(
+    base: Path, name: str, extension: str
+) -> morphio.Morphology:
+    """Load a named morphology from a directory or an `.h5` container.
+
+    `morphio.Collection` accepts either as `base`.
+    """
+    collection = morphio.Collection(str(base), extensions=[extension])
+    return collection.load(name, morphio.Option.nrn_order)

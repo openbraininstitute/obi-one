@@ -10,6 +10,9 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.validator import run_grid_scan_validation
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    EModelOptimizationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -22,6 +25,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
+from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 
 if TYPE_CHECKING:
@@ -34,7 +38,7 @@ router = APIRouter(
 )
 
 
-class SharedStatePartial(BaseModel):
+class _SharedStatePartialBase(BaseModel):
     """All validatable config fields. Each is optional — validate whichever are present."""
 
     circuit_simulation_config: CircuitSimulationScanConfig | None = None
@@ -45,6 +49,9 @@ class SharedStatePartial(BaseModel):
     ion_channel_model_simulation_config: IonChannelModelSimulationScanConfig | None = None
     skeletonization_config: SkeletonizationScanConfig | None = None
     em_synapse_mapping_config: EMSynapseMappingScanConfig | None = None
+    # Build > Ion Channel. Distinct from ion_channel_model_simulation_config above, which
+    # simulates an existing model; this one fits a new model from experimental traces.
+    ion_channel_fitting_config: IonChannelFittingScanConfig | None = None
 
 
 class ConfigValidationRequest(BaseModel):
@@ -67,7 +74,30 @@ _VALIDATION_CONFIG: dict[str, bool] = {
     "ion_channel_model_simulation_config": True,
     "skeletonization_config": False,
     "em_synapse_mapping_config": False,
+    # False mirrors the generate-endpoint registration in app/endpoints/scan_config.py, so
+    # validation is no stricter than generation. Generation still resolves the input recording
+    # against the database; only the fitting task itself (NWB download, nrnivmodl) is skipped.
+    "ion_channel_fitting_config": False,
 }
+
+
+# Optimize > E-Model optimization. EModelOptimizationScanConfig is None without the optional
+# `emodel` extra, and `None | None` raises TypeError while the class body is evaluated, which
+# would stop the service starting. Same conditional idiom as app/endpoints/scan_config.py. The
+# field and its _VALIDATION_CONFIG entry must stay gated together, or the key is parsed and
+# then never validated.
+if EModelOptimizationScanConfig is not None:
+
+    class SharedStatePartial(_SharedStatePartialBase):
+        """Validatable config fields, including E-Model optimization."""
+
+        emodel_optimization_config: EModelOptimizationScanConfig | None = None  # ty:ignore[invalid-type-form]
+
+    # False mirrors the generate endpoint. Generation still resolves the referenced entities;
+    # only the BluePyEModel/NEURON run is skipped.
+    _VALIDATION_CONFIG["emodel_optimization_config"] = False
+else:
+    SharedStatePartial = _SharedStatePartialBase
 
 
 @router.post(

@@ -42,6 +42,8 @@ __all__ = [
     "BlockReference",
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
+    "Brian2DirectPoissonStimulus",
+    "Brian2RecordingUnion",
     "BuildSynaptomeResult",
     "CellMorphologyFromID",
     "Circuit",
@@ -70,8 +72,10 @@ __all__ = [
     "CreateExtracellularRecordingArrayScanConfig",
     "CreateExtracellularRecordingArraySingleConfig",
     "CreateExtracellularRecordingArrayTask",
+    "CustomDistanceDependentDistribution",
     "DelayedInterNeuronSetSynapticManipulation",
     "DisconnectSynapticManipulation",
+    "DistanceDependentDistribution",
     "EMCellMeshFromID",
     "EMSynapseMappingInputNamedTuple",
     "EMSynapseMappingScanConfig",
@@ -80,6 +84,9 @@ __all__ = [
     "EModelEFeatureExtractionScanConfig",
     "EModelEFeatureExtractionSingleConfig",
     "EModelEFeatureExtractionTask",
+    "EModelOptimizationScanConfig",
+    "EModelOptimizationSingleConfig",
+    "EModelOptimizationTask",
     "ElectricalCellRecordingFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
@@ -88,7 +95,9 @@ __all__ = [
     "ExcitatoryNeurons",
     "ExcitatoryTsodyksMarkramSynapticModel",
     "ExplicitMorphologyLocations",
+    "ExponentialDistanceDependentDistribution",
     "ExponentialDistribution",
+    "ExponentialNaDendDistanceDependentDistribution",
     "ExtracellularLocations",
     "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
@@ -125,7 +134,10 @@ __all__ = [
     "LearningEngineCircuitSimulationScanConfig",
     "LearningEngineCircuitSimulationSingleConfig",
     "LinearCurrentClampSomaticStimulus",
+    "LinearEPasApicDistanceDependentDistribution",
     "LinearExtracellularLocations",
+    "LinearHDApicDistanceDependentDistribution",
+    "LinearHDPasDistanceDependentDistribution",
     "LoadAssetMethod",
     "LogNormalDistribution",
     "MEModelCircuit",
@@ -206,7 +218,13 @@ __all__ = [
     "ScanConfig",
     "ScanConfigsUnion",
     "ScanGenerationTask",
+    "SigmoidKADApicDistanceDependentDistribution",
+    "SigmoidKADDistanceDependentDistribution",
+    "SigmoidKDBMApicDistanceDependentDistribution",
     "Simulation",
+    "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+    "SimulationDtSomaVoltageRecording",
+    "SimulationDtTimeWindowSomaVoltageRecording",
     "SimulationsForm",
     "SingleConfigMixin",
     "SingleTimestamp",
@@ -217,6 +235,7 @@ __all__ = [
     "SomaVoltageRecording",
     "SpatiallyUniformElectricFieldStimulus",
     "SpikeTimeDistributionSpikeStimulus",
+    "StepDistanceDependentDistribution",
     "StimulusReference",
     "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
@@ -232,10 +251,12 @@ __all__ = [
     "Task",
     "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
+    "TimeWindowMorphologyLocationVoltageRecording",
     "TimeWindowSomaVoltageRecording",
     "TimestampsReference",
     "TimestampsUnion",
     "UTAHArrayExtracellularLocations",
+    "UniformDistanceDependentDistribution",
     "VirtualCombinedNeuronSet",
     "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
@@ -373,11 +394,15 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
 from obi_one.scientific.blocks.recordings.base import Recording
 from obi_one.scientific.blocks.recordings.morphology_location import (
     MorphologyLocationVoltageRecording,
+    TimeWindowMorphologyLocationVoltageRecording,
 )
 from obi_one.scientific.blocks.recordings.soma import (
+    SimulationDtSomaVoltageRecording,
+    SimulationDtTimeWindowSomaVoltageRecording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
+from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.electric_field import (
     SpatiallyUniformElectricFieldStimulus,
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
@@ -408,6 +433,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    SimulationDtSinusoidalCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
@@ -511,6 +537,23 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
 )
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    CustomDistanceDependentDistribution,
+    DistanceDependentDistribution,
+    EModelOptimizationScanConfig,
+    EModelOptimizationSingleConfig,
+    EModelOptimizationTask,
+    ExponentialDistanceDependentDistribution,
+    ExponentialNaDendDistanceDependentDistribution,
+    LinearEPasApicDistanceDependentDistribution,
+    LinearHDApicDistanceDependentDistribution,
+    LinearHDPasDistanceDependentDistribution,
+    SigmoidKADApicDistanceDependentDistribution,
+    SigmoidKADDistanceDependentDistribution,
+    SigmoidKDBMApicDistanceDependentDistribution,
+    StepDistanceDependentDistribution,
+    UniformDistanceDependentDistribution,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
@@ -602,7 +645,11 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     PointNeuronSetReference,
     VirtualNeuronSetReference,
 )
-from obi_one.scientific.unions_and_references.recordings import RecordingReference, RecordingUnion
+from obi_one.scientific.unions_and_references.recordings import (
+    Brian2RecordingUnion,
+    RecordingReference,
+    RecordingUnion,
+)
 from obi_one.scientific.unions_and_references.scan_configs import ScanConfigsUnion
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,

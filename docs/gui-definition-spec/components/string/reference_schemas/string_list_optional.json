@@ -1,0 +1,16 @@
+{
+  "anyOf": [
+    {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "ui_element": "string_list_optional",
+  "title": "title",
+  "description": "description"
+}

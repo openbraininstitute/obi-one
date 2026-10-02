@@ -8,7 +8,7 @@ from pydantic import Field, NonNegativeFloat, PositiveInt
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.morphology_locations.base import (
-    MorphologyLocationsBlock,
+    GeneratedMorphologyLocationsBlock,
 )
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
@@ -22,7 +22,7 @@ _MIN_PD_SD = 0.1
 PathDistanceStandardDeviationParameter = Annotated[float, Field(ge=_MIN_PD_SD)]
 
 
-class ClusteredMorphologyLocations(MorphologyLocationsBlock):
+class ClusteredMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Clustered locations with cluster centers randomly distributed across selected neurites."""
 
     title: ClassVar[str] = "Random Clustered Morphology Locations"

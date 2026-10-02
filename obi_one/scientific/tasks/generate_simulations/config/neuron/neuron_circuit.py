@@ -32,6 +32,7 @@ from obi_one.scientific.unions_and_references.manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationsReference,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
@@ -180,6 +181,24 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    # Narrowed to exclude explicit locations: a section id and offset name a different branch on
+    # every morphology, so hand-picked points are only meaningful for a single neuron.
+    morphology_locations: dict[str, CircuitMorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology Locations",
+        description=(
+            "Reusable rules for selecting precise locations on neuronal morphologies. "
+            "Stimuli can reference these locations to target compartments instead of whole cells."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Morphology Location",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

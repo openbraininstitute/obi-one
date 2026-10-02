@@ -36,7 +36,7 @@ def get_client(
     client = entitysdk.client.Client(
         api_url=settings.ENTITYCORE_URL,
         project_context=project_context,
-        http_client=request.state.http_client,
+        http_client=request.state.entitysdk_http_client,
         token_manager=token_manager,
         local_store=(
             entitysdk.LocalAssetStore(prefix=settings.MOUNT_BASE_DIR)  # ty:ignore[invalid-argument-type]

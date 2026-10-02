@@ -16,6 +16,7 @@ nav:
   - Home: index.md
   - Single Cell Simulations: scs.md
   - Small Circuit Simulations: scircuit.md
+  - Brian2 Point Neuron Simulations: brian2.md
 
 # Plugins
 plugins:
