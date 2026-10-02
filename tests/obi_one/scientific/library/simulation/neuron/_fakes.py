@@ -25,13 +25,24 @@ _MISSING = object()
 class _FakeNodeSet:
     """A single node set resolving to explicit IDs per population."""
 
-    def __init__(self, name: str, ids_by_population: dict[str, list[int]]):
+    def __init__(
+        self,
+        name: str,
+        ids_by_population: dict[str, list[int]],
+        raising_populations: frozenset[str] = frozenset(),
+    ):
         self._name = name
         self._ids_by_population = ids_by_population
+        self._raising_populations = raising_populations
 
     def get_ids(self, population, *, raise_missing_property: bool = True):
         # ``population`` is the per-population store; our fake store carries its name.
         pop_name = population.name
+        if pop_name in self._raising_populations:
+            # Model a population for which get_ids raises regardless of the
+            # raise_missing_property flag (e.g. an unexpected SONATA error).
+            msg = f"Node set '{self._name}' failed to resolve in population '{pop_name}'"
+            raise BluepySnapError(msg)
         ids = self._ids_by_population.get(pop_name, _MISSING)
         if ids is _MISSING:
             # Node set does not apply to this population. The real bluepysnap raises
@@ -46,8 +57,13 @@ class _FakeNodeSet:
 class _FakeNodeSets:
     """Merged node sets view: name -> {population -> [node_id, ...]}."""
 
-    def __init__(self, per_node_set: dict[str, dict[str, list[int]]]):
+    def __init__(
+        self,
+        per_node_set: dict[str, dict[str, list[int]]],
+        raising_populations: frozenset[str] = frozenset(),
+    ):
         self._per_node_set = per_node_set
+        self._raising_populations = raising_populations
 
     def __contains__(self, name: str) -> bool:
         return name in self._per_node_set
@@ -56,7 +72,7 @@ class _FakeNodeSets:
         return iter(self._per_node_set)
 
     def __getitem__(self, name: str) -> _FakeNodeSet:
-        return _FakeNodeSet(name, self._per_node_set[name])
+        return _FakeNodeSet(name, self._per_node_set[name], self._raising_populations)
 
 
 @dataclass
@@ -94,6 +110,11 @@ class FakeSimulation:
             of populations is derived from the union of populations referenced by the
             node sets, plus any ``extra_populations`` (to exercise populations in
             which a node set does not resolve).
+        extra_populations: additional circuit populations in which the node set does
+            not resolve (``get_ids`` returns no ids there).
+        raising_populations: populations for which ``get_ids`` raises
+            ``BluepySnapError`` regardless of ``raise_missing_property`` (to exercise
+            the defensive skip in the resolver).
     """
 
     def __init__(
@@ -101,9 +122,11 @@ class FakeSimulation:
         per_node_set: dict[str, dict[str, list[int]]],
         *,
         extra_populations: list[str] | None = None,
+        raising_populations: list[str] | None = None,
     ):
         populations = set(extra_populations or [])
+        populations.update(raising_populations or [])
         for by_pop in per_node_set.values():
             populations.update(by_pop)
         self.circuit = _FakeCircuit(sorted(populations))
-        self.node_sets = _FakeNodeSets(per_node_set)
+        self.node_sets = _FakeNodeSets(per_node_set, frozenset(raising_populations or []))

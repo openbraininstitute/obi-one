@@ -26,6 +26,7 @@ from obi_one.utils.circuit import (
     run_validation,
 )
 
+from tests.obi_one.scientific.library.simulation.neuron._fakes import FakeSimulation
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
@@ -688,3 +689,14 @@ class TestNodeSetResolution:
         sim = self._make_simulation(tmp_path, circuit_config, node_set="All")
         with pytest.raises(KeyError, match="Node set 'DoesNotExist' not found"):
             count_cells_in_simulation_node_set(sim, "DoesNotExist")
+
+    def test_population_that_raises_is_skipped(self):
+        # If get_ids raises BluepySnapError for a population, that population is
+        # skipped and resolution continues with the others.
+        sim = FakeSimulation(
+            {"MySet": {"popA": [1, 2, 3]}},
+            raising_populations=["popB"],
+        )
+        resolved = resolve_simulation_node_set_ids(sim, "MySet")
+        assert resolved == {"popA": [1, 2, 3]}
+        assert count_cells_in_simulation_node_set(sim, "MySet") == 3
